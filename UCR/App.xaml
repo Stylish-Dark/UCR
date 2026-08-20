@@ -7,11 +7,25 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Light.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Dark.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Defaults.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Primary/MaterialDesignColor.Blue.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Accent/MaterialDesignColor.Blue.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <!-- Custom UCR palette -->
+            <SolidColorBrush x:Key="MaterialDesignBackground" Color="#212121"/>
+            <SolidColorBrush x:Key="MaterialDesignPaper" Color="#212121"/>
+            <SolidColorBrush x:Key="MaterialDesignCardBackground" Color="#212121"/>
+            <SolidColorBrush x:Key="MaterialDesignToolBarBackground" Color="#212121"/>
+            <SolidColorBrush x:Key="MaterialDesignSelection" Color="#3D63BF"/>
+            <SolidColorBrush x:Key="PrimaryHueLightBrush" Color="#3D63BF"/>
+            <SolidColorBrush x:Key="PrimaryHueMidBrush" Color="#3D63BF"/>
+            <SolidColorBrush x:Key="PrimaryHueDarkBrush" Color="#3D63BF"/>
+            <SolidColorBrush x:Key="PrimaryHueLightForegroundBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="PrimaryHueMidForegroundBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="PrimaryHueDarkForegroundBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="SecondaryAccentBrush" Color="#3D63BF"/>
+            <SolidColorBrush x:Key="SecondaryAccentForegroundBrush" Color="#FFFFFF"/>
             <Style TargetType="{x:Type Window}" >
                 <Setter Property="WindowChrome.WindowChrome">
                     <Setter.Value>

@@ -1,0 +1,335 @@
+name: Build UCR Stylish
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Windows Release
+    runs-on: windows-2022
+
+    steps:
+      - name: Check out UCR Stylish
+        uses: actions/checkout@v6
+        with:
+          submodules: false
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v3
+        with:
+          vs-version: '[17.0,18.0)'
+          msbuild-architecture: x86
+
+      - name: Verify Windows build prerequisites
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $msbuild = Get-Command msbuild -ErrorAction Stop
+          $nuget = Get-Command nuget -ErrorAction Stop
+          Write-Host "MSBuild: $($msbuild.Source)"
+          Write-Host "NuGet:   $($nuget.Source)"
+          msbuild -version
+          nuget help | Select-Object -First 1
+
+          $net452 = "${env:ProgramFiles(x86)}\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.5.2\mscorlib.dll"
+          if (-not (Test-Path $net452)) {
+            throw ".NET Framework 4.5.2 targeting pack is missing from windows-2022."
+          }
+          Write-Host "Verified .NET Framework 4.5.2 reference assemblies: $net452"
+
+      - name: Ensure .NET Framework 4.6.1 Developer Pack
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $net461 = "${env:ProgramFiles(x86)}\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.6.1\mscorlib.dll"
+          if (Test-Path $net461) {
+            Write-Host "Verified .NET Framework 4.6.1 reference assemblies: $net461"
+            exit 0
+          }
+
+          $installer = Join-Path $env:RUNNER_TEMP 'NDP461-DevPack-KB3105179-ENU.exe'
+          $downloadUri = 'https://go.microsoft.com/fwlink/?linkid=2099470'
+          Invoke-WebRequest -Uri $downloadUri -OutFile $installer
+
+          $signature = Get-AuthenticodeSignature $installer
+          if ($signature.Status -ne 'Valid') {
+            throw "The downloaded .NET Framework 4.6.1 Developer Pack has an invalid Authenticode signature: $($signature.Status)"
+          }
+          if ($signature.SignerCertificate.Subject -notmatch '(^|,\s*)CN=Microsoft Corporation(,|$)') {
+            throw "The downloaded .NET Framework 4.6.1 Developer Pack is not signed by Microsoft Corporation. Subject: $($signature.SignerCertificate.Subject)"
+          }
+
+          $hash = (Get-FileHash -Algorithm SHA256 $installer).Hash
+          Write-Host "Verified Microsoft signature. Installer SHA-256: $hash"
+
+          $process = Start-Process -FilePath $installer -ArgumentList '/q', '/norestart' -Wait -PassThru
+          if ($process.ExitCode -notin @(0, 3010)) {
+            throw ".NET Framework 4.6.1 Developer Pack installation failed with exit code $($process.ExitCode)."
+          }
+
+          if (-not (Test-Path $net461)) {
+            throw ".NET Framework 4.6.1 reference assemblies are still missing after installation."
+          }
+          Write-Host "Verified .NET Framework 4.6.1 reference assemblies: $net461"
+
+      - name: Fetch exact pinned IOWrapper source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $expected = '4ef0a847fb479cfbe561656097639d3cef5240b7'
+          $destination = Join-Path $PWD 'submodules\IOWrapper'
+
+          if (Test-Path $destination) {
+            Remove-Item -LiteralPath $destination -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path (Split-Path $destination) -Force | Out-Null
+
+          git clone https://github.com/evilC/IOWrapper.git $destination
+          git -C $destination checkout --detach $expected
+
+          $actual = (git -C $destination rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Unable to read the checked-out IOWrapper commit.'
+          }
+          if ($actual -ne $expected) {
+            throw "IOWrapper commit mismatch. Expected $expected, got $actual."
+          }
+          Write-Host "Verified IOWrapper commit: $actual"
+
+      - name: Restore IOWrapper NuGet packages
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          nuget restore .\submodules\IOWrapper\IOWrapper.sln -NonInteractive
+          if ($LASTEXITCODE -ne 0) {
+            throw "IOWrapper NuGet restore failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Build IOWrapper Release
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          msbuild .\submodules\IOWrapper\IOWrapper.sln /m /t:Rebuild /p:Configuration=Release /v:minimal
+          if ($LASTEXITCODE -ne 0) {
+            throw "IOWrapper Release build failed with exit code $LASTEXITCODE."
+          }
+
+          $required = @(
+            '.\submodules\IOWrapper\Artifacts\IOWrapper\IOWrapper.Core.dll',
+            '.\submodules\IOWrapper\Artifacts\IOWrapper\IOWrapper.DTOs.dll',
+            '.\submodules\IOWrapper\Artifacts\IOWrapper\IOWrapper.IProvider.dll'
+          )
+          foreach ($file in $required) {
+            if (-not (Test-Path $file)) {
+              throw "Expected IOWrapper artifact is missing: $file"
+            }
+          }
+          Write-Host 'Verified required IOWrapper artifacts.'
+
+      - name: Stage IOWrapper dependencies for UCR
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $source = Join-Path $PWD 'submodules\IOWrapper\Artifacts'
+          $destination = Join-Path $PWD 'dependencies'
+
+          if (-not (Test-Path -LiteralPath $source -PathType Container)) {
+            throw "IOWrapper artifacts directory is missing: $source"
+          }
+
+          if (Test-Path -LiteralPath $destination) {
+            Remove-Item -LiteralPath $destination -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $destination -Force | Out-Null
+
+          Get-ChildItem -LiteralPath $source -Force | ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination $destination -Recurse -Force
+          }
+
+          $sourceFiles = Get-ChildItem -LiteralPath $source -File -Recurse
+          if ($sourceFiles.Count -eq 0) {
+            throw "IOWrapper artifacts directory contains no files: $source"
+          }
+
+          foreach ($sourceFile in $sourceFiles) {
+            $relative = $sourceFile.FullName.Substring($source.Length + 1)
+            $destinationFile = Join-Path $destination $relative
+            if (-not (Test-Path -LiteralPath $destinationFile -PathType Leaf)) {
+              throw "IOWrapper dependency copy is incomplete. Missing: $destinationFile"
+            }
+
+            $sourceHash = (Get-FileHash -LiteralPath $sourceFile.FullName -Algorithm SHA256).Hash
+            $destinationHash = (Get-FileHash -LiteralPath $destinationFile -Algorithm SHA256).Hash
+            if ($sourceHash -ne $destinationHash) {
+              throw "IOWrapper dependency hash mismatch for: $relative"
+            }
+          }
+
+          $required = @(
+            '.\dependencies\IOWrapper\IOWrapper.Core.dll',
+            '.\dependencies\IOWrapper\IOWrapper.DTOs.dll',
+            '.\dependencies\IOWrapper\IOWrapper.IProvider.dll'
+          )
+          foreach ($file in $required) {
+            if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
+              throw "Required UCR IOWrapper dependency is missing after staging: $file"
+            }
+            if ((Get-Item -LiteralPath $file).Length -le 0) {
+              throw "Required UCR IOWrapper dependency is empty after staging: $file"
+            }
+          }
+
+          Write-Host "Verified $($sourceFiles.Count) IOWrapper artifact files copied byte-for-byte into dependencies."
+
+      - name: Restore UCR NuGet packages
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $packageConfigs = @(
+            '.\UCR\packages.config',
+            '.\UCR.Core\packages.config',
+            '.\UCR.FileHandler\packages.config',
+            '.\UCR.Tests\packages.config'
+          )
+
+          foreach ($config in $packageConfigs) {
+            if (-not (Test-Path $config)) {
+              throw "Expected packages.config is missing: $config"
+            }
+            nuget restore $config -PackagesDirectory .\packages -NonInteractive
+            if ($LASTEXITCODE -ne 0) {
+              throw "NuGet restore failed for $config with exit code $LASTEXITCODE."
+            }
+          }
+
+      - name: Disable legacy GitVersion MSBuild integration
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $project = Join-Path $PWD 'UCR\UCR.csproj'
+          if (-not (Test-Path -LiteralPath $project -PathType Leaf)) {
+            throw "UCR project file is missing: $project"
+          }
+
+          $originalBytes = [System.IO.File]::ReadAllBytes($project)
+          $originalHash = (Get-FileHash -LiteralPath $project -Algorithm SHA256).Hash
+
+          $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+          $offset = 0
+          if ($originalBytes.Length -ge 3 -and $originalBytes[0] -eq 0xEF -and $originalBytes[1] -eq 0xBB -and $originalBytes[2] -eq 0xBF) {
+            $offset = 3
+          }
+          $original = $utf8NoBom.GetString($originalBytes, $offset, $originalBytes.Length - $offset)
+
+          $gitVersionMatches = [regex]::Matches($original, '(?m)^.*GitVersionTask\.4\.0\.0.*(?:\r?\n|$)')
+          $utilPackMatches = [regex]::Matches($original, '(?m)^.*UtilPack\.NuGet\.MSBuild\.2\.7\.0.*(?:\r?\n|$)')
+
+          if ($gitVersionMatches.Count -ne 2) {
+            throw "Expected exactly 2 GitVersionTask references in UCR.csproj, found $($gitVersionMatches.Count). Refusing to patch an unexpected project layout."
+          }
+          if ($utilPackMatches.Count -ne 2) {
+            throw "Expected exactly 2 UtilPack.NuGet.MSBuild references in UCR.csproj, found $($utilPackMatches.Count). Refusing to patch an unexpected project layout."
+          }
+
+          $patched = [regex]::Replace($original, '(?m)^.*GitVersionTask\.4\.0\.0.*(?:\r?\n|$)', '')
+          $patched = [regex]::Replace($patched, '(?m)^.*UtilPack\.NuGet\.MSBuild\.2\.7\.0.*(?:\r?\n|$)', '')
+
+          if ($patched -match 'GitVersionTask\.4\.0\.0') {
+            throw 'GitVersionTask reference remained after CI compatibility patch.'
+          }
+          if ($patched -match 'UtilPack\.NuGet\.MSBuild\.2\.7\.0') {
+            throw 'UtilPack.NuGet.MSBuild reference remained after CI compatibility patch.'
+          }
+
+          $utf8Bom = [System.Text.UTF8Encoding]::new($true)
+          [System.IO.File]::WriteAllText($project, $patched, $utf8Bom)
+
+          [xml]$parsed = Get-Content -LiteralPath $project -Raw
+          if ($null -eq $parsed.Project) {
+            throw 'Patched UCR.csproj is not a valid MSBuild XML project.'
+          }
+
+          $patchedHash = (Get-FileHash -LiteralPath $project -Algorithm SHA256).Hash
+          if ($patchedHash -eq $originalHash) {
+            throw 'UCR.csproj hash did not change after removing legacy GitVersion integration.'
+          }
+
+          Write-Host "Verified legacy GitVersionTask/UtilPack integration removed only in the ephemeral CI workspace."
+          Write-Host "Original UCR.csproj SHA-256: $originalHash"
+          Write-Host "Patched  UCR.csproj SHA-256: $patchedHash"
+
+      - name: Build UCR Stylish Release
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $gitVersionConfig = Get-Content -LiteralPath '.\GitVersion.yml' -Raw
+          $versionMatch = [regex]::Match($gitVersionConfig, '(?m)^next-version:\s*(\d+)\.(\d+)\.(\d+)\s*$')
+          if (-not $versionMatch.Success) {
+            throw 'Could not derive a deterministic numeric build version from GitVersion.yml next-version.'
+          }
+
+          $versionNumber = '{0}.{1}.{2}.0' -f `
+            $versionMatch.Groups[1].Value, `
+            $versionMatch.Groups[2].Value, `
+            $versionMatch.Groups[3].Value
+
+          Write-Host "Using deterministic VersionNumber=$versionNumber from GitVersion.yml"
+          msbuild .\UCR.sln /m:1 /t:Rebuild /p:Configuration=Release /p:Platform="Any CPU" /p:VersionNumber="$versionNumber" /v:minimal
+          if ($LASTEXITCODE -ne 0) {
+            throw "UCR Release build failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Verify built executable
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $exe = '.\UCR\bin\Release\UCR.exe'
+          if (-not (Test-Path $exe)) {
+            throw "Build reported success but the expected executable does not exist: $exe"
+          }
+
+          $exeInfo = Get-Item $exe
+          if ($exeInfo.Length -le 0) {
+            throw "The built UCR.exe is empty."
+          }
+
+          $hash = (Get-FileHash -Algorithm SHA256 $exe).Hash
+          Write-Host "UCR.exe size: $($exeInfo.Length) bytes"
+          Write-Host "UCR.exe SHA-256: $hash"
+
+      - name: Run UCR unit tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $runner = '.\packages\NUnit.ConsoleRunner.3.9.0\tools\nunit3-console.exe'
+          $tests = '.\UCR.Tests\bin\Release\UCR.Tests.dll'
+          if (-not (Test-Path $runner)) {
+            throw "NUnit console runner is missing: $runner"
+          }
+          if (-not (Test-Path $tests)) {
+            throw "UCR test assembly is missing: $tests"
+          }
+
+          & $runner $tests --noresult
+          if ($LASTEXITCODE -ne 0) {
+            throw "UCR unit tests failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Upload UCR Stylish Windows build
+        uses: actions/upload-artifact@v7
+        with:
+          name: UCR-Stylish-Windows
+          path: UCR/bin/Release/
+          if-no-files-found: error

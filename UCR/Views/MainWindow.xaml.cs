@@ -9,12 +9,14 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Utilities;
 using HidWizards.UCR.ViewModels.Dashboard;
 using HidWizards.UCR.Views.Dialogs;
 using MaterialDesignThemes.Wpf;
+using Forms = System.Windows.Forms;
 using ProfileWindow = HidWizards.UCR.Views.ProfileViews.ProfileWindow;
 
 namespace HidWizards.UCR.Views
@@ -26,6 +28,12 @@ namespace HidWizards.UCR.Views
         private readonly DashboardViewModel _dashboardViewModel;
         private CloseState WindowCloseState { get; set; }
         private Dictionary<Guid, ProfileWindow> ProfileWindows;
+        private readonly HashSet<Guid> _profileWindowsHiddenToTray = new HashSet<Guid>();
+        private Point _profileDragStartPoint;
+        private ProfileItem _draggedProfileItem;
+        private Forms.NotifyIcon _trayIcon;
+        private Forms.ToolStripMenuItem _stopCurrentProfileMenuItem;
+        private bool _exitRequested;
 
         enum CloseState
         {
@@ -41,6 +49,7 @@ namespace HidWizards.UCR.Views
             Context = context;
             ProfileWindows = new Dictionary<Guid, ProfileWindow>();
             InitializeComponent();
+            InitializeTrayIcon();
         }
 
         /// <summary>
@@ -77,6 +86,106 @@ namespace HidWizards.UCR.Views
             ProfileTree.ItemsSource = profileTree;
         }
 
+        private void ProfileTree_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _profileDragStartPoint = e.GetPosition(ProfileTree);
+            var container = GetTreeViewItem(e.OriginalSource as DependencyObject);
+            _draggedProfileItem = container?.DataContext as ProfileItem;
+        }
+
+        private void ProfileTree_OnPreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.LeftButton != MouseButtonState.Pressed || _draggedProfileItem == null) return;
+
+            var currentPosition = e.GetPosition(ProfileTree);
+            if (Math.Abs(currentPosition.X - _profileDragStartPoint.X) < SystemParameters.MinimumHorizontalDragDistance &&
+                Math.Abs(currentPosition.Y - _profileDragStartPoint.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+
+            var draggedItem = _draggedProfileItem;
+            _draggedProfileItem = null;
+            DragDrop.DoDragDrop(ProfileTree, draggedItem, DragDropEffects.Move);
+        }
+
+        private void ProfileTree_OnDragOver(object sender, DragEventArgs e)
+        {
+            var sourceItem = e.Data.GetData(typeof(ProfileItem)) as ProfileItem;
+            var targetContainer = GetTreeViewItem(e.OriginalSource as DependencyObject);
+            var targetItem = targetContainer?.DataContext as ProfileItem;
+
+            e.Effects = CanReorderProfile(sourceItem, targetItem) ? DragDropEffects.Move : DragDropEffects.None;
+            e.Handled = true;
+        }
+
+        private void ProfileTree_OnDrop(object sender, DragEventArgs e)
+        {
+            var sourceItem = e.Data.GetData(typeof(ProfileItem)) as ProfileItem;
+            var targetContainer = GetTreeViewItem(e.OriginalSource as DependencyObject);
+            var targetItem = targetContainer?.DataContext as ProfileItem;
+            if (!CanReorderProfile(sourceItem, targetItem) || targetContainer == null) return;
+
+            var siblings = sourceItem.Profile.ParentProfile == null
+                ? Context.Profiles
+                : sourceItem.Profile.ParentProfile.ChildProfiles;
+
+            var sourceIndex = siblings.IndexOf(sourceItem.Profile);
+            var targetIndex = siblings.IndexOf(targetItem.Profile);
+            if (sourceIndex < 0 || targetIndex < 0) return;
+
+            var targetHeader = GetTreeViewItemHeaderElement(targetContainer);
+            var dropPosition = e.GetPosition(targetHeader);
+            var insertAfterTarget = dropPosition.Y > targetHeader.ActualHeight / 2;
+            var insertIndex = targetIndex + (insertAfterTarget ? 1 : 0);
+
+            siblings.RemoveAt(sourceIndex);
+            if (sourceIndex < insertIndex) insertIndex--;
+            if (insertIndex < 0) insertIndex = 0;
+            if (insertIndex > siblings.Count) insertIndex = siblings.Count;
+            siblings.Insert(insertIndex, sourceItem.Profile);
+
+            Context.ContextChanged();
+            ReloadProfileTree();
+            e.Handled = true;
+        }
+
+        private static bool CanReorderProfile(ProfileItem sourceItem, ProfileItem targetItem)
+        {
+            if (sourceItem?.Profile == null || targetItem?.Profile == null) return false;
+            if (ReferenceEquals(sourceItem.Profile, targetItem.Profile)) return false;
+            return ReferenceEquals(sourceItem.Profile.ParentProfile, targetItem.Profile.ParentProfile);
+        }
+
+        private static FrameworkElement GetTreeViewItemHeaderElement(TreeViewItem container)
+        {
+            container.ApplyTemplate();
+
+            var header = container.Template?.FindName("ContentGrid", container) as FrameworkElement
+                         ?? container.Template?.FindName("PART_Header", container) as FrameworkElement;
+
+            return header != null && header.ActualHeight > 0 ? header : container;
+        }
+
+        private TreeViewItem GetTreeViewItem(DependencyObject source)
+        {
+            while (source != null)
+            {
+                if (source is TreeViewItem treeViewItem) return treeViewItem;
+
+                if (source is Visual || source is System.Windows.Media.Media3D.Visual3D)
+                {
+                    source = VisualTreeHelper.GetParent(source);
+                }
+                else if (source is FrameworkContentElement contentElement)
+                {
+                    source = contentElement.Parent;
+                }
+                else
+                {
+                    source = LogicalTreeHelper.GetParent(source);
+                }
+            }
+
+            return null;
+        }
 
         #region Profile Actions
 
@@ -92,8 +201,13 @@ namespace HidWizards.UCR.Views
 
         private void DeactivateProfile(object sender, RoutedEventArgs e)
         {
+            DeactivateCurrentProfile();
+        }
+
+        private void DeactivateCurrentProfile()
+        {
             if (Context.ActiveProfile == null) return;
-            
+
             if (!Context.SubscriptionsManager.DeactivateCurrentProfile())
             {
                 // TODO Move to dialog
@@ -174,6 +288,7 @@ namespace HidWizards.UCR.Views
         {
             if (sender is ProfileWindow window)
             {
+                _profileWindowsHiddenToTray.Remove(window.ProfileGuid);
                 ProfileWindows.Remove(window.ProfileGuid);
             }
         }
@@ -213,8 +328,96 @@ namespace HidWizards.UCR.Views
 
         #endregion Profile Actions
 
+        private void InitializeTrayIcon()
+        {
+            var contextMenu = new Forms.ContextMenuStrip();
+            _stopCurrentProfileMenuItem = new Forms.ToolStripMenuItem("Stop current profile");
+            var exitMenuItem = new Forms.ToolStripMenuItem("Exit UCR");
+
+            _stopCurrentProfileMenuItem.Click += (sender, args) => Dispatcher.BeginInvoke((Action)DeactivateCurrentProfile);
+            exitMenuItem.Click += (sender, args) => Dispatcher.BeginInvoke((Action)ExitFromTray);
+            contextMenu.Opening += (sender, args) =>
+            {
+                _stopCurrentProfileMenuItem.Enabled = Context.ActiveProfile != null;
+            };
+            contextMenu.Items.Add(_stopCurrentProfileMenuItem);
+            contextMenu.Items.Add(exitMenuItem);
+
+            _trayIcon = new Forms.NotifyIcon
+            {
+                Text = "Universal Control Remapper",
+                Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location),
+                ContextMenuStrip = contextMenu,
+                Visible = false
+            };
+            _trayIcon.MouseDoubleClick += (sender, args) =>
+            {
+                if (args.Button == Forms.MouseButtons.Left) Dispatcher.BeginInvoke((Action)RestoreFromTray);
+            };
+        }
+
+        private void HideToTray()
+        {
+            _profileWindowsHiddenToTray.Clear();
+            foreach (var profileWindow in ProfileWindows.Values)
+            {
+                if (!profileWindow.IsVisible) continue;
+
+                _profileWindowsHiddenToTray.Add(profileWindow.ProfileGuid);
+                profileWindow.Hide();
+            }
+
+            _trayIcon.Visible = true;
+            Hide();
+        }
+
+        private void RestoreFromTray()
+        {
+            Show();
+            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+
+            foreach (var profileGuid in _profileWindowsHiddenToTray)
+            {
+                if (ProfileWindows.TryGetValue(profileGuid, out var profileWindow))
+                {
+                    profileWindow.Show();
+                }
+            }
+            _profileWindowsHiddenToTray.Clear();
+
+            Activate();
+            _trayIcon.Visible = false;
+        }
+
+        private void ExitFromTray()
+        {
+            RestoreFromTray();
+            _exitRequested = true;
+            WindowCloseState = CloseState.None;
+            Close();
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            if (_trayIcon != null)
+            {
+                _trayIcon.Visible = false;
+                _trayIcon.Dispose();
+                _trayIcon = null;
+            }
+
+            base.OnClosed(e);
+        }
+
         private async void MainWindow_OnClosing(object sender, CancelEventArgs e)
         {
+            if (!_exitRequested)
+            {
+                e.Cancel = true;
+                HideToTray();
+                return;
+            }
+
             if (CloseState.ForceClose.Equals(WindowCloseState)) return;
             if (CloseState.Closing.Equals(WindowCloseState))
             {
@@ -245,13 +448,19 @@ namespace HidWizards.UCR.Views
 
                 var dialog = new DecisionDialog("Configuration has changed", "Do you want to save before closing?");
                 var result = (MessageBoxResult?)await DialogHost.Show(dialog, "RootDialog");
-                if (result == null) return;
+                if (result == null)
+                {
+                    WindowCloseState = CloseState.None;
+                    _exitRequested = false;
+                    return;
+                }
 
                 switch (result)
                 {
                     case MessageBoxResult.None:
                     case MessageBoxResult.Cancel:
                         WindowCloseState = CloseState.None;
+                        _exitRequested = false;
                         return;
                     case MessageBoxResult.OK:
                     case MessageBoxResult.Yes:

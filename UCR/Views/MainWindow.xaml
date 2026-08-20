@@ -127,7 +127,12 @@
                         </Grid>
                         <Separator Grid.Row="1" Margin="8 0 8 4" Height="4"  Style="{StaticResource MaterialDesignDarkSeparator}" />
                         <TreeView Grid.Row="2" Name="ProfileTree" Margin="4"
-                                  ItemsSource="{Binding ProfileList}" 
+                                  ItemsSource="{Binding ProfileList}"
+                                  AllowDrop="True"
+                                  PreviewMouseLeftButtonDown="ProfileTree_OnPreviewMouseLeftButtonDown"
+                                  PreviewMouseMove="ProfileTree_OnPreviewMouseMove"
+                                  DragOver="ProfileTree_OnDragOver"
+                                  Drop="ProfileTree_OnDrop"
                                   SelectedItemChanged="ProfileTree_OnSelectedItemChanged">
                             <TreeView.Style>
                                 <Style TargetType="TreeView" BasedOn="{StaticResource MaterialDesignTreeView}">
