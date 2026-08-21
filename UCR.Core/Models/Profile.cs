@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Xml.Serialization;
 using HidWizards.UCR.Core.Annotations;
+using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models.Binding;
 using NLog;
 
@@ -170,7 +171,16 @@ namespace HidWizards.UCR.Core.Models
 
             foreach (var deviceConfiguration in profileDeviceList)
             {
-                availableDeviceList.RemoveAll(d => d.Equals(deviceConfiguration.Device));
+                var resolvedDevice = Context.DevicesManager.ResolveDevice(deviceConfiguration.Device, deviceIoType);
+                if (resolvedDevice != null)
+                {
+                    availableDeviceList.RemoveAll(d => DevicesManager.DescriptorEquals(d, resolvedDevice)
+                                                       || DevicesManager.PersistedIdentityEquals(d, deviceConfiguration.Device));
+                }
+                else
+                {
+                    availableDeviceList.RemoveAll(d => DevicesManager.PersistedIdentityEquals(d, deviceConfiguration.Device));
+                }
             }
 
             return availableDeviceList;

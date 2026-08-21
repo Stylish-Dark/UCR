@@ -229,6 +229,16 @@ namespace HidWizards.UCR.Core.Managers
             if (!deviceBindingSubscription.DeviceBinding.IsBound) return true;
             try
             {
+                var runtimeDevice = _context.DevicesManager.ResolveDevice(
+                    deviceBindingSubscription.DeviceSubscription.Device,
+                    DeviceIoType.Input);
+                if (runtimeDevice == null)
+                {
+                    Logger.Error($"Failed to resolve input device safely: {{{deviceBindingSubscription.DeviceSubscription.Device.LogName()}}}");
+                    return false;
+                }
+
+                deviceBindingSubscription.DeviceSubscription.ResolvedDevice = runtimeDevice;
                 return _context.IOController.SubscribeInput(GetInputSubscriptionRequest(state,
                     deviceBindingSubscription));
             }
@@ -242,6 +252,7 @@ namespace HidWizards.UCR.Core.Managers
         private bool UnsubscribeDeviceBindingInput(SubscriptionState state, InputSubscription deviceBindingSubscription)
         {
             if (!deviceBindingSubscription.DeviceBinding.IsBound) return true;
+            if (deviceBindingSubscription.DeviceSubscription.ResolvedDevice == null) return true;
             return _context.IOController.UnsubscribeInput(GetInputSubscriptionRequest(state, deviceBindingSubscription));
         }
 
@@ -253,6 +264,15 @@ namespace HidWizards.UCR.Core.Managers
                 Logger.Error($"Failed to subscribe output device. Providername or devicehandle missing from: {{{deviceSubscription.Device.LogName()}}}");
                 return false;
             }
+
+            var runtimeDevice = _context.DevicesManager.ResolveDevice(deviceSubscription.Device, DeviceIoType.Output);
+            if (runtimeDevice == null)
+            {
+                Logger.Error($"Failed to resolve output device safely: {{{deviceSubscription.Device.LogName()}}}");
+                return false;
+            }
+
+            deviceSubscription.ResolvedDevice = runtimeDevice;
             var success = _context.IOController.SubscribeOutput(GetOutputSubscriptionRequest(state.StateGuid, deviceSubscription));
 
             if (!success) Logger.Error($"Failed to subscribe output device. Provider might be unavailable: {{{deviceSubscription.Device.LogName()}}}");
@@ -263,9 +283,10 @@ namespace HidWizards.UCR.Core.Managers
         private bool UnsubscribeOutput(SubscriptionState state, DeviceSubscription deviceSubscription)
         {
             Logger.Debug($"Unsubscribing output device: {{{deviceSubscription.Device.LogName()}}}");
-            if (string.IsNullOrEmpty(deviceSubscription.Device.ProviderName) || string.IsNullOrEmpty(deviceSubscription.Device.DeviceHandle))
+            if (deviceSubscription.ResolvedDevice == null) return true;
+            if (string.IsNullOrEmpty(deviceSubscription.ResolvedDevice.ProviderName) || string.IsNullOrEmpty(deviceSubscription.ResolvedDevice.DeviceHandle))
             {
-                Logger.Error($"Failed to unsubscribe output device. Providername or devicehandle missing from: {{{deviceSubscription.Device.LogName()}}}");
+                Logger.Error($"Failed to unsubscribe output device. Providername or devicehandle missing from: {{{deviceSubscription.ResolvedDevice.LogName()}}}");
                 return false;
             }
             return _context.IOController.UnsubscribeOutput(GetOutputSubscriptionRequest(state.StateGuid, deviceSubscription));
@@ -277,7 +298,7 @@ namespace HidWizards.UCR.Core.Managers
 
         private InputSubscriptionRequest GetInputSubscriptionRequest(SubscriptionState state, InputSubscription deviceBindingSubscription)
         {
-            var device = deviceBindingSubscription.DeviceSubscription.Device;
+            var device = deviceBindingSubscription.DeviceSubscription.GetRuntimeDevice();
             return new InputSubscriptionRequest()
             {
                 ProviderDescriptor = GetProviderDescriptor(device),
@@ -293,8 +314,8 @@ namespace HidWizards.UCR.Core.Managers
         {
             return new OutputSubscriptionRequest()
             {
-                ProviderDescriptor = GetProviderDescriptor(deviceSubscription.Device),
-                DeviceDescriptor = GetDeviceDescriptor(deviceSubscription.Device),
+                ProviderDescriptor = GetProviderDescriptor(deviceSubscription.GetRuntimeDevice()),
+                DeviceDescriptor = GetDeviceDescriptor(deviceSubscription.GetRuntimeDevice()),
                 SubscriptionDescriptor = GetSubscriptionDescriptor(deviceSubscription.DeviceSubscriptionGuid, subscriptionStateGuid)
             };
         }

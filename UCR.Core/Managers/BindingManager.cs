@@ -32,6 +32,7 @@ namespace HidWizards.UCR.Core.Managers
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private readonly Context _context;
         private List<DeviceConfiguration> _deviceConfigurationList;
+        private Dictionary<Guid, Device> _bindModeRuntimeDevices;
         private DeviceBinding _deviceBinding;
         private DispatcherTimer BindingTimer;
         private readonly object bindmodeLock = new object();
@@ -44,6 +45,7 @@ namespace HidWizards.UCR.Core.Managers
         {
             _context = context;
             _deviceConfigurationList = new List<DeviceConfiguration>();
+            _bindModeRuntimeDevices = new Dictionary<Guid, Device>();
             Logger.Debug($"Start bind mode");
         }
 
@@ -53,8 +55,12 @@ namespace HidWizards.UCR.Core.Managers
             _deviceBinding = deviceBinding;
             foreach (var deviceConfiguration in deviceBinding.Profile.GetDeviceConfigurationList(deviceBinding.DeviceIoType))
             {
-                _context.IOController.SetDetectionMode(DetectionMode.Bind, GetProviderDescriptor(deviceConfiguration.Device), GetDeviceDescriptor(deviceConfiguration.Device), InputChanged);
+                var runtimeDevice = _context.DevicesManager.ResolveDevice(deviceConfiguration.Device, deviceBinding.DeviceIoType);
+                if (runtimeDevice == null) continue;
+
+                _context.IOController.SetDetectionMode(DetectionMode.Bind, GetProviderDescriptor(runtimeDevice), GetDeviceDescriptor(runtimeDevice), InputChanged);
                 _deviceConfigurationList.Add(deviceConfiguration);
+                _bindModeRuntimeDevices[deviceConfiguration.Guid] = runtimeDevice;
             }
 
             BindingTimer = new DispatcherTimer(DispatcherPriority.Render);
@@ -83,11 +89,15 @@ namespace HidWizards.UCR.Core.Managers
 
                 foreach (var deviceConfiguration in _deviceConfigurationList)
                 {
-                    _context.IOController.SetDetectionMode(DetectionMode.Subscription, GetProviderDescriptor(deviceConfiguration.Device),
-                        GetDeviceDescriptor(deviceConfiguration.Device));
+                    Device runtimeDevice;
+                    if (!_bindModeRuntimeDevices.TryGetValue(deviceConfiguration.Guid, out runtimeDevice)) continue;
+
+                    _context.IOController.SetDetectionMode(DetectionMode.Subscription, GetProviderDescriptor(runtimeDevice),
+                        GetDeviceDescriptor(runtimeDevice));
                 }
 
                 _deviceConfigurationList = new List<DeviceConfiguration>();
+                _bindModeRuntimeDevices = new Dictionary<Guid, Device>();
                 BindingTimer.Stop();
                 bindmodeActive = false;
             }
@@ -116,6 +126,8 @@ namespace HidWizards.UCR.Core.Managers
             if (!IsInputValid(bindingReport.Category, value)) return;
 
             var deviceConfiguration = FindDeviceConfiguration(providerDescriptor, deviceDescriptor);
+            if (deviceConfiguration == null) return;
+
             _deviceBinding.SetDeviceConfigurationGuid(deviceConfiguration.Guid);
             _deviceBinding.SetKeyTypeValue((int)bindingReport.BindingDescriptor.Type, bindingReport.BindingDescriptor.Index, bindingReport.BindingDescriptor.SubIndex);
             EndBindMode();
@@ -141,10 +153,20 @@ namespace HidWizards.UCR.Core.Managers
 
         private DeviceConfiguration FindDeviceConfiguration(ProviderDescriptor providerDescriptor, DeviceDescriptor deviceDescriptor)
         {
-            return _deviceConfigurationList.Find(deviceConfiguration => deviceConfiguration.Device.ProviderName == providerDescriptor.ProviderName
-                                         && deviceConfiguration.Device.DeviceHandle == deviceDescriptor.DeviceHandle
-                                         && deviceConfiguration.Device.DeviceNumber == deviceDescriptor.DeviceInstance
-            );
+            foreach (var deviceConfiguration in _deviceConfigurationList)
+            {
+                Device runtimeDevice;
+                if (!_bindModeRuntimeDevices.TryGetValue(deviceConfiguration.Guid, out runtimeDevice)) continue;
+
+                if (string.Equals(runtimeDevice.ProviderName, providerDescriptor.ProviderName, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(runtimeDevice.DeviceHandle, deviceDescriptor.DeviceHandle, StringComparison.OrdinalIgnoreCase)
+                    && runtimeDevice.DeviceNumber == deviceDescriptor.DeviceInstance)
+                {
+                    return deviceConfiguration;
+                }
+            }
+
+            return null;
         }
 
         public void Dispose()

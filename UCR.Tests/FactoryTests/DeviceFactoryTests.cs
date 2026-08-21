@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using HidWizards.IOWrapper.DataTransferObjects;
+using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Tests.Factory;
@@ -34,6 +35,114 @@ namespace HidWizards.UCR.Tests.FactoryTests
             Assert.That(deviceList[0].ProviderName, Is.EqualTo(deviceList[1].ProviderName));
             Assert.That(deviceList[0].DeviceHandle, Is.EqualTo(0.ToString()));
             Assert.That(deviceList[3].DeviceHandle, Is.EqualTo(3.ToString()));
+        }
+
+        [Test]
+        public void DevicePersistsHidPathReportedByProvider()
+        {
+            var report = new DeviceReport
+            {
+                DeviceName = "DirectInput Pad",
+                HidPath = @"\\?\hid#vid_1234&pid_5678#physical-a",
+                DeviceDescriptor = new DeviceDescriptor
+                {
+                    DeviceHandle = "VID_1234&PID_5678",
+                    DeviceInstance = 0
+                }
+            };
+            var provider = new ProviderReport
+            {
+                ProviderDescriptor = new ProviderDescriptor { ProviderName = "SharpDX_DirectInput" }
+            };
+
+            var device = new Device(report, provider, new List<DeviceBindingNode>());
+
+            Assert.That(device.HidPath, Is.EqualTo(report.HidPath));
+        }
+
+        [Test]
+        public void StableResolverPrefersHidPathWhenProviderInstanceNumbersSwap()
+        {
+            var configured = CreateIdentityDevice("Pad A", "SharpDX_DirectInput", "VID_1234&PID_5678", 0,
+                @"\\?\hid#vid_1234&pid_5678#physical-a");
+            var liveWrongAtOldNumber = CreateIdentityDevice("Pad B", "SharpDX_DirectInput", "VID_1234&PID_5678", 0,
+                @"\\?\hid#vid_1234&pid_5678#physical-b");
+            var liveCorrectAtNewNumber = CreateIdentityDevice("Pad A", "SharpDX_DirectInput", "VID_1234&PID_5678", 1,
+                @"\\?\hid#vid_1234&pid_5678#physical-a");
+
+            var resolved = DevicesManager.ResolveDevice(configured,
+                new List<Device> { liveWrongAtOldNumber, liveCorrectAtNewNumber });
+
+            Assert.That(resolved, Is.SameAs(liveCorrectAtNewNumber));
+            Assert.That(resolved.DeviceNumber, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void StableResolverUsesUniqueHardwareHandleWhenInstanceNumberChanges()
+        {
+            var configured = CreateIdentityDevice("Keyboard", "Core_Interception",
+                @"Keyboard\HID\VID_1111&PID_2222", 3, null);
+            var live = CreateIdentityDevice("Keyboard", "Core_Interception",
+                @"Keyboard\HID\VID_1111&PID_2222", 0, null);
+
+            var resolved = DevicesManager.ResolveDevice(configured, new List<Device> { live });
+
+            Assert.That(resolved, Is.SameAs(live));
+        }
+
+        [Test]
+        public void StableResolverDoesNotSubstituteDifferentPhysicalHidPathEvenWhenOnlyOneMatchExists()
+        {
+            var configured = CreateIdentityDevice("Pad", "SharpDX_DirectInput", "VID_1234&PID_5678", 0,
+                @"\\?\hid#vid_1234&pid_5678#physical-a");
+            var differentPhysicalDevice = CreateIdentityDevice("Pad", "SharpDX_DirectInput", "VID_1234&PID_5678", 0,
+                @"\\?\hid#vid_1234&pid_5678#physical-b");
+
+            var resolved = DevicesManager.ResolveDevice(configured, new List<Device> { differentPhysicalDevice });
+
+            Assert.That(resolved, Is.Null);
+        }
+
+        [Test]
+        public void StableResolverDoesNotGuessWhenPersistedHidPathIsMissingAmongDuplicates()
+        {
+            var configured = CreateIdentityDevice("Pad", "SharpDX_DirectInput", "VID_1234&PID_5678", 0,
+                @"\\?\hid#vid_1234&pid_5678#old-port");
+            var first = CreateIdentityDevice("Pad 1", "SharpDX_DirectInput", "VID_1234&PID_5678", 0,
+                @"\\?\hid#vid_1234&pid_5678#new-a");
+            var second = CreateIdentityDevice("Pad 2", "SharpDX_DirectInput", "VID_1234&PID_5678", 1,
+                @"\\?\hid#vid_1234&pid_5678#new-b");
+
+            var resolved = DevicesManager.ResolveDevice(configured, new List<Device> { first, second });
+
+            Assert.That(resolved, Is.Null);
+        }
+
+        [Test]
+        public void StableResolverRefusesEnumerationOrderForDuplicatePhysicalDevicesWithoutHardwarePath()
+        {
+            var configured = CreateIdentityDevice("Keyboard #2", "Core_Interception",
+                @"Keyboard\HID\VID_1111&PID_2222", 1, null);
+            var first = CreateIdentityDevice("Keyboard #1", "Core_Interception",
+                @"Keyboard\HID\VID_1111&PID_2222", 0, null);
+            var second = CreateIdentityDevice("Keyboard #2", "Core_Interception",
+                @"Keyboard\HID\VID_1111&PID_2222", 1, null);
+
+            var resolved = DevicesManager.ResolveDevice(configured, new List<Device> { first, second });
+
+            Assert.That(resolved, Is.Null);
+        }
+
+        [Test]
+        public void StableResolverRetainsLegacyExactSlotFallbackWhenNoHardwarePathExists()
+        {
+            var configured = CreateIdentityDevice("Xbox Controller 2", "SharpDX_XInput", "xb360", 1, null);
+            var first = CreateIdentityDevice("Xbox Controller 1", "SharpDX_XInput", "xb360", 0, null);
+            var second = CreateIdentityDevice("Xbox Controller 2", "SharpDX_XInput", "xb360", 1, null);
+
+            var resolved = DevicesManager.ResolveDevice(configured, new List<Device> { first, second });
+
+            Assert.That(resolved, Is.SameAs(second));
         }
 
         [Test]
@@ -157,6 +266,20 @@ namespace HidWizards.UCR.Tests.FactoryTests
                 Assert.That(result.Compatibility, Is.EqualTo(DeviceBindingTransferCompatibility.Incompatible),
                     "DS4-only button index " + ds4OnlyIndex + " must require explicit rebinding.");
             }
+        }
+
+        private static Device CreateIdentityDevice(string title, string providerName, string deviceHandle,
+            int deviceNumber, string hidPath)
+        {
+            return new Device(new DeviceCache
+            {
+                Title = title,
+                ProviderName = providerName,
+                DeviceHandle = deviceHandle,
+                DeviceNumber = deviceNumber,
+                HidPath = hidPath,
+                DeviceBindingMenu = new List<DeviceBindingNode>()
+            });
         }
 
         private static DeviceBinding CreateBoundBinding(int keyType, int keyValue, int keySubValue)

@@ -225,6 +225,25 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void ProfileExportImportPreservesPersistedHardwarePath()
+        {
+            var source = new Context();
+            var profile = AddProfile(source, "Hardware identity");
+            var input = AddDeviceConfiguration(profile, DeviceIoType.Input, "DirectInput Pad",
+                "SharpDX_DirectInput", "VID_1234&PID_5678", 0);
+            input.Device.HidPath = @"\\?\hid#vid_1234&pid_5678#physical-a";
+
+            var file = TempFile(".ucrprofile");
+            source.ProfilesManager.ExportProfile(profile, file, _pluginTypes);
+
+            var destination = new Context();
+            var imported = destination.ProfilesManager.ImportProfile(file, null, _pluginTypes);
+
+            Assert.That(imported.InputDeviceConfigurations[0].Device.HidPath,
+                Is.EqualTo(input.Device.HidPath));
+        }
+
+        [Test]
         public void ProfileImporterRejectsProfileListPackageWithoutMutatingContext()
         {
             var source = new Context();

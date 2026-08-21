@@ -307,6 +307,8 @@ namespace HidWizards.UCR.Core.Models
         public string DeviceHandle { get; set; }
         [XmlAttribute]
         public int DeviceNumber { get; set; }
+        [XmlAttribute]
+        public string HidPath { get; set; }
 
         /* Runtime */
         [XmlIgnore]
@@ -334,6 +336,7 @@ namespace HidWizards.UCR.Core.Models
             ProviderName = providerReport.ProviderDescriptor.ProviderName;
             DeviceHandle = device.DeviceDescriptor.DeviceHandle;
             DeviceNumber = device.DeviceDescriptor.DeviceInstance;
+            HidPath = device.HidPath;
             DeviceBindingMenu = deviceBindingMenu;
             IsCache = false;
         }
@@ -344,6 +347,7 @@ namespace HidWizards.UCR.Core.Models
             ProviderName = deviceCache.ProviderName;
             DeviceHandle = deviceCache.DeviceHandle;
             DeviceNumber = deviceCache.DeviceNumber;
+            HidPath = deviceCache.HidPath;
             DeviceBindingMenu = deviceCache.DeviceBindingMenu;
             IsCache = true;
         }
@@ -404,7 +408,7 @@ namespace HidWizards.UCR.Core.Models
 
         public string LogName()
         {
-            return $"Device:{{{Title}}} Provider:{{{ProviderName}}} Handle:{{{DeviceHandle}}} Num:{{{DeviceNumber}}}";
+            return $"Device:{{{Title}}} Provider:{{{ProviderName}}} Handle:{{{DeviceHandle}}} Num:{{{DeviceNumber}}} HidPath:{{{HidPath}}}";
         }
 
         public override bool Equals(Object other)

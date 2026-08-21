@@ -68,25 +68,150 @@ namespace HidWizards.UCR.Core.Managers
             return availableDeviceList.Where(d => d.ProviderName.Equals(device.ProviderName)).ToList();
         }
 
+        /// <summary>
+        /// Resolves a persisted/profile device to the descriptor that the provider is using right now.
+        /// Prefer the per-device HID path when the provider exposes one. Otherwise, a unique hardware
+        /// handle can safely survive provider instance-number changes. Legacy exact descriptor matching
+        /// remains as the final fallback for providers such as XInput/ViGEm that expose only numbered slots.
+        ///
+        /// If a persisted HID path no longer matches, do not guess from a different physical path.
+        /// Selecting by an old instance number could silently bind the wrong unit.
+        /// </summary>
+        public Device ResolveDevice(Device configuredDevice, DeviceIoType type)
+        {
+            if (configuredDevice == null) return null;
+
+            var availableDevices = GetAvailableDeviceList(type, false);
+            var resolvedDevice = ResolveDevice(configuredDevice, availableDevices);
+
+            // Migrate legacy profiles forward only when the match is unambiguous. This allows an older
+            // configuration that pre-dates HidPath persistence to acquire the stronger identity without
+            // cementing a possibly-wrong device when duplicate handles are present.
+            if (resolvedDevice != null && string.IsNullOrEmpty(configuredDevice.HidPath) &&
+                !string.IsNullOrEmpty(resolvedDevice.HidPath))
+            {
+                var sameHandleCount = availableDevices.Count(d => d != null &&
+                    string.Equals(d.ProviderName, configuredDevice.ProviderName, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(d.DeviceHandle, configuredDevice.DeviceHandle, StringComparison.OrdinalIgnoreCase));
+
+                if (sameHandleCount == 1)
+                {
+                    configuredDevice.HidPath = resolvedDevice.HidPath;
+                    _context.ContextChanged();
+                }
+            }
+
+            return resolvedDevice;
+        }
+
+        public static Device ResolveDevice(Device configuredDevice, IEnumerable<Device> availableDevices)
+        {
+            if (configuredDevice == null || availableDevices == null) return null;
+
+            var providerCandidates = availableDevices
+                .Where(d => d != null &&
+                            string.Equals(d.ProviderName, configuredDevice.ProviderName,
+                                StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (providerCandidates.Count == 0) return null;
+
+            if (!string.IsNullOrEmpty(configuredDevice.HidPath))
+            {
+                var hidMatches = providerCandidates
+                    .Where(d => !string.IsNullOrEmpty(d.HidPath) &&
+                                string.Equals(d.HidPath, configuredDevice.HidPath,
+                                    StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                if (hidMatches.Count == 1) return hidMatches[0];
+                if (hidMatches.Count > 1)
+                {
+                    return hidMatches.FirstOrDefault(d => DescriptorEquals(d, configuredDevice));
+                }
+            }
+
+            var handleMatches = providerCandidates
+                .Where(d => string.Equals(d.DeviceHandle, configuredDevice.DeviceHandle,
+                    StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (!string.IsNullOrEmpty(configuredDevice.HidPath))
+            {
+                // A different non-empty HID path is evidence that this is not the persisted endpoint.
+                // It may be the same unit moved to another port, but it may equally be another identical
+                // unit; without stronger evidence, requiring an explicit re-selection is safer.
+                if (handleMatches.Any(d => !string.IsNullOrEmpty(d.HidPath)))
+                {
+                    return null;
+                }
+
+                // Some providers/builds may stop exposing HidPath. Only then fall back to a unique handle.
+                return handleMatches.Count == 1 ? handleMatches[0] : null;
+            }
+
+            if (handleMatches.Count == 1) return handleMatches[0];
+
+            // Numbered virtual/API slots are the identity those providers intentionally expose.
+            // For physical-device providers, duplicate hardware handles without a stronger path are
+            // indistinguishable; refusing to guess is safer than silently following enumeration order.
+            if (UsesLogicalSlotIdentity(configuredDevice.ProviderName))
+            {
+                return handleMatches.FirstOrDefault(d => DescriptorEquals(d, configuredDevice));
+            }
+
+            return null;
+        }
+
+        private static bool UsesLogicalSlotIdentity(string providerName)
+        {
+            return string.Equals(providerName, "SharpDX_XInput", StringComparison.OrdinalIgnoreCase)
+                   || string.Equals(providerName, "Core_ViGEm", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool DescriptorEquals(Device left, Device right)
+        {
+            if (left == null || right == null) return false;
+            return string.Equals(left.ProviderName, right.ProviderName, StringComparison.OrdinalIgnoreCase)
+                   && string.Equals(left.DeviceHandle, right.DeviceHandle, StringComparison.OrdinalIgnoreCase)
+                   && left.DeviceNumber == right.DeviceNumber;
+        }
+
+        public static bool PersistedIdentityEquals(Device left, Device right)
+        {
+            if (left == null || right == null) return false;
+            if (!string.Equals(left.ProviderName, right.ProviderName, StringComparison.OrdinalIgnoreCase)) return false;
+
+            if (!string.IsNullOrEmpty(left.HidPath) && !string.IsNullOrEmpty(right.HidPath))
+            {
+                return string.Equals(left.HidPath, right.HidPath, StringComparison.OrdinalIgnoreCase);
+            }
+
+            return DescriptorEquals(left, right);
+        }
 
         public List<DeviceBindingNode> GetDeviceBindingMenu(Device device, DeviceIoType type, bool includeCache = true)
         {
-            var availableDeviceList = GetAvailableDeviceList(type, includeCache);
+            var resolvedDevice = ResolveDevice(device, type);
+            if (resolvedDevice != null)
+            {
+                return resolvedDevice.GetDeviceBindingMenu();
+            }
 
-            try
+            if (includeCache)
             {
-                return availableDeviceList.Find(d => d.DeviceHandle == device.DeviceHandle).GetDeviceBindingMenu();
+                var cachedDevice = GetAvailableDeviceList(type, true)
+                    .FirstOrDefault(candidate => candidate.IsCache && DescriptorEquals(candidate, device));
+                if (cachedDevice != null) return cachedDevice.GetDeviceBindingMenu();
             }
-            catch (Exception ex) when (ex is KeyNotFoundException || ex is ArgumentNullException || ex is NullReferenceException)
+
+            return new List<DeviceBindingNode>
             {
-                return new List<DeviceBindingNode>
+                new DeviceBindingNode()
                 {
-                    new DeviceBindingNode()
-                    {
-                        Title = "Device not connected"
-                    }
-                };
-            }
+                    Title = "Device not connected"
+                }
+            };
         }
 
         private static List<DeviceBindingNode> BuildDeviceBindingMenu(List<DeviceReportNode> deviceNodes, DeviceIoType type)
@@ -156,6 +281,7 @@ namespace HidWizards.UCR.Core.Managers
                     ProviderName = device.ProviderName,
                     DeviceHandle = device.DeviceHandle,
                     DeviceNumber = device.DeviceNumber,
+                    HidPath = device.HidPath,
                     DeviceBindingMenu = GetDeviceBindingMenu(device, DeviceIoType.Input, false)
                 };
 
