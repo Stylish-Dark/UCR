@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using HidWizards.IOWrapper.DataTransferObjects;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Tests.Factory;
@@ -86,6 +87,78 @@ namespace HidWizards.UCR.Tests.FactoryTests
             Assert.That(result, Is.EqualTo(DeviceBindingTransferCompatibility.Unknown));
         }
 
+        [Test]
+        public void ViGEmCommonButtonsTransferXboxToDs4AndBack()
+        {
+            var xbox = CreateCachedDevice("ViGEm Xbox 360 Controller 1", "Core_ViGEm", "xb360", CreateViGEmMenu(false));
+            var ds4 = CreateCachedDevice("ViGEm DS4 Controller 1", "Core_ViGEm", "ds4", CreateViGEmMenu(true));
+
+            for (var buttonIndex = 0; buttonIndex <= 9; buttonIndex++)
+            {
+                var binding = CreateBoundBinding((int)BindingType.Button, buttonIndex, 0);
+
+                var xboxToDs4 = DeviceBindingCompatibility.EvaluateTransfer(
+                    xbox, ds4, null, DeviceIoType.Output, binding, DeviceBindingCategory.Momentary);
+                Assert.That(xboxToDs4.Compatibility, Is.EqualTo(DeviceBindingTransferCompatibility.Compatible),
+                    "Xbox button index " + buttonIndex + " should transfer to its DS4 semantic equivalent.");
+                Assert.That(xboxToDs4.KeyType, Is.EqualTo((int)BindingType.Button));
+                Assert.That(xboxToDs4.KeyValue, Is.EqualTo(buttonIndex));
+
+                var ds4ToXbox = DeviceBindingCompatibility.EvaluateTransfer(
+                    ds4, xbox, null, DeviceIoType.Output, binding, DeviceBindingCategory.Momentary);
+                Assert.That(ds4ToXbox.Compatibility, Is.EqualTo(DeviceBindingTransferCompatibility.Compatible),
+                    "DS4 button index " + buttonIndex + " should transfer to its Xbox semantic equivalent.");
+                Assert.That(ds4ToXbox.KeyType, Is.EqualTo((int)BindingType.Button));
+                Assert.That(ds4ToXbox.KeyValue, Is.EqualTo(buttonIndex));
+            }
+        }
+
+        [Test]
+        public void ViGEmAxesAndDpadTransferAcrossXboxAndDs4()
+        {
+            var xbox = CreateCachedDevice("ViGEm Xbox 360 Controller 1", "Core_ViGEm", "xb360", CreateViGEmMenu(false));
+            var ds4 = CreateCachedDevice("ViGEm DS4 Controller 1", "Core_ViGEm", "ds4", CreateViGEmMenu(true));
+
+            for (var axisIndex = 0; axisIndex <= 5; axisIndex++)
+            {
+                var binding = CreateBoundBinding((int)BindingType.Axis, axisIndex, 0);
+                var result = DeviceBindingCompatibility.EvaluateTransfer(
+                    xbox, ds4, null, DeviceIoType.Output, binding, DeviceBindingCategory.Range);
+
+                Assert.That(result.Compatibility, Is.EqualTo(DeviceBindingTransferCompatibility.Compatible),
+                    "Axis index " + axisIndex + " should retain its semantic position.");
+                Assert.That(result.KeyValue, Is.EqualTo(axisIndex));
+            }
+
+            for (var povIndex = 0; povIndex <= 3; povIndex++)
+            {
+                var binding = CreateBoundBinding((int)BindingType.POV, povIndex, 0);
+                var result = DeviceBindingCompatibility.EvaluateTransfer(
+                    ds4, xbox, null, DeviceIoType.Output, binding, DeviceBindingCategory.Momentary);
+
+                Assert.That(result.Compatibility, Is.EqualTo(DeviceBindingTransferCompatibility.Compatible),
+                    "DPad index " + povIndex + " should retain its direction.");
+                Assert.That(result.KeyValue, Is.EqualTo(povIndex));
+            }
+        }
+
+        [Test]
+        public void ViGEmDs4OnlyButtonsDoNotGetCoercedIntoXboxControls()
+        {
+            var xbox = CreateCachedDevice("ViGEm Xbox 360 Controller 1", "Core_ViGEm", "xb360", CreateViGEmMenu(false));
+            var ds4 = CreateCachedDevice("ViGEm DS4 Controller 1", "Core_ViGEm", "ds4", CreateViGEmMenu(true));
+
+            for (var ds4OnlyIndex = 10; ds4OnlyIndex <= 13; ds4OnlyIndex++)
+            {
+                var binding = CreateBoundBinding((int)BindingType.Button, ds4OnlyIndex, 0);
+                var result = DeviceBindingCompatibility.EvaluateTransfer(
+                    ds4, xbox, null, DeviceIoType.Output, binding, DeviceBindingCategory.Momentary);
+
+                Assert.That(result.Compatibility, Is.EqualTo(DeviceBindingTransferCompatibility.Incompatible),
+                    "DS4-only button index " + ds4OnlyIndex + " must require explicit rebinding.");
+            }
+        }
+
         private static DeviceBinding CreateBoundBinding(int keyType, int keyValue, int keySubValue)
         {
             return new DeviceBinding
@@ -99,11 +172,16 @@ namespace HidWizards.UCR.Tests.FactoryTests
 
         private static Device CreateCachedDevice(string title, string providerName, List<DeviceBindingNode> menu)
         {
+            return CreateCachedDevice(title, providerName, title, menu);
+        }
+
+        private static Device CreateCachedDevice(string title, string providerName, string deviceHandle, List<DeviceBindingNode> menu)
+        {
             return new Device(new DeviceCache
             {
                 Title = title,
                 ProviderName = providerName,
-                DeviceHandle = title,
+                DeviceHandle = deviceHandle,
                 DeviceNumber = 0,
                 DeviceBindingMenu = menu
             });
@@ -139,6 +217,57 @@ namespace HidWizards.UCR.Tests.FactoryTests
                     }
                 }
             };
+        }
+
+        private static List<DeviceBindingNode> CreateViGEmMenu(bool ds4)
+        {
+            var axes = new DeviceBindingNode
+            {
+                Title = "Axes",
+                ChildrenNodes = new List<DeviceBindingNode>()
+            };
+            for (var i = 0; i <= 5; i++)
+            {
+                axes.ChildrenNodes.Add(CreateBindingNode(
+                    "Axis " + i,
+                    (int)BindingType.Axis,
+                    i,
+                    0,
+                    DeviceBindingCategory.Range));
+            }
+
+            var buttons = new DeviceBindingNode
+            {
+                Title = "Buttons",
+                ChildrenNodes = new List<DeviceBindingNode>()
+            };
+            var maxButton = ds4 ? 13 : 9;
+            for (var i = 0; i <= maxButton; i++)
+            {
+                buttons.ChildrenNodes.Add(CreateBindingNode(
+                    "Button " + i,
+                    (int)BindingType.Button,
+                    i,
+                    0,
+                    DeviceBindingCategory.Momentary));
+            }
+
+            var dpad = new DeviceBindingNode
+            {
+                Title = "DPad",
+                ChildrenNodes = new List<DeviceBindingNode>()
+            };
+            for (var i = 0; i <= 3; i++)
+            {
+                dpad.ChildrenNodes.Add(CreateBindingNode(
+                    "DPad " + i,
+                    (int)BindingType.POV,
+                    i,
+                    0,
+                    DeviceBindingCategory.Momentary));
+            }
+
+            return new List<DeviceBindingNode> { axes, buttons, dpad };
         }
 
         private static DeviceBindingNode CreateBindingNode(string title, int keyType, int keyValue, int keySubValue, DeviceBindingCategory category)

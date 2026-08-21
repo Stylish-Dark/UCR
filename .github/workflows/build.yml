@@ -102,6 +102,38 @@ jobs:
           }
           Write-Host "Verified IOWrapper commit: $actual"
 
+      - name: Enable Core Interception blocking
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $settings = Join-Path $PWD 'submodules\IOWrapper\Source\Core Providers\Core_Interception\Settings.xml'
+          if (-not (Test-Path -LiteralPath $settings -PathType Leaf)) {
+            throw "Core Interception settings file is missing: $settings"
+          }
+
+          [xml]$xml = Get-Content -LiteralPath $settings -Raw
+          $blockingSettings = @($xml.SelectNodes('/Settings/Setting[Name="BlockingEnabled"]/Value'))
+          if ($blockingSettings.Count -ne 1) {
+            throw "Expected exactly one BlockingEnabled setting, found $($blockingSettings.Count). Refusing to modify an unexpected settings layout."
+          }
+
+          $oldValue = $blockingSettings[0].InnerText.Trim()
+          if ($oldValue -notin @('false', 'False', 'FALSE', 'true', 'True', 'TRUE')) {
+            throw "Unexpected BlockingEnabled value: $oldValue"
+          }
+
+          $blockingSettings[0].InnerText = 'true'
+          $xml.Save($settings)
+
+          [xml]$verified = Get-Content -LiteralPath $settings -Raw
+          $verifiedSettings = @($verified.SelectNodes('/Settings/Setting[Name="BlockingEnabled"]/Value'))
+          if ($verifiedSettings.Count -ne 1 -or $verifiedSettings[0].InnerText.Trim() -ne 'true') {
+            throw 'Failed to enable Core Interception blocking.'
+          }
+
+          Write-Host "Core Interception BlockingEnabled changed from '$oldValue' to 'true'."
+
       - name: Restore IOWrapper NuGet packages
         shell: pwsh
         run: |
@@ -131,6 +163,17 @@ jobs:
             }
           }
           Write-Host 'Verified required IOWrapper artifacts.'
+
+          $interceptionSettings = '.\submodules\IOWrapper\Artifacts\Providers\Core_Interception\Settings.xml'
+          if (-not (Test-Path -LiteralPath $interceptionSettings -PathType Leaf)) {
+            throw "Core Interception artifact settings are missing: $interceptionSettings"
+          }
+          [xml]$artifactSettings = Get-Content -LiteralPath $interceptionSettings -Raw
+          $artifactBlocking = @($artifactSettings.SelectNodes('/Settings/Setting[Name="BlockingEnabled"]/Value'))
+          if ($artifactBlocking.Count -ne 1 -or $artifactBlocking[0].InnerText.Trim() -ne 'true') {
+            throw 'Core Interception build artifact does not have BlockingEnabled=true.'
+          }
+          Write-Host 'Verified Core Interception build artifact has BlockingEnabled=true.'
 
       - name: Stage IOWrapper dependencies for UCR
         shell: pwsh
@@ -186,7 +229,18 @@ jobs:
             }
           }
 
+          $stagedInterceptionSettings = '.\dependencies\Providers\Core_Interception\Settings.xml'
+          if (-not (Test-Path -LiteralPath $stagedInterceptionSettings -PathType Leaf)) {
+            throw "Staged Core Interception settings are missing: $stagedInterceptionSettings"
+          }
+          [xml]$stagedSettings = Get-Content -LiteralPath $stagedInterceptionSettings -Raw
+          $stagedBlocking = @($stagedSettings.SelectNodes('/Settings/Setting[Name="BlockingEnabled"]/Value'))
+          if ($stagedBlocking.Count -ne 1 -or $stagedBlocking[0].InnerText.Trim() -ne 'true') {
+            throw 'Staged Core Interception settings do not have BlockingEnabled=true.'
+          }
+
           Write-Host "Verified $($sourceFiles.Count) IOWrapper artifact files copied byte-for-byte into dependencies."
+          Write-Host 'Verified staged Core Interception settings have BlockingEnabled=true.'
 
       - name: Restore UCR NuGet packages
         shell: pwsh
@@ -304,9 +358,20 @@ jobs:
             throw "The built UCR.exe is empty."
           }
 
+          $finalInterceptionSettings = '.\UCR\bin\Release\Providers\Core_Interception\Settings.xml'
+          if (-not (Test-Path -LiteralPath $finalInterceptionSettings -PathType Leaf)) {
+            throw "Final Core Interception settings are missing: $finalInterceptionSettings"
+          }
+          [xml]$finalSettings = Get-Content -LiteralPath $finalInterceptionSettings -Raw
+          $finalBlocking = @($finalSettings.SelectNodes('/Settings/Setting[Name="BlockingEnabled"]/Value'))
+          if ($finalBlocking.Count -ne 1 -or $finalBlocking[0].InnerText.Trim() -ne 'true') {
+            throw 'Final UCR build does not have Core Interception BlockingEnabled=true.'
+          }
+
           $hash = (Get-FileHash -Algorithm SHA256 $exe).Hash
           Write-Host "UCR.exe size: $($exeInfo.Length) bytes"
           Write-Host "UCR.exe SHA-256: $hash"
+          Write-Host 'Verified final Core Interception settings have BlockingEnabled=true.'
 
       - name: Run UCR unit tests
         shell: pwsh

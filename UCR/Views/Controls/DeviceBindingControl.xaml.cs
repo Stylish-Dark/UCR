@@ -250,22 +250,42 @@ namespace HidWizards.UCR.Views.Controls
             var previousDeviceConfiguration = DeviceBinding.Profile.GetDeviceConfiguration(
                 DeviceBinding.DeviceIoType, DeviceBinding.DeviceConfigurationGuid);
 
-            var preserveBinding = true;
+            var transfer = DeviceBindingTransferResult.For(
+                DeviceBindingTransferCompatibility.Unknown,
+                DeviceBinding);
+
             if (DeviceBinding.IsBound && previousDeviceConfiguration != null &&
                 previousDeviceConfiguration.Guid != selectedDeviceConfiguration.Guid)
             {
-                var compatibility = DeviceBindingCompatibility.Evaluate(
+                transfer = DeviceBindingCompatibility.EvaluateTransfer(
                     previousDeviceConfiguration.Device,
                     selectedDeviceConfiguration.Device,
                     DeviceBinding.Profile.Context,
                     DeviceBinding.DeviceIoType,
                     DeviceBinding,
                     Category);
-
-                preserveBinding = compatibility != DeviceBindingTransferCompatibility.Incompatible;
             }
 
-            DeviceBinding.SetDeviceConfigurationGuid(selectedDeviceConfiguration.Guid, preserveBinding);
+            if (transfer.Compatibility == DeviceBindingTransferCompatibility.Incompatible)
+            {
+                DeviceBinding.SetDeviceConfigurationGuid(selectedDeviceConfiguration.Guid, false);
+            }
+            else if (transfer.Compatibility == DeviceBindingTransferCompatibility.Compatible)
+            {
+                DeviceBinding.SetDeviceConfigurationGuid(
+                    selectedDeviceConfiguration.Guid,
+                    true,
+                    transfer.KeyType,
+                    transfer.KeyValue,
+                    transfer.KeySubValue);
+            }
+            else
+            {
+                // Unknown is deliberately non-destructive: keep the existing binding until the
+                // destination can be classified instead of silently throwing the user's work away.
+                DeviceBinding.SetDeviceConfigurationGuid(selectedDeviceConfiguration.Guid, true);
+            }
+
             LoadContextMenu();
         }
 

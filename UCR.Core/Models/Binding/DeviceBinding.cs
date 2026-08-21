@@ -116,6 +116,12 @@ namespace HidWizards.UCR.Core.Models.Binding
 
         public void SetDeviceConfigurationGuid(Guid deviceConfigurationGuid, bool preserveBinding)
         {
+            SetDeviceConfigurationGuid(deviceConfigurationGuid, preserveBinding, KeyType, KeyValue, KeySubValue);
+        }
+
+        public void SetDeviceConfigurationGuid(Guid deviceConfigurationGuid, bool preserveBinding,
+            int keyType, int keyValue, int keySubValue)
+        {
             DeviceConfigurationGuid = deviceConfigurationGuid;
 
             if (!preserveBinding)
@@ -126,13 +132,23 @@ namespace HidWizards.UCR.Core.Models.Binding
                 Block = false;
                 IsBound = false;
             }
-            else if (Block && !IsBlockable())
+            else
             {
-                Block = false;
+                // Apply any semantic translation before checking whether the new device can block
+                // this binding. This avoids testing the destination against a stale source key.
+                KeyType = keyType;
+                KeyValue = keyValue;
+                KeySubValue = keySubValue;
+
+                if (Block && !IsBlockable())
+                {
+                    Block = false;
+                }
             }
 
             Profile.Context.ContextChanged();
             OnPropertyChanged(nameof(DeviceConfigurationGuid));
+            OnPropertyChanged(nameof(IsBound));
         }
 
         public void SetBlock(bool block)
