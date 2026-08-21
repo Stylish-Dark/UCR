@@ -7,8 +7,6 @@ using System.Windows.Threading;
 using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.ViewModels.ProfileViewModels;
-using HidWizards.UCR.Views.Dialogs;
-using MaterialDesignThemes.Wpf;
 
 namespace HidWizards.UCR.Views.ProfileViews
 {
@@ -108,19 +106,15 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         #endregion
 
-        private async void AddMapping_OnClick(object sender, RoutedEventArgs e)
+        private void AddMapping_OnClick(object sender, RoutedEventArgs e)
         {
-            if (!(sender is Button button)) return;
-            if (!(button.DataContext is PluginItemViewModel pluginItem)) return;
+            var selectedRoute = ProfileViewModel.PluginToolbox.SelectedRoute;
+            if (selectedRoute == null || selectedRoute.PluginItem == null) return;
 
-            var dialog = new StringDialog("Create mapping for: " + pluginItem.Name, "Mapping name", "");
-            var result = (bool?)await DialogHost.Show(dialog, ProfileViewModel.ProfileDialogIdentifier);
-            if (result == null || !result.Value) return;
-
-            var mappingViewModel = ProfileViewModel.AddMapping(dialog.Value);
-            mappingViewModel.AddPlugin(Profile.Context.PluginManager.GetNewPlugin(pluginItem.Plugin));
-            MappingListView.ScrollIntoView(MappingListView.Items[MappingListView.Items.Count - 1]);
-
+            var mappingViewModel = ProfileViewModel.AddMapping(ProfileViewModel.GetNextMappingTitle());
+            mappingViewModel.AddPlugin(selectedRoute.PluginItem.Plugin);
+            mappingViewModel.IsExpanded = true;
+            MappingListView.ScrollIntoView(mappingViewModel);
         }
     }
 }

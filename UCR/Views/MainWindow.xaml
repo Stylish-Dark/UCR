@@ -161,7 +161,7 @@
                             </TreeView.ItemContainerStyle>
                             <TreeView.ItemTemplate>
                                 <HierarchicalDataTemplate DataType="{x:Type dashboard:ProfileItem}" ItemsSource="{Binding Items}">
-                                    <TextBlock Text="{Binding Title}" Margin="4"/>
+                                    <TextBlock Text="{Binding Title}" Margin="4" FontSize="16" FontWeight="Medium"/>
                                 </HierarchicalDataTemplate>
                             </TreeView.ItemTemplate>
                         </TreeView>

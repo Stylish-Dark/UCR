@@ -17,11 +17,25 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<PluginViewModel> Plugins { get; set; }
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public bool ButtonsEnabled => !ProfileViewModel.Profile.IsActive();
+        public string MappingRoute => Mapping != null && Mapping.Plugins.Count > 0 ? Mapping.Plugins[0].PluginName : "No plugin";
+
+        private bool _isExpanded;
+        public bool IsExpanded
+        {
+            get => _isExpanded;
+            set
+            {
+                if (_isExpanded == value) return;
+                _isExpanded = value;
+                OnPropertyChanged();
+            }
+        }
 
         public MappingViewModel(ProfileViewModel profileViewModel, Mapping mapping)
         {
             ProfileViewModel = profileViewModel;
             Mapping = mapping;
+            IsExpanded = false;
             profileViewModel.Profile.Context.ActiveProfileChangedEvent += ContextOnActiveProfileChangedEvent;
             DeviceBindings = new ObservableCollection<DeviceBindingViewModel>();
             PopulateDeviceBindingsViewModels();
@@ -44,6 +58,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!Mapping.AddPlugin(newPlugin)) return;
 
             Plugins.Add(new PluginViewModel(this, newPlugin));
+            OnPropertyChanged(nameof(MappingRoute));
             if (Plugins.Count != 1) return;
             
             PopulateDeviceBindingsViewModels();
@@ -69,6 +84,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!Mapping.RemovePlugin(pluginViewModel.Plugin)) return;
 
             Plugins.Remove(pluginViewModel);
+            OnPropertyChanged(nameof(MappingRoute));
             if (Plugins.Count == 0) DeviceBindings.Clear();
         }
 

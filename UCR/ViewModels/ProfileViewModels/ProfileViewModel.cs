@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using HidWizards.UCR.Core.Annotations;
@@ -50,6 +51,25 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public MappingViewModel AddMapping(string title)
         {
             return AddMapping(Profile.AddMapping(title));
+        }
+
+        public string GetNextMappingTitle()
+        {
+            var number = 1;
+            while (true)
+            {
+                var candidate = "Mapping " + number;
+                var exists = false;
+                foreach (var mapping in Profile.Mappings)
+                {
+                    if (!string.Equals(mapping.Title, candidate, StringComparison.CurrentCultureIgnoreCase)) continue;
+                    exists = true;
+                    break;
+                }
+
+                if (!exists) return candidate;
+                number++;
+            }
         }
 
         public MappingViewModel AddMapping(Mapping mapping)

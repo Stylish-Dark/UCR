@@ -7,7 +7,7 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="300">
-    <GroupBox Style="{StaticResource MaterialDesignCardGroupBox}" Header="{Binding Title}">
+    <GroupBox Style="{StaticResource MaterialDesignCardGroupBox}" Header="{Binding Title}" Background="#212121">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="-9">
             <ItemsControl ItemsSource="{Binding Devices}">
                 <ItemsControl.ItemTemplate>
