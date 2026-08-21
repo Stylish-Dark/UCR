@@ -17,7 +17,7 @@
              MaxWidth="1200"
              Margin="-16"
              Padding="16"
-             Background="#212121" TextElement.Foreground="{DynamicResource MaterialDesignBody}">
+             Background="#212121" TextElement.Foreground="#FFFFFF">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
@@ -30,9 +30,10 @@
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-            <TextBlock Text="{Binding Title}" Style="{StaticResource MaterialDesignTitleTextBlock}"/>
+            <TextBlock Text="{Binding Title}" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignTitleTextBlock}"/>
             <TextBox x:Name="TextValue" wpf:HintAssist.Hint="Profile name" VerticalAlignment="Top" Style="{DynamicResource MaterialDesignFloatingHintTextBox}"                 
                  Margin="0 6 0 0"
+                 Foreground="#FFFFFF" CaretBrush="#FFFFFF"
                  FontSize="18" Grid.Row="1">
                 <TextBox.Text>
                     <Binding Path="ProfileName" UpdateSourceTrigger="PropertyChanged">

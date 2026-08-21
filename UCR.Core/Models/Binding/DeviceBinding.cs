@@ -111,8 +111,26 @@ namespace HidWizards.UCR.Core.Models.Binding
 
         public void SetDeviceConfigurationGuid(Guid deviceConfigurationGuid)
         {
+            SetDeviceConfigurationGuid(deviceConfigurationGuid, true);
+        }
+
+        public void SetDeviceConfigurationGuid(Guid deviceConfigurationGuid, bool preserveBinding)
+        {
             DeviceConfigurationGuid = deviceConfigurationGuid;
-            if (Block && !IsBlockable()) Block = false;
+
+            if (!preserveBinding)
+            {
+                KeyType = 0;
+                KeyValue = 0;
+                KeySubValue = 0;
+                Block = false;
+                IsBound = false;
+            }
+            else if (Block && !IsBlockable())
+            {
+                Block = false;
+            }
+
             Profile.Context.ContextChanged();
             OnPropertyChanged(nameof(DeviceConfigurationGuid));
         }

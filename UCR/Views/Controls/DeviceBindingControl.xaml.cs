@@ -243,7 +243,29 @@ namespace HidWizards.UCR.Views.Controls
         {
             if (!HasLoaded) return;
             if (DeviceSelectionBox.SelectedItem == null) return;
-            DeviceBinding.SetDeviceConfigurationGuid(GetSelectedDeviceConfiguration().Guid);
+
+            var selectedDeviceConfiguration = GetSelectedDeviceConfiguration();
+            if (selectedDeviceConfiguration == null) return;
+
+            var previousDeviceConfiguration = DeviceBinding.Profile.GetDeviceConfiguration(
+                DeviceBinding.DeviceIoType, DeviceBinding.DeviceConfigurationGuid);
+
+            var preserveBinding = true;
+            if (DeviceBinding.IsBound && previousDeviceConfiguration != null &&
+                previousDeviceConfiguration.Guid != selectedDeviceConfiguration.Guid)
+            {
+                var compatibility = DeviceBindingCompatibility.Evaluate(
+                    previousDeviceConfiguration.Device,
+                    selectedDeviceConfiguration.Device,
+                    DeviceBinding.Profile.Context,
+                    DeviceBinding.DeviceIoType,
+                    DeviceBinding,
+                    Category);
+
+                preserveBinding = compatibility != DeviceBindingTransferCompatibility.Incompatible;
+            }
+
+            DeviceBinding.SetDeviceConfigurationGuid(selectedDeviceConfiguration.Guid, preserveBinding);
             LoadContextMenu();
         }
 
