@@ -82,6 +82,13 @@
                         <materialDesign:PackIcon Kind="ContentSave"/>
                     </Button>
                     <Separator />
+                    <Button ToolTip="Export all profiles" Click="ExportAllProfiles">
+                        <materialDesign:PackIcon Kind="FileExport"/>
+                    </Button>
+                    <Button ToolTip="Import profile list" Click="ImportAllProfiles">
+                        <materialDesign:PackIcon Kind="FileImport"/>
+                    </Button>
+                    <Separator />
                     <Button IsEnabled="{Binding CanActivateProfile}" ToolTip="Activate profile" Click="ActivateProfile">
                         <materialDesign:PackIcon Kind="Play"/>
                     </Button>
@@ -122,6 +129,11 @@
                                         Style="{StaticResource MaterialDesignCardButton}"
                                         Click="AddProfile">
                                     <materialDesign:PackIcon Kind="AccountPlus" Width="20" Height="20"/>
+                                </Button>
+                                <Button ToolTip="Import profile"
+                                        Style="{StaticResource MaterialDesignCardButton}"
+                                        Click="ImportProfile">
+                                    <materialDesign:PackIcon Kind="FileImport" Width="20" Height="20"/>
                                 </Button>
                             </StackPanel>
                         </Grid>
@@ -217,6 +229,18 @@
                                         Foreground="{StaticResource PrimaryHueMidForegroundBrush}"
                                         Click="CopyProfile">
                                     <materialDesign:PackIcon Kind="AccountMultiplePlus" Width="20" Height="20"/>
+                                </Button>
+                                <Button ToolTip="Export profile"
+                                        Style="{StaticResource MaterialDesignCardButton}"
+                                        Foreground="{StaticResource PrimaryHueMidForegroundBrush}"
+                                        Click="ExportProfile">
+                                    <materialDesign:PackIcon Kind="FileExport" Width="20" Height="20"/>
+                                </Button>
+                                <Button ToolTip="Import profile as child"
+                                        Style="{StaticResource MaterialDesignCardButton}"
+                                        Foreground="{StaticResource PrimaryHueMidForegroundBrush}"
+                                        Click="ImportChildProfile">
+                                    <materialDesign:PackIcon Kind="FileImport" Width="20" Height="20"/>
                                 </Button>
                                 <Button ToolTip="Delete profile"
                                         Style="{StaticResource MaterialDesignCardButton}"

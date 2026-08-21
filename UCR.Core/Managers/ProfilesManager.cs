@@ -1,13 +1,49 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
+using System.Xml.Serialization;
 using HidWizards.UCR.Core.Models;
+using HidWizards.UCR.Core.Models.Binding;
 using NLog;
 
 namespace HidWizards.UCR.Core.Managers
 {
+    public enum ProfileExportKind
+    {
+        Profile,
+        ProfileList
+    }
+
+    public enum ProfileListImportMode
+    {
+        Merge,
+        Replace
+    }
+
+    [XmlRoot("UcrExport")]
+    public class ProfileExportPackage
+    {
+        [XmlAttribute]
+        public int FormatVersion { get; set; }
+
+        [XmlAttribute]
+        public ProfileExportKind Kind { get; set; }
+
+        [XmlArray("Profiles")]
+        [XmlArrayItem("Profile")]
+        public List<Profile> Profiles { get; set; }
+
+        public ProfileExportPackage()
+        {
+            Profiles = new List<Profile>();
+        }
+    }
+
     public class ProfilesManager
     {
+        private const int ExportFormatVersion = 1;
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private readonly Context _context;
         private readonly List<Profile> _profiles;
@@ -62,6 +98,399 @@ namespace HidWizards.UCR.Core.Managers
 
             return true;
         }
+
+        #region Import / Export
+
+        /// <summary>
+        /// Exports one profile branch as a self-contained package. If the selected profile inherits
+        /// mappings or devices from ancestors, those effective inherited dependencies are flattened
+        /// into the exported root so that importing it as a standalone profile preserves behaviour.
+        /// Child profiles are included.
+        /// </summary>
+        public void ExportProfile(Profile profile, string filePath, List<Type> pluginTypes = null)
+        {
+            if (profile == null) throw new ArgumentNullException(nameof(profile));
+            ValidateFilePath(filePath);
+
+            var portableProfile = CreatePortableProfileClone(profile, pluginTypes);
+            var package = new ProfileExportPackage
+            {
+                FormatVersion = ExportFormatVersion,
+                Kind = ProfileExportKind.Profile,
+                Profiles = new List<Profile> { portableProfile }
+            };
+
+            ValidatePackage(package, ProfileExportKind.Profile);
+            SerializePackage(filePath, package, pluginTypes);
+        }
+
+        /// <summary>
+        /// Imports a single profile branch. Imported profile and device-configuration identifiers are
+        /// regenerated so the same package can safely be imported more than once into one context.
+        /// </summary>
+        public Profile ImportProfile(string filePath, Profile parentProfile = null, List<Type> pluginTypes = null)
+        {
+            ValidateFilePath(filePath);
+            var package = DeserializePackage(filePath, pluginTypes);
+            ValidatePackage(package, ProfileExportKind.Profile);
+
+            RegenerateIdentities(package.Profiles);
+            var profile = package.Profiles[0];
+            profile.PostLoad(_context, parentProfile);
+            AddProfile(profile, parentProfile);
+            return profile;
+        }
+
+        /// <summary>
+        /// Exports the complete top-level profile list, including all child profiles, mappings,
+        /// configured devices and bindings.
+        /// </summary>
+        public void ExportProfileList(string filePath, List<Type> pluginTypes = null)
+        {
+            ValidateFilePath(filePath);
+
+            var package = new ProfileExportPackage
+            {
+                FormatVersion = ExportFormatVersion,
+                Kind = ProfileExportKind.ProfileList,
+                Profiles = _profiles
+            };
+
+            ValidatePackage(package, ProfileExportKind.ProfileList);
+            SerializePackage(filePath, package, pluginTypes);
+        }
+
+        /// <summary>
+        /// Imports a complete profile-list package. Replace preserves the package identifiers exactly,
+        /// making it suitable for backup/restore. Merge regenerates all imported identifiers before
+        /// adding them so collisions with existing profiles/configurations cannot occur.
+        /// </summary>
+        public int ImportProfileList(string filePath, ProfileListImportMode mode, List<Type> pluginTypes = null)
+        {
+            ValidateFilePath(filePath);
+            var package = DeserializePackage(filePath, pluginTypes);
+            ValidatePackage(package, ProfileExportKind.ProfileList);
+
+            if (mode == ProfileListImportMode.Merge)
+            {
+                RegenerateIdentities(package.Profiles);
+                foreach (var profile in package.Profiles)
+                {
+                    profile.PostLoad(_context);
+                    _profiles.Add(profile);
+                }
+            }
+            else if (mode == ProfileListImportMode.Replace)
+            {
+                if (_context.ActiveProfile != null && !_context.SubscriptionsManager.DeactivateCurrentProfile())
+                {
+                    throw new InvalidOperationException("The active profile could not be deactivated before replacing the profile list.");
+                }
+
+                _profiles.Clear();
+                foreach (var profile in package.Profiles)
+                {
+                    profile.PostLoad(_context);
+                    _profiles.Add(profile);
+                }
+            }
+            else
+            {
+                throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown profile-list import mode.");
+            }
+
+            _context.ContextChanged();
+            return package.Profiles.Count;
+        }
+
+        private Profile CreatePortableProfileClone(Profile profile, List<Type> pluginTypes)
+        {
+            var clone = Clone(profile, pluginTypes);
+
+            // A child profile is only meaningful together with its ancestors. Flatten the effective
+            // device configuration set and effective mapping set into the exported root. Descendants
+            // remain nested under that root and therefore inherit the same effective state after import.
+            clone.InputDeviceConfigurations = profile.GetDeviceConfigurationList(DeviceIoType.Input)
+                .Select(configuration => Clone(configuration, pluginTypes))
+                .ToList();
+            clone.OutputDeviceConfigurations = profile.GetDeviceConfigurationList(DeviceIoType.Output)
+                .Select(configuration => Clone(configuration, pluginTypes))
+                .ToList();
+            clone.Mappings = GetEffectiveMappings(profile)
+                .Select(mapping => Clone(mapping, pluginTypes))
+                .ToList();
+
+            clone.PostLoad(_context);
+            return clone;
+        }
+
+        private static List<Mapping> GetEffectiveMappings(Profile profile)
+        {
+            var hierarchy = new List<Profile>();
+            var current = profile;
+            while (current != null)
+            {
+                hierarchy.Add(current);
+                current = current.ParentProfile;
+            }
+            hierarchy.Reverse();
+
+            var effectiveMappings = new List<Mapping>();
+            foreach (var level in hierarchy)
+            {
+                var overriddenTitles = new HashSet<string>(
+                    level.Mappings.Select(mapping => mapping.Title ?? string.Empty),
+                    StringComparer.Ordinal);
+
+                effectiveMappings.RemoveAll(mapping => overriddenTitles.Contains(mapping.Title ?? string.Empty));
+                effectiveMappings.AddRange(level.Mappings);
+            }
+
+            return effectiveMappings;
+        }
+
+        private static T Clone<T>(T value, List<Type> pluginTypes)
+        {
+            if (value == null) return default(T);
+
+            var serializer = Context.GetXmlSerializer(pluginTypes, typeof(T));
+            using (var stream = new MemoryStream())
+            {
+                serializer.Serialize(stream, value);
+                stream.Position = 0;
+                return (T)serializer.Deserialize(stream);
+            }
+        }
+
+        private static void SerializePackage(string filePath, ProfileExportPackage package, List<Type> pluginTypes)
+        {
+            var serializer = Context.GetXmlSerializer(pluginTypes, typeof(ProfileExportPackage));
+            using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
+            using (var writer = new StreamWriter(fileStream, new UTF8Encoding(false)))
+            {
+                serializer.Serialize(writer, package);
+            }
+        }
+
+        private static ProfileExportPackage DeserializePackage(string filePath, List<Type> pluginTypes)
+        {
+            var serializer = Context.GetXmlSerializer(pluginTypes, typeof(ProfileExportPackage));
+            using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                return (ProfileExportPackage)serializer.Deserialize(fileStream);
+            }
+        }
+
+        private static void ValidateFilePath(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                throw new ArgumentException("A file path is required.", nameof(filePath));
+            }
+        }
+
+        private static void ValidatePackage(ProfileExportPackage package, ProfileExportKind expectedKind)
+        {
+            if (package == null) throw new InvalidDataException("The UCR export file is empty or invalid.");
+            if (package.FormatVersion != ExportFormatVersion)
+            {
+                throw new InvalidDataException(
+                    $"Unsupported UCR export format version {package.FormatVersion}. Expected version {ExportFormatVersion}.");
+            }
+            if (package.Kind != expectedKind)
+            {
+                throw new InvalidDataException($"This file contains {package.Kind}, not {expectedKind} data.");
+            }
+            if (package.Profiles == null)
+            {
+                throw new InvalidDataException("The UCR export contains no profile collection.");
+            }
+            if (expectedKind == ProfileExportKind.Profile && package.Profiles.Count != 1)
+            {
+                throw new InvalidDataException("A single-profile export must contain exactly one profile root.");
+            }
+            if (package.Profiles.Any(profile => profile == null))
+            {
+                throw new InvalidDataException("The UCR export contains a null profile entry.");
+            }
+
+            ValidateProfileGraph(package.Profiles);
+        }
+
+        private static void ValidateProfileGraph(IEnumerable<Profile> profileRoots)
+        {
+            foreach (var root in profileRoots)
+            {
+                ValidateProfileStructure(root);
+            }
+        }
+
+        private static void ValidateProfileStructure(Profile profile)
+        {
+            if (profile == null) throw new InvalidDataException("The UCR export contains a null profile.");
+            if (profile.ChildProfiles == null) throw new InvalidDataException("A profile has no child-profile collection.");
+            if (profile.Mappings == null) throw new InvalidDataException("A profile has no mapping collection.");
+            if (profile.InputDeviceConfigurations == null || profile.OutputDeviceConfigurations == null)
+            {
+                throw new InvalidDataException("A profile has an invalid device-configuration collection.");
+            }
+
+            foreach (var configuration in EnumerateLocalConfigurations(profile))
+            {
+                if (configuration == null || configuration.Device == null)
+                {
+                    throw new InvalidDataException("The UCR export contains an invalid device configuration.");
+                }
+            }
+
+            foreach (var mapping in profile.Mappings)
+            {
+                if (mapping == null || mapping.DeviceBindings == null || mapping.Plugins == null)
+                {
+                    throw new InvalidDataException("The UCR export contains an invalid mapping.");
+                }
+                if (mapping.DeviceBindings.Any(binding => binding == null))
+                {
+                    throw new InvalidDataException("The UCR export contains a null input binding.");
+                }
+                foreach (var plugin in mapping.Plugins)
+                {
+                    if (plugin == null || plugin.Outputs == null || plugin.Outputs.Any(binding => binding == null))
+                    {
+                        throw new InvalidDataException("The UCR export contains an invalid mapping plugin.");
+                    }
+                }
+            }
+
+            foreach (var child in profile.ChildProfiles)
+            {
+                ValidateProfileStructure(child);
+            }
+        }
+
+        private static IEnumerable<DeviceConfiguration> EnumerateLocalConfigurations(Profile profile)
+        {
+            if (profile.InputDeviceConfigurations != null)
+            {
+                foreach (var configuration in profile.InputDeviceConfigurations) yield return configuration;
+            }
+            if (profile.OutputDeviceConfigurations != null)
+            {
+                foreach (var configuration in profile.OutputDeviceConfigurations) yield return configuration;
+            }
+        }
+
+        private static void RegenerateIdentities(IEnumerable<Profile> profileRoots)
+        {
+            foreach (var root in profileRoots)
+            {
+                var bindingTargets = new Dictionary<DeviceBinding, DeviceConfiguration>();
+                var unresolvedBindingTargets = new Dictionary<DeviceBinding, Guid>();
+                var unresolvedGuidMap = new Dictionary<Guid, Guid>();
+                ResolveBindingTargets(
+                    root,
+                    new Dictionary<Guid, DeviceConfiguration>(),
+                    new Dictionary<Guid, DeviceConfiguration>(),
+                    bindingTargets,
+                    unresolvedBindingTargets,
+                    unresolvedGuidMap);
+
+                RegenerateProfileAndConfigurationGuids(root);
+
+                foreach (var bindingTarget in bindingTargets)
+                {
+                    bindingTarget.Key.DeviceConfigurationGuid = bindingTarget.Value.Guid;
+                }
+                foreach (var unresolvedBindingTarget in unresolvedBindingTargets)
+                {
+                    unresolvedBindingTarget.Key.DeviceConfigurationGuid = unresolvedBindingTarget.Value;
+                }
+            }
+        }
+
+        private static void ResolveBindingTargets(Profile profile,
+            IDictionary<Guid, DeviceConfiguration> inheritedInputs,
+            IDictionary<Guid, DeviceConfiguration> inheritedOutputs,
+            IDictionary<DeviceBinding, DeviceConfiguration> bindingTargets,
+            IDictionary<DeviceBinding, Guid> unresolvedBindingTargets,
+            IDictionary<Guid, Guid> unresolvedGuidMap)
+        {
+            var inputs = new Dictionary<Guid, DeviceConfiguration>(inheritedInputs);
+            var outputs = new Dictionary<Guid, DeviceConfiguration>(inheritedOutputs);
+
+            // Match Profile.GetDeviceConfigurationList + FirstOrDefault semantics: inherited configurations
+            // appear first, so an inherited identifier wins over a duplicate identifier declared lower down.
+            foreach (var configuration in profile.InputDeviceConfigurations)
+            {
+                if (!inputs.ContainsKey(configuration.Guid)) inputs.Add(configuration.Guid, configuration);
+            }
+            foreach (var configuration in profile.OutputDeviceConfigurations)
+            {
+                if (!outputs.ContainsKey(configuration.Guid)) outputs.Add(configuration.Guid, configuration);
+            }
+
+            foreach (var mapping in profile.Mappings)
+            {
+                foreach (var binding in mapping.DeviceBindings)
+                {
+                    CaptureBindingTarget(binding, inputs, bindingTargets, unresolvedBindingTargets, unresolvedGuidMap);
+                }
+                foreach (var plugin in mapping.Plugins)
+                {
+                    foreach (var binding in plugin.Outputs)
+                    {
+                        CaptureBindingTarget(binding, outputs, bindingTargets, unresolvedBindingTargets, unresolvedGuidMap);
+                    }
+                }
+            }
+
+            foreach (var child in profile.ChildProfiles)
+            {
+                ResolveBindingTargets(child, inputs, outputs, bindingTargets, unresolvedBindingTargets, unresolvedGuidMap);
+            }
+        }
+
+        private static void CaptureBindingTarget(DeviceBinding binding,
+            IDictionary<Guid, DeviceConfiguration> availableConfigurations,
+            IDictionary<DeviceBinding, DeviceConfiguration> bindingTargets,
+            IDictionary<DeviceBinding, Guid> unresolvedBindingTargets,
+            IDictionary<Guid, Guid> unresolvedGuidMap)
+        {
+            if (binding.DeviceConfigurationGuid == Guid.Empty) return;
+
+            DeviceConfiguration target;
+            if (availableConfigurations.TryGetValue(binding.DeviceConfigurationGuid, out target))
+            {
+                bindingTargets.Add(binding, target);
+                return;
+            }
+
+            // UCR intentionally tolerates unavailable/removed devices. Keep such a binding unresolved,
+            // but give the missing reference a fresh identifier so importing as a child cannot
+            // accidentally bind it to an unrelated configuration in the destination hierarchy.
+            Guid replacementGuid;
+            if (!unresolvedGuidMap.TryGetValue(binding.DeviceConfigurationGuid, out replacementGuid))
+            {
+                replacementGuid = Guid.NewGuid();
+                unresolvedGuidMap.Add(binding.DeviceConfigurationGuid, replacementGuid);
+            }
+            unresolvedBindingTargets.Add(binding, replacementGuid);
+        }
+
+        private static void RegenerateProfileAndConfigurationGuids(Profile profile)
+        {
+            profile.Guid = Guid.NewGuid();
+            foreach (var configuration in EnumerateLocalConfigurations(profile))
+            {
+                configuration.Guid = Guid.NewGuid();
+            }
+            foreach (var child in profile.ChildProfiles)
+            {
+                RegenerateProfileAndConfigurationGuids(child);
+            }
+        }
+
+        #endregion
 
         /// <summary>
         /// Breadth-first search for nested profiles

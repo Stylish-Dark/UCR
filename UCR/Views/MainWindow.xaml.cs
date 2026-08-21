@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Media;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -16,6 +17,7 @@ using HidWizards.UCR.Utilities;
 using HidWizards.UCR.ViewModels.Dashboard;
 using HidWizards.UCR.Views.Dialogs;
 using MaterialDesignThemes.Wpf;
+using Microsoft.Win32;
 using Forms = System.Windows.Forms;
 using ProfileWindow = HidWizards.UCR.Views.ProfileViews.ProfileWindow;
 
@@ -324,6 +326,158 @@ namespace HidWizards.UCR.Views
 
             profileItem.Profile.Remove();
             ReloadProfileTree();
+        }
+
+        private void ExportProfile(object sender, RoutedEventArgs e)
+        {
+            if (!GetSelectedItem(out var profileItem)) return;
+
+            var dialog = new SaveFileDialog
+            {
+                Title = "Export UCR profile",
+                Filter = "UCR profile (*.ucrprofile)|*.ucrprofile",
+                DefaultExt = ".ucrprofile",
+                AddExtension = true,
+                FileName = SanitizeFileName(profileItem.Profile.Title) + ".ucrprofile"
+            };
+            if (dialog.ShowDialog(this) != true) return;
+
+            try
+            {
+                Context.ProfilesManager.ExportProfile(profileItem.Profile, dialog.FileName);
+                MessageBox.Show(this, "Profile exported successfully.", "Export profile", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception exception)
+            {
+                ShowTransferError("Profile export failed", exception);
+            }
+        }
+
+        private void ImportProfile(object sender, RoutedEventArgs e)
+        {
+            ImportProfilePackage(null);
+        }
+
+        private void ImportChildProfile(object sender, RoutedEventArgs e)
+        {
+            if (!GetSelectedItem(out var profileItem)) return;
+            ImportProfilePackage(profileItem.Profile);
+        }
+
+        private void ImportProfilePackage(Profile parentProfile)
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = parentProfile == null ? "Import UCR profile" : "Import UCR profile as child",
+                Filter = "UCR profile (*.ucrprofile)|*.ucrprofile",
+                DefaultExt = ".ucrprofile",
+                CheckFileExists = true,
+                Multiselect = false
+            };
+            if (dialog.ShowDialog(this) != true) return;
+
+            try
+            {
+                Context.ProfilesManager.ImportProfile(dialog.FileName, parentProfile);
+                ReloadProfileTree();
+                MessageBox.Show(this,
+                    parentProfile == null ? "Profile imported successfully." : "Child profile imported successfully.",
+                    "Import profile", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception exception)
+            {
+                ShowTransferError("Profile import failed", exception);
+            }
+        }
+
+        private void ExportAllProfiles(object sender, RoutedEventArgs e)
+        {
+            var dialog = new SaveFileDialog
+            {
+                Title = "Export all UCR profiles",
+                Filter = "UCR profile list (*.ucrprofiles)|*.ucrprofiles",
+                DefaultExt = ".ucrprofiles",
+                AddExtension = true,
+                FileName = "UCR Profiles.ucrprofiles"
+            };
+            if (dialog.ShowDialog(this) != true) return;
+
+            try
+            {
+                Context.ProfilesManager.ExportProfileList(dialog.FileName);
+                MessageBox.Show(this, "All profiles exported successfully.", "Export profiles", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception exception)
+            {
+                ShowTransferError("Profile-list export failed", exception);
+            }
+        }
+
+        private void ImportAllProfiles(object sender, RoutedEventArgs e)
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Import UCR profile list",
+                Filter = "UCR profile list (*.ucrprofiles)|*.ucrprofiles",
+                DefaultExt = ".ucrprofiles",
+                CheckFileExists = true,
+                Multiselect = false
+            };
+            if (dialog.ShowDialog(this) != true) return;
+
+            var choice = MessageBox.Show(this,
+                "How should the imported profile list be applied?\n\n" +
+                "Yes = REPLACE the current profile list with the imported backup.\n" +
+                "No = MERGE the imported profiles into the current list.\n" +
+                "Cancel = Do nothing.",
+                "Import profile list", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            if (choice == MessageBoxResult.Cancel) return;
+
+            var mode = choice == MessageBoxResult.Yes
+                ? ProfileListImportMode.Replace
+                : ProfileListImportMode.Merge;
+
+            try
+            {
+                var importedCount = Context.ProfilesManager.ImportProfileList(dialog.FileName, mode);
+                if (mode == ProfileListImportMode.Replace)
+                {
+                    CloseAllProfileWindows();
+                    _dashboardViewModel.SelectedProfileItem = null;
+                }
+                ReloadProfileTree();
+                MessageBox.Show(this,
+                    $"Imported {importedCount} top-level profile{(importedCount == 1 ? string.Empty : "s")} successfully.",
+                    "Import profiles", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception exception)
+            {
+                ShowTransferError("Profile-list import failed", exception);
+            }
+        }
+
+        private void CloseAllProfileWindows()
+        {
+            var windows = new List<ProfileWindow>(ProfileWindows.Values);
+            foreach (var profileWindow in windows)
+            {
+                profileWindow.Close();
+            }
+        }
+
+        private static string SanitizeFileName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return "UCR Profile";
+            foreach (var invalidCharacter in Path.GetInvalidFileNameChars())
+            {
+                value = value.Replace(invalidCharacter, '_');
+            }
+            return value.Trim();
+        }
+
+        private void ShowTransferError(string title, Exception exception)
+        {
+            MessageBox.Show(this, exception.Message, title, MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
         #endregion Profile Actions

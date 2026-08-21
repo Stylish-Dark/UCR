@@ -138,12 +138,12 @@ namespace HidWizards.UCR.Core
             }
         }
 
-        private static XmlSerializer GetXmlSerializer(List<Type> additionalPluginTypes)
+        internal static XmlSerializer GetXmlSerializer(List<Type> additionalPluginTypes)
         {
             return GetXmlSerializer(additionalPluginTypes, typeof(Context));
         }
 
-        private static XmlSerializer GetXmlSerializer(List<Type> additionalPluginTypes, Type type)
+        internal static XmlSerializer GetXmlSerializer(List<Type> additionalPluginTypes, Type type)
         {
             var plugins = new PluginsManager(PluginPath);
             var pluginTypes = plugins.Plugins.Select(p => p.GetType()).ToList();
