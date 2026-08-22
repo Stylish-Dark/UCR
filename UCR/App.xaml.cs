@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows;
 using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Utilities;
@@ -19,25 +20,59 @@ namespace HidWizards.UCR
         private Context context;
         private HidGuardianClient _hidGuardianClient;
         private SingleGlobalInstance mutex;
+        private Thread _splashThread;
+        private SplashWindow _splashWindow;
+        private ManualResetEventSlim _splashReady;
+        private volatile bool _splashCloseRequested;
+        private readonly Stopwatch _startupStopwatch = new Stopwatch();
 
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
             AppDomain.CurrentDomain.UnhandledException += AppDomain_CurrentDomain_UnhandledException;
 
-            mutex = new SingleGlobalInstance(); 
+            mutex = new SingleGlobalInstance();
             if (mutex.HasHandle && GetProcesses().Length <= 1)
             {
                 Logger.Info("Launching UCR");
-                _hidGuardianClient = new HidGuardianClient();
-                _hidGuardianClient.WhitelistProcess();
+                // The splash is a real Window on its own dispatcher. Keep shutdown explicit until the
+                // actual MainWindow has been assigned so closing the splash can never terminate UCR.
+                ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown;
+                _startupStopwatch.Restart();
+                StartSplash();
 
-                InitializeUcr();
-                CheckForBlockedDll();
+                try
+                {
+                    RunStartupStage("Checking HidGuardian...", () =>
+                    {
+                        _hidGuardianClient = new HidGuardianClient();
+                        _hidGuardianClient.WhitelistProcess();
+                    });
 
-                context.ParseCommandLineArguments(e.Args);
-                var mw = new MainWindow(context);
-                mw.Show();
+                    InitializeUcr();
+
+                    RunStartupStage("Checking plugins...", CheckForBlockedDll);
+
+                    RunStartupStage("Processing command line...", () => context.ParseCommandLineArguments(e.Args));
+
+                    UpdateSplash("Opening UCR...");
+                    var windowStage = Stopwatch.StartNew();
+                    var mw = new MainWindow(context);
+                    Current.MainWindow = mw;
+                    mw.Show();
+                    ShutdownMode = System.Windows.ShutdownMode.OnMainWindowClose;
+                    windowStage.Stop();
+                    Logger.Info($"Startup stage 'Opening UCR' completed in {windowStage.ElapsedMilliseconds} ms");
+
+                    _startupStopwatch.Stop();
+                    Logger.Info($"UCR startup completed in {_startupStopwatch.ElapsedMilliseconds} ms");
+                    CloseSplash();
+                }
+                catch
+                {
+                    CloseSplash();
+                    throw;
+                }
             }
             else
             {
@@ -48,8 +83,80 @@ namespace HidWizards.UCR
 
         private void InitializeUcr()
         {
-            new ResourceLoader().Load();
-            context = Context.Load();
+            RunStartupStage("Loading interface resources...", () => new ResourceLoader().Load());
+            RunStartupStage("Initializing device providers and loading profiles...", () => context = Context.Load());
+        }
+
+        private void RunStartupStage(string status, Action action)
+        {
+            UpdateSplash(status);
+            var stopwatch = Stopwatch.StartNew();
+            action();
+            stopwatch.Stop();
+            Logger.Info($"Startup stage '{status}' completed in {stopwatch.ElapsedMilliseconds} ms");
+        }
+
+        private void StartSplash()
+        {
+            _splashCloseRequested = false;
+            _splashReady = new ManualResetEventSlim(false);
+            _splashThread = new Thread(() =>
+            {
+                var splash = new SplashWindow();
+                _splashWindow = splash;
+                if (_splashCloseRequested)
+                {
+                    _splashReady.Set();
+                    return;
+                }
+
+                splash.Closed += (sender, args) => System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvokeShutdown(System.Windows.Threading.DispatcherPriority.Background);
+                splash.Show();
+                _splashReady.Set();
+                System.Windows.Threading.Dispatcher.Run();
+            })
+            {
+                IsBackground = true,
+                Name = "UCR Startup Splash"
+            };
+            _splashThread.SetApartmentState(ApartmentState.STA);
+            _splashThread.Start();
+
+            // Do not let a splash-screen failure become a startup blocker of its own.
+            _splashReady.Wait(2000);
+        }
+
+        private void UpdateSplash(string status)
+        {
+            if (_splashCloseRequested) return;
+            var splash = _splashWindow;
+            if (splash == null) return;
+
+            try
+            {
+                splash.Dispatcher.BeginInvoke(new Action(() => splash.SetStatus(status)));
+            }
+            catch (InvalidOperationException)
+            {
+                // Splash is already closing; startup should continue normally.
+            }
+        }
+
+        private void CloseSplash()
+        {
+            _splashCloseRequested = true;
+            var splash = _splashWindow;
+            _splashWindow = null;
+            if (splash == null) return;
+
+            try
+            {
+                splash.Dispatcher.BeginInvoke(new Action(splash.Close));
+            }
+            catch (InvalidOperationException)
+            {
+                // Dispatcher has already shut down.
+            }
         }
 
         private void CheckForBlockedDll()
@@ -59,6 +166,7 @@ namespace HidWizards.UCR
             var result = MessageBox.Show("UCR has detected blocked files which are required, do you want to unblock blocked UCR files?", "Unblock files?", MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (result != MessageBoxResult.Yes) return;
 
+            UpdateSplash("Unblocking UCR files...");
             var process = new Process
             {
                 StartInfo =
@@ -118,7 +226,7 @@ namespace HidWizards.UCR
                     if (proc.MainWindowHandle == IntPtr.Zero) continue;
                     NativeMethods.SendMessage(proc.MainWindowHandle, NativeMethods.WM_COPYDATA, IntPtr.Zero, ptrCopyData);
                 }
-                    
+
             }
             catch (Exception e)
             {
@@ -134,7 +242,8 @@ namespace HidWizards.UCR
 
         public void Dispose()
         {
-            mutex.Dispose();
+            CloseSplash();
+            mutex?.Dispose();
             context?.Dispose();
             _hidGuardianClient?.Dispose();
         }
