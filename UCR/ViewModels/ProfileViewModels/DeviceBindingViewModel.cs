@@ -124,6 +124,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             DeviceBinding = deviceBinding;
             deviceBinding.Profile.Context.BindingManager.PropertyChanged += BindingManagerOnPropertyChanged;
             deviceBinding.Profile.Context.SubscriptionsManager.PropertyChanged += SubscriptionsManagerOnPropertyChanged;
+            deviceBinding.Profile.Context.DeviceAliasesChangedEvent += ContextOnDeviceAliasesChanged;
             BindingEnabled = !DeviceBinding.Profile.Context.SubscriptionsManager.ProfileActive;
 
             LoadDeviceInputs();
@@ -139,6 +140,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
 
             SetSelectDevice();
+        }
+
+        private void ContextOnDeviceAliasesChanged()
+        {
+            LoadDeviceInputs();
+            OnPropertyChanged(nameof(Devices));
+            OnPropertyChanged(nameof(SelectedDevice));
         }
 
         private void SetSelectDevice()

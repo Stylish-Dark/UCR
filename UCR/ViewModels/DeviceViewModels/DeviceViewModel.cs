@@ -41,7 +41,7 @@ namespace HidWizards.UCR.ViewModels.DeviceViewModels
         public DeviceViewModel(Device device)
         {
             Device = device;
-            Title = device.Title;
+            Title = device.DisplayTitle;
             ProviderName = device.ProviderName;
         }
 

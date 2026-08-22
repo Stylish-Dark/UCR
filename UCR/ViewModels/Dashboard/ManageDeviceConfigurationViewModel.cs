@@ -14,7 +14,13 @@ namespace HidWizards.UCR.ViewModels.Dashboard
     {
         public string Title => "Device configuration";
 
-        public string Hint => _deviceConfiguration.Device.Title;
+        public string ConfigurationNameHint => _deviceConfiguration?.Device?.Title ?? "Device configuration name";
+        public string ProviderDeviceName => _deviceConfiguration?.Device?.Title ?? "Device";
+        public string DeviceAlias { get; set; }
+        public bool CanEditDeviceAlias { get; private set; }
+        public string DeviceAliasHelp => CanEditDeviceAlias
+            ? "Applies to this physical/logical device across UCR profiles. Leave blank to use the provider name."
+            : "UCR cannot safely persist an individual name for this device because its provider does not expose a unique identity for it right now.";
 
         public string DeviceConfigurationName { get; set; }
 
@@ -38,6 +44,11 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             _deviceConfiguration = deviceConfiguration;
             _deviceIoType = deviceIoType;
             DeviceConfigurationName = _deviceConfiguration.ConfigurationName;
+
+            var devicesManager = _deviceConfiguration.Device.Profile.Context.DevicesManager;
+            DeviceAlias = devicesManager.GetDeviceAlias(_deviceConfiguration.Device);
+            CanEditDeviceAlias = devicesManager.CanPersistDeviceAlias(_deviceConfiguration.Device, _deviceIoType);
+
             ShadowDevices = new DeviceAddRemoveControlViewModel("Available Devices", "Selected Shadow Devices", GetAllShadowDevices());
             _changed = true;
         }

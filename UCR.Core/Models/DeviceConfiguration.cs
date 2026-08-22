@@ -55,8 +55,9 @@ namespace HidWizards.UCR.Core.Models
 
         public string GetFullTitleForProfile(Profile profile)
         {
-            var title = ConfigurationName ?? Device.Title;
-            if (profile == null || Device.Profile.Guid == profile.Guid) return ConfigurationName ?? Device.Title;
+            var deviceTitle = Device?.Profile?.Context?.DevicesManager?.GetDisplayTitle(Device) ?? Device?.DisplayTitle ?? Device?.Title;
+            var title = ConfigurationName ?? deviceTitle;
+            if (profile == null || Device.Profile.Guid == profile.Guid) return title;
 
             return $"{title} (Inherited from {Device.Profile.Title})";
         }

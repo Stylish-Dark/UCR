@@ -26,30 +26,53 @@
         <Grid Margin="16" Grid.Column="0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-            <TextBlock Text="{Binding Title}" Style="{StaticResource MaterialDesignTitleTextBlock}"/>
-            <TextBox x:Name="TextValue" wpf:HintAssist.Hint="{Binding Hint}" VerticalAlignment="Top" Style="{DynamicResource MaterialDesignFloatingHintTextBox}"                 
-                 Margin="0 6 0 0"
-                 FontSize="18" Grid.Row="1">
-                <TextBox.Text>
-                    <Binding Path="DeviceConfigurationName" UpdateSourceTrigger="PropertyChanged"/>
-                </TextBox.Text>
-            </TextBox>
-            <StackPanel Grid.Row="1">
-                <TextBlock Text=""/>
+
+            <TextBlock Grid.Row="0" Text="{Binding Title}" Style="{StaticResource MaterialDesignTitleTextBlock}"/>
+
+            <StackPanel Grid.Row="1" Margin="0 18 0 0">
+                <TextBlock Text="Global device name" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
+                <TextBox wpf:HintAssist.Hint="{Binding ProviderDeviceName}"
+                         IsEnabled="{Binding CanEditDeviceAlias}"
+                         Style="{DynamicResource MaterialDesignFloatingHintTextBox}"
+                         Margin="0 4 0 0" FontSize="18">
+                    <TextBox.Text>
+                        <Binding Path="DeviceAlias" UpdateSourceTrigger="PropertyChanged"/>
+                    </TextBox.Text>
+                </TextBox>
+                <TextBlock Text="{Binding DeviceAliasHelp}"
+                           TextWrapping="Wrap" Opacity="0.72" Margin="0 6 0 0"
+                           Style="{StaticResource MaterialDesignCaptionTextBlock}"/>
             </StackPanel>
-            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Grid.Row="2"
-                    Margin="0 16 0 0">
-                <Button IsDefault="True" 
-                    Style="{StaticResource MaterialDesignRaisedButton}"
-                    Command="{x:Static wpf:DialogHost.CloseDialogCommand}" 
-                    Content="SAVE" CommandParameter="{Binding ViewModel}">
+
+            <StackPanel Grid.Row="2" Margin="0 22 0 0">
+                <TextBlock Text="Profile configuration name" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
+                <TextBox wpf:HintAssist.Hint="{Binding ConfigurationNameHint}"
+                         Style="{DynamicResource MaterialDesignFloatingHintTextBox}"
+                         Margin="0 4 0 0" FontSize="18">
+                    <TextBox.Text>
+                        <Binding Path="DeviceConfigurationName" UpdateSourceTrigger="PropertyChanged"/>
+                    </TextBox.Text>
+                </TextBox>
+                <TextBlock Text="Optional label for this profile configuration only."
+                           Opacity="0.72" Margin="0 6 0 0"
+                           Style="{StaticResource MaterialDesignCaptionTextBlock}"/>
+            </StackPanel>
+
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Grid.Row="4"
+                        Margin="0 16 0 0">
+                <Button IsDefault="True"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
+                        Command="{x:Static wpf:DialogHost.CloseDialogCommand}"
+                        Content="SAVE" CommandParameter="{Binding ViewModel}">
                 </Button>
                 <Button IsCancel="True" Margin="8 0 0 0" Style="{DynamicResource MaterialDesignFlatButton}"
-                    Command="{x:Static wpf:DialogHost.CloseDialogCommand}"
-                    Content="CANCEL">
+                        Command="{x:Static wpf:DialogHost.CloseDialogCommand}"
+                        Content="CANCEL">
                     <Button.CommandParameter>
                         <dashboard:ManageDeviceConfigurationViewModel/>
                     </Button.CommandParameter>

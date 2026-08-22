@@ -22,6 +22,7 @@ namespace HidWizards.UCR.Core
 
         /* Persistence */
         public List<Profile> Profiles { get; set; }
+        public List<DeviceAlias> DeviceAliases { get; set; }
 
         /* Runtime */
         [XmlIgnore] public Profile ActiveProfile { get; set; }
@@ -33,6 +34,9 @@ namespace HidWizards.UCR.Core
 
         public delegate void ActiveProfileChanged(Profile profile);
         public event ActiveProfileChanged ActiveProfileChangedEvent;
+
+        public delegate void DeviceAliasesChanged();
+        public event DeviceAliasesChanged DeviceAliasesChangedEvent;
         
         internal bool IsNotSaved { get; private set; }
         internal IOController IOController { get; set; }
@@ -48,6 +52,7 @@ namespace HidWizards.UCR.Core
         {
             IsNotSaved = false;
             Profiles = new List<Profile>();
+            DeviceAliases = new List<DeviceAlias>();
 
             try
             {
@@ -132,6 +137,9 @@ namespace HidWizards.UCR.Core
 
         private void PostLoad()
         {
+            if (Profiles == null) Profiles = new List<Profile>();
+            if (DeviceAliases == null) DeviceAliases = new List<DeviceAlias>();
+
             foreach (var profile in Profiles)
             {
                 profile.PostLoad(this);
@@ -194,6 +202,11 @@ namespace HidWizards.UCR.Core
         public void OnActiveProfileChangedEvent(Profile profile)
         {
             ActiveProfileChangedEvent?.Invoke(profile);
+        }
+
+        public void OnDeviceAliasesChangedEvent()
+        {
+            DeviceAliasesChangedEvent?.Invoke();
         }
     }
 }

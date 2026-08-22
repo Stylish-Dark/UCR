@@ -20,6 +20,39 @@ namespace HidWizards.UCR.Core.Models
         Incompatible
     }
 
+    public enum DeviceAliasIdentityKind
+    {
+        HidPath,
+        HardwareHandle,
+        LogicalSlot
+    }
+
+    public class DeviceAlias
+    {
+        [XmlAttribute]
+        public string ProviderName { get; set; }
+        [XmlAttribute]
+        public DeviceAliasIdentityKind IdentityKind { get; set; }
+        [XmlAttribute]
+        public string IdentityValue { get; set; }
+        [XmlAttribute]
+        public int DeviceNumber { get; set; }
+        [XmlAttribute]
+        public string Alias { get; set; }
+
+        public DeviceAlias Clone()
+        {
+            return new DeviceAlias
+            {
+                ProviderName = ProviderName,
+                IdentityKind = IdentityKind,
+                IdentityValue = IdentityValue,
+                DeviceNumber = DeviceNumber,
+                Alias = Alias
+            };
+        }
+    }
+
     public sealed class DeviceBindingTransferResult
     {
         public DeviceBindingTransferCompatibility Compatibility { get; private set; }
@@ -312,6 +345,10 @@ namespace HidWizards.UCR.Core.Models
 
         /* Runtime */
         [XmlIgnore]
+        public string Alias { get; set; }
+        [XmlIgnore]
+        public string DisplayTitle => string.IsNullOrWhiteSpace(Alias) ? Title : Alias;
+        [XmlIgnore]
         private List<DeviceBindingNode> DeviceBindingMenu { get; set; }
         [XmlIgnore] public Profile Profile { get; set; }
         [XmlIgnore] public bool IsCache { get; set; }
@@ -408,7 +445,7 @@ namespace HidWizards.UCR.Core.Models
 
         public string LogName()
         {
-            return $"Device:{{{Title}}} Provider:{{{ProviderName}}} Handle:{{{DeviceHandle}}} Num:{{{DeviceNumber}}} HidPath:{{{HidPath}}}";
+            return $"Device:{{{Title}}} Alias:{{{Alias}}} Provider:{{{ProviderName}}} Handle:{{{DeviceHandle}}} Num:{{{DeviceNumber}}} HidPath:{{{HidPath}}}";
         }
 
         public override bool Equals(Object other)

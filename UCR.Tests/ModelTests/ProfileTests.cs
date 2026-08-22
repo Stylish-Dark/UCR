@@ -67,6 +67,23 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void DeviceAliasBecomesProfileDisplayNameUnlessConfigurationNameOverridesIt()
+        {
+            var device = new Device("Provider Keyboard", "Core_Interception", @"Keyboard\VID_1111&PID_2222", 0);
+            var configuration = new DeviceConfiguration(device);
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { configuration }, DeviceIoType.Input);
+
+            var alias = DevicesManager.BuildAliasIdentity(device);
+            alias.Alias = "Desk Keyboard";
+            _context.DeviceAliases.Add(alias);
+
+            Assert.That(configuration.GetFullTitleForProfile(_profile), Is.EqualTo("Desk Keyboard"));
+
+            configuration.ChangeConfigurationName("Movement Keys");
+            Assert.That(configuration.GetFullTitleForProfile(_profile), Is.EqualTo("Movement Keys"));
+        }
+
+        [Test]
         public void AddPlugin()
         {
             _profile.AddPlugin(_mapping, new ButtonToButton());

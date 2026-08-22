@@ -42,11 +42,19 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         {
             _profile = profile;
             _deviceIoType = deviceIoType;
+            _profile.Context.DeviceAliasesChangedEvent += ContextOnDeviceAliasesChanged;
             Devices = new ObservableCollection<DeviceItem>();
             foreach (var device in devices)
             {
                 Devices.Add(new DeviceItem(device, profile));
             }
+        }
+
+        private void ContextOnDeviceAliasesChanged()
+        {
+            if (Devices == null) return;
+            foreach (var device in Devices) device.TitleChanged();
+            OnPropertyChanged(nameof(Devices));
         }
 
         private bool CanRemoveDevice()
@@ -96,8 +104,17 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             var result = (ManageDeviceConfigurationViewModel)await DialogHost.Show(dialog, "RootDialog");
             if (result == null || !result.HasChanged) return;
 
-            SelectedDeviceConfiguration.DeviceConfiguration.ChangeConfigurationName(result.DeviceConfigurationName);
-            SelectedDeviceConfiguration.DeviceConfiguration.ChangeShadowDevices(result.GetSelectedShadowDevices());
+            var configuration = SelectedDeviceConfiguration.DeviceConfiguration;
+            string aliasError;
+            if (!configuration.Device.Profile.Context.DevicesManager.TrySetDeviceAlias(
+                    configuration.Device, _deviceIoType, result.DeviceAlias, out aliasError))
+            {
+                System.Windows.MessageBox.Show(aliasError, "Device name not changed",
+                    System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            }
+
+            configuration.ChangeConfigurationName(result.DeviceConfigurationName);
+            configuration.ChangeShadowDevices(result.GetSelectedShadowDevices());
 
             SelectedDeviceConfiguration.TitleChanged();
             OnPropertyChanged(nameof(Devices));

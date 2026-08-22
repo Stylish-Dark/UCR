@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Xml.Serialization;
 using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
@@ -241,6 +242,148 @@ namespace HidWizards.UCR.Tests.ModelTests
 
             Assert.That(imported.InputDeviceConfigurations[0].Device.HidPath,
                 Is.EqualTo(input.Device.HidPath));
+        }
+
+        [Test]
+        public void SingleProfileExportCarriesReferencedDeviceAliasWithoutOverwritingLocalAlias()
+        {
+            var source = new Context();
+            var profile = AddProfile(source, "Alias source");
+            var input = AddDeviceConfiguration(profile, DeviceIoType.Input, "DirectInput Pad",
+                "SharpDX_DirectInput", "VID_1234&PID_5678", 0);
+            input.Device.HidPath = @"\\?\hid#vid_1234&pid_5678#physical-a";
+
+            var identity = DevicesManager.BuildAliasIdentity(input.Device);
+            identity.Alias = "Arcade Stick";
+            source.DeviceAliases.Add(identity);
+
+            var file = TempFile(".ucrprofile");
+            source.ProfilesManager.ExportProfile(profile, file, _pluginTypes);
+
+            var destination = new Context();
+            var localIdentity = identity.Clone();
+            localIdentity.Alias = "My Local Stick Name";
+            destination.DeviceAliases.Add(localIdentity);
+
+            destination.ProfilesManager.ImportProfile(file, null, _pluginTypes);
+
+            Assert.That(destination.DeviceAliases.Count, Is.EqualTo(1));
+            Assert.That(destination.DeviceAliases[0].Alias, Is.EqualTo("My Local Stick Name"),
+                "Importing a portable profile must not silently overwrite the destination user's global device name.");
+        }
+
+        [Test]
+        public void FullProfileListReplaceRestoresDeviceAliasesAsBackupState()
+        {
+            var source = new Context();
+            AddProfile(source, "Backup");
+            source.DeviceAliases.Add(new DeviceAlias
+            {
+                ProviderName = "SharpDX_XInput",
+                IdentityKind = DeviceAliasIdentityKind.LogicalSlot,
+                IdentityValue = "xb360",
+                DeviceNumber = 0,
+                Alias = "Player One Pad"
+            });
+            source.DeviceAliases.Add(new DeviceAlias
+            {
+                ProviderName = "Core_Interception",
+                IdentityKind = DeviceAliasIdentityKind.HardwareHandle,
+                IdentityValue = @"Keyboard\VID_1111&PID_2222",
+                DeviceNumber = 0,
+                Alias = "Main Keyboard"
+            });
+
+            var file = TempFile(".ucrprofiles");
+            source.ProfilesManager.ExportProfileList(file, _pluginTypes);
+
+            var destination = new Context();
+            destination.DeviceAliases.Add(new DeviceAlias
+            {
+                ProviderName = "Core_ViGEm",
+                IdentityKind = DeviceAliasIdentityKind.LogicalSlot,
+                IdentityValue = "ds4",
+                DeviceNumber = 3,
+                Alias = "Should disappear"
+            });
+
+            destination.ProfilesManager.ImportProfileList(file, ProfileListImportMode.Replace, _pluginTypes);
+
+            Assert.That(destination.DeviceAliases.Count, Is.EqualTo(2));
+            Assert.That(destination.DeviceAliases.Select(alias => alias.Alias),
+                Is.EquivalentTo(new[] { "Player One Pad", "Main Keyboard" }));
+        }
+
+        [Test]
+        public void FullProfileListMergeAddsMissingAliasesButPreservesDestinationConflicts()
+        {
+            var source = new Context();
+            AddProfile(source, "Merge source");
+            source.DeviceAliases.Add(new DeviceAlias
+            {
+                ProviderName = "SharpDX_XInput",
+                IdentityKind = DeviceAliasIdentityKind.LogicalSlot,
+                IdentityValue = "xb360",
+                DeviceNumber = 0,
+                Alias = "Source P1"
+            });
+            source.DeviceAliases.Add(new DeviceAlias
+            {
+                ProviderName = "Core_ViGEm",
+                IdentityKind = DeviceAliasIdentityKind.LogicalSlot,
+                IdentityValue = "ds4",
+                DeviceNumber = 1,
+                Alias = "Imported DS4"
+            });
+
+            var file = TempFile(".ucrprofiles");
+            source.ProfilesManager.ExportProfileList(file, _pluginTypes);
+
+            var destination = new Context();
+            destination.DeviceAliases.Add(new DeviceAlias
+            {
+                ProviderName = "sharpdx_xinput",
+                IdentityKind = DeviceAliasIdentityKind.LogicalSlot,
+                IdentityValue = "XB360",
+                DeviceNumber = 0,
+                Alias = "Destination P1"
+            });
+
+            destination.ProfilesManager.ImportProfileList(file, ProfileListImportMode.Merge, _pluginTypes);
+
+            Assert.That(destination.DeviceAliases.Count, Is.EqualTo(2));
+            Assert.That(destination.DeviceAliases.Single(alias => alias.ProviderName.Equals("sharpdx_xinput", StringComparison.OrdinalIgnoreCase)).Alias,
+                Is.EqualTo("Destination P1"));
+            Assert.That(destination.DeviceAliases.Single(alias => alias.ProviderName.Equals("Core_ViGEm", StringComparison.OrdinalIgnoreCase)).Alias,
+                Is.EqualTo("Imported DS4"));
+        }
+
+        [Test]
+        public void LegacyVersionOneProfilePackageWithoutAliasCollectionStillImports()
+        {
+            var source = new Context();
+            var profile = AddProfile(source, "Legacy compatible");
+            var package = new ProfileExportPackage
+            {
+                FormatVersion = 1,
+                Kind = ProfileExportKind.Profile,
+                Profiles = new List<Profile> { profile },
+                DeviceAliases = null
+            };
+
+            var file = TempFile(".ucrprofile");
+            var serializer = new XmlSerializer(typeof(ProfileExportPackage), _pluginTypes.ToArray());
+            using (var writer = new StreamWriter(file))
+            {
+                serializer.Serialize(writer, package);
+            }
+
+            var destination = new Context();
+            var imported = destination.ProfilesManager.ImportProfile(file, null, _pluginTypes);
+
+            Assert.That(imported.Title, Is.EqualTo("Legacy compatible"));
+            Assert.That(destination.DeviceAliases, Is.Not.Null);
+            Assert.That(destination.DeviceAliases.Count, Is.EqualTo(0));
         }
 
         [Test]

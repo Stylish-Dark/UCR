@@ -35,9 +35,14 @@ namespace HidWizards.UCR.Core.Managers
         [XmlArrayItem("Profile")]
         public List<Profile> Profiles { get; set; }
 
+        [XmlArray("DeviceAliases")]
+        [XmlArrayItem("DeviceAlias")]
+        public List<DeviceAlias> DeviceAliases { get; set; }
+
         public ProfileExportPackage()
         {
             Profiles = new List<Profile>();
+            DeviceAliases = new List<DeviceAlias>();
         }
     }
 
@@ -117,7 +122,8 @@ namespace HidWizards.UCR.Core.Managers
             {
                 FormatVersion = ExportFormatVersion,
                 Kind = ProfileExportKind.Profile,
-                Profiles = new List<Profile> { portableProfile }
+                Profiles = new List<Profile> { portableProfile },
+                DeviceAliases = CollectAliasesForProfiles(new[] { portableProfile })
             };
 
             ValidatePackage(package, ProfileExportKind.Profile);
@@ -135,9 +141,11 @@ namespace HidWizards.UCR.Core.Managers
             ValidatePackage(package, ProfileExportKind.Profile);
 
             RegenerateIdentities(package.Profiles);
+
             var profile = package.Profiles[0];
             profile.PostLoad(_context, parentProfile);
             AddProfile(profile, parentProfile);
+            _context.DevicesManager.MergeDeviceAliases(package.DeviceAliases, false);
             return profile;
         }
 
@@ -153,7 +161,11 @@ namespace HidWizards.UCR.Core.Managers
             {
                 FormatVersion = ExportFormatVersion,
                 Kind = ProfileExportKind.ProfileList,
-                Profiles = _profiles
+                Profiles = _profiles,
+                DeviceAliases = (_context.DeviceAliases ?? new List<DeviceAlias>())
+                    .Where(alias => alias != null)
+                    .Select(alias => alias.Clone())
+                    .ToList()
             };
 
             ValidatePackage(package, ProfileExportKind.ProfileList);
@@ -174,6 +186,7 @@ namespace HidWizards.UCR.Core.Managers
             if (mode == ProfileListImportMode.Merge)
             {
                 RegenerateIdentities(package.Profiles);
+                _context.DevicesManager.MergeDeviceAliases(package.DeviceAliases, false);
                 foreach (var profile in package.Profiles)
                 {
                     profile.PostLoad(_context);
@@ -188,6 +201,7 @@ namespace HidWizards.UCR.Core.Managers
                 }
 
                 _profiles.Clear();
+                _context.DevicesManager.ReplaceDeviceAliases(package.DeviceAliases);
                 foreach (var profile in package.Profiles)
                 {
                     profile.PostLoad(_context);
@@ -201,6 +215,51 @@ namespace HidWizards.UCR.Core.Managers
 
             _context.ContextChanged();
             return package.Profiles.Count;
+        }
+
+        private List<DeviceAlias> CollectAliasesForProfiles(IEnumerable<Profile> profileRoots)
+        {
+            var result = new List<DeviceAlias>();
+            if (profileRoots == null || _context.DeviceAliases == null) return result;
+
+            foreach (var profile in EnumerateProfiles(profileRoots))
+            {
+                foreach (var configuration in EnumerateLocalConfigurations(profile))
+                {
+                    AddAliasForDevice(configuration?.Device, result);
+                    if (configuration?.ShadowDevices == null) continue;
+                    foreach (var shadowDevice in configuration.ShadowDevices)
+                    {
+                        AddAliasForDevice(shadowDevice, result);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        private void AddAliasForDevice(Device device, ICollection<DeviceAlias> aliases)
+        {
+            var identity = DevicesManager.BuildAliasIdentity(device);
+            if (identity == null) return;
+
+            var alias = _context.DeviceAliases.FirstOrDefault(candidate =>
+                DevicesManager.AliasIdentityEquals(candidate, identity));
+            if (alias == null || aliases.Any(candidate => DevicesManager.AliasIdentityEquals(candidate, alias))) return;
+            aliases.Add(alias.Clone());
+        }
+
+        private static IEnumerable<Profile> EnumerateProfiles(IEnumerable<Profile> roots)
+        {
+            foreach (var profile in roots ?? Enumerable.Empty<Profile>())
+            {
+                if (profile == null) continue;
+                yield return profile;
+                foreach (var child in EnumerateProfiles(profile.ChildProfiles))
+                {
+                    yield return child;
+                }
+            }
         }
 
         private Profile CreatePortableProfileClone(Profile profile, List<Type> pluginTypes)
@@ -314,7 +373,31 @@ namespace HidWizards.UCR.Core.Managers
                 throw new InvalidDataException("The UCR export contains a null profile entry.");
             }
 
+            if (package.DeviceAliases == null) package.DeviceAliases = new List<DeviceAlias>();
+            ValidateAliases(package.DeviceAliases);
             ValidateProfileGraph(package.Profiles);
+        }
+
+        private static void ValidateAliases(IEnumerable<DeviceAlias> aliases)
+        {
+            var seen = new List<DeviceAlias>();
+            foreach (var alias in aliases)
+            {
+                if (alias == null || string.IsNullOrWhiteSpace(alias.ProviderName) ||
+                    string.IsNullOrWhiteSpace(alias.IdentityValue) || string.IsNullOrWhiteSpace(alias.Alias))
+                {
+                    throw new InvalidDataException("The UCR export contains an invalid device alias.");
+                }
+                if (alias.IdentityKind == DeviceAliasIdentityKind.LogicalSlot && alias.DeviceNumber < 0)
+                {
+                    throw new InvalidDataException("The UCR export contains an invalid logical-slot device alias.");
+                }
+                if (seen.Any(existing => DevicesManager.AliasIdentityEquals(existing, alias)))
+                {
+                    throw new InvalidDataException("The UCR export contains duplicate device alias identities.");
+                }
+                seen.Add(alias);
+            }
         }
 
         private static void ValidateProfileGraph(IEnumerable<Profile> profileRoots)

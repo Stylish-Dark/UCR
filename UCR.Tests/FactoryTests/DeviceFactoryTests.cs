@@ -146,6 +146,76 @@ namespace HidWizards.UCR.Tests.FactoryTests
         }
 
         [Test]
+        public void AliasIdentityPrefersPersistedHidPath()
+        {
+            var device = CreateIdentityDevice("Pad", "SharpDX_DirectInput", "VID_1234&PID_5678", 3,
+                @"\\?\hid#vid_1234&pid_5678#physical-a");
+
+            var identity = DevicesManager.BuildAliasIdentity(device);
+
+            Assert.That(identity.IdentityKind, Is.EqualTo(DeviceAliasIdentityKind.HidPath));
+            Assert.That(identity.IdentityValue, Is.EqualTo(device.HidPath));
+            Assert.That(identity.DeviceNumber, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void AliasIdentityUsesLogicalSlotForXInputAndViGEm()
+        {
+            var xinput = CreateIdentityDevice("Xbox Controller 2", "SharpDX_XInput", "xb360", 1, null);
+            var vigem = CreateIdentityDevice("ViGEm DS4 Controller 4", "Core_ViGEm", "ds4", 3, null);
+
+            var xinputIdentity = DevicesManager.BuildAliasIdentity(xinput);
+            var vigemIdentity = DevicesManager.BuildAliasIdentity(vigem);
+
+            Assert.That(xinputIdentity.IdentityKind, Is.EqualTo(DeviceAliasIdentityKind.LogicalSlot));
+            Assert.That(xinputIdentity.IdentityValue, Is.EqualTo("xb360"));
+            Assert.That(xinputIdentity.DeviceNumber, Is.EqualTo(1));
+            Assert.That(vigemIdentity.IdentityKind, Is.EqualTo(DeviceAliasIdentityKind.LogicalSlot));
+            Assert.That(vigemIdentity.IdentityValue, Is.EqualTo("ds4"));
+            Assert.That(vigemIdentity.DeviceNumber, Is.EqualTo(3));
+        }
+
+        [Test]
+        public void AliasIdentityUsesHardwareHandleWithoutStrongerPhysicalIdentity()
+        {
+            var device = CreateIdentityDevice("Keyboard", "Core_Interception",
+                @"Keyboard\HID\VID_1111&PID_2222", 7, null);
+
+            var identity = DevicesManager.BuildAliasIdentity(device);
+
+            Assert.That(identity.IdentityKind, Is.EqualTo(DeviceAliasIdentityKind.HardwareHandle));
+            Assert.That(identity.IdentityValue, Is.EqualTo(device.DeviceHandle));
+            Assert.That(identity.DeviceNumber, Is.EqualTo(0),
+                "Enumeration order must not become part of a physical-device alias identity.");
+        }
+
+        [Test]
+        public void AliasIdentityComparisonIsCaseInsensitiveButSlotSensitive()
+        {
+            var first = new DeviceAlias
+            {
+                ProviderName = "Core_ViGEm",
+                IdentityKind = DeviceAliasIdentityKind.LogicalSlot,
+                IdentityValue = "DS4",
+                DeviceNumber = 1,
+                Alias = "Player Two"
+            };
+            var same = new DeviceAlias
+            {
+                ProviderName = "core_vigem",
+                IdentityKind = DeviceAliasIdentityKind.LogicalSlot,
+                IdentityValue = "ds4",
+                DeviceNumber = 1,
+                Alias = "Other text does not affect identity"
+            };
+            var differentSlot = same.Clone();
+            differentSlot.DeviceNumber = 2;
+
+            Assert.That(DevicesManager.AliasIdentityEquals(first, same), Is.True);
+            Assert.That(DevicesManager.AliasIdentityEquals(first, differentSlot), Is.False);
+        }
+
+        [Test]
         public void CompatibleBindingTransfersBetweenSameProviderAndSchema()
         {
             var source = CreateCachedDevice("Keyboard A", "Core_Interception", CreateKeyboardLikeMenu());

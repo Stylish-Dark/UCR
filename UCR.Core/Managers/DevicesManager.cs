@@ -54,6 +54,8 @@ namespace HidWizards.UCR.Core.Managers
                     
                 }
             }
+
+            ApplyAliases(result);
             return result;
         }
 
@@ -189,6 +191,215 @@ namespace HidWizards.UCR.Core.Managers
 
             return DescriptorEquals(left, right);
         }
+
+        #region Device aliases
+
+        public string GetDisplayTitle(Device device)
+        {
+            if (device == null) return string.Empty;
+            var alias = FindAlias(device);
+            return alias == null || string.IsNullOrWhiteSpace(alias.Alias) ? device.Title : alias.Alias;
+        }
+
+        public string GetDeviceAlias(Device device)
+        {
+            return FindAlias(device)?.Alias;
+        }
+
+        public bool CanPersistDeviceAlias(Device device, DeviceIoType type)
+        {
+            if (device == null || string.IsNullOrWhiteSpace(device.ProviderName)) return false;
+            if (FindAlias(device) != null) return true;
+            if (!string.IsNullOrWhiteSpace(device.HidPath)) return true;
+            if (UsesLogicalSlotIdentity(device.ProviderName)) return !string.IsNullOrWhiteSpace(device.DeviceHandle);
+            if (string.IsNullOrWhiteSpace(device.DeviceHandle)) return false;
+
+            var liveDevices = GetAvailableDeviceList(type, false);
+            return CountHandleMatches(device, liveDevices) == 1;
+        }
+
+        public bool TrySetDeviceAlias(Device device, DeviceIoType type, string alias, out string error)
+        {
+            error = null;
+            if (device == null)
+            {
+                error = "No device is selected.";
+                return false;
+            }
+
+            if (_context.DeviceAliases == null) _context.DeviceAliases = new List<DeviceAlias>();
+
+            var identity = BuildAliasIdentity(device);
+            if (identity == null)
+            {
+                error = "This device does not expose enough identity information for a persistent name.";
+                return false;
+            }
+
+            var existing = _context.DeviceAliases.FirstOrDefault(candidate => AliasIdentityEquals(candidate, identity));
+            var normalizedAlias = string.IsNullOrWhiteSpace(alias) ? null : alias.Trim();
+
+            if (normalizedAlias == null)
+            {
+                if (existing != null)
+                {
+                    _context.DeviceAliases.Remove(existing);
+                    _context.ContextChanged();
+                    _context.OnDeviceAliasesChangedEvent();
+                }
+                device.Alias = null;
+                return true;
+            }
+
+            // An existing alias already establishes the identity choice. For a new handle-only alias,
+            // require the live provider view to contain exactly one matching physical device so we never
+            // attach a friendly name to an arbitrary duplicate enumeration slot.
+            if (existing == null && identity.IdentityKind == DeviceAliasIdentityKind.HardwareHandle)
+            {
+                var liveDevices = GetAvailableDeviceList(type, false);
+                if (CountHandleMatches(device, liveDevices) != 1)
+                {
+                    error = "UCR cannot safely give this device a persistent individual name because the provider does not expose a unique identity for it while identical devices are present.";
+                    return false;
+                }
+            }
+
+            if (existing == null)
+            {
+                existing = identity;
+                _context.DeviceAliases.Add(existing);
+            }
+
+            existing.Alias = normalizedAlias;
+            device.Alias = normalizedAlias;
+            _context.ContextChanged();
+            _context.OnDeviceAliasesChangedEvent();
+            return true;
+        }
+
+        public void MergeDeviceAliases(IEnumerable<DeviceAlias> aliases, bool overwriteExisting)
+        {
+            if (aliases == null) return;
+            if (_context.DeviceAliases == null) _context.DeviceAliases = new List<DeviceAlias>();
+            var changed = false;
+
+            foreach (var imported in aliases.Where(alias => alias != null))
+            {
+                var existing = _context.DeviceAliases.FirstOrDefault(candidate => AliasIdentityEquals(candidate, imported));
+                if (existing == null)
+                {
+                    _context.DeviceAliases.Add(imported.Clone());
+                    changed = true;
+                }
+                else if (overwriteExisting && !string.Equals(existing.Alias, imported.Alias, StringComparison.Ordinal))
+                {
+                    existing.Alias = imported.Alias;
+                    changed = true;
+                }
+            }
+
+            if (changed) _context.OnDeviceAliasesChangedEvent();
+        }
+
+        public void ReplaceDeviceAliases(IEnumerable<DeviceAlias> aliases)
+        {
+            _context.DeviceAliases = aliases == null
+                ? new List<DeviceAlias>()
+                : aliases.Where(alias => alias != null).Select(alias => alias.Clone()).ToList();
+            _context.OnDeviceAliasesChangedEvent();
+        }
+
+        public static bool AliasIdentityEquals(DeviceAlias left, DeviceAlias right)
+        {
+            if (left == null || right == null) return false;
+            return left.IdentityKind == right.IdentityKind
+                   && left.DeviceNumber == right.DeviceNumber
+                   && string.Equals(left.ProviderName, right.ProviderName, StringComparison.OrdinalIgnoreCase)
+                   && string.Equals(left.IdentityValue, right.IdentityValue, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static DeviceAlias BuildAliasIdentity(Device device)
+        {
+            if (device == null || string.IsNullOrWhiteSpace(device.ProviderName)) return null;
+
+            if (!string.IsNullOrWhiteSpace(device.HidPath))
+            {
+                return new DeviceAlias
+                {
+                    ProviderName = device.ProviderName,
+                    IdentityKind = DeviceAliasIdentityKind.HidPath,
+                    IdentityValue = device.HidPath.Trim(),
+                    DeviceNumber = 0
+                };
+            }
+
+            if (string.IsNullOrWhiteSpace(device.DeviceHandle)) return null;
+
+            if (UsesLogicalSlotIdentity(device.ProviderName))
+            {
+                return new DeviceAlias
+                {
+                    ProviderName = device.ProviderName,
+                    IdentityKind = DeviceAliasIdentityKind.LogicalSlot,
+                    IdentityValue = device.DeviceHandle.Trim(),
+                    DeviceNumber = device.DeviceNumber
+                };
+            }
+
+            return new DeviceAlias
+            {
+                ProviderName = device.ProviderName,
+                IdentityKind = DeviceAliasIdentityKind.HardwareHandle,
+                IdentityValue = device.DeviceHandle.Trim(),
+                DeviceNumber = 0
+            };
+        }
+
+        private DeviceAlias FindAlias(Device device)
+        {
+            if (device == null || _context.DeviceAliases == null) return null;
+            var identity = BuildAliasIdentity(device);
+            if (identity == null) return null;
+            return _context.DeviceAliases.FirstOrDefault(alias => AliasIdentityEquals(alias, identity));
+        }
+
+        private void ApplyAliases(List<Device> devices)
+        {
+            if (devices == null) return;
+            foreach (var device in devices)
+            {
+                device.Alias = null;
+                var alias = FindAlias(device);
+                if (alias == null || string.IsNullOrWhiteSpace(alias.Alias)) continue;
+
+                if (alias.IdentityKind == DeviceAliasIdentityKind.HardwareHandle &&
+                    CountHandleMatches(device, GetRelevantIdentityPopulation(device, devices)) != 1)
+                {
+                    continue;
+                }
+
+                device.Alias = alias.Alias;
+            }
+        }
+
+        private static List<Device> GetRelevantIdentityPopulation(Device device, List<Device> devices)
+        {
+            var liveMatches = devices.Where(candidate => candidate != null && !candidate.IsCache &&
+                string.Equals(candidate.ProviderName, device.ProviderName, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(candidate.DeviceHandle, device.DeviceHandle, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            return liveMatches.Count > 0 ? liveMatches : devices;
+        }
+
+        private static int CountHandleMatches(Device device, IEnumerable<Device> devices)
+        {
+            if (device == null || devices == null) return 0;
+            return devices.Count(candidate => candidate != null &&
+                string.Equals(candidate.ProviderName, device.ProviderName, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(candidate.DeviceHandle, device.DeviceHandle, StringComparison.OrdinalIgnoreCase));
+        }
+
+        #endregion
 
         public List<DeviceBindingNode> GetDeviceBindingMenu(Device device, DeviceIoType type, bool includeCache = true)
         {
