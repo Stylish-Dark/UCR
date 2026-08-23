@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Xml.Serialization;
 using HidWizards.IOWrapper.DataTransferObjects;
 using HidWizards.UCR.Core.Annotations;
+using HidWizards.UCR.Core.Utilities;
 
 namespace HidWizards.UCR.Core.Models.Binding
 {
@@ -42,6 +43,9 @@ namespace HidWizards.UCR.Core.Models.Binding
         [XmlAttribute]
         [DefaultValue(false)]
         public bool Block { get; set; }
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool InvertInput { get; set; }
 
         /* Runtime */
         [XmlIgnore]
@@ -157,6 +161,13 @@ namespace HidWizards.UCR.Core.Models.Binding
             Profile.Context.ContextChanged();
         }
 
+        public void SetInvertInput(bool invert)
+        {
+            InvertInput = invert;
+            Profile.Context.ContextChanged();
+            OnPropertyChanged(nameof(InvertInput));
+        }
+
         public void SetKeyTypeValue(int type, int value, int subValue)
         {
             KeyType = type;
@@ -234,6 +245,7 @@ namespace HidWizards.UCR.Core.Models.Binding
             KeyValue = 0;
             KeySubValue = 0;
             DeviceConfigurationGuid = Guid.Empty;
+            InvertInput = false;
             IsBound = false;
             Profile.Context.ContextChanged();
         }
@@ -247,6 +259,12 @@ namespace HidWizards.UCR.Core.Models.Binding
 
         private void InputChanged(short value)
         {
+            if (InvertInput && DeviceIoType == DeviceIoType.Input &&
+                DeviceBindingCategory == DeviceBindingCategory.Range)
+            {
+                value = Functions.Invert(value);
+            }
+
             CurrentValue = value;
             _callback(value);
         }

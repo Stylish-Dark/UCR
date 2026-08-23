@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Xml.Serialization;
 using HidWizards.IOWrapper.DataTransferObjects;
 using HidWizards.UCR.Core.Models.Binding;
@@ -39,6 +40,15 @@ namespace HidWizards.UCR.Core.Models
         public int DeviceNumber { get; set; }
         [XmlAttribute]
         public string Alias { get; set; }
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool Hidden { get; set; }
+        [XmlAttribute]
+        [DefaultValue(int.MaxValue)]
+        public int SortOrder { get; set; } = int.MaxValue;
+
+        [XmlIgnore]
+        public bool HasPresentationSettings => !string.IsNullOrWhiteSpace(Alias) || Hidden || SortOrder != int.MaxValue;
 
         public DeviceAlias Clone()
         {
@@ -48,7 +58,9 @@ namespace HidWizards.UCR.Core.Models
                 IdentityKind = IdentityKind,
                 IdentityValue = IdentityValue,
                 DeviceNumber = DeviceNumber,
-                Alias = Alias
+                Alias = Alias,
+                Hidden = Hidden,
+                SortOrder = SortOrder
             };
         }
     }

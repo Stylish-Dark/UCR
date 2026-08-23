@@ -15,7 +15,7 @@
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
-        <TextBlock Grid.Row="0" Text="{Binding Name}" Margin="0 12" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
+        <TextBlock Grid.Row="0" Text="{Binding Name}" Margin="0 6" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
         <ContentPresenter Content="{Binding PropertyContent, ElementName=PluginPropertyControlName}" Grid.Row="0" Grid.Column="1"/>
     </Grid>
 </UserControl>

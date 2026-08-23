@@ -11,6 +11,17 @@ namespace HidWizards.UCR.Views.Controls
             InitializeComponent();
         }
 
+
+        private void MoveUp_OnClick(object sender, RoutedEventArgs e)
+        {
+            (DataContext as MappingViewModel)?.MoveUp();
+        }
+
+        private void MoveDown_OnClick(object sender, RoutedEventArgs e)
+        {
+            (DataContext as MappingViewModel)?.MoveDown();
+        }
+
         private void Remove_OnClick(object sender, RoutedEventArgs e)
         {
             var mappingViewModel = DataContext as MappingViewModel;

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Managers;
@@ -81,6 +82,35 @@ namespace HidWizards.UCR.Tests.ModelTests
 
             configuration.ChangeConfigurationName("Movement Keys");
             Assert.That(configuration.GetFullTitleForProfile(_profile), Is.EqualTo("Movement Keys"));
+        }
+
+        [Test]
+        public void MoveMappingChangesPersistedMappingOrder()
+        {
+            _mapping.Rename("First");
+            var second = _profile.AddMapping("Second");
+            var third = _profile.AddMapping("Third");
+
+            Assert.That(_profile.MoveMapping(third, 0), Is.True);
+            Assert.That(_profile.Mappings, Is.EqualTo(new[] { third, _mapping, second }));
+            Assert.That(_profile.Mappings.Select(mapping => mapping.Title),
+                Is.EqualTo(new[] { "Third", "First", "Second" }));
+        }
+
+        [Test]
+        public void InputAxisReverseIsAppliedBeforeMappingCallback()
+        {
+            short callbackValue = 0;
+            var binding = new DeviceBinding(value => callbackValue = value, _profile, DeviceIoType.Input)
+            {
+                DeviceBindingCategory = DeviceBindingCategory.Range
+            };
+
+            binding.SetInvertInput(true);
+            binding.Callback(short.MinValue);
+
+            Assert.That(callbackValue, Is.EqualTo(short.MaxValue));
+            Assert.That(binding.CurrentValue, Is.EqualTo(short.MaxValue));
         }
 
         [Test]

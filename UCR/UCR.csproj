@@ -109,6 +109,7 @@
     <Compile Include="ViewModels\Dashboard\CreateProfileDialogViewModel.cs" />
     <Compile Include="ViewModels\Dashboard\DashboardViewModel.cs" />
     <Compile Include="ViewModels\Dashboard\DeviceItem.cs" />
+    <Compile Include="ViewModels\Dashboard\DeviceManagerViewModel.cs" />
     <Compile Include="ViewModels\Dashboard\ManageDeviceConfigurationViewModel.cs" />
     <Compile Include="ViewModels\Dashboard\ProfileDeviceListControlViewModel.cs" />
     <Compile Include="ViewModels\DeviceViewModels\DeviceViewModel.cs" />
@@ -172,6 +173,16 @@
       <DependentUpon>BoolDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="ViewModels\Dialogs\DecisionDialogViewModel.cs" />
+    <Compile Include="ViewModels\Dialogs\FilterSelectDialogViewModel.cs" />
+    <Compile Include="Views\Dialogs\DeviceManagerDialog.xaml.cs">
+      <DependentUpon>DeviceManagerDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Dialogs\FilterSelectDialog.xaml.cs">
+      <DependentUpon>FilterSelectDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Dialogs\ImportExportDialog.xaml.cs">
+      <DependentUpon>ImportExportDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Views\Dialogs\ManageDeviceConfigurationDialog.xaml.cs">
       <DependentUpon>ManageDeviceConfigurationDialog.xaml</DependentUpon>
     </Compile>
@@ -272,6 +283,18 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\Dialogs\BoolDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Dialogs\DeviceManagerDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Dialogs\FilterSelectDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Dialogs\ImportExportDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

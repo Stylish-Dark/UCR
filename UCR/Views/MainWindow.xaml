@@ -81,14 +81,6 @@
                     <Button ToolTip="Save" Command="Save">
                         <materialDesign:PackIcon Kind="ContentSave"/>
                     </Button>
-                    <Separator />
-                    <Button ToolTip="Export all profiles" Click="ExportAllProfiles">
-                        <materialDesign:PackIcon Kind="FileExport"/>
-                    </Button>
-                    <Button ToolTip="Import profile list" Click="ImportAllProfiles">
-                        <materialDesign:PackIcon Kind="FileImport"/>
-                    </Button>
-                    <Separator />
                     <Button IsEnabled="{Binding CanActivateProfile}" ToolTip="Activate profile" Click="ActivateProfile">
                         <materialDesign:PackIcon Kind="Play"/>
                     </Button>
@@ -96,11 +88,11 @@
                         <materialDesign:PackIcon Kind="Stop"/>
                     </Button>
                     <Separator />
-                    <Button ToolTip="Help" Click="Help_OnClick">
-                        <materialDesign:PackIcon Kind="Help"/>
+                    <Button ToolTip="Import / Export" Click="ImportExport_OnClick">
+                        <materialDesign:PackIcon Kind="FileExport"/>
                     </Button>
-                    <Button ToolTip="About" Click="About_OnClick">
-                        <materialDesign:PackIcon Kind="About"/>
+                    <Button ToolTip="Manage devices" Click="ManageDevices_OnClick">
+                        <materialDesign:PackIcon Kind="Settings"/>
                     </Button>
                 </ToolBar>
             </ToolBarTray>
@@ -145,6 +137,7 @@
                                   PreviewMouseMove="ProfileTree_OnPreviewMouseMove"
                                   DragOver="ProfileTree_OnDragOver"
                                   Drop="ProfileTree_OnDrop"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                   SelectedItemChanged="ProfileTree_OnSelectedItemChanged">
                             <TreeView.Style>
                                 <Style TargetType="TreeView" BasedOn="{StaticResource MaterialDesignTreeView}">
@@ -173,7 +166,8 @@
                             </TreeView.ItemContainerStyle>
                             <TreeView.ItemTemplate>
                                 <HierarchicalDataTemplate DataType="{x:Type dashboard:ProfileItem}" ItemsSource="{Binding Items}">
-                                    <TextBlock Text="{Binding Title}" Margin="4" FontSize="16" FontWeight="Medium"/>
+                                    <TextBlock Text="{Binding Title}" Margin="4" FontSize="16" FontWeight="Medium"
+                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}"/>
                                 </HierarchicalDataTemplate>
                             </TreeView.ItemTemplate>
                         </TreeView>

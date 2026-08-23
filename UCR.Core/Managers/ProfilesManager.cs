@@ -245,8 +245,15 @@ namespace HidWizards.UCR.Core.Managers
 
             var alias = _context.DeviceAliases.FirstOrDefault(candidate =>
                 DevicesManager.AliasIdentityEquals(candidate, identity));
-            if (alias == null || aliases.Any(candidate => DevicesManager.AliasIdentityEquals(candidate, alias))) return;
-            aliases.Add(alias.Clone());
+            if (alias == null || string.IsNullOrWhiteSpace(alias.Alias) ||
+                aliases.Any(candidate => DevicesManager.AliasIdentityEquals(candidate, alias))) return;
+
+            // Single-profile portability carries the friendly name only. Hide/order are local UI
+            // preferences and must not unexpectedly rearrange another machine when a profile is imported.
+            var portableAlias = alias.Clone();
+            portableAlias.Hidden = false;
+            portableAlias.SortOrder = int.MaxValue;
+            aliases.Add(portableAlias);
         }
 
         private static IEnumerable<Profile> EnumerateProfiles(IEnumerable<Profile> roots)
@@ -384,13 +391,17 @@ namespace HidWizards.UCR.Core.Managers
             foreach (var alias in aliases)
             {
                 if (alias == null || string.IsNullOrWhiteSpace(alias.ProviderName) ||
-                    string.IsNullOrWhiteSpace(alias.IdentityValue) || string.IsNullOrWhiteSpace(alias.Alias))
+                    string.IsNullOrWhiteSpace(alias.IdentityValue) || !alias.HasPresentationSettings)
                 {
-                    throw new InvalidDataException("The UCR export contains an invalid device alias.");
+                    throw new InvalidDataException("The UCR export contains invalid device presentation settings.");
                 }
                 if (alias.IdentityKind == DeviceAliasIdentityKind.LogicalSlot && alias.DeviceNumber < 0)
                 {
                     throw new InvalidDataException("The UCR export contains an invalid logical-slot device alias.");
+                }
+                if (alias.SortOrder < 0)
+                {
+                    throw new InvalidDataException("The UCR export contains an invalid device display order.");
                 }
                 if (seen.Any(existing => DevicesManager.AliasIdentityEquals(existing, alias)))
                 {

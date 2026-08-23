@@ -216,6 +216,42 @@ namespace HidWizards.UCR.Tests.FactoryTests
         }
 
         [Test]
+        public void DeviceAliasClonePreservesPresentationPreferences()
+        {
+            var source = new DeviceAlias
+            {
+                ProviderName = "SharpDX_XInput",
+                IdentityKind = DeviceAliasIdentityKind.LogicalSlot,
+                IdentityValue = "xb360",
+                DeviceNumber = 2,
+                Alias = "Player Three",
+                Hidden = true,
+                SortOrder = 7
+            };
+
+            var clone = source.Clone();
+
+            Assert.That(clone, Is.Not.SameAs(source));
+            Assert.That(clone.Alias, Is.EqualTo("Player Three"));
+            Assert.That(clone.Hidden, Is.True);
+            Assert.That(clone.SortOrder, Is.EqualTo(7));
+            Assert.That(clone.HasPresentationSettings, Is.True);
+        }
+
+        [Test]
+        public void HardwareHandlePresentationRequiresUniquePhysicalDevice()
+        {
+            var device = CreateIdentityDevice("Keyboard", "Core_Interception",
+                @"Keyboard\VID_1111&PID_2222", 0, null);
+            var duplicate = CreateIdentityDevice("Keyboard #2", "Core_Interception",
+                @"Keyboard\VID_1111&PID_2222", 1, null);
+            var manager = new DevicesManager(new HidWizards.UCR.Core.Context());
+
+            Assert.That(manager.CanPersistDeviceAlias(device, new[] { device }), Is.True);
+            Assert.That(manager.CanPersistDeviceAlias(device, new[] { device, duplicate }), Is.False);
+        }
+
+        [Test]
         public void CompatibleBindingTransfersBetweenSameProviderAndSchema()
         {
             var source = CreateCachedDevice("Keyboard A", "Core_Interception", CreateKeyboardLikeMenu());

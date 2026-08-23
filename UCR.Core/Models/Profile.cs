@@ -141,6 +141,19 @@ namespace HidWizards.UCR.Core.Models
             return true;
         }
 
+        public bool MoveMapping(Mapping mapping, int targetIndex)
+        {
+            if (mapping == null) return false;
+            var sourceIndex = Mappings.IndexOf(mapping);
+            if (sourceIndex < 0) return false;
+            if (targetIndex < 0 || targetIndex >= Mappings.Count || targetIndex == sourceIndex) return false;
+
+            Mappings.RemoveAt(sourceIndex);
+            Mappings.Insert(targetIndex, mapping);
+            Context.ContextChanged();
+            return true;
+        }
+
         #endregion
 
         #region Device
@@ -166,7 +179,7 @@ namespace HidWizards.UCR.Core.Models
         public List<Device> GetMissingDeviceList(DeviceIoType deviceIoType)
         {
             Context.DevicesManager.RefreshDeviceList();
-            var availableDeviceList = Context.DevicesManager.GetAvailableDeviceList(deviceIoType);
+            var availableDeviceList = Context.DevicesManager.GetVisibleDeviceList(deviceIoType);
             var profileDeviceList = GetDeviceConfigurationList(deviceIoType);
 
             foreach (var deviceConfiguration in profileDeviceList)

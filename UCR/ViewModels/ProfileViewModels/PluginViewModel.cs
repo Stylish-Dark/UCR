@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Models;
@@ -95,17 +96,33 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public async void AddFilter()
         {
-            var dialog = new StringDialog("Add filter", "Filter name", "");
-            var result = (bool?)await DialogHost.Show(dialog, MappingViewModel.ProfileViewModel.ProfileDialogIdentifier);
-            if (result == null || !result.Value) return;
+            var existingOnPlugin = Filters.Select(filter => filter.Name).ToList();
+            var availableNames = MappingViewModel.ProfileViewModel.Profile.GetFilters()
+                .Where(name => !existingOnPlugin.Any(existing =>
+                    string.Equals(existing, name, System.StringComparison.CurrentCultureIgnoreCase)))
+                .OrderBy(name => name, System.StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
 
-            var filterViewModel = new FilterViewModel(this, Plugin.AddFilter(dialog.Value));
-            Filters.Add(filterViewModel);
+            var dialog = new FilterSelectDialog(availableNames);
+            var result = (HidWizards.UCR.ViewModels.Dialogs.FilterSelectDialogViewModel)await DialogHost.Show(
+                dialog, MappingViewModel.ProfileViewModel.ProfileDialogIdentifier);
+            if (result == null || string.IsNullOrWhiteSpace(result.SelectedFilter)) return;
+
+            var filter = Plugin.AddFilter(result.SelectedFilter.Trim());
+            if (!Filters.Any(existing => string.Equals(existing.Name, filter.Name, System.StringComparison.CurrentCultureIgnoreCase)))
+            {
+                Filters.Add(new FilterViewModel(this, filter));
+            }
+            MappingViewModel.ProfileViewModel.RefreshFilterNames();
         }
 
         public void RemoveFilter(FilterViewModel filterViewModel)
         {
-            if (Plugin.RemoveFilter(filterViewModel.Filter)) Filters.Remove(filterViewModel);
+            if (Plugin.RemoveFilter(filterViewModel.Filter))
+            {
+                Filters.Remove(filterViewModel);
+                MappingViewModel.ProfileViewModel.RefreshFilterNames();
+            }
         }
 
         public void ToggleFilter(FilterViewModel filterViewModel)

@@ -94,6 +94,25 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void SingleProfileExportPreservesInputReverseSetting()
+        {
+            var source = new Context();
+            var profile = AddProfile(source, "Reverse setting");
+            var input = AddDeviceConfiguration(profile, DeviceIoType.Input, "Keyboard", "Core_Interception", @"Keyboard\A", 0);
+            var output = AddDeviceConfiguration(profile, DeviceIoType.Output, "Xbox", "Core_ViGEm", "xb360", 0);
+            AddButtonMapping(profile, "Test", input.Guid, output.Guid, 30, 0);
+            profile.Mappings[0].DeviceBindings[0].InvertInput = true;
+
+            var file = TempFile(".ucrprofile");
+            source.ProfilesManager.ExportProfile(profile, file, _pluginTypes);
+
+            var destination = new Context();
+            var imported = destination.ProfilesManager.ImportProfile(file, null, _pluginTypes);
+
+            Assert.That(imported.Mappings[0].DeviceBindings[0].InvertInput, Is.True);
+        }
+
+        [Test]
         public void SingleProfileCanBeImportedMoreThanOnceWithoutIdentifierCollisions()
         {
             var source = new Context();
@@ -273,6 +292,33 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void SingleProfileExportCarriesAliasButNotLocalHideOrOrderPreferences()
+        {
+            var source = new Context();
+            var profile = AddProfile(source, "Portable alias");
+            var input = AddDeviceConfiguration(profile, DeviceIoType.Input, "DirectInput Pad",
+                "SharpDX_DirectInput", "VID_1234&PID_5678", 0);
+            input.Device.HidPath = @"\\?\hid#vid_1234&pid_5678#physical-a";
+
+            var identity = DevicesManager.BuildAliasIdentity(input.Device);
+            identity.Alias = "Arcade Stick";
+            identity.Hidden = true;
+            identity.SortOrder = 2;
+            source.DeviceAliases.Add(identity);
+
+            var file = TempFile(".ucrprofile");
+            source.ProfilesManager.ExportProfile(profile, file, _pluginTypes);
+
+            var destination = new Context();
+            destination.ProfilesManager.ImportProfile(file, null, _pluginTypes);
+
+            Assert.That(destination.DeviceAliases.Count, Is.EqualTo(1));
+            Assert.That(destination.DeviceAliases[0].Alias, Is.EqualTo("Arcade Stick"));
+            Assert.That(destination.DeviceAliases[0].Hidden, Is.False);
+            Assert.That(destination.DeviceAliases[0].SortOrder, Is.EqualTo(int.MaxValue));
+        }
+
+        [Test]
         public void FullProfileListReplaceRestoresDeviceAliasesAsBackupState()
         {
             var source = new Context();
@@ -283,7 +329,9 @@ namespace HidWizards.UCR.Tests.ModelTests
                 IdentityKind = DeviceAliasIdentityKind.LogicalSlot,
                 IdentityValue = "xb360",
                 DeviceNumber = 0,
-                Alias = "Player One Pad"
+                Alias = "Player One Pad",
+                Hidden = true,
+                SortOrder = 3
             });
             source.DeviceAliases.Add(new DeviceAlias
             {
@@ -312,6 +360,10 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.That(destination.DeviceAliases.Count, Is.EqualTo(2));
             Assert.That(destination.DeviceAliases.Select(alias => alias.Alias),
                 Is.EquivalentTo(new[] { "Player One Pad", "Main Keyboard" }));
+            var restoredPlayerOne = destination.DeviceAliases.Single(alias =>
+                alias.ProviderName.Equals("SharpDX_XInput", StringComparison.OrdinalIgnoreCase));
+            Assert.That(restoredPlayerOne.Hidden, Is.True);
+            Assert.That(restoredPlayerOne.SortOrder, Is.EqualTo(3));
         }
 
         [Test]
@@ -325,7 +377,9 @@ namespace HidWizards.UCR.Tests.ModelTests
                 IdentityKind = DeviceAliasIdentityKind.LogicalSlot,
                 IdentityValue = "xb360",
                 DeviceNumber = 0,
-                Alias = "Source P1"
+                Alias = "Source P1",
+                Hidden = true,
+                SortOrder = 1
             });
             source.DeviceAliases.Add(new DeviceAlias
             {
@@ -346,16 +400,84 @@ namespace HidWizards.UCR.Tests.ModelTests
                 IdentityKind = DeviceAliasIdentityKind.LogicalSlot,
                 IdentityValue = "XB360",
                 DeviceNumber = 0,
-                Alias = "Destination P1"
+                Alias = "Destination P1",
+                Hidden = false,
+                SortOrder = 8
             });
 
             destination.ProfilesManager.ImportProfileList(file, ProfileListImportMode.Merge, _pluginTypes);
 
             Assert.That(destination.DeviceAliases.Count, Is.EqualTo(2));
-            Assert.That(destination.DeviceAliases.Single(alias => alias.ProviderName.Equals("sharpdx_xinput", StringComparison.OrdinalIgnoreCase)).Alias,
-                Is.EqualTo("Destination P1"));
+            var destinationP1 = destination.DeviceAliases.Single(alias =>
+                alias.ProviderName.Equals("sharpdx_xinput", StringComparison.OrdinalIgnoreCase));
+            Assert.That(destinationP1.Alias, Is.EqualTo("Destination P1"));
+            Assert.That(destinationP1.Hidden, Is.False);
+            Assert.That(destinationP1.SortOrder, Is.EqualTo(8));
             Assert.That(destination.DeviceAliases.Single(alias => alias.ProviderName.Equals("Core_ViGEm", StringComparison.OrdinalIgnoreCase)).Alias,
                 Is.EqualTo("Imported DS4"));
+        }
+
+        [Test]
+        public void FullProfileListReplaceRestoresPresentationOnlyDevicePreference()
+        {
+            var source = new Context();
+            AddProfile(source, "Backup");
+            source.DeviceAliases.Add(new DeviceAlias
+            {
+                ProviderName = "Core_ViGEm",
+                IdentityKind = DeviceAliasIdentityKind.LogicalSlot,
+                IdentityValue = "ds4",
+                DeviceNumber = 2,
+                Alias = null,
+                Hidden = true,
+                SortOrder = 6
+            });
+
+            var file = TempFile(".ucrprofiles");
+            source.ProfilesManager.ExportProfileList(file, _pluginTypes);
+
+            var destination = new Context();
+            destination.ProfilesManager.ImportProfileList(file, ProfileListImportMode.Replace, _pluginTypes);
+
+            Assert.That(destination.DeviceAliases.Count, Is.EqualTo(1));
+            Assert.That(destination.DeviceAliases[0].Alias, Is.Null);
+            Assert.That(destination.DeviceAliases[0].Hidden, Is.True);
+            Assert.That(destination.DeviceAliases[0].SortOrder, Is.EqualTo(6));
+        }
+
+        [Test]
+        public void ProfileImporterRejectsNegativeDeviceDisplayOrder()
+        {
+            var source = new Context();
+            var profile = AddProfile(source, "Invalid preference");
+            var package = new ProfileExportPackage
+            {
+                FormatVersion = 1,
+                Kind = ProfileExportKind.Profile,
+                Profiles = new List<Profile> { profile },
+                DeviceAliases = new List<DeviceAlias>
+                {
+                    new DeviceAlias
+                    {
+                        ProviderName = "SharpDX_XInput",
+                        IdentityKind = DeviceAliasIdentityKind.LogicalSlot,
+                        IdentityValue = "xb360",
+                        DeviceNumber = 0,
+                        Alias = "Player One",
+                        SortOrder = -1
+                    }
+                }
+            };
+
+            var file = TempFile(".ucrprofile");
+            var serializer = new XmlSerializer(typeof(ProfileExportPackage), _pluginTypes.ToArray());
+            using (var writer = new StreamWriter(file)) serializer.Serialize(writer, package);
+
+            var destination = new Context();
+            Assert.Throws<InvalidDataException>(() =>
+                destination.ProfilesManager.ImportProfile(file, null, _pluginTypes));
+            Assert.That(destination.Profiles.Count, Is.EqualTo(0));
+            Assert.That(destination.DeviceAliases.Count, Is.EqualTo(0));
         }
 
         [Test]

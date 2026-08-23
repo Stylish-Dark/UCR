@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using HidWizards.UCR.Core.Annotations;
@@ -23,6 +24,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public Visibility ShowBindMode => ShowPreview.Equals(Visibility.Visible) ? Visibility.Hidden : Visibility.Visible;
         public Visibility ShowPropertyList => PluginPropertyGroup == null ? Visibility.Collapsed : Visibility.Visible;
         public Visibility ShowBlock => DeviceBinding.IsBlockable() ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility ShowInvertInput => DeviceBinding.DeviceIoType == DeviceIoType.Input &&
+                                             DeviceBindingCategory == DeviceBindingCategory.Range
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         public PluginPropertyGroupViewModel PluginPropertyGroup { get; set; }
         public long PreviewValue => GetPreviewValue();
         public bool ShowButtonPreview => DeviceBinding.IsInBindMode || DeviceBinding.Profile.IsActive();
@@ -69,6 +74,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             get => DeviceBinding.Block;
             set => DeviceBinding.SetBlock(value);
+        }
+
+        public bool InvertInput
+        {
+            get => DeviceBinding.InvertInput;
+            set => DeviceBinding.SetInvertInput(value);
         }
 
         public string BindButtonText
@@ -132,7 +143,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         
         public void LoadDeviceInputs()
         {
-            var deviceConfigurationList = DeviceBinding.Profile.GetDeviceConfigurationList(DeviceBinding.DeviceIoType);
+            var devicesManager = DeviceBinding.Profile.Context.DevicesManager;
+            var deviceConfigurationList = DeviceBinding.Profile.GetDeviceConfigurationList(DeviceBinding.DeviceIoType)
+                .Select((configuration, index) => new
+                {
+                    Configuration = configuration,
+                    OriginalIndex = index,
+                    SortOrder = devicesManager.GetDeviceSortOrder(configuration.Device)
+                })
+                .OrderBy(item => item.SortOrder)
+                .ThenBy(item => item.OriginalIndex)
+                .Select(item => item.Configuration)
+                .ToList();
+
             Devices = new ObservableCollection<ComboBoxItemViewModel>();
             foreach (var deviceConfiguration in deviceConfigurationList)
             {
@@ -200,12 +223,20 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(SelectedDevice));
                 OnPropertyChanged(nameof(ShowBlock));
                 OnPropertyChanged(nameof(Block));
+                OnPropertyChanged(nameof(ShowInvertInput));
+                OnPropertyChanged(nameof(InvertInput));
             }
             if (propertyChangedEventArgs.PropertyName.Equals(nameof(DeviceBinding.DeviceConfigurationGuid)))
             {
                 OnPropertyChanged(nameof(BindButtonText));
                 OnPropertyChanged(nameof(ShowBlock));
                 OnPropertyChanged(nameof(Block));
+                OnPropertyChanged(nameof(ShowInvertInput));
+                OnPropertyChanged(nameof(InvertInput));
+            }
+            if (propertyChangedEventArgs.PropertyName.Equals(nameof(DeviceBinding.InvertInput)))
+            {
+                OnPropertyChanged(nameof(InvertInput));
             }
         }
         

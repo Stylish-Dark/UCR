@@ -329,6 +329,102 @@ namespace HidWizards.UCR.Views
             ReloadProfileTree();
         }
 
+        private async void ImportExport_OnClick(object sender, RoutedEventArgs e)
+        {
+            var result = (string)await DialogHost.Show(new ImportExportDialog(), "RootDialog");
+            if (string.Equals(result, "Import", StringComparison.OrdinalIgnoreCase))
+            {
+                ImportFromCombinedDialog();
+            }
+            else if (string.Equals(result, "Export", StringComparison.OrdinalIgnoreCase))
+            {
+                ExportFromCombinedDialog();
+            }
+        }
+
+        private void ImportFromCombinedDialog()
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Import UCR profile or profile list",
+                Filter = "UCR files (*.ucrprofile;*.ucrprofiles)|*.ucrprofile;*.ucrprofiles|UCR profile (*.ucrprofile)|*.ucrprofile|UCR profile list (*.ucrprofiles)|*.ucrprofiles",
+                CheckFileExists = true,
+                Multiselect = false
+            };
+            if (dialog.ShowDialog(this) != true) return;
+
+            var extension = Path.GetExtension(dialog.FileName);
+            if (string.Equals(extension, ".ucrprofiles", StringComparison.OrdinalIgnoreCase))
+            {
+                ImportProfileListFromPath(dialog.FileName);
+            }
+            else
+            {
+                ImportProfilePackageFromPath(dialog.FileName, null);
+            }
+        }
+
+        private void ExportFromCombinedDialog()
+        {
+            var selectedProfile = (ProfileTree.SelectedItem as ProfileItem)?.Profile;
+            var dialog = new SaveFileDialog
+            {
+                Title = "Export UCR",
+                AddExtension = true
+            };
+
+            if (selectedProfile != null)
+            {
+                dialog.Filter = "Selected profile (*.ucrprofile)|*.ucrprofile|All profiles (*.ucrprofiles)|*.ucrprofiles";
+                dialog.FilterIndex = 1;
+                dialog.DefaultExt = ".ucrprofile";
+                dialog.FileName = SanitizeFileName(selectedProfile.Title) + ".ucrprofile";
+            }
+            else
+            {
+                dialog.Filter = "All profiles (*.ucrprofiles)|*.ucrprofiles";
+                dialog.FilterIndex = 1;
+                dialog.DefaultExt = ".ucrprofiles";
+                dialog.FileName = "UCR Profiles.ucrprofiles";
+            }
+
+            if (dialog.ShowDialog(this) != true) return;
+
+            try
+            {
+                var exportAll = selectedProfile == null || dialog.FilterIndex == 2 ||
+                                string.Equals(Path.GetExtension(dialog.FileName), ".ucrprofiles", StringComparison.OrdinalIgnoreCase);
+                if (exportAll)
+                {
+                    var exportPath = EnsureExtension(dialog.FileName, ".ucrprofiles");
+                    Context.ProfilesManager.ExportProfileList(exportPath);
+                    MessageBox.Show(this, "All profiles exported successfully.", "Export profiles", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    var exportPath = EnsureExtension(dialog.FileName, ".ucrprofile");
+                    Context.ProfilesManager.ExportProfile(selectedProfile, exportPath);
+                    MessageBox.Show(this, "Profile exported successfully.", "Export profile", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception exception)
+            {
+                ShowTransferError("Export failed", exception);
+            }
+        }
+
+        private async void ManageDevices_OnClick(object sender, RoutedEventArgs e)
+        {
+            var dialog = new DeviceManagerDialog(Context.DevicesManager);
+            var result = (DeviceManagerViewModel)await DialogHost.Show(dialog, "RootDialog");
+            if (result == null) return;
+
+            if (!result.Apply(out var error))
+            {
+                MessageBox.Show(this, error, "Device settings", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         private void ExportProfile(object sender, RoutedEventArgs e)
         {
             if (!GetSelectedItem(out var profileItem)) return;
@@ -376,10 +472,14 @@ namespace HidWizards.UCR.Views
                 Multiselect = false
             };
             if (dialog.ShowDialog(this) != true) return;
+            ImportProfilePackageFromPath(dialog.FileName, parentProfile);
+        }
 
+        private void ImportProfilePackageFromPath(string fileName, Profile parentProfile)
+        {
             try
             {
-                Context.ProfilesManager.ImportProfile(dialog.FileName, parentProfile);
+                Context.ProfilesManager.ImportProfile(fileName, parentProfile);
                 ReloadProfileTree();
                 MessageBox.Show(this,
                     parentProfile == null ? "Profile imported successfully." : "Child profile imported successfully.",
@@ -425,7 +525,11 @@ namespace HidWizards.UCR.Views
                 Multiselect = false
             };
             if (dialog.ShowDialog(this) != true) return;
+            ImportProfileListFromPath(dialog.FileName);
+        }
 
+        private void ImportProfileListFromPath(string fileName)
+        {
             var choice = MessageBox.Show(this,
                 "How should the imported profile list be applied?\n\n" +
                 "Yes = REPLACE the current profile list with the imported backup.\n" +
@@ -440,7 +544,7 @@ namespace HidWizards.UCR.Views
 
             try
             {
-                var importedCount = Context.ProfilesManager.ImportProfileList(dialog.FileName, mode);
+                var importedCount = Context.ProfilesManager.ImportProfileList(fileName, mode);
                 if (mode == ProfileListImportMode.Replace)
                 {
                     CloseAllProfileWindows();
@@ -464,6 +568,12 @@ namespace HidWizards.UCR.Views
             {
                 profileWindow.Close();
             }
+        }
+
+        private static string EnsureExtension(string filePath, string extension)
+        {
+            if (string.Equals(Path.GetExtension(filePath), extension, StringComparison.OrdinalIgnoreCase)) return filePath;
+            return Path.ChangeExtension(filePath, extension.TrimStart('.'));
         }
 
         private static string SanitizeFileName(string value)
@@ -503,7 +613,7 @@ namespace HidWizards.UCR.Views
                 Text = "Universal Control Remapper",
                 Icon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location),
                 ContextMenuStrip = contextMenu,
-                Visible = false
+                Visible = true
             };
             _trayIcon.MouseDoubleClick += (sender, args) =>
             {
@@ -541,7 +651,7 @@ namespace HidWizards.UCR.Views
             _profileWindowsHiddenToTray.Clear();
 
             Activate();
-            _trayIcon.Visible = false;
+            _trayIcon.Visible = true;
         }
 
         private void ExitFromTray()

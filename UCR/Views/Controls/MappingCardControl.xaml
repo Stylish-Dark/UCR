@@ -8,74 +8,72 @@
              xmlns:plugin="clr-namespace:HidWizards.UCR.Views.Controls.Plugin"
              mc:Ignorable="d"
              UseLayoutRounding="True"
-             d:DataContext="{d:DesignData Source=/SampleData/MappingControlSampleData.xaml}"
-             d:DesignHeight="500" d:DesignWidth="600">
-    <materialDesign:Card Margin="4 5" Background="#212121">
+             d:DesignHeight="320" d:DesignWidth="800">
+    <Border Margin="3 4"
+            Background="#212121"
+            BorderBrush="#3D63BF"
+            BorderThickness="1"
+            CornerRadius="3">
         <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}"
                   HorizontalContentAlignment="Stretch"
                   Background="#212121"
                   Style="{StaticResource MaterialDesignExpander}">
             <Expander.Header>
-                <Grid Margin="2 0 0 0">
+                <Grid Margin="2 0 0 0" MinHeight="36">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding MappingTitle}" FontSize="16" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding MappingRoute}" Margin="0 2 0 0" Opacity="0.72" Style="{StaticResource MaterialDesignCaptionTextBlock}"/>
+                        <TextBlock Text="{Binding MappingTitle}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding MappingRoute}" Margin="0 0 0 0" Opacity="0.65" FontSize="11"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" IsEnabled="{Binding ButtonsEnabled}" VerticalAlignment="Center">
-                        <Button ToolTip="Rename mapping"
-                                Style="{StaticResource MaterialDesignCardButton}"
-                                Foreground="{StaticResource PrimaryHueMidForegroundBrush}"
-                                Click="Rename_OnClick">
-                            <materialDesign:PackIcon Kind="Edit" Width="20" Height="20"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button ToolTip="Move mapping up" Style="{StaticResource MaterialDesignCardButton}"
+                                IsEnabled="{Binding CanMoveUp}" Click="MoveUp_OnClick" Padding="6">
+                            <materialDesign:PackIcon Kind="ArrowUp" Width="18" Height="18"/>
                         </Button>
-                        <Button ToolTip="Add plugin to mapping"
-                                Style="{StaticResource MaterialDesignCardButton}"
-                                Foreground="{StaticResource PrimaryHueMidForegroundBrush}"
-                                Click="AddPlugin_OnClick">
-                            <materialDesign:PackIcon Kind="LibraryAdd" Width="20" Height="20"/>
+                        <Button ToolTip="Move mapping down" Style="{StaticResource MaterialDesignCardButton}"
+                                IsEnabled="{Binding CanMoveDown}" Click="MoveDown_OnClick" Padding="6">
+                            <materialDesign:PackIcon Kind="ArrowDown" Width="18" Height="18"/>
                         </Button>
-                        <Button ToolTip="Remove mapping"
-                                Style="{StaticResource MaterialDesignCardButton}"
-                                Foreground="{StaticResource PrimaryHueMidForegroundBrush}"
-                                Click="Remove_OnClick">
-                            <materialDesign:PackIcon Kind="Trash" Width="20" Height="20"/>
+                        <Button ToolTip="Rename mapping" Style="{StaticResource MaterialDesignCardButton}"
+                                IsEnabled="{Binding ButtonsEnabled}" Click="Rename_OnClick" Padding="6">
+                            <materialDesign:PackIcon Kind="Edit" Width="18" Height="18"/>
+                        </Button>
+                        <Button ToolTip="Add plugin to mapping" Style="{StaticResource MaterialDesignCardButton}"
+                                IsEnabled="{Binding ButtonsEnabled}" Click="AddPlugin_OnClick" Padding="6">
+                            <materialDesign:PackIcon Kind="LibraryAdd" Width="18" Height="18"/>
+                        </Button>
+                        <Button ToolTip="Remove mapping" Style="{StaticResource MaterialDesignCardButton}"
+                                IsEnabled="{Binding ButtonsEnabled}" Click="Remove_OnClick" Padding="6">
+                            <materialDesign:PackIcon Kind="Trash" Width="18" Height="18"/>
                         </Button>
                     </StackPanel>
                 </Grid>
             </Expander.Header>
 
-            <StackPanel Margin="8 4 8 8">
-                <materialDesign:Card Padding="8" Background="#212121">
-                    <ItemsControl ItemsSource="{Binding DeviceBindings}" HorizontalContentAlignment="Stretch">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <local:DeviceBindingControl DataContext="{Binding}"
-                                                            DeviceBinding="{Binding DeviceBinding}"
-                                                            Label="{Binding DeviceBindingName}"
-                                                            Category="{Binding DeviceBindingCategory}" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </materialDesign:Card>
-
-                <ItemsControl ItemsSource="{Binding Plugins}" VerticalAlignment="Stretch">
-                    <ItemsControl.Resources>
-                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
-                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                        </Style>
-                    </ItemsControl.Resources>
+            <StackPanel Margin="5 1 5 5">
+                <ItemsControl ItemsSource="{Binding DeviceBindings}" HorizontalContentAlignment="Stretch">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <plugin:PluginControl Margin="0 6 0 0" />
+                            <local:DeviceBindingControl DataContext="{Binding}"
+                                                        DeviceBinding="{Binding DeviceBinding}"
+                                                        Label="{Binding DeviceBindingName}"
+                                                        Category="{Binding DeviceBindingCategory}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <ItemsControl ItemsSource="{Binding Plugins}" VerticalAlignment="Stretch">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <plugin:PluginControl Margin="0 3 0 0"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </StackPanel>
         </Expander>
-    </materialDesign:Card>
+    </Border>
 </UserControl>

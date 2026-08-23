@@ -8,7 +8,7 @@
              xmlns:plugin="clr-namespace:HidWizards.UCR.Views.Controls.Plugin"
              xmlns:utilities="clr-namespace:HidWizards.UCR.Utilities"
              mc:Ignorable="d"
-             Padding="8 0"
+             Padding="4 0"
              d:DesignHeight="450" d:DesignWidth="800">
     <UserControl.Resources>
         <plugin:PluginGuiTemplateSelector x:Key="PluginGuiTemplateSelector" />

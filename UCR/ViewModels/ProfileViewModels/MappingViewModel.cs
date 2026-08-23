@@ -17,6 +17,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<PluginViewModel> Plugins { get; set; }
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public bool ButtonsEnabled => !ProfileViewModel.Profile.IsActive();
+        public bool CanMoveUp => ButtonsEnabled && ProfileViewModel.MappingsList != null && ProfileViewModel.MappingsList.IndexOf(this) > 0;
+        public bool CanMoveDown => ButtonsEnabled && ProfileViewModel.MappingsList != null &&
+                                   ProfileViewModel.MappingsList.IndexOf(this) >= 0 &&
+                                   ProfileViewModel.MappingsList.IndexOf(this) < ProfileViewModel.MappingsList.Count - 1;
         public string MappingRoute => Mapping != null && Mapping.Plugins.Count > 0 ? Mapping.Plugins[0].PluginName : "No plugin";
 
         private bool _isExpanded;
@@ -45,6 +49,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private void ContextOnActiveProfileChangedEvent(Profile profile)
         {
             OnPropertyChanged(nameof(ButtonsEnabled));
+            OnPropertyChanged(nameof(CanMoveUp));
+            OnPropertyChanged(nameof(CanMoveDown));
+        }
+
+        public void RefreshPositionState()
+        {
+            OnPropertyChanged(nameof(CanMoveUp));
+            OnPropertyChanged(nameof(CanMoveDown));
+        }
+
+        public void MoveUp()
+        {
+            ProfileViewModel.MoveMapping(this, -1);
+        }
+
+        public void MoveDown()
+        {
+            ProfileViewModel.MoveMapping(this, 1);
         }
 
         public void Remove()
@@ -85,6 +107,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             Plugins.Remove(pluginViewModel);
             OnPropertyChanged(nameof(MappingRoute));
+            ProfileViewModel.RefreshFilterNames();
             if (Plugins.Count == 0) DeviceBindings.Clear();
         }
 

@@ -56,7 +56,17 @@ namespace HidWizards.UCR.Core.Managers
             }
 
             ApplyAliases(result);
-            return result;
+            return SortDevices(result);
+        }
+
+        /// <summary>
+        /// Returns devices intended for user-selection surfaces. Hidden devices remain available to
+        /// runtime resolution and existing profiles, but are omitted from add/create-device pickers.
+        /// </summary>
+        public List<Device> GetVisibleDeviceList(DeviceIoType type, bool includeCache = true)
+        {
+            var devices = GetAvailableDeviceList(type, includeCache);
+            return devices.Where(device => !IsDeviceHidden(device, devices)).ToList();
         }
 
         public void RefreshDeviceList()
@@ -66,7 +76,7 @@ namespace HidWizards.UCR.Core.Managers
 
         public List<Device> GetAvailableDevicesListFromSameProvider(DeviceIoType type, Device device)
         {
-            var availableDeviceList = GetAvailableDeviceList(type);
+            var availableDeviceList = GetVisibleDeviceList(type);
             return availableDeviceList.Where(d => d.ProviderName.Equals(device.ProviderName)).ToList();
         }
 
@@ -206,15 +216,27 @@ namespace HidWizards.UCR.Core.Managers
             return FindAlias(device)?.Alias;
         }
 
+        public bool GetDeviceHidden(Device device)
+        {
+            return FindAlias(device)?.Hidden ?? false;
+        }
+
+        public int GetDeviceSortOrder(Device device)
+        {
+            return FindAlias(device)?.SortOrder ?? int.MaxValue;
+        }
+
         public bool CanPersistDeviceAlias(Device device, DeviceIoType type)
         {
+            return CanPersistDeviceAlias(device, GetAvailableDeviceList(type, false));
+        }
+
+        public bool CanPersistDeviceAlias(Device device, IEnumerable<Device> liveDevices)
+        {
             if (device == null || string.IsNullOrWhiteSpace(device.ProviderName)) return false;
-            if (FindAlias(device) != null) return true;
             if (!string.IsNullOrWhiteSpace(device.HidPath)) return true;
             if (UsesLogicalSlotIdentity(device.ProviderName)) return !string.IsNullOrWhiteSpace(device.DeviceHandle);
             if (string.IsNullOrWhiteSpace(device.DeviceHandle)) return false;
-
-            var liveDevices = GetAvailableDeviceList(type, false);
             return CountHandleMatches(device, liveDevices) == 1;
         }
 
@@ -232,14 +254,96 @@ namespace HidWizards.UCR.Core.Managers
             var identity = BuildAliasIdentity(device);
             if (identity == null)
             {
-                error = "This device does not expose enough identity information for a persistent name.";
+                error = "This device does not expose enough identity information for a persistent alias.";
+                return false;
+            }
+
+            var normalizedAlias = string.IsNullOrWhiteSpace(alias) ? null : alias.Trim();
+            var existing = _context.DeviceAliases.FirstOrDefault(candidate => AliasIdentityEquals(candidate, identity));
+
+            // Clearing a friendly name is always safe: it cannot make an ambiguous physical device
+            // claim a new identity. Preserve any independently stored hide/order preferences.
+            if (normalizedAlias == null)
+            {
+                if (existing == null)
+                {
+                    device.Alias = null;
+                    return true;
+                }
+
+                if (existing.Alias == null)
+                {
+                    device.Alias = null;
+                    return true;
+                }
+
+                existing.Alias = null;
+                device.Alias = null;
+                if (!existing.HasPresentationSettings) _context.DeviceAliases.Remove(existing);
+                _context.ContextChanged();
+                _context.OnDeviceAliasesChangedEvent();
+                return true;
+            }
+
+            if (!CanPersistDeviceAlias(device, type))
+            {
+                error = "UCR cannot safely persist an individual alias for this device because the provider does not expose a unique identity for it while identical devices are present.";
+                return false;
+            }
+
+            if (existing == null)
+            {
+                existing = identity;
+                _context.DeviceAliases.Add(existing);
+            }
+
+            if (string.Equals(existing.Alias, normalizedAlias, StringComparison.Ordinal))
+            {
+                device.Alias = normalizedAlias;
+                return true;
+            }
+
+            existing.Alias = normalizedAlias;
+            device.Alias = normalizedAlias;
+            _context.ContextChanged();
+            _context.OnDeviceAliasesChangedEvent();
+            return true;
+        }
+
+        public bool TrySetDevicePresentation(Device device, DeviceIoType type, string alias, bool hidden,
+            int sortOrder, out string error)
+        {
+            error = null;
+            if (device == null)
+            {
+                error = "No device is selected.";
+                return false;
+            }
+
+            if (_context.DeviceAliases == null) _context.DeviceAliases = new List<DeviceAlias>();
+
+            var identity = BuildAliasIdentity(device);
+            if (identity == null)
+            {
+                error = "This device does not expose enough identity information for persistent device settings.";
                 return false;
             }
 
             var existing = _context.DeviceAliases.FirstOrDefault(candidate => AliasIdentityEquals(candidate, identity));
             var normalizedAlias = string.IsNullOrWhiteSpace(alias) ? null : alias.Trim();
+            var normalizedSortOrder = sortOrder < 0 ? int.MaxValue : sortOrder;
+            var wantsPersistentSettings = normalizedAlias != null || hidden || normalizedSortOrder != int.MaxValue;
 
-            if (normalizedAlias == null)
+            // HID paths and intentional logical slots are stable. A handle-only physical device is safe
+            // only while that provider exposes exactly one matching live device; otherwise two identical
+            // units would share the same settings and UCR would be pretending to know which is which.
+            if (wantsPersistentSettings && !CanPersistDeviceAlias(device, type))
+            {
+                error = "UCR cannot safely persist individual settings for this device because the provider does not expose a unique identity for it while identical devices are present.";
+                return false;
+            }
+
+            if (!wantsPersistentSettings)
             {
                 if (existing != null)
                 {
@@ -251,26 +355,21 @@ namespace HidWizards.UCR.Core.Managers
                 return true;
             }
 
-            // An existing alias already establishes the identity choice. For a new handle-only alias,
-            // require the live provider view to contain exactly one matching physical device so we never
-            // attach a friendly name to an arbitrary duplicate enumeration slot.
-            if (existing == null && identity.IdentityKind == DeviceAliasIdentityKind.HardwareHandle)
-            {
-                var liveDevices = GetAvailableDeviceList(type, false);
-                if (CountHandleMatches(device, liveDevices) != 1)
-                {
-                    error = "UCR cannot safely give this device a persistent individual name because the provider does not expose a unique identity for it while identical devices are present.";
-                    return false;
-                }
-            }
-
             if (existing == null)
             {
                 existing = identity;
                 _context.DeviceAliases.Add(existing);
             }
+            else if (string.Equals(existing.Alias, normalizedAlias, StringComparison.Ordinal) &&
+                     existing.Hidden == hidden && existing.SortOrder == normalizedSortOrder)
+            {
+                device.Alias = normalizedAlias;
+                return true;
+            }
 
             existing.Alias = normalizedAlias;
+            existing.Hidden = hidden;
+            existing.SortOrder = normalizedSortOrder;
             device.Alias = normalizedAlias;
             _context.ContextChanged();
             _context.OnDeviceAliasesChangedEvent();
@@ -291,9 +390,14 @@ namespace HidWizards.UCR.Core.Managers
                     _context.DeviceAliases.Add(imported.Clone());
                     changed = true;
                 }
-                else if (overwriteExisting && !string.Equals(existing.Alias, imported.Alias, StringComparison.Ordinal))
+                else if (overwriteExisting &&
+                         (!string.Equals(existing.Alias, imported.Alias, StringComparison.Ordinal) ||
+                          existing.Hidden != imported.Hidden ||
+                          existing.SortOrder != imported.SortOrder))
                 {
                     existing.Alias = imported.Alias;
+                    existing.Hidden = imported.Hidden;
+                    existing.SortOrder = imported.SortOrder;
                     changed = true;
                 }
             }
@@ -397,6 +501,46 @@ namespace HidWizards.UCR.Core.Managers
             return devices.Count(candidate => candidate != null &&
                 string.Equals(candidate.ProviderName, device.ProviderName, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(candidate.DeviceHandle, device.DeviceHandle, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private bool IsDeviceHidden(Device device, IEnumerable<Device> population)
+        {
+            var preference = FindAlias(device);
+            if (preference == null || !preference.Hidden) return false;
+
+            var devices = population == null ? new List<Device>() : population.ToList();
+            if (preference.IdentityKind == DeviceAliasIdentityKind.HardwareHandle &&
+                CountHandleMatches(device, GetRelevantIdentityPopulation(device, devices)) != 1)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private List<Device> SortDevices(List<Device> devices)
+        {
+            return devices
+                .Select((device, index) =>
+                {
+                    var preference = FindAlias(device);
+                    if (preference != null && preference.IdentityKind == DeviceAliasIdentityKind.HardwareHandle &&
+                        CountHandleMatches(device, GetRelevantIdentityPopulation(device, devices)) != 1)
+                    {
+                        preference = null;
+                    }
+
+                    return new
+                    {
+                        Device = device,
+                        OriginalIndex = index,
+                        Preference = preference
+                    };
+                })
+                .OrderBy(item => item.Preference?.SortOrder ?? int.MaxValue)
+                .ThenBy(item => item.OriginalIndex)
+                .Select(item => item.Device)
+                .ToList();
         }
 
         #endregion

@@ -31,8 +31,8 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             Title = title;
             DevicesManager = devicesManager;
 
-            var inputDevices = devicesManager.GetAvailableDeviceList(DeviceIoType.Input);
-            var outputDevices = devicesManager.GetAvailableDeviceList(DeviceIoType.Output);
+            var inputDevices = devicesManager.GetVisibleDeviceList(DeviceIoType.Input);
+            var outputDevices = devicesManager.GetVisibleDeviceList(DeviceIoType.Output);
 
            InputControl = new DeviceSelectControlViewModel("Input Devices", inputDevices);
            OutputControl = new DeviceSelectControlViewModel("Output Devices", outputDevices);
