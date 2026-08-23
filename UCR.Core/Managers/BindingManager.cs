@@ -29,6 +29,7 @@ namespace HidWizards.UCR.Core.Managers
 
         private static readonly double BindModeTime = 5000.0;
         private static readonly int BindModeTick = 20;
+        private static readonly TimeSpan BindArmDelay = TimeSpan.FromMilliseconds(150);
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private readonly Context _context;
         private List<DeviceConfiguration> _deviceConfigurationList;
@@ -39,6 +40,7 @@ namespace HidWizards.UCR.Core.Managers
         private readonly Dispatcher _dispatcher;
         private bool bindmodeActive;
         private bool bindCommitPending;
+        private DateTime bindAcceptAfterUtc = DateTime.MaxValue;
 
         public delegate void EndBindModeDelegate(DeviceBinding deviceBinding);
         public event EndBindModeDelegate EndBindModeHandler;
@@ -72,6 +74,7 @@ namespace HidWizards.UCR.Core.Managers
                 _deviceConfigurationList = new List<DeviceConfiguration>();
                 _bindModeRuntimeDevices = new Dictionary<Guid, Device>();
                 bindCommitPending = false;
+                bindAcceptAfterUtc = DateTime.MaxValue;
                 bindmodeActive = true;
             }
 
@@ -93,6 +96,11 @@ namespace HidWizards.UCR.Core.Managers
                     _deviceConfigurationList.Add(deviceConfiguration);
                     _bindModeRuntimeDevices[deviceConfiguration.Guid] = runtimeDevice;
                 }
+
+                // Do not let the mouse/key event that clicked the Bind button become the new
+                // binding. WPF raises Button.Click at the tail of that same input gesture, while
+                // Interception can still deliver the gesture to detection mode immediately after.
+                bindAcceptAfterUtc = DateTime.UtcNow.Add(BindArmDelay);
 
                 BindingTimer?.Stop();
                 BindingTimer = new DispatcherTimer(DispatcherPriority.Render, _dispatcher);
@@ -133,6 +141,7 @@ namespace HidWizards.UCR.Core.Managers
 
                 bindmodeActive = false;
                 bindCommitPending = false;
+                bindAcceptAfterUtc = DateTime.MaxValue;
                 endingBinding = _deviceBinding;
                 configurations = new List<DeviceConfiguration>(_deviceConfigurationList);
                 runtimeDevices = new Dictionary<Guid, Device>(_bindModeRuntimeDevices);
@@ -160,7 +169,14 @@ namespace HidWizards.UCR.Core.Managers
                 }
             }
 
-            EndBindModeHandler?.Invoke(endingBinding);
+            try
+            {
+                EndBindModeHandler?.Invoke(endingBinding);
+            }
+            catch (Exception exception)
+            {
+                Logger.Error(exception, $"Bind-mode completion handler failed for binding={endingBinding?.Guid}");
+            }
         }
 
         private DeviceDescriptor GetDeviceDescriptor(Device device)
@@ -201,6 +217,7 @@ namespace HidWizards.UCR.Core.Managers
             lock (bindmodeLock)
             {
                 if (!bindmodeActive || bindCommitPending || _deviceBinding == null) return;
+                if (DateTime.UtcNow < bindAcceptAfterUtc) return;
             }
 
             if (bindingReport == null) return;

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Xml.Serialization;
@@ -246,9 +247,24 @@ namespace HidWizards.UCR.Core.Models.Binding
 
         public void EnterBindMode()
         {
-            Profile.Context.BindingManager.BeginBindMode(this);
+            if (IsInBindMode) return;
+
+            // Subscribe and expose bind-mode state before asking providers to enter detection mode.
+            // Some providers can report synchronously from SetDetectionMode; subscribing afterwards
+            // leaves the binding permanently stuck in bind mode if detection completes immediately.
             Profile.Context.BindingManager.EndBindModeHandler += OnEndBindModeHandler;
             IsInBindMode = true;
+
+            try
+            {
+                Profile.Context.BindingManager.BeginBindMode(this);
+            }
+            catch
+            {
+                IsInBindMode = false;
+                Profile.Context.BindingManager.EndBindModeHandler -= OnEndBindModeHandler;
+                throw;
+            }
         }
 
         public void ClearBinding()
@@ -264,7 +280,7 @@ namespace HidWizards.UCR.Core.Models.Binding
 
         private void OnEndBindModeHandler(DeviceBinding deviceBinding)
         {
-            if (deviceBinding.Guid != Guid) return;
+            if (deviceBinding == null || deviceBinding.Guid != Guid) return;
             IsInBindMode = false;
             Profile.Context.BindingManager.EndBindModeHandler -= OnEndBindModeHandler;
         }
