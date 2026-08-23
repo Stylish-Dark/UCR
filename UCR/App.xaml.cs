@@ -3,7 +3,9 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
 using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Utilities;
@@ -30,6 +32,8 @@ namespace HidWizards.UCR
         {
             base.OnStartup(e);
             AppDomain.CurrentDomain.UnhandledException += AppDomain_CurrentDomain_UnhandledException;
+            DispatcherUnhandledException += App_DispatcherUnhandledException;
+            TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
 
             mutex = new SingleGlobalInstance();
             if (mutex.HasHandle && GetProcesses().Length <= 1)
@@ -257,8 +261,23 @@ namespace HidWizards.UCR
 
         private static void AppDomain_CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
-            var exception = (Exception) e.ExceptionObject;
-            Logger.Fatal(exception.Message, exception);
+            var exception = e.ExceptionObject as Exception ?? new Exception("Unknown unhandled AppDomain exception");
+            Logger.Fatal($"Unhandled AppDomain exception. IsTerminating={e.IsTerminating}", exception);
+            Logger.Flush();
+        }
+
+        private static void App_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            Logger.Fatal("Unhandled WPF dispatcher exception", e.Exception);
+            Logger.Flush();
+            // Preserve normal crash semantics. The point of this handler is diagnostics, not swallowing bugs.
+            e.Handled = false;
+        }
+
+        private static void TaskScheduler_UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
+        {
+            Logger.Error("Unobserved task exception", e.Exception);
+            Logger.Flush();
         }
     }
 }

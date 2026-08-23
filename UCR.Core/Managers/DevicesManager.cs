@@ -66,7 +66,17 @@ namespace HidWizards.UCR.Core.Managers
         public List<Device> GetVisibleDeviceList(DeviceIoType type, bool includeCache = true)
         {
             var devices = GetAvailableDeviceList(type, includeCache);
-            return devices.Where(device => !IsDeviceHidden(device, devices)).ToList();
+            var liveDevices = GetAvailableDeviceList(type, false);
+
+            // A device that cannot be uniquely identified cannot safely carry an individual persistent
+            // alias/hide/order preference. More importantly, presenting indistinguishable units in a
+            // selection list invites the user to bind to an enumeration slot that may represent a
+            // different physical unit next time. Keep such entries available for runtime resolution and
+            // diagnostics, but force-hide them from user selection surfaces.
+            return devices.Where(device =>
+                    CanPersistDeviceAlias(device, liveDevices) &&
+                    !IsDeviceHidden(device, devices))
+                .ToList();
         }
 
         public void RefreshDeviceList()

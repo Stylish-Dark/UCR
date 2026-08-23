@@ -4,9 +4,9 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
+using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Utilities.Commands;
 using HidWizards.UCR.ViewModels;
 
@@ -297,20 +297,24 @@ namespace HidWizards.UCR.Views.Controls
 
         private void BindButton_OnClick(object sender, RoutedEventArgs e)
         {
-            if (e is KeyboardEventArgs && !((KeyEventArgs)e).Key.Equals(Key.Space))
+            try
             {
-                e.Handled = true;
-                return;
+                if (DeviceBinding.DeviceIoType.Equals(DeviceIoType.Input))
+                {
+                    if (DeviceBinding.IsInBindMode) return;
+                    if (Category.HasValue) DeviceBinding.DeviceBindingCategory = Category.Value;
+                    DeviceBinding.EnterBindMode();
+                }
+                else
+                {
+                    OpenContextMenu();
+                }
             }
-            if (DeviceBinding.DeviceIoType.Equals(DeviceIoType.Input))
+            catch (Exception exception)
             {
-                if (DeviceBinding.IsInBindMode) return;
-                if (Category.HasValue) DeviceBinding.DeviceBindingCategory = Category.Value;
-                DeviceBinding.EnterBindMode();
-            }
-            else
-            {
-                OpenContextMenu();
+                Logger.Error("Failed to enter device bind mode", exception);
+                MessageBox.Show("UCR could not start input detection for this binding. The error has been written to the log.",
+                    "Unable to bind input", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

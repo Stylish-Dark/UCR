@@ -5,8 +5,11 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              mc:Ignorable="d"
+             Background="#212121"
+             Foreground="#FFFFFF"
              d:DesignHeight="650" d:DesignWidth="900">
-    <Grid Margin="18" MinWidth="540" MinHeight="480" MaxWidth="980" MaxHeight="760">
+    <Grid Margin="18" MinWidth="540" MinHeight="480" MaxWidth="980" MaxHeight="760"
+          Background="#212121" TextElement.Foreground="#FFFFFF">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -14,17 +17,22 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="Devices" Style="{StaticResource MaterialDesignTitleTextBlock}"/>
+        <TextBlock Grid.Row="0" Text="Devices" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignTitleTextBlock}"/>
         <TextBlock Grid.Row="1" Margin="0 6 0 12" Opacity="0.72" TextWrapping="Wrap"
                    Text="Give devices readable names, hide devices you never want in add-device lists, and set their display order. Existing profile bindings are never removed by hiding a device."/>
 
         <ListView Grid.Row="2" ItemsSource="{Binding Devices}"
                   HorizontalContentAlignment="Stretch"
+                  Background="#212121"
+                  Foreground="#FFFFFF"
+                  BorderBrush="#424242"
                   ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <ListView.ItemContainerStyle>
                 <Style TargetType="ListViewItem">
                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                     <Setter Property="Padding" Value="0"/>
+                    <Setter Property="Background" Value="#212121"/>
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
                 </Style>
             </ListView.ItemContainerStyle>
             <ListView.ItemTemplate>
@@ -39,19 +47,23 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Margin="0 0 12 0">
-                                <TextBlock Text="{Binding ProviderDeviceName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding ProviderDeviceName}"/>
-                                <TextBlock Text="{Binding ProviderName}" FontSize="11" Opacity="0.62" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="{Binding IoTypes}" FontSize="11" Opacity="0.62"/>
+                                <TextBlock Text="{Binding ProviderDeviceName}" Foreground="#FFFFFF" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding ProviderDeviceName}"/>
+                                <TextBlock Text="{Binding ProviderName}" Foreground="#D0D0D0" FontSize="11" Opacity="0.82" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding IoTypes}" Foreground="#D0D0D0" FontSize="11" Opacity="0.82"/>
                             </StackPanel>
 
                             <StackPanel Grid.Column="1" Margin="0 0 12 0">
                                 <TextBox Text="{Binding Alias, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          IsEnabled="{Binding CanPersist}"
+                                         Background="#2B2B2B"
+                                         Foreground="#FFFFFF"
+                                         CaretBrush="#FFFFFF"
+                                         BorderBrush="#555555"
                                          materialDesign:HintAssist.Hint="Friendly name"/>
-                                <TextBlock Text="{Binding IdentityNote}" FontSize="10" Opacity="0.55" TextWrapping="Wrap" Margin="0 2 0 0"/>
+                                <TextBlock Text="{Binding IdentityNote}" Foreground="#C8C8C8" FontSize="10" Opacity="0.78" TextWrapping="Wrap" Margin="0 2 0 0"/>
                             </StackPanel>
 
-                            <CheckBox Grid.Column="2" Content="Hidden" VerticalAlignment="Center"
+                            <CheckBox Grid.Column="2" Content="Hidden" Foreground="#FFFFFF" VerticalAlignment="Center"
                                       IsChecked="{Binding Hidden, Mode=TwoWay}" IsEnabled="{Binding CanPersist}"/>
 
                             <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">

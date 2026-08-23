@@ -5,6 +5,7 @@ using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Tests.Factory;
+using HidWizards.UCR.ViewModels.Dashboard;
 using NUnit.Framework;
 
 namespace HidWizards.UCR.Tests.FactoryTests
@@ -249,6 +250,37 @@ namespace HidWizards.UCR.Tests.FactoryTests
 
             Assert.That(manager.CanPersistDeviceAlias(device, new[] { device }), Is.True);
             Assert.That(manager.CanPersistDeviceAlias(device, new[] { device, duplicate }), Is.False);
+        }
+
+
+        [Test]
+        public void UnsafeDeviceManagerEntryIsForcedHidden()
+        {
+            var device = CreateIdentityDevice("Ambiguous Keyboard", "Core_Interception",
+                @"Keyboard\VID_1111&PID_2222", 1, null);
+
+            var item = new DeviceManagerItemViewModel(device, DeviceIoType.Input,
+                false, null, false, "ephemeral");
+
+            Assert.That(item.CanPersist, Is.False);
+            Assert.That(item.Hidden, Is.True);
+            Assert.That(item.IdentityNote, Does.Contain("forced hidden"));
+        }
+
+        [Test]
+        public void BlockableLookupDoesNotDestroySharedBindingMenu()
+        {
+            var menu = CreateMouseLikeMenu();
+            menu[0].ChildrenNodes[0].DeviceBindingInfo.Blockable = true;
+            var topCount = menu.Count;
+            var childCount = menu[0].ChildrenNodes.Count;
+
+            var blockable = DeviceBinding.IsBlockableInMenu(menu, 1, 0, 0);
+
+            Assert.That(blockable, Is.True);
+            Assert.That(menu.Count, Is.EqualTo(topCount));
+            Assert.That(menu[0].ChildrenNodes.Count, Is.EqualTo(childCount));
+            Assert.That(menu[0].ChildrenNodes[0].Title, Is.EqualTo("Left"));
         }
 
         [Test]

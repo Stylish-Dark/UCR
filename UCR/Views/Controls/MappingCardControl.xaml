@@ -31,23 +31,28 @@
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button ToolTip="Move mapping up" Style="{StaticResource MaterialDesignCardButton}"
-                                IsEnabled="{Binding CanMoveUp}" Click="MoveUp_OnClick" Padding="6">
+                                Foreground="{StaticResource PrimaryHueMidForegroundBrush}"
+                                IsEnabled="{Binding CanMoveUp}" Click="MoveUp_OnClick">
                             <materialDesign:PackIcon Kind="ArrowUp" Width="18" Height="18"/>
                         </Button>
                         <Button ToolTip="Move mapping down" Style="{StaticResource MaterialDesignCardButton}"
-                                IsEnabled="{Binding CanMoveDown}" Click="MoveDown_OnClick" Padding="6">
+                                Foreground="{StaticResource PrimaryHueMidForegroundBrush}"
+                                IsEnabled="{Binding CanMoveDown}" Click="MoveDown_OnClick">
                             <materialDesign:PackIcon Kind="ArrowDown" Width="18" Height="18"/>
                         </Button>
                         <Button ToolTip="Rename mapping" Style="{StaticResource MaterialDesignCardButton}"
-                                IsEnabled="{Binding ButtonsEnabled}" Click="Rename_OnClick" Padding="6">
+                                Foreground="{StaticResource PrimaryHueMidForegroundBrush}"
+                                IsEnabled="{Binding ButtonsEnabled}" Click="Rename_OnClick">
                             <materialDesign:PackIcon Kind="Edit" Width="18" Height="18"/>
                         </Button>
                         <Button ToolTip="Add plugin to mapping" Style="{StaticResource MaterialDesignCardButton}"
-                                IsEnabled="{Binding ButtonsEnabled}" Click="AddPlugin_OnClick" Padding="6">
+                                Foreground="{StaticResource PrimaryHueMidForegroundBrush}"
+                                IsEnabled="{Binding ButtonsEnabled}" Click="AddPlugin_OnClick">
                             <materialDesign:PackIcon Kind="LibraryAdd" Width="18" Height="18"/>
                         </Button>
                         <Button ToolTip="Remove mapping" Style="{StaticResource MaterialDesignCardButton}"
-                                IsEnabled="{Binding ButtonsEnabled}" Click="Remove_OnClick" Padding="6">
+                                Foreground="{StaticResource PrimaryHueMidForegroundBrush}"
+                                IsEnabled="{Binding ButtonsEnabled}" Click="Remove_OnClick">
                             <materialDesign:PackIcon Kind="Trash" Width="18" Height="18"/>
                         </Button>
                     </StackPanel>

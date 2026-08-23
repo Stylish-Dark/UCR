@@ -188,8 +188,17 @@ namespace HidWizards.UCR.Core.Models.Binding
             if (device == null) return false;
 
             var deviceBindingNodes = Profile.Context.DevicesManager.GetDeviceBindingMenu(device, DeviceIoType);
+            return IsBlockableInMenu(deviceBindingNodes, KeyType, KeyValue, KeySubValue);
+        }
 
-            var searchList = deviceBindingNodes;
+        internal static bool IsBlockableInMenu(List<DeviceBindingNode> deviceBindingNodes,
+            int keyType, int keyValue, int keySubValue)
+        {
+            // Never destructively traverse the provider/cache binding menu. These lists are shared by
+            // the UI and device cache; removing nodes here can corrupt later rebind menus.
+            var searchList = deviceBindingNodes == null
+                ? new List<DeviceBindingNode>()
+                : new List<DeviceBindingNode>(deviceBindingNodes);
 
             while (searchList.Count > 0)
             {
@@ -199,7 +208,10 @@ namespace HidWizards.UCR.Core.Models.Binding
                 if (node.IsBinding)
                 {
                     var info = node.DeviceBindingInfo;
-                    if (info.KeyType == KeyType && info.KeyValue == KeyValue && info.KeySubValue == KeySubValue) return info.Blockable;
+                    if (info.KeyType == keyType && info.KeyValue == keyValue && info.KeySubValue == keySubValue)
+                    {
+                        return info.Blockable;
+                    }
                 }
 
                 if (node.ChildrenNodes != null) searchList.AddRange(node.ChildrenNodes);

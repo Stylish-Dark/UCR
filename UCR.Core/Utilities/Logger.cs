@@ -38,6 +38,12 @@ namespace HidWizards.UCR.Core.Utilities
             Log(LogLevel.Fatal, message, e);
         }
 
+
+        public static void Flush()
+        {
+            NLog.LogManager.Flush();
+        }
+
         private static void Log(LogLevel logLevel, string message, Exception e)
         {
             switch (logLevel)

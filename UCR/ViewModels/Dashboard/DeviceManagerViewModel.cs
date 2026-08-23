@@ -53,12 +53,15 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             ValidationType = type;
             CanPersist = canPersist;
             Alias = alias;
-            Hidden = hidden;
+            // If UCR cannot identify this unit reliably enough to persist presentation settings,
+            // it is unsafe to offer it as a selectable device. Keep it visible here for diagnosis,
+            // but lock it in the hidden state.
+            Hidden = canPersist ? hidden : true;
             StableKey = stableKey;
             IoTypes = type == DeviceIoType.Input ? "Input" : "Output";
             IdentityNote = canPersist
                 ? "Persistent identity available"
-                : "Provider cannot uniquely identify this unit; persistent alias/hide/order is disabled.";
+                : "Provider cannot uniquely identify this unit; it is forced hidden from device selection lists.";
         }
 
         public void AddIoType(DeviceIoType type)

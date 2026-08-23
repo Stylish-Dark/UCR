@@ -60,7 +60,7 @@ namespace HidWizards.UCR.Core
             }
             catch (DirectoryNotFoundException e)
             {
-                Logger.Error("IOWrapper provider directory not found", e);
+                Logger.Error(e, "IOWrapper provider directory not found");
             }
             
             ProfilesManager = new ProfilesManager(this, Profiles);
@@ -129,7 +129,7 @@ namespace HidWizards.UCR.Core
             }
             catch (IOException e)
             {
-                Logger.Error("Failed to load context.xml", e);
+                Logger.Error(e, "Failed to load context.xml");
                 context = new Context();
             }
             return context;
