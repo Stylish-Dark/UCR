@@ -96,7 +96,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public async void AddFilter()
         {
-            var existingOnPlugin = Filters.Select(filter => filter.Name).ToList();
+            var existingOnPlugin = Filters.Select(existingFilter => existingFilter.Name).ToList();
             var availableNames = MappingViewModel.ProfileViewModel.Profile.GetFilters()
                 .Where(name => !existingOnPlugin.Any(existing =>
                     string.Equals(existing, name, System.StringComparison.CurrentCultureIgnoreCase)))
