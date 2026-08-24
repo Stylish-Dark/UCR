@@ -1,0 +1,47 @@
+﻿<UserControl x:Class="HidWizards.UCR.Views.Dialogs.BatchDeviceChangeDialog"
+             Style="{StaticResource UcrDialogRoot}"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             MinWidth="460">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Batch device change" Style="{StaticResource MaterialDesignTitleTextBlock}" FontSize="20"/>
+        <TextBlock Grid.Row="1" Margin="0 7 0 16" Opacity="0.72" TextWrapping="Wrap"
+                   Text="Replace every binding in this profile that uses one device with another. Compatible bindings are translated; definitely incompatible bindings are cleared rather than silently mis-mapped."/>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Change from" FontWeight="SemiBold" Margin="0 0 0 5"/>
+                <ComboBox ItemsSource="{Binding SourceDevices}" SelectedItem="{Binding SelectedSource, Mode=TwoWay}" DisplayMemberPath="DisplayTitle" MinWidth="190"/>
+            </StackPanel>
+            <TextBlock Grid.Column="1" Text="→" FontSize="22" Margin="12 22" VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="2">
+                <TextBlock Text="Change to" FontWeight="SemiBold" Margin="0 0 0 5"/>
+                <ComboBox ItemsSource="{Binding TargetDevices}" SelectedItem="{Binding SelectedTarget, Mode=TwoWay}" DisplayMemberPath="DisplayTitle" MinWidth="190"/>
+            </StackPanel>
+        </Grid>
+
+        <TextBlock Grid.Row="3" Margin="0 12 0 0" Opacity="0.62" TextWrapping="Wrap"
+                   Text="Only the selected input/output side is changed. Other device bindings in the profile are untouched."/>
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 18 0 0">
+            <Button Content="APPLY" IsDefault="True" IsEnabled="{Binding CanApply}" Style="{StaticResource MaterialDesignRaisedButton}"
+                    Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" CommandParameter="{Binding ViewModel}"/>
+            <Button Content="CANCEL" IsCancel="True" Margin="8 0 0 0" Style="{StaticResource MaterialDesignFlatButton}"
+                    Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

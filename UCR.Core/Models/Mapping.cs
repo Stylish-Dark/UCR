@@ -175,6 +175,7 @@ namespace HidWizards.UCR.Core.Models
             {
                 DeviceBindings = new List<DeviceBinding>();
             }
+            Profile.PruneUndefinedFilterReferencesRecursive();
             Profile.Context.ContextChanged();
 
             return true;

@@ -46,6 +46,12 @@ namespace HidWizards.UCR.Core.Managers
         {
             if (refreshDevices) _context.IOController.RefreshDevices();
 
+            if (profile.PruneUndefinedFilterReferencesRecursive())
+            {
+                Logger.Warn($"Removed undefined filter references before activating profile: {{{profile.ProfileBreadCrumbs()}}}");
+                _context.ContextChanged();
+            }
+
             Logger.Debug($"Activating profile: {{{profile.ProfileBreadCrumbs()}}}");
             if (SubscriptionState?.ActiveProfile?.Guid == profile.Guid) return true;
 
@@ -171,19 +177,33 @@ namespace HidWizards.UCR.Core.Managers
         }
         private bool ConfigureFiltersForState(SubscriptionState state, Profile profile)
         {
+            // Allocate runtime state from actual filter definitions, never from mappings that merely
+            // reference a filter. Build the set from the subscription mappings so shadow clones get
+            // their corresponding shadow definition keys as well.
             var uniqueFilters = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
-
             foreach (var mappingSubscription in state.MappingSubscriptions)
             {
-                foreach (var plugin in mappingSubscription.Mapping.Plugins)
+                var runtimeMapping = mappingSubscription.Mapping;
+                foreach (var plugin in runtimeMapping.Plugins)
                 {
-                    plugin.Filters.ForEach(filter => uniqueFilters.Add(filter.Name));
+                    var definition = plugin.GetDefinedFilterName();
+                    if (string.IsNullOrWhiteSpace(definition)) continue;
+
+                    var key = definition.Trim().ToLowerInvariant();
+                    if (runtimeMapping.IsShadowMapping)
+                    {
+                        key = Filter.GetShadowName(key, runtimeMapping.ShadowDeviceNumber);
+                    }
+                    uniqueFilters.Add(key);
                 }
             }
 
             foreach (var uniqueFilter in uniqueFilters)
             {
-                state.FilterState.FilterRuntimeDictionary.Add(uniqueFilter.ToLower(), false);
+                if (!state.FilterState.FilterRuntimeDictionary.ContainsKey(uniqueFilter))
+                {
+                    state.FilterState.FilterRuntimeDictionary.Add(uniqueFilter, false);
+                }
             }
 
             return true;
@@ -244,7 +264,7 @@ namespace HidWizards.UCR.Core.Managers
             }
             catch (Exception e)
             {
-                Logger.Error($"Failed to subscribe input: {e.Message}");
+                Logger.Error(e, "Failed to subscribe input");
                 return false;
             }
         }

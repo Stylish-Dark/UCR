@@ -177,11 +177,19 @@
     </Compile>
     <Compile Include="ViewModels\Dialogs\DecisionDialogViewModel.cs" />
     <Compile Include="ViewModels\Dialogs\FilterSelectDialogViewModel.cs" />
+    <Compile Include="ViewModels\Dialogs\BatchDeviceChangeDialogViewModel.cs" />
+    <Compile Include="ViewModels\Dialogs\RenameMappingsDialogViewModel.cs" />
     <Compile Include="Views\Dialogs\DeviceManagerDialog.xaml.cs">
       <DependentUpon>DeviceManagerDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\Dialogs\FilterSelectDialog.xaml.cs">
       <DependentUpon>FilterSelectDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Dialogs\BatchDeviceChangeDialog.xaml.cs">
+      <DependentUpon>BatchDeviceChangeDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Views\Dialogs\RenameMappingsDialog.xaml.cs">
+      <DependentUpon>RenameMappingsDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\Dialogs\ImportExportDialog.xaml.cs">
       <DependentUpon>ImportExportDialog.xaml</DependentUpon>
@@ -294,6 +302,14 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\Dialogs\FilterSelectDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Dialogs\BatchDeviceChangeDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Dialogs\RenameMappingsDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

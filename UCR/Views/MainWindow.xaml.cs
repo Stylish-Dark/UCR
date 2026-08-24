@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Media;
 using System.Runtime.InteropServices;
@@ -15,6 +16,7 @@ using System.Windows.Threading;
 using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
+using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Utilities;
 using HidWizards.UCR.ViewModels.Dashboard;
 using HidWizards.UCR.Views.Dialogs;
@@ -430,6 +432,29 @@ namespace HidWizards.UCR.Views
             catch (Exception exception)
             {
                 ShowTransferError("Export failed", exception);
+            }
+        }
+
+        private void OpenLogs_OnClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var path = Logger.GetLogDirectory();
+                System.IO.Directory.CreateDirectory(path);
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = "\"" + path + "\"",
+                    UseShellExecute = true
+                });
+                Logger.Info("Opened diagnostic logs folder: " + path);
+            }
+            catch (Exception exception)
+            {
+                Logger.Error("Unable to open the diagnostic logs folder", exception);
+                HidWizards.UCR.Utilities.DarkMessageBox.Show(
+                    "UCR could not open the logs folder. The logs remain under the UCR 'logs' directory.",
+                    "Unable to open logs", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 

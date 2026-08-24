@@ -6,6 +6,7 @@ using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
+using HidWizards.UCR.Plugins.Filter;
 using HidWizards.UCR.Plugins.Remapper;
 using HidWizards.UCR.Tests.Factory;
 using NUnit.Framework;
@@ -123,6 +124,72 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.That(plugin.Outputs, Is.Not.Null);
             Assert.That(plugin.Profile, Is.EqualTo(_profile));
             Assert.That(_context.IsNotSaved, Is.True);
+        }
+
+        [Test]
+        public void FilterDefinitionsComeFromFilterMappingsNotConsumerReferences()
+        {
+            var producerMapping = _profile.AddMapping("Filter producer");
+            var producer = new ButtonToFilter { FilterName = "Aim Mode" };
+            _profile.AddPlugin(producerMapping, producer);
+
+            var consumerMapping = _profile.AddMapping("Consumer");
+            var consumer = new ButtonToButton();
+            _profile.AddPlugin(consumerMapping, consumer);
+            consumer.AddFilter("Not A Definition");
+
+            var definitions = _profile.GetFilters();
+
+            Assert.That(definitions, Does.Contain("Aim Mode"));
+            Assert.That(definitions, Does.Not.Contain("Not A Definition"));
+        }
+
+        [Test]
+        public void RenamingFilterDefinitionRenamesExistingReferences()
+        {
+            var producerMapping = _profile.AddMapping("Filter producer");
+            var producer = new ButtonToFilter { FilterName = "Aim Mode" };
+            _profile.AddPlugin(producerMapping, producer);
+
+            var consumerMapping = _profile.AddMapping("Consumer");
+            var consumer = new ButtonToButton();
+            _profile.AddPlugin(consumerMapping, consumer);
+            consumer.AddFilter("Aim Mode");
+
+            var filterNameProperty = producer.PluginPropertyGroups
+                .SelectMany(group => group.PluginProperties)
+                .Single(property => property.PropertyInfo.Name == nameof(ButtonToFilter.FilterName));
+            filterNameProperty.Property = "Precision Mode";
+
+            Assert.That(consumer.Filters.Single().Name, Is.EqualTo("Precision Mode"));
+            Assert.That(_profile.GetFilters(), Does.Contain("Precision Mode"));
+            Assert.That(_profile.GetFilters(), Does.Not.Contain("Aim Mode"));
+        }
+
+        [Test]
+        public void RenamingOneOfDuplicateFilterDefinitionsDoesNotStealExistingReferences()
+        {
+            var firstMapping = _profile.AddMapping("First producer");
+            var first = new ButtonToFilter { FilterName = "Shared" };
+            _profile.AddPlugin(firstMapping, first);
+
+            var secondMapping = _profile.AddMapping("Second producer");
+            var second = new ButtonToFilter { FilterName = "Shared" };
+            _profile.AddPlugin(secondMapping, second);
+
+            var consumerMapping = _profile.AddMapping("Consumer");
+            var consumer = new ButtonToButton();
+            _profile.AddPlugin(consumerMapping, consumer);
+            consumer.AddFilter("Shared");
+
+            var filterNameProperty = first.PluginPropertyGroups
+                .SelectMany(group => group.PluginProperties)
+                .Single(property => property.PropertyInfo.Name == nameof(ButtonToFilter.FilterName));
+            filterNameProperty.Property = "Renamed";
+
+            Assert.That(consumer.Filters.Single().Name, Is.EqualTo("Shared"));
+            Assert.That(_profile.GetFilters(), Does.Contain("Shared"));
+            Assert.That(_profile.GetFilters(), Does.Contain("Renamed"));
         }
 
         [Test]

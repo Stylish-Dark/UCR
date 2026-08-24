@@ -47,8 +47,10 @@
             <Style x:Key="UcrDialogRoot" TargetType="{x:Type UserControl}">
                 <Setter Property="Background" Value="{DynamicResource UcrDialogBackgroundBrush}"/>
                 <Setter Property="TextElement.Foreground" Value="{DynamicResource UcrDialogForegroundBrush}"/>
+                <Setter Property="FontSize" Value="14"/>
             </Style>
             <Style TargetType="{x:Type Window}" >
+                <Setter Property="FontSize" Value="14"/>
                 <Setter Property="WindowChrome.WindowChrome">
                     <Setter.Value>
                         <WindowChrome

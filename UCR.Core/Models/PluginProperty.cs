@@ -18,8 +18,21 @@ namespace HidWizards.UCR.Core.Models
             get => PropertyInfo.GetValue(Plugin);
             set
             {
-                if (value.Equals(PropertyInfo.GetValue(Plugin))) return;
-                PropertyInfo.SetValue(Plugin, Convert.ChangeType(value, PropertyInfo.PropertyType, CultureInfo.InvariantCulture));
+                var previousValue = PropertyInfo.GetValue(Plugin);
+                if (Equals(value, previousValue)) return;
+
+                var convertedValue = Convert.ChangeType(value, PropertyInfo.PropertyType, CultureInfo.InvariantCulture);
+                PropertyInfo.SetValue(Plugin, convertedValue);
+
+                if (string.Equals(PropertyInfo.Name, "FilterName", StringComparison.Ordinal) &&
+                    string.Equals(Plugin.Group, "Filter", StringComparison.OrdinalIgnoreCase))
+                {
+                    var oldName = previousValue as string;
+                    var newName = convertedValue as string;
+                    if (!string.IsNullOrWhiteSpace(oldName)) Plugin.Profile.RenameFilterReferences(oldName, newName);
+                    Plugin.OnFilterDefinitionChanged(oldName, newName);
+                }
+
                 if (Plugin.Profile.IsActive())
                 {
                     Plugin.InitializeCacheValues();

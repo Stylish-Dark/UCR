@@ -21,8 +21,8 @@
         </Grid.ColumnDefinitions>
 
         <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0 0 8 0">
-            <TextBlock Text="{Binding DeviceBindingName}" FontWeight="SemiBold" FontSize="14"/>
-            <TextBlock Text="{Binding IoTypeName}" Opacity="0.66" FontSize="11" Margin="0 1 0 0"/>
+            <TextBlock Text="{Binding DeviceBindingName}" FontWeight="SemiBold" FontSize="15"/>
+            <TextBlock Text="{Binding IoTypeName}" Opacity="0.66" FontSize="14" Margin="0 1 0 0"/>
         </StackPanel>
 
         <ComboBox Grid.Row="0" Grid.Column="1"
@@ -76,11 +76,11 @@
 
         <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Vertical" Margin="8 0 0 0" VerticalAlignment="Center">
             <StackPanel Orientation="Horizontal" Visibility="{Binding ShowBlock}" VerticalAlignment="Center" Margin="0 0 0 2">
-                <TextBlock Text="Block" VerticalAlignment="Center" Margin="0 0 6 0" FontSize="12"/>
+                <TextBlock Text="Block" VerticalAlignment="Center" Margin="0 0 6 0" FontSize="14"/>
                 <ToggleButton IsChecked="{Binding Block, Mode=TwoWay}" Style="{StaticResource MaterialDesignSwitchToggleButton}"/>
             </StackPanel>
             <StackPanel Orientation="Horizontal" Visibility="{Binding ShowInvertInput}" VerticalAlignment="Center">
-                <TextBlock Text="Reverse" VerticalAlignment="Center" Margin="0 0 6 0" FontSize="12" ToolTip="Reverse this input axis direction"/>
+                <TextBlock Text="Reverse" VerticalAlignment="Center" Margin="0 0 6 0" FontSize="14" ToolTip="Reverse this input axis direction"/>
                 <ToggleButton IsChecked="{Binding InvertInput, Mode=TwoWay}" Style="{StaticResource MaterialDesignSwitchToggleButton}"/>
             </StackPanel>
         </StackPanel>

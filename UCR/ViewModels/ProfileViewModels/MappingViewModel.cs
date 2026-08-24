@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Models;
+using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Views.Dialogs;
 using MaterialDesignThemes.Wpf;
 
@@ -41,6 +42,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public List<MappingHeaderToken> MappingRouteTokens => BuildMappingRouteTokens(MappingRouteDisplay);
         public bool HasFilters => Mapping != null && Mapping.Plugins != null &&
                                   Mapping.Plugins.Any(plugin => plugin.Filters != null && plugin.Filters.Count > 0);
+        public string CollapsedSummary => BuildCollapsedSummary();
 
         private bool _isExpanded;
         public bool IsExpanded
@@ -63,6 +65,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             DeviceBindings = new ObservableCollection<DeviceBindingViewModel>();
             PopulateDeviceBindingsViewModels();
             PopulatePlugins(mapping);
+            SubscribeSummaryBindings();
         }
 
         private void ContextOnActiveProfileChangedEvent(Profile profile)
@@ -76,6 +79,37 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             OnPropertyChanged(nameof(CanMoveUp));
             OnPropertyChanged(nameof(CanMoveDown));
+        }
+
+        public void RefreshCollapsedSummary()
+        {
+            OnPropertyChanged(nameof(CollapsedSummary));
+        }
+
+        public void RefreshTitle()
+        {
+            OnPropertyChanged(nameof(MappingTitle));
+        }
+
+        private void SubscribeSummaryBindings()
+        {
+            foreach (var binding in DeviceBindings) SubscribeSummaryBinding(binding);
+            foreach (var plugin in Plugins)
+            {
+                foreach (var binding in plugin.DeviceBindings) SubscribeSummaryBinding(binding);
+            }
+        }
+
+        private void SubscribeSummaryBinding(DeviceBindingViewModel binding)
+        {
+            if (binding == null) return;
+            binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
+            binding.PropertyChanged += SummaryBindingOnPropertyChanged;
+        }
+
+        private void SummaryBindingOnPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            RefreshCollapsedSummary();
         }
 
         public void MoveUp()
@@ -98,11 +132,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var newPlugin = ProfileViewModel.Profile.Context.PluginManager.GetNewPlugin(plugin);
             if (!Mapping.AddPlugin(newPlugin)) return;
 
-            Plugins.Add(new PluginViewModel(this, newPlugin));
+            var pluginViewModel = new PluginViewModel(this, newPlugin);
+            Plugins.Add(pluginViewModel);
+            foreach (var binding in pluginViewModel.DeviceBindings) SubscribeSummaryBinding(binding);
             RefreshHeaderState();
+            RefreshCollapsedSummary();
             if (Plugins.Count != 1) return;
             
             PopulateDeviceBindingsViewModels();
+            foreach (var binding in DeviceBindings) SubscribeSummaryBinding(binding);
+            RefreshCollapsedSummary();
         }
 
         private void PopulateDeviceBindingsViewModels()
@@ -126,7 +165,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             Plugins.Remove(pluginViewModel);
             RefreshHeaderState();
+            RefreshCollapsedSummary();
             ProfileViewModel.RefreshFilterNames();
+            ProfileViewModel.RefreshFilterReferenceLabels();
             if (Plugins.Count == 0) DeviceBindings.Clear();
         }
 
@@ -195,13 +236,61 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+        private string BuildCollapsedSummary()
+        {
+            var inputs = DeviceBindings.Select(DescribeBinding).Where(value => !string.IsNullOrWhiteSpace(value)).ToList();
+            var outputs = new List<string>();
+
+            var lastPlugin = Plugins.LastOrDefault();
+            if (lastPlugin != null)
+            {
+                outputs.AddRange(lastPlugin.DeviceBindings.Select(DescribeBinding).Where(value => !string.IsNullOrWhiteSpace(value)));
+                if (outputs.Count == 0)
+                {
+                    var filterName = lastPlugin.Plugin.GetDefinedFilterName();
+                    if (!string.IsNullOrWhiteSpace(filterName)) outputs.Add("Filter: " + filterName);
+                }
+            }
+
+            var inputText = inputs.Count == 0 ? "No input bound" : JoinCompact(inputs);
+            var outputText = outputs.Count == 0 ? "No output bound" : JoinCompact(outputs);
+            return inputText + "  →  " + outputText;
+        }
+
+        private string DescribeBinding(DeviceBindingViewModel viewModel)
+        {
+            if (viewModel == null || viewModel.DeviceBinding == null) return null;
+            var binding = viewModel.DeviceBinding;
+            var configuration = ProfileViewModel.Profile.GetDeviceConfiguration(binding.DeviceIoType, binding.DeviceConfigurationGuid);
+            var deviceName = configuration?.GetFullTitleForProfile(ProfileViewModel.Profile);
+            if (string.IsNullOrWhiteSpace(deviceName)) deviceName = binding.DeviceIoType == DeviceIoType.Input ? "Input device" : "Output device";
+
+            var controlName = binding.IsBound ? binding.BoundName() : "unbound";
+            return Truncate(deviceName, 22) + ": " + Truncate(controlName, 24);
+        }
+
+        private static string JoinCompact(IList<string> values)
+        {
+            if (values.Count == 1) return values[0];
+            if (values.Count == 2) return values[0] + " + " + values[1];
+            return values[0] + " + " + (values.Count - 1) + " more";
+        }
+
+        private static string Truncate(string value, int maximumLength)
+        {
+            if (string.IsNullOrEmpty(value) || value.Length <= maximumLength) return value;
+            return value.Substring(0, maximumLength - 1) + "…";
+        }
+
         public async void Rename()
         {
             var dialog = new StringDialog("Rename mapping", "Mapping name", Mapping.Title);
             var result = (bool?)await DialogHost.Show(dialog, ProfileViewModel.ProfileDialogIdentifier);
             if (result == null || !result.Value) return;
 
+            var oldTitle = Mapping.Title;
             Mapping.Rename(dialog.Value);
+            Logger.Info("Mapping renamed: '" + oldTitle + "' -> '" + Mapping.Title + "'");
             OnPropertyChanged(nameof(MappingTitle));
         }
 

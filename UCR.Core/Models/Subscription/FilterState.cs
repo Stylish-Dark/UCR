@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using HidWizards.UCR.Core.Utilities;
 
 namespace HidWizards.UCR.Core.Models.Subscription
 {
@@ -20,7 +21,18 @@ namespace HidWizards.UCR.Core.Models.Subscription
 
         public void SetFilterState(string filterName, bool value)
         {
-            var previousValue = FilterRuntimeDictionary[filterName];
+            if (string.IsNullOrWhiteSpace(filterName))
+            {
+                Logger.Warn("Ignored an attempt to write an unnamed filter state");
+                return;
+            }
+
+            bool previousValue;
+            if (!FilterRuntimeDictionary.TryGetValue(filterName, out previousValue))
+            {
+                Logger.Error("Ignored an attempt to write undefined filter state: " + filterName, null);
+                return;
+            }
             if (previousValue == value) return;
 
             FilterRuntimeDictionary[filterName] = value;
@@ -29,7 +41,20 @@ namespace HidWizards.UCR.Core.Models.Subscription
 
         public void ToggleFilterState(string filterName)
         {
-            FilterRuntimeDictionary[filterName] = !FilterRuntimeDictionary[filterName];
+            if (string.IsNullOrWhiteSpace(filterName))
+            {
+                Logger.Warn("Ignored an attempt to toggle an unnamed filter state");
+                return;
+            }
+
+            bool previousValue;
+            if (!FilterRuntimeDictionary.TryGetValue(filterName, out previousValue))
+            {
+                Logger.Error("Ignored an attempt to toggle undefined filter state: " + filterName, null);
+                return;
+            }
+
+            FilterRuntimeDictionary[filterName] = !previousValue;
             FilterStateChangedEvent?.Invoke(filterName, FilterRuntimeDictionary[filterName]);
         }
     }

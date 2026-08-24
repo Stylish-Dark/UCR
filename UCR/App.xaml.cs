@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -31,6 +32,7 @@ namespace HidWizards.UCR
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+            Logger.InitializeSession();
             AppDomain.CurrentDomain.UnhandledException += AppDomain_CurrentDomain_UnhandledException;
             DispatcherUnhandledException += App_DispatcherUnhandledException;
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
@@ -89,7 +91,32 @@ namespace HidWizards.UCR
         private void InitializeUcr()
         {
             RunStartupStage("Loading interface resources...", () => new ResourceLoader().Load());
-            RunStartupStage("Initializing device providers and loading profiles...", () => context = Context.Load());
+            RunStartupStage("Initializing device providers and loading profiles...", () =>
+            {
+                context = Context.Load();
+                Logger.SetDiagnosticContextProvider(BuildDiagnosticContextSnapshot);
+            });
+        }
+
+        private string BuildDiagnosticContextSnapshot()
+        {
+            var currentContext = context;
+            if (currentContext == null) return "Context: unavailable";
+
+            var builder = new StringBuilder();
+            builder.AppendLine("Top-level profiles: " + (currentContext.Profiles?.Count ?? 0));
+            var active = currentContext.ActiveProfile;
+            if (active == null)
+            {
+                builder.Append("Active profile: none");
+                return builder.ToString();
+            }
+
+            builder.AppendLine("Active profile: " + active.ProfileBreadCrumbs());
+            builder.AppendLine("Mappings: " + (active.Mappings?.Count ?? 0));
+            builder.AppendLine("Input device configurations: " + (active.InputDeviceConfigurations?.Count ?? 0));
+            builder.Append("Output device configurations: " + (active.OutputDeviceConfigurations?.Count ?? 0));
+            return builder.ToString();
         }
 
         private void RunStartupStage(string status, Action action)
@@ -264,12 +291,14 @@ namespace HidWizards.UCR
         {
             var exception = e.ExceptionObject as Exception ?? new Exception("Unknown unhandled AppDomain exception");
             Logger.Fatal($"Unhandled AppDomain exception. IsTerminating={e.IsTerminating}", exception);
+            Logger.WriteCrashReport("AppDomain.CurrentDomain.UnhandledException", exception);
             Logger.Flush();
         }
 
         private static void App_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
             Logger.Fatal("Unhandled WPF dispatcher exception", e.Exception);
+            Logger.WriteCrashReport("Application.DispatcherUnhandledException", e.Exception);
             Logger.Flush();
             // Preserve normal crash semantics. The point of this handler is diagnostics, not swallowing bugs.
             e.Handled = false;

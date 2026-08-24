@@ -15,18 +15,19 @@
         </Grid.RowDefinitions>
         <TextBlock Grid.Row="0" Text="Add filter" Style="{StaticResource MaterialDesignTitleTextBlock}"/>
         <StackPanel Grid.Row="1" Margin="0 16 0 0">
-            <TextBlock Text="Choose an existing filter, or type a new name." Opacity="0.72" Margin="0 0 0 8"/>
-            <ComboBox IsEditable="True"
+            <TextBlock Text="Choose one of the filters defined by a Filter mapping." Opacity="0.72" Margin="0 0 0 8"/>
+            <ComboBox IsEditable="False"
                       IsTextSearchEnabled="True"
                       ItemsSource="{Binding FilterNames}"
-                      Text="{Binding SelectedFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                      materialDesign:HintAssist.Hint="Filter name"
+                      SelectedItem="{Binding SelectedFilter, Mode=TwoWay}"
+                      materialDesign:HintAssist.Hint="Existing filter"
                       MinWidth="320"/>
         </StackPanel>
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 18 0 0">
             <Button Content="ADD"
                     IsDefault="True"
                     Style="{StaticResource MaterialDesignRaisedButton}"
+                    IsEnabled="{Binding HasSelection}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
                     CommandParameter="{Binding ViewModel}"/>
             <Button Content="CANCEL"

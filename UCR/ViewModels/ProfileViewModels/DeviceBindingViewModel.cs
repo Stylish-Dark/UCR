@@ -194,6 +194,67 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             SelectedDevice = selectedDevice;
         }
 
+        public DeviceBindingTransferCompatibility ChangeDeviceConfiguration(Guid selectedDeviceConfigurationGuid)
+        {
+            var selectedDeviceConfiguration = DeviceBinding.Profile.GetDeviceConfiguration(
+                DeviceBinding.DeviceIoType, selectedDeviceConfigurationGuid);
+            if (selectedDeviceConfiguration == null) return DeviceBindingTransferCompatibility.Unknown;
+
+            var previousDeviceConfiguration = DeviceBinding.Profile.GetDeviceConfiguration(
+                DeviceBinding.DeviceIoType, DeviceBinding.DeviceConfigurationGuid);
+
+            var transfer = DeviceBindingTransferResult.For(
+                DeviceBindingTransferCompatibility.Unknown,
+                DeviceBinding);
+
+            if (DeviceBinding.IsBound && previousDeviceConfiguration != null &&
+                previousDeviceConfiguration.Guid != selectedDeviceConfiguration.Guid)
+            {
+                transfer = DeviceBindingCompatibility.EvaluateTransfer(
+                    previousDeviceConfiguration.Device,
+                    selectedDeviceConfiguration.Device,
+                    DeviceBinding.Profile.Context,
+                    DeviceBinding.DeviceIoType,
+                    DeviceBinding,
+                    DeviceBindingCategory);
+            }
+
+            if (transfer.Compatibility == DeviceBindingTransferCompatibility.Incompatible)
+            {
+                DeviceBinding.SetDeviceConfigurationGuid(selectedDeviceConfiguration.Guid, false);
+            }
+            else if (transfer.Compatibility == DeviceBindingTransferCompatibility.Compatible)
+            {
+                DeviceBinding.SetDeviceConfigurationGuid(
+                    selectedDeviceConfiguration.Guid,
+                    true,
+                    transfer.KeyType,
+                    transfer.KeyValue,
+                    transfer.KeySubValue);
+            }
+            else
+            {
+                // Unknown remains deliberately non-destructive. Preserve the existing semantic key
+                // unless the compatibility layer can positively prove that it is incompatible.
+                DeviceBinding.SetDeviceConfigurationGuid(selectedDeviceConfiguration.Guid, true);
+            }
+
+            SetSelectDevice();
+            OnPropertyChanged(nameof(SelectedDevice));
+            OnPropertyChanged(nameof(BindButtonText));
+            OnPropertyChanged(nameof(ShowBlock));
+            OnPropertyChanged(nameof(Block));
+            OnPropertyChanged(nameof(ShowInvertInput));
+            OnPropertyChanged(nameof(InvertInput));
+            Logger.Info("Binding device changed. io=" + DeviceBinding.DeviceIoType +
+                        "; category=" + DeviceBindingCategory +
+                        "; from=" + (previousDeviceConfiguration?.GetFullTitleForProfile(DeviceBinding.Profile) ?? "unavailable") +
+                        "; to=" + selectedDeviceConfiguration.GetFullTitleForProfile(DeviceBinding.Profile) +
+                        "; compatibility=" + transfer.Compatibility +
+                        "; preserved=" + DeviceBinding.IsBound);
+            return transfer.Compatibility;
+        }
+
         public void CurrentValueChanged()
         {
             if (!GuiInvalidated) return;

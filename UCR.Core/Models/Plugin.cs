@@ -27,6 +27,8 @@ namespace HidWizards.UCR.Core.Models
         internal FilterState FilterState { get; set; }
         internal Mapping RuntimeMapping { get; set; }
 
+        public event Action<string, string> FilterDefinitionChanged;
+
         #region Properties
 
         [XmlIgnore]
@@ -145,20 +147,39 @@ namespace HidWizards.UCR.Core.Models
 
         protected void WriteFilterState(string filterName, bool value)
         {
-            RuntimeMapping.FilterState.SetFilterState(GetFilterName(filterName), value);
+            var runtimeName = GetFilterName(filterName);
+            if (runtimeName == null) return;
+            RuntimeMapping.FilterState.SetFilterState(runtimeName, value);
         }
 
         protected void ToggleFilterState(string filterName)
         {
-            RuntimeMapping.FilterState.ToggleFilterState(GetFilterName(filterName));
+            var runtimeName = GetFilterName(filterName);
+            if (runtimeName == null) return;
+            RuntimeMapping.FilterState.ToggleFilterState(runtimeName);
         }
 
         private string GetFilterName(string filterName)
         {
-            var filter = filterName.ToLower();
-            return RuntimeMapping.IsShadowMapping 
-                ? Filter.GetShadowName(filter, RuntimeMapping.ShadowDeviceNumber) 
+            if (string.IsNullOrWhiteSpace(filterName)) return null;
+            var filter = filterName.Trim().ToLowerInvariant();
+            return RuntimeMapping.IsShadowMapping
+                ? Filter.GetShadowName(filter, RuntimeMapping.ShadowDeviceNumber)
                 : filter;
+        }
+
+        public string GetDefinedFilterName()
+        {
+            if (!string.Equals(Group, "Filter", StringComparison.OrdinalIgnoreCase)) return null;
+            var property = GetType().GetProperty("FilterName", BindingFlags.Instance | BindingFlags.Public);
+            if (property == null || property.PropertyType != typeof(string)) return null;
+            var value = property.GetValue(this) as string;
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+
+        internal void OnFilterDefinitionChanged(string oldName, string newName)
+        {
+            FilterDefinitionChanged?.Invoke(oldName, newName);
         }
 
         #endregion

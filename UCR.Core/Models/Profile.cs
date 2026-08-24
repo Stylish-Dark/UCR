@@ -166,6 +166,7 @@ namespace HidWizards.UCR.Core.Models
         public bool RemoveMapping(Mapping mapping)
         {
             if (!Mappings.Remove(mapping)) return false;
+            PruneUndefinedFilterReferencesRecursive();
             Context.ContextChanged();
             return true;
         }
@@ -276,6 +277,7 @@ namespace HidWizards.UCR.Core.Models
         {
             if (!Mappings.Contains(mapping)) return false;
             mapping.Plugins.Remove(plugin);
+            PruneUndefinedFilterReferencesRecursive();
             Context.ContextChanged();
             return true;
         }
@@ -284,6 +286,8 @@ namespace HidWizards.UCR.Core.Models
 
         public HashSet<string> GetFilters()
         {
+            // Filter definitions are created by "... to Filter" plugins. A plugin's Filters list
+            // contains references to those definitions; it must never create definitions by itself.
             var result = ParentProfile != null
                 ? ParentProfile.GetFilters()
                 : new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
@@ -292,14 +296,74 @@ namespace HidWizards.UCR.Core.Models
             {
                 foreach (var plugin in mapping.Plugins)
                 {
-                    foreach (var filter in plugin.Filters)
-                    {
-                        result.Add(filter.Name);
-                    }
+                    var definedFilterName = plugin.GetDefinedFilterName();
+                    if (!string.IsNullOrWhiteSpace(definedFilterName)) result.Add(definedFilterName);
                 }
             }
 
             return result;
+        }
+
+        internal void RenameFilterReferences(string oldName, string newName)
+        {
+            if (string.IsNullOrWhiteSpace(oldName)) return;
+            var replacement = string.IsNullOrWhiteSpace(newName) ? null : newName.Trim();
+
+            RenameFilterReferencesRecursive(this, oldName.Trim(), replacement);
+        }
+
+        private static void RenameFilterReferencesRecursive(Profile profile, string oldName, string newName)
+        {
+            // If another definition with the old name is still visible at this profile level,
+            // existing references remain valid and must not be silently redirected.
+            if (profile.GetFilters().Contains(oldName)) return;
+
+            foreach (var mapping in profile.Mappings)
+            {
+                foreach (var plugin in mapping.Plugins)
+                {
+                    if (newName == null)
+                    {
+                        plugin.Filters.RemoveAll(filter => string.Equals(filter.Name, oldName, StringComparison.InvariantCultureIgnoreCase));
+                        continue;
+                    }
+
+                    foreach (var filter in plugin.Filters)
+                    {
+                        if (!string.Equals(filter.Name, oldName, StringComparison.InvariantCultureIgnoreCase)) continue;
+                        filter.Name = newName;
+                    }
+                }
+            }
+
+            foreach (var child in profile.ChildProfiles)
+            {
+                RenameFilterReferencesRecursive(child, oldName, newName);
+            }
+        }
+
+        internal bool PruneUndefinedFilterReferencesRecursive()
+        {
+            return PruneUndefinedFilterReferencesRecursive(this);
+        }
+
+        private static bool PruneUndefinedFilterReferencesRecursive(Profile profile)
+        {
+            var changed = false;
+            var validNames = profile.GetFilters();
+            foreach (var mapping in profile.Mappings)
+            {
+                foreach (var plugin in mapping.Plugins)
+                {
+                    changed |= plugin.Filters.RemoveAll(filter => filter == null || string.IsNullOrWhiteSpace(filter.Name) || !validNames.Contains(filter.Name)) > 0;
+                }
+            }
+
+            foreach (var child in profile.ChildProfiles)
+            {
+                changed |= PruneUndefinedFilterReferencesRecursive(child);
+            }
+            return changed;
         }
 
         #region Helpers

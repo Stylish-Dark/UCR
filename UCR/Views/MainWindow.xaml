@@ -18,7 +18,7 @@
         Closing="MainWindow_OnClosing"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         TextElement.FontWeight="Regular"
-        TextElement.FontSize="13"
+        TextElement.FontSize="14"
         TextOptions.TextFormattingMode="Ideal"
         TextOptions.TextRenderingMode="Auto"
         Background="{DynamicResource MaterialDesignPaper}"
@@ -93,6 +93,9 @@
                     </Button>
                     <Button ToolTip="Manage devices" Click="ManageDevices_OnClick">
                         <materialDesign:PackIcon Kind="Settings"/>
+                    </Button>
+                    <Button ToolTip="Open diagnostic logs" Click="OpenLogs_OnClick" Padding="8 0">
+                        <TextBlock Text="LOGS" FontWeight="SemiBold"/>
                     </Button>
                 </ToolBar>
             </ToolBarTray>

@@ -17,7 +17,7 @@
         BorderThickness="1"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         TextElement.FontWeight="Regular"
-        TextElement.FontSize="13"
+        TextElement.FontSize="14"
         TextOptions.TextFormattingMode="Ideal"
         TextOptions.TextRenderingMode="Auto"
         Background="{DynamicResource MaterialDesignPaper}"
@@ -110,7 +110,7 @@
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
-                                <TextBlock Grid.Column="1" Text="to" Margin="8 0" VerticalAlignment="Center" FontSize="14"/>
+                                <TextBlock Grid.Column="1" Text="to" Margin="8 0" VerticalAlignment="Center" FontSize="15"/>
                                 <ComboBox Grid.Column="2"
                                           ItemsSource="{Binding PluginToolbox.OutputOptions}"
                                           SelectedItem="{Binding PluginToolbox.SelectedRoute, Mode=TwoWay}"
@@ -130,7 +130,7 @@
                                     Margin="0 10 0 0"
                                     Height="36"
                                     Content="ADD"
-                                    FontSize="14"
+                                    FontSize="15"
                                     FontWeight="SemiBold"
                                     Style="{StaticResource MaterialDesignRaisedButton}"
                                     IsEnabled="{Binding PluginToolbox.CanAddMapping}"
@@ -142,7 +142,8 @@
                                            Margin="0 2 0 0"
                                            Opacity="0.68"
                                            TextWrapping="Wrap"
-                                           Style="{StaticResource MaterialDesignCaptionTextBlock}"/>
+                                           Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                           FontSize="14"/>
                             </StackPanel>
                         </Grid>
                     </GroupBox>
@@ -162,7 +163,7 @@
                                                         <ControlTemplate>
                                                             <StackPanel Margin="8 14" HorizontalAlignment="Center">
                                                                 <materialDesign:PackIcon Kind="Filter" Width="22" Height="22" HorizontalAlignment="Center" Opacity="0.42"/>
-                                                                <TextBlock Margin="0 6 0 0" Text="No filters in this profile" FontSize="12" Opacity="0.58" HorizontalAlignment="Center"/>
+                                                                <TextBlock Margin="0 6 0 0" Text="No filters in this profile" FontSize="14" Opacity="0.58" HorizontalAlignment="Center"/>
                                                             </StackPanel>
                                                         </ControlTemplate>
                                                     </Setter.Value>
@@ -195,11 +196,21 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Mappings" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                        <TextBlock Grid.Column="1"
+                        <TextBlock Text="Mappings" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Margin="2 0" Padding="8 2" Height="28"
+                                Content="BATCH DEVICES" ToolTip="Change one device to another across this profile"
+                                IsEnabled="{Binding CanEditProfile}" Style="{StaticResource MaterialDesignFlatButton}"
+                                Click="BatchDevices_OnClick"/>
+                        <Button Grid.Column="2" Margin="2 0 8 0" Padding="8 2" Height="28"
+                                Content="RENAME MAPPINGS" ToolTip="Rename mappings in one pass"
+                                IsEnabled="{Binding CanEditProfile}" Style="{StaticResource MaterialDesignFlatButton}"
+                                Click="RenameMappings_OnClick"/>
+                        <TextBlock Grid.Column="3"
                                    Text="{Binding MappingsList.Count, StringFormat={}{0} total}"
-                                   FontSize="11" Opacity="0.58"
+                                   FontSize="14" Opacity="0.58"
                                    VerticalAlignment="Center"/>
                     </Grid>
 
@@ -212,7 +223,13 @@
                           BorderThickness="0"
                           VirtualizingPanel.ScrollUnit="Pixel"
                           ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                          HorizontalContentAlignment="Stretch">
+                          HorizontalContentAlignment="Stretch"
+                          AllowDrop="True"
+                          PreviewMouseRightButtonDown="MappingListView_OnPreviewMouseRightButtonDown"
+                          PreviewMouseRightButtonUp="MappingListView_OnPreviewMouseRightButtonUp"
+                          PreviewMouseMove="MappingListView_OnPreviewMouseMove"
+                          DragOver="MappingListView_OnDragOver"
+                          Drop="MappingListView_OnDrop">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="{x:Type ListViewItem}">
                             <Setter Property="Focusable" Value="False"/>
