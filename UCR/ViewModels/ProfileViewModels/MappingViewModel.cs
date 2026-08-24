@@ -37,7 +37,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                                    ProfileViewModel.MappingsList.IndexOf(this) >= 0 &&
                                    ProfileViewModel.MappingsList.IndexOf(this) < ProfileViewModel.MappingsList.Count - 1;
         public string MappingRoute => Mapping != null && Mapping.Plugins.Count > 0 ? Mapping.Plugins[0].PluginName : "No plugin";
-        public List<MappingHeaderToken> MappingRouteTokens => BuildMappingRouteTokens(MappingRoute);
+        public string MappingRouteDisplay => FormatMappingRoute(MappingRoute);
+        public List<MappingHeaderToken> MappingRouteTokens => BuildMappingRouteTokens(MappingRouteDisplay);
         public bool HasFilters => Mapping != null && Mapping.Plugins != null &&
                                   Mapping.Plugins.Any(plugin => plugin.Filters != null && plugin.Filters.Count > 0);
 
@@ -146,8 +147,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private void RefreshHeaderState()
         {
             OnPropertyChanged(nameof(MappingRoute));
+            OnPropertyChanged(nameof(MappingRouteDisplay));
             OnPropertyChanged(nameof(MappingRouteTokens));
             OnPropertyChanged(nameof(HasFilters));
+        }
+
+        private static string FormatMappingRoute(string route)
+        {
+            if (string.IsNullOrWhiteSpace(route)) return route;
+            return Regex.Replace(route.Trim(), @"\s+to\s+", " → ", RegexOptions.IgnoreCase);
         }
 
         private static List<MappingHeaderToken> BuildMappingRouteTokens(string route)
