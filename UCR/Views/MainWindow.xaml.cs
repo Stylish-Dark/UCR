@@ -11,6 +11,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Threading;
 using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
@@ -74,7 +75,7 @@ namespace HidWizards.UCR.Views
             var pi = ProfileTree.SelectedItem as ProfileItem;
             if (pi == null)
             {
-                MessageBox.Show("Please select a Profile", "No Profile selected!",MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                HidWizards.UCR.Utilities.DarkMessageBox.Show("Please select a Profile", "No Profile selected!",MessageBoxButton.OK, MessageBoxImage.Exclamation);
                 profileItem = null;
                 return false;
             }
@@ -198,7 +199,7 @@ namespace HidWizards.UCR.Views
             if (!Context.SubscriptionsManager.ActivateProfile(profileItem.Profile))
             {
                 // TODO Move to dialog
-                MessageBox.Show("The Profile could not be activated, see the log for more details", "Profile failed to activate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                HidWizards.UCR.Utilities.DarkMessageBox.Show("The Profile could not be activated, see the log for more details", "Profile failed to activate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
             }
         }
 
@@ -214,7 +215,7 @@ namespace HidWizards.UCR.Views
             if (!Context.SubscriptionsManager.DeactivateCurrentProfile())
             {
                 // TODO Move to dialog
-                MessageBox.Show("The active Profile could not be deactivated, see the log for more details", "Profile failed to deactivate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                HidWizards.UCR.Utilities.DarkMessageBox.Show("The active Profile could not be deactivated, see the log for more details", "Profile failed to deactivate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
             }
         }
 
@@ -398,13 +399,13 @@ namespace HidWizards.UCR.Views
                 {
                     var exportPath = EnsureExtension(dialog.FileName, ".ucrprofiles");
                     Context.ProfilesManager.ExportProfileList(exportPath);
-                    MessageBox.Show(this, "All profiles exported successfully.", "Export profiles", MessageBoxButton.OK, MessageBoxImage.Information);
+                    HidWizards.UCR.Utilities.DarkMessageBox.Show(this, "All profiles exported successfully.", "Export profiles", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else
                 {
                     var exportPath = EnsureExtension(dialog.FileName, ".ucrprofile");
                     Context.ProfilesManager.ExportProfile(selectedProfile, exportPath);
-                    MessageBox.Show(this, "Profile exported successfully.", "Export profile", MessageBoxButton.OK, MessageBoxImage.Information);
+                    HidWizards.UCR.Utilities.DarkMessageBox.Show(this, "Profile exported successfully.", "Export profile", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception exception)
@@ -421,7 +422,7 @@ namespace HidWizards.UCR.Views
 
             if (!result.Apply(out var error))
             {
-                MessageBox.Show(this, error, "Device settings", MessageBoxButton.OK, MessageBoxImage.Warning);
+                HidWizards.UCR.Utilities.DarkMessageBox.Show(this, error, "Device settings", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -442,7 +443,7 @@ namespace HidWizards.UCR.Views
             try
             {
                 Context.ProfilesManager.ExportProfile(profileItem.Profile, dialog.FileName);
-                MessageBox.Show(this, "Profile exported successfully.", "Export profile", MessageBoxButton.OK, MessageBoxImage.Information);
+                HidWizards.UCR.Utilities.DarkMessageBox.Show(this, "Profile exported successfully.", "Export profile", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception exception)
             {
@@ -481,7 +482,7 @@ namespace HidWizards.UCR.Views
             {
                 Context.ProfilesManager.ImportProfile(fileName, parentProfile);
                 ReloadProfileTree();
-                MessageBox.Show(this,
+                HidWizards.UCR.Utilities.DarkMessageBox.Show(this,
                     parentProfile == null ? "Profile imported successfully." : "Child profile imported successfully.",
                     "Import profile", MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -506,7 +507,7 @@ namespace HidWizards.UCR.Views
             try
             {
                 Context.ProfilesManager.ExportProfileList(dialog.FileName);
-                MessageBox.Show(this, "All profiles exported successfully.", "Export profiles", MessageBoxButton.OK, MessageBoxImage.Information);
+                HidWizards.UCR.Utilities.DarkMessageBox.Show(this, "All profiles exported successfully.", "Export profiles", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception exception)
             {
@@ -530,7 +531,7 @@ namespace HidWizards.UCR.Views
 
         private void ImportProfileListFromPath(string fileName)
         {
-            var choice = MessageBox.Show(this,
+            var choice = HidWizards.UCR.Utilities.DarkMessageBox.Show(this,
                 "How should the imported profile list be applied?\n\n" +
                 "Yes = REPLACE the current profile list with the imported backup.\n" +
                 "No = MERGE the imported profiles into the current list.\n" +
@@ -551,7 +552,7 @@ namespace HidWizards.UCR.Views
                     _dashboardViewModel.SelectedProfileItem = null;
                 }
                 ReloadProfileTree();
-                MessageBox.Show(this,
+                HidWizards.UCR.Utilities.DarkMessageBox.Show(this,
                     $"Imported {importedCount} top-level profile{(importedCount == 1 ? string.Empty : "s")} successfully.",
                     "Import profiles", MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -588,7 +589,7 @@ namespace HidWizards.UCR.Views
 
         private void ShowTransferError(string title, Exception exception)
         {
-            MessageBox.Show(this, exception.Message, title, MessageBoxButton.OK, MessageBoxImage.Error);
+            HidWizards.UCR.Utilities.DarkMessageBox.Show(this, exception.Message, title, MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
         #endregion Profile Actions
@@ -650,8 +651,40 @@ namespace HidWizards.UCR.Views
             }
             _profileWindowsHiddenToTray.Clear();
 
-            Activate();
+            BringToForeground();
             _trayIcon.Visible = true;
+        }
+
+        /// <summary>
+        /// Gives UCR normal foreground activation behaviour after startup, tray restoration,
+        /// or launching UCR again while an instance is already running. The Topmost pulse is
+        /// deliberately temporary; UCR must not remain above other applications afterwards.
+        /// </summary>
+        public void BringToForeground()
+        {
+            if (!IsVisible) Show();
+            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+
+            Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
+            {
+                var handle = new WindowInteropHelper(this).Handle;
+                if (handle != IntPtr.Zero)
+                {
+                    NativeMethods.BringWindowToTop(handle);
+                    NativeMethods.SetForegroundWindow(handle);
+                }
+
+                Topmost = true;
+                try
+                {
+                    Activate();
+                    Focus();
+                }
+                finally
+                {
+                    Topmost = false;
+                }
+            }));
         }
 
         private void ExitFromTray()
@@ -758,6 +791,7 @@ namespace HidWizards.UCR.Views
             var data = (NativeMethods.COPYDATASTRUCT)Marshal.PtrToStructure(lParam, typeof(NativeMethods.COPYDATASTRUCT));
             var argsString = Marshal.PtrToStringAnsi(data.lpData);
             if (!string.IsNullOrEmpty(argsString)) Context.ParseCommandLineArguments(argsString.Split(';'));
+            RestoreFromTray();
             return IntPtr.Zero;
         }
 
@@ -776,7 +810,7 @@ namespace HidWizards.UCR.Views
             ) return;
 
             var error = Marshal.GetLastWin32Error();
-            MessageBox.Show($"Enabling message handling failed with the error: {error}");
+            HidWizards.UCR.Utilities.DarkMessageBox.Show($"Enabling message handling failed with the error: {error}");
         }
 
         private async void About_OnClick(object sender, RoutedEventArgs e)

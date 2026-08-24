@@ -102,15 +102,28 @@
                                           SelectedItem="{Binding PluginToolbox.SelectedInput, Mode=TwoWay}"
                                           IsEnabled="{Binding PluginToolbox.IsEnabled}"
                                           MinWidth="105"
-                                          ToolTip="Input type"/>
+                                          ToolTip="Input type">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" FontWeight="SemiBold"
+                                                       Foreground="{Binding Converter={StaticResource MappingTypeBrushConverter}}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
                                 <TextBlock Grid.Column="1" Text="to" Margin="8 0" VerticalAlignment="Center" FontSize="14"/>
                                 <ComboBox Grid.Column="2"
                                           ItemsSource="{Binding PluginToolbox.OutputOptions}"
                                           SelectedItem="{Binding PluginToolbox.SelectedRoute, Mode=TwoWay}"
-                                          DisplayMemberPath="OutputDisplayLabel"
                                           IsEnabled="{Binding PluginToolbox.IsEnabled}"
                                           MinWidth="105"
-                                          ToolTip="Output type"/>
+                                          ToolTip="Output type">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding OutputDisplayLabel}" FontWeight="SemiBold"
+                                                       Foreground="{Binding OutputLabel, Converter={StaticResource MappingTypeBrushConverter}}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
                             </Grid>
 
                             <Button Grid.Row="1"

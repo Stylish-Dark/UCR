@@ -109,7 +109,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             if (!configuration.Device.Profile.Context.DevicesManager.TrySetDeviceAlias(
                     configuration.Device, _deviceIoType, result.DeviceAlias, out aliasError))
             {
-                System.Windows.MessageBox.Show(aliasError, "Device name not changed",
+                HidWizards.UCR.Utilities.DarkMessageBox.Show(aliasError, "Device name not changed",
                     System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
             }
 

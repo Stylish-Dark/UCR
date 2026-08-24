@@ -64,6 +64,7 @@ namespace HidWizards.UCR
                     var mw = new MainWindow(context);
                     Current.MainWindow = mw;
                     mw.Show();
+                    mw.BringToForeground();
                     ShutdownMode = System.Windows.ShutdownMode.OnMainWindowClose;
                     windowStage.Stop();
                     Logger.Info($"Startup stage 'Opening UCR' completed in {windowStage.ElapsedMilliseconds} ms");
@@ -167,7 +168,7 @@ namespace HidWizards.UCR
         {
             if (context.GetPlugins().Count != 0) return;
 
-            var result = MessageBox.Show("UCR has detected blocked files which are required, do you want to unblock blocked UCR files?", "Unblock files?", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            var result = HidWizards.UCR.Utilities.DarkMessageBox.Show("UCR has detected blocked files which are required, do you want to unblock blocked UCR files?", "Unblock files?", MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (result != MessageBoxResult.Yes) return;
 
             UpdateSplash("Unblocking UCR files...");
@@ -187,7 +188,7 @@ namespace HidWizards.UCR
             var exitCode = process.ExitCode;
             if (exitCode != 0)
             {
-                MessageBox.Show("UCR failed to unblock the required files", "Failed to unblock", MessageBoxButton.OK, MessageBoxImage.Error);
+                HidWizards.UCR.Utilities.DarkMessageBox.Show("UCR failed to unblock the required files", "Failed to unblock", MessageBoxButton.OK, MessageBoxImage.Error);
                 Current.Shutdown();
             }
 

@@ -114,6 +114,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 Filters.Add(new FilterViewModel(this, filter));
             }
             MappingViewModel.ProfileViewModel.RefreshFilterNames();
+            MappingViewModel.RefreshFilterIndicator();
         }
 
         public void RemoveFilter(FilterViewModel filterViewModel)
@@ -122,6 +123,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 Filters.Remove(filterViewModel);
                 MappingViewModel.ProfileViewModel.RefreshFilterNames();
+                MappingViewModel.RefreshFilterIndicator();
             }
         }
 

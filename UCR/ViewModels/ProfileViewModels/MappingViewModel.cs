@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Views.Dialogs;
@@ -9,6 +12,18 @@ using MaterialDesignThemes.Wpf;
 
 namespace HidWizards.UCR.ViewModels.ProfileViewModels
 {
+    public sealed class MappingHeaderToken
+    {
+        public string Text { get; }
+        public string TypeLabel { get; }
+
+        public MappingHeaderToken(string text, string typeLabel)
+        {
+            Text = text;
+            TypeLabel = typeLabel;
+        }
+    }
+
     public class MappingViewModel : INotifyPropertyChanged
     {
         public string MappingTitle => Mapping.FullTitle;
@@ -22,6 +37,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                                    ProfileViewModel.MappingsList.IndexOf(this) >= 0 &&
                                    ProfileViewModel.MappingsList.IndexOf(this) < ProfileViewModel.MappingsList.Count - 1;
         public string MappingRoute => Mapping != null && Mapping.Plugins.Count > 0 ? Mapping.Plugins[0].PluginName : "No plugin";
+        public List<MappingHeaderToken> MappingRouteTokens => BuildMappingRouteTokens(MappingRoute);
+        public bool HasFilters => Mapping != null && Mapping.Plugins != null &&
+                                  Mapping.Plugins.Any(plugin => plugin.Filters != null && plugin.Filters.Count > 0);
 
         private bool _isExpanded;
         public bool IsExpanded
@@ -80,7 +98,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!Mapping.AddPlugin(newPlugin)) return;
 
             Plugins.Add(new PluginViewModel(this, newPlugin));
-            OnPropertyChanged(nameof(MappingRoute));
+            RefreshHeaderState();
             if (Plugins.Count != 1) return;
             
             PopulateDeviceBindingsViewModels();
@@ -106,7 +124,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!Mapping.RemovePlugin(pluginViewModel.Plugin)) return;
 
             Plugins.Remove(pluginViewModel);
-            OnPropertyChanged(nameof(MappingRoute));
+            RefreshHeaderState();
             ProfileViewModel.RefreshFilterNames();
             if (Plugins.Count == 0) DeviceBindings.Clear();
         }
@@ -117,6 +135,55 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             foreach (var mappingPlugin in mapping.Plugins)
             {
                 Plugins.Add(new PluginViewModel(this, mappingPlugin));
+            }
+        }
+
+        public void RefreshFilterIndicator()
+        {
+            OnPropertyChanged(nameof(HasFilters));
+        }
+
+        private void RefreshHeaderState()
+        {
+            OnPropertyChanged(nameof(MappingRoute));
+            OnPropertyChanged(nameof(MappingRouteTokens));
+            OnPropertyChanged(nameof(HasFilters));
+        }
+
+        private static List<MappingHeaderToken> BuildMappingRouteTokens(string route)
+        {
+            var result = new List<MappingHeaderToken>();
+            if (string.IsNullOrEmpty(route)) return result;
+
+            var parts = Regex.Split(route, @"\b(Button|Buttons|Axis|Axes|Filter|Event|Events|Delta|Deltas|Value|Values|Multiple|None)\b", RegexOptions.IgnoreCase);
+            foreach (var part in parts)
+            {
+                if (string.IsNullOrEmpty(part)) continue;
+                result.Add(new MappingHeaderToken(part, IsMappingTypeWord(part) ? part : null));
+            }
+            return result;
+        }
+
+        private static bool IsMappingTypeWord(string value)
+        {
+            switch (value.ToLowerInvariant())
+            {
+                case "button":
+                case "buttons":
+                case "axis":
+                case "axes":
+                case "filter":
+                case "event":
+                case "events":
+                case "delta":
+                case "deltas":
+                case "value":
+                case "values":
+                case "multiple":
+                case "none":
+                    return true;
+                default:
+                    return false;
             }
         }
 

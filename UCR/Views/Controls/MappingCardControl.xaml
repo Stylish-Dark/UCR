@@ -26,10 +26,40 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
                         <TextBlock Text="{Binding MappingTitle}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding MappingRoute}" Margin="0 0 0 0" Opacity="0.65" FontSize="11"/>
+                        <ItemsControl ItemsSource="{Binding MappingRouteTokens}" Margin="0" Opacity="0.9">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Text}" FontSize="11"
+                                               Foreground="{Binding TypeLabel, Converter={StaticResource MappingTypeBrushConverter}}"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <materialDesign:PackIcon Kind="Filter" Width="17" Height="17" Margin="5 0 7 0"
+                                                 Foreground="{StaticResource MappingTypeFilterBrush}"
+                                                 ToolTip="This mapping uses one or more filters">
+                            <materialDesign:PackIcon.Style>
+                                <Style TargetType="{x:Type materialDesign:PackIcon}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding HasFilters}" Value="True"/>
+                                                <Condition Binding="{Binding IsExpanded}" Value="False"/>
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </materialDesign:PackIcon.Style>
+                        </materialDesign:PackIcon>
                         <Button ToolTip="Move mapping up" Style="{StaticResource MaterialDesignCardButton}"
                                 Foreground="{StaticResource PrimaryHueMidForegroundBrush}"
                                 IsEnabled="{Binding CanMoveUp}" Click="MoveUp_OnClick">

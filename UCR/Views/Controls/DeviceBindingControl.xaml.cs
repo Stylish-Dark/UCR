@@ -313,7 +313,7 @@ namespace HidWizards.UCR.Views.Controls
             catch (Exception exception)
             {
                 Logger.Error("Failed to enter device bind mode", exception);
-                MessageBox.Show("UCR could not start input detection for this binding. The error has been written to the log.",
+                HidWizards.UCR.Utilities.DarkMessageBox.Show("UCR could not start input detection for this binding. The error has been written to the log.",
                     "Unable to bind input", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
