@@ -96,6 +96,7 @@
     <Compile Include="Utilities\Converter\InverseBooleanConverter.cs" />
     <Compile Include="Utilities\Converter\MappingTypeBrushConverter.cs" />
     <Compile Include="Utilities\DarkMessageBox.cs" />
+    <Compile Include="Utilities\AutoProfileMonitor.cs" />
     <Compile Include="Utilities\DataContextBindingProxy.cs" />
     <Compile Include="Utilities\HidGuardianClient.cs" />
     <Compile Include="Utilities\NativeMethods.cs" />

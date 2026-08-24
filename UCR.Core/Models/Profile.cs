@@ -27,6 +27,35 @@ namespace HidWizards.UCR.Core.Models
         public List<DeviceConfiguration> InputDeviceConfigurations { get; set; }
         public List<DeviceConfiguration> OutputDeviceConfigurations { get; set; }
 
+        private bool _autoActivateEnabled;
+        private string _autoActivateExecutable;
+
+        [XmlAttribute]
+        public bool AutoActivateEnabled
+        {
+            get => _autoActivateEnabled;
+            set
+            {
+                if (_autoActivateEnabled == value) return;
+                _autoActivateEnabled = value;
+                OnPropertyChanged();
+                Context?.ContextChanged();
+            }
+        }
+
+        [XmlAttribute]
+        public string AutoActivateExecutable
+        {
+            get => _autoActivateExecutable;
+            set
+            {
+                if (string.Equals(_autoActivateExecutable, value, StringComparison.Ordinal)) return;
+                _autoActivateExecutable = value;
+                OnPropertyChanged();
+                Context?.ContextChanged();
+            }
+        }
+
 
         /* Runtime */
         [XmlIgnore]

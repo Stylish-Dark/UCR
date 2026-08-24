@@ -188,6 +188,7 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
                             <StackPanel Grid.Column="0" Grid.Row="0" FlowDirection="LeftToRight" HorizontalAlignment="Left" Orientation="Horizontal" Margin="0">
@@ -244,7 +245,40 @@
                                 </Button>
                             </StackPanel>
                             <Separator Grid.Row="1" Grid.ColumnSpan="2" Margin="8 0 8 4" Height="4"  Style="{StaticResource MaterialDesignLightSeparator}" />
-                            <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="0 0 0 4">
+                            <Border Grid.Row="2" Grid.ColumnSpan="2" Margin="8 2 8 6" Padding="8 5" Background="#212121" CornerRadius="2">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox Grid.Column="0"
+                                              Margin="0 0 10 0"
+                                              VerticalAlignment="Center"
+                                              Foreground="White"
+                                              Content="Auto-apply while EXE is running"
+                                              IsChecked="{Binding SelectedProfileItem.Profile.AutoActivateEnabled, Mode=TwoWay}"
+                                              ToolTip="Automatically activates this profile while the specified executable is running and stops it when the executable exits."/>
+                                    <TextBox Grid.Column="1"
+                                             Margin="0 0 6 0"
+                                             Padding="6 3"
+                                             VerticalContentAlignment="Center"
+                                             Background="#2B2B2B"
+                                             Foreground="White"
+                                             CaretBrush="White"
+                                             IsEnabled="{Binding SelectedProfileItem.Profile.AutoActivateEnabled}"
+                                             Text="{Binding SelectedProfileItem.Profile.AutoActivateExecutable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Executable filename, for example game.exe"/>
+                                    <Button Grid.Column="2"
+                                            Width="34" Height="30" Padding="4"
+                                            IsEnabled="{Binding SelectedProfileItem.Profile.AutoActivateEnabled}"
+                                            ToolTip="Choose executable"
+                                            Click="BrowseAutoActivateExecutable">
+                                        <materialDesign:PackIcon Kind="Folder" Width="18" Height="18"/>
+                                    </Button>
+                                </Grid>
+                            </Border>
+                            <Grid Grid.Row="3" Grid.ColumnSpan="2" Margin="0 0 0 4">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="*"/>

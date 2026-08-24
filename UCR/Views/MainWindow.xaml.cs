@@ -37,6 +37,7 @@ namespace HidWizards.UCR.Views
         private ProfileItem _draggedProfileItem;
         private Forms.NotifyIcon _trayIcon;
         private Forms.ToolStripMenuItem _stopCurrentProfileMenuItem;
+        private readonly AutoProfileMonitor _autoProfileMonitor;
         private bool _exitRequested;
 
         enum CloseState
@@ -54,6 +55,7 @@ namespace HidWizards.UCR.Views
             ProfileWindows = new Dictionary<Guid, ProfileWindow>();
             InitializeComponent();
             InitializeTrayIcon();
+            _autoProfileMonitor = new AutoProfileMonitor(context);
         }
 
         /// <summary>
@@ -206,6 +208,23 @@ namespace HidWizards.UCR.Views
         private void DeactivateProfile(object sender, RoutedEventArgs e)
         {
             DeactivateCurrentProfile();
+        }
+
+        private void BrowseAutoActivateExecutable(object sender, RoutedEventArgs e)
+        {
+            if (!GetSelectedItem(out var profileItem)) return;
+
+            var dialog = new OpenFileDialog
+            {
+                Title = "Choose executable for automatic profile activation",
+                Filter = "Applications (*.exe)|*.exe",
+                DefaultExt = ".exe",
+                CheckFileExists = true,
+                Multiselect = false
+            };
+
+            if (dialog.ShowDialog(this) != true) return;
+            profileItem.Profile.AutoActivateExecutable = Path.GetFileName(dialog.FileName);
         }
 
         private void DeactivateCurrentProfile()
@@ -697,6 +716,8 @@ namespace HidWizards.UCR.Views
 
         protected override void OnClosed(EventArgs e)
         {
+            _autoProfileMonitor?.Dispose();
+
             if (_trayIcon != null)
             {
                 _trayIcon.Visible = false;
