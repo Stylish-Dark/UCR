@@ -3,51 +3,105 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-             MinWidth="360">
-    <Grid Margin="20">
+             MinWidth="350">
+    <Grid Margin="18 16 18 14">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="Appearance" Style="{StaticResource MaterialDesignTitleTextBlock}" FontSize="20"/>
-        <TextBlock Grid.Row="1" Margin="0 6 0 12" Opacity="0.68" TextWrapping="Wrap"
-                   Text="Choose UCR's accent colour. Dark surfaces and semantic mapping colours stay unchanged."/>
+        <StackPanel Grid.Row="0" Margin="2 0 2 12">
+            <TextBlock Text="Accent colour" FontSize="19" FontWeight="SemiBold" Foreground="#F2F2F2"/>
+            <TextBlock Margin="0 3 0 0" Text="UCR stays dark. Pick the accent." FontSize="12.5" Foreground="#9E9E9E"/>
+        </StackPanel>
 
-        <ListBox Grid.Row="2"
+        <ListBox Grid.Row="1"
                  ItemsSource="{Binding Options}"
                  SelectedItem="{Binding SelectedOption, Mode=TwoWay}"
                  Background="Transparent"
                  BorderThickness="0"
-                 MinWidth="300">
+                 Padding="0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 ScrollViewer.VerticalScrollBarVisibility="Disabled">
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <UniformGrid Columns="3"/>
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
             <ListBox.ItemContainerStyle>
-                <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignListBoxItem}">
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="Focusable" Value="False"/>
                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                    <Setter Property="Padding" Value="8 7"/>
+                    <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Margin" Value="3"/>
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListBoxItem">
+                                <Border x:Name="Tile"
+                                        Height="58"
+                                        Padding="10 8"
+                                        CornerRadius="6"
+                                        Background="#242424"
+                                        BorderBrush="#363636"
+                                        BorderThickness="1">
+                                    <ContentPresenter/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Tile" Property="Background" Value="#292929"/>
+                                        <Setter TargetName="Tile" Property="BorderBrush" Value="#4A4A4A"/>
+                                    </Trigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="Tile" Property="Background" Value="#2B2B2B"/>
+                                        <Setter TargetName="Tile" Property="BorderThickness" Value="2"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
                 </Style>
             </ListBox.ItemContainerStyle>
             <ListBox.ItemTemplate>
                 <DataTemplate>
-                    <Grid>
+                    <Grid ToolTip="{Binding Name}">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="30"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <Ellipse Width="14" Height="14" Fill="{Binding Brush}" VerticalAlignment="Center"/>
-                        <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <Ellipse Width="19" Height="19" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Margin="8 0 4 0" Text="{Binding Name}" FontSize="13.5"
+                                   FontWeight="SemiBold" Foreground="#F0F0F0" VerticalAlignment="Center"/>
+                        <Grid Grid.Column="2" Width="16" Height="16" VerticalAlignment="Center">
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+                            <Ellipse Fill="{Binding Brush}"/>
+                            <materialDesign:PackIcon Kind="Check" Width="11" Height="11" Foreground="White"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
                     </Grid>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
 
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 16 0 0">
-            <Button Content="APPLY" IsDefault="True" Style="{StaticResource MaterialDesignRaisedButton}"
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 13 0 0">
+            <Button Content="CANCEL" IsCancel="True" Margin="0 0 5 0" Style="{StaticResource MaterialDesignFlatButton}"
+                    Foreground="#D0D0D0"
+                    Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"/>
+            <Button Content="APPLY" IsDefault="True" MinWidth="82" Style="{StaticResource MaterialDesignRaisedButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
                     CommandParameter="{Binding SelectedAccentName}"/>
-            <Button Content="CANCEL" IsCancel="True" Margin="8 0 0 0" Style="{StaticResource MaterialDesignFlatButton}"
-                    Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"/>
         </StackPanel>
     </Grid>
 </UserControl>
