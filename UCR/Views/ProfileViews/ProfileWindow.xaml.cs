@@ -243,27 +243,58 @@ namespace HidWizards.UCR.Views.ProfileViews
 
             var topLeft = container.TranslatePoint(new Point(0, 0), MappingListView);
             _mappingDragGrabOffset = new Point(pointer.X - topLeft.X, pointer.Y - topLeft.Y);
-            _mappingDragAdornerLayer = layer;
-            _mappingDragAdorner = new MappingDragAdorner(
-                MappingListView,
-                snapshot,
-                new Size(container.ActualWidth, container.ActualHeight));
-            layer.Add(_mappingDragAdorner);
 
-            if (!MappingListView.CaptureMouse())
+            MappingDragAdorner adorner = null;
+            try
             {
-                layer.Remove(_mappingDragAdorner);
+                Logger.Debug("Preparing live mapping reorder: " + source.MappingTitle);
+                adorner = new MappingDragAdorner(
+                    MappingListView,
+                    snapshot,
+                    new Size(container.ActualWidth, container.ActualHeight));
+                layer.Add(adorner);
+
+                if (!MappingListView.CaptureMouse())
+                {
+                    layer.Remove(adorner);
+                    Logger.Warn("Unable to capture mouse for live mapping reorder: " + source.MappingTitle);
+                    return false;
+                }
+
+                _mappingDragAdornerLayer = layer;
+                _mappingDragAdorner = adorner;
+                source.IsDragging = true;
+                _mappingDragActive = true;
+                Mouse.OverrideCursor = Cursors.SizeAll;
+                UpdateMappingDragVisual(pointer);
+                Logger.Info("Started live mapping reorder: " + source.MappingTitle);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                try
+                {
+                    if (adorner != null) layer.Remove(adorner);
+                }
+                catch
+                {
+                    // The drag never became active; cleanup must not turn a drag failure into a crash.
+                }
+
+                if (Mouse.Captured == MappingListView)
+                {
+                    MappingListView.ReleaseMouseCapture();
+                }
+
+                source.IsDragging = false;
                 _mappingDragAdorner = null;
                 _mappingDragAdornerLayer = null;
+                _mappingDragActive = false;
+                Mouse.OverrideCursor = null;
+                ResetPendingMappingDrag();
+                Logger.Error("Unable to start live mapping reorder", exception);
                 return false;
             }
-
-            source.IsDragging = true;
-            _mappingDragActive = true;
-            Mouse.OverrideCursor = Cursors.SizeAll;
-            UpdateMappingDragVisual(pointer);
-            Logger.Info("Started live mapping reorder: " + source.MappingTitle);
-            return true;
         }
 
         private void UpdateMappingDragVisual(Point pointer)
@@ -447,6 +478,10 @@ namespace HidWizards.UCR.Views.ProfileViews
             public MappingDragAdorner(UIElement adornedElement, ImageSource source, Size size)
                 : base(adornedElement)
             {
+                // WPF can query VisualChildrenCount while dependency properties are being changed
+                // in this constructor. Initialize the collection first so those callbacks never
+                // observe a null visual tree.
+                _visuals = new VisualCollection(this);
                 IsHitTestVisible = false;
                 _size = size;
                 _image = new Image
@@ -458,7 +493,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                     SnapsToDevicePixels = true,
                     Opacity = 1.0
                 };
-                _visuals = new VisualCollection(this) { _image };
+                _visuals.Add(_image);
             }
 
             public void MoveTo(double left, double top)
@@ -468,10 +503,11 @@ namespace HidWizards.UCR.Views.ProfileViews
                 InvalidateArrange();
             }
 
-            protected override int VisualChildrenCount => _visuals.Count;
+            protected override int VisualChildrenCount => _visuals?.Count ?? 0;
 
             protected override Visual GetVisualChild(int index)
             {
+                if (_visuals == null) throw new ArgumentOutOfRangeException(nameof(index));
                 return _visuals[index];
             }
 
