@@ -26,6 +26,7 @@
             <SolidColorBrush x:Key="PrimaryHueMidForegroundBrush" Color="#FFFFFF"/>
             <SolidColorBrush x:Key="PrimaryHueDarkForegroundBrush" Color="#FFFFFF"/>
             <SolidColorBrush x:Key="SecondaryAccentBrush" Color="#3D63BF"/>
+            <SolidColorBrush x:Key="UcrAccentBrush" Color="#3D63BF"/>
             <SolidColorBrush x:Key="SecondaryAccentForegroundBrush" Color="#FFFFFF"/>
 
             <!-- Explicit dark surfaces so dialogs never fall back to system/light control colours. -->

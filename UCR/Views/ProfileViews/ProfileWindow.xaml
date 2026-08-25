@@ -13,7 +13,7 @@
         Height="800" Width="1000"
         MinHeight="600" MinWidth="800"
         ResizeMode="CanResize"
-        BorderBrush="{StaticResource PrimaryHueDarkBrush}"
+        BorderBrush="{DynamicResource PrimaryHueDarkBrush}"
         BorderThickness="1"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         TextElement.FontWeight="Regular"
@@ -84,76 +84,82 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <GroupBox Grid.Row="0" Style="{StaticResource MaterialDesignCardGroupBox}" Header="Add mapping" Background="#212121">
-                        <Grid Margin="10">
+                    <Border Grid.Row="0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
+                        <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <Grid Grid.Row="0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <ComboBox Grid.Column="0"
-                                          ItemsSource="{Binding PluginToolbox.InputOptions}"
-                                          SelectedItem="{Binding PluginToolbox.SelectedInput, Mode=TwoWay}"
-                                          IsEnabled="{Binding PluginToolbox.IsEnabled}"
-                                          MinWidth="105"
-                                          ToolTip="Input type">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding}" FontWeight="SemiBold"
-                                                       Foreground="{Binding Converter={StaticResource MappingTypeBrushConverter}}"/>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
-                                <TextBlock Grid.Column="1" Text="to" Margin="8 0" VerticalAlignment="Center" FontSize="15"/>
-                                <ComboBox Grid.Column="2"
-                                          ItemsSource="{Binding PluginToolbox.OutputOptions}"
-                                          SelectedItem="{Binding PluginToolbox.SelectedRoute, Mode=TwoWay}"
-                                          IsEnabled="{Binding PluginToolbox.IsEnabled}"
-                                          MinWidth="105"
-                                          ToolTip="Output type">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding OutputDisplayLabel}" FontWeight="SemiBold"
-                                                       Foreground="{Binding OutputLabel, Converter={StaticResource MappingTypeBrushConverter}}"/>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
+                            <Border Grid.Row="0" Background="#242424" BorderBrush="{DynamicResource PrimaryHueMidBrush}" BorderThickness="3 0 0 0" Padding="10 8">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Plus" Width="17" Height="17" Margin="0 0 7 0" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                                    <TextBlock Text="Add mapping" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <Grid Grid.Row="1" Margin="10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox Grid.Column="0"
+                                              ItemsSource="{Binding PluginToolbox.InputOptions}"
+                                              SelectedItem="{Binding PluginToolbox.SelectedInput, Mode=TwoWay}"
+                                              IsEnabled="{Binding PluginToolbox.IsEnabled}"
+                                              MinWidth="100" ToolTip="Input type">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}" FontWeight="SemiBold"
+                                                           Foreground="{Binding Converter={StaticResource MappingTypeBrushConverter}}"/>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <TextBlock Grid.Column="1" Text="→" Margin="7 0" VerticalAlignment="Center" FontSize="16" Opacity="0.55"/>
+                                    <ComboBox Grid.Column="2"
+                                              ItemsSource="{Binding PluginToolbox.OutputOptions}"
+                                              SelectedItem="{Binding PluginToolbox.SelectedRoute, Mode=TwoWay}"
+                                              IsEnabled="{Binding PluginToolbox.IsEnabled}"
+                                              MinWidth="100" ToolTip="Output type">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding OutputDisplayLabel}" FontWeight="SemiBold"
+                                                           Foreground="{Binding OutputLabel, Converter={StaticResource MappingTypeBrushConverter}}"/>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </Grid>
+
+                                <Button Grid.Row="1" Margin="0 9 0 0" Height="34" Content="ADD" FontSize="14" FontWeight="SemiBold"
+                                        Style="{StaticResource MaterialDesignRaisedButton}" IsEnabled="{Binding PluginToolbox.CanAddMapping}" Click="AddMapping_OnClick"/>
+
+                                <StackPanel Grid.Row="2" Margin="2 8 2 0">
+                                    <TextBlock Text="{Binding PluginToolbox.SelectedRoute.PluginItem.Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding PluginToolbox.SelectedRoute.PluginItem.Description}" Margin="0 2 0 0" Opacity="0.55" TextWrapping="Wrap" FontSize="12.5"/>
+                                </StackPanel>
                             </Grid>
-
-                            <Button Grid.Row="1"
-                                    Margin="0 10 0 0"
-                                    Height="36"
-                                    Content="ADD"
-                                    FontSize="15"
-                                    FontWeight="SemiBold"
-                                    Style="{StaticResource MaterialDesignRaisedButton}"
-                                    IsEnabled="{Binding PluginToolbox.CanAddMapping}"
-                                    Click="AddMapping_OnClick"/>
-
-                            <StackPanel Grid.Row="2" Margin="2 8 2 0">
-                                <TextBlock Text="{Binding PluginToolbox.SelectedRoute.PluginItem.Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                                <TextBlock Text="{Binding PluginToolbox.SelectedRoute.PluginItem.Description}"
-                                           Margin="0 2 0 0"
-                                           Opacity="0.68"
-                                           TextWrapping="Wrap"
-                                           Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                                           FontSize="14"/>
-                            </StackPanel>
                         </Grid>
-                    </GroupBox>
+                    </Border>
 
-                    <GroupBox Grid.Row="1" Margin="0 8 0 0" Style="{StaticResource MaterialDesignCardGroupBox}" Header="Filters" Background="#212121">
-                        <Grid Margin="8">
-                            <ListBox ItemsSource="{Binding FilterNames}"
-                                     BorderThickness="0"
-                                     Background="Transparent"
-                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <Border Grid.Row="1" Margin="0 8 0 0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0" Background="#242424" BorderBrush="{StaticResource MappingTypeFilterBrush}" BorderThickness="3 0 0 0" Padding="10 8">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Filter" Width="16" Height="16" Margin="0 0 7 0" Foreground="{StaticResource MappingTypeFilterBrush}"/>
+                                    <TextBlock Text="Filters" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding FilterNames.Count, StringFormat={}  {0}}" FontSize="12" Opacity="0.45" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <ListBox Grid.Row="1" Margin="8" ItemsSource="{Binding FilterNames}" BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                                 <ListBox.Style>
                                     <Style TargetType="ListBox" BasedOn="{StaticResource {x:Type ListBox}}">
                                         <Style.Triggers>
@@ -161,9 +167,10 @@
                                                 <Setter Property="Template">
                                                     <Setter.Value>
                                                         <ControlTemplate>
-                                                            <StackPanel Margin="8 14" HorizontalAlignment="Center">
-                                                                <materialDesign:PackIcon Kind="Filter" Width="22" Height="22" HorizontalAlignment="Center" Opacity="0.42"/>
-                                                                <TextBlock Margin="0 6 0 0" Text="No filters in this profile" FontSize="14" Opacity="0.58" HorizontalAlignment="Center"/>
+                                                            <StackPanel Margin="8 18" HorizontalAlignment="Center">
+                                                                <materialDesign:PackIcon Kind="Filter" Width="20" Height="20" HorizontalAlignment="Center" Opacity="0.28"/>
+                                                                <TextBlock Margin="0 6 0 0" Text="No filters defined" FontSize="14" Opacity="0.55" HorizontalAlignment="Center"/>
+                                                                <TextBlock Margin="0 2 0 0" Text="Create one with a → Filter mapping." FontSize="12" Opacity="0.38" HorizontalAlignment="Center"/>
                                                             </StackPanel>
                                                         </ControlTemplate>
                                                     </Setter.Value>
@@ -174,9 +181,9 @@
                                 </ListBox.Style>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <Border BorderBrush="#353535" BorderThickness="0 0 0 1" Padding="6 6">
+                                        <Border BorderBrush="#343434" BorderThickness="0 0 0 1" Padding="7 7">
                                             <StackPanel Orientation="Horizontal">
-                                                <materialDesign:PackIcon Kind="Filter" Width="15" Height="15" Margin="0 0 7 0" Foreground="{StaticResource MappingTypeFilterBrush}"/>
+                                                <materialDesign:PackIcon Kind="Filter" Width="14" Height="14" Margin="0 0 7 0" Foreground="{StaticResource MappingTypeFilterBrush}"/>
                                                 <TextBlock Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                             </StackPanel>
                                         </Border>
@@ -184,34 +191,37 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
                         </Grid>
-                    </GroupBox>
+                    </Border>
                 </Grid>
-
                 <Grid Grid.Column="1">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <Grid Grid.Row="0" Margin="4 0 6 4">
+                    <Grid Grid.Row="0" Margin="4 0 6 5">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Mappings" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                        <Button Grid.Column="1" Margin="2 0" Padding="8 2" Height="28"
-                                Content="BATCH DEVICES" ToolTip="Change one device to another across this profile"
-                                IsEnabled="{Binding CanEditProfile}" Style="{StaticResource MaterialDesignFlatButton}"
-                                Click="BatchDevices_OnClick"/>
-                        <Button Grid.Column="2" Margin="2 0 8 0" Padding="8 2" Height="28"
-                                Content="RENAME MAPPINGS" ToolTip="Rename mappings in one pass"
-                                IsEnabled="{Binding CanEditProfile}" Style="{StaticResource MaterialDesignFlatButton}"
-                                Click="RenameMappings_OnClick"/>
-                        <TextBlock Grid.Column="3"
-                                   Text="{Binding MappingsList.Count, StringFormat={}{0} total}"
-                                   FontSize="14" Opacity="0.58"
-                                   VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Mappings" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding MappingsList.Count, StringFormat={}  {0}}" FontSize="13" Opacity="0.45" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Margin="1 0" Padding="7 2" Height="28" Content="RENAME"
+                                ToolTip="Rename mappings in one pass" IsEnabled="{Binding CanEditProfile}"
+                                Style="{StaticResource MaterialDesignFlatButton}" Click="RenameMappings_OnClick"/>
+                        <Button Grid.Column="2" Margin="1 0 7 0" Padding="7 2" Height="28" Content="BATCH DEVICES"
+                                ToolTip="Change one device to another across this profile" IsEnabled="{Binding CanEditProfile}"
+                                Style="{StaticResource MaterialDesignFlatButton}" Click="BatchDevices_OnClick"/>
+                        <Separator Grid.Column="3" Margin="2 4" Width="1" Style="{StaticResource MaterialDesignDarkSeparator}"/>
+                        <Button Grid.Column="4" Margin="1 0" Padding="7 2" Height="28" Content="COLLAPSE"
+                                ToolTip="Collapse all mappings" Style="{StaticResource MaterialDesignFlatButton}" Click="CollapseAllMappings_OnClick"/>
+                        <Button Grid.Column="5" Margin="1 0" Padding="7 2" Height="28" Content="EXPAND"
+                                ToolTip="Expand all mappings" Style="{StaticResource MaterialDesignFlatButton}" Click="ExpandAllMappings_OnClick"/>
                     </Grid>
 
                     <ListView Grid.Row="1"

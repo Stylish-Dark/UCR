@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Linq;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.ViewModels.ProfileViewModels;
+using HidWizards.UCR.ViewModels.Presentation;
 
 namespace HidWizards.UCR.ViewModels.Dialogs
 {
@@ -13,6 +14,7 @@ namespace HidWizards.UCR.ViewModels.Dialogs
         public Guid Guid { get; set; }
         public DeviceIoType IoType { get; set; }
         public string Title { get; set; }
+        public DeviceVisualDescriptor Visual { get; set; }
         public string DisplayTitle => IoType + " — " + Title;
     }
 
@@ -82,7 +84,8 @@ namespace HidWizards.UCR.ViewModels.Dialogs
                     {
                         Guid = configuration.Guid,
                         IoType = type,
-                        Title = configuration.GetFullTitleForProfile(profile)
+                        Title = configuration.GetFullTitleForProfile(profile),
+                        Visual = DeviceVisualCatalog.Describe(configuration, profile, type)
                     });
                 }
             }

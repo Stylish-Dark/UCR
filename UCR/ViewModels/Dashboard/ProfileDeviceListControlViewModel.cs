@@ -46,7 +46,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             Devices = new ObservableCollection<DeviceItem>();
             foreach (var device in devices)
             {
-                Devices.Add(new DeviceItem(device, profile));
+                Devices.Add(new DeviceItem(device, profile, deviceIoType));
             }
         }
 
@@ -93,7 +93,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             _profile.AddDeviceConfigurations(deviceConfigurations, _deviceIoType);
             foreach (var deviceConfiguration in deviceConfigurations)
             {
-                Devices.Add(new DeviceItem(deviceConfiguration, _profile));
+                Devices.Add(new DeviceItem(deviceConfiguration, _profile, _deviceIoType));
             }
             OnPropertyChanged(nameof(Devices));
         }

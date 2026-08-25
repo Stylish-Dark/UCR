@@ -144,6 +144,16 @@ namespace HidWizards.UCR.Views.ProfileViews
             Logger.Info("Bulk mapping rename completed for profile: " + Profile.Title);
         }
 
+        private void CollapseAllMappings_OnClick(object sender, RoutedEventArgs e)
+        {
+            foreach (var mapping in ProfileViewModel.MappingsList) mapping.IsExpanded = false;
+        }
+
+        private void ExpandAllMappings_OnClick(object sender, RoutedEventArgs e)
+        {
+            foreach (var mapping in ProfileViewModel.MappingsList) mapping.IsExpanded = true;
+        }
+
         private void MappingListView_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (Profile.IsActive()) return;

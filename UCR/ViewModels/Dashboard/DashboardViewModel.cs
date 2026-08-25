@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Data;
 using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Models;
@@ -21,7 +22,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public ProfileDeviceListControlViewModel InputDeviceControlViewModel { get; set; }
         public ProfileDeviceListControlViewModel OutputDeviceControlViewModel { get; set; }
 
-        private ProfileItem _selectedProfileItem = null;
+        private ProfileItem _selectedProfileItem;
         public ProfileItem SelectedProfileItem
         {
             get => _selectedProfileItem;
@@ -34,7 +35,24 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             }
         }
 
-        public ObservableCollection<ProfileItem> ProfileList { get; set; }
+        public ObservableCollection<ProfileItem> ProfileList { get; private set; }
+        public ICollectionView ProfileListView { get; private set; }
+        public ObservableCollection<string> ProfileGroupingOptions { get; } =
+            new ObservableCollection<string>(new[] { "Tree", "Input" });
+
+        private string _profileGroupingMode = "Tree";
+        public string ProfileGroupingMode
+        {
+            get => _profileGroupingMode;
+            set
+            {
+                if (string.Equals(_profileGroupingMode, value, StringComparison.Ordinal)) return;
+                _profileGroupingMode = value ?? "Tree";
+                RebuildProfileView();
+                OnPropertyChanged();
+            }
+        }
+
         public string ActiveProfileBreadCrumbs => Context?.ActiveProfile != null ? Context.ActiveProfile.ProfileBreadCrumbs() : "None";
 
         private Context Context { get; set; }
@@ -43,8 +61,50 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         {
             Context = context;
             ProfileList = ProfileItem.GetProfileTree(context.Profiles);
+            RebuildProfileView();
             PropertyChanged += OnPropertyChanged;
             context.ActiveProfileChangedEvent += OnActiveProfileChangedEvent;
+        }
+
+        public void ReplaceProfileList(ObservableCollection<ProfileItem> profileList)
+        {
+            var selectedId = SelectedProfileItem?.Id ?? Guid.Empty;
+            ProfileList = profileList ?? new ObservableCollection<ProfileItem>();
+            RebuildProfileView();
+            OnPropertyChanged(nameof(ProfileList));
+
+            if (selectedId != Guid.Empty)
+            {
+                SelectedProfileItem = FindProfileItem(ProfileList, selectedId);
+            }
+        }
+
+        private void RebuildProfileView()
+        {
+            var view = CollectionViewSource.GetDefaultView(ProfileList);
+            if (view != null && view.CanGroup)
+            {
+                view.GroupDescriptions.Clear();
+                if (string.Equals(ProfileGroupingMode, "Input", StringComparison.Ordinal))
+                {
+                    view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ProfileItem.InputGroup)));
+                }
+            }
+
+            ProfileListView = view;
+            OnPropertyChanged(nameof(ProfileListView));
+        }
+
+        private static ProfileItem FindProfileItem(IEnumerable<ProfileItem> items, Guid id)
+        {
+            if (items == null) return null;
+            foreach (var item in items)
+            {
+                if (item.Id == id) return item;
+                var child = FindProfileItem(item.Items, id);
+                if (child != null) return child;
+            }
+            return null;
         }
 
         private void OnPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -74,7 +134,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             OnPropertyChanged(nameof(ActiveProfileBreadCrumbs));
             OnPropertyChanged(nameof(CanDeactivateProfile));
         }
-        
+
         [NotifyPropertyChangedInvocator]
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {

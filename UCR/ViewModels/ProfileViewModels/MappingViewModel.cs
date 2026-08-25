@@ -9,6 +9,7 @@ using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Views.Dialogs;
+using HidWizards.UCR.ViewModels.Presentation;
 using MaterialDesignThemes.Wpf;
 
 namespace HidWizards.UCR.ViewModels.ProfileViewModels
@@ -43,6 +44,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool HasFilters => Mapping != null && Mapping.Plugins != null &&
                                   Mapping.Plugins.Any(plugin => plugin.Filters != null && plugin.Filters.Count > 0);
         public string CollapsedSummary => BuildCollapsedSummary();
+        public List<BindingVisualDescriptor> CollapsedInputVisuals => BuildCollapsedInputVisuals();
+        public List<BindingVisualDescriptor> CollapsedOutputVisuals => BuildCollapsedOutputVisuals();
 
         private bool _isExpanded;
         public bool IsExpanded
@@ -84,6 +87,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public void RefreshCollapsedSummary()
         {
             OnPropertyChanged(nameof(CollapsedSummary));
+            OnPropertyChanged(nameof(CollapsedInputVisuals));
+            OnPropertyChanged(nameof(CollapsedOutputVisuals));
         }
 
         public void RefreshTitle()
@@ -234,6 +239,49 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 default:
                     return false;
             }
+        }
+
+
+        private List<BindingVisualDescriptor> BuildCollapsedInputVisuals()
+        {
+            var result = new List<BindingVisualDescriptor>();
+            foreach (var binding in DeviceBindings.Take(3))
+            {
+                result.Add(DeviceVisualCatalog.DescribeBinding(
+                    binding.DeviceBinding, binding.DeviceBindingCategory, ProfileViewModel.Profile));
+            }
+
+            if (result.Count == 0)
+            {
+                result.Add(DeviceVisualCatalog.DescribeBinding(null, DeviceBindingCategory.Momentary, ProfileViewModel.Profile));
+            }
+            return result;
+        }
+
+        private List<BindingVisualDescriptor> BuildCollapsedOutputVisuals()
+        {
+            var result = new List<BindingVisualDescriptor>();
+            var lastPlugin = Plugins.LastOrDefault();
+            if (lastPlugin != null)
+            {
+                foreach (var binding in lastPlugin.DeviceBindings.Take(3))
+                {
+                    result.Add(DeviceVisualCatalog.DescribeBinding(
+                        binding.DeviceBinding, binding.DeviceBindingCategory, ProfileViewModel.Profile));
+                }
+
+                if (result.Count == 0)
+                {
+                    var filterName = lastPlugin.Plugin.GetDefinedFilterName();
+                    if (!string.IsNullOrWhiteSpace(filterName)) result.Add(DeviceVisualCatalog.Filter(filterName));
+                }
+            }
+
+            if (result.Count == 0)
+            {
+                result.Add(DeviceVisualCatalog.DescribeBinding(null, DeviceBindingCategory.Momentary, ProfileViewModel.Profile));
+            }
+            return result;
         }
 
         private string BuildCollapsedSummary()

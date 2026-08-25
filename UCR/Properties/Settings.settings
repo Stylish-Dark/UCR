@@ -3,5 +3,9 @@
   <Profiles>
     <Profile Title="(Default)" />
   </Profiles>
-  <Settings />
+  <Settings>
+    <Setting Name="AccentColor" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Blue</Value>
+    </Setting>
+  </Settings>
 </SettingsFile>

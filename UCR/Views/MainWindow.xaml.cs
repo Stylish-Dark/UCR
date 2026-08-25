@@ -91,11 +91,17 @@ namespace HidWizards.UCR.Views
         private void ReloadProfileTree()
         {
             var profileTree = ProfileItem.GetProfileTree(Context.Profiles);
-            ProfileTree.ItemsSource = profileTree;
+            _dashboardViewModel.ReplaceProfileList(profileTree);
         }
 
         private void ProfileTree_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (!string.Equals(_dashboardViewModel.ProfileGroupingMode, "Tree", StringComparison.Ordinal))
+            {
+                _draggedProfileItem = null;
+                return;
+            }
+
             _profileDragStartPoint = e.GetPosition(ProfileTree);
             var container = GetTreeViewItem(e.OriginalSource as DependencyObject);
             _draggedProfileItem = container?.DataContext as ProfileItem;
@@ -116,6 +122,13 @@ namespace HidWizards.UCR.Views
 
         private void ProfileTree_OnDragOver(object sender, DragEventArgs e)
         {
+            if (!string.Equals(_dashboardViewModel.ProfileGroupingMode, "Tree", StringComparison.Ordinal))
+            {
+                e.Effects = DragDropEffects.None;
+                e.Handled = true;
+                return;
+            }
+
             var sourceItem = e.Data.GetData(typeof(ProfileItem)) as ProfileItem;
             var targetContainer = GetTreeViewItem(e.OriginalSource as DependencyObject);
             var targetItem = targetContainer?.DataContext as ProfileItem;
@@ -126,6 +139,13 @@ namespace HidWizards.UCR.Views
 
         private void ProfileTree_OnDrop(object sender, DragEventArgs e)
         {
+            if (!string.Equals(_dashboardViewModel.ProfileGroupingMode, "Tree", StringComparison.Ordinal))
+            {
+                e.Effects = DragDropEffects.None;
+                e.Handled = true;
+                return;
+            }
+
             var sourceItem = e.Data.GetData(typeof(ProfileItem)) as ProfileItem;
             var targetContainer = GetTreeViewItem(e.OriginalSource as DependencyObject);
             var targetItem = targetContainer?.DataContext as ProfileItem;
@@ -468,6 +488,15 @@ namespace HidWizards.UCR.Views
             {
                 HidWizards.UCR.Utilities.DarkMessageBox.Show(this, error, "Device settings", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
+        }
+
+        private async void Appearance_OnClick(object sender, RoutedEventArgs e)
+        {
+            var result = (string)await DialogHost.Show(new AppearanceDialog(), "RootDialog");
+            if (string.IsNullOrWhiteSpace(result)) return;
+
+            AppearanceManager.ApplyAccent(result);
+            Logger.Info("Appearance accent changed to: " + result);
         }
 
         private void ExportProfile(object sender, RoutedEventArgs e)

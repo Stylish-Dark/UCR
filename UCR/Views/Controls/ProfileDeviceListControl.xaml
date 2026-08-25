@@ -11,10 +11,23 @@
     <UserControl.Resources>
         <ResourceDictionary>
             <DataTemplate x:Key="DeviceTemplate" DataType="{x:Type dashboard:DeviceItem}">
-                <StackPanel Margin="4">
-                    <TextBlock Margin="4" Text="{Binding Title}" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
-                    <TextBlock Margin="4" Text="{Binding ProviderName}" Style="{StaticResource MaterialDesignCaptionTextBlock}" />
-                </StackPanel>
+                <Grid Margin="4 3">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="46"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <local:DeviceGlyphControl Width="38" Height="27" Margin="2 0 6 0"
+                                              VerticalAlignment="Center"
+                                              Kind="{Binding Visual.Kind}"
+                                              AccentBrush="{Binding Visual.AccentBrush}"
+                                              SlotNumber="{Binding Visual.SlotNumber}"
+                                              ShowSlotIndicator="{Binding Visual.ShowSlotIndicator}"
+                                              ToolTip="{Binding Visual.ToolTip}"/>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Margin="0 1 0 0" Text="{Binding ProviderName}" FontSize="12.5" Opacity="0.50" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </Grid>
             </DataTemplate>
             <Style x:Key="EmptyDeviceTrigger" TargetType="{x:Type ListView}" BasedOn="{StaticResource MaterialDesignListView}">
                 <Style.Triggers>
