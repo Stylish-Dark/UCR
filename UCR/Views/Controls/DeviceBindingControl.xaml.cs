@@ -9,6 +9,7 @@ using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Utilities.Commands;
 using HidWizards.UCR.ViewModels;
+using HidWizards.UCR.ViewModels.ProfileViewModels;
 
 namespace HidWizards.UCR.Views.Controls
 {

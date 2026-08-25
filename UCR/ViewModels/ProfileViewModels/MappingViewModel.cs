@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Models;
+using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Views.Dialogs;
 using HidWizards.UCR.ViewModels.Presentation;
