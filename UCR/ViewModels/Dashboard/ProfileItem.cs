@@ -107,7 +107,12 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             }
             else if (inputs.Count == 1)
             {
-                item.InputGroupName = inputs[0].GetFullTitleForProfile(profile);
+                // Group headings identify the actual device, not a profile-configuration label.
+                // Prefer the persistent friendly alias and keep the raw hardware title in the tooltip.
+                item.InputGroupName = profile.Context?.DevicesManager?.GetDisplayTitle(inputs[0].Device)
+                                      ?? inputs[0].Device?.DisplayTitle
+                                      ?? inputs[0].Device?.Title
+                                      ?? "Input device";
                 item.InputGroupVisual = DeviceVisualCatalog.Describe(inputs[0], profile, DeviceIoType.Input);
             }
             else

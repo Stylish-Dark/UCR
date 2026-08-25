@@ -121,7 +121,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (result?.SelectedSource == null || result.SelectedTarget == null) return;
 
             var change = ProfileViewModel.BatchChangeDevice(result.SelectedSource, result.SelectedTarget);
-            Logger.Info("Batch device change: " + result.SelectedSource.DisplayTitle + " -> " + result.SelectedTarget.DisplayTitle +
+            Logger.Info("Profile device replacement: " + result.SelectedSource.DisplayTitle + " -> " + result.SelectedTarget.DisplayTitle +
                         "; changed=" + change.Changed + "; incompatible-cleared=" + change.ClearedAsIncompatible +
                         "; unknown-preserved=" + change.PreservedUnknown);
 
@@ -131,7 +131,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                 message += " " + change.ClearedAsIncompatible + " incompatible binding" +
                            (change.ClearedAsIncompatible == 1 ? " was" : "s were") + " cleared safely.";
             }
-            HidWizards.UCR.Utilities.DarkMessageBox.Show(message, "Batch device change", MessageBoxButton.OK, MessageBoxImage.Information);
+            HidWizards.UCR.Utilities.DarkMessageBox.Show(message, "Replace device", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private async void RenameMappings_OnClick(object sender, RoutedEventArgs e)
@@ -142,6 +142,17 @@ namespace HidWizards.UCR.Views.ProfileViews
 
             ProfileViewModel.ApplyMappingNames(result.Items);
             Logger.Info("Bulk mapping rename completed for profile: " + Profile.Title);
+        }
+
+        private void ContextMenuButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            if (button?.ContextMenu == null) return;
+
+            button.ContextMenu.PlacementTarget = button;
+            button.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            button.ContextMenu.IsOpen = true;
+            e.Handled = true;
         }
 
         private void CollapseAllMappings_OnClick(object sender, RoutedEventArgs e)

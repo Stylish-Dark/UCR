@@ -37,8 +37,6 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         public ObservableCollection<ProfileItem> ProfileList { get; private set; }
         public ICollectionView ProfileListView { get; private set; }
-        public ObservableCollection<string> ProfileGroupingOptions { get; } =
-            new ObservableCollection<string>(new[] { "Tree", "Input" });
 
         private string _profileGroupingMode = "Tree";
         public string ProfileGroupingMode
@@ -50,7 +48,14 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 _profileGroupingMode = value ?? "Tree";
                 RebuildProfileView();
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(GroupProfilesByInput));
             }
+        }
+
+        public bool GroupProfilesByInput
+        {
+            get => string.Equals(ProfileGroupingMode, "Input", StringComparison.Ordinal);
+            set => ProfileGroupingMode = value ? "Input" : "Tree";
         }
 
         public string ActiveProfileBreadCrumbs => Context?.ActiveProfile != null ? Context.ActiveProfile.ProfileBreadCrumbs() : "None";
@@ -64,6 +69,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             RebuildProfileView();
             PropertyChanged += OnPropertyChanged;
             context.ActiveProfileChangedEvent += OnActiveProfileChangedEvent;
+            context.DeviceAliasesChangedEvent += OnDeviceAliasesChangedEvent;
         }
 
         public void ReplaceProfileList(ObservableCollection<ProfileItem> profileList)
@@ -127,6 +133,13 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         private List<DeviceConfiguration> GetDeviceConfigurations(Profile profile, DeviceIoType deviceIoType)
         {
             return SelectedProfileItem.Profile.GetDeviceConfigurationList(deviceIoType);
+        }
+
+        private void OnDeviceAliasesChangedEvent()
+        {
+            // Profile presentation is cached in ProfileItem. Rebuild it when aliases change so
+            // the profile tree and input-group headings immediately use the friendly names too.
+            ReplaceProfileList(ProfileItem.GetProfileTree(Context.Profiles));
         }
 
         private void OnActiveProfileChangedEvent(Profile profile)

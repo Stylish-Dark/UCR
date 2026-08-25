@@ -23,7 +23,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public Visibility ShowPreview => DeviceBinding.IsInBindMode ? Visibility.Hidden : Visibility.Visible;
         public Visibility ShowBindMode => ShowPreview.Equals(Visibility.Visible) ? Visibility.Hidden : Visibility.Visible;
         public Visibility ShowPropertyList => PluginPropertyGroup == null ? Visibility.Collapsed : Visibility.Visible;
-        public Visibility ShowBlock => DeviceBinding.IsBlockable() ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility ShowBlock => DeviceBinding.DeviceIoType == DeviceIoType.Input && DeviceBinding.IsBlockable()
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         public Visibility ShowInvertInput => DeviceBinding.DeviceIoType == DeviceIoType.Input &&
                                              DeviceBindingCategory == DeviceBindingCategory.Range
             ? Visibility.Visible

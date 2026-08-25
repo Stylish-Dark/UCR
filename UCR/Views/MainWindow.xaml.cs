@@ -455,6 +455,18 @@ namespace HidWizards.UCR.Views
             }
         }
 
+
+        private void ContextMenuButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            if (button?.ContextMenu == null) return;
+
+            button.ContextMenu.PlacementTarget = button;
+            button.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            button.ContextMenu.IsOpen = true;
+            e.Handled = true;
+        }
+
         private void OpenLogs_OnClick(object sender, RoutedEventArgs e)
         {
             try

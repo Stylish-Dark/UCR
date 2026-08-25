@@ -17,7 +17,7 @@
             <ColumnDefinition Width="95"/>
             <ColumnDefinition Width="150"/>
             <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="88"/>
+            <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
         <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0 0 8 0">

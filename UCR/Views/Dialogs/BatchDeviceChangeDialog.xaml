@@ -14,9 +14,9 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="Batch device change" Style="{StaticResource MaterialDesignTitleTextBlock}" FontSize="20"/>
+        <TextBlock Grid.Row="0" Text="Replace device" Style="{StaticResource MaterialDesignTitleTextBlock}" FontSize="20"/>
         <TextBlock Grid.Row="1" Margin="0 7 0 16" Opacity="0.72" TextWrapping="Wrap"
-                   Text="Replace every binding in this profile that uses one device with another. Compatible bindings are translated; definitely incompatible bindings are cleared rather than silently mis-mapped."/>
+                   Text="Replace one device throughout this profile. Compatible bindings are translated; definitely incompatible bindings are cleared rather than silently mis-mapped."/>
 
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
@@ -25,7 +25,7 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0">
-                <TextBlock Text="Change from" FontWeight="SemiBold" Margin="0 0 0 5"/>
+                <TextBlock Text="Current device" FontWeight="SemiBold" Margin="0 0 0 5"/>
                 <ComboBox ItemsSource="{Binding SourceDevices}" SelectedItem="{Binding SelectedSource, Mode=TwoWay}" MinWidth="210">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
@@ -43,9 +43,9 @@
                     </ComboBox.ItemTemplate>
                 </ComboBox>
             </StackPanel>
-            <TextBlock Grid.Column="1" Text="→" FontSize="22" Margin="12 22" VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="1" Text="→" FontSize="22" Margin="20 24" VerticalAlignment="Center" Opacity="0.62"/>
             <StackPanel Grid.Column="2">
-                <TextBlock Text="Change to" FontWeight="SemiBold" Margin="0 0 0 5"/>
+                <TextBlock Text="Replacement" FontWeight="SemiBold" Margin="0 0 0 5"/>
                 <ComboBox ItemsSource="{Binding TargetDevices}" SelectedItem="{Binding SelectedTarget, Mode=TwoWay}" MinWidth="210">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
@@ -69,7 +69,7 @@
                    Text="Only the selected input/output side is changed. Other device bindings in the profile are untouched."/>
 
         <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 18 0 0">
-            <Button Content="APPLY" IsDefault="True" IsEnabled="{Binding CanApply}" Style="{StaticResource MaterialDesignRaisedButton}"
+            <Button Content="REPLACE" IsDefault="True" IsEnabled="{Binding CanApply}" Style="{StaticResource MaterialDesignRaisedButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" CommandParameter="{Binding ViewModel}"/>
             <Button Content="CANCEL" IsCancel="True" Margin="8 0 0 0" Style="{StaticResource MaterialDesignFlatButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"/>
