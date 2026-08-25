@@ -48,6 +48,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public List<BindingVisualDescriptor> CollapsedInputVisuals => BuildCollapsedInputVisuals();
         public List<BindingVisualDescriptor> CollapsedOutputVisuals => BuildCollapsedOutputVisuals();
 
+        private bool _isDragging;
+        public bool IsDragging
+        {
+            get => _isDragging;
+            set
+            {
+                if (_isDragging == value) return;
+                _isDragging = value;
+                OnPropertyChanged();
+            }
+        }
+
         private bool _isExpanded;
         public bool IsExpanded
         {

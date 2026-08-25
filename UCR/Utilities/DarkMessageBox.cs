@@ -39,7 +39,8 @@ namespace HidWizards.UCR.Utilities
         {
             private static readonly Brush BackgroundBrush = BrushFromRgb(0x21, 0x21, 0x21);
             private static readonly Brush SurfaceBrush = BrushFromRgb(0x2B, 0x2B, 0x2B);
-            private static readonly Brush AccentBrush = BrushFromRgb(0x3D, 0x63, 0xBF);
+            private static Brush AccentBrush => ResolveResourceBrush("PrimaryHueDarkBrush", AppearanceManager.BrushFor(AppearanceManager.CurrentAccentName));
+            private static Brush AccentForegroundBrush => ResolveResourceBrush("PrimaryHueDarkForegroundBrush", Brushes.White);
             private static readonly Brush TextBrush = Brushes.White;
             private static readonly Brush SecondaryTextBrush = BrushFromRgb(0xD0, 0xD0, 0xD0);
 
@@ -96,7 +97,7 @@ namespace HidWizards.UCR.Utilities
                 var titleText = new TextBlock
                 {
                     Text = Title,
-                    Foreground = TextBrush,
+                    Foreground = AccentForegroundBrush,
                     FontSize = 14,
                     FontWeight = FontWeights.SemiBold,
                     VerticalAlignment = VerticalAlignment.Center,
@@ -113,7 +114,7 @@ namespace HidWizards.UCR.Utilities
                     Padding = new Thickness(0),
                     BorderThickness = new Thickness(0),
                     Background = Brushes.Transparent,
-                    Foreground = TextBrush,
+                    Foreground = AccentForegroundBrush,
                     FontSize = 20,
                     FontWeight = FontWeights.Light,
                     Focusable = false
@@ -195,7 +196,7 @@ namespace HidWizards.UCR.Utilities
                     Height = 32,
                     Margin = new Thickness(8, 0, 0, 0),
                     Padding = new Thickness(12, 0, 12, 0),
-                    Foreground = TextBrush,
+                    Foreground = primary ? AccentForegroundBrush : TextBrush,
                     Background = primary ? AccentBrush : Brushes.Transparent,
                     BorderBrush = primary ? AccentBrush : SecondaryTextBrush,
                     BorderThickness = new Thickness(1),
@@ -280,6 +281,12 @@ namespace HidWizards.UCR.Utilities
                     case MessageBoxImage.Information: return BrushFromRgb(0x42, 0xA5, 0xF5);
                     default: return SecondaryTextBrush;
                 }
+            }
+
+
+            private static Brush ResolveResourceBrush(string key, Brush fallback)
+            {
+                return Application.Current?.TryFindResource(key) as Brush ?? fallback;
             }
 
             private static Brush BrushFromRgb(byte red, byte green, byte blue)

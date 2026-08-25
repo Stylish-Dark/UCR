@@ -12,8 +12,9 @@
         AllowsTransparency="True"
         Background="Transparent"
         Style="{x:Null}">
-    <Border Background="#212121"
-            BorderBrush="#3D63BF"
+    <Border x:Name="RootBorder"
+            Background="#212121"
+            BorderBrush="#555555"
             BorderThickness="1"
             CornerRadius="7"
             Padding="22">
@@ -32,7 +33,8 @@
                                FontFamily="Segoe UI"
                                FontSize="22"
                                FontWeight="SemiBold"/>
-                    <TextBlock Text="Starting UCR"
+                    <TextBlock x:Name="PhaseText"
+                               Text="Starting UCR"
                                Foreground="#AFAFAF"
                                FontFamily="Segoe UI"
                                FontSize="13"
@@ -47,17 +49,20 @@
                            FontFamily="Segoe UI"
                            FontSize="14"
                            TextWrapping="Wrap"/>
-                <TextBlock Text="Device providers can take a few seconds to initialize."
+                <TextBlock x:Name="DetailText"
+                           Text="Device providers can take a few seconds to initialize."
                            Foreground="#888888"
                            FontFamily="Segoe UI"
                            FontSize="11"
-                           Margin="0,5,0,0"/>
+                           Margin="0,5,0,0"
+                           TextWrapping="Wrap"/>
             </StackPanel>
 
-            <ProgressBar Grid.Row="2"
+            <ProgressBar x:Name="ProgressIndicator"
+                         Grid.Row="2"
                          Height="6"
                          IsIndeterminate="True"
-                         Foreground="#3D63BF"
+                         Foreground="#777777"
                          Background="#353535"
                          BorderThickness="0"/>
         </Grid>

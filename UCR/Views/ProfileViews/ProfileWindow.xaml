@@ -22,7 +22,8 @@
         TextOptions.TextRenderingMode="Auto"
         Background="{DynamicResource MaterialDesignPaper}"
         FontFamily="{DynamicResource MaterialDesignFont}"
-        UseLayoutRounding="True">
+        UseLayoutRounding="True"
+        PreviewKeyDown="ProfileWindow_OnPreviewKeyDown">
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="0" CornerRadius="5" GlassFrameThickness="0"/>
     </WindowChrome.WindowChrome>
@@ -251,12 +252,11 @@
                           VirtualizingPanel.ScrollUnit="Pixel"
                           ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                           HorizontalContentAlignment="Stretch"
-                          AllowDrop="True"
+                          VirtualizingPanel.IsVirtualizing="False"
                           PreviewMouseRightButtonDown="MappingListView_OnPreviewMouseRightButtonDown"
                           PreviewMouseRightButtonUp="MappingListView_OnPreviewMouseRightButtonUp"
                           PreviewMouseMove="MappingListView_OnPreviewMouseMove"
-                          DragOver="MappingListView_OnDragOver"
-                          Drop="MappingListView_OnDrop">
+                          LostMouseCapture="MappingListView_OnLostMouseCapture">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="{x:Type ListViewItem}">
                             <Setter Property="Focusable" Value="False"/>
@@ -264,6 +264,12 @@
                             <Setter Property="Padding" Value="0"/>
                             <Setter Property="Margin" Value="0"/>
                             <Setter Property="Background" Value="Transparent"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsDragging}" Value="True">
+                                    <Setter Property="Opacity" Value="0"/>
+                                    <Setter Property="IsHitTestVisible" Value="False"/>
+                                </DataTrigger>
+                            </Style.Triggers>
                         </Style>
                     </ListView.ItemContainerStyle>
                     <ListView.Style>

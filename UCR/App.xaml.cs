@@ -28,6 +28,13 @@ namespace HidWizards.UCR
         private ManualResetEventSlim _splashReady;
         private volatile bool _splashCloseRequested;
         private readonly Stopwatch _startupStopwatch = new Stopwatch();
+        private Thread _shutdownSplashThread;
+        private SplashWindow _shutdownSplashWindow;
+        private ManualResetEventSlim _shutdownSplashReady;
+        private volatile bool _shutdownSplashCloseRequested;
+        private bool _shutdownInProgress;
+        private bool _shutdownCleanupComplete;
+        private bool _disposed;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -273,19 +280,194 @@ namespace HidWizards.UCR
             }
         }
 
+        public void ShutdownWithProgress(Window mainWindow, bool saveContext)
+        {
+            if (_shutdownInProgress) return;
+            _shutdownInProgress = true;
+            ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown;
+            Logger.Info("UCR shutdown started");
+
+            try
+            {
+                StartShutdownSplash();
+                mainWindow?.Hide();
+                var ucrWindow = mainWindow as MainWindow;
+                if (ucrWindow != null)
+                {
+                    RunShutdownStage("Closing profile windows...", 10, ucrWindow.PrepareForShutdown);
+                }
+                if (saveContext)
+                {
+                    RunShutdownStage("Saving configuration...", 15, () => context?.SaveContext());
+                }
+                else
+                {
+                    UpdateShutdownProgress(15);
+                }
+                RunShutdownStage("Saving device state...", 35, () => context?.DevicesManager.UpdateDeviceCache());
+                RunShutdownStage("Stopping input and output services...", 70, () =>
+                {
+                    context?.Dispose();
+                    context = null;
+                });
+                RunShutdownStage("Releasing system hooks...", 88, () =>
+                {
+                    _hidGuardianClient?.Dispose();
+                    _hidGuardianClient = null;
+                });
+                RunShutdownStage("Finishing...", 96, () =>
+                {
+                    mutex?.Dispose();
+                    mutex = null;
+                    Logger.Flush();
+                });
+                _disposed = true;
+                _shutdownCleanupComplete = true;
+                Logger.Info("UCR shutdown cleanup completed");
+                Logger.Flush();
+            }
+            finally
+            {
+                UpdateShutdownSplash("Closing UCR...");
+                UpdateShutdownProgress(100);
+                Shutdown(0);
+            }
+        }
+
+        private void RunShutdownStage(string status, double completedProgress, Action action)
+        {
+            UpdateShutdownSplash(status);
+            var stopwatch = Stopwatch.StartNew();
+            try
+            {
+                action();
+                stopwatch.Stop();
+                Logger.Info($"Shutdown stage '{status}' completed in {stopwatch.ElapsedMilliseconds} ms");
+            }
+            catch (Exception exception)
+            {
+                stopwatch.Stop();
+                Logger.Error($"Shutdown stage '{status}' failed after {stopwatch.ElapsedMilliseconds} ms", exception);
+            }
+            finally
+            {
+                UpdateShutdownProgress(completedProgress);
+            }
+        }
+
+        private void StartShutdownSplash()
+        {
+            _shutdownSplashCloseRequested = false;
+            _shutdownSplashReady = new ManualResetEventSlim(false);
+            var accent = AppearanceManager.CurrentAccentColor;
+            _shutdownSplashThread = new Thread(() =>
+            {
+                var splash = new SplashWindow(accent, "Shutting down UCR", string.Empty);
+                splash.Topmost = true;
+                _shutdownSplashWindow = splash;
+                if (_shutdownSplashCloseRequested)
+                {
+                    _shutdownSplashReady.Set();
+                    return;
+                }
+
+                splash.SetStatus("Preparing to shut down...");
+                splash.SetProgress(5);
+                splash.Closed += (sender, args) => System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvokeShutdown(System.Windows.Threading.DispatcherPriority.Background);
+                splash.Show();
+                _shutdownSplashReady.Set();
+                System.Windows.Threading.Dispatcher.Run();
+            })
+            {
+                IsBackground = true,
+                Name = "UCR Shutdown Splash"
+            };
+            _shutdownSplashThread.SetApartmentState(ApartmentState.STA);
+            _shutdownSplashThread.Start();
+            _shutdownSplashReady.Wait(2000);
+        }
+
+        private void UpdateShutdownSplash(string status)
+        {
+            if (_shutdownSplashCloseRequested) return;
+            var splash = _shutdownSplashWindow;
+            if (splash == null) return;
+
+            try
+            {
+                splash.Dispatcher.BeginInvoke(new Action(() => splash.SetStatus(status)));
+            }
+            catch (InvalidOperationException)
+            {
+                // Shutdown splash is already closing.
+            }
+        }
+
+        private void UpdateShutdownProgress(double value)
+        {
+            if (_shutdownSplashCloseRequested) return;
+            var splash = _shutdownSplashWindow;
+            if (splash == null) return;
+
+            try
+            {
+                splash.Dispatcher.BeginInvoke(new Action(() => splash.SetProgress(value)));
+            }
+            catch (InvalidOperationException)
+            {
+                // Shutdown splash is already closing.
+            }
+        }
+
+        private void CloseShutdownSplash()
+        {
+            _shutdownSplashCloseRequested = true;
+            var splash = _shutdownSplashWindow;
+            _shutdownSplashWindow = null;
+            if (splash == null) return;
+
+            try
+            {
+                splash.Dispatcher.Invoke(new Action(splash.Close));
+            }
+            catch (InvalidOperationException)
+            {
+                // Dispatcher has already shut down.
+            }
+        }
+
         public void Dispose()
         {
+            if (_disposed) return;
+            _disposed = true;
             CloseSplash();
+            CloseShutdownSplash();
             mutex?.Dispose();
+            mutex = null;
             context?.Dispose();
+            context = null;
             _hidGuardianClient?.Dispose();
+            _hidGuardianClient = null;
         }
 
         private void App_OnExit(object sender, ExitEventArgs e)
         {
-            context?.DevicesManager.UpdateDeviceCache();
+            if (!_shutdownCleanupComplete)
+            {
+                try
+                {
+                    context?.DevicesManager.UpdateDeviceCache();
+                }
+                catch (Exception exception)
+                {
+                    Logger.Error("Updating device cache during application exit failed", exception);
+                }
 
-            Dispose();
+                Dispose();
+            }
+
+            CloseShutdownSplash();
+            Logger.Flush();
         }
 
         private static void AppDomain_CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)

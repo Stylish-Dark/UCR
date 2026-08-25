@@ -38,7 +38,7 @@
             </ListView.ItemContainerStyle>
             <ListView.ItemTemplate>
                 <DataTemplate>
-                    <Border BorderBrush="#3D63BF" BorderThickness="0 0 0 1" Padding="6 7">
+                    <Border BorderBrush="{DynamicResource PrimaryHueMidBrush}" BorderThickness="0 0 0 1" Padding="6 7">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="160"/>

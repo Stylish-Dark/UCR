@@ -504,11 +504,7 @@ namespace HidWizards.UCR.Views
 
         private async void Appearance_OnClick(object sender, RoutedEventArgs e)
         {
-            var result = (string)await DialogHost.Show(new AppearanceDialog(), "RootDialog");
-            if (string.IsNullOrWhiteSpace(result)) return;
-
-            AppearanceManager.ApplyAccent(result);
-            Logger.Info("Appearance accent changed to: " + result);
+            await DialogHost.Show(new AppearanceDialog(), "RootDialog");
         }
 
         private void ExportProfile(object sender, RoutedEventArgs e)
@@ -654,6 +650,13 @@ namespace HidWizards.UCR.Views
             {
                 profileWindow.Close();
             }
+        }
+
+        internal void PrepareForShutdown()
+        {
+            _autoProfileMonitor?.Dispose();
+            CloseAllProfileWindows();
+            if (_trayIcon != null) _trayIcon.Visible = false;
         }
 
         private static string EnsureExtension(string filePath, string extension)
@@ -807,18 +810,18 @@ namespace HidWizards.UCR.Views
             if (CloseState.Closing.Equals(WindowCloseState))
             {
                 if (WindowState.Equals(WindowState.Minimized)) WindowState = WindowState.Normal;
-                
+
                 e.Cancel = true;
                 SystemSounds.Exclamation.Play();
                 return;
             }
 
+            e.Cancel = true;
             WindowCloseState = CloseState.Closing;
+            var saveBeforeShutdown = false;
 
             if (Context.IsNotSaved)
             {
-                e.Cancel = true;
-
                 if (WindowState.Equals(WindowState.Minimized))
                 {
                     WindowState = WindowState.Normal;
@@ -849,18 +852,32 @@ namespace HidWizards.UCR.Views
                         return;
                     case MessageBoxResult.OK:
                     case MessageBoxResult.Yes:
-                        Context.SaveContext();
-                        WindowCloseState = CloseState.ForceClose;
-                        Close();
+                        saveBeforeShutdown = true;
                         break;
                     case MessageBoxResult.No:
-                        WindowCloseState = CloseState.ForceClose;
-                        Close();
                         break;
                 }
             }
+
+            BeginFinalShutdown(saveBeforeShutdown);
         }
-        
+
+        private void BeginFinalShutdown(bool saveContext)
+        {
+            WindowCloseState = CloseState.ForceClose;
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                var app = Application.Current as App;
+                if (app != null)
+                {
+                    app.ShutdownWithProgress(this, saveContext);
+                    return;
+                }
+
+                Close();
+            }));
+        }
+
         private void Save_OnExecuted(object sender, ExecutedRoutedEventArgs e)
         {
             Context.SaveContext();

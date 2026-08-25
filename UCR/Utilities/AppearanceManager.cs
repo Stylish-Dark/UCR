@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Media;
@@ -28,6 +28,7 @@ namespace HidWizards.UCR.Utilities
         public static IEnumerable<AccentPalette> AvailablePalettes => Palettes;
 
         public static string CurrentAccentName { get; private set; } = "Blue";
+        public static Color CurrentAccentColor => (Find(CurrentAccentName) ?? Find("Blue")).Color;
 
         public static void ApplySavedAccent()
         {
