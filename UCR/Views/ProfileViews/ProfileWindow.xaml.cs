@@ -2,10 +2,9 @@
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Models;
@@ -28,9 +27,14 @@ namespace HidWizards.UCR.Views.ProfileViews
         private Point? _mappingDragStart;
         private MappingViewModel _mappingDragSource;
         private int _mappingDragOriginalIndex = -1;
-        private MappingDragAdorner _mappingDragAdorner;
-        private AdornerLayer _mappingDragAdornerLayer;
-        private Point _mappingDragGrabOffset;
+        private readonly Dictionary<MappingViewModel, MappingDragSlot> _mappingDragSlots =
+            new Dictionary<MappingViewModel, MappingDragSlot>();
+        private ListViewItem _mappingDragContainer;
+        private ScrollViewer _mappingDragScrollViewer;
+        private double _mappingDragInitialScrollOffset;
+        private double _mappingDragGrabOffsetY;
+        private double _mappingDragSourceHeight;
+        private int _mappingDragTargetIndex = -1;
         private bool _mappingDragActive;
         private bool _mappingDragEnding;
 
@@ -208,9 +212,8 @@ namespace HidWizards.UCR.Views.ProfileViews
                 }
 
                 var pointer = e.GetPosition(MappingListView);
-                UpdateMappingDragVisual(pointer);
                 AutoScrollMappingList(pointer);
-                ReorderMappingAtPointer(_mappingDragSource, pointer);
+                UpdateMappingDrag(pointer);
                 e.Handled = true;
                 return;
             }
@@ -232,99 +235,113 @@ namespace HidWizards.UCR.Views.ProfileViews
             var source = _mappingDragSource;
             if (source == null || source.IsExpanded || Profile.IsActive()) return false;
 
-            var container = MappingListView.ItemContainerGenerator.ContainerFromItem(source) as ListViewItem;
-            if (container == null || container.ActualWidth <= 0 || container.ActualHeight <= 0) return false;
+            MappingListView.UpdateLayout();
+            var sourceContainer = MappingListView.ItemContainerGenerator.ContainerFromItem(source) as ListViewItem;
+            if (sourceContainer == null || sourceContainer.ActualWidth <= 0 || sourceContainer.ActualHeight <= 0) return false;
 
-            var layer = AdornerLayer.GetAdornerLayer(MappingListView);
-            if (layer == null) return false;
+            _mappingDragSlots.Clear();
+            _mappingDragScrollViewer = FindVisualChild<ScrollViewer>(MappingListView);
+            _mappingDragInitialScrollOffset = _mappingDragScrollViewer?.VerticalOffset ?? 0.0;
 
-            var snapshot = CaptureElement(container);
-            if (snapshot == null) return false;
+            foreach (var mapping in ProfileViewModel.MappingsList)
+            {
+                var container = MappingListView.ItemContainerGenerator.ContainerFromItem(mapping) as ListViewItem;
+                if (container == null || container.ActualHeight <= 0)
+                {
+                    RestoreMappingDragVisuals();
+                    Logger.Warn("Unable to prepare mapping reorder because a mapping card container is unavailable.");
+                    return false;
+                }
 
-            var topLeft = container.TranslatePoint(new Point(0, 0), MappingListView);
-            _mappingDragGrabOffset = new Point(pointer.X - topLeft.X, pointer.Y - topLeft.Y);
+                var top = container.TranslatePoint(new Point(0, 0), MappingListView).Y;
+                var slot = new MappingDragSlot
+                {
+                    Mapping = mapping,
+                    Container = container,
+                    Top = top,
+                    Height = container.ActualHeight,
+                    OriginalRenderTransform = container.RenderTransform,
+                    OriginalZIndex = Panel.GetZIndex(container),
+                    Translate = new TranslateTransform()
+                };
 
-            MappingDragAdorner adorner = null;
+                container.RenderTransform = slot.Translate;
+                _mappingDragSlots[mapping] = slot;
+            }
+
+            MappingDragSlot sourceSlot;
+            if (!_mappingDragSlots.TryGetValue(source, out sourceSlot))
+            {
+                RestoreMappingDragVisuals();
+                return false;
+            }
+
+            _mappingDragContainer = sourceSlot.Container;
+            _mappingDragGrabOffsetY = pointer.Y - sourceSlot.Top;
+            _mappingDragSourceHeight = sourceSlot.Height;
+            _mappingDragTargetIndex = _mappingDragOriginalIndex;
+
             try
             {
-                Logger.Debug("Preparing live mapping reorder: " + source.MappingTitle);
-                adorner = new MappingDragAdorner(
-                    MappingListView,
-                    snapshot,
-                    new Size(container.ActualWidth, container.ActualHeight));
-                layer.Add(adorner);
-
                 if (!MappingListView.CaptureMouse())
                 {
-                    layer.Remove(adorner);
+                    RestoreMappingDragVisuals();
                     Logger.Warn("Unable to capture mouse for live mapping reorder: " + source.MappingTitle);
                     return false;
                 }
 
-                _mappingDragAdornerLayer = layer;
-                _mappingDragAdorner = adorner;
+                Panel.SetZIndex(_mappingDragContainer, 1000);
                 source.IsDragging = true;
                 _mappingDragActive = true;
                 Mouse.OverrideCursor = Cursors.SizeAll;
-                UpdateMappingDragVisual(pointer);
-                Logger.Info("Started live mapping reorder: " + source.MappingTitle);
+                UpdateMappingDrag(pointer);
+                Logger.Info("Started direct mapping reorder: " + source.MappingTitle);
                 return true;
             }
             catch (Exception exception)
             {
-                try
-                {
-                    if (adorner != null) layer.Remove(adorner);
-                }
-                catch
-                {
-                    // The drag never became active; cleanup must not turn a drag failure into a crash.
-                }
-
-                if (Mouse.Captured == MappingListView)
-                {
-                    MappingListView.ReleaseMouseCapture();
-                }
-
+                if (Mouse.Captured == MappingListView) MappingListView.ReleaseMouseCapture();
                 source.IsDragging = false;
-                _mappingDragAdorner = null;
-                _mappingDragAdornerLayer = null;
                 _mappingDragActive = false;
                 Mouse.OverrideCursor = null;
+                RestoreMappingDragVisuals();
                 ResetPendingMappingDrag();
-                Logger.Error("Unable to start live mapping reorder", exception);
+                Logger.Error("Unable to start direct mapping reorder", exception);
                 return false;
             }
         }
 
-        private void UpdateMappingDragVisual(Point pointer)
+        private void UpdateMappingDrag(Point pointer)
         {
-            _mappingDragAdorner?.MoveTo(
-                pointer.X - _mappingDragGrabOffset.X,
-                pointer.Y - _mappingDragGrabOffset.Y);
-        }
+            var source = _mappingDragSource;
+            if (source == null || !_mappingDragActive) return;
 
-        private void ReorderMappingAtPointer(MappingViewModel source, Point pointer)
-        {
-            if (source == null) return;
-            var sourceIndex = ProfileViewModel.MappingsList.IndexOf(source);
-            if (sourceIndex < 0) return;
+            MappingDragSlot sourceSlot;
+            if (!_mappingDragSlots.TryGetValue(source, out sourceSlot)) return;
 
-            // Treat the dragged card as temporarily lifted out of the sequence. Its invisible
-            // layout slot remains in the list, while the fully rendered drag visual follows the
-            // pointer. Crossing another card's midpoint moves the slot immediately, producing the
-            // same continuous shuffle behaviour used by browser tabs.
+            var scrollDelta = CurrentMappingScrollOffset() - _mappingDragInitialScrollOffset;
+            var sourceLayoutTop = sourceSlot.Top - scrollDelta;
+            var desiredTop = pointer.Y - _mappingDragGrabOffsetY;
+
+            // Keep the actual card inside the visible mapping viewport while edge scrolling moves
+            // the list beneath it. Horizontally it remains locked to the card column.
+            var maximumTop = Math.Max(0.0, MappingListView.ActualHeight - _mappingDragSourceHeight);
+            desiredTop = Math.Max(0.0, Math.Min(maximumTop, desiredTop));
+
+            sourceSlot.Translate.BeginAnimation(TranslateTransform.YProperty, null);
+            sourceSlot.Translate.Y = desiredTop - sourceLayoutTop;
+
+            var draggedCentre = desiredTop + (_mappingDragSourceHeight / 2.0);
             var desiredIndex = 0;
             foreach (var mapping in ProfileViewModel.MappingsList)
             {
                 if (ReferenceEquals(mapping, source)) continue;
 
-                var container = MappingListView.ItemContainerGenerator.ContainerFromItem(mapping) as ListViewItem;
-                if (container == null) continue;
+                MappingDragSlot slot;
+                if (!_mappingDragSlots.TryGetValue(mapping, out slot)) continue;
 
-                var midpoint = container.TranslatePoint(
-                    new Point(0, container.ActualHeight / 2.0), MappingListView).Y;
-                if (pointer.Y >= midpoint)
+                var midpoint = slot.Top - scrollDelta + (slot.Height / 2.0);
+                if (draggedCentre >= midpoint)
                 {
                     desiredIndex++;
                     continue;
@@ -333,20 +350,67 @@ namespace HidWizards.UCR.Views.ProfileViews
                 break;
             }
 
-            desiredIndex = Math.Max(0, Math.Min(ProfileViewModel.MappingsList.Count - 1, desiredIndex));
-            if (desiredIndex == sourceIndex) return;
-            MoveMappingLive(source, desiredIndex);
+            _mappingDragTargetIndex = Math.Max(0,
+                Math.Min(ProfileViewModel.MappingsList.Count - 1, desiredIndex));
+            UpdateMappingNeighbourShifts();
         }
 
-        private void MoveMappingLive(MappingViewModel source, int finalIndex)
+        private void UpdateMappingNeighbourShifts()
         {
-            var sourceIndex = ProfileViewModel.MappingsList.IndexOf(source);
-            if (sourceIndex < 0) return;
+            var source = _mappingDragSource;
+            if (source == null) return;
 
-            finalIndex = Math.Max(0, Math.Min(ProfileViewModel.MappingsList.Count - 1, finalIndex));
-            if (sourceIndex == finalIndex) return;
+            var sourceIndex = _mappingDragOriginalIndex;
+            var targetIndex = _mappingDragTargetIndex;
+            if (sourceIndex < 0 || targetIndex < 0) return;
 
-            ProfileViewModel.MoveMappingTo(source, finalIndex);
+            for (var index = 0; index < ProfileViewModel.MappingsList.Count; index++)
+            {
+                var mapping = ProfileViewModel.MappingsList[index];
+                if (ReferenceEquals(mapping, source)) continue;
+
+                MappingDragSlot slot;
+                if (!_mappingDragSlots.TryGetValue(mapping, out slot)) continue;
+
+                var targetShift = 0.0;
+                if (targetIndex > sourceIndex && index > sourceIndex && index <= targetIndex)
+                {
+                    targetShift = -_mappingDragSourceHeight;
+                }
+                else if (targetIndex < sourceIndex && index >= targetIndex && index < sourceIndex)
+                {
+                    targetShift = _mappingDragSourceHeight;
+                }
+
+                AnimateMappingShift(slot.Translate, targetShift);
+            }
+        }
+
+        private static void AnimateMappingShift(TranslateTransform transform, double target)
+        {
+            if (transform == null) return;
+
+            var current = transform.Y;
+            if (Math.Abs(current - target) < 0.5)
+            {
+                transform.BeginAnimation(TranslateTransform.YProperty, null);
+                transform.Y = target;
+                return;
+            }
+
+            transform.BeginAnimation(TranslateTransform.YProperty, null);
+            transform.Y = target;
+            var animation = new DoubleAnimation(current, target, TimeSpan.FromMilliseconds(95))
+            {
+                FillBehavior = FillBehavior.Stop,
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+            transform.BeginAnimation(TranslateTransform.YProperty, animation, HandoffBehavior.SnapshotAndReplace);
+        }
+
+        private double CurrentMappingScrollOffset()
+        {
+            return _mappingDragScrollViewer?.VerticalOffset ?? 0.0;
         }
 
         private void ProfileWindow_OnPreviewKeyDown(object sender, KeyEventArgs e)
@@ -370,23 +434,21 @@ namespace HidWizards.UCR.Views.ProfileViews
             _mappingDragEnding = true;
 
             var source = _mappingDragSource;
-            var originalIndex = _mappingDragOriginalIndex;
+            var targetIndex = _mappingDragTargetIndex;
             try
             {
-                if (!commit && source != null && originalIndex >= 0 && ProfileViewModel.MappingsList.Contains(source))
-                {
-                    MoveMappingLive(source, originalIndex);
-                }
-
                 if (source != null) source.IsDragging = false;
 
-                if (_mappingDragAdorner != null && _mappingDragAdornerLayer != null)
+                // Restore every real card before changing the collection. Because all of this is
+                // synchronous on the UI thread, WPF never renders an intermediate snap-back frame.
+                RestoreMappingDragVisuals();
+
+                if (commit && source != null && targetIndex >= 0 && targetIndex != _mappingDragOriginalIndex &&
+                    ProfileViewModel.MappingsList.Contains(source))
                 {
-                    _mappingDragAdornerLayer.Remove(_mappingDragAdorner);
+                    ProfileViewModel.MoveMappingTo(source, targetIndex);
                 }
 
-                _mappingDragAdorner = null;
-                _mappingDragAdornerLayer = null;
                 _mappingDragActive = false;
                 Mouse.OverrideCursor = null;
 
@@ -398,16 +460,50 @@ namespace HidWizards.UCR.Views.ProfileViews
                 if (source != null)
                 {
                     MappingListView.ScrollIntoView(source);
-                    Logger.Info((commit ? "Finished" : "Cancelled") + " live mapping reorder: " +
+                    Logger.Info((commit ? "Finished" : "Cancelled") + " direct mapping reorder: " +
                                 source.MappingTitle + " at position " +
                                 (ProfileViewModel.MappingsList.IndexOf(source) + 1));
                 }
             }
+            catch (Exception exception)
+            {
+                Logger.Error("Unable to finish direct mapping reorder", exception);
+            }
             finally
             {
+                RestoreMappingDragVisuals();
+                _mappingDragActive = false;
+                Mouse.OverrideCursor = null;
+                if (Mouse.Captured == MappingListView) MappingListView.ReleaseMouseCapture();
                 ResetPendingMappingDrag();
                 _mappingDragEnding = false;
             }
+        }
+
+        private void RestoreMappingDragVisuals()
+        {
+            foreach (var pair in _mappingDragSlots)
+            {
+                var slot = pair.Value;
+                if (slot?.Container == null) continue;
+
+                if (slot.Translate != null)
+                {
+                    slot.Translate.BeginAnimation(TranslateTransform.YProperty, null);
+                    slot.Translate.Y = 0;
+                }
+
+                slot.Container.RenderTransform = slot.OriginalRenderTransform;
+                Panel.SetZIndex(slot.Container, slot.OriginalZIndex);
+            }
+
+            _mappingDragSlots.Clear();
+            _mappingDragContainer = null;
+            _mappingDragScrollViewer = null;
+            _mappingDragTargetIndex = -1;
+            _mappingDragSourceHeight = 0;
+            _mappingDragGrabOffsetY = 0;
+            _mappingDragInitialScrollOffset = 0;
         }
 
         private void ResetPendingMappingDrag()
@@ -415,39 +511,6 @@ namespace HidWizards.UCR.Views.ProfileViews
             _mappingDragStart = null;
             _mappingDragSource = null;
             _mappingDragOriginalIndex = -1;
-        }
-
-        private static ImageSource CaptureElement(FrameworkElement element)
-        {
-            try
-            {
-                element.UpdateLayout();
-                var transform = Matrix.Identity;
-                var presentationSource = PresentationSource.FromVisual(element);
-                if (presentationSource?.CompositionTarget != null)
-                {
-                    transform = presentationSource.CompositionTarget.TransformToDevice;
-                }
-
-                var scaleX = transform.M11 <= 0 ? 1.0 : transform.M11;
-                var scaleY = transform.M22 <= 0 ? 1.0 : transform.M22;
-                var pixelWidth = Math.Max(1, (int)Math.Ceiling(element.ActualWidth * scaleX));
-                var pixelHeight = Math.Max(1, (int)Math.Ceiling(element.ActualHeight * scaleY));
-                var bitmap = new RenderTargetBitmap(
-                    pixelWidth,
-                    pixelHeight,
-                    96.0 * scaleX,
-                    96.0 * scaleY,
-                    PixelFormats.Pbgra32);
-                bitmap.Render(element);
-                bitmap.Freeze();
-                return bitmap;
-            }
-            catch (Exception exception)
-            {
-                Logger.Error("Unable to capture mapping card for live reorder", exception);
-                return null;
-            }
         }
 
         private void AutoScrollMappingList(Point pointer)
@@ -467,61 +530,15 @@ namespace HidWizards.UCR.Views.ProfileViews
             }
         }
 
-        private sealed class MappingDragAdorner : Adorner
+        private sealed class MappingDragSlot
         {
-            private readonly VisualCollection _visuals;
-            private readonly Image _image;
-            private readonly Size _size;
-            private double _left;
-            private double _top;
-
-            public MappingDragAdorner(UIElement adornedElement, ImageSource source, Size size)
-                : base(adornedElement)
-            {
-                // WPF can query VisualChildrenCount while dependency properties are being changed
-                // in this constructor. Initialize the collection first so those callbacks never
-                // observe a null visual tree.
-                _visuals = new VisualCollection(this);
-                IsHitTestVisible = false;
-                _size = size;
-                _image = new Image
-                {
-                    Source = source,
-                    Width = size.Width,
-                    Height = size.Height,
-                    Stretch = Stretch.Fill,
-                    SnapsToDevicePixels = true,
-                    Opacity = 1.0
-                };
-                _visuals.Add(_image);
-            }
-
-            public void MoveTo(double left, double top)
-            {
-                _left = left;
-                _top = top;
-                InvalidateArrange();
-            }
-
-            protected override int VisualChildrenCount => _visuals?.Count ?? 0;
-
-            protected override Visual GetVisualChild(int index)
-            {
-                if (_visuals == null) throw new ArgumentOutOfRangeException(nameof(index));
-                return _visuals[index];
-            }
-
-            protected override Size MeasureOverride(Size constraint)
-            {
-                _image.Measure(_size);
-                return constraint;
-            }
-
-            protected override Size ArrangeOverride(Size finalSize)
-            {
-                _image.Arrange(new Rect(new Point(_left, _top), _size));
-                return finalSize;
-            }
+            public MappingViewModel Mapping { get; set; }
+            public ListViewItem Container { get; set; }
+            public double Top { get; set; }
+            public double Height { get; set; }
+            public TranslateTransform Translate { get; set; }
+            public Transform OriginalRenderTransform { get; set; }
+            public int OriginalZIndex { get; set; }
         }
 
         private static T FindVisualChild<T>(DependencyObject source) where T : DependencyObject

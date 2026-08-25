@@ -264,12 +264,6 @@
                             <Setter Property="Padding" Value="0"/>
                             <Setter Property="Margin" Value="0"/>
                             <Setter Property="Background" Value="Transparent"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsDragging}" Value="True">
-                                    <Setter Property="Opacity" Value="0"/>
-                                    <Setter Property="IsHitTestVisible" Value="False"/>
-                                </DataTrigger>
-                            </Style.Triggers>
                         </Style>
                     </ListView.ItemContainerStyle>
                     <ListView.Style>
