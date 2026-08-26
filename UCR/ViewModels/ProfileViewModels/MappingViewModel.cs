@@ -27,6 +27,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         }
     }
 
+    public sealed class FilterReferenceBadge
+    {
+        public string Name { get; set; }
+        public string ToolTip { get; set; }
+    }
+
     public class MappingViewModel : INotifyPropertyChanged
     {
         public string MappingTitle => Mapping.FullTitle;
@@ -42,11 +48,39 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public string MappingRoute => Mapping != null && Mapping.Plugins.Count > 0 ? Mapping.Plugins[0].PluginName : "No plugin";
         public string MappingRouteDisplay => FormatMappingRoute(MappingRoute);
         public List<MappingHeaderToken> MappingRouteTokens => BuildMappingRouteTokens(MappingRouteDisplay);
+        public string MappingOutputTypeLabel => GetMappingOutputTypeLabel();
+        public string DefinedFilterName => GetDefinedFilterName();
+        public List<FilterReferenceBadge> ReferencedFilters => BuildReferencedFilters();
+        public bool HasFilterReferences => ReferencedFilters.Count > 0;
         public bool HasFilters => Mapping != null && Mapping.Plugins != null &&
                                   Mapping.Plugins.Any(plugin => plugin.Filters != null && plugin.Filters.Count > 0);
         public string CollapsedSummary => BuildCollapsedSummary();
         public List<BindingVisualDescriptor> CollapsedInputVisuals => BuildCollapsedInputVisuals();
         public List<BindingVisualDescriptor> CollapsedOutputVisuals => BuildCollapsedOutputVisuals();
+
+        private bool _isFilterDefinitionHighlighted;
+        public bool IsFilterDefinitionHighlighted
+        {
+            get => _isFilterDefinitionHighlighted;
+            private set
+            {
+                if (_isFilterDefinitionHighlighted == value) return;
+                _isFilterDefinitionHighlighted = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private bool _isFilterReferenceHighlighted;
+        public bool IsFilterReferenceHighlighted
+        {
+            get => _isFilterReferenceHighlighted;
+            private set
+            {
+                if (_isFilterReferenceHighlighted == value) return;
+                _isFilterReferenceHighlighted = value;
+                OnPropertyChanged();
+            }
+        }
 
         private bool _isDragging;
         public bool IsDragging
@@ -102,6 +136,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(CollapsedSummary));
             OnPropertyChanged(nameof(CollapsedInputVisuals));
             OnPropertyChanged(nameof(CollapsedOutputVisuals));
+            OnPropertyChanged(nameof(ReferencedFilters));
+            OnPropertyChanged(nameof(HasFilterReferences));
         }
 
         public void RefreshTitle()
@@ -201,6 +237,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public void RefreshFilterIndicator()
         {
             OnPropertyChanged(nameof(HasFilters));
+            OnPropertyChanged(nameof(ReferencedFilters));
+            OnPropertyChanged(nameof(HasFilterReferences));
+            OnPropertyChanged(nameof(DefinedFilterName));
+            OnPropertyChanged(nameof(MappingOutputTypeLabel));
         }
 
         private void RefreshHeaderState()
@@ -208,6 +248,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(MappingRoute));
             OnPropertyChanged(nameof(MappingRouteDisplay));
             OnPropertyChanged(nameof(MappingRouteTokens));
+            OnPropertyChanged(nameof(MappingOutputTypeLabel));
+            OnPropertyChanged(nameof(DefinedFilterName));
+            OnPropertyChanged(nameof(ReferencedFilters));
+            OnPropertyChanged(nameof(HasFilterReferences));
             OnPropertyChanged(nameof(HasFilters));
         }
 
@@ -260,8 +304,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var result = new List<BindingVisualDescriptor>();
             foreach (var binding in DeviceBindings.Take(3))
             {
-                result.Add(DeviceVisualCatalog.DescribeBinding(
-                    binding.DeviceBinding, binding.DeviceBindingCategory, ProfileViewModel.Profile));
+                result.Add(DescribeCollapsedBinding(binding));
             }
 
             if (result.Count == 0)
@@ -279,8 +322,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 foreach (var binding in lastPlugin.DeviceBindings.Take(3))
                 {
-                    result.Add(DeviceVisualCatalog.DescribeBinding(
-                        binding.DeviceBinding, binding.DeviceBindingCategory, ProfileViewModel.Profile));
+                    result.Add(DescribeCollapsedBinding(binding));
                 }
 
                 if (result.Count == 0)
@@ -295,6 +337,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 result.Add(DeviceVisualCatalog.DescribeBinding(null, DeviceBindingCategory.Momentary, ProfileViewModel.Profile));
             }
             return result;
+        }
+
+        private BindingVisualDescriptor DescribeCollapsedBinding(DeviceBindingViewModel viewModel)
+        {
+            if (viewModel == null) return DeviceVisualCatalog.DescribeBinding(null, DeviceBindingCategory.Momentary, ProfileViewModel.Profile);
+            var descriptor = DeviceVisualCatalog.DescribeBinding(
+                viewModel.DeviceBinding, viewModel.DeviceBindingCategory, ProfileViewModel.Profile);
+            var binding = viewModel.DeviceBinding;
+            if (binding == null || !descriptor.IsBound || descriptor.Device == null) return descriptor;
+
+            var primary = ProfileViewModel.Profile.GetPrimaryDeviceConfiguration(binding.DeviceIoType);
+            descriptor.ShowDeviceBadge = primary == null || primary.Guid != binding.DeviceConfigurationGuid;
+            return descriptor;
         }
 
         private string BuildCollapsedSummary()
@@ -341,6 +396,99 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (string.IsNullOrEmpty(value) || value.Length <= maximumLength) return value;
             return value.Substring(0, maximumLength - 1) + "…";
+        }
+
+        private string GetMappingOutputTypeLabel()
+        {
+            var plugin = Mapping?.Plugins?.LastOrDefault();
+            if (plugin == null) return "None";
+
+            if (!string.IsNullOrWhiteSpace(plugin.GetDefinedFilterName())) return "Filter";
+            if (plugin.OutputCategories == null || plugin.OutputCategories.Count == 0)
+            {
+                return string.Equals(plugin.Group, "Filter", StringComparison.OrdinalIgnoreCase) ? "Filter" : "None";
+            }
+
+            var category = plugin.OutputCategories[0].Category;
+            for (var i = 1; i < plugin.OutputCategories.Count; i++)
+            {
+                if (plugin.OutputCategories[i].Category != category) return "Multiple";
+            }
+
+            switch (category)
+            {
+                case DeviceBindingCategory.Momentary: return "Button";
+                case DeviceBindingCategory.Range: return "Axis";
+                case DeviceBindingCategory.Event: return "Event";
+                case DeviceBindingCategory.Delta: return "Delta";
+                default: return "Value";
+            }
+        }
+
+        private string GetDefinedFilterName()
+        {
+            if (Mapping?.Plugins == null) return null;
+            foreach (var plugin in Mapping.Plugins)
+            {
+                var name = plugin.GetDefinedFilterName();
+                if (!string.IsNullOrWhiteSpace(name)) return name.Trim();
+            }
+            return null;
+        }
+
+        private List<FilterReferenceBadge> BuildReferencedFilters()
+        {
+            var result = new List<FilterReferenceBadge>();
+            if (Mapping?.Plugins == null) return result;
+            var seen = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            foreach (var plugin in Mapping.Plugins)
+            {
+                if (plugin.Filters == null) continue;
+                foreach (var filter in plugin.Filters)
+                {
+                    if (filter == null || string.IsNullOrWhiteSpace(filter.Name)) continue;
+                    var name = filter.Name.Trim();
+                    if (!seen.Add(name)) continue;
+                    result.Add(new FilterReferenceBadge
+                    {
+                        Name = name,
+                        ToolTip = filter.Negative
+                            ? "Uses filter '" + name + "' (inverted)"
+                            : "Uses filter '" + name + "'"
+                    });
+                }
+            }
+            return result;
+        }
+
+        public bool DefinesFilter(string filterName)
+        {
+            if (string.IsNullOrWhiteSpace(filterName) || Mapping?.Plugins == null) return false;
+            foreach (var plugin in Mapping.Plugins)
+            {
+                if (string.Equals(plugin.GetDefinedFilterName(), filterName, StringComparison.CurrentCultureIgnoreCase)) return true;
+            }
+            return false;
+        }
+
+        public bool ReferencesFilter(string filterName)
+        {
+            if (string.IsNullOrWhiteSpace(filterName) || Mapping?.Plugins == null) return false;
+            foreach (var plugin in Mapping.Plugins)
+            {
+                if (plugin.Filters == null) continue;
+                foreach (var filter in plugin.Filters)
+                {
+                    if (filter != null && string.Equals(filter.Name, filterName, StringComparison.CurrentCultureIgnoreCase)) return true;
+                }
+            }
+            return false;
+        }
+
+        public void SetFilterHighlight(bool definition, bool reference)
+        {
+            IsFilterDefinitionHighlighted = definition;
+            IsFilterReferenceHighlighted = reference;
         }
 
         public async void Rename()

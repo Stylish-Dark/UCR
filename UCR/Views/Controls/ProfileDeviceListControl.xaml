@@ -29,7 +29,7 @@
                 <Grid Margin="4 3">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="24"/>
-                        <ColumnDefinition Width="46"/>
+                        <ColumnDefinition Width="44"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Button Grid.Column="0" Width="22" Height="22" Margin="0 0 2 0"
@@ -50,13 +50,12 @@
                             </Ellipse.Style>
                         </Ellipse>
                     </Button>
-                    <local:DeviceGlyphControl Grid.Column="1" Width="38" Height="27" Margin="2 0 6 0"
-                                              VerticalAlignment="Center"
-                                              Kind="{Binding Visual.Kind}"
-                                              AccentBrush="{Binding Visual.AccentBrush}"
-                                              SlotNumber="{Binding Visual.SlotNumber}"
-                                              ShowSlotIndicator="{Binding Visual.ShowSlotIndicator}"
-                                              ToolTip="{Binding Visual.ToolTip}"/>
+                    <Border Grid.Column="1" Width="34" Height="22" Margin="2 0 6 0" Padding="4 1"
+                            VerticalAlignment="Center" CornerRadius="4" Background="#1B1B1B"
+                            BorderBrush="{Binding Visual.AccentBrush}" BorderThickness="1" ToolTip="{Binding Visual.ToolTip}">
+                        <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}"
+                                   FontSize="11.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
                     <StackPanel Grid.Column="2" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
                         <TextBlock Margin="0 1 0 0" Text="{Binding ProviderName}" FontSize="12.5" Opacity="0.50" TextTrimming="CharacterEllipsis"/>

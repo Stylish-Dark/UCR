@@ -555,6 +555,13 @@ namespace HidWizards.UCR.Views.ProfileViews
             return null;
         }
 
+        private void FilterDefinitionList_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var filter = FilterDefinitionList.SelectedItem as FilterDefinitionItemViewModel;
+            var definingMapping = ProfileViewModel.HighlightFilter(filter);
+            if (definingMapping != null) MappingListView.ScrollIntoView(definingMapping);
+        }
+
         private void AddMapping_OnClick(object sender, RoutedEventArgs e)
         {
             var selectedRoute = ProfileViewModel.PluginToolbox.SelectedRoute;

@@ -43,6 +43,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
         public string ToolTip { get; set; }
         public int SlotNumber { get; set; }
         public bool ShowSlotIndicator { get; set; }
+        public string BadgeText { get; set; }
     }
 
     public sealed class BindingVisualDescriptor
@@ -53,6 +54,9 @@ namespace HidWizards.UCR.ViewModels.Presentation
         public string ControlLabel { get; set; }
         public string ToolTip { get; set; }
         public bool IsBound { get; set; }
+        public Guid DeviceConfigurationGuid { get; set; }
+        public bool ShowDeviceBadge { get; set; }
+        public bool IsFilterControl => ControlKind == ControlVisualKind.Filter;
     }
 
     public static class DeviceVisualCatalog
@@ -74,6 +78,18 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
             var descriptor = Describe(configuration.Device, ioType);
             descriptor.ToolTip = configuration.GetFullTitleForProfile(profile);
+
+            // Physical/generic provider device numbers can be large implementation identifiers
+            // (Interception keyboards are a common example). Present those as K1/K2, M1/M2,
+            // D1/D2, etc. in profile order instead of leaking raw provider numbers into the UI.
+            if (profile != null && UsesProfileOrdinal(descriptor.Kind))
+            {
+                var ordinal = GetProfileOrdinal(configuration, profile, ioType, descriptor.Kind);
+                descriptor.SlotNumber = ordinal;
+                descriptor.ShowSlotIndicator = true;
+                descriptor.BadgeText = BuildBadgeText(descriptor.Kind, ordinal);
+            }
+
             return descriptor;
         }
 
@@ -102,40 +118,40 @@ namespace HidWizards.UCR.ViewModels.Presentation
             if (provider.Equals("SharpDX_XInput", StringComparison.OrdinalIgnoreCase) ||
                 searchable.Contains("xinput") || searchable.Contains("xbox") || searchable.Contains("vid_045e"))
             {
-                return Build(DeviceVisualKind.Xbox, XboxBrush, title, device.DeviceNumber + 1, false);
+                return Build(DeviceVisualKind.Xbox, XboxBrush, title, device.DeviceNumber + 1, true);
             }
 
             if (searchable.Contains("dualshock") || searchable.Contains("dualsense") ||
                 searchable.Contains("playstation") || searchable.Contains("vid_054c"))
             {
-                return Build(DeviceVisualKind.PlayStation, PlayStationBrush, title, device.DeviceNumber + 1, false);
+                return Build(DeviceVisualKind.PlayStation, PlayStationBrush, title, device.DeviceNumber + 1, true);
             }
 
             if (searchable.Contains("vjoy"))
             {
-                return Build(DeviceVisualKind.VJoy, VJoyBrush, title, device.DeviceNumber + 1, false);
+                return Build(DeviceVisualKind.VJoy, VJoyBrush, title, device.DeviceNumber + 1, true);
             }
 
             if (searchable.Contains("arcade") || searchable.Contains("fightstick") || searchable.Contains("fight stick"))
             {
-                return Build(DeviceVisualKind.ArcadeStick, ArcadeBrush, title, 0, false);
+                return Build(DeviceVisualKind.ArcadeStick, ArcadeBrush, title, device.DeviceNumber + 1, true);
             }
 
             if (provider.Equals("Core_Interception", StringComparison.OrdinalIgnoreCase))
             {
-                if (searchable.Contains("mouse")) return Build(DeviceVisualKind.Mouse, NeutralBrush, title, 0, false);
-                return Build(DeviceVisualKind.Keyboard, NeutralBrush, title, 0, false);
+                if (searchable.Contains("mouse")) return Build(DeviceVisualKind.Mouse, NeutralBrush, title, device.DeviceNumber + 1, true);
+                return Build(DeviceVisualKind.Keyboard, NeutralBrush, title, device.DeviceNumber + 1, true);
             }
 
-            if (searchable.Contains("keyboard")) return Build(DeviceVisualKind.Keyboard, NeutralBrush, title, 0, false);
-            if (searchable.Contains("mouse")) return Build(DeviceVisualKind.Mouse, NeutralBrush, title, 0, false);
+            if (searchable.Contains("keyboard")) return Build(DeviceVisualKind.Keyboard, NeutralBrush, title, device.DeviceNumber + 1, true);
+            if (searchable.Contains("mouse")) return Build(DeviceVisualKind.Mouse, NeutralBrush, title, device.DeviceNumber + 1, true);
 
             if (provider.Equals("SharpDX_DirectInput", StringComparison.OrdinalIgnoreCase) || searchable.Contains("directinput"))
             {
-                return Build(DeviceVisualKind.DirectInput, DirectInputBrush, title, device.DeviceNumber + 1, false);
+                return Build(DeviceVisualKind.DirectInput, DirectInputBrush, title, device.DeviceNumber + 1, true);
             }
 
-            return Build(DeviceVisualKind.Unknown, DirectInputBrush, title, 0, false);
+            return Build(DeviceVisualKind.Unknown, DirectInputBrush, title, device.DeviceNumber + 1, true);
         }
 
         public static BindingVisualDescriptor DescribeBinding(DeviceBinding binding, DeviceBindingCategory category, Profile profile)
@@ -149,7 +165,9 @@ namespace HidWizards.UCR.ViewModels.Presentation
                     ControlBrush = NeutralBrush,
                     ControlLabel = "?",
                     ToolTip = "No binding",
-                    IsBound = false
+                    IsBound = false,
+                    DeviceConfigurationGuid = Guid.Empty,
+                    ShowDeviceBadge = false
                 };
             }
 
@@ -163,7 +181,9 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 ControlBrush = NeutralBrush,
                 ControlLabel = "?",
                 ToolTip = deviceDescriptor.ToolTip + " — " + boundName,
-                IsBound = binding.IsBound
+                IsBound = binding.IsBound,
+                DeviceConfigurationGuid = binding.DeviceConfigurationGuid,
+                ShowDeviceBadge = false
             };
 
             if (!binding.IsBound) return result;
@@ -182,8 +202,10 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 ControlKind = ControlVisualKind.Filter,
                 ControlBrush = FilterBrush,
                 ControlLabel = cleanName,
-                ToolTip = "Filter — " + cleanName,
-                IsBound = true
+                ToolTip = "Defines filter — " + cleanName,
+                IsBound = true,
+                DeviceConfigurationGuid = Guid.Empty,
+                ShowDeviceBadge = false
             };
         }
 
@@ -259,7 +281,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
             if (category == DeviceBindingCategory.Range)
             {
-                var axisLabel = KnownAxisLabel(binding.KeyValue, deviceKind);
+                var axisLabel = KnownAxisLabelFromName(lower, deviceKind) ?? KnownAxisLabel(binding.KeyValue, deviceKind);
                 result.ControlKind = axisLabel == "LT" || axisLabel == "RT" || axisLabel == "L2" || axisLabel == "R2"
                     ? ControlVisualKind.Trigger
                     : ControlVisualKind.StickAxis;
@@ -268,7 +290,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 return;
             }
 
-            var button = KnownButtonLabel(binding.KeyValue, deviceKind);
+            var button = KnownButtonLabelFromName(lower, deviceKind) ?? KnownButtonLabel(binding.KeyValue, deviceKind);
             result.ControlLabel = button;
             if (deviceKind == DeviceVisualKind.Xbox && binding.KeyValue >= 0 && binding.KeyValue <= 3)
             {
@@ -297,6 +319,55 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 result.ControlKind = ControlVisualKind.Button;
             }
             result.ControlBrush = result.Device.AccentBrush;
+        }
+
+        private static string KnownButtonLabelFromName(string lower, DeviceVisualKind kind)
+        {
+            if (string.IsNullOrWhiteSpace(lower)) return null;
+
+            if (kind == DeviceVisualKind.PlayStation)
+            {
+                if (lower.Contains("cross")) return "×";
+                if (lower.Contains("circle")) return "○";
+                if (lower.Contains("square")) return "□";
+                if (lower.Contains("triangle")) return "△";
+                if (lower.Contains("l1")) return "L1";
+                if (lower.Contains("r1")) return "R1";
+                if (lower.Contains("l2")) return "L2";
+                if (lower.Contains("r2")) return "R2";
+                if (lower.Contains("l3")) return "L3";
+                if (lower.Contains("r3")) return "R3";
+                if (lower.Contains("share")) return "SH";
+                if (lower.Contains("option")) return "OP";
+                if (lower.Contains("touch")) return "TP";
+                if (lower == "ps" || lower.Contains("ps button")) return "PS";
+            }
+            else
+            {
+                if (lower == "a" || lower.Contains("button a")) return "A";
+                if (lower == "b" || lower.Contains("button b")) return "B";
+                if (lower == "x" || lower.Contains("button x")) return "X";
+                if (lower == "y" || lower.Contains("button y")) return "Y";
+                if (lower.Contains("left shoulder") || lower.Contains("left bumper") || lower == "lb") return "LB";
+                if (lower.Contains("right shoulder") || lower.Contains("right bumper") || lower == "rb") return "RB";
+                if (lower.Contains("left thumb") || lower.Contains("left stick button") || lower == "ls") return "LS";
+                if (lower.Contains("right thumb") || lower.Contains("right stick button") || lower == "rs") return "RS";
+                if (lower.Contains("back") || lower.Contains("view")) return "BK";
+                if (lower.Contains("start") || lower.Contains("menu")) return "ST";
+            }
+            return null;
+        }
+
+        private static string KnownAxisLabelFromName(string lower, DeviceVisualKind kind)
+        {
+            if (string.IsNullOrWhiteSpace(lower)) return null;
+            if ((lower.Contains("left") && lower.Contains("x")) || lower.Contains("lx")) return "LX";
+            if ((lower.Contains("left") && lower.Contains("y")) || lower.Contains("ly")) return "LY";
+            if ((lower.Contains("right") && lower.Contains("x")) || lower.Contains("rx")) return "RX";
+            if ((lower.Contains("right") && lower.Contains("y")) || lower.Contains("ry")) return "RY";
+            if (lower.Contains("left trigger") || lower.Contains("l2")) return kind == DeviceVisualKind.PlayStation ? "L2" : "LT";
+            if (lower.Contains("right trigger") || lower.Contains("r2")) return kind == DeviceVisualKind.PlayStation ? "R2" : "RT";
+            return null;
         }
 
         private static string KnownButtonLabel(int keyValue, DeviceVisualKind kind)
@@ -398,9 +469,48 @@ namespace HidWizards.UCR.ViewModels.Presentation
         {
             if (string.IsNullOrWhiteSpace(leaf)) return "KEY";
             var value = leaf.Trim();
-            value = value.Replace("Keyboard ", string.Empty).Replace("Key ", string.Empty);
-            if (value.Length <= 5) return value.ToUpperInvariant();
-            return value.Substring(0, 5).ToUpperInvariant();
+            var lower = value.ToLowerInvariant();
+
+            if (lower.Contains("window") || lower == "lwin" || lower == "rwin" || lower.Contains(" win")) return "WIN";
+            if (lower.Contains("control") || lower == "lctrl" || lower == "rctrl") return "CTRL";
+            if (lower.Contains("shift")) return "SHIFT";
+            if (lower.Contains("altgr")) return "ALTGR";
+            if (lower.Contains(" alt") || lower.StartsWith("alt") || lower == "lalt" || lower == "ralt") return "ALT";
+            if (lower.Contains("escape")) return "ESC";
+            if (lower.Contains("backspace")) return "BKSP";
+            if (lower == "return" || lower.Contains("enter")) return "ENTER";
+            if (lower.Contains("space")) return "SPACE";
+            if (lower == "tab" || lower.Contains(" tab")) return "TAB";
+            if (lower.Contains("caps lock")) return "CAPS";
+            if (lower.Contains("num lock")) return "NUM";
+            if (lower.Contains("scroll lock")) return "SCRL";
+            if (lower.Contains("print screen") || lower.Contains("printscreen")) return "PRTSC";
+            if (lower.Contains("page up")) return "PGUP";
+            if (lower.Contains("page down")) return "PGDN";
+            if (lower == "insert" || lower.EndsWith(" insert")) return "INS";
+            if (lower == "delete" || lower.EndsWith(" delete")) return "DEL";
+            if (lower == "home" || lower.EndsWith(" home")) return "HOME";
+            if (lower == "end" || lower.EndsWith(" end")) return "END";
+            if (lower.Contains("arrow up") || lower == "up") return "↑";
+            if (lower.Contains("arrow right") || lower == "right") return "→";
+            if (lower.Contains("arrow down") || lower == "down") return "↓";
+            if (lower.Contains("arrow left") || lower == "left") return "←";
+            if (lower.Contains("applications") || lower.Contains("menu key")) return "MENU";
+
+            var numMatch = System.Text.RegularExpressions.Regex.Match(lower, @"(?:num(?:pad)?|keypad)\s*([0-9])");
+            if (numMatch.Success) return "NUM " + numMatch.Groups[1].Value;
+            if (lower.Contains("numpad") || lower.Contains("keypad") || lower.StartsWith("num "))
+            {
+                if (lower.Contains("add") || lower.Contains("plus")) return "NUM +";
+                if (lower.Contains("subtract") || lower.Contains("minus")) return "NUM -";
+                if (lower.Contains("multiply")) return "NUM ×";
+                if (lower.Contains("divide")) return "NUM /";
+                if (lower.Contains("decimal")) return "NUM .";
+            }
+
+            value = value.Replace("Keyboard ", string.Empty).Replace("Key ", string.Empty).Trim();
+            if (value.Length <= 6) return value.ToUpperInvariant();
+            return value.Substring(0, 6).ToUpperInvariant();
         }
 
         private static string ShortMouseLabel(string leaf)
@@ -451,16 +561,57 @@ namespace HidWizards.UCR.ViewModels.Presentation
             }
         }
 
+        private static bool UsesProfileOrdinal(DeviceVisualKind kind)
+        {
+            return kind == DeviceVisualKind.Keyboard ||
+                   kind == DeviceVisualKind.Mouse ||
+                   kind == DeviceVisualKind.ArcadeStick ||
+                   kind == DeviceVisualKind.DirectInput ||
+                   kind == DeviceVisualKind.Unknown;
+        }
+
+        private static int GetProfileOrdinal(DeviceConfiguration target, Profile profile, DeviceIoType ioType, DeviceVisualKind kind)
+        {
+            var ordinal = 0;
+            foreach (var configuration in profile.GetDeviceConfigurationList(ioType))
+            {
+                if (configuration?.Device == null) continue;
+                var candidate = Describe(configuration.Device, ioType);
+                if (candidate.Kind != kind) continue;
+                ordinal++;
+                if (configuration.Guid == target.Guid) return Math.Max(1, ordinal);
+            }
+            return 1;
+        }
+
         private static DeviceVisualDescriptor Build(DeviceVisualKind kind, Brush brush, string tooltip, int slotNumber, bool showSlot)
         {
+            var normalizedSlot = Math.Max(1, slotNumber);
             return new DeviceVisualDescriptor
             {
                 Kind = kind,
                 AccentBrush = brush,
                 ToolTip = string.IsNullOrWhiteSpace(tooltip) ? "Device" : tooltip,
-                SlotNumber = Math.Max(0, slotNumber),
-                ShowSlotIndicator = showSlot
+                SlotNumber = normalizedSlot,
+                ShowSlotIndicator = showSlot,
+                BadgeText = BuildBadgeText(kind, normalizedSlot)
             };
+        }
+
+        private static string BuildBadgeText(DeviceVisualKind kind, int slotNumber)
+        {
+            var prefix = "U";
+            switch (kind)
+            {
+                case DeviceVisualKind.Keyboard: prefix = "K"; break;
+                case DeviceVisualKind.Mouse: prefix = "M"; break;
+                case DeviceVisualKind.Xbox: prefix = "X"; break;
+                case DeviceVisualKind.PlayStation: prefix = "P"; break;
+                case DeviceVisualKind.VJoy: prefix = "V"; break;
+                case DeviceVisualKind.ArcadeStick: prefix = "A"; break;
+                case DeviceVisualKind.DirectInput: prefix = "D"; break;
+            }
+            return prefix + Math.Max(1, slotNumber);
         }
 
         private static DeviceVisualDescriptor Unknown(string tooltip)

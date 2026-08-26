@@ -32,6 +32,14 @@
     <Window.Resources>
         <ResourceDictionary>
             <converter:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+            <DataTemplate x:Key="DeviceBadgeTemplate">
+                <Border MinWidth="31" Height="22" Padding="5 1" CornerRadius="4"
+                        Background="#1B1B1B" BorderBrush="{Binding AccentBrush}" BorderThickness="1"
+                        ToolTip="{Binding ToolTip}">
+                    <TextBlock Text="{Binding BadgeText}" Foreground="{Binding AccentBrush}"
+                               FontSize="11.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+            </DataTemplate>
             <DataTemplate x:Key="DeviceTemplate" DataType="{x:Type dashboard:DeviceItem}">
                 <StackPanel Margin="4">
                     <TextBlock Margin="4" Text="{Binding Title}" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
@@ -203,11 +211,8 @@
                                                             <Border Margin="4 2" Padding="7 5" Background="#1F1F1F" CornerRadius="4"
                                                                     ToolTip="{Binding Name.Visual.ToolTip}">
                                                                 <StackPanel Orientation="Horizontal">
-                                                                    <controls:DeviceGlyphControl Width="29" Height="20" Margin="0 0 7 0"
-                                                                                                 Kind="{Binding Name.Visual.Kind}"
-                                                                                                 AccentBrush="{Binding Name.Visual.AccentBrush}"
-                                                                                                 SlotNumber="{Binding Name.Visual.SlotNumber}"
-                                                                                                 ShowSlotIndicator="{Binding Name.Visual.ShowSlotIndicator}"/>
+                                                                    <ContentControl Content="{Binding Name.Visual}" ContentTemplate="{StaticResource DeviceBadgeTemplate}"
+                                                                                    Margin="0 0 7 0" VerticalAlignment="Center"/>
                                                                     <TextBlock Text="{Binding Name.Name}" FontSize="13.5" FontWeight="SemiBold"
                                                                                Opacity="0.76" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                                                 </StackPanel>
@@ -223,35 +228,26 @@
                             </TreeView.GroupStyle>
                             <TreeView.ItemTemplate>
                                 <HierarchicalDataTemplate DataType="{x:Type dashboard:ProfileItem}" ItemsSource="{Binding Items}">
-                                    <Grid Margin="3 2" MinHeight="34" ToolTip="{Binding Title}">
+                                    <Grid Margin="3 2" MinHeight="36" ToolTip="{Binding Title}">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="116"/>
+                                            <ColumnDefinition Width="52"/>
                                             <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="48"/>
+                                            <ColumnDefinition Width="52"/>
                                         </Grid.ColumnDefinitions>
 
-                                        <!-- Source lives at the far left; destination lives at the far right. -->
-                                        <StackPanel Grid.Column="0" Orientation="Horizontal" Width="108" Margin="3 0 5 0" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                            <ItemsControl ItemsSource="{Binding InputVisuals}" VerticalAlignment="Center">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <controls:DeviceGlyphControl Width="29" Height="20" Margin="0 0 3 0"
-                                                                                     Kind="{Binding Kind}" AccentBrush="{Binding AccentBrush}"
-                                                                                     SlotNumber="{Binding SlotNumber}" ShowSlotIndicator="{Binding ShowSlotIndicator}"
-                                                                                     ToolTip="{Binding ToolTip}"/>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                            <TextBlock Text="{Binding AdditionalInputLabel}" FontSize="10.5" Foreground="#8B8B8B" VerticalAlignment="Center"/>
-                                        </StackPanel>
+                                        <!-- Strict three-column summary: primary input | profile | primary output. -->
+                                        <ItemsControl Grid.Column="0" ItemsSource="{Binding InputVisuals}"
+                                                      ItemTemplate="{StaticResource DeviceBadgeTemplate}"
+                                                      HorizontalAlignment="Left" VerticalAlignment="Center" Margin="4 0 0 0">
+                                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                        </ItemsControl>
 
-                                        <Grid Grid.Column="1" Margin="0 0 8 0">
+                                        <Grid Grid.Column="1" Margin="8 0">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                            <TextBlock Text="{Binding Title}" FontSize="15.5" FontWeight="Medium" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                            <Ellipse Grid.Column="1" Width="7" Height="7" Margin="6 0 0 0" Fill="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center" ToolTip="Auto-apply enabled">
+                                            <TextBlock Text="{Binding Title}" FontSize="15.5" FontWeight="Medium"
+                                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                            <Ellipse Grid.Column="1" Width="7" Height="7" Margin="6 0 0 0"
+                                                     Fill="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center" ToolTip="Auto-apply enabled">
                                                 <Ellipse.Style>
                                                     <Style TargetType="Ellipse">
                                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -263,21 +259,11 @@
                                             </Ellipse>
                                         </Grid>
 
-                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Width="44" Margin="1 0 3 0" VerticalAlignment="Center" HorizontalAlignment="Right">
-                                            <ItemsControl ItemsSource="{Binding OutputVisuals}" VerticalAlignment="Center">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <controls:DeviceGlyphControl Width="40" Height="20" Margin="3 0 0 0"
-                                                                                     Kind="{Binding Kind}" AccentBrush="{Binding AccentBrush}"
-                                                                                     SlotNumber="{Binding SlotNumber}" ShowSlotIndicator="{Binding ShowSlotIndicator}"
-                                                                                     ToolTip="{Binding ToolTip}"/>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </StackPanel>
+                                        <ItemsControl Grid.Column="2" ItemsSource="{Binding OutputVisuals}"
+                                                      ItemTemplate="{StaticResource DeviceBadgeTemplate}"
+                                                      HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0 0 4 0">
+                                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                        </ItemsControl>
                                     </Grid>
                                 </HierarchicalDataTemplate>
                             </TreeView.ItemTemplate>

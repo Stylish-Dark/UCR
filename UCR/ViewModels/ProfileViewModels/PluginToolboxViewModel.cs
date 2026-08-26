@@ -33,6 +33,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private readonly Profile _profile;
         private readonly List<PluginRouteOption> _routeOptions;
+        private readonly HashSet<DeviceBindingCategory> _supportedInputCategories;
 
         private string _selectedInput;
         public string SelectedInput
@@ -67,6 +68,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             _profile = profile;
             _routeOptions = new List<PluginRouteOption>();
+            _supportedInputCategories = GetSupportedInputCategories();
             InputOptions = new ObservableCollection<string>();
             OutputOptions = new ObservableCollection<PluginRouteOption>();
             PluginGroupList = new Dictionary<string, PluginGroupViewModel>();
@@ -96,6 +98,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var labels = new List<string>();
             foreach (var route in _routeOptions)
             {
+                if (!RouteInputSupported(route)) continue;
                 if (!labels.Contains(route.InputLabel)) labels.Add(route.InputLabel);
             }
 
@@ -111,6 +114,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var matches = new List<PluginRouteOption>();
             foreach (var route in _routeOptions)
             {
+                if (!RouteInputSupported(route)) continue;
                 if (string.Equals(route.InputLabel, SelectedInput, StringComparison.Ordinal)) matches.Add(route);
             }
 
@@ -129,13 +133,51 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 }
 
                 route.OutputDisplayLabel = duplicateCount > 1
-                    ? route.OutputLabel + " (" + route.PluginItem.Name + ")"
+                    ? route.OutputLabel + " · " + route.PluginItem.Name
                     : route.OutputLabel;
                 OutputOptions.Add(route);
             }
 
             SelectedRoute = OutputOptions.Count > 0 ? OutputOptions[0] : null;
             OnPropertyChanged(nameof(OutputOptions));
+        }
+
+        private bool RouteInputSupported(PluginRouteOption route)
+        {
+            if (route?.PluginItem?.Plugin == null) return false;
+            if (_supportedInputCategories.Count == 0) return true;
+
+            var definitions = route.PluginItem.Plugin.InputCategories;
+            if (definitions == null || definitions.Count == 0) return true;
+            foreach (var definition in definitions)
+            {
+                if (!_supportedInputCategories.Contains(definition.Category)) return false;
+            }
+            return true;
+        }
+
+        private HashSet<DeviceBindingCategory> GetSupportedInputCategories()
+        {
+            var result = new HashSet<DeviceBindingCategory>();
+            if (_profile == null) return result;
+
+            foreach (var configuration in _profile.GetDeviceConfigurationList(DeviceIoType.Input))
+            {
+                var device = configuration?.Device;
+                if (device == null) continue;
+                CollectCategories(device.GetDeviceBindingMenu(_profile.Context, DeviceIoType.Input), result);
+            }
+            return result;
+        }
+
+        private static void CollectCategories(IEnumerable<DeviceBindingNode> nodes, ISet<DeviceBindingCategory> result)
+        {
+            if (nodes == null || result == null) return;
+            foreach (var node in nodes)
+            {
+                if (node?.DeviceBindingInfo != null) result.Add(node.DeviceBindingInfo.DeviceBindingCategory);
+                if (node?.ChildrenNodes != null) CollectCategories(node.ChildrenNodes, result);
+            }
         }
 
         private static string GetInputLabel(Plugin plugin)
@@ -150,41 +192,30 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private static string GetEndpointLabel(List<Plugin.IODefinition> definitions, bool isInput, Plugin plugin)
         {
-            if (definitions.Count == 0)
+            if (definitions == null || definitions.Count == 0)
             {
                 if (!isInput && string.Equals(plugin.Group, "Filter", StringComparison.OrdinalIgnoreCase)) return "Filter";
-                return isInput ? "None" : "None";
+                return "None";
             }
-
-            if (definitions.Count == 1) return CategoryLabel(definitions[0].Category, false);
 
             var category = definitions[0].Category;
-            var sameCategory = true;
             for (var i = 1; i < definitions.Count; i++)
             {
-                if (definitions[i].Category == category) continue;
-                sameCategory = false;
-                break;
+                if (definitions[i].Category != category) return "Multiple";
             }
 
-            if (sameCategory) return CategoryLabel(category, true);
-            return "Multiple";
+            return CategoryLabel(category);
         }
 
-        private static string CategoryLabel(DeviceBindingCategory category, bool plural)
+        private static string CategoryLabel(DeviceBindingCategory category)
         {
             switch (category)
             {
-                case DeviceBindingCategory.Momentary:
-                    return plural ? "Buttons" : "Button";
-                case DeviceBindingCategory.Range:
-                    return plural ? "Axes" : "Axis";
-                case DeviceBindingCategory.Event:
-                    return plural ? "Events" : "Event";
-                case DeviceBindingCategory.Delta:
-                    return plural ? "Deltas" : "Delta";
-                default:
-                    return plural ? "Values" : "Value";
+                case DeviceBindingCategory.Momentary: return "Button";
+                case DeviceBindingCategory.Range: return "Axis";
+                case DeviceBindingCategory.Event: return "Event";
+                case DeviceBindingCategory.Delta: return "Delta";
+                default: return "Value";
             }
         }
 
@@ -201,16 +232,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             switch (label)
             {
                 case "Button": return 0;
-                case "Buttons": return 1;
-                case "Axis": return 2;
-                case "Axes": return 3;
-                case "Event": return 4;
-                case "Events": return 5;
-                case "Filter": return 6;
-                case "Delta": return 7;
-                case "Deltas": return 8;
-                case "None": return 9;
-                default: return 10;
+                case "Axis": return 1;
+                case "Event": return 2;
+                case "Filter": return 3;
+                case "Delta": return 4;
+                case "Multiple": return 5;
+                case "Value": return 6;
+                case "None": return 7;
+                default: return 8;
             }
         }
 

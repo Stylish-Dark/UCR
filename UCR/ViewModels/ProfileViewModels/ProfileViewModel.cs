@@ -11,6 +11,19 @@ using MaterialDesignThemes.Wpf;
 
 namespace HidWizards.UCR.ViewModels.ProfileViewModels
 {
+    public sealed class FilterDefinitionItemViewModel
+    {
+        public string Name { get; set; }
+        public int ReferenceCount { get; set; }
+        public bool IsInherited { get; set; }
+        public MappingViewModel DefiningMapping { get; set; }
+        public string ReferenceText => ReferenceCount == 1 ? "1 use" : ReferenceCount + " uses";
+        public string KindText => IsInherited ? "INHERITED" : "DEFINED";
+        public string ToolTip => IsInherited
+            ? "Filter inherited from a parent profile. Click to highlight mappings that use it."
+            : "Filter definition. Click to highlight its definition and every mapping that uses it.";
+    }
+
     public class ProfileViewModel : INotifyPropertyChanged
     {
         public Profile Profile { get; }
@@ -19,7 +32,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool CanEditProfile => !Profile.IsActive();
         public ObservableCollection<MappingViewModel> MappingsList { get; set; }
         public ObservableCollection<string> FilterNames { get; private set; }
+        public ObservableCollection<FilterDefinitionItemViewModel> FilterDefinitions { get; private set; }
         public PluginToolboxViewModel PluginToolbox { get; set; }
+
         public string ProfileDialogIdentifier => $"ProfileDialog-{Profile.Guid}";
 
         public ProfileViewModel()
@@ -121,7 +136,23 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             var names = Profile.GetFilters().OrderBy(name => name, StringComparer.CurrentCultureIgnoreCase).ToList();
             FilterNames = new ObservableCollection<string>(names);
+            FilterDefinitions = new ObservableCollection<FilterDefinitionItemViewModel>();
+
+            foreach (var name in names)
+            {
+                var definingMapping = MappingsList?.FirstOrDefault(mapping => mapping.DefinesFilter(name));
+                var referenceCount = MappingsList == null ? 0 : MappingsList.Count(mapping => mapping.ReferencesFilter(name));
+                FilterDefinitions.Add(new FilterDefinitionItemViewModel
+                {
+                    Name = name,
+                    ReferenceCount = referenceCount,
+                    IsInherited = definingMapping == null,
+                    DefiningMapping = definingMapping
+                });
+            }
+
             OnPropertyChanged(nameof(FilterNames));
+            OnPropertyChanged(nameof(FilterDefinitions));
         }
 
         public void RefreshFilterReferenceLabels()
@@ -131,6 +162,27 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 foreach (var plugin in mapping.Plugins) plugin.ReloadFiltersFromModel();
                 mapping.RefreshFilterIndicator();
             }
+            RefreshFilterNames();
+        }
+
+        public MappingViewModel HighlightFilter(FilterDefinitionItemViewModel filter)
+        {
+            if (filter == null)
+            {
+                ClearFilterHighlight();
+                return null;
+            }
+
+            foreach (var mapping in MappingsList)
+            {
+                mapping.SetFilterHighlight(mapping.DefinesFilter(filter.Name), mapping.ReferencesFilter(filter.Name));
+            }
+            return filter.DefiningMapping;
+        }
+
+        public void ClearFilterHighlight()
+        {
+            foreach (var mapping in MappingsList) mapping.SetFilterHighlight(false, false);
         }
 
         public IEnumerable<DeviceBindingViewModel> GetAllBindingViewModels()

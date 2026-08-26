@@ -10,7 +10,6 @@
              UseLayoutRounding="True"
              d:DesignHeight="320" d:DesignWidth="800">
     <UserControl.Resources>
-        <!-- Mapping actions are deliberately subdued until the user interacts with the card. -->
         <Style x:Key="UcrMappingActionButton" TargetType="{x:Type ButtonBase}" BasedOn="{StaticResource MaterialDesignCardButton}">
             <Setter Property="Foreground" Value="#BDBDBD"/>
             <Setter Property="Opacity" Value="0.58"/>
@@ -33,14 +32,70 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <!-- A device badge is intentionally shown only when the mapping deviates from the profile's
+             primary device, unless the user explicitly enables the Show all devices toggle. -->
+        <DataTemplate x:Key="MappingBindingVisualTemplate">
+            <Border Margin="2 0" Padding="5 3" MinWidth="42"
+                    Background="#1D1D1D" BorderBrush="#353535" BorderThickness="1" CornerRadius="4"
+                    ToolTip="{Binding ToolTip}">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Border Margin="0 0 5 0" Padding="4 1" MinWidth="25" CornerRadius="3"
+                            Background="#191919" BorderBrush="{Binding Device.AccentBrush}" BorderThickness="1"
+                            ToolTip="{Binding Device.ToolTip}">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ShowDeviceBadge}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding Device.BadgeText}" Foreground="{Binding Device.AccentBrush}"
+                                   FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center"/>
+                    </Border>
+                    <local:ControlGlyphControl Width="38" Height="22"
+                                               Kind="{Binding ControlKind}"
+                                               AccentBrush="{Binding ControlBrush}"
+                                               Label="{Binding ControlLabel}"/>
+                    <TextBlock Margin="4 0 1 0" Text="{Binding ControlLabel}" FontSize="11.5" FontWeight="SemiBold"
+                               Foreground="{Binding ControlBrush}" VerticalAlignment="Center" MaxWidth="120"
+                               TextTrimming="CharacterEllipsis">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsFilterControl}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
     </UserControl.Resources>
 
-    <Border Margin="4 5"
-            Background="#242424"
-            BorderBrush="#3A3A3A"
-            BorderThickness="1"
-            CornerRadius="5"
-            SnapsToDevicePixels="True">
+    <Border Margin="4 5" Background="#242424" CornerRadius="5" SnapsToDevicePixels="True">
+        <Border.Style>
+            <Style TargetType="Border">
+                <Setter Property="BorderBrush" Value="#3A3A3A"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsFilterReferenceHighlighted}" Value="True">
+                        <Setter Property="BorderBrush" Value="#4B7150"/>
+                        <Setter Property="BorderThickness" Value="1.5"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsFilterDefinitionHighlighted}" Value="True">
+                        <Setter Property="BorderBrush" Value="{StaticResource MappingTypeFilterBrush}"/>
+                        <Setter Property="BorderThickness" Value="2"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
         <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}"
                   HorizontalContentAlignment="Stretch"
                   Background="#242424"
@@ -54,44 +109,32 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- Persistent semantic cue. Accent colour remains separate from mapping-type colours. -->
-                    <Border Grid.Column="0"
-                            Margin="0 4 0 4"
-                            CornerRadius="2"
-                            Background="{Binding MappingRoute, Converter={StaticResource MappingTypeBrushConverter}}"/>
+                    <!-- The strip describes what the mapping produces, not what happened to feed it. -->
+                    <Border Grid.Column="0" Margin="0 4 0 4" CornerRadius="2"
+                            Background="{Binding MappingOutputTypeLabel, Converter={StaticResource MappingTypeBrushConverter}}"/>
 
                     <StackPanel Grid.Column="1" Margin="10 6 8 6" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding MappingTitle}"
-                                   FontSize="15.5"
-                                   FontWeight="SemiBold"
-                                   Foreground="#FFFFFF"
-                                   TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding MappingTitle}" FontSize="15.5" FontWeight="SemiBold"
+                                   Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"/>
                         <ItemsControl ItemsSource="{Binding MappingRouteTokens}" Margin="0 2 0 0" Opacity="0.78">
                             <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal"/>
-                                </ItemsPanelTemplate>
+                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding Text}"
-                                               FontSize="13.5"
-                                               FontWeight="Medium"
+                                    <TextBlock Text="{Binding Text}" FontSize="13.5" FontWeight="Medium"
                                                Foreground="{Binding TypeLabel, Converter={StaticResource MappingTypeBrushConverter}}"/>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>
 
-                    <!-- Collapsed state is visual-first: device family + actual control on each side. -->
                     <Grid Grid.Column="2" Margin="8 5 12 5" VerticalAlignment="Center">
                         <Grid.Style>
                             <Style TargetType="Grid">
                                 <Setter Property="Visibility" Value="Visible"/>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsExpanded}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </Grid.Style>
@@ -101,118 +144,50 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <ItemsControl Grid.Column="0" ItemsSource="{Binding CollapsedInputVisuals}" HorizontalAlignment="Right">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Margin="2 0" Padding="5 3" MinWidth="58"
-                                            Background="#1D1D1D" BorderBrush="#353535" BorderThickness="1" CornerRadius="4"
-                                            ToolTip="{Binding ToolTip}">
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                            <local:DeviceGlyphControl Width="34" Height="22"
-                                                                      Kind="{Binding Device.Kind}"
-                                                                      AccentBrush="{Binding Device.AccentBrush}"
-                                                                      SlotNumber="{Binding Device.SlotNumber}"
-                                                                      ShowSlotIndicator="{Binding Device.ShowSlotIndicator}">
-                                                <local:DeviceGlyphControl.Style>
-                                                    <Style TargetType="local:DeviceGlyphControl">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Device}" Value="{x:Null}">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </local:DeviceGlyphControl.Style>
-                                            </local:DeviceGlyphControl>
-                                            <local:ControlGlyphControl Width="34" Height="22" Margin="4 0 0 0"
-                                                                       Kind="{Binding ControlKind}"
-                                                                       AccentBrush="{Binding ControlBrush}"
-                                                                       Label="{Binding ControlLabel}"/>
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
+                        <ItemsControl Grid.Column="0" ItemsSource="{Binding CollapsedInputVisuals}"
+                                      ItemTemplate="{StaticResource MappingBindingVisualTemplate}" HorizontalAlignment="Right">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                         </ItemsControl>
 
                         <TextBlock Grid.Column="1" Text="→" Margin="8 0" FontSize="20" FontWeight="Light"
                                    Foreground="#AFAFAF" VerticalAlignment="Center"/>
 
-                        <ItemsControl Grid.Column="2" ItemsSource="{Binding CollapsedOutputVisuals}" HorizontalAlignment="Left">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
+                        <ItemsControl Grid.Column="2" ItemsSource="{Binding CollapsedOutputVisuals}"
+                                      ItemTemplate="{StaticResource MappingBindingVisualTemplate}" HorizontalAlignment="Left">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </Grid>
+
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="2 0 6 0">
+                        <!-- Filter references are links to definitions, not definitions themselves. -->
+                        <ItemsControl ItemsSource="{Binding ReferencedFilters}" Margin="0 0 4 0" VerticalAlignment="Center">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Margin="2 0" Padding="5 3" MinWidth="58"
-                                            Background="#1D1D1D" BorderBrush="#353535" BorderThickness="1" CornerRadius="4"
-                                            ToolTip="{Binding ToolTip}">
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                            <local:DeviceGlyphControl Width="34" Height="22"
-                                                                      Kind="{Binding Device.Kind}"
-                                                                      AccentBrush="{Binding Device.AccentBrush}"
-                                                                      SlotNumber="{Binding Device.SlotNumber}"
-                                                                      ShowSlotIndicator="{Binding Device.ShowSlotIndicator}">
-                                                <local:DeviceGlyphControl.Style>
-                                                    <Style TargetType="local:DeviceGlyphControl">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Device}" Value="{x:Null}">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </local:DeviceGlyphControl.Style>
-                                            </local:DeviceGlyphControl>
-                                            <local:ControlGlyphControl Width="34" Height="22" Margin="4 0 0 0"
-                                                                       Kind="{Binding ControlKind}"
-                                                                       AccentBrush="{Binding ControlBrush}"
-                                                                       Label="{Binding ControlLabel}"/>
+                                    <Border Margin="2 0" Padding="5 2" CornerRadius="3" Background="Transparent"
+                                            BorderBrush="{StaticResource MappingTypeFilterBrush}" BorderThickness="1" ToolTip="{Binding ToolTip}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Filter" Width="12" Height="12" Margin="0 0 4 0"
+                                                                     Foreground="{StaticResource MappingTypeFilterBrush}"/>
+                                            <TextBlock Text="{Binding Name}" FontSize="11" Foreground="{StaticResource MappingTypeFilterBrush}"
+                                                       MaxWidth="100" TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                    </Grid>
-
-                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="2 0 6 0">
-                        <materialDesign:PackIcon Kind="Filter"
-                                                 Width="16" Height="16"
-                                                 Margin="4 0 6 0"
-                                                 Foreground="{StaticResource MappingTypeFilterBrush}"
-                                                 ToolTip="This mapping references one or more filters">
-                            <materialDesign:PackIcon.Style>
-                                <Style TargetType="{x:Type materialDesign:PackIcon}">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Style.Triggers>
-                                        <MultiDataTrigger>
-                                            <MultiDataTrigger.Conditions>
-                                                <Condition Binding="{Binding HasFilters}" Value="True"/>
-                                                <Condition Binding="{Binding IsExpanded}" Value="False"/>
-                                            </MultiDataTrigger.Conditions>
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </MultiDataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </materialDesign:PackIcon.Style>
-                        </materialDesign:PackIcon>
 
                         <Border Width="1" Height="22" Margin="1 0 4 0" Background="#3A3A3A"
                                 ToolTip="Right-drag a collapsed card to reorder mappings"/>
-                        <Button ToolTip="Rename mapping"
-                                Style="{StaticResource UcrMappingActionButton}"
+                        <Button ToolTip="Rename mapping" Style="{StaticResource UcrMappingActionButton}"
                                 IsEnabled="{Binding ButtonsEnabled}" Click="Rename_OnClick">
                             <materialDesign:PackIcon Kind="Edit" Width="17" Height="17"/>
                         </Button>
-                        <Button ToolTip="Add plugin to mapping"
-                                Style="{StaticResource UcrMappingActionButton}"
+                        <Button ToolTip="Add plugin to mapping" Style="{StaticResource UcrMappingActionButton}"
                                 IsEnabled="{Binding ButtonsEnabled}" Click="AddPlugin_OnClick">
                             <materialDesign:PackIcon Kind="LibraryAdd" Width="17" Height="17"/>
                         </Button>
-                        <Button ToolTip="Remove mapping"
-                                Style="{StaticResource UcrMappingDeleteButton}"
+                        <Button ToolTip="Remove mapping" Style="{StaticResource UcrMappingDeleteButton}"
                                 IsEnabled="{Binding ButtonsEnabled}" Click="Remove_OnClick">
                             <materialDesign:PackIcon Kind="Trash" Width="17" Height="17"/>
                         </Button>
@@ -220,29 +195,21 @@
                 </Grid>
             </Expander.Header>
 
-            <Border Margin="8 0 8 8"
-                    Padding="4 6 4 4"
-                    Background="#202020"
-                    BorderBrush="#303030"
-                    BorderThickness="1 1 1 0"
-                    CornerRadius="3">
+            <Border Margin="8 0 8 8" Padding="4 6 4 4" Background="#202020"
+                    BorderBrush="#303030" BorderThickness="1 1 1 0" CornerRadius="3">
                 <StackPanel>
                     <ItemsControl ItemsSource="{Binding DeviceBindings}" HorizontalContentAlignment="Stretch">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <local:DeviceBindingControl DataContext="{Binding}"
-                                                            DeviceBinding="{Binding DeviceBinding}"
-                                                            Label="{Binding DeviceBindingName}"
-                                                            Category="{Binding DeviceBindingCategory}"/>
+                                <local:DeviceBindingControl DataContext="{Binding}" DeviceBinding="{Binding DeviceBinding}"
+                                                            Label="{Binding DeviceBindingName}" Category="{Binding DeviceBindingCategory}"/>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
                     <ItemsControl ItemsSource="{Binding Plugins}" VerticalAlignment="Stretch">
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <plugin:PluginControl Margin="0 4 0 0"/>
-                            </DataTemplate>
+                            <DataTemplate><plugin:PluginControl Margin="0 4 0 0"/></DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </StackPanel>

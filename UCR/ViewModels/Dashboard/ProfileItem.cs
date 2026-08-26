@@ -99,17 +99,20 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 .Where(configuration => configuration != null)
                 .ToList();
 
-            foreach (var configuration in inputs.Take(3))
+            // The profile browser is intentionally a strict three-column summary:
+            // primary input | profile name | primary output. Additional devices belong in
+            // the profile's device lists, not in the row summary.
+            if (primaryInput != null)
             {
-                item.InputVisuals.Add(DeviceVisualCatalog.Describe(configuration, profile, DeviceIoType.Input));
+                item.InputVisuals.Add(DeviceVisualCatalog.Describe(primaryInput, profile, DeviceIoType.Input));
             }
             if (primaryOutput != null)
             {
                 item.OutputVisuals.Add(DeviceVisualCatalog.Describe(primaryOutput, profile, DeviceIoType.Output));
             }
 
-            item.AdditionalInputCount = Math.Max(0, inputs.Count - item.InputVisuals.Count);
-            item.AdditionalOutputCount = Math.Max(0, outputs.Count - item.OutputVisuals.Count);
+            item.AdditionalInputCount = Math.Max(0, inputs.Count - (primaryInput != null ? 1 : 0));
+            item.AdditionalOutputCount = Math.Max(0, outputs.Count - (primaryOutput != null ? 1 : 0));
 
             if (inputs.Count == 0)
             {
