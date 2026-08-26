@@ -24,7 +24,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             : "Filter definition. Click to highlight its definition and every mapping that uses it.";
     }
 
-    public class ProfileViewModel : INotifyPropertyChanged
+    public class ProfileViewModel : INotifyPropertyChanged, IDisposable
     {
         public Profile Profile { get; }
         public bool CanActivateProfile => Profile.Context.ActiveProfile != Profile;
@@ -36,6 +36,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public PluginToolboxViewModel PluginToolbox { get; set; }
 
         public string ProfileDialogIdentifier => $"ProfileDialog-{Profile.Guid}";
+        private bool _disposed;
 
         public ProfileViewModel()
         {
@@ -243,11 +244,22 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             if (Profile.RemoveMapping(mappingViewModel.Mapping))
             {
+                mappingViewModel.Dispose();
                 MappingsList.Remove(mappingViewModel);
                 RefreshMappingPositions();
                 RefreshFilterNames();
                 RefreshFilterReferenceLabels();
             }
+        }
+
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            Profile.Context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;
+            PluginToolbox?.Dispose();
+            foreach (var mapping in MappingsList ?? new ObservableCollection<MappingViewModel>()) mapping.Dispose();
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

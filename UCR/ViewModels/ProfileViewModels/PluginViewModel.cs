@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -10,7 +11,7 @@ using MaterialDesignThemes.Wpf;
 
 namespace HidWizards.UCR.ViewModels.ProfileViewModels
 {
-    public class PluginViewModel : INotifyPropertyChanged
+    public class PluginViewModel : INotifyPropertyChanged, IDisposable
     {
         public MappingViewModel MappingViewModel { get; }
         public Plugin Plugin { get; set; }
@@ -19,6 +20,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool CanRemove => !MappingViewModel.ProfileViewModel.Profile.IsActive() && MappingViewModel.Plugins.Count > 1;
         public bool CanAddFilter => !MappingViewModel.ProfileViewModel.Profile.IsActive();
         public ObservableCollection<FilterViewModel> Filters { get; set; }
+        private bool _disposed;
 
         public PluginViewModel(MappingViewModel mappingViewModel, Plugin plugin)
         {
@@ -121,6 +123,21 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
                 PluginPropertyGroups.Add(new PluginPropertyGroupViewModel(pluginPropertyGroup));
             }
+        }
+
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+
+            var context = MappingViewModel.ProfileViewModel.Profile.Context;
+            context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;
+            MappingViewModel.Plugins.CollectionChanged -= Plugins_CollectionChanged;
+            Plugin.FilterDefinitionChanged -= PluginOnFilterDefinitionChanged;
+
+            foreach (var filter in Filters ?? new ObservableCollection<FilterViewModel>()) filter.Dispose();
+            foreach (var binding in DeviceBindings ?? new ObservableCollection<DeviceBindingViewModel>()) binding.Dispose();
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

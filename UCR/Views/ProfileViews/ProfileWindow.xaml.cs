@@ -51,6 +51,16 @@ namespace HidWizards.UCR.Views.ProfileViews
             StartGuiTimer();
         }
 
+        protected override void OnClosed(EventArgs e)
+        {
+            if (_mappingDragActive) EndMappingDrag(false);
+            StopGuiTimer();
+            Context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;
+            ProfileViewModel.Dispose();
+            Logger.Debug("Profile editor released: " + Profile.Title + " (" + Profile.Guid + ")");
+            base.OnClosed(e);
+        }
+
         private void Save_OnExecuted(object sender, ExecutedRoutedEventArgs e)
         {
             Context.SaveContext();
@@ -73,7 +83,7 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void StartGuiTimer()
         {
-            if (!Profile.IsActive()) return;
+            if (!Profile.IsActive() || DispatcherTimer != null) return;
             DispatcherTimer = new DispatcherTimer(DispatcherPriority.Render);
             DispatcherTimer.Interval = TimeSpan.FromMilliseconds(15);
             DispatcherTimer.Tick += DispatcherTimerOnTick;
@@ -93,19 +103,24 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void StopGuiTimer()
         {
-            DispatcherTimer?.Stop();
-            DispatcherTimer = null;
+            if (DispatcherTimer != null)
+            {
+                DispatcherTimer.Stop();
+                DispatcherTimer.Tick -= DispatcherTimerOnTick;
+                DispatcherTimer = null;
+            }
+            DeviceBindingViewModels?.Clear();
+            DeviceBindingViewModels = null;
         }
 
         private void ContextOnActiveProfileChangedEvent(Profile profile)
         {
-            if (profile == null)
+            if (profile == null || profile.Guid != ProfileGuid)
             {
                 StopGuiTimer();
                 return;
             }
 
-            if (profile.Guid != ProfileGuid) return;
             StartGuiTimer();
         }
 

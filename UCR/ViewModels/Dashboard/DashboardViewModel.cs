@@ -32,6 +32,12 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(ProfileDetailsActive));
                 OnPropertyChanged(nameof(CanActivateProfile));
+                if (_selectedProfileItem == null)
+                {
+                    DisposeDeviceLists();
+                    OnPropertyChanged(nameof(InputDeviceControlViewModel));
+                    OnPropertyChanged(nameof(OutputDeviceControlViewModel));
+                }
             }
         }
 
@@ -123,6 +129,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         private void BuildDeviceLists()
         {
+            DisposeDeviceLists();
             InputDeviceControlViewModel = new ProfileDeviceListControlViewModel(SelectedProfileItem.Profile,
                 GetDeviceConfigurations(SelectedProfileItem.Profile, DeviceIoType.Input), DeviceIoType.Input, RefreshProfilePresentation);
             OutputDeviceControlViewModel = new ProfileDeviceListControlViewModel(SelectedProfileItem.Profile,
@@ -130,6 +137,15 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
             OnPropertyChanged(nameof(InputDeviceControlViewModel));
             OnPropertyChanged(nameof(OutputDeviceControlViewModel));
+        }
+
+
+        private void DisposeDeviceLists()
+        {
+            InputDeviceControlViewModel?.Dispose();
+            OutputDeviceControlViewModel?.Dispose();
+            InputDeviceControlViewModel = null;
+            OutputDeviceControlViewModel = null;
         }
 
         private List<DeviceConfiguration> GetDeviceConfigurations(Profile profile, DeviceIoType deviceIoType)

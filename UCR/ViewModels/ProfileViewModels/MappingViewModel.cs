@@ -33,7 +33,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public string ToolTip { get; set; }
     }
 
-    public class MappingViewModel : INotifyPropertyChanged
+    public class MappingViewModel : INotifyPropertyChanged, IDisposable
     {
         public string MappingTitle => Mapping.FullTitle;
         public ProfileViewModel ProfileViewModel { get; }
@@ -94,6 +94,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+        private bool _disposed;
         private bool _isExpanded;
         public bool IsExpanded
         {
@@ -191,6 +192,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             foreach (var binding in pluginViewModel.DeviceBindings) SubscribeSummaryBinding(binding);
             RefreshHeaderState();
             RefreshCollapsedSummary();
+            ProfileViewModel.RefreshFilterReferenceLabels();
+            Logger.Info("Output added to mapping '" + MappingTitle + "': " + newPlugin.PluginName);
             if (Plugins.Count != 1) return;
             
             PopulateDeviceBindingsViewModels();
@@ -217,6 +220,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (!Mapping.RemovePlugin(pluginViewModel.Plugin)) return;
 
+            pluginViewModel.Dispose();
             Plugins.Remove(pluginViewModel);
             RefreshHeaderState();
             RefreshCollapsedSummary();
@@ -505,6 +509,37 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             Mapping.Rename(dialog.Value);
             Logger.Info("Mapping renamed: '" + oldTitle + "' -> '" + Mapping.Title + "'");
             OnPropertyChanged(nameof(MappingTitle));
+        }
+
+
+        public List<SimplePluginViewModel> GetCompatiblePluginOptions()
+        {
+            return Mapping.GetPluginList()
+                .Select(plugin => new SimplePluginViewModel(plugin))
+                .OrderBy(plugin => plugin.OutputTypeOrder)
+                .ThenBy(plugin => plugin.OutputType, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(plugin => plugin.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+
+            ProfileViewModel.Profile.Context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;
+
+            foreach (var binding in DeviceBindings ?? new ObservableCollection<DeviceBindingViewModel>())
+            {
+                binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
+                binding.Dispose();
+            }
+
+            foreach (var plugin in Plugins ?? new ObservableCollection<PluginViewModel>())
+            {
+                foreach (var binding in plugin.DeviceBindings) binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
+                plugin.Dispose();
+            }
         }
 
         public async void AddPlugin()

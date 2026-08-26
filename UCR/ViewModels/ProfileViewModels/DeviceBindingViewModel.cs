@@ -13,7 +13,7 @@ using HidWizards.UCR.Core.Utilities;
 
 namespace HidWizards.UCR.ViewModels.ProfileViewModels
 {
-    public class DeviceBindingViewModel : INotifyPropertyChanged
+    public class DeviceBindingViewModel : INotifyPropertyChanged, IDisposable
     {
         public string DeviceBindingName { get; set; }
         public string IoTypeName => DeviceBinding.DeviceIoType.Equals(DeviceIoType.Input) ? "Input" : "Output";
@@ -35,6 +35,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool ShowButtonPreview => DeviceBinding.IsInBindMode || DeviceBinding.Profile.IsActive();
 
         private bool GuiInvalidated { get; set; }
+        private bool _disposed;
 
         private long GetPreviewValue()
         {
@@ -100,7 +101,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             get => _deviceBinding;
             set
             {
+                if (ReferenceEquals(_deviceBinding, value)) return;
+                if (_deviceBinding != null) _deviceBinding.PropertyChanged -= DeviceBindingOnPropertyChanged;
                 _deviceBinding = value;
+                if (_deviceBinding == null) return;
                 _deviceBinding.PropertyChanged += DeviceBindingOnPropertyChanged;
                 CurrentValue = _deviceBinding.CurrentValue;
             }
@@ -314,6 +318,26 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (propertyChangedEventArgs.PropertyName.Equals("ProfileActive"))
             {
                 BindingEnabled = !DeviceBinding.Profile.Context.SubscriptionsManager.ProfileActive;
+            }
+        }
+
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+
+            var binding = _deviceBinding;
+            if (binding != null)
+            {
+                binding.PropertyChanged -= DeviceBindingOnPropertyChanged;
+                var context = binding.Profile?.Context;
+                if (context != null)
+                {
+                    context.BindingManager.PropertyChanged -= BindingManagerOnPropertyChanged;
+                    context.SubscriptionsManager.PropertyChanged -= SubscriptionsManagerOnPropertyChanged;
+                    context.DeviceAliasesChangedEvent -= ContextOnDeviceAliasesChanged;
+                }
             }
         }
 

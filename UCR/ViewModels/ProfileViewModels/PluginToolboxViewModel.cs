@@ -32,7 +32,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public List<PluginRouteOption> Routes { get; set; }
     }
 
-    public class PluginToolboxViewModel : INotifyPropertyChanged
+    public class PluginToolboxViewModel : INotifyPropertyChanged, IDisposable
     {
         public Dictionary<string, PluginGroupViewModel> PluginGroupList { get; set; }
         public ObservableCollection<string> InputOptions { get; }
@@ -42,6 +42,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private readonly Profile _profile;
         private readonly List<PluginRouteOption> _routeOptions;
         private readonly HashSet<DeviceBindingCategory> _supportedInputCategories;
+        private bool _disposed;
 
         private string _selectedInput;
         public string SelectedInput
@@ -296,6 +297,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             OnPropertyChanged(nameof(IsEnabled));
             OnPropertyChanged(nameof(CanAddMapping));
+        }
+
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            if (_profile != null) _profile.Context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;
+
+            foreach (var group in PluginGroupList?.Values ?? Enumerable.Empty<PluginGroupViewModel>())
+            {
+                foreach (var plugin in group.Plugins) plugin.Dispose();
+            }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

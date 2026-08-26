@@ -13,7 +13,7 @@ using MaterialDesignThemes.Wpf;
 
 namespace HidWizards.UCR.ViewModels.Dashboard
 {
-    public class ProfileDeviceListControlViewModel : INotifyPropertyChanged
+    public class ProfileDeviceListControlViewModel : INotifyPropertyChanged, IDisposable
     {
         public ObservableCollection<DeviceItem> Devices { get; set; }
         public bool IsRemoveEnabled => CanRemoveDevice();
@@ -34,6 +34,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         private readonly Profile _profile;
         private readonly DeviceIoType _deviceIoType;
         private readonly Action _presentationChanged;
+        private bool _disposed;
 
         public ProfileDeviceListControlViewModel()
         {
@@ -165,6 +166,14 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
             SelectedDeviceConfiguration.TitleChanged();
             OnPropertyChanged(nameof(Devices));
+        }
+
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            if (_profile != null) _profile.Context.DeviceAliasesChangedEvent -= ContextOnDeviceAliasesChanged;
         }
 
         private bool CanManageDeviceConfiguration()
