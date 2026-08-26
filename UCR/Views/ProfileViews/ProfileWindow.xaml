@@ -23,7 +23,8 @@
         Background="{DynamicResource MaterialDesignPaper}"
         FontFamily="{DynamicResource MaterialDesignFont}"
         UseLayoutRounding="True"
-        PreviewKeyDown="ProfileWindow_OnPreviewKeyDown">
+        PreviewKeyDown="ProfileWindow_OnPreviewKeyDown"
+        PreviewMouseWheel="ProfileWindow_OnPreviewMouseWheel">
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="0" CornerRadius="5" GlassFrameThickness="0"/>
     </WindowChrome.WindowChrome>
@@ -71,6 +72,9 @@
         <CommandBinding Command="Save" Executed="Save_OnExecuted" CanExecute="Save_OnCanExecute" />
     </Window.CommandBindings>
     <Grid>
+        <Grid.LayoutTransform>
+            <ScaleTransform ScaleX="{DynamicResource UcrUiScale}" ScaleY="{DynamicResource UcrUiScale}"/>
+        </Grid.LayoutTransform>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -140,6 +144,8 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
                                 <TextBlock Grid.Row="0" Text="FROM" FontSize="10.5" FontWeight="SemiBold" Opacity="0.48" Margin="2 0 0 5"/>
@@ -159,25 +165,50 @@
 
                                 <TextBlock Grid.Row="2" Text="TO" FontSize="10.5" FontWeight="SemiBold" Opacity="0.48" Margin="2 3 0 5"/>
                                 <ListBox Grid.Row="3" ItemsSource="{Binding PluginToolbox.OutputOptions}"
-                                         SelectedItem="{Binding PluginToolbox.SelectedRoute, Mode=TwoWay}"
+                                         SelectedItem="{Binding PluginToolbox.SelectedOutput, Mode=TwoWay}"
                                          IsEnabled="{Binding PluginToolbox.IsEnabled}"
                                          Style="{StaticResource ToolboxChoiceList}"
                                          ItemContainerStyle="{StaticResource ToolboxChoiceItem}">
                                     <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding OutputDisplayLabel}" FontWeight="SemiBold" TextWrapping="Wrap"
+                                            <TextBlock Text="{Binding OutputLabel}" FontWeight="SemiBold"
                                                        Foreground="{Binding OutputLabel, Converter={StaticResource MappingTypeBrushConverter}}"/>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
 
-                                <Button Grid.Row="4" Margin="0 6 0 0" Height="34" Content="ADD" FontSize="14" FontWeight="SemiBold"
+                                <TextBlock Grid.Row="4" Text="MODE" FontSize="10.5" FontWeight="SemiBold" Opacity="0.48" Margin="2 4 0 5">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers><DataTrigger Binding="{Binding PluginToolbox.HasRouteVariants}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <ListBox Grid.Row="5" ItemsSource="{Binding PluginToolbox.VariantOptions}"
+                                         SelectedItem="{Binding PluginToolbox.SelectedRoute, Mode=TwoWay}"
+                                         IsEnabled="{Binding PluginToolbox.IsEnabled}"
+                                         ItemContainerStyle="{StaticResource ToolboxChoiceItem}">
+                                    <ListBox.Style>
+                                        <Style TargetType="ListBox" BasedOn="{StaticResource ToolboxChoiceList}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers><DataTrigger Binding="{Binding PluginToolbox.HasRouteVariants}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                                        </Style>
+                                    </ListBox.Style>
+                                    <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding VariantLabel}" FontWeight="SemiBold" Foreground="#DADADA"/>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+
+                                <Button Grid.Row="6" Margin="0 6 0 0" Height="34" Content="ADD" FontSize="14" FontWeight="SemiBold"
                                         Style="{StaticResource MaterialDesignRaisedButton}" IsEnabled="{Binding PluginToolbox.CanAddMapping}" Click="AddMapping_OnClick"/>
 
-                                <StackPanel Grid.Row="5" Margin="2 8 2 0">
-                                    <TextBlock Text="{Binding PluginToolbox.SelectedRoute.PluginItem.Name}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                                    <TextBlock Text="{Binding PluginToolbox.SelectedRoute.PluginItem.Description}" Margin="0 2 0 0" Opacity="0.55" TextWrapping="Wrap" FontSize="12.5"/>
+                                <StackPanel Grid.Row="7" Margin="2 8 2 0">
+                                    <TextBlock Text="{Binding PluginToolbox.SelectedPluginName}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding PluginToolbox.SelectedPluginDescription}" Margin="0 2 0 0" Opacity="0.55" TextWrapping="Wrap" FontSize="12.5"/>
                                 </StackPanel>
                             </Grid>
                         </Grid>

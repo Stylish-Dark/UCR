@@ -60,6 +60,14 @@ namespace HidWizards.UCR.Views
             _autoProfileMonitor = new AutoProfileMonitor(context);
         }
 
+        private void MainWindow_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control) return;
+            var scale = AppearanceManager.AdjustUiScale(e.Delta);
+            Logger.Info("UI scale changed to " + Math.Round(scale * 100) + "%");
+            e.Handled = true;
+        }
+
         /// <summary>
         /// AddHook Handle WndProc messages in WPF
         /// This cannot be done in a Window's constructor as a handle window handle won't at that point, so there won't be a HwndSource.

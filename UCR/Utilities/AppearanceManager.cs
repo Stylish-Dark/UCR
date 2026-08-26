@@ -27,12 +27,47 @@ namespace HidWizards.UCR.Utilities
 
         public static IEnumerable<AccentPalette> AvailablePalettes => Palettes;
 
+        public const double MinimumUiScale = 0.85;
+        public const double MaximumUiScale = 1.25;
+        public const double UiScaleStep = 0.05;
+
         public static string CurrentAccentName { get; private set; } = "Blue";
         public static Color CurrentAccentColor => (Find(CurrentAccentName) ?? Find("Blue")).Color;
+        public static double CurrentUiScale { get; private set; } = 1.0;
 
         public static void ApplySavedAccent()
         {
             ApplyAccent(HidWizards.UCR.Properties.Settings.Default.AccentColor, false);
+        }
+
+        public static void ApplySavedUiScale()
+        {
+            ApplyUiScale(HidWizards.UCR.Properties.Settings.Default.UiScale, false);
+        }
+
+        public static double AdjustUiScale(int wheelDelta)
+        {
+            if (wheelDelta == 0) return CurrentUiScale;
+            return ApplyUiScale(CurrentUiScale + (wheelDelta > 0 ? UiScaleStep : -UiScaleStep));
+        }
+
+        public static double ApplyUiScale(double scale, bool persist = true)
+        {
+            var normalized = Math.Round(Math.Max(MinimumUiScale, Math.Min(MaximumUiScale, scale)), 2);
+            CurrentUiScale = normalized;
+            if (Application.Current != null) Application.Current.Resources["UcrUiScale"] = normalized;
+
+            if (!persist) return normalized;
+            try
+            {
+                HidWizards.UCR.Properties.Settings.Default.UiScale = normalized;
+                HidWizards.UCR.Properties.Settings.Default.Save();
+            }
+            catch (Exception exception)
+            {
+                Logger.Warn("UI scale applied but could not be saved to user settings", exception);
+            }
+            return normalized;
         }
 
         public static void ApplyAccent(string name, bool persist = true)

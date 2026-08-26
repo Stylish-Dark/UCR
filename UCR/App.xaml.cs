@@ -41,6 +41,7 @@ namespace HidWizards.UCR
             base.OnStartup(e);
             Logger.InitializeSession();
             AppearanceManager.ApplySavedAccent();
+            AppearanceManager.ApplySavedUiScale();
             AppDomain.CurrentDomain.UnhandledException += AppDomain_CurrentDomain_UnhandledException;
             DispatcherUnhandledException += App_DispatcherUnhandledException;
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;

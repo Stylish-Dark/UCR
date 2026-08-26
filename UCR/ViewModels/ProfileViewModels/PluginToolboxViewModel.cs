@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Models;
@@ -14,22 +15,29 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public PluginItemViewModel PluginItem { get; }
         public string InputLabel { get; }
         public string OutputLabel { get; }
-        public string OutputDisplayLabel { get; set; }
+        public string VariantLabel { get; set; }
 
         public PluginRouteOption(PluginItemViewModel pluginItem, string inputLabel, string outputLabel)
         {
             PluginItem = pluginItem;
             InputLabel = inputLabel;
             OutputLabel = outputLabel;
-            OutputDisplayLabel = outputLabel;
+            VariantLabel = pluginItem?.Name ?? outputLabel;
         }
+    }
+
+    public sealed class PluginOutputOption
+    {
+        public string OutputLabel { get; set; }
+        public List<PluginRouteOption> Routes { get; set; }
     }
 
     public class PluginToolboxViewModel : INotifyPropertyChanged
     {
         public Dictionary<string, PluginGroupViewModel> PluginGroupList { get; set; }
         public ObservableCollection<string> InputOptions { get; }
-        public ObservableCollection<PluginRouteOption> OutputOptions { get; }
+        public ObservableCollection<PluginOutputOption> OutputOptions { get; }
+        public ObservableCollection<PluginRouteOption> VariantOptions { get; }
 
         private readonly Profile _profile;
         private readonly List<PluginRouteOption> _routeOptions;
@@ -48,6 +56,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+        private PluginOutputOption _selectedOutput;
+        public PluginOutputOption SelectedOutput
+        {
+            get => _selectedOutput;
+            set
+            {
+                if (_selectedOutput == value) return;
+                _selectedOutput = value;
+                OnPropertyChanged();
+                RefreshVariantOptions();
+            }
+        }
+
         private PluginRouteOption _selectedRoute;
         public PluginRouteOption SelectedRoute
         {
@@ -58,9 +79,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 _selectedRoute = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(CanAddMapping));
+                OnPropertyChanged(nameof(SelectedPluginName));
+                OnPropertyChanged(nameof(SelectedPluginDescription));
             }
         }
 
+        public bool HasRouteVariants => VariantOptions.Count > 1;
+        public string SelectedPluginName => SelectedRoute?.PluginItem?.Name ?? string.Empty;
+        public string SelectedPluginDescription => SelectedRoute?.PluginItem?.Description ?? string.Empty;
         public bool IsEnabled => _profile != null && !_profile.IsActive();
         public bool CanAddMapping => IsEnabled && SelectedRoute != null;
 
@@ -70,7 +96,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             _routeOptions = new List<PluginRouteOption>();
             _supportedInputCategories = GetSupportedInputCategories();
             InputOptions = new ObservableCollection<string>();
-            OutputOptions = new ObservableCollection<PluginRouteOption>();
+            OutputOptions = new ObservableCollection<PluginOutputOption>();
+            VariantOptions = new ObservableCollection<PluginRouteOption>();
             PluginGroupList = new Dictionary<string, PluginGroupViewModel>();
 
             foreach (var plugin in pluginList)
@@ -81,7 +108,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
                 var pluginItem = new PluginItemViewModel(profile, plugin);
                 group.Plugins.Add(pluginItem);
-                _routeOptions.Add(new PluginRouteOption(pluginItem, GetInputLabel(plugin), GetOutputLabel(plugin)));
+                var route = new PluginRouteOption(pluginItem, GetInputLabel(plugin), GetOutputLabel(plugin));
+                route.VariantLabel = BuildVariantLabel(plugin, route);
+                _routeOptions.Add(route);
             }
 
             foreach (var pluginGroup in PluginGroupList.Values)
@@ -111,35 +140,41 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private void RefreshOutputOptions()
         {
             OutputOptions.Clear();
-            var matches = new List<PluginRouteOption>();
-            foreach (var route in _routeOptions)
-            {
-                if (!RouteInputSupported(route)) continue;
-                if (string.Equals(route.InputLabel, SelectedInput, StringComparison.Ordinal)) matches.Add(route);
-            }
+            VariantOptions.Clear();
+            SelectedRoute = null;
 
-            matches.Sort((left, right) =>
-            {
-                var result = CompareEndpointLabels(left.OutputLabel, right.OutputLabel);
-                return result != 0 ? result : string.Compare(left.PluginItem.Name, right.PluginItem.Name, StringComparison.OrdinalIgnoreCase);
-            });
+            var matches = _routeOptions
+                .Where(RouteInputSupported)
+                .Where(route => string.Equals(route.InputLabel, SelectedInput, StringComparison.Ordinal))
+                .OrderBy(route => EndpointOrder(route.OutputLabel))
+                .ThenBy(route => route.OutputLabel, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(route => route.PluginItem.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
-            foreach (var route in matches)
+            foreach (var group in matches.GroupBy(route => route.OutputLabel, StringComparer.OrdinalIgnoreCase))
             {
-                var duplicateCount = 0;
-                foreach (var other in matches)
+                OutputOptions.Add(new PluginOutputOption
                 {
-                    if (string.Equals(route.OutputLabel, other.OutputLabel, StringComparison.Ordinal)) duplicateCount++;
-                }
-
-                route.OutputDisplayLabel = duplicateCount > 1
-                    ? route.OutputLabel + " · " + route.PluginItem.Name
-                    : route.OutputLabel;
-                OutputOptions.Add(route);
+                    OutputLabel = group.Key,
+                    Routes = group.ToList()
+                });
             }
 
-            SelectedRoute = OutputOptions.Count > 0 ? OutputOptions[0] : null;
+            SelectedOutput = OutputOptions.Count > 0 ? OutputOptions[0] : null;
             OnPropertyChanged(nameof(OutputOptions));
+        }
+
+        private void RefreshVariantOptions()
+        {
+            VariantOptions.Clear();
+            if (SelectedOutput?.Routes != null)
+            {
+                foreach (var route in SelectedOutput.Routes) VariantOptions.Add(route);
+            }
+
+            SelectedRoute = VariantOptions.Count > 0 ? VariantOptions[0] : null;
+            OnPropertyChanged(nameof(VariantOptions));
+            OnPropertyChanged(nameof(HasRouteVariants));
         }
 
         private bool RouteInputSupported(PluginRouteOption route)
@@ -205,6 +240,20 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
 
             return CategoryLabel(category);
+        }
+
+        private static string BuildVariantLabel(Plugin plugin, PluginRouteOption route)
+        {
+            if (plugin == null || route == null) return string.Empty;
+
+            if (string.Equals(route.OutputLabel, "Axis", StringComparison.OrdinalIgnoreCase) &&
+                plugin.InputCategories != null && plugin.InputCategories.Count > 0 &&
+                plugin.InputCategories.All(definition => definition.Category == DeviceBindingCategory.Momentary))
+            {
+                return plugin.InputCategories.Count == 1 ? "1 button" : plugin.InputCategories.Count + " buttons";
+            }
+
+            return plugin.PluginName;
         }
 
         private static string CategoryLabel(DeviceBindingCategory category)

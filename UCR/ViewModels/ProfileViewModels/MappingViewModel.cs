@@ -317,17 +317,21 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private List<BindingVisualDescriptor> BuildCollapsedOutputVisuals()
         {
             var result = new List<BindingVisualDescriptor>();
-            var lastPlugin = Plugins.LastOrDefault();
-            if (lastPlugin != null)
+            // The card summary represents the mapping's primary route, which is the first
+            // plugin (the same plugin used by MappingRoute). Additional plugins remain visible
+            // when expanded and through filter/reference indicators, but must not replace the
+            // primary output shown in the collapsed header.
+            var primaryPlugin = Plugins.FirstOrDefault();
+            if (primaryPlugin != null)
             {
-                foreach (var binding in lastPlugin.DeviceBindings.Take(3))
+                foreach (var binding in primaryPlugin.DeviceBindings.Take(3))
                 {
                     result.Add(DescribeCollapsedBinding(binding));
                 }
 
                 if (result.Count == 0)
                 {
-                    var filterName = lastPlugin.Plugin.GetDefinedFilterName();
+                    var filterName = primaryPlugin.Plugin.GetDefinedFilterName();
                     if (!string.IsNullOrWhiteSpace(filterName)) result.Add(DeviceVisualCatalog.Filter(filterName));
                 }
             }
@@ -357,13 +361,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var inputs = DeviceBindings.Select(DescribeBinding).Where(value => !string.IsNullOrWhiteSpace(value)).ToList();
             var outputs = new List<string>();
 
-            var lastPlugin = Plugins.LastOrDefault();
-            if (lastPlugin != null)
+            var primaryPlugin = Plugins.FirstOrDefault();
+            if (primaryPlugin != null)
             {
-                outputs.AddRange(lastPlugin.DeviceBindings.Select(DescribeBinding).Where(value => !string.IsNullOrWhiteSpace(value)));
+                outputs.AddRange(primaryPlugin.DeviceBindings.Select(DescribeBinding).Where(value => !string.IsNullOrWhiteSpace(value)));
                 if (outputs.Count == 0)
                 {
-                    var filterName = lastPlugin.Plugin.GetDefinedFilterName();
+                    var filterName = primaryPlugin.Plugin.GetDefinedFilterName();
                     if (!string.IsNullOrWhiteSpace(filterName)) outputs.Add("Filter: " + filterName);
                 }
             }
@@ -400,7 +404,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private string GetMappingOutputTypeLabel()
         {
-            var plugin = Mapping?.Plugins?.LastOrDefault();
+            var plugin = Mapping?.Plugins?.FirstOrDefault();
             if (plugin == null) return "None";
 
             if (!string.IsNullOrWhiteSpace(plugin.GetDefinedFilterName())) return "Filter";

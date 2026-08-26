@@ -9,6 +9,7 @@ using System.Windows.Threading;
 using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Utilities;
+using HidWizards.UCR.Utilities;
 using HidWizards.UCR.ViewModels.Dialogs;
 using HidWizards.UCR.ViewModels.ProfileViewModels;
 using HidWizards.UCR.Views.Dialogs;
@@ -58,6 +59,14 @@ namespace HidWizards.UCR.Views.ProfileViews
         private void Save_OnCanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
             e.CanExecute = Context.IsNotSaved;
+        }
+
+        private void ProfileWindow_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control) return;
+            var scale = AppearanceManager.AdjustUiScale(e.Delta);
+            Logger.Info("UI scale changed to " + Math.Round(scale * 100) + "%");
+            e.Handled = true;
         }
 
         #region GUI
