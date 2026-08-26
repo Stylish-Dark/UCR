@@ -4,6 +4,8 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
@@ -79,11 +81,53 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         }
     }
 
-    public class DeviceManagerViewModel
+    public class DeviceManagerViewModel : INotifyPropertyChanged, IDisposable
     {
         private readonly DevicesManager _devicesManager;
+        private CancellationTokenSource _detectionCancellation;
+        private bool _disposed;
+        private bool _isDetecting;
+        private string _detectionStatus;
+        private DeviceManagerItemViewModel _selectedDevice;
+
         public ObservableCollection<DeviceManagerItemViewModel> Devices { get; }
         public DeviceManagerViewModel ViewModel => this;
+
+        public DeviceManagerItemViewModel SelectedDevice
+        {
+            get => _selectedDevice;
+            set
+            {
+                if (_selectedDevice == value) return;
+                _selectedDevice = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool IsDetecting
+        {
+            get => _isDetecting;
+            private set
+            {
+                if (_isDetecting == value) return;
+                _isDetecting = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(DetectionButtonText));
+            }
+        }
+
+        public string DetectionButtonText => IsDetecting ? "CANCEL DETECTION" : "DETECT DEVICE";
+
+        public string DetectionStatus
+        {
+            get => _detectionStatus;
+            private set
+            {
+                if (_detectionStatus == value) return;
+                _detectionStatus = value;
+                OnPropertyChanged();
+            }
+        }
 
         public DeviceManagerViewModel(DevicesManager devicesManager)
         {
@@ -147,6 +191,73 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             return type + "|" + device.ProviderName + "|" + device.DeviceHandle + "|" + device.DeviceNumber + "|" + device.HidPath;
         }
 
+        public async Task<DeviceManagerItemViewModel> DetectInputDeviceAsync()
+        {
+            if (_disposed) return null;
+
+            if (IsDetecting)
+            {
+                _detectionCancellation?.Cancel();
+                return null;
+            }
+
+            var cancellation = new CancellationTokenSource();
+            _detectionCancellation = cancellation;
+            IsDetecting = true;
+            DetectionStatus = "Listening — press a button or key on the device…";
+
+            try
+            {
+                var detected = await _devicesManager.DetectInputDeviceAsync(TimeSpan.FromSeconds(8),
+                    cancellation.Token);
+
+                if (cancellation.IsCancellationRequested)
+                {
+                    DetectionStatus = "Detection cancelled.";
+                    return null;
+                }
+
+                if (detected == null)
+                {
+                    DetectionStatus = "No button or key press detected.";
+                    return null;
+                }
+
+                var item = Devices.FirstOrDefault(candidate => SameDevice(candidate.Device, detected));
+                if (item == null)
+                {
+                    DetectionStatus = $"Detected: {detected.DisplayTitle} — device list may need refreshing.";
+                    return null;
+                }
+
+                SelectedDevice = item;
+                DetectionStatus = $"Detected: {_devicesManager.GetDisplayTitle(item.Device)}";
+                return item;
+            }
+            catch (InvalidOperationException exception)
+            {
+                DetectionStatus = exception.Message;
+                return null;
+            }
+            catch (Exception exception)
+            {
+                DetectionStatus = "Device detection failed. Check the UCR log for details.";
+                NLog.LogManager.GetCurrentClassLogger().Error(exception, "Input-device detection failed in Devices");
+                return null;
+            }
+            finally
+            {
+                IsDetecting = false;
+                cancellation.Dispose();
+                if (ReferenceEquals(_detectionCancellation, cancellation)) _detectionCancellation = null;
+            }
+        }
+
+        private static bool SameDevice(Device left, Device right)
+        {
+            return DevicesManager.PersistedIdentityEquals(left, right) || DevicesManager.DescriptorEquals(left, right);
+        }
+
         public bool Move(DeviceManagerItemViewModel item, int offset)
         {
             if (item == null || !item.CanPersist) return false;
@@ -172,6 +283,24 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             }
 
             return true;
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            if (_detectionCancellation != null)
+            {
+                _detectionCancellation.Cancel();
+                _devicesManager?.CancelInputDeviceDetection();
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }

@@ -4,12 +4,15 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 using HidWizards.IOWrapper.DataTransferObjects;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Core.Utilities;
 using Newtonsoft.Json;
+using NLog;
 
 namespace HidWizards.UCR.Core.Managers
 {
@@ -18,6 +21,16 @@ namespace HidWizards.UCR.Core.Managers
         private readonly Context _context;
 
         private Dictionary<string, List<Device>> _providerCache;
+
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+        private static readonly TimeSpan DeviceDetectionArmDelay = TimeSpan.FromMilliseconds(350);
+        private readonly object _deviceDetectionLock = new object();
+        private TaskCompletionSource<Device> _deviceDetectionCompletion;
+        private List<Device> _deviceDetectionDevices;
+        private Timer _deviceDetectionTimer;
+        private CancellationTokenRegistration _deviceDetectionCancellation;
+        private DateTime _deviceDetectionAcceptAfterUtc = DateTime.MaxValue;
+
 
         public DevicesManager(Context context)
         {
@@ -77,6 +90,173 @@ namespace HidWizards.UCR.Core.Managers
                     CanPersistDeviceAlias(device, liveDevices) &&
                     !IsDeviceHidden(device, devices))
                 .ToList();
+        }
+
+        /// <summary>
+        /// Temporarily listens to all live input devices and returns the first device that produces a
+        /// deliberate button/key-style input. Axis movement and delta input are ignored so mouse motion,
+        /// stick drift and resting analogue values cannot win detection accidentally.
+        /// </summary>
+        public Task<Device> DetectInputDeviceAsync(TimeSpan timeout, CancellationToken cancellationToken)
+        {
+            if (timeout <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
+            if (_context.BindingManager != null && _context.BindingManager.IsBindModeActive)
+            {
+                throw new InvalidOperationException("Finish the current binding operation before detecting a device.");
+            }
+
+            var devices = GetAvailableDeviceList(DeviceIoType.Input, false);
+            if (devices.Count == 0) return Task.FromResult<Device>(null);
+
+            TaskCompletionSource<Device> completion;
+            lock (_deviceDetectionLock)
+            {
+                if (_deviceDetectionCompletion != null)
+                {
+                    throw new InvalidOperationException("Device detection is already running.");
+                }
+
+                completion = new TaskCompletionSource<Device>();
+                _deviceDetectionCompletion = completion;
+                _deviceDetectionDevices = devices;
+                _deviceDetectionAcceptAfterUtc = DateTime.MaxValue;
+            }
+
+            try
+            {
+                foreach (var device in devices)
+                {
+                    try
+                    {
+                        _context.IOController.SetDetectionMode(DetectionMode.Bind,
+                            GetProviderDescriptor(device), GetDeviceDescriptor(device), DeviceDetectionInputChanged);
+                    }
+                    catch (Exception exception)
+                    {
+                        Logger.Error(exception,
+                            $"Could not enable device detection for provider={device.ProviderName}, handle={device.DeviceHandle}, instance={device.DeviceNumber}");
+                    }
+                }
+
+                lock (_deviceDetectionLock)
+                {
+                    if (_deviceDetectionCompletion == completion)
+                    {
+                        _deviceDetectionAcceptAfterUtc = DateTime.UtcNow.Add(DeviceDetectionArmDelay);
+                        _deviceDetectionTimer = new Timer(_ => CompleteDeviceDetection(null), null, timeout,
+                            Timeout.InfiniteTimeSpan);
+                        if (cancellationToken.CanBeCanceled)
+                        {
+                            _deviceDetectionCancellation = cancellationToken.Register(() =>
+                                ThreadPool.QueueUserWorkItem(_ => CompleteDeviceDetection(null)));
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                CompleteDeviceDetection(null);
+                throw;
+            }
+
+            return completion.Task;
+        }
+
+        public void CancelInputDeviceDetection()
+        {
+            CompleteDeviceDetection(null);
+        }
+
+        private void DeviceDetectionInputChanged(ProviderDescriptor providerDescriptor,
+            DeviceDescriptor deviceDescriptor, BindingReport bindingReport, short value)
+        {
+            List<Device> devices;
+            DateTime acceptAfter;
+            lock (_deviceDetectionLock)
+            {
+                if (_deviceDetectionCompletion == null) return;
+                devices = _deviceDetectionDevices;
+                acceptAfter = _deviceDetectionAcceptAfterUtc;
+            }
+
+            if (DateTime.UtcNow < acceptAfter || bindingReport == null || deviceDescriptor == null) return;
+
+            var category = DeviceBinding.MapCategory(bindingReport.Category);
+            var isDeliberatePress = category == DeviceBindingCategory.Momentary && value != 0;
+            var isDiscreteEvent = category == DeviceBindingCategory.Event;
+            if (!isDeliberatePress && !isDiscreteEvent) return;
+
+            var device = devices?.FirstOrDefault(candidate =>
+                string.Equals(candidate.ProviderName, providerDescriptor?.ProviderName,
+                    StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(candidate.DeviceHandle, deviceDescriptor.DeviceHandle,
+                    StringComparison.OrdinalIgnoreCase) &&
+                candidate.DeviceNumber == deviceDescriptor.DeviceInstance);
+
+            if (device == null) return;
+
+            Logger.Debug($"Detected input device: provider={device.ProviderName}, handle={device.DeviceHandle}, instance={device.DeviceNumber}, title={device.DisplayTitle}");
+            ThreadPool.QueueUserWorkItem(_ => CompleteDeviceDetection(device));
+        }
+
+        private void CompleteDeviceDetection(Device detectedDevice)
+        {
+            TaskCompletionSource<Device> completion;
+            List<Device> devices;
+            Timer timer;
+            CancellationTokenRegistration cancellation;
+
+            lock (_deviceDetectionLock)
+            {
+                completion = _deviceDetectionCompletion;
+                if (completion == null) return;
+
+                devices = _deviceDetectionDevices ?? new List<Device>();
+                timer = _deviceDetectionTimer;
+                cancellation = _deviceDetectionCancellation;
+
+                _deviceDetectionCompletion = null;
+                _deviceDetectionDevices = null;
+                _deviceDetectionTimer = null;
+                _deviceDetectionCancellation = default(CancellationTokenRegistration);
+                _deviceDetectionAcceptAfterUtc = DateTime.MaxValue;
+            }
+
+            timer?.Dispose();
+            cancellation.Dispose();
+
+            foreach (var device in devices)
+            {
+                try
+                {
+                    _context.IOController.SetDetectionMode(DetectionMode.Subscription,
+                        GetProviderDescriptor(device), GetDeviceDescriptor(device));
+                }
+                catch (Exception exception)
+                {
+                    Logger.Error(exception,
+                        $"Could not restore input subscription after device detection for provider={device.ProviderName}, handle={device.DeviceHandle}, instance={device.DeviceNumber}");
+                }
+            }
+
+            completion.TrySetResult(detectedDevice);
+        }
+
+        private static DeviceDescriptor GetDeviceDescriptor(Device device)
+        {
+            return new DeviceDescriptor
+            {
+                DeviceHandle = device.DeviceHandle,
+                DeviceInstance = device.DeviceNumber
+            };
+        }
+
+        private static ProviderDescriptor GetProviderDescriptor(Device device)
+        {
+            return new ProviderDescriptor
+            {
+                ProviderName = device.ProviderName
+            };
         }
 
         public void RefreshDeviceList()

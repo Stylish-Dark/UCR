@@ -17,11 +17,28 @@
     <materialDesign:Card Background="{DynamicResource UcrDialogBackgroundBrush}">
             <Grid>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-                <controls:DeviceSelectControl DataContext="{Binding Devices}"/>
-                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Grid.Row="1"
+                <StackPanel Grid.Row="0" Margin="8 8 8 4">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CanDetectDevice}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <Button Content="{Binding DetectionButtonText}" Click="DetectDevice_OnClick"
+                            HorizontalAlignment="Left" Style="{StaticResource MaterialDesignFlatButton}"/>
+                    <TextBlock Text="{Binding DetectionStatus}" Margin="0 6 0 0" Foreground="#D0D0D0"
+                               TextWrapping="Wrap" FontSize="13"/>
+                </StackPanel>
+                <controls:DeviceSelectControl x:Name="DeviceSelector" Grid.Row="1" DataContext="{Binding Devices}"/>
+                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Grid.Row="2"
                             Margin="8">
                 <Button IsDefault="True" 
                             Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" 

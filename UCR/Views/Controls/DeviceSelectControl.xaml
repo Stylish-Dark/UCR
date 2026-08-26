@@ -9,7 +9,7 @@
              d:DesignHeight="600" d:DesignWidth="300">
     <GroupBox Style="{StaticResource MaterialDesignCardGroupBox}" Header="{Binding Title}" Background="#212121">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="-9">
-            <ItemsControl ItemsSource="{Binding Devices}">
+            <ItemsControl x:Name="DeviceItems" ItemsSource="{Binding Devices}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Margin="8 0">
@@ -24,7 +24,19 @@
                                     <TextBlock Text="{Binding ProviderName}" Foreground="#D0D0D0" Style="{StaticResource MaterialDesignCaptionTextBlock}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4 0 0 0">
-                                    <CheckBox Style="{StaticResource MaterialDesignCheckBox}" IsChecked="{Binding Checked}"/>
+                                    <TextBlock Text="DETECTED" Foreground="{DynamicResource PrimaryHueMidBrush}" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsDetected}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <CheckBox Style="{StaticResource MaterialDesignCheckBox}" IsChecked="{Binding Checked}" HorizontalAlignment="Center"/>
                                 </StackPanel>
                                 <materialDesign:Ripple Grid.Column="0" Grid.ColumnSpan="2" Feedback="{DynamicResource MaterialDesignFlatButtonRipple}" ToolTip="{Binding Title}"/>
                             </Grid>

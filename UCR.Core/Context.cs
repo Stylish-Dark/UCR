@@ -171,6 +171,8 @@ namespace HidWizards.UCR.Core
 
         public void Dispose()
         {
+            DevicesManager?.CancelInputDeviceDetection();
+            BindingManager?.Dispose();
             SubscriptionsManager.Dispose();
             IOController?.Dispose();
         }
