@@ -155,17 +155,6 @@ namespace HidWizards.UCR.Views.ProfileViews
             Logger.Info("Bulk mapping rename completed for profile: " + Profile.Title);
         }
 
-        private void ContextMenuButton_OnClick(object sender, RoutedEventArgs e)
-        {
-            var button = sender as Button;
-            if (button?.ContextMenu == null) return;
-
-            button.ContextMenu.PlacementTarget = button;
-            button.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
-            button.ContextMenu.IsOpen = true;
-            e.Handled = true;
-        }
-
         private void CollapseAllMappings_OnClick(object sender, RoutedEventArgs e)
         {
             foreach (var mapping in ProfileViewModel.MappingsList) mapping.IsExpanded = false;

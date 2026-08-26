@@ -33,21 +33,28 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         private readonly Profile _profile;
         private readonly DeviceIoType _deviceIoType;
+        private readonly Action _presentationChanged;
 
         public ProfileDeviceListControlViewModel()
         {
         }
 
-        public ProfileDeviceListControlViewModel(Profile profile, List<DeviceConfiguration> devices, DeviceIoType deviceIoType)
+        public ProfileDeviceListControlViewModel(Profile profile, List<DeviceConfiguration> devices, DeviceIoType deviceIoType, Action presentationChanged = null)
         {
             _profile = profile;
             _deviceIoType = deviceIoType;
+            _presentationChanged = presentationChanged;
             _profile.Context.DeviceAliasesChangedEvent += ContextOnDeviceAliasesChanged;
             Devices = new ObservableCollection<DeviceItem>();
-            foreach (var device in devices)
+
+            var primary = _profile.GetPrimaryDeviceConfiguration(_deviceIoType);
+            foreach (var device in (devices ?? new List<DeviceConfiguration>())
+                .OrderBy(configuration => primary != null && configuration.Guid == primary.Guid ? 0 : 1))
             {
                 Devices.Add(new DeviceItem(device, profile, deviceIoType));
             }
+
+            RefreshPrimaryState();
         }
 
         private void ContextOnDeviceAliasesChanged()
@@ -73,12 +80,22 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         public async void RemoveDevice(DeviceItem deviceItem)
         {
+            if (deviceItem == null) return;
+            var wasPrimary = deviceItem.IsPrimary;
             var dialog = new BoolDialog("Remove device", $"Are you sure you want to remove {deviceItem.Title} from {deviceItem.DeviceConfiguration.Device.Profile.Title}?");
             var result = (bool?)await DialogHost.Show(dialog, "RootDialog");
             if (result == null || !result.Value) return;
 
             _profile.RemoveDeviceConfiguration(deviceItem.DeviceConfiguration);
             Devices.Remove(deviceItem);
+
+            if (wasPrimary)
+            {
+                _profile.SetPrimaryDeviceConfiguration(_deviceIoType, Guid.Empty);
+            }
+
+            RefreshPrimaryState();
+            _presentationChanged?.Invoke();
             OnPropertyChanged(nameof(Devices));
         }
 
@@ -95,7 +112,37 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             {
                 Devices.Add(new DeviceItem(deviceConfiguration, _profile, _deviceIoType));
             }
+            RefreshPrimaryState();
+            _presentationChanged?.Invoke();
             OnPropertyChanged(nameof(Devices));
+        }
+
+        public void SetPrimaryDevice(DeviceItem deviceItem)
+        {
+            if (deviceItem == null) return;
+            if (!_profile.SetPrimaryDeviceConfiguration(_deviceIoType, deviceItem.DeviceConfiguration.Guid)) return;
+
+            var currentIndex = Devices.IndexOf(deviceItem);
+            if (currentIndex > 0) Devices.Move(currentIndex, 0);
+
+            RefreshPrimaryState();
+            SelectedDeviceConfiguration = deviceItem;
+            _presentationChanged?.Invoke();
+        }
+
+        private void RefreshPrimaryState()
+        {
+            if (Devices == null) return;
+
+            var primary = _profile.GetPrimaryDeviceConfiguration(_deviceIoType);
+            if (primary != null)
+            {
+                var primaryItem = Devices.FirstOrDefault(device => device.DeviceConfiguration.Guid == primary.Guid);
+                var primaryIndex = primaryItem != null ? Devices.IndexOf(primaryItem) : -1;
+                if (primaryIndex > 0) Devices.Move(primaryIndex, 0);
+            }
+
+            foreach (var device in Devices) device.PrimaryChanged();
         }
 
         public async void ManageDeviceConfiguration()

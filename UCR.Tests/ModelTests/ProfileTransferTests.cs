@@ -113,6 +113,30 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void SingleProfileImportRegeneratesPrimaryDeviceReferencesWithConfigurations()
+        {
+            var source = new Context();
+            var profile = AddProfile(source, "Primary devices");
+            AddDeviceConfiguration(profile, DeviceIoType.Input, "Keyboard A", "Core_Interception", "Keyboard\\A", 0);
+            var inputB = AddDeviceConfiguration(profile, DeviceIoType.Input, "Keyboard B", "Core_Interception", "Keyboard\\B", 1);
+            AddDeviceConfiguration(profile, DeviceIoType.Output, "Xbox 1", "Core_ViGEm", "xb360", 0);
+            var outputB = AddDeviceConfiguration(profile, DeviceIoType.Output, "Xbox 2", "Core_ViGEm", "xb360", 1);
+            profile.SetPrimaryDeviceConfiguration(DeviceIoType.Input, inputB.Guid);
+            profile.SetPrimaryDeviceConfiguration(DeviceIoType.Output, outputB.Guid);
+
+            var file = TempFile(".ucrprofile");
+            source.ProfilesManager.ExportProfile(profile, file, _pluginTypes);
+
+            var destination = new Context();
+            var imported = destination.ProfilesManager.ImportProfile(file, null, _pluginTypes);
+
+            Assert.That(imported.PrimaryInputDeviceConfigurationGuid, Is.Not.EqualTo(inputB.Guid));
+            Assert.That(imported.PrimaryOutputDeviceConfigurationGuid, Is.Not.EqualTo(outputB.Guid));
+            Assert.That(imported.GetPrimaryDeviceConfiguration(DeviceIoType.Input).Device.Title, Is.EqualTo("Keyboard B"));
+            Assert.That(imported.GetPrimaryDeviceConfiguration(DeviceIoType.Output).Device.Title, Is.EqualTo("Xbox 2"));
+        }
+
+        [Test]
         public void SingleProfileCanBeImportedMoreThanOnceWithoutIdentifierCollisions()
         {
             var source = new Context();

@@ -225,13 +225,13 @@
                                 <HierarchicalDataTemplate DataType="{x:Type dashboard:ProfileItem}" ItemsSource="{Binding Items}">
                                     <Grid Margin="3 2" MinHeight="34" ToolTip="{Binding Title}">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="116"/>
                                             <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="48"/>
                                         </Grid.ColumnDefinitions>
 
                                         <!-- Source lives at the far left; destination lives at the far right. -->
-                                        <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="3 0 8 0" VerticalAlignment="Center">
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" Width="108" Margin="3 0 5 0" VerticalAlignment="Center" HorizontalAlignment="Left">
                                             <ItemsControl ItemsSource="{Binding InputVisuals}" VerticalAlignment="Center">
                                                 <ItemsControl.ItemsPanel>
                                                     <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
@@ -263,7 +263,7 @@
                                             </Ellipse>
                                         </Grid>
 
-                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8 0 3 0" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Width="44" Margin="1 0 3 0" VerticalAlignment="Center" HorizontalAlignment="Right">
                                             <ItemsControl ItemsSource="{Binding OutputVisuals}" VerticalAlignment="Center">
                                                 <ItemsControl.ItemsPanel>
                                                     <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
@@ -277,7 +277,6 @@
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
-                                            <TextBlock Text="{Binding AdditionalOutputLabel}" Margin="3 0 0 0" FontSize="10.5" Foreground="#8B8B8B" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Grid>
                                 </HierarchicalDataTemplate>

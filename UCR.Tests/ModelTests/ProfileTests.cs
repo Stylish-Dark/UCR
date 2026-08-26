@@ -86,6 +86,37 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void PrimaryDeviceDefaultsToFirstAndCanBeChangedPerProfile()
+        {
+            var first = new DeviceConfiguration(new Device("Keyboard A", "Core_Interception", "kbd-a", 0));
+            var second = new DeviceConfiguration(new Device("Keyboard B", "Core_Interception", "kbd-b", 1));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { first, second }, DeviceIoType.Input);
+
+            Assert.That(_profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input), Is.SameAs(first));
+            Assert.That(_profile.SetPrimaryDeviceConfiguration(DeviceIoType.Input, second.Guid), Is.True);
+            Assert.That(_profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input), Is.SameAs(second));
+            Assert.That(_profile.PrimaryInputDeviceConfigurationGuid, Is.EqualTo(second.Guid));
+        }
+
+        [Test]
+        public void ChildCanChooseInheritedPrimaryWithoutChangingParent()
+        {
+            var first = new DeviceConfiguration(new Device("Pad A", "Core_ViGEm", "pad-a", 0));
+            var second = new DeviceConfiguration(new Device("Pad B", "Core_ViGEm", "pad-b", 1));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { first, second }, DeviceIoType.Output);
+            _profile.SetPrimaryDeviceConfiguration(DeviceIoType.Output, first.Guid);
+
+            var child = _context.ProfilesManager.CreateProfile("Child", null, null);
+            _profile.AddChildProfile(child);
+            Assert.That(child.GetPrimaryDeviceConfiguration(DeviceIoType.Output), Is.SameAs(first),
+                "A child without an override should inherit its parent's primary device.");
+            Assert.That(child.SetPrimaryDeviceConfiguration(DeviceIoType.Output, second.Guid), Is.True);
+
+            Assert.That(_profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output), Is.SameAs(first));
+            Assert.That(child.GetPrimaryDeviceConfiguration(DeviceIoType.Output), Is.SameAs(second));
+        }
+
+        [Test]
         public void MoveMappingChangesPersistedMappingOrder()
         {
             _mapping.Rename("First");

@@ -11,6 +11,10 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public string Title => DeviceConfiguration.GetFullTitleForProfile(Profile);
         public string ProviderName => DeviceConfiguration.Device.ProviderName;
         public DeviceVisualDescriptor Visual => DeviceVisualCatalog.Describe(DeviceConfiguration, Profile, DeviceIoType);
+        public bool IsPrimary => Profile?.GetPrimaryDeviceConfiguration(DeviceIoType)?.Guid == DeviceConfiguration.Guid;
+        public string PrimaryToolTip => IsPrimary
+            ? $"Primary {DeviceIoType.ToString().ToLowerInvariant()} device"
+            : $"Make primary {DeviceIoType.ToString().ToLowerInvariant()} device";
 
         public DeviceConfiguration DeviceConfiguration { get; set; }
         private Profile Profile { get; set; }
@@ -27,6 +31,12 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         {
             OnPropertyChanged(nameof(Title));
             OnPropertyChanged(nameof(Visual));
+        }
+
+        public void PrimaryChanged()
+        {
+            OnPropertyChanged(nameof(IsPrimary));
+            OnPropertyChanged(nameof(PrimaryToolTip));
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

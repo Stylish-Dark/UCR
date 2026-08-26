@@ -123,8 +123,10 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         private void BuildDeviceLists()
         {
-            InputDeviceControlViewModel = new ProfileDeviceListControlViewModel(SelectedProfileItem.Profile, GetDeviceConfigurations(SelectedProfileItem.Profile, DeviceIoType.Input), DeviceIoType.Input);
-            OutputDeviceControlViewModel = new ProfileDeviceListControlViewModel(SelectedProfileItem.Profile, GetDeviceConfigurations(SelectedProfileItem.Profile, DeviceIoType.Output), DeviceIoType.Output);
+            InputDeviceControlViewModel = new ProfileDeviceListControlViewModel(SelectedProfileItem.Profile,
+                GetDeviceConfigurations(SelectedProfileItem.Profile, DeviceIoType.Input), DeviceIoType.Input, RefreshProfilePresentation);
+            OutputDeviceControlViewModel = new ProfileDeviceListControlViewModel(SelectedProfileItem.Profile,
+                GetDeviceConfigurations(SelectedProfileItem.Profile, DeviceIoType.Output), DeviceIoType.Output, RefreshProfilePresentation);
 
             OnPropertyChanged(nameof(InputDeviceControlViewModel));
             OnPropertyChanged(nameof(OutputDeviceControlViewModel));
@@ -133,6 +135,19 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         private List<DeviceConfiguration> GetDeviceConfigurations(Profile profile, DeviceIoType deviceIoType)
         {
             return SelectedProfileItem.Profile.GetDeviceConfigurationList(deviceIoType);
+        }
+
+
+        private void RefreshProfilePresentation()
+        {
+            RefreshProfilePresentation(SelectedProfileItem);
+        }
+
+        private static void RefreshProfilePresentation(ProfileItem item)
+        {
+            if (item == null) return;
+            item.RefreshPresentation();
+            foreach (var child in item.Items) RefreshProfilePresentation(child);
         }
 
         private void OnDeviceAliasesChangedEvent()

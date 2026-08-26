@@ -56,6 +56,12 @@ namespace HidWizards.UCR.Core.Models
             }
         }
 
+        [XmlAttribute]
+        public Guid PrimaryInputDeviceConfigurationGuid { get; set; }
+
+        [XmlAttribute]
+        public Guid PrimaryOutputDeviceConfigurationGuid { get; set; }
+
 
         /* Runtime */
         [XmlIgnore]
@@ -204,6 +210,59 @@ namespace HidWizards.UCR.Core.Models
             result.AddRange(devices);
 
             return result;
+        }
+
+        public DeviceConfiguration GetPrimaryDeviceConfiguration(DeviceIoType deviceIoType)
+        {
+            var devices = GetDeviceConfigurationList(deviceIoType);
+            if (devices.Count == 0) return null;
+
+            var primaryGuid = deviceIoType == DeviceIoType.Input
+                ? PrimaryInputDeviceConfigurationGuid
+                : PrimaryOutputDeviceConfigurationGuid;
+
+            if (primaryGuid != Guid.Empty)
+            {
+                var configuredPrimary = devices.FirstOrDefault(configuration => configuration.Guid == primaryGuid);
+                if (configuredPrimary != null) return configuredPrimary;
+            }
+
+            if (ParentProfile != null)
+            {
+                var inheritedPrimary = ParentProfile.GetPrimaryDeviceConfiguration(deviceIoType);
+                if (inheritedPrimary != null)
+                {
+                    var inheritedMatch = devices.FirstOrDefault(configuration => configuration.Guid == inheritedPrimary.Guid);
+                    if (inheritedMatch != null) return inheritedMatch;
+                }
+            }
+
+            return devices[0];
+        }
+
+        public bool SetPrimaryDeviceConfiguration(DeviceIoType deviceIoType, Guid deviceConfigurationGuid)
+        {
+            if (deviceConfigurationGuid != Guid.Empty &&
+                GetDeviceConfigurationList(deviceIoType).All(configuration => configuration.Guid != deviceConfigurationGuid))
+            {
+                return false;
+            }
+
+            if (deviceIoType == DeviceIoType.Input)
+            {
+                if (PrimaryInputDeviceConfigurationGuid == deviceConfigurationGuid) return true;
+                PrimaryInputDeviceConfigurationGuid = deviceConfigurationGuid;
+                OnPropertyChanged(nameof(PrimaryInputDeviceConfigurationGuid));
+            }
+            else
+            {
+                if (PrimaryOutputDeviceConfigurationGuid == deviceConfigurationGuid) return true;
+                PrimaryOutputDeviceConfigurationGuid = deviceConfigurationGuid;
+                OnPropertyChanged(nameof(PrimaryOutputDeviceConfigurationGuid));
+            }
+
+            Context?.ContextChanged();
+            return true;
         }
 
         public List<Device> GetMissingDeviceList(DeviceIoType deviceIoType)

@@ -481,6 +481,9 @@ namespace HidWizards.UCR.Core.Managers
                 var bindingTargets = new Dictionary<DeviceBinding, DeviceConfiguration>();
                 var unresolvedBindingTargets = new Dictionary<DeviceBinding, Guid>();
                 var unresolvedGuidMap = new Dictionary<Guid, Guid>();
+                var primaryInputTargets = new Dictionary<Profile, DeviceConfiguration>();
+                var primaryOutputTargets = new Dictionary<Profile, DeviceConfiguration>();
+
                 ResolveBindingTargets(
                     root,
                     new Dictionary<Guid, DeviceConfiguration>(),
@@ -488,6 +491,12 @@ namespace HidWizards.UCR.Core.Managers
                     bindingTargets,
                     unresolvedBindingTargets,
                     unresolvedGuidMap);
+                CapturePrimaryDeviceTargets(
+                    root,
+                    new Dictionary<Guid, DeviceConfiguration>(),
+                    new Dictionary<Guid, DeviceConfiguration>(),
+                    primaryInputTargets,
+                    primaryOutputTargets);
 
                 RegenerateProfileAndConfigurationGuids(root);
 
@@ -498,6 +507,14 @@ namespace HidWizards.UCR.Core.Managers
                 foreach (var unresolvedBindingTarget in unresolvedBindingTargets)
                 {
                     unresolvedBindingTarget.Key.DeviceConfigurationGuid = unresolvedBindingTarget.Value;
+                }
+                foreach (var primaryInputTarget in primaryInputTargets)
+                {
+                    primaryInputTarget.Key.PrimaryInputDeviceConfigurationGuid = primaryInputTarget.Value.Guid;
+                }
+                foreach (var primaryOutputTarget in primaryOutputTargets)
+                {
+                    primaryOutputTarget.Key.PrimaryOutputDeviceConfigurationGuid = primaryOutputTarget.Value.Guid;
                 }
             }
         }
@@ -541,6 +558,52 @@ namespace HidWizards.UCR.Core.Managers
             foreach (var child in profile.ChildProfiles)
             {
                 ResolveBindingTargets(child, inputs, outputs, bindingTargets, unresolvedBindingTargets, unresolvedGuidMap);
+            }
+        }
+
+        private static void CapturePrimaryDeviceTargets(Profile profile,
+            IDictionary<Guid, DeviceConfiguration> inheritedInputs,
+            IDictionary<Guid, DeviceConfiguration> inheritedOutputs,
+            IDictionary<Profile, DeviceConfiguration> primaryInputTargets,
+            IDictionary<Profile, DeviceConfiguration> primaryOutputTargets)
+        {
+            var inputs = new Dictionary<Guid, DeviceConfiguration>(inheritedInputs);
+            var outputs = new Dictionary<Guid, DeviceConfiguration>(inheritedOutputs);
+
+            foreach (var configuration in profile.InputDeviceConfigurations)
+            {
+                if (!inputs.ContainsKey(configuration.Guid)) inputs.Add(configuration.Guid, configuration);
+            }
+            foreach (var configuration in profile.OutputDeviceConfigurations)
+            {
+                if (!outputs.ContainsKey(configuration.Guid)) outputs.Add(configuration.Guid, configuration);
+            }
+
+            DeviceConfiguration primaryInput;
+            if (profile.PrimaryInputDeviceConfigurationGuid != Guid.Empty &&
+                inputs.TryGetValue(profile.PrimaryInputDeviceConfigurationGuid, out primaryInput))
+            {
+                primaryInputTargets[profile] = primaryInput;
+            }
+            else if (profile.PrimaryInputDeviceConfigurationGuid != Guid.Empty)
+            {
+                profile.PrimaryInputDeviceConfigurationGuid = Guid.Empty;
+            }
+
+            DeviceConfiguration primaryOutput;
+            if (profile.PrimaryOutputDeviceConfigurationGuid != Guid.Empty &&
+                outputs.TryGetValue(profile.PrimaryOutputDeviceConfigurationGuid, out primaryOutput))
+            {
+                primaryOutputTargets[profile] = primaryOutput;
+            }
+            else if (profile.PrimaryOutputDeviceConfigurationGuid != Guid.Empty)
+            {
+                profile.PrimaryOutputDeviceConfigurationGuid = Guid.Empty;
+            }
+
+            foreach (var child in profile.ChildProfiles)
+            {
+                CapturePrimaryDeviceTargets(child, inputs, outputs, primaryInputTargets, primaryOutputTargets);
             }
         }
 

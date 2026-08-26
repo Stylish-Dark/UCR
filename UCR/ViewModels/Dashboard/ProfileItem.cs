@@ -58,6 +58,13 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public DeviceVisualDescriptor InputGroupVisual { get; set; }
         public ProfileInputGroupKey InputGroup { get; set; }
 
+        public void RefreshPresentation()
+        {
+            InputVisuals.Clear();
+            OutputVisuals.Clear();
+            PopulatePresentation(this, Profile);
+        }
+
         public static ObservableCollection<ProfileItem> GetProfileTree(List<Profile> profiles)
         {
             var profileItems = new ObservableCollection<ProfileItem>();
@@ -81,8 +88,12 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         private static void PopulatePresentation(ProfileItem item, Profile profile)
         {
+            var primaryInput = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input);
+            var primaryOutput = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output);
+
             var inputs = profile.GetDeviceConfigurationList(DeviceIoType.Input)
                 .Where(configuration => configuration != null)
+                .OrderBy(configuration => primaryInput != null && configuration.Guid == primaryInput.Guid ? 0 : 1)
                 .ToList();
             var outputs = profile.GetDeviceConfigurationList(DeviceIoType.Output)
                 .Where(configuration => configuration != null)
@@ -92,9 +103,9 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             {
                 item.InputVisuals.Add(DeviceVisualCatalog.Describe(configuration, profile, DeviceIoType.Input));
             }
-            foreach (var configuration in outputs.Take(3))
+            if (primaryOutput != null)
             {
-                item.OutputVisuals.Add(DeviceVisualCatalog.Describe(configuration, profile, DeviceIoType.Output));
+                item.OutputVisuals.Add(DeviceVisualCatalog.Describe(primaryOutput, profile, DeviceIoType.Output));
             }
 
             item.AdditionalInputCount = Math.Max(0, inputs.Count - item.InputVisuals.Count);
