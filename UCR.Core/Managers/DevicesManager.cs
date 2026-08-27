@@ -13,6 +13,7 @@ using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Core.Utilities;
 using Newtonsoft.Json;
 using NLog;
+using Logger = NLog.Logger;
 
 namespace HidWizards.UCR.Core.Managers
 {
@@ -197,7 +198,7 @@ namespace HidWizards.UCR.Core.Managers
                 acceptAfter = _deviceDetectionAcceptAfterUtc;
             }
 
-            if (DateTime.UtcNow < acceptAfter || bindingReport == null || deviceDescriptor == null) return;
+            if (DateTime.UtcNow < acceptAfter || bindingReport == null) return;
 
             var category = DeviceBinding.MapCategory(bindingReport.Category);
             var isDeliberatePress = category == DeviceBindingCategory.Momentary && value != 0;
