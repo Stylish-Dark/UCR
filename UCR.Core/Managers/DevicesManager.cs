@@ -180,7 +180,7 @@ namespace HidWizards.UCR.Core.Managers
                 acceptAfter = _deviceDetectionAcceptAfterUtc;
             }
 
-            if (DateTime.UtcNow < acceptAfter || bindingReport == null || deviceDescriptor == null) return;
+            if (DateTime.UtcNow < acceptAfter || bindingReport == null) return;
 
             var category = DeviceBinding.MapCategory(bindingReport.Category);
             var isDeliberatePress = category == DeviceBindingCategory.Momentary && value != 0;
