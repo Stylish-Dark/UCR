@@ -1,0 +1,103 @@
+﻿<UserControl x:Class="HidWizards.UCR.Views.Dialogs.DeviceManagerDialog"
+             Style="{StaticResource UcrDialogRoot}"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             mc:Ignorable="d"
+             Background="#212121"
+             Foreground="#FFFFFF"
+             d:DesignHeight="650" d:DesignWidth="900">
+    <Grid Margin="18" MinWidth="540" MinHeight="480" MaxWidth="980" MaxHeight="760"
+          Background="#212121" TextElement.Foreground="#FFFFFF">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Devices" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignTitleTextBlock}" VerticalAlignment="Center"/>
+            <Button Grid.Column="1" Content="{Binding DetectionButtonText}" Click="DetectDevice_OnClick"
+                    Style="{StaticResource MaterialDesignFlatButton}" ToolTip="Identify an input device by pressing one of its buttons or keys"/>
+        </Grid>
+        <StackPanel Grid.Row="1" Margin="0 6 0 12">
+            <TextBlock Opacity="0.72" TextWrapping="Wrap"
+                       Text="Give devices readable names, hide devices you never want in add-device lists, and set their display order. Existing profile bindings are never removed by hiding a device."/>
+            <TextBlock Text="{Binding DetectionStatus}" Margin="0 5 0 0" Foreground="{DynamicResource PrimaryHueMidBrush}"
+                       FontWeight="SemiBold" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <ListView x:Name="DeviceList" Grid.Row="2" ItemsSource="{Binding Devices}" SelectedItem="{Binding SelectedDevice, Mode=TwoWay}"
+                  HorizontalContentAlignment="Stretch"
+                  Background="#212121"
+                  Foreground="#FFFFFF"
+                  BorderBrush="#424242"
+                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="Background" Value="#212121"/>
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <Border BorderBrush="{DynamicResource PrimaryHueMidBrush}" BorderThickness="0 0 0 1" Padding="6 7">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="160"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="78"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Margin="0 0 12 0">
+                                <TextBlock Text="{Binding ProviderDeviceName}" Foreground="#FFFFFF" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding ProviderDeviceName}"/>
+                                <TextBlock Text="{Binding ProviderName}" Foreground="#D0D0D0" FontSize="14" Opacity="0.82" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding IoTypes}" Foreground="#D0D0D0" FontSize="14" Opacity="0.82"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Margin="0 0 12 0">
+                                <TextBox Text="{Binding Alias, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding CanPersist}"
+                                         Background="#2B2B2B"
+                                         Foreground="#FFFFFF"
+                                         CaretBrush="#FFFFFF"
+                                         BorderBrush="#555555"
+                                         materialDesign:HintAssist.Hint="Friendly name"/>
+                                <TextBlock Text="{Binding IdentityNote}" Foreground="#C8C8C8" FontSize="13" Opacity="0.78" TextWrapping="Wrap" Margin="0 2 0 0"/>
+                            </StackPanel>
+
+                            <CheckBox Grid.Column="2" Content="Hidden" Foreground="#FFFFFF" VerticalAlignment="Center"
+                                      IsChecked="{Binding Hidden, Mode=TwoWay}" IsEnabled="{Binding CanPersist}"/>
+
+                            <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button ToolTip="Move up" Style="{StaticResource MaterialDesignCardButton}" IsEnabled="{Binding CanPersist}" Click="MoveUp_OnClick" Padding="5">
+                                    <materialDesign:PackIcon Kind="ArrowUp" Width="18" Height="18"/>
+                                </Button>
+                                <Button ToolTip="Move down" Style="{StaticResource MaterialDesignCardButton}" IsEnabled="{Binding CanPersist}" Click="MoveDown_OnClick" Padding="5">
+                                    <materialDesign:PackIcon Kind="ArrowDown" Width="18" Height="18"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 14 0 0">
+            <Button Content="SAVE" IsDefault="True" Style="{StaticResource MaterialDesignRaisedButton}"
+                    Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" CommandParameter="{Binding ViewModel}"/>
+            <Button Content="CANCEL" IsCancel="True" Margin="8 0 0 0" Style="{StaticResource MaterialDesignFlatButton}"
+                    Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

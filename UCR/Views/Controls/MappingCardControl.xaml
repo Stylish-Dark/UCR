@@ -1,0 +1,211 @@
+﻿<UserControl x:Class="HidWizards.UCR.Views.Controls.MappingCardControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:HidWizards.UCR.Views.Controls"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:plugin="clr-namespace:HidWizards.UCR.Views.Controls.Plugin"
+             mc:Ignorable="d"
+             UseLayoutRounding="True"
+             d:DesignHeight="320" d:DesignWidth="800">
+    <UserControl.Resources>
+        <Style x:Key="UcrMappingActionButton" TargetType="{x:Type ButtonBase}" BasedOn="{StaticResource MaterialDesignCardButton}">
+            <Setter Property="Foreground" Value="#BDBDBD"/>
+            <Setter Property="Opacity" Value="0.58"/>
+            <Setter Property="Margin" Value="2"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                    <Setter Property="Opacity" Value="1"/>
+                </Trigger>
+                <Trigger Property="IsKeyboardFocused" Value="True">
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                    <Setter Property="Opacity" Value="1"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="UcrMappingDeleteButton" TargetType="{x:Type ButtonBase}" BasedOn="{StaticResource UcrMappingActionButton}">
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="{StaticResource Red}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- A device badge is intentionally shown only when the mapping deviates from the profile's
+             primary device, unless the user explicitly enables the Show all devices toggle. -->
+        <DataTemplate x:Key="MappingBindingVisualTemplate">
+            <Border Margin="3 0" Padding="6 4" MinWidth="52" MinHeight="34"
+                    Background="#1D1D1D" BorderBrush="#353535" BorderThickness="1" CornerRadius="4"
+                    ToolTip="{Binding ToolTip}">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Border Margin="0 0 5 0" Padding="4 1" MinWidth="25" CornerRadius="3"
+                            Background="#191919" BorderBrush="{Binding Device.AccentBrush}" BorderThickness="1"
+                            ToolTip="{Binding Device.ToolTip}">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ShowDeviceBadge}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding Device.BadgeText}" Foreground="{Binding Device.AccentBrush}"
+                                   FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center"/>
+                    </Border>
+                    <local:ControlGlyphControl Width="46" Height="27"
+                                               Kind="{Binding ControlKind}"
+                                               AccentBrush="{Binding ControlBrush}"
+                                               Label="{Binding ControlLabel}"/>
+                    <TextBlock Margin="5 0 1 0" Text="{Binding ControlLabel}" FontSize="12.5" FontWeight="SemiBold"
+                               Foreground="{Binding ControlBrush}" VerticalAlignment="Center" MaxWidth="120"
+                               TextTrimming="CharacterEllipsis">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsFilterControl}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Border Margin="4 5" Background="#242424" CornerRadius="5" SnapsToDevicePixels="True">
+        <Border.Style>
+            <Style TargetType="Border">
+                <Setter Property="BorderBrush" Value="#3A3A3A"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsFilterReferenceHighlighted}" Value="True">
+                        <Setter Property="BorderBrush" Value="#4B7150"/>
+                        <Setter Property="BorderThickness" Value="1.5"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsFilterDefinitionHighlighted}" Value="True">
+                        <Setter Property="BorderBrush" Value="{StaticResource MappingTypeFilterBrush}"/>
+                        <Setter Property="BorderThickness" Value="2"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
+        <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}"
+                  HorizontalContentAlignment="Stretch"
+                  Background="#242424"
+                  Style="{StaticResource MaterialDesignExpander}">
+            <Expander.Header>
+                <Grid MinHeight="64" ToolTip="Right-drag this card while collapsed to reorder it">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="4"/>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="190"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- The strip describes what the mapping produces, not what happened to feed it. -->
+                    <Border Grid.Column="0" Margin="0 4 0 4" CornerRadius="2"
+                            Background="{Binding MappingOutputTypeLabel, Converter={StaticResource MappingTypeBrushConverter}}"/>
+
+                    <StackPanel Grid.Column="1" Margin="10 6 8 6" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding MappingTitle}" FontSize="15.5" FontWeight="SemiBold"
+                                   Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"/>
+                        <ItemsControl ItemsSource="{Binding MappingRouteTokens}" Margin="0 2 0 0" Opacity="0.78">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Text}" FontSize="13.5" FontWeight="Medium"
+                                               Foreground="{Binding TypeLabel, Converter={StaticResource MappingTypeBrushConverter}}"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <Grid Grid.Column="2" Margin="8 5 12 5" VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <ItemsControl Grid.Column="0" ItemsSource="{Binding CollapsedInputVisuals}"
+                                      ItemTemplate="{StaticResource MappingBindingVisualTemplate}" HorizontalAlignment="Right">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        </ItemsControl>
+
+                        <TextBlock Grid.Column="1" Text="→" Margin="8 0" FontSize="20" FontWeight="Light"
+                                   Foreground="#AFAFAF" VerticalAlignment="Center"/>
+
+                        <ItemsControl Grid.Column="2" ItemsSource="{Binding CollapsedOutputVisuals}"
+                                      ItemTemplate="{StaticResource MappingBindingVisualTemplate}" HorizontalAlignment="Left">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </Grid>
+
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="2 0 6 0">
+                        <!-- Filter references are links to definitions, not definitions themselves. -->
+                        <ItemsControl ItemsSource="{Binding ReferencedFilters}" Margin="0 0 4 0" VerticalAlignment="Center">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="2 0" Padding="5 2" CornerRadius="3" Background="Transparent"
+                                            BorderBrush="{StaticResource MappingTypeFilterBrush}" BorderThickness="1" ToolTip="{Binding ToolTip}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Filter" Width="12" Height="12" Margin="0 0 4 0"
+                                                                     Foreground="{StaticResource MappingTypeFilterBrush}"/>
+                                            <TextBlock Text="{Binding Name}" FontSize="11" Foreground="{StaticResource MappingTypeFilterBrush}"
+                                                       MaxWidth="72" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Border Width="1" Height="22" Margin="1 0 4 0" Background="#3A3A3A"
+                                ToolTip="Right-drag a collapsed card to reorder mappings"/>
+                        <Button ToolTip="Rename mapping" Style="{StaticResource UcrMappingActionButton}"
+                                IsEnabled="{Binding ButtonsEnabled}" Click="Rename_OnClick">
+                            <materialDesign:PackIcon Kind="Edit" Width="17" Height="17"/>
+                        </Button>
+                        <Button ToolTip="Add another output to this mapping" Style="{StaticResource UcrMappingActionButton}"
+                                IsEnabled="{Binding ButtonsEnabled}" Click="AddPlugin_OnClick">
+                            <materialDesign:PackIcon Kind="LibraryAdd" Width="17" Height="17"/>
+                        </Button>
+                        <Button ToolTip="Remove mapping" Style="{StaticResource UcrMappingDeleteButton}"
+                                IsEnabled="{Binding ButtonsEnabled}" Click="Remove_OnClick">
+                            <materialDesign:PackIcon Kind="Trash" Width="17" Height="17"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Expander.Header>
+
+            <Border Margin="8 0 8 8" Padding="4 6 4 4" Background="#202020"
+                    BorderBrush="#303030" BorderThickness="1 1 1 0" CornerRadius="3">
+                <StackPanel>
+                    <ItemsControl ItemsSource="{Binding DeviceBindings}" HorizontalContentAlignment="Stretch">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <local:DeviceBindingControl DataContext="{Binding}" DeviceBinding="{Binding DeviceBinding}"
+                                                            Label="{Binding DeviceBindingName}" Category="{Binding DeviceBindingCategory}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <ItemsControl ItemsSource="{Binding Plugins}" VerticalAlignment="Stretch">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate><plugin:PluginControl Margin="0 4 0 0"/></DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </Expander>
+    </Border>
+</UserControl>

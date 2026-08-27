@@ -1,0 +1,14 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="uri:settings" CurrentProfile="(Default)">
+  <Profiles>
+    <Profile Title="(Default)" />
+  </Profiles>
+  <Settings>
+    <Setting Name="AccentColor" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Blue</Value>
+    </Setting>
+    <Setting Name="UiScale" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>
