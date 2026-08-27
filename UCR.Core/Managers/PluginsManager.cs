@@ -33,7 +33,7 @@ namespace HidWizards.UCR.Core.Managers
             }
             catch (DirectoryNotFoundException e)
             {
-                Logger.Error(e, "Plugins directory not found");
+                Logger.Error("Plugins directory not found", e);
             }
 
             _Container = new CompositionContainer(catalog);

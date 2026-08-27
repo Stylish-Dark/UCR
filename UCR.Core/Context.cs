@@ -22,7 +22,6 @@ namespace HidWizards.UCR.Core
 
         /* Persistence */
         public List<Profile> Profiles { get; set; }
-        public List<DeviceAlias> DeviceAliases { get; set; }
 
         /* Runtime */
         [XmlIgnore] public Profile ActiveProfile { get; set; }
@@ -34,9 +33,6 @@ namespace HidWizards.UCR.Core
 
         public delegate void ActiveProfileChanged(Profile profile);
         public event ActiveProfileChanged ActiveProfileChangedEvent;
-
-        public delegate void DeviceAliasesChanged();
-        public event DeviceAliasesChanged DeviceAliasesChangedEvent;
         
         internal bool IsNotSaved { get; private set; }
         internal IOController IOController { get; set; }
@@ -52,7 +48,6 @@ namespace HidWizards.UCR.Core
         {
             IsNotSaved = false;
             Profiles = new List<Profile>();
-            DeviceAliases = new List<DeviceAlias>();
 
             try
             {
@@ -60,7 +55,7 @@ namespace HidWizards.UCR.Core
             }
             catch (DirectoryNotFoundException e)
             {
-                Logger.Error(e, "IOWrapper provider directory not found");
+                Logger.Error("IOWrapper provider directory not found", e);
             }
             
             ProfilesManager = new ProfilesManager(this, Profiles);
@@ -129,7 +124,7 @@ namespace HidWizards.UCR.Core
             }
             catch (IOException e)
             {
-                Logger.Error(e, "Failed to load context.xml");
+                Logger.Error("Failed to load context.xml", e);
                 context = new Context();
             }
             return context;
@@ -137,21 +132,18 @@ namespace HidWizards.UCR.Core
 
         private void PostLoad()
         {
-            if (Profiles == null) Profiles = new List<Profile>();
-            if (DeviceAliases == null) DeviceAliases = new List<DeviceAlias>();
-
             foreach (var profile in Profiles)
             {
                 profile.PostLoad(this);
             }
         }
 
-        internal static XmlSerializer GetXmlSerializer(List<Type> additionalPluginTypes)
+        private static XmlSerializer GetXmlSerializer(List<Type> additionalPluginTypes)
         {
             return GetXmlSerializer(additionalPluginTypes, typeof(Context));
         }
 
-        internal static XmlSerializer GetXmlSerializer(List<Type> additionalPluginTypes, Type type)
+        private static XmlSerializer GetXmlSerializer(List<Type> additionalPluginTypes, Type type)
         {
             var plugins = new PluginsManager(PluginPath);
             var pluginTypes = plugins.Plugins.Select(p => p.GetType()).ToList();
@@ -202,11 +194,6 @@ namespace HidWizards.UCR.Core
         public void OnActiveProfileChangedEvent(Profile profile)
         {
             ActiveProfileChangedEvent?.Invoke(profile);
-        }
-
-        public void OnDeviceAliasesChangedEvent()
-        {
-            DeviceAliasesChangedEvent?.Invoke();
         }
     }
 }

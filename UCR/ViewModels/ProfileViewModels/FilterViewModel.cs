@@ -9,7 +9,7 @@ using MaterialDesignThemes.Wpf;
 
 namespace HidWizards.UCR.ViewModels.ProfileViewModels
 {
-    public class FilterViewModel : INotifyPropertyChanged, IDisposable
+    public class FilterViewModel : INotifyPropertyChanged
     {
 
         public string Name => Filter.Name;
@@ -20,7 +20,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool IsEnabled => !_pluginViewModel.MappingViewModel.ProfileViewModel.Profile.IsActive();
         public double ChipOpacity => GetFilterState() ? 1.0 : 0.26;
         private readonly PluginViewModel _pluginViewModel;
-        private FilterState _subscribedFilterState;
 
         public FilterViewModel(PluginViewModel pluginViewModel, Filter filter)
         {
@@ -33,17 +32,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void SubscribeFilters()
         {
-            if (_subscribedFilterState != null)
-            {
-                _subscribedFilterState.FilterStateChangedEvent -= OnFilterStateChanged;
-                _subscribedFilterState = null;
-            }
-
             var subscriptionState = GetSubscriptionState();
             if (subscriptionState != null && subscriptionState.IsActive && subscriptionState.ActiveProfile.Equals(_pluginViewModel.Plugin.Profile))
             {
-                _subscribedFilterState = subscriptionState.FilterState;
-                _subscribedFilterState.FilterStateChangedEvent += OnFilterStateChanged;
+                subscriptionState.FilterState.FilterStateChangedEvent += OnFilterStateChanged;
             }
         }
 
@@ -69,18 +61,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private bool GetFilterState()
         {
             var state = GetSubscriptionState();
-            if (state == null || string.IsNullOrWhiteSpace(Filter.Name)) return false;
-
-            bool value;
-            if (!state.FilterState.FilterRuntimeDictionary.TryGetValue(Filter.Name.ToLowerInvariant(), out value)) return false;
-            return value ^ Negative;
-        }
-
-        public void RefreshName()
-        {
-            OnPropertyChanged(nameof(Name));
-            OnPropertyChanged(nameof(ChipIcon));
-            OnPropertyChanged(nameof(ChipOpacity));
+            if (state == null) return false;
+            return GetSubscriptionState().FilterState.FilterRuntimeDictionary[Filter.Name.ToLower()] ^ Negative;
         }
 
         private void ContextOnActiveProfileChangedEvent(Profile profile)
@@ -100,16 +82,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public void RemoveFilter()
         {
             _pluginViewModel.RemoveFilter(this);
-        }
-
-        public void Dispose()
-        {
-            if (_subscribedFilterState != null)
-            {
-                _subscribedFilterState.FilterStateChangedEvent -= OnFilterStateChanged;
-                _subscribedFilterState = null;
-            }
-            _pluginViewModel.MappingViewModel.ProfileViewModel.Profile.Context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

@@ -10,7 +10,6 @@ namespace HidWizards.UCR.Core.Models
         public string ProviderName { get; set; }
         public string DeviceHandle { get; set; }
         public int DeviceNumber { get; set; }
-        public string HidPath { get; set; }
         public List<DeviceBindingNode> DeviceBindingMenu { get; set; }
         public bool Blockable { get; set; }
 

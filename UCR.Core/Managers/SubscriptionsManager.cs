@@ -46,12 +46,6 @@ namespace HidWizards.UCR.Core.Managers
         {
             if (refreshDevices) _context.IOController.RefreshDevices();
 
-            if (profile.PruneUndefinedFilterReferencesRecursive())
-            {
-                Logger.Warn($"Removed undefined filter references before activating profile: {{{profile.ProfileBreadCrumbs()}}}");
-                _context.ContextChanged();
-            }
-
             Logger.Debug($"Activating profile: {{{profile.ProfileBreadCrumbs()}}}");
             if (SubscriptionState?.ActiveProfile?.Guid == profile.Guid) return true;
 
@@ -177,33 +171,19 @@ namespace HidWizards.UCR.Core.Managers
         }
         private bool ConfigureFiltersForState(SubscriptionState state, Profile profile)
         {
-            // Allocate runtime state from actual filter definitions, never from mappings that merely
-            // reference a filter. Build the set from the subscription mappings so shadow clones get
-            // their corresponding shadow definition keys as well.
             var uniqueFilters = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
+
             foreach (var mappingSubscription in state.MappingSubscriptions)
             {
-                var runtimeMapping = mappingSubscription.Mapping;
-                foreach (var plugin in runtimeMapping.Plugins)
+                foreach (var plugin in mappingSubscription.Mapping.Plugins)
                 {
-                    var definition = plugin.GetDefinedFilterName();
-                    if (string.IsNullOrWhiteSpace(definition)) continue;
-
-                    var key = definition.Trim().ToLowerInvariant();
-                    if (runtimeMapping.IsShadowMapping)
-                    {
-                        key = Filter.GetShadowName(key, runtimeMapping.ShadowDeviceNumber);
-                    }
-                    uniqueFilters.Add(key);
+                    plugin.Filters.ForEach(filter => uniqueFilters.Add(filter.Name));
                 }
             }
 
             foreach (var uniqueFilter in uniqueFilters)
             {
-                if (!state.FilterState.FilterRuntimeDictionary.ContainsKey(uniqueFilter))
-                {
-                    state.FilterState.FilterRuntimeDictionary.Add(uniqueFilter, false);
-                }
+                state.FilterState.FilterRuntimeDictionary.Add(uniqueFilter.ToLower(), false);
             }
 
             return true;
@@ -249,22 +229,12 @@ namespace HidWizards.UCR.Core.Managers
             if (!deviceBindingSubscription.DeviceBinding.IsBound) return true;
             try
             {
-                var runtimeDevice = _context.DevicesManager.ResolveDevice(
-                    deviceBindingSubscription.DeviceSubscription.Device,
-                    DeviceIoType.Input);
-                if (runtimeDevice == null)
-                {
-                    Logger.Error($"Failed to resolve input device safely: {{{deviceBindingSubscription.DeviceSubscription.Device.LogName()}}}");
-                    return false;
-                }
-
-                deviceBindingSubscription.DeviceSubscription.ResolvedDevice = runtimeDevice;
                 return _context.IOController.SubscribeInput(GetInputSubscriptionRequest(state,
                     deviceBindingSubscription));
             }
             catch (Exception e)
             {
-                Logger.Error(e, "Failed to subscribe input");
+                Logger.Error($"Failed to subscribe input: {e.Message}");
                 return false;
             }
         }
@@ -272,7 +242,6 @@ namespace HidWizards.UCR.Core.Managers
         private bool UnsubscribeDeviceBindingInput(SubscriptionState state, InputSubscription deviceBindingSubscription)
         {
             if (!deviceBindingSubscription.DeviceBinding.IsBound) return true;
-            if (deviceBindingSubscription.DeviceSubscription.ResolvedDevice == null) return true;
             return _context.IOController.UnsubscribeInput(GetInputSubscriptionRequest(state, deviceBindingSubscription));
         }
 
@@ -284,15 +253,6 @@ namespace HidWizards.UCR.Core.Managers
                 Logger.Error($"Failed to subscribe output device. Providername or devicehandle missing from: {{{deviceSubscription.Device.LogName()}}}");
                 return false;
             }
-
-            var runtimeDevice = _context.DevicesManager.ResolveDevice(deviceSubscription.Device, DeviceIoType.Output);
-            if (runtimeDevice == null)
-            {
-                Logger.Error($"Failed to resolve output device safely: {{{deviceSubscription.Device.LogName()}}}");
-                return false;
-            }
-
-            deviceSubscription.ResolvedDevice = runtimeDevice;
             var success = _context.IOController.SubscribeOutput(GetOutputSubscriptionRequest(state.StateGuid, deviceSubscription));
 
             if (!success) Logger.Error($"Failed to subscribe output device. Provider might be unavailable: {{{deviceSubscription.Device.LogName()}}}");
@@ -303,10 +263,9 @@ namespace HidWizards.UCR.Core.Managers
         private bool UnsubscribeOutput(SubscriptionState state, DeviceSubscription deviceSubscription)
         {
             Logger.Debug($"Unsubscribing output device: {{{deviceSubscription.Device.LogName()}}}");
-            if (deviceSubscription.ResolvedDevice == null) return true;
-            if (string.IsNullOrEmpty(deviceSubscription.ResolvedDevice.ProviderName) || string.IsNullOrEmpty(deviceSubscription.ResolvedDevice.DeviceHandle))
+            if (string.IsNullOrEmpty(deviceSubscription.Device.ProviderName) || string.IsNullOrEmpty(deviceSubscription.Device.DeviceHandle))
             {
-                Logger.Error($"Failed to unsubscribe output device. Providername or devicehandle missing from: {{{deviceSubscription.ResolvedDevice.LogName()}}}");
+                Logger.Error($"Failed to unsubscribe output device. Providername or devicehandle missing from: {{{deviceSubscription.Device.LogName()}}}");
                 return false;
             }
             return _context.IOController.UnsubscribeOutput(GetOutputSubscriptionRequest(state.StateGuid, deviceSubscription));
@@ -318,7 +277,7 @@ namespace HidWizards.UCR.Core.Managers
 
         private InputSubscriptionRequest GetInputSubscriptionRequest(SubscriptionState state, InputSubscription deviceBindingSubscription)
         {
-            var device = deviceBindingSubscription.DeviceSubscription.GetRuntimeDevice();
+            var device = deviceBindingSubscription.DeviceSubscription.Device;
             return new InputSubscriptionRequest()
             {
                 ProviderDescriptor = GetProviderDescriptor(device),
@@ -334,8 +293,8 @@ namespace HidWizards.UCR.Core.Managers
         {
             return new OutputSubscriptionRequest()
             {
-                ProviderDescriptor = GetProviderDescriptor(deviceSubscription.GetRuntimeDevice()),
-                DeviceDescriptor = GetDeviceDescriptor(deviceSubscription.GetRuntimeDevice()),
+                ProviderDescriptor = GetProviderDescriptor(deviceSubscription.Device),
+                DeviceDescriptor = GetDeviceDescriptor(deviceSubscription.Device),
                 SubscriptionDescriptor = GetSubscriptionDescriptor(deviceSubscription.DeviceSubscriptionGuid, subscriptionStateGuid)
             };
         }

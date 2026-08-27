@@ -13,7 +13,7 @@ using MaterialDesignThemes.Wpf;
 
 namespace HidWizards.UCR.ViewModels.Dashboard
 {
-    public class ProfileDeviceListControlViewModel : INotifyPropertyChanged, IDisposable
+    public class ProfileDeviceListControlViewModel : INotifyPropertyChanged
     {
         public ObservableCollection<DeviceItem> Devices { get; set; }
         public bool IsRemoveEnabled => CanRemoveDevice();
@@ -33,36 +33,20 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         private readonly Profile _profile;
         private readonly DeviceIoType _deviceIoType;
-        private readonly Action _presentationChanged;
-        private bool _disposed;
 
         public ProfileDeviceListControlViewModel()
         {
         }
 
-        public ProfileDeviceListControlViewModel(Profile profile, List<DeviceConfiguration> devices, DeviceIoType deviceIoType, Action presentationChanged = null)
+        public ProfileDeviceListControlViewModel(Profile profile, List<DeviceConfiguration> devices, DeviceIoType deviceIoType)
         {
             _profile = profile;
             _deviceIoType = deviceIoType;
-            _presentationChanged = presentationChanged;
-            _profile.Context.DeviceAliasesChangedEvent += ContextOnDeviceAliasesChanged;
             Devices = new ObservableCollection<DeviceItem>();
-
-            var primary = _profile.GetPrimaryDeviceConfiguration(_deviceIoType);
-            foreach (var device in (devices ?? new List<DeviceConfiguration>())
-                .OrderBy(configuration => primary != null && configuration.Guid == primary.Guid ? 0 : 1))
+            foreach (var device in devices)
             {
-                Devices.Add(new DeviceItem(device, profile, deviceIoType));
+                Devices.Add(new DeviceItem(device, profile));
             }
-
-            RefreshPrimaryState();
-        }
-
-        private void ContextOnDeviceAliasesChanged()
-        {
-            if (Devices == null) return;
-            foreach (var device in Devices) device.TitleChanged();
-            OnPropertyChanged(nameof(Devices));
         }
 
         private bool CanRemoveDevice()
@@ -81,22 +65,12 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         public async void RemoveDevice(DeviceItem deviceItem)
         {
-            if (deviceItem == null) return;
-            var wasPrimary = deviceItem.IsPrimary;
             var dialog = new BoolDialog("Remove device", $"Are you sure you want to remove {deviceItem.Title} from {deviceItem.DeviceConfiguration.Device.Profile.Title}?");
             var result = (bool?)await DialogHost.Show(dialog, "RootDialog");
             if (result == null || !result.Value) return;
 
             _profile.RemoveDeviceConfiguration(deviceItem.DeviceConfiguration);
             Devices.Remove(deviceItem);
-
-            if (wasPrimary)
-            {
-                _profile.SetPrimaryDeviceConfiguration(_deviceIoType, Guid.Empty);
-            }
-
-            RefreshPrimaryState();
-            _presentationChanged?.Invoke();
             OnPropertyChanged(nameof(Devices));
         }
 
@@ -111,39 +85,9 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             _profile.AddDeviceConfigurations(deviceConfigurations, _deviceIoType);
             foreach (var deviceConfiguration in deviceConfigurations)
             {
-                Devices.Add(new DeviceItem(deviceConfiguration, _profile, _deviceIoType));
+                Devices.Add(new DeviceItem(deviceConfiguration, _profile));
             }
-            RefreshPrimaryState();
-            _presentationChanged?.Invoke();
             OnPropertyChanged(nameof(Devices));
-        }
-
-        public void SetPrimaryDevice(DeviceItem deviceItem)
-        {
-            if (deviceItem == null) return;
-            if (!_profile.SetPrimaryDeviceConfiguration(_deviceIoType, deviceItem.DeviceConfiguration.Guid)) return;
-
-            var currentIndex = Devices.IndexOf(deviceItem);
-            if (currentIndex > 0) Devices.Move(currentIndex, 0);
-
-            RefreshPrimaryState();
-            SelectedDeviceConfiguration = deviceItem;
-            _presentationChanged?.Invoke();
-        }
-
-        private void RefreshPrimaryState()
-        {
-            if (Devices == null) return;
-
-            var primary = _profile.GetPrimaryDeviceConfiguration(_deviceIoType);
-            if (primary != null)
-            {
-                var primaryItem = Devices.FirstOrDefault(device => device.DeviceConfiguration.Guid == primary.Guid);
-                var primaryIndex = primaryItem != null ? Devices.IndexOf(primaryItem) : -1;
-                if (primaryIndex > 0) Devices.Move(primaryIndex, 0);
-            }
-
-            foreach (var device in Devices) device.PrimaryChanged();
         }
 
         public async void ManageDeviceConfiguration()
@@ -152,28 +96,11 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             var result = (ManageDeviceConfigurationViewModel)await DialogHost.Show(dialog, "RootDialog");
             if (result == null || !result.HasChanged) return;
 
-            var configuration = SelectedDeviceConfiguration.DeviceConfiguration;
-            string aliasError;
-            if (!configuration.Device.Profile.Context.DevicesManager.TrySetDeviceAlias(
-                    configuration.Device, _deviceIoType, result.DeviceAlias, out aliasError))
-            {
-                HidWizards.UCR.Utilities.DarkMessageBox.Show(aliasError, "Device name not changed",
-                    System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
-            }
-
-            configuration.ChangeConfigurationName(result.DeviceConfigurationName);
-            configuration.ChangeShadowDevices(result.GetSelectedShadowDevices());
+            SelectedDeviceConfiguration.DeviceConfiguration.ChangeConfigurationName(result.DeviceConfigurationName);
+            SelectedDeviceConfiguration.DeviceConfiguration.ChangeShadowDevices(result.GetSelectedShadowDevices());
 
             SelectedDeviceConfiguration.TitleChanged();
             OnPropertyChanged(nameof(Devices));
-        }
-
-
-        public void Dispose()
-        {
-            if (_disposed) return;
-            _disposed = true;
-            if (_profile != null) _profile.Context.DeviceAliasesChangedEvent -= ContextOnDeviceAliasesChanged;
         }
 
         private bool CanManageDeviceConfiguration()

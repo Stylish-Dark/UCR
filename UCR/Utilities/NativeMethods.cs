@@ -67,20 +67,6 @@ namespace HidWizards.UCR.Utilities
         public static extern IntPtr SendMessage(IntPtr hWnd, UInt32 Msg, IntPtr wParam, IntPtr lParam);
 
         /// <summary>
-        /// Requests that a top-level window become the foreground window after an explicit user activation.
-        /// </summary>
-        [DllImport("user32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool SetForegroundWindow(IntPtr hWnd);
-
-        /// <summary>
-        /// Brings a top-level window to the top of the Z order without making it permanently topmost.
-        /// </summary>
-        [DllImport("user32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool BringWindowToTop(IntPtr hWnd);
-
-        /// <summary>
         /// Values used in the struct CHANGEFILTERSTRUCT
         /// </summary>
         public enum MessageFilterInfo : uint

@@ -45,12 +45,5 @@ namespace HidWizards.UCR.Views.Controls
         {
             GetViewModel().ManageDeviceConfiguration();
         }
-
-        private void PrimaryDevice_OnClick(object sender, RoutedEventArgs e)
-        {
-            var deviceItem = (sender as FrameworkElement)?.DataContext as DeviceItem;
-            GetViewModel()?.SetPrimaryDevice(deviceItem);
-            e.Handled = true;
-        }
     }
 }

@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
-using HidWizards.UCR.Plugins.Filter;
 using HidWizards.UCR.Plugins.Remapper;
 using HidWizards.UCR.Tests.Factory;
 using NUnit.Framework;
@@ -69,83 +67,6 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
-        public void DeviceAliasBecomesProfileDisplayNameUnlessConfigurationNameOverridesIt()
-        {
-            var device = new Device("Provider Keyboard", "Core_Interception", @"Keyboard\VID_1111&PID_2222", 0);
-            var configuration = new DeviceConfiguration(device);
-            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { configuration }, DeviceIoType.Input);
-
-            var alias = DevicesManager.BuildAliasIdentity(device);
-            alias.Alias = "Desk Keyboard";
-            _context.DeviceAliases.Add(alias);
-
-            Assert.That(configuration.GetFullTitleForProfile(_profile), Is.EqualTo("Desk Keyboard"));
-
-            configuration.ChangeConfigurationName("Movement Keys");
-            Assert.That(configuration.GetFullTitleForProfile(_profile), Is.EqualTo("Movement Keys"));
-        }
-
-        [Test]
-        public void PrimaryDeviceDefaultsToFirstAndCanBeChangedPerProfile()
-        {
-            var first = new DeviceConfiguration(new Device("Keyboard A", "Core_Interception", "kbd-a", 0));
-            var second = new DeviceConfiguration(new Device("Keyboard B", "Core_Interception", "kbd-b", 1));
-            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { first, second }, DeviceIoType.Input);
-
-            Assert.That(_profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input), Is.SameAs(first));
-            Assert.That(_profile.SetPrimaryDeviceConfiguration(DeviceIoType.Input, second.Guid), Is.True);
-            Assert.That(_profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input), Is.SameAs(second));
-            Assert.That(_profile.PrimaryInputDeviceConfigurationGuid, Is.EqualTo(second.Guid));
-        }
-
-        [Test]
-        public void ChildCanChooseInheritedPrimaryWithoutChangingParent()
-        {
-            var first = new DeviceConfiguration(new Device("Pad A", "Core_ViGEm", "pad-a", 0));
-            var second = new DeviceConfiguration(new Device("Pad B", "Core_ViGEm", "pad-b", 1));
-            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { first, second }, DeviceIoType.Output);
-            _profile.SetPrimaryDeviceConfiguration(DeviceIoType.Output, first.Guid);
-
-            var child = _context.ProfilesManager.CreateProfile("Child", null, null);
-            _profile.AddChildProfile(child);
-            Assert.That(child.GetPrimaryDeviceConfiguration(DeviceIoType.Output), Is.SameAs(first),
-                "A child without an override should inherit its parent's primary device.");
-            Assert.That(child.SetPrimaryDeviceConfiguration(DeviceIoType.Output, second.Guid), Is.True);
-
-            Assert.That(_profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output), Is.SameAs(first));
-            Assert.That(child.GetPrimaryDeviceConfiguration(DeviceIoType.Output), Is.SameAs(second));
-        }
-
-        [Test]
-        public void MoveMappingChangesPersistedMappingOrder()
-        {
-            _mapping.Rename("First");
-            var second = _profile.AddMapping("Second");
-            var third = _profile.AddMapping("Third");
-
-            Assert.That(_profile.MoveMapping(third, 0), Is.True);
-            Assert.That(_profile.Mappings, Is.EqualTo(new[] { third, _mapping, second }));
-            Assert.That(_profile.Mappings.Select(mapping => mapping.Title),
-                Is.EqualTo(new[] { "Third", "First", "Second" }));
-        }
-
-        [Test]
-        public void InputAxisReverseIsAppliedBeforeMappingCallback()
-        {
-            short callbackValue = 0;
-            var binding = new DeviceBinding(value => callbackValue = value, _profile, DeviceIoType.Input)
-            {
-                DeviceBindingCategory = DeviceBindingCategory.Range
-            };
-
-            binding.SetInvertInput(true);
-            binding.Callback(short.MinValue);
-
-            Assert.That(callbackValue, Is.EqualTo(short.MaxValue));
-            Assert.That(binding.CurrentValue, Is.EqualTo(short.MaxValue));
-        }
-
-        [Test]
         public void AddPlugin()
         {
             _profile.AddPlugin(_mapping, new ButtonToButton());
@@ -155,72 +76,6 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.That(plugin.Outputs, Is.Not.Null);
             Assert.That(plugin.Profile, Is.EqualTo(_profile));
             Assert.That(_context.IsNotSaved, Is.True);
-        }
-
-        [Test]
-        public void FilterDefinitionsComeFromFilterMappingsNotConsumerReferences()
-        {
-            var producerMapping = _profile.AddMapping("Filter producer");
-            var producer = new ButtonToFilter { FilterName = "Aim Mode" };
-            _profile.AddPlugin(producerMapping, producer);
-
-            var consumerMapping = _profile.AddMapping("Consumer");
-            var consumer = new ButtonToButton();
-            _profile.AddPlugin(consumerMapping, consumer);
-            consumer.AddFilter("Not A Definition");
-
-            var definitions = _profile.GetFilters();
-
-            Assert.That(definitions, Does.Contain("Aim Mode"));
-            Assert.That(definitions, Does.Not.Contain("Not A Definition"));
-        }
-
-        [Test]
-        public void RenamingFilterDefinitionRenamesExistingReferences()
-        {
-            var producerMapping = _profile.AddMapping("Filter producer");
-            var producer = new ButtonToFilter { FilterName = "Aim Mode" };
-            _profile.AddPlugin(producerMapping, producer);
-
-            var consumerMapping = _profile.AddMapping("Consumer");
-            var consumer = new ButtonToButton();
-            _profile.AddPlugin(consumerMapping, consumer);
-            consumer.AddFilter("Aim Mode");
-
-            var filterNameProperty = producer.PluginPropertyGroups
-                .SelectMany(group => group.PluginProperties)
-                .Single(property => property.PropertyInfo.Name == nameof(ButtonToFilter.FilterName));
-            filterNameProperty.Property = "Precision Mode";
-
-            Assert.That(consumer.Filters.Single().Name, Is.EqualTo("Precision Mode"));
-            Assert.That(_profile.GetFilters(), Does.Contain("Precision Mode"));
-            Assert.That(_profile.GetFilters(), Does.Not.Contain("Aim Mode"));
-        }
-
-        [Test]
-        public void RenamingOneOfDuplicateFilterDefinitionsDoesNotStealExistingReferences()
-        {
-            var firstMapping = _profile.AddMapping("First producer");
-            var first = new ButtonToFilter { FilterName = "Shared" };
-            _profile.AddPlugin(firstMapping, first);
-
-            var secondMapping = _profile.AddMapping("Second producer");
-            var second = new ButtonToFilter { FilterName = "Shared" };
-            _profile.AddPlugin(secondMapping, second);
-
-            var consumerMapping = _profile.AddMapping("Consumer");
-            var consumer = new ButtonToButton();
-            _profile.AddPlugin(consumerMapping, consumer);
-            consumer.AddFilter("Shared");
-
-            var filterNameProperty = first.PluginPropertyGroups
-                .SelectMany(group => group.PluginProperties)
-                .Single(property => property.PropertyInfo.Name == nameof(ButtonToFilter.FilterName));
-            filterNameProperty.Property = "Renamed";
-
-            Assert.That(consumer.Filters.Single().Name, Is.EqualTo("Shared"));
-            Assert.That(_profile.GetFilters(), Does.Contain("Shared"));
-            Assert.That(_profile.GetFilters(), Does.Contain("Renamed"));
         }
 
         [Test]

@@ -15,12 +15,6 @@ namespace HidWizards.UCR.Views.Controls.Plugin
             if (element == null || !(item is PluginPropertyViewModel)) return null;
             var pluginProperty = ((PluginPropertyViewModel) item).PluginProperty;
 
-            if (string.Equals(pluginProperty.PropertyInfo.Name, "FilterName", StringComparison.Ordinal) &&
-                string.Equals(pluginProperty.Plugin.Group, "Filter", StringComparison.OrdinalIgnoreCase))
-            {
-                return element.FindResource("FilterDefinitionTemplate") as DataTemplate;
-            }
-
             switch (Type.GetTypeCode(pluginProperty.PropertyInfo.PropertyType))
             {
                 case TypeCode.Boolean:

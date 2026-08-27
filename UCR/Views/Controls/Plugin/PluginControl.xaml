@@ -23,7 +23,7 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock Margin="0"
                                VerticalAlignment="Center"
-                               FontSize="15" FontWeight="SemiBold"
+                               Style="{StaticResource MaterialDesignSubheadingTextBlock}"
                                Text="{Binding Plugin.PluginName}"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
                         <Button ToolTip="Add filter"
@@ -31,14 +31,14 @@
                                 Style="{StaticResource MaterialDesignCardButton}"
                                 Click="AddFilter_OnClick"
                                 IsEnabled="{Binding CanAddFilter}">
-                            <materialDesign:PackIcon Kind="Filter" Width="18" Height="18"/>
+                            <materialDesign:PackIcon Kind="Filter" Width="20" Height="20"/>
                         </Button>
                         <Button ToolTip="Remove plugin"
                                 materialDesign:ColorZoneAssist.Mode="Standard"
                                 Style="{StaticResource MaterialDesignCardButton}"
                                 Click="RemovePlugin_OnClick"
                                 IsEnabled="{Binding CanRemove}">
-                            <materialDesign:PackIcon Kind="Trash" Width="18" Height="18"/>
+                            <materialDesign:PackIcon Kind="Trash" Width="20" Height="20"/>
                         </Button>
                     </StackPanel>
                 </Grid>
@@ -59,7 +59,7 @@
                             Content="{Binding Name}"
                             IsDeletable="{Binding IsEnabled}"
                             IsEnabled="{Binding IsEnabled}"
-                            Margin="0 0 6 4"
+                            Margin="0 0 8 8"
                             Click="Filter_OnClick"
                             DeleteClick="Filter_OnDeleteClick"
                             ToolTip="Toggle filter"
@@ -111,7 +111,7 @@
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Row="0" Grid.Column="0" Margin="0 4 4 4" Text="{Binding GroupName}" FontWeight="SemiBold"/>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Margin="0 8 4 8" Text="{Binding GroupName}" Style="{StaticResource MaterialDesignSubheadingTextBlock}"/>
                                 <Separator Grid.Row="0" Grid.Column="1" Style="{StaticResource MaterialDesignSeparator}" />
                                 <plugin:PluginPropertyListControl DataContext="{Binding}" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"/>
                             </Grid>

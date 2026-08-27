@@ -29,18 +29,13 @@ namespace HidWizards.UCR.Core.Managers
 
         private static readonly double BindModeTime = 5000.0;
         private static readonly int BindModeTick = 20;
-        private static readonly TimeSpan BindArmDelay = TimeSpan.FromMilliseconds(150);
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private readonly Context _context;
         private List<DeviceConfiguration> _deviceConfigurationList;
-        private Dictionary<Guid, Device> _bindModeRuntimeDevices;
         private DeviceBinding _deviceBinding;
         private DispatcherTimer BindingTimer;
         private readonly object bindmodeLock = new object();
-        private readonly Dispatcher _dispatcher;
         private bool bindmodeActive;
-        private bool bindCommitPending;
-        private DateTime bindAcceptAfterUtc = DateTime.MaxValue;
 
         public delegate void EndBindModeDelegate(DeviceBinding deviceBinding);
         public event EndBindModeDelegate EndBindModeHandler;
@@ -49,72 +44,25 @@ namespace HidWizards.UCR.Core.Managers
         {
             _context = context;
             _deviceConfigurationList = new List<DeviceConfiguration>();
-            _bindModeRuntimeDevices = new Dictionary<Guid, Device>();
-            _dispatcher = Dispatcher.CurrentDispatcher;
-            Logger.Debug("Binding manager initialized");
+            Logger.Debug($"Start bind mode");
         }
 
         public void BeginBindMode(DeviceBinding deviceBinding)
         {
-            if (deviceBinding == null) throw new ArgumentNullException(nameof(deviceBinding));
-
-            // BindingManager is created on UCR's UI dispatcher. All state transitions and all
-            // INotifyPropertyChanged mutations are serialized back onto that dispatcher.
-            if (!_dispatcher.CheckAccess())
+            if (_deviceConfigurationList.Count > 0) EndBindMode();
+            _deviceBinding = deviceBinding;
+            foreach (var deviceConfiguration in deviceBinding.Profile.GetDeviceConfigurationList(deviceBinding.DeviceIoType))
             {
-                _dispatcher.BeginInvoke(new Action(() => BeginBindMode(deviceBinding)), DispatcherPriority.Input);
-                return;
+                _context.IOController.SetDetectionMode(DetectionMode.Bind, GetProviderDescriptor(deviceConfiguration.Device), GetDeviceDescriptor(deviceConfiguration.Device), InputChanged);
+                _deviceConfigurationList.Add(deviceConfiguration);
             }
 
-            if (bindmodeActive) EndBindMode();
-
-            lock (bindmodeLock)
-            {
-                _deviceBinding = deviceBinding;
-                _deviceConfigurationList = new List<DeviceConfiguration>();
-                _bindModeRuntimeDevices = new Dictionary<Guid, Device>();
-                bindCommitPending = false;
-                bindAcceptAfterUtc = DateTime.MaxValue;
-                bindmodeActive = true;
-            }
-
-            Logger.Debug($"Begin bind mode: binding={deviceBinding.Guid}, io={deviceBinding.DeviceIoType}, category={deviceBinding.DeviceBindingCategory}");
-
-            try
-            {
-                foreach (var deviceConfiguration in deviceBinding.Profile.GetDeviceConfigurationList(deviceBinding.DeviceIoType))
-                {
-                    var runtimeDevice = _context.DevicesManager.ResolveDevice(deviceConfiguration.Device, deviceBinding.DeviceIoType);
-                    if (runtimeDevice == null)
-                    {
-                        Logger.Debug($"Bind mode skipped unavailable device configuration {deviceConfiguration.Guid}");
-                        continue;
-                    }
-
-                    Logger.Debug($"Bind mode enabling detection: provider={runtimeDevice.ProviderName}, handle={runtimeDevice.DeviceHandle}, instance={runtimeDevice.DeviceNumber}, configuration={deviceConfiguration.Guid}");
-                    _context.IOController.SetDetectionMode(DetectionMode.Bind, GetProviderDescriptor(runtimeDevice), GetDeviceDescriptor(runtimeDevice), InputChanged);
-                    _deviceConfigurationList.Add(deviceConfiguration);
-                    _bindModeRuntimeDevices[deviceConfiguration.Guid] = runtimeDevice;
-                }
-
-                // Do not let the mouse/key event that clicked the Bind button become the new
-                // binding. WPF raises Button.Click at the tail of that same input gesture, while
-                // Interception can still deliver the gesture to detection mode immediately after.
-                bindAcceptAfterUtc = DateTime.UtcNow.Add(BindArmDelay);
-
-                BindingTimer?.Stop();
-                BindingTimer = new DispatcherTimer(DispatcherPriority.Render, _dispatcher);
-                BindingTimer.Tick += BindingTimerOnTick;
-                BindingTimer.Interval = TimeSpan.FromMilliseconds(BindModeTick);
-                BindModeProgress = BindModeTime;
-                BindingTimer.Start();
-            }
-            catch (Exception exception)
-            {
-                Logger.Error(exception, "Failed while entering bind mode");
-                EndBindMode();
-                throw;
-            }
+            BindingTimer = new DispatcherTimer(DispatcherPriority.Render);
+            BindingTimer.Tick += BindingTimerOnTick;
+            BindingTimer.Interval = TimeSpan.FromMilliseconds(BindModeTick);
+            BindModeProgress = BindModeTime;
+            BindingTimer.Start();
+            bindmodeActive = true;
         }
 
         private void BindingTimerOnTick(object sender, EventArgs e)
@@ -125,57 +73,23 @@ namespace HidWizards.UCR.Core.Managers
 
         private void EndBindMode()
         {
-            if (!_dispatcher.CheckAccess())
-            {
-                _dispatcher.BeginInvoke(new Action(EndBindMode), DispatcherPriority.Input);
-                return;
-            }
-
-            List<DeviceConfiguration> configurations;
-            Dictionary<Guid, Device> runtimeDevices;
-            DeviceBinding endingBinding;
-
             lock (bindmodeLock)
             {
+                Logger.Debug($"End bind mode");
                 if (!bindmodeActive) return;
 
-                bindmodeActive = false;
-                bindCommitPending = false;
-                bindAcceptAfterUtc = DateTime.MaxValue;
-                endingBinding = _deviceBinding;
-                configurations = new List<DeviceConfiguration>(_deviceConfigurationList);
-                runtimeDevices = new Dictionary<Guid, Device>(_bindModeRuntimeDevices);
+                EndBindModeHandler?.Invoke(_deviceBinding);
+                BindingTimer.Stop();
+
+                foreach (var deviceConfiguration in _deviceConfigurationList)
+                {
+                    _context.IOController.SetDetectionMode(DetectionMode.Subscription, GetProviderDescriptor(deviceConfiguration.Device),
+                        GetDeviceDescriptor(deviceConfiguration.Device));
+                }
+
                 _deviceConfigurationList = new List<DeviceConfiguration>();
-                _bindModeRuntimeDevices = new Dictionary<Guid, Device>();
-                _deviceBinding = null;
-            }
-
-            BindingTimer?.Stop();
-            Logger.Debug($"End bind mode: binding={endingBinding?.Guid}");
-
-            foreach (var deviceConfiguration in configurations)
-            {
-                Device runtimeDevice;
-                if (!runtimeDevices.TryGetValue(deviceConfiguration.Guid, out runtimeDevice)) continue;
-
-                try
-                {
-                    _context.IOController.SetDetectionMode(DetectionMode.Subscription,
-                        GetProviderDescriptor(runtimeDevice), GetDeviceDescriptor(runtimeDevice));
-                }
-                catch (Exception exception)
-                {
-                    Logger.Error(exception, $"Failed to leave bind mode for provider={runtimeDevice.ProviderName}, handle={runtimeDevice.DeviceHandle}, instance={runtimeDevice.DeviceNumber}");
-                }
-            }
-
-            try
-            {
-                EndBindModeHandler?.Invoke(endingBinding);
-            }
-            catch (Exception exception)
-            {
-                Logger.Error(exception, $"Bind-mode completion handler failed for binding={endingBinding?.Guid}");
+                BindingTimer.Stop();
+                bindmodeActive = false;
             }
         }
 
@@ -198,57 +112,13 @@ namespace HidWizards.UCR.Core.Managers
 
         private void InputChanged(ProviderDescriptor providerDescriptor, DeviceDescriptor deviceDescriptor, BindingReport bindingReport, short value)
         {
-            if (!_dispatcher.CheckAccess())
-            {
-                // Core Interception and several other providers deliver detection callbacks from worker/
-                // timer threads. Mutating DeviceBinding directly there can raise WPF PropertyChanged events
-                // off-thread and crash the application. Marshal the entire commit to UCR's UI dispatcher.
-                try
-                {
-                    _dispatcher.BeginInvoke(new Action(() => InputChanged(providerDescriptor, deviceDescriptor, bindingReport, value)), DispatcherPriority.Input);
-                }
-                catch (InvalidOperationException exception)
-                {
-                    Logger.Error(exception, "Could not marshal detected input to the UCR dispatcher");
-                }
-                return;
-            }
-
-            lock (bindmodeLock)
-            {
-                if (!bindmodeActive || bindCommitPending || _deviceBinding == null) return;
-                if (DateTime.UtcNow < bindAcceptAfterUtc) return;
-            }
-
-            if (bindingReport == null) return;
             if (!DeviceBinding.MapCategory(bindingReport.Category).Equals(_deviceBinding.DeviceBindingCategory)) return;
             if (!IsInputValid(bindingReport.Category, value)) return;
 
             var deviceConfiguration = FindDeviceConfiguration(providerDescriptor, deviceDescriptor);
-            if (deviceConfiguration == null) return;
-
-            lock (bindmodeLock)
-            {
-                if (!bindmodeActive || bindCommitPending || _deviceBinding == null) return;
-                bindCommitPending = true;
-            }
-
-            try
-            {
-                Logger.Debug($"Bind input accepted: provider={providerDescriptor?.ProviderName}, handle={deviceDescriptor.DeviceHandle}, instance={deviceDescriptor.DeviceInstance}, type={bindingReport.BindingDescriptor.Type}, index={bindingReport.BindingDescriptor.Index}, subIndex={bindingReport.BindingDescriptor.SubIndex}, value={value}");
-                _deviceBinding.SetDeviceConfigurationGuid(deviceConfiguration.Guid);
-                _deviceBinding.SetKeyTypeValue((int)bindingReport.BindingDescriptor.Type,
-                    bindingReport.BindingDescriptor.Index, bindingReport.BindingDescriptor.SubIndex);
-                EndBindMode();
-            }
-            catch (Exception exception)
-            {
-                Logger.Error(exception, "Failed to commit detected input binding");
-                lock (bindmodeLock) bindCommitPending = false;
-                // A failed rebind should never take down the whole application. End detection cleanly;
-                // the improved crash/bind logging above preserves the diagnostic information.
-                EndBindMode();
-            }
+            _deviceBinding.SetDeviceConfigurationGuid(deviceConfiguration.Guid);
+            _deviceBinding.SetKeyTypeValue((int)bindingReport.BindingDescriptor.Type, bindingReport.BindingDescriptor.Index, bindingReport.BindingDescriptor.SubIndex);
+            EndBindMode();
         }
 
         private bool IsInputValid(BindingCategory bindingCategory, short value)
@@ -271,20 +141,10 @@ namespace HidWizards.UCR.Core.Managers
 
         private DeviceConfiguration FindDeviceConfiguration(ProviderDescriptor providerDescriptor, DeviceDescriptor deviceDescriptor)
         {
-            foreach (var deviceConfiguration in _deviceConfigurationList)
-            {
-                Device runtimeDevice;
-                if (!_bindModeRuntimeDevices.TryGetValue(deviceConfiguration.Guid, out runtimeDevice)) continue;
-
-                if (string.Equals(runtimeDevice.ProviderName, providerDescriptor.ProviderName, StringComparison.OrdinalIgnoreCase)
-                    && string.Equals(runtimeDevice.DeviceHandle, deviceDescriptor.DeviceHandle, StringComparison.OrdinalIgnoreCase)
-                    && runtimeDevice.DeviceNumber == deviceDescriptor.DeviceInstance)
-                {
-                    return deviceConfiguration;
-                }
-            }
-
-            return null;
+            return _deviceConfigurationList.Find(deviceConfiguration => deviceConfiguration.Device.ProviderName == providerDescriptor.ProviderName
+                                         && deviceConfiguration.Device.DeviceHandle == deviceDescriptor.DeviceHandle
+                                         && deviceConfiguration.Device.DeviceNumber == deviceDescriptor.DeviceInstance
+            );
         }
 
         public void Dispose()

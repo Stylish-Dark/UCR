@@ -8,7 +8,7 @@
              xmlns:plugin="clr-namespace:HidWizards.UCR.Views.Controls.Plugin"
              xmlns:utilities="clr-namespace:HidWizards.UCR.Utilities"
              mc:Ignorable="d"
-             Padding="4 0"
+             Padding="8 0"
              d:DesignHeight="450" d:DesignWidth="800">
     <UserControl.Resources>
         <plugin:PluginGuiTemplateSelector x:Key="PluginGuiTemplateSelector" />
@@ -70,15 +70,6 @@
                 <plugin:PluginPropertyControl>
                     <plugin:PluginPropertyControl.PropertyContent>
                         <TextBox Width="200" Height="25" Text="{Binding Property, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                    </plugin:PluginPropertyControl.PropertyContent>
-                </plugin:PluginPropertyControl>
-            </DataTemplate>
-            <DataTemplate x:Key="FilterDefinitionTemplate">
-                <plugin:PluginPropertyControl>
-                    <plugin:PluginPropertyControl.PropertyContent>
-                        <TextBox Width="220" Height="28"
-                                 ToolTip="This name defines a filter. Mappings can reference it from their funnel menu."
-                                 Text="{Binding Property, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                     </plugin:PluginPropertyControl.PropertyContent>
                 </plugin:PluginPropertyControl>
             </DataTemplate>

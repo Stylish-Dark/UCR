@@ -11,13 +11,7 @@ namespace HidWizards.UCR.Utilities
 
         public HidGuardianClient()
         {
-            // HidGuardian is a localhost service. If it is absent or unhealthy, do not let a
-            // network timeout make UCR appear to hang during startup/shutdown.
-            _client = new RestClient(HidGuardianUrl)
-            {
-                Timeout = 1000,
-                ReadWriteTimeout = 1000
-            };
+            _client = new RestClient(HidGuardianUrl);
         }
 
         public void WhitelistProcess()

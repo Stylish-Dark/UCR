@@ -2,59 +2,17 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-             xmlns:converter="clr-namespace:HidWizards.UCR.Utilities.Converter"
-             xmlns:system="clr-namespace:System;assembly=mscorlib"
              ShutdownMode="OnMainWindowClose"
              Exit="App_OnExit">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Dark.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Light.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Defaults.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Primary/MaterialDesignColor.Blue.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Accent/MaterialDesignColor.Blue.xaml" />
             </ResourceDictionary.MergedDictionaries>
-            <system:Double x:Key="UcrUiScale">1.0</system:Double>
-
-            <!-- Custom UCR palette -->
-            <SolidColorBrush x:Key="MaterialDesignBackground" Color="#212121"/>
-            <SolidColorBrush x:Key="MaterialDesignPaper" Color="#212121"/>
-            <SolidColorBrush x:Key="MaterialDesignCardBackground" Color="#212121"/>
-            <SolidColorBrush x:Key="MaterialDesignToolBarBackground" Color="#212121"/>
-            <SolidColorBrush x:Key="MaterialDesignSelection" Color="#3D63BF"/>
-            <SolidColorBrush x:Key="PrimaryHueLightBrush" Color="#3D63BF"/>
-            <SolidColorBrush x:Key="PrimaryHueMidBrush" Color="#3D63BF"/>
-            <SolidColorBrush x:Key="PrimaryHueDarkBrush" Color="#3D63BF"/>
-            <SolidColorBrush x:Key="PrimaryHueLightForegroundBrush" Color="#FFFFFF"/>
-            <SolidColorBrush x:Key="PrimaryHueMidForegroundBrush" Color="#FFFFFF"/>
-            <SolidColorBrush x:Key="PrimaryHueDarkForegroundBrush" Color="#FFFFFF"/>
-            <SolidColorBrush x:Key="SecondaryAccentBrush" Color="#3D63BF"/>
-            <SolidColorBrush x:Key="UcrAccentBrush" Color="#3D63BF"/>
-            <SolidColorBrush x:Key="SecondaryAccentForegroundBrush" Color="#FFFFFF"/>
-
-            <!-- Explicit dark surfaces so dialogs never fall back to system/light control colours. -->
-            <SolidColorBrush x:Key="UcrDialogBackgroundBrush" Color="#212121"/>
-            <SolidColorBrush x:Key="UcrDialogSurfaceBrush" Color="#2B2B2B"/>
-            <SolidColorBrush x:Key="UcrDialogForegroundBrush" Color="#FFFFFF"/>
-            <SolidColorBrush x:Key="UcrSecondaryTextBrush" Color="#D0D0D0"/>
-
-            <!-- Mapping endpoint colours. Keep these centralized so headers and selectors stay consistent. -->
-            <SolidColorBrush x:Key="MappingTypeButtonBrush" Color="#42A5F5"/>
-            <SolidColorBrush x:Key="MappingTypeAxisBrush" Color="#FFD54F"/>
-            <SolidColorBrush x:Key="MappingTypeFilterBrush" Color="#66BB6A"/>
-            <SolidColorBrush x:Key="MappingTypeEventBrush" Color="#AB47BC"/>
-            <SolidColorBrush x:Key="MappingTypeDeltaBrush" Color="#FF8A65"/>
-            <SolidColorBrush x:Key="MappingTypeValueBrush" Color="#26C6DA"/>
-            <SolidColorBrush x:Key="MappingTypeNoneBrush" Color="#9E9E9E"/>
-            <converter:MappingTypeBrushConverter x:Key="MappingTypeBrushConverter"/>
-
-            <Style x:Key="UcrDialogRoot" TargetType="{x:Type UserControl}">
-                <Setter Property="Background" Value="{DynamicResource UcrDialogBackgroundBrush}"/>
-                <Setter Property="TextElement.Foreground" Value="{DynamicResource UcrDialogForegroundBrush}"/>
-                <Setter Property="FontSize" Value="14"/>
-            </Style>
             <Style TargetType="{x:Type Window}" >
-                <Setter Property="FontSize" Value="14"/>
                 <Setter Property="WindowChrome.WindowChrome">
                     <Setter.Value>
                         <WindowChrome

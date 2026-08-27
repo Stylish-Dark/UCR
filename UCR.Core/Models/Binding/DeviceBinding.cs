@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Xml.Serialization;
 using HidWizards.IOWrapper.DataTransferObjects;
 using HidWizards.UCR.Core.Annotations;
-using HidWizards.UCR.Core.Utilities;
 
 namespace HidWizards.UCR.Core.Models.Binding
 {
@@ -44,9 +42,6 @@ namespace HidWizards.UCR.Core.Models.Binding
         [XmlAttribute]
         [DefaultValue(false)]
         public bool Block { get; set; }
-        [XmlAttribute]
-        [DefaultValue(false)]
-        public bool InvertInput { get; set; }
 
         /* Runtime */
         [XmlIgnore]
@@ -116,57 +111,16 @@ namespace HidWizards.UCR.Core.Models.Binding
 
         public void SetDeviceConfigurationGuid(Guid deviceConfigurationGuid)
         {
-            SetDeviceConfigurationGuid(deviceConfigurationGuid, true);
-        }
-
-        public void SetDeviceConfigurationGuid(Guid deviceConfigurationGuid, bool preserveBinding)
-        {
-            SetDeviceConfigurationGuid(deviceConfigurationGuid, preserveBinding, KeyType, KeyValue, KeySubValue);
-        }
-
-        public void SetDeviceConfigurationGuid(Guid deviceConfigurationGuid, bool preserveBinding,
-            int keyType, int keyValue, int keySubValue)
-        {
             DeviceConfigurationGuid = deviceConfigurationGuid;
-
-            if (!preserveBinding)
-            {
-                KeyType = 0;
-                KeyValue = 0;
-                KeySubValue = 0;
-                Block = false;
-                IsBound = false;
-            }
-            else
-            {
-                // Apply any semantic translation before checking whether the new device can block
-                // this binding. This avoids testing the destination against a stale source key.
-                KeyType = keyType;
-                KeyValue = keyValue;
-                KeySubValue = keySubValue;
-
-                if (Block && !IsBlockable())
-                {
-                    Block = false;
-                }
-            }
-
+            if (Block && !IsBlockable()) Block = false;
             Profile.Context.ContextChanged();
             OnPropertyChanged(nameof(DeviceConfigurationGuid));
-            OnPropertyChanged(nameof(IsBound));
         }
 
         public void SetBlock(bool block)
         {
             Block = block;
             Profile.Context.ContextChanged();
-        }
-
-        public void SetInvertInput(bool invert)
-        {
-            InvertInput = invert;
-            Profile.Context.ContextChanged();
-            OnPropertyChanged(nameof(InvertInput));
         }
 
         public void SetKeyTypeValue(int type, int value, int subValue)
@@ -189,17 +143,8 @@ namespace HidWizards.UCR.Core.Models.Binding
             if (device == null) return false;
 
             var deviceBindingNodes = Profile.Context.DevicesManager.GetDeviceBindingMenu(device, DeviceIoType);
-            return IsBlockableInMenu(deviceBindingNodes, KeyType, KeyValue, KeySubValue);
-        }
 
-        internal static bool IsBlockableInMenu(List<DeviceBindingNode> deviceBindingNodes,
-            int keyType, int keyValue, int keySubValue)
-        {
-            // Never destructively traverse the provider/cache binding menu. These lists are shared by
-            // the UI and device cache; removing nodes here can corrupt later rebind menus.
-            var searchList = deviceBindingNodes == null
-                ? new List<DeviceBindingNode>()
-                : new List<DeviceBindingNode>(deviceBindingNodes);
+            var searchList = deviceBindingNodes;
 
             while (searchList.Count > 0)
             {
@@ -209,10 +154,7 @@ namespace HidWizards.UCR.Core.Models.Binding
                 if (node.IsBinding)
                 {
                     var info = node.DeviceBindingInfo;
-                    if (info.KeyType == keyType && info.KeyValue == keyValue && info.KeySubValue == keySubValue)
-                    {
-                        return info.Blockable;
-                    }
+                    if (info.KeyType == KeyType && info.KeyValue == KeyValue && info.KeySubValue == KeySubValue) return info.Blockable;
                 }
 
                 if (node.ChildrenNodes != null) searchList.AddRange(node.ChildrenNodes);
@@ -247,24 +189,9 @@ namespace HidWizards.UCR.Core.Models.Binding
 
         public void EnterBindMode()
         {
-            if (IsInBindMode) return;
-
-            // Subscribe and expose bind-mode state before asking providers to enter detection mode.
-            // Some providers can report synchronously from SetDetectionMode; subscribing afterwards
-            // leaves the binding permanently stuck in bind mode if detection completes immediately.
+            Profile.Context.BindingManager.BeginBindMode(this);
             Profile.Context.BindingManager.EndBindModeHandler += OnEndBindModeHandler;
             IsInBindMode = true;
-
-            try
-            {
-                Profile.Context.BindingManager.BeginBindMode(this);
-            }
-            catch
-            {
-                IsInBindMode = false;
-                Profile.Context.BindingManager.EndBindModeHandler -= OnEndBindModeHandler;
-                throw;
-            }
         }
 
         public void ClearBinding()
@@ -273,26 +200,19 @@ namespace HidWizards.UCR.Core.Models.Binding
             KeyValue = 0;
             KeySubValue = 0;
             DeviceConfigurationGuid = Guid.Empty;
-            InvertInput = false;
             IsBound = false;
             Profile.Context.ContextChanged();
         }
 
         private void OnEndBindModeHandler(DeviceBinding deviceBinding)
         {
-            if (deviceBinding == null || deviceBinding.Guid != Guid) return;
+            if (deviceBinding.Guid != Guid) return;
             IsInBindMode = false;
             Profile.Context.BindingManager.EndBindModeHandler -= OnEndBindModeHandler;
         }
 
         private void InputChanged(short value)
         {
-            if (InvertInput && DeviceIoType == DeviceIoType.Input &&
-                DeviceBindingCategory == DeviceBindingCategory.Range)
-            {
-                value = Functions.Invert(value);
-            }
-
             CurrentValue = value;
             _callback(value);
         }

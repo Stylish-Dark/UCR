@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using HidWizards.UCR.Core.Annotations;
@@ -13,7 +12,7 @@ using HidWizards.UCR.Core.Utilities;
 
 namespace HidWizards.UCR.ViewModels.ProfileViewModels
 {
-    public class DeviceBindingViewModel : INotifyPropertyChanged, IDisposable
+    public class DeviceBindingViewModel : INotifyPropertyChanged
     {
         public string DeviceBindingName { get; set; }
         public string IoTypeName => DeviceBinding.DeviceIoType.Equals(DeviceIoType.Input) ? "Input" : "Output";
@@ -23,19 +22,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public Visibility ShowPreview => DeviceBinding.IsInBindMode ? Visibility.Hidden : Visibility.Visible;
         public Visibility ShowBindMode => ShowPreview.Equals(Visibility.Visible) ? Visibility.Hidden : Visibility.Visible;
         public Visibility ShowPropertyList => PluginPropertyGroup == null ? Visibility.Collapsed : Visibility.Visible;
-        public Visibility ShowBlock => DeviceBinding.DeviceIoType == DeviceIoType.Input && DeviceBinding.IsBlockable()
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-        public Visibility ShowInvertInput => DeviceBinding.DeviceIoType == DeviceIoType.Input &&
-                                             DeviceBindingCategory == DeviceBindingCategory.Range
-            ? Visibility.Visible
-            : Visibility.Collapsed;
+        public Visibility ShowBlock => DeviceBinding.IsBlockable() ? Visibility.Visible : Visibility.Collapsed;
         public PluginPropertyGroupViewModel PluginPropertyGroup { get; set; }
         public long PreviewValue => GetPreviewValue();
         public bool ShowButtonPreview => DeviceBinding.IsInBindMode || DeviceBinding.Profile.IsActive();
 
         private bool GuiInvalidated { get; set; }
-        private bool _disposed;
 
         private long GetPreviewValue()
         {
@@ -79,12 +71,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             set => DeviceBinding.SetBlock(value);
         }
 
-        public bool InvertInput
-        {
-            get => DeviceBinding.InvertInput;
-            set => DeviceBinding.SetInvertInput(value);
-        }
-
         public string BindButtonText
         {
             get
@@ -101,10 +87,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             get => _deviceBinding;
             set
             {
-                if (ReferenceEquals(_deviceBinding, value)) return;
-                if (_deviceBinding != null) _deviceBinding.PropertyChanged -= DeviceBindingOnPropertyChanged;
                 _deviceBinding = value;
-                if (_deviceBinding == null) return;
                 _deviceBinding.PropertyChanged += DeviceBindingOnPropertyChanged;
                 CurrentValue = _deviceBinding.CurrentValue;
             }
@@ -141,7 +124,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             DeviceBinding = deviceBinding;
             deviceBinding.Profile.Context.BindingManager.PropertyChanged += BindingManagerOnPropertyChanged;
             deviceBinding.Profile.Context.SubscriptionsManager.PropertyChanged += SubscriptionsManagerOnPropertyChanged;
-            deviceBinding.Profile.Context.DeviceAliasesChangedEvent += ContextOnDeviceAliasesChanged;
             BindingEnabled = !DeviceBinding.Profile.Context.SubscriptionsManager.ProfileActive;
 
             LoadDeviceInputs();
@@ -149,19 +131,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         
         public void LoadDeviceInputs()
         {
-            var devicesManager = DeviceBinding.Profile.Context.DevicesManager;
-            var deviceConfigurationList = DeviceBinding.Profile.GetDeviceConfigurationList(DeviceBinding.DeviceIoType)
-                .Select((configuration, index) => new
-                {
-                    Configuration = configuration,
-                    OriginalIndex = index,
-                    SortOrder = devicesManager.GetDeviceSortOrder(configuration.Device)
-                })
-                .OrderBy(item => item.SortOrder)
-                .ThenBy(item => item.OriginalIndex)
-                .Select(item => item.Configuration)
-                .ToList();
-
+            var deviceConfigurationList = DeviceBinding.Profile.GetDeviceConfigurationList(DeviceBinding.DeviceIoType);
             Devices = new ObservableCollection<ComboBoxItemViewModel>();
             foreach (var deviceConfiguration in deviceConfigurationList)
             {
@@ -169,13 +139,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
 
             SetSelectDevice();
-        }
-
-        private void ContextOnDeviceAliasesChanged()
-        {
-            LoadDeviceInputs();
-            OnPropertyChanged(nameof(Devices));
-            OnPropertyChanged(nameof(SelectedDevice));
         }
 
         private void SetSelectDevice()
@@ -198,67 +161,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
 
             SelectedDevice = selectedDevice;
-        }
-
-        public DeviceBindingTransferCompatibility ChangeDeviceConfiguration(Guid selectedDeviceConfigurationGuid)
-        {
-            var selectedDeviceConfiguration = DeviceBinding.Profile.GetDeviceConfiguration(
-                DeviceBinding.DeviceIoType, selectedDeviceConfigurationGuid);
-            if (selectedDeviceConfiguration == null) return DeviceBindingTransferCompatibility.Unknown;
-
-            var previousDeviceConfiguration = DeviceBinding.Profile.GetDeviceConfiguration(
-                DeviceBinding.DeviceIoType, DeviceBinding.DeviceConfigurationGuid);
-
-            var transfer = DeviceBindingTransferResult.For(
-                DeviceBindingTransferCompatibility.Unknown,
-                DeviceBinding);
-
-            if (DeviceBinding.IsBound && previousDeviceConfiguration != null &&
-                previousDeviceConfiguration.Guid != selectedDeviceConfiguration.Guid)
-            {
-                transfer = DeviceBindingCompatibility.EvaluateTransfer(
-                    previousDeviceConfiguration.Device,
-                    selectedDeviceConfiguration.Device,
-                    DeviceBinding.Profile.Context,
-                    DeviceBinding.DeviceIoType,
-                    DeviceBinding,
-                    DeviceBindingCategory);
-            }
-
-            if (transfer.Compatibility == DeviceBindingTransferCompatibility.Incompatible)
-            {
-                DeviceBinding.SetDeviceConfigurationGuid(selectedDeviceConfiguration.Guid, false);
-            }
-            else if (transfer.Compatibility == DeviceBindingTransferCompatibility.Compatible)
-            {
-                DeviceBinding.SetDeviceConfigurationGuid(
-                    selectedDeviceConfiguration.Guid,
-                    true,
-                    transfer.KeyType,
-                    transfer.KeyValue,
-                    transfer.KeySubValue);
-            }
-            else
-            {
-                // Unknown remains deliberately non-destructive. Preserve the existing semantic key
-                // unless the compatibility layer can positively prove that it is incompatible.
-                DeviceBinding.SetDeviceConfigurationGuid(selectedDeviceConfiguration.Guid, true);
-            }
-
-            SetSelectDevice();
-            OnPropertyChanged(nameof(SelectedDevice));
-            OnPropertyChanged(nameof(BindButtonText));
-            OnPropertyChanged(nameof(ShowBlock));
-            OnPropertyChanged(nameof(Block));
-            OnPropertyChanged(nameof(ShowInvertInput));
-            OnPropertyChanged(nameof(InvertInput));
-            Logger.Info("Binding device changed. io=" + DeviceBinding.DeviceIoType +
-                        "; category=" + DeviceBindingCategory +
-                        "; from=" + (previousDeviceConfiguration?.GetFullTitleForProfile(DeviceBinding.Profile) ?? "unavailable") +
-                        "; to=" + selectedDeviceConfiguration.GetFullTitleForProfile(DeviceBinding.Profile) +
-                        "; compatibility=" + transfer.Compatibility +
-                        "; preserved=" + DeviceBinding.IsBound);
-            return transfer.Compatibility;
         }
 
         public void CurrentValueChanged()
@@ -290,20 +192,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(SelectedDevice));
                 OnPropertyChanged(nameof(ShowBlock));
                 OnPropertyChanged(nameof(Block));
-                OnPropertyChanged(nameof(ShowInvertInput));
-                OnPropertyChanged(nameof(InvertInput));
             }
             if (propertyChangedEventArgs.PropertyName.Equals(nameof(DeviceBinding.DeviceConfigurationGuid)))
             {
                 OnPropertyChanged(nameof(BindButtonText));
                 OnPropertyChanged(nameof(ShowBlock));
                 OnPropertyChanged(nameof(Block));
-                OnPropertyChanged(nameof(ShowInvertInput));
-                OnPropertyChanged(nameof(InvertInput));
-            }
-            if (propertyChangedEventArgs.PropertyName.Equals(nameof(DeviceBinding.InvertInput)))
-            {
-                OnPropertyChanged(nameof(InvertInput));
             }
         }
         
@@ -318,26 +212,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (propertyChangedEventArgs.PropertyName.Equals("ProfileActive"))
             {
                 BindingEnabled = !DeviceBinding.Profile.Context.SubscriptionsManager.ProfileActive;
-            }
-        }
-
-
-        public void Dispose()
-        {
-            if (_disposed) return;
-            _disposed = true;
-
-            var binding = _deviceBinding;
-            if (binding != null)
-            {
-                binding.PropertyChanged -= DeviceBindingOnPropertyChanged;
-                var context = binding.Profile?.Context;
-                if (context != null)
-                {
-                    context.BindingManager.PropertyChanged -= BindingManagerOnPropertyChanged;
-                    context.SubscriptionsManager.PropertyChanged -= SubscriptionsManagerOnPropertyChanged;
-                    context.DeviceAliasesChangedEvent -= ContextOnDeviceAliasesChanged;
-                }
             }
         }
 

@@ -94,10 +94,6 @@
     <Compile Include="Properties\Annotations.cs" />
     <Compile Include="Utilities\Commands\RelayCommand.cs" />
     <Compile Include="Utilities\Converter\InverseBooleanConverter.cs" />
-    <Compile Include="Utilities\Converter\MappingTypeBrushConverter.cs" />
-    <Compile Include="Utilities\DarkMessageBox.cs" />
-    <Compile Include="Utilities\AppearanceManager.cs" />
-    <Compile Include="Utilities\AutoProfileMonitor.cs" />
     <Compile Include="Utilities\DataContextBindingProxy.cs" />
     <Compile Include="Utilities\HidGuardianClient.cs" />
     <Compile Include="Utilities\NativeMethods.cs" />
@@ -113,12 +109,10 @@
     <Compile Include="ViewModels\Dashboard\CreateProfileDialogViewModel.cs" />
     <Compile Include="ViewModels\Dashboard\DashboardViewModel.cs" />
     <Compile Include="ViewModels\Dashboard\DeviceItem.cs" />
-    <Compile Include="ViewModels\Dashboard\DeviceManagerViewModel.cs" />
     <Compile Include="ViewModels\Dashboard\ManageDeviceConfigurationViewModel.cs" />
     <Compile Include="ViewModels\Dashboard\ProfileDeviceListControlViewModel.cs" />
     <Compile Include="ViewModels\DeviceViewModels\DeviceViewModel.cs" />
     <Compile Include="ViewModels\EnumerationExtension.cs" />
-    <Compile Include="ViewModels\Presentation\DeviceVisualDescriptor.cs" />
     <Compile Include="ViewModels\Dashboard\ProfileItem.cs" />
     <Compile Include="ViewModels\ProfileViewModels\AddMappingPluginDialogViewModel.cs" />
     <Compile Include="ViewModels\ProfileViewModels\DeviceBindingViewModel.cs" />
@@ -144,8 +138,6 @@
     <Compile Include="Views\Controls\MappingCardControl.xaml.cs">
       <DependentUpon>MappingCardControl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Views\Controls\DeviceGlyphControl.cs" />
-    <Compile Include="Views\Controls\ControlGlyphControl.cs" />
     <Compile Include="Views\Controls\Plugin\PluginControl.xaml.cs">
       <DependentUpon>PluginControl.xaml</DependentUpon>
     </Compile>
@@ -180,28 +172,6 @@
       <DependentUpon>BoolDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="ViewModels\Dialogs\DecisionDialogViewModel.cs" />
-    <Compile Include="ViewModels\Dialogs\FilterSelectDialogViewModel.cs" />
-    <Compile Include="ViewModels\Dialogs\BatchDeviceChangeDialogViewModel.cs" />
-    <Compile Include="ViewModels\Dialogs\AppearanceDialogViewModel.cs" />
-    <Compile Include="ViewModels\Dialogs\RenameMappingsDialogViewModel.cs" />
-    <Compile Include="Views\Dialogs\DeviceManagerDialog.xaml.cs">
-      <DependentUpon>DeviceManagerDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Views\Dialogs\FilterSelectDialog.xaml.cs">
-      <DependentUpon>FilterSelectDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Views\Dialogs\BatchDeviceChangeDialog.xaml.cs">
-      <DependentUpon>BatchDeviceChangeDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Views\Dialogs\AppearanceDialog.xaml.cs">
-      <DependentUpon>AppearanceDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Views\Dialogs\RenameMappingsDialog.xaml.cs">
-      <DependentUpon>RenameMappingsDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Views\Dialogs\ImportExportDialog.xaml.cs">
-      <DependentUpon>ImportExportDialog.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Views\Dialogs\ManageDeviceConfigurationDialog.xaml.cs">
       <DependentUpon>ManageDeviceConfigurationDialog.xaml</DependentUpon>
     </Compile>
@@ -225,9 +195,6 @@
     </Compile>
     <Compile Include="Views\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Views\SplashWindow.xaml.cs">
-      <DependentUpon>SplashWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
@@ -305,30 +272,6 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Views\Dialogs\DeviceManagerDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\Dialogs\FilterSelectDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\Dialogs\BatchDeviceChangeDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\Dialogs\AppearanceDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\Dialogs\RenameMappingsDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\Dialogs\ImportExportDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
     <Page Include="Views\Dialogs\ManageDeviceConfigurationDialog.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -354,10 +297,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\MainWindow.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Views\SplashWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

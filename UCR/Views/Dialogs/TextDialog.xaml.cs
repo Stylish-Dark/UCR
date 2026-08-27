@@ -30,7 +30,7 @@ namespace HidWizards.UCR.Views.Dialogs
             }
             else
             {
-                HidWizards.UCR.Utilities.DarkMessageBox.Show("Please fill out the field", "Invalid input", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                MessageBox.Show("Please fill out the field", "Invalid input", MessageBoxButton.OK, MessageBoxImage.Exclamation);
             }
             
         }

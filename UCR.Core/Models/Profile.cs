@@ -6,7 +6,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Xml.Serialization;
 using HidWizards.UCR.Core.Annotations;
-using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models.Binding;
 using NLog;
 
@@ -26,41 +25,6 @@ namespace HidWizards.UCR.Core.Models
 
         public List<DeviceConfiguration> InputDeviceConfigurations { get; set; }
         public List<DeviceConfiguration> OutputDeviceConfigurations { get; set; }
-
-        private bool _autoActivateEnabled;
-        private string _autoActivateExecutable;
-
-        [XmlAttribute]
-        public bool AutoActivateEnabled
-        {
-            get => _autoActivateEnabled;
-            set
-            {
-                if (_autoActivateEnabled == value) return;
-                _autoActivateEnabled = value;
-                OnPropertyChanged();
-                Context?.ContextChanged();
-            }
-        }
-
-        [XmlAttribute]
-        public string AutoActivateExecutable
-        {
-            get => _autoActivateExecutable;
-            set
-            {
-                if (string.Equals(_autoActivateExecutable, value, StringComparison.Ordinal)) return;
-                _autoActivateExecutable = value;
-                OnPropertyChanged();
-                Context?.ContextChanged();
-            }
-        }
-
-        [XmlAttribute]
-        public Guid PrimaryInputDeviceConfigurationGuid { get; set; }
-
-        [XmlAttribute]
-        public Guid PrimaryOutputDeviceConfigurationGuid { get; set; }
 
 
         /* Runtime */
@@ -172,20 +136,6 @@ namespace HidWizards.UCR.Core.Models
         public bool RemoveMapping(Mapping mapping)
         {
             if (!Mappings.Remove(mapping)) return false;
-            PruneUndefinedFilterReferencesRecursive();
-            Context.ContextChanged();
-            return true;
-        }
-
-        public bool MoveMapping(Mapping mapping, int targetIndex)
-        {
-            if (mapping == null) return false;
-            var sourceIndex = Mappings.IndexOf(mapping);
-            if (sourceIndex < 0) return false;
-            if (targetIndex < 0 || targetIndex >= Mappings.Count || targetIndex == sourceIndex) return false;
-
-            Mappings.RemoveAt(sourceIndex);
-            Mappings.Insert(targetIndex, mapping);
             Context.ContextChanged();
             return true;
         }
@@ -212,77 +162,15 @@ namespace HidWizards.UCR.Core.Models
             return result;
         }
 
-        public DeviceConfiguration GetPrimaryDeviceConfiguration(DeviceIoType deviceIoType)
-        {
-            var devices = GetDeviceConfigurationList(deviceIoType);
-            if (devices.Count == 0) return null;
-
-            var primaryGuid = deviceIoType == DeviceIoType.Input
-                ? PrimaryInputDeviceConfigurationGuid
-                : PrimaryOutputDeviceConfigurationGuid;
-
-            if (primaryGuid != Guid.Empty)
-            {
-                var configuredPrimary = devices.FirstOrDefault(configuration => configuration.Guid == primaryGuid);
-                if (configuredPrimary != null) return configuredPrimary;
-            }
-
-            if (ParentProfile != null)
-            {
-                var inheritedPrimary = ParentProfile.GetPrimaryDeviceConfiguration(deviceIoType);
-                if (inheritedPrimary != null)
-                {
-                    var inheritedMatch = devices.FirstOrDefault(configuration => configuration.Guid == inheritedPrimary.Guid);
-                    if (inheritedMatch != null) return inheritedMatch;
-                }
-            }
-
-            return devices[0];
-        }
-
-        public bool SetPrimaryDeviceConfiguration(DeviceIoType deviceIoType, Guid deviceConfigurationGuid)
-        {
-            if (deviceConfigurationGuid != Guid.Empty &&
-                GetDeviceConfigurationList(deviceIoType).All(configuration => configuration.Guid != deviceConfigurationGuid))
-            {
-                return false;
-            }
-
-            if (deviceIoType == DeviceIoType.Input)
-            {
-                if (PrimaryInputDeviceConfigurationGuid == deviceConfigurationGuid) return true;
-                PrimaryInputDeviceConfigurationGuid = deviceConfigurationGuid;
-                OnPropertyChanged(nameof(PrimaryInputDeviceConfigurationGuid));
-            }
-            else
-            {
-                if (PrimaryOutputDeviceConfigurationGuid == deviceConfigurationGuid) return true;
-                PrimaryOutputDeviceConfigurationGuid = deviceConfigurationGuid;
-                OnPropertyChanged(nameof(PrimaryOutputDeviceConfigurationGuid));
-            }
-
-            Context?.ContextChanged();
-            return true;
-        }
-
         public List<Device> GetMissingDeviceList(DeviceIoType deviceIoType)
         {
             Context.DevicesManager.RefreshDeviceList();
-            var availableDeviceList = Context.DevicesManager.GetVisibleDeviceList(deviceIoType);
+            var availableDeviceList = Context.DevicesManager.GetAvailableDeviceList(deviceIoType);
             var profileDeviceList = GetDeviceConfigurationList(deviceIoType);
 
             foreach (var deviceConfiguration in profileDeviceList)
             {
-                var resolvedDevice = Context.DevicesManager.ResolveDevice(deviceConfiguration.Device, deviceIoType);
-                if (resolvedDevice != null)
-                {
-                    availableDeviceList.RemoveAll(d => DevicesManager.DescriptorEquals(d, resolvedDevice)
-                                                       || DevicesManager.PersistedIdentityEquals(d, deviceConfiguration.Device));
-                }
-                else
-                {
-                    availableDeviceList.RemoveAll(d => DevicesManager.PersistedIdentityEquals(d, deviceConfiguration.Device));
-                }
+                availableDeviceList.RemoveAll(d => d.Equals(deviceConfiguration.Device));
             }
 
             return availableDeviceList;
@@ -336,7 +224,6 @@ namespace HidWizards.UCR.Core.Models
         {
             if (!Mappings.Contains(mapping)) return false;
             mapping.Plugins.Remove(plugin);
-            PruneUndefinedFilterReferencesRecursive();
             Context.ContextChanged();
             return true;
         }
@@ -345,8 +232,6 @@ namespace HidWizards.UCR.Core.Models
 
         public HashSet<string> GetFilters()
         {
-            // Filter definitions are created by "... to Filter" plugins. A plugin's Filters list
-            // contains references to those definitions; it must never create definitions by itself.
             var result = ParentProfile != null
                 ? ParentProfile.GetFilters()
                 : new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
@@ -355,74 +240,14 @@ namespace HidWizards.UCR.Core.Models
             {
                 foreach (var plugin in mapping.Plugins)
                 {
-                    var definedFilterName = plugin.GetDefinedFilterName();
-                    if (!string.IsNullOrWhiteSpace(definedFilterName)) result.Add(definedFilterName);
+                    foreach (var filter in plugin.Filters)
+                    {
+                        result.Add(filter.Name);
+                    }
                 }
             }
 
             return result;
-        }
-
-        internal void RenameFilterReferences(string oldName, string newName)
-        {
-            if (string.IsNullOrWhiteSpace(oldName)) return;
-            var replacement = string.IsNullOrWhiteSpace(newName) ? null : newName.Trim();
-
-            RenameFilterReferencesRecursive(this, oldName.Trim(), replacement);
-        }
-
-        private static void RenameFilterReferencesRecursive(Profile profile, string oldName, string newName)
-        {
-            // If another definition with the old name is still visible at this profile level,
-            // existing references remain valid and must not be silently redirected.
-            if (profile.GetFilters().Contains(oldName)) return;
-
-            foreach (var mapping in profile.Mappings)
-            {
-                foreach (var plugin in mapping.Plugins)
-                {
-                    if (newName == null)
-                    {
-                        plugin.Filters.RemoveAll(filter => string.Equals(filter.Name, oldName, StringComparison.InvariantCultureIgnoreCase));
-                        continue;
-                    }
-
-                    foreach (var filter in plugin.Filters)
-                    {
-                        if (!string.Equals(filter.Name, oldName, StringComparison.InvariantCultureIgnoreCase)) continue;
-                        filter.Name = newName;
-                    }
-                }
-            }
-
-            foreach (var child in profile.ChildProfiles)
-            {
-                RenameFilterReferencesRecursive(child, oldName, newName);
-            }
-        }
-
-        internal bool PruneUndefinedFilterReferencesRecursive()
-        {
-            return PruneUndefinedFilterReferencesRecursive(this);
-        }
-
-        private static bool PruneUndefinedFilterReferencesRecursive(Profile profile)
-        {
-            var changed = false;
-            var validNames = profile.GetFilters();
-            foreach (var mapping in profile.Mappings)
-            {
-                foreach (var plugin in mapping.Plugins)
-                {
-                    changed |= plugin.Filters.RemoveAll(filter => filter == null || string.IsNullOrWhiteSpace(filter.Name) || !validNames.Contains(filter.Name)) > 0;
-                }
-            }
-
-            foreach (var child in profile.ChildProfiles)
-            {
-                changed |= PruneUndefinedFilterReferencesRecursive(child);
-            }
-            return changed;
         }
 
         #region Helpers

@@ -4,12 +4,11 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
-using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Utilities.Commands;
 using HidWizards.UCR.ViewModels;
-using HidWizards.UCR.ViewModels.ProfileViewModels;
 
 namespace HidWizards.UCR.Views.Controls
 {
@@ -69,15 +68,6 @@ namespace HidWizards.UCR.Views.Controls
 
             foreach (var deviceBindingNode in deviceBindingNodes)
             {
-                if (IsKeyboardKeyGroup(deviceBindingNode))
-                {
-                    foreach (var categoryMenu in BuildMenu(BuildKeyboardCategories(deviceBindingNode.ChildrenNodes)))
-                    {
-                        menuList.Add(categoryMenu);
-                    }
-                    continue;
-                }
-
                 RelayCommand cmd = null;
                 if (deviceBindingNode.IsBinding)
                 {
@@ -98,122 +88,6 @@ namespace HidWizards.UCR.Views.Controls
             }
 
             return menuList;
-        }
-
-        private static bool IsKeyboardKeyGroup(DeviceBindingNode node)
-        {
-            return node != null &&
-                   node.ChildrenNodes != null &&
-                   node.ChildrenNodes.Count >= 20 &&
-                   string.Equals(node.Title, "Keys", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static List<DeviceBindingNode> BuildKeyboardCategories(List<DeviceBindingNode> keyboardNodes)
-        {
-            var order = new[]
-            {
-                "Letters",
-                "Number row",
-                "Function keys",
-                "Modifiers & locks",
-                "Navigation",
-                "Numpad",
-                "Editing & whitespace",
-                "Punctuation",
-                "Media & system",
-                "Other"
-            };
-
-            var groups = new Dictionary<string, List<DeviceBindingNode>>();
-            foreach (var name in order) groups.Add(name, new List<DeviceBindingNode>());
-
-            foreach (var node in keyboardNodes)
-            {
-                if (node == null) continue;
-                var category = GetKeyboardCategory(node.Title);
-                groups[category].Add(node);
-            }
-
-            var result = new List<DeviceBindingNode>();
-            foreach (var name in order)
-            {
-                if (groups[name].Count == 0) continue;
-                groups[name].Sort((left, right) => string.Compare(left?.Title, right?.Title, StringComparison.CurrentCultureIgnoreCase));
-                result.Add(new DeviceBindingNode
-                {
-                    Title = name,
-                    ChildrenNodes = groups[name]
-                });
-            }
-
-            return result;
-        }
-
-        private static string GetKeyboardCategory(string title)
-        {
-            var name = (title ?? string.Empty).Trim();
-            if (name.Length == 1 && char.IsLetter(name[0])) return "Letters";
-            if (name.Length == 1 && char.IsDigit(name[0])) return "Number row";
-
-            if (name.Length >= 2 && (name[0] == 'F' || name[0] == 'f'))
-            {
-                int functionNumber;
-                if (int.TryParse(name.Substring(1), out functionNumber) && functionNumber >= 1 && functionNumber <= 24)
-                {
-                    return "Function keys";
-                }
-            }
-
-            if (ContainsAny(name, "shift", "ctrl", "control", "alt", "windows", "caps lock", "num lock", "scroll lock"))
-            {
-                return "Modifiers & locks";
-            }
-
-            if (ContainsAny(name, "numpad", "num ", "numeric", "keypad", "divide", "multiply", "decimal"))
-            {
-                return "Numpad";
-            }
-
-            if (EqualsAny(name, "Left", "Right", "Up", "Down", "Home", "End", "Page Up", "Page Down", "PgUp", "PgDn", "Insert", "Delete"))
-            {
-                return "Navigation";
-            }
-
-            if (EqualsAny(name, "Backspace", "Tab", "Enter", "Return", "Space", "Spacebar", "Esc", "Escape"))
-            {
-                return "Editing & whitespace";
-            }
-
-            if (name.Length == 1 && !char.IsLetterOrDigit(name[0])) return "Punctuation";
-            if (ContainsAny(name, "semicolon", "comma", "period", "slash", "quote", "bracket", "backslash", "minus", "equals", "grave", "oem"))
-            {
-                return "Punctuation";
-            }
-
-            if (ContainsAny(name, "volume", "media", "browser", "launch", "print screen", "pause", "break", "sleep", "power", "application", "menu"))
-            {
-                return "Media & system";
-            }
-
-            return "Other";
-        }
-
-        private static bool EqualsAny(string value, params string[] candidates)
-        {
-            foreach (var candidate in candidates)
-            {
-                if (string.Equals(value, candidate, StringComparison.CurrentCultureIgnoreCase)) return true;
-            }
-            return false;
-        }
-
-        private static bool ContainsAny(string value, params string[] fragments)
-        {
-            foreach (var fragment in fragments)
-            {
-                if (value.IndexOf(fragment, StringComparison.CurrentCultureIgnoreCase) >= 0) return true;
-            }
-            return false;
         }
 
         private ContextMenuItem CreateClearCommandMenuItem()
@@ -244,12 +118,7 @@ namespace HidWizards.UCR.Views.Controls
         {
             if (!HasLoaded) return;
             if (DeviceSelectionBox.SelectedItem == null) return;
-
-            var selectedDeviceConfiguration = GetSelectedDeviceConfiguration();
-            if (selectedDeviceConfiguration == null) return;
-
-            var viewModel = DataContext as DeviceBindingViewModel;
-            viewModel?.ChangeDeviceConfiguration(selectedDeviceConfiguration.Guid);
+            DeviceBinding.SetDeviceConfigurationGuid(GetSelectedDeviceConfiguration().Guid);
             LoadContextMenu();
         }
 
@@ -261,24 +130,20 @@ namespace HidWizards.UCR.Views.Controls
 
         private void BindButton_OnClick(object sender, RoutedEventArgs e)
         {
-            try
+            if (e is KeyboardEventArgs && !((KeyEventArgs)e).Key.Equals(Key.Space))
             {
-                if (DeviceBinding.DeviceIoType.Equals(DeviceIoType.Input))
-                {
-                    if (DeviceBinding.IsInBindMode) return;
-                    if (Category.HasValue) DeviceBinding.DeviceBindingCategory = Category.Value;
-                    DeviceBinding.EnterBindMode();
-                }
-                else
-                {
-                    OpenContextMenu();
-                }
+                e.Handled = true;
+                return;
             }
-            catch (Exception exception)
+            if (DeviceBinding.DeviceIoType.Equals(DeviceIoType.Input))
             {
-                Logger.Error("Failed to enter device bind mode", exception);
-                HidWizards.UCR.Utilities.DarkMessageBox.Show("UCR could not start input detection for this binding. The error has been written to the log.",
-                    "Unable to bind input", MessageBoxButton.OK, MessageBoxImage.Error);
+                if (DeviceBinding.IsInBindMode) return;
+                if (Category.HasValue) DeviceBinding.DeviceBindingCategory = Category.Value;
+                DeviceBinding.EnterBindMode();
+            }
+            else
+            {
+                OpenContextMenu();
             }
         }
 
