@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
+using HidWizards.UCR.Core.Utilities;
 
 namespace HidWizards.UCR.ViewModels.Dashboard
 {
@@ -242,7 +243,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             catch (Exception exception)
             {
                 DetectionStatus = "Device detection failed. Check the UCR log for details.";
-                NLog.LogManager.GetCurrentClassLogger().Error(exception, "Input-device detection failed in Devices");
+                Logger.Error("Input-device detection failed in Devices", exception);
                 return null;
             }
             finally
