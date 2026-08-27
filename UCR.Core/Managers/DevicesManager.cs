@@ -21,6 +21,7 @@ namespace HidWizards.UCR.Core.Managers
         private readonly Context _context;
 
         private Dictionary<string, List<Device>> _providerCache;
+        private readonly HashSet<string> _sessionDismissedDevices = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private static readonly TimeSpan DeviceDetectionArmDelay = TimeSpan.FromMilliseconds(350);
@@ -61,7 +62,10 @@ namespace HidWizards.UCR.Core.Managers
                     var cachedDevices = LoadDeviceCache(providerReport.Value.ProviderDescriptor.ProviderName);
                     foreach (var cachedDevice in cachedDevices)
                     {
-                        if (result.Contains(cachedDevice)) continue;
+                        // A cache entry is only useful when its endpoint is currently absent. Old
+                        // provider instance numbers can otherwise accumulate across restarts and make
+                        // one physical keyboard/mouse appear several times. Prefer the live report.
+                        if (result.Any(liveDevice => CacheRepresentsLiveEndpoint(cachedDevice, liveDevice))) continue;
                         result.Add(cachedDevice);
                     }
                     
@@ -73,23 +77,37 @@ namespace HidWizards.UCR.Core.Managers
         }
 
         /// <summary>
-        /// Returns devices intended for user-selection surfaces. Hidden devices remain available to
-        /// runtime resolution and existing profiles, but are omitted from add/create-device pickers.
+        /// Returns devices intended for user-selection surfaces. Selection and persistence are separate
+        /// concerns: a provider may expose enough runtime identity to use a device right now without
+        /// exposing a stable identity that is safe for persistent alias/hide/order metadata. Those
+        /// session-only devices must remain selectable. Cached devices are excluded by default so stale
+        /// provider enumeration slots do not pollute add-device lists.
         /// </summary>
-        public List<Device> GetVisibleDeviceList(DeviceIoType type, bool includeCache = true)
+        public List<Device> GetVisibleDeviceList(DeviceIoType type, bool includeCache = false)
         {
             var devices = GetAvailableDeviceList(type, includeCache);
-            var liveDevices = GetAvailableDeviceList(type, false);
+            return devices.Where(device => !IsDeviceHidden(device, devices) && !IsSessionDismissed(device)).ToList();
+        }
 
-            // A device that cannot be uniquely identified cannot safely carry an individual persistent
-            // alias/hide/order preference. More importantly, presenting indistinguishable units in a
-            // selection list invites the user to bind to an enumeration slot that may represent a
-            // different physical unit next time. Keep such entries available for runtime resolution and
-            // diagnostics, but force-hide them from user selection surfaces.
-            return devices.Where(device =>
-                    CanPersistDeviceAlias(device, liveDevices) &&
-                    !IsDeviceHidden(device, devices))
-                .ToList();
+        public bool DismissDeviceForSession(Device device)
+        {
+            var key = BuildSessionDeviceKey(device);
+            if (key == null) return false;
+            return _sessionDismissedDevices.Add(key);
+        }
+
+        public bool IsSessionDismissed(Device device)
+        {
+            var key = BuildSessionDeviceKey(device);
+            return key != null && _sessionDismissedDevices.Contains(key);
+        }
+
+        private static string BuildSessionDeviceKey(Device device)
+        {
+            if (device == null || string.IsNullOrWhiteSpace(device.ProviderName)) return null;
+            if (!string.IsNullOrWhiteSpace(device.HidPath))
+                return "hid|" + device.ProviderName + "|" + device.HidPath;
+            return "slot|" + device.ProviderName + "|" + device.DeviceHandle + "|" + device.DeviceNumber;
         }
 
         /// <summary>
@@ -257,6 +275,40 @@ namespace HidWizards.UCR.Core.Managers
             {
                 ProviderName = device.ProviderName
             };
+        }
+
+        public static bool CacheRepresentsLiveEndpoint(Device cachedDevice, Device liveDevice)
+        {
+            if (cachedDevice == null || liveDevice == null) return false;
+            if (!string.Equals(cachedDevice.ProviderName, liveDevice.ProviderName, StringComparison.OrdinalIgnoreCase)) return false;
+
+            if (!string.IsNullOrWhiteSpace(cachedDevice.HidPath) && !string.IsNullOrWhiteSpace(liveDevice.HidPath))
+            {
+                return string.Equals(cachedDevice.HidPath, liveDevice.HidPath, StringComparison.OrdinalIgnoreCase);
+            }
+
+            return !string.IsNullOrWhiteSpace(cachedDevice.DeviceHandle) &&
+                   string.Equals(cachedDevice.DeviceHandle, liveDevice.DeviceHandle, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool TryGetWindowsDeviceInstanceId(Device device, out string instanceId)
+        {
+            instanceId = null;
+            var hidPath = device?.HidPath;
+            if (string.IsNullOrWhiteSpace(hidPath)) return false;
+
+            var normalized = hidPath.Trim();
+            if (normalized.StartsWith(@"\\?\", StringComparison.Ordinal)) normalized = normalized.Substring(4);
+
+            var classGuidIndex = normalized.IndexOf("#{", StringComparison.Ordinal);
+            if (classGuidIndex >= 0) normalized = normalized.Substring(0, classGuidIndex);
+            normalized = normalized.TrimEnd('#');
+
+            var parts = normalized.Split(new[] { '#' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 3) return false;
+
+            instanceId = string.Join(@"\", parts);
+            return !string.IsNullOrWhiteSpace(instanceId);
         }
 
         public void RefreshDeviceList()
@@ -805,13 +857,100 @@ namespace HidWizards.UCR.Core.Managers
             var success = true;
             RefreshDeviceList();
             var availableDeviceList = GetAvailableDeviceList(DeviceIoType.Input, false);
-            
+
+            // Remove obsolete cache copies for endpoints that are live now before writing the current
+            // provider descriptors. This stops changing provider instance numbers from accumulating as
+            // duplicate devices across UCR sessions while retaining caches for genuinely disconnected
+            // hardware (which are still useful for old profile binding menus).
+            RemoveCacheEntriesOverlappingLiveDevices(availableDeviceList);
+
             foreach (var device in availableDeviceList)
             {
                 success &= SaveDeviceCache(device);
             }
 
+            _providerCache.Clear();
             return success;
+        }
+
+        public int RemoveStaleDeviceCacheCopies()
+        {
+            RefreshDeviceList();
+            var liveDevices = GetAvailableDeviceList(DeviceIoType.Input, false)
+                .Concat(GetAvailableDeviceList(DeviceIoType.Output, false))
+                .ToList();
+            var removed = RemoveCacheEntriesOverlappingLiveDevices(liveDevices);
+            _providerCache.Clear();
+            return removed;
+        }
+
+        public bool ForgetCachedDevice(Device device, out string error)
+        {
+            error = null;
+            if (device == null || !device.IsCache)
+            {
+                error = "Only cached/disconnected device records can be forgotten. Live devices are reported by Windows and their provider.";
+                return false;
+            }
+
+            try
+            {
+                var directory = GetProviderCacheDirectory(device.ProviderName);
+                if (!Directory.Exists(directory)) return true;
+
+                foreach (var path in Directory.GetFiles(directory, "*.json", SearchOption.TopDirectoryOnly))
+                {
+                    var cached = ReadDeviceCache(device.ProviderName, path);
+                    if (cached == null) continue;
+                    if (!DescriptorEquals(cached, device) && !PersistedIdentityEquals(cached, device)) continue;
+                    File.Delete(path);
+                }
+
+                _providerCache.Remove(device.ProviderName);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                error = "UCR could not remove the cached device record. See the log for details.";
+                Logger.Error(exception, "Failed to forget cached device: " + device.LogName());
+                return false;
+            }
+        }
+
+        private int RemoveCacheEntriesOverlappingLiveDevices(IEnumerable<Device> liveDevices)
+        {
+            var live = (liveDevices ?? Enumerable.Empty<Device>()).Where(device => device != null).ToList();
+            if (live.Count == 0) return 0;
+
+            var removed = 0;
+            var providers = live.Select(device => device.ProviderName)
+                .Where(provider => !string.IsNullOrWhiteSpace(provider))
+                .Distinct(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var provider in providers)
+            {
+                var directory = GetProviderCacheDirectory(provider);
+                if (!Directory.Exists(directory)) continue;
+
+                foreach (var path in Directory.GetFiles(directory, "*.json", SearchOption.TopDirectoryOnly))
+                {
+                    var cached = ReadDeviceCache(provider, path);
+                    if (cached == null) continue;
+                    if (!live.Any(liveDevice => CacheRepresentsLiveEndpoint(cached, liveDevice))) continue;
+
+                    try
+                    {
+                        File.Delete(path);
+                        removed++;
+                    }
+                    catch (Exception exception)
+                    {
+                        Logger.Error(exception, "Failed to remove stale device cache: " + path);
+                    }
+                }
+            }
+
+            return removed;
         }
 
         private bool SaveDeviceCache(Device device)

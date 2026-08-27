@@ -21,6 +21,20 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public string ProviderName => Device?.ProviderName ?? string.Empty;
         public string IoTypes { get; private set; }
         public string IdentityNote { get; }
+        public bool IsCachedOnly => Device?.IsCache ?? false;
+        public bool CanForget => IsCachedOnly;
+        public bool CanDismiss => Device != null && !IsCachedOnly;
+        public bool CanRemoveFromWindows
+        {
+            get
+            {
+                string instanceId;
+                return !IsCachedOnly && DevicesManager.TryGetWindowsDeviceInstanceId(Device, out instanceId);
+            }
+        }
+        public string RemoveFromUcrToolTip => IsCachedOnly
+            ? "Forget this cached/disconnected UCR record"
+            : "Remove this live device from UCR selection lists for this session";
 
         private string _alias;
         public string Alias
@@ -55,15 +69,18 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             ValidationType = type;
             CanPersist = canPersist;
             Alias = alias;
-            // If UCR cannot identify this unit reliably enough to persist presentation settings,
-            // it is unsafe to offer it as a selectable device. Keep it visible here for diagnosis,
-            // but lock it in the hidden state.
-            Hidden = canPersist ? hidden : true;
+            // Runtime selectability and persistent presentation settings are deliberately separate.
+            // Some providers can tell UCR exactly which live slot produced input without exposing a
+            // stable identity that survives enumeration changes. Keep those devices usable now, while
+            // disabling only the metadata that would be unsafe to persist.
+            Hidden = canPersist && hidden;
             StableKey = stableKey;
             IoTypes = type == DeviceIoType.Input ? "Input" : "Output";
-            IdentityNote = canPersist
-                ? "Persistent identity available"
-                : "Provider cannot uniquely identify this unit; it is forced hidden from device selection lists.";
+            IdentityNote = IsCachedOnly
+                ? "Cached/disconnected device record"
+                : canPersist
+                    ? "Persistent identity available"
+                    : "Session identity only — selectable now, but friendly name/hide/order cannot be persisted reliably.";
         }
 
         public void AddIoType(DeviceIoType type)
@@ -133,11 +150,15 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         {
             _devicesManager = devicesManager;
             Devices = new ObservableCollection<DeviceManagerItemViewModel>();
+            // Clean automatically whenever the manager opens; the user should not have to manually
+            // remove cache copies that correspond to endpoints Windows is already reporting live.
+            _devicesManager.RemoveStaleDeviceCacheCopies();
             Populate();
         }
 
         private void Populate()
         {
+            Devices.Clear();
             var byStableIdentity = new Dictionary<string, DeviceManagerItemViewModel>(StringComparer.OrdinalIgnoreCase);
             AddDevices(DeviceIoType.Input, byStableIdentity);
             AddDevices(DeviceIoType.Output, byStableIdentity);
@@ -156,13 +177,14 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             var devices = _devicesManager.GetAvailableDeviceList(type);
             foreach (var device in devices)
             {
+                if (_devicesManager.IsSessionDismissed(device)) continue;
                 var canPersist = _devicesManager.CanPersistDeviceAlias(device, liveDevices);
                 var identity = DevicesManager.BuildAliasIdentity(device);
                 var stableKey = canPersist && identity != null
                     ? BuildStableKey(identity)
-                    : BuildEphemeralKey(device, type);
+                    : BuildEphemeralKey(device);
 
-                if (canPersist && byStableIdentity.TryGetValue(stableKey, out var existing))
+                if (byStableIdentity.TryGetValue(stableKey, out var existing))
                 {
                     existing.AddIoType(type);
                     continue;
@@ -177,7 +199,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                     stableKey);
 
                 Devices.Add(item);
-                if (canPersist) byStableIdentity[stableKey] = item;
+                byStableIdentity[stableKey] = item;
             }
         }
 
@@ -186,9 +208,9 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             return alias.ProviderName + "|" + alias.IdentityKind + "|" + alias.IdentityValue + "|" + alias.DeviceNumber;
         }
 
-        private static string BuildEphemeralKey(Device device, DeviceIoType type)
+        private static string BuildEphemeralKey(Device device)
         {
-            return type + "|" + device.ProviderName + "|" + device.DeviceHandle + "|" + device.DeviceNumber + "|" + device.HidPath;
+            return "runtime|" + device.ProviderName + "|" + device.DeviceHandle + "|" + device.DeviceNumber + "|" + device.HidPath;
         }
 
         public async Task<DeviceManagerItemViewModel> DetectInputDeviceAsync()
@@ -266,6 +288,43 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             if (sourceIndex < 0 || targetIndex < 0 || targetIndex >= Devices.Count) return false;
             Devices.Move(sourceIndex, targetIndex);
             return true;
+        }
+
+        public int RemoveStaleCacheCopies()
+        {
+            var removed = _devicesManager.RemoveStaleDeviceCacheCopies();
+            Populate();
+            DetectionStatus = removed == 1
+                ? "Removed 1 stale cached device record."
+                : "Removed " + removed + " stale cached device records.";
+            return removed;
+        }
+
+        public bool ForgetCachedDevice(DeviceManagerItemViewModel item, out string error)
+        {
+            error = null;
+            if (item == null) return false;
+            if (!_devicesManager.ForgetCachedDevice(item.Device, out error)) return false;
+            Devices.Remove(item);
+            if (ReferenceEquals(SelectedDevice, item)) SelectedDevice = null;
+            return true;
+        }
+
+        public bool DismissLiveDevice(DeviceManagerItemViewModel item)
+        {
+            if (item == null || item.IsCachedOnly) return false;
+            if (!_devicesManager.DismissDeviceForSession(item.Device)) return false;
+            Devices.Remove(item);
+            if (ReferenceEquals(SelectedDevice, item)) SelectedDevice = null;
+            DetectionStatus = "Removed from UCR lists for this session: " + item.ProviderDeviceName;
+            return true;
+        }
+
+        public void Refresh()
+        {
+            _devicesManager.RefreshDeviceList();
+            _devicesManager.RemoveStaleDeviceCacheCopies();
+            Populate();
         }
 
         public bool Apply(out string error)

@@ -66,6 +66,15 @@ namespace HidWizards.UCR.Utilities
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
         public static extern IntPtr SendMessage(IntPtr hWnd, UInt32 Msg, IntPtr wParam, IntPtr lParam);
 
+        public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool EnumWindows(EnumWindowsProc enumFunc, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
         /// <summary>
         /// Requests that a top-level window become the foreground window after an explicit user activation.
         /// </summary>

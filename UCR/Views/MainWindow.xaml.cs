@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Media;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -40,6 +41,8 @@ namespace HidWizards.UCR.Views
         private Forms.NotifyIcon _trayIcon;
         private Forms.ToolStripMenuItem _stopCurrentProfileMenuItem;
         private readonly AutoProfileMonitor _autoProfileMonitor;
+        private DeviceManagerDialog _deviceManagerWindow;
+        private bool _deviceManagerHiddenToTray;
         private bool _exitRequested;
 
         enum CloseState
@@ -270,14 +273,12 @@ namespace HidWizards.UCR.Views
 
         private async void AddProfile(object sender, RoutedEventArgs e)
         {
-            var dialog = new CreateProfileDialog("Create profile", Context.DevicesManager);
+            var dialog = new CreateProfileDialog("Create profile");
             var result = (CreateProfileDialogViewModel) await DialogHost.Show(dialog, "RootDialog");
             if (result == null || string.IsNullOrEmpty(result.ProfileName)) return;
 
-            var inputs = result.GetInputDevices().ConvertAll(d => new DeviceConfiguration(d));
-            var outputs = result.GetOutputDevices().ConvertAll(d => new DeviceConfiguration(d));
-
-            var profile = Context.ProfilesManager.CreateProfile(result.ProfileName, inputs, outputs);
+            var profile = Context.ProfilesManager.CreateProfile(result.ProfileName,
+                new List<DeviceConfiguration>(), new List<DeviceConfiguration>());
             Context.ProfilesManager.AddProfile(profile);
 
             ReloadProfileTree();
@@ -287,14 +288,12 @@ namespace HidWizards.UCR.Views
         private async void AddChildProfile(object sender, RoutedEventArgs e)
         {
             if (!GetSelectedItem(out var profileItem)) return;
-            var dialog = new CreateProfileDialog("Create child profile", Context.DevicesManager);
+            var dialog = new CreateProfileDialog("Create child profile");
             var result = (CreateProfileDialogViewModel)await DialogHost.Show(dialog, "RootDialog");
             if (result == null || string.IsNullOrEmpty(result.ProfileName)) return;
 
-            var inputs = result.GetInputDevices().ConvertAll(d => new DeviceConfiguration(d));
-            var outputs = result.GetOutputDevices().ConvertAll(d => new DeviceConfiguration(d));
-
-            var profile = Context.ProfilesManager.CreateProfile(result.ProfileName, inputs, outputs);
+            var profile = Context.ProfilesManager.CreateProfile(result.ProfileName,
+                new List<DeviceConfiguration>(), new List<DeviceConfiguration>());
             Context.ProfilesManager.AddProfile(profile, profileItem.Profile);
 
             ReloadProfileTree();
@@ -313,11 +312,10 @@ namespace HidWizards.UCR.Views
 
             if (ProfileWindows.TryGetValue(profileItem.Profile.Guid, out var profileWindow))
             {
-                void FocusAction() => profileWindow.Focus();
-                Dispatcher.BeginInvoke((Action) FocusAction);
+                Dispatcher.BeginInvoke((Action)(() => SurfaceProfileWindow(profileWindow)));
                 return;
             }
-            
+
             OpenProfileWindow(profileItem.Profile);
         }
 
@@ -325,16 +323,51 @@ namespace HidWizards.UCR.Views
         {
             void ShowAction()
             {
-                var win = new ProfileWindow(Context, profile);
-                ProfileWindows.Add(win.ProfileGuid, win);
+                CloseDeviceManagerWindow();
+
+                if (ProfileWindows.TryGetValue(profile.Guid, out var existing))
+                {
+                    SurfaceProfileWindow(existing);
+                    return;
+                }
+
+                // Keep one profile editor form open at a time. Closing the previous editor also
+                // releases its binding/plugin view-model graph immediately.
+                var previousWindows = new List<ProfileWindow>(ProfileWindows.Values);
+                foreach (var previous in previousWindows) previous.Close();
+
+                var win = new ProfileWindow(Context, profile) { Owner = this };
+                ProfileWindows[win.ProfileGuid] = win;
                 win.Closed += OnProfileWindowClosed;
-                win.Focus();
                 win.Show();
+                SurfaceProfileWindow(win);
                 var restoreFocusDialogClose = RootDialog.GetType().GetField("_restoreFocusDialogClose", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 restoreFocusDialogClose?.SetValue(RootDialog, null);
             }
 
             Dispatcher.BeginInvoke((Action)ShowAction);
+        }
+
+        private static void SurfaceProfileWindow(ProfileWindow window)
+        {
+            SurfaceAuxiliaryWindow(window);
+        }
+
+        private static void SurfaceAuxiliaryWindow(Window window)
+        {
+            if (window == null) return;
+            if (!window.IsVisible) window.Show();
+            if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
+            window.Topmost = true;
+            try
+            {
+                window.Activate();
+                window.Focus();
+            }
+            finally
+            {
+                window.Topmost = false;
+            }
         }
 
         private void OnProfileWindowClosed(object sender, EventArgs e)
@@ -498,16 +531,37 @@ namespace HidWizards.UCR.Views
             }
         }
 
-        private async void ManageDevices_OnClick(object sender, RoutedEventArgs e)
+        private void ManageDevices_OnClick(object sender, RoutedEventArgs e)
         {
-            var dialog = new DeviceManagerDialog(Context.DevicesManager);
-            var result = (DeviceManagerViewModel)await DialogHost.Show(dialog, "RootDialog");
-            if (result == null) return;
-
-            if (!result.Apply(out var error))
+            if (_deviceManagerWindow != null)
             {
-                HidWizards.UCR.Utilities.DarkMessageBox.Show(this, error, "Device settings", MessageBoxButton.OK, MessageBoxImage.Warning);
+                SurfaceAuxiliaryWindow(_deviceManagerWindow);
+                return;
             }
+
+            CloseAllProfileWindows();
+            var dialog = new DeviceManagerDialog(Context.DevicesManager) { Owner = this };
+            _deviceManagerWindow = dialog;
+            dialog.Closed += DeviceManagerWindow_OnClosed;
+            dialog.Show();
+            SurfaceAuxiliaryWindow(dialog);
+        }
+
+        private void DeviceManagerWindow_OnClosed(object sender, EventArgs e)
+        {
+            if (sender is DeviceManagerDialog dialog) dialog.Closed -= DeviceManagerWindow_OnClosed;
+            if (ReferenceEquals(_deviceManagerWindow, sender)) _deviceManagerWindow = null;
+            _deviceManagerHiddenToTray = false;
+        }
+
+        private void CloseDeviceManagerWindow()
+        {
+            var dialog = _deviceManagerWindow;
+            if (dialog == null) return;
+            _deviceManagerWindow = null;
+            dialog.Closed -= DeviceManagerWindow_OnClosed;
+            dialog.Close();
+            _deviceManagerHiddenToTray = false;
         }
 
         private async void Appearance_OnClick(object sender, RoutedEventArgs e)
@@ -664,6 +718,7 @@ namespace HidWizards.UCR.Views
         {
             _autoProfileMonitor?.Dispose();
             CloseAllProfileWindows();
+            CloseDeviceManagerWindow();
             if (_trayIcon != null) _trayIcon.Visible = false;
         }
 
@@ -729,6 +784,9 @@ namespace HidWizards.UCR.Views
                 profileWindow.Hide();
             }
 
+            _deviceManagerHiddenToTray = _deviceManagerWindow != null && _deviceManagerWindow.IsVisible;
+            if (_deviceManagerHiddenToTray) _deviceManagerWindow.Hide();
+
             _trayIcon.Visible = true;
             Hide();
         }
@@ -738,16 +796,35 @@ namespace HidWizards.UCR.Views
             Show();
             if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
 
+            ProfileWindow restoredProfile = null;
             foreach (var profileGuid in _profileWindowsHiddenToTray)
             {
                 if (ProfileWindows.TryGetValue(profileGuid, out var profileWindow))
                 {
                     profileWindow.Show();
+                    restoredProfile = profileWindow;
                 }
             }
             _profileWindowsHiddenToTray.Clear();
 
-            BringToForeground();
+            if (_deviceManagerHiddenToTray && _deviceManagerWindow != null) _deviceManagerWindow.Show();
+            _deviceManagerHiddenToTray = false;
+
+            if (_deviceManagerWindow != null && _deviceManagerWindow.IsVisible)
+            {
+                SurfaceAuxiliaryWindow(_deviceManagerWindow);
+            }
+            else if (restoredProfile != null)
+            {
+                SurfaceProfileWindow(restoredProfile);
+            }
+            else
+            {
+                var visibleProfile = ProfileWindows.Values.FirstOrDefault(window => window.IsVisible);
+                if (visibleProfile != null) SurfaceProfileWindow(visibleProfile);
+                else BringToForeground();
+            }
+
             _trayIcon.Visible = true;
         }
 

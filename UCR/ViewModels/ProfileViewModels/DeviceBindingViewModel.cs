@@ -171,11 +171,20 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             SetSelectDevice();
         }
 
-        private void ContextOnDeviceAliasesChanged()
+        public void RefreshDeviceList()
         {
+            if (_disposed || DeviceBinding == null || DeviceBinding.Profile == null) return;
             LoadDeviceInputs();
             OnPropertyChanged(nameof(Devices));
             OnPropertyChanged(nameof(SelectedDevice));
+            OnPropertyChanged(nameof(BindButtonText));
+            OnPropertyChanged(nameof(ShowBlock));
+            OnPropertyChanged(nameof(ShowInvertInput));
+        }
+
+        private void ContextOnDeviceAliasesChanged()
+        {
+            RefreshDeviceList();
         }
 
         private void SetSelectDevice()
@@ -191,8 +200,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 }
             }
 
-            if (Devices.Count == 0) Devices.Add(new ComboBoxItemViewModel("No devices", Guid.Empty));
-            if (selectedDevice == null)
+            if (Devices.Count == 0)
+            {
+                Devices.Add(new ComboBoxItemViewModel("No devices", Guid.Empty));
+                selectedDevice = Devices[0];
+            }
+            else if (selectedDevice == null && DeviceBinding.DeviceConfigurationGuid != Guid.Empty)
+            {
+                selectedDevice = new ComboBoxItemViewModel("Unavailable device", DeviceBinding.DeviceConfigurationGuid);
+                Devices.Insert(0, selectedDevice);
+            }
+            else if (selectedDevice == null)
             {
                 selectedDevice = Devices[0];
             }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -47,7 +48,7 @@ namespace HidWizards.UCR
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
 
             mutex = new SingleGlobalInstance();
-            if (mutex.HasHandle && GetProcesses().Length <= 1)
+            if (mutex.HasHandle)
             {
                 Logger.Info("Launching UCR");
                 // The splash is a real Window on its own dispatcher. Keep shutdown explicit until the
@@ -261,17 +262,21 @@ namespace HidWizards.UCR
                 ptrCopyData = Marshal.AllocCoTaskMem(Marshal.SizeOf(copyData));
                 Marshal.StructureToPtr(copyData, ptrCopyData, false);
 
-                // Send the message
+                // MainWindowHandle can be zero when UCR is hidden to the tray. Enumerate all
+                // top-level windows owned by the existing process so a second launch can always
+                // reach the hidden WPF main window and ask it to surface itself.
                 foreach (var proc in processes)
                 {
-                    if (proc.MainWindowHandle == IntPtr.Zero) continue;
-                    NativeMethods.SendMessage(proc.MainWindowHandle, NativeMethods.WM_COPYDATA, IntPtr.Zero, ptrCopyData);
+                    foreach (var handle in GetTopLevelWindowHandles(proc.Id))
+                    {
+                        NativeMethods.SendMessage(handle, NativeMethods.WM_COPYDATA, IntPtr.Zero, ptrCopyData);
+                    }
                 }
 
             }
             catch (Exception e)
             {
-                Logger.Error("Unable to send args to existing process", e);
+                Logger.Error(e, "Unable to send args to existing process");
             }
             finally
             {
@@ -279,6 +284,19 @@ namespace HidWizards.UCR
                 if (ptrCopyData != IntPtr.Zero)
                     Marshal.FreeCoTaskMem(ptrCopyData);
             }
+        }
+
+        private static IEnumerable<IntPtr> GetTopLevelWindowHandles(int processId)
+        {
+            var handles = new List<IntPtr>();
+            NativeMethods.EnumWindows((handle, parameter) =>
+            {
+                uint ownerProcessId;
+                NativeMethods.GetWindowThreadProcessId(handle, out ownerProcessId);
+                if (ownerProcessId == (uint)processId) handles.Add(handle);
+                return true;
+            }, IntPtr.Zero);
+            return handles.Distinct();
         }
 
         public void ShutdownWithProgress(Window mainWindow, bool saveContext)

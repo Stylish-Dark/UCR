@@ -201,8 +201,8 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 Device = null,
                 ControlKind = ControlVisualKind.Filter,
                 ControlBrush = FilterBrush,
-                ControlLabel = cleanName,
-                ToolTip = "Defines filter — " + cleanName,
+                ControlLabel = "DEFINE · " + cleanName,
+                ToolTip = "Creates/defines filter — " + cleanName,
                 IsBound = true,
                 DeviceConfigurationGuid = Guid.Empty,
                 ShowDeviceBadge = false

@@ -9,6 +9,7 @@ using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Plugins.Filter;
 using HidWizards.UCR.Plugins.Remapper;
 using HidWizards.UCR.Tests.Factory;
+using HidWizards.UCR.ViewModels.ProfileViewModels;
 using NUnit.Framework;
 
 namespace HidWizards.UCR.Tests.ModelTests
@@ -83,6 +84,39 @@ namespace HidWizards.UCR.Tests.ModelTests
 
             configuration.ChangeConfigurationName("Movement Keys");
             Assert.That(configuration.GetFullTitleForProfile(_profile), Is.EqualTo("Movement Keys"));
+        }
+
+        [Test]
+        public void AddOutputMenuUsesConciseDestinationNameForSimpleRoutes()
+        {
+            var option = new SimplePluginViewModel(new ButtonToFilter());
+
+            Assert.That(option.OutputType, Is.EqualTo("Filter"));
+            Assert.That(option.MenuLabel, Is.EqualTo("Filter"));
+        }
+
+        [Test]
+        public void BindingDeviceListCanRefreshAfterProfileDevicesChange()
+        {
+            var first = new DeviceConfiguration(new Device("Keyboard A", "Core_Interception", "kbd-a", 0));
+            var second = new DeviceConfiguration(new Device("Keyboard B", "Core_Interception", "kbd-b", 1));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { first }, DeviceIoType.Input);
+
+            var binding = new DeviceBinding(value => { }, _profile, DeviceIoType.Input)
+            {
+                DeviceBindingCategory = DeviceBindingCategory.Momentary
+            };
+            binding.SetDeviceConfigurationGuid(first.Guid, false);
+            var viewModel = new DeviceBindingViewModel(binding);
+
+            Assert.That(viewModel.Devices.Count, Is.EqualTo(1));
+
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { second }, DeviceIoType.Input);
+            viewModel.RefreshDeviceList();
+
+            Assert.That(viewModel.Devices.Count, Is.EqualTo(2));
+            Assert.That(viewModel.Devices.Any(item => item.Value == second.Guid), Is.True);
+            viewModel.Dispose();
         }
 
         [Test]

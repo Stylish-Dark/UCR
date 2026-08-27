@@ -123,6 +123,32 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             profile.Context.ActiveProfileChangedEvent += ContextOnActiveProfileChangedEvent;
         }
 
+        public void RefreshDeviceCapabilities()
+        {
+            if (_disposed) return;
+            _supportedInputCategories.Clear();
+            foreach (var category in GetSupportedInputCategories()) _supportedInputCategories.Add(category);
+
+            var previousInput = SelectedInput;
+            InputOptions.Clear();
+            var labels = _routeOptions.Where(RouteInputSupported)
+                .Select(route => route.InputLabel)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(label => label, Comparer<string>.Create(CompareEndpointLabels))
+                .ToList();
+            foreach (var label in labels) InputOptions.Add(label);
+
+            if (!string.IsNullOrWhiteSpace(previousInput) && InputOptions.Contains(previousInput))
+                SelectedInput = previousInput;
+            else
+                SelectedInput = InputOptions.Count > 0 ? InputOptions[0] : null;
+
+            RefreshOutputOptions();
+            OnPropertyChanged(nameof(InputOptions));
+            OnPropertyChanged(nameof(IsEnabled));
+            OnPropertyChanged(nameof(CanAddMapping));
+        }
+
         private void BuildInputOptions()
         {
             var labels = new List<string>();

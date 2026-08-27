@@ -2,74 +2,52 @@
              Style="{StaticResource UcrDialogRoot}"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:HidWizards.UCR.Views.Dialogs"
-             xmlns:system="clr-namespace:System;assembly=mscorlib"
              xmlns:wpf="http://materialdesigninxaml.net/winfx/xaml/themes"
-             xmlns:controls="clr-namespace:HidWizards.UCR.Views.Controls"
              xmlns:dashboard="clr-namespace:HidWizards.UCR.ViewModels.Dashboard"
-             mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800"
-             d:DataContext="{d:DesignData Source=/SampleData/CreateProfileDialogSampleData.xaml}"
-             Height="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type wpf:DialogHost}},Path=ActualHeight}"
-             Width="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type wpf:DialogHost}},Path=ActualWidth}"
-             MaxHeight="800"
-             MaxWidth="1200"
-             Margin="-16"
-             Padding="16"
-             Background="#212121" TextElement.Foreground="#FFFFFF">
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-        <Grid Margin="16" Grid.Column="0">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-            <TextBlock Text="{Binding Title}" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignTitleTextBlock}"/>
-            <TextBox x:Name="TextValue" wpf:HintAssist.Hint="Profile name" VerticalAlignment="Top" Style="{DynamicResource MaterialDesignFloatingHintTextBox}"                 
-                 Margin="0 6 0 0"
-                 Foreground="#FFFFFF" CaretBrush="#FFFFFF"
-                 FontSize="18" Grid.Row="1">
-                <TextBox.Text>
-                    <Binding Path="ProfileName" UpdateSourceTrigger="PropertyChanged">
-                        <Binding.ValidationRules>
-                            <local:NotEmptyValidationRule ValidatesOnTargetUpdated="True" />
-                        </Binding.ValidationRules>
-                    </Binding>
-                </TextBox.Text>
-            </TextBox>
-            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Grid.Row="2"
-                    Margin="0 16 0 0">
-                <Button IsDefault="True" 
-                    Command="{x:Static wpf:DialogHost.CloseDialogCommand}" 
+             mc:Ignorable="d"
+             d:DesignHeight="220" d:DesignWidth="460"
+             Width="440" MaxWidth="520"
+             Padding="18" Background="#212121" TextElement.Foreground="#FFFFFF">
+    <Grid MinWidth="380">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Text="{Binding Title}" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignTitleTextBlock}"/>
+        <TextBlock Grid.Row="1" Margin="0 5 0 0" Text="Devices can be added directly in the profile editor." Opacity="0.58" FontSize="12.5"/>
+        <TextBox Grid.Row="2" x:Name="TextValue" wpf:HintAssist.Hint="Profile name"
+                 Style="{DynamicResource MaterialDesignFloatingHintTextBox}" Margin="0 10 0 0"
+                 Foreground="#FFFFFF" CaretBrush="#FFFFFF" FontSize="18">
+            <TextBox.Text>
+                <Binding Path="ProfileName" UpdateSourceTrigger="PropertyChanged">
+                    <Binding.ValidationRules>
+                        <local:NotEmptyValidationRule ValidatesOnTargetUpdated="True"/>
+                    </Binding.ValidationRules>
+                </Binding>
+            </TextBox.Text>
+        </TextBox>
+        <StackPanel Grid.Row="3" HorizontalAlignment="Right" Orientation="Horizontal" Margin="0 18 0 0">
+            <Button IsDefault="True" Command="{x:Static wpf:DialogHost.CloseDialogCommand}"
                     Content="CREATE" CommandParameter="{Binding ViewModel}">
-                    <Button.Style>
-                        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding Source={x:Reference TextValue}, Path=Text}" Value="">
-                                    <Setter Property="IsEnabled" Value="False" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                </Button>
-                <Button IsCancel="True" Margin="8 0 0 0" Style="{DynamicResource MaterialDesignFlatButton}"
-                    Command="{x:Static wpf:DialogHost.CloseDialogCommand}"
-                    Content="CANCEL">
-                    <Button.CommandParameter>
-                        <dashboard:CreateProfileDialogViewModel/>
-                    </Button.CommandParameter>
-                </Button>
-            </StackPanel>
-        </Grid>
-        <controls:DeviceSelectControl Grid.Column="1" Margin="0 8" DataContext="{Binding InputControl}"/>
-        <controls:DeviceSelectControl Grid.Column="2" Margin="8" DataContext="{Binding OutputControl}" />
-
+                <Button.Style>
+                    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Source={x:Reference TextValue}, Path=Text}" Value="">
+                                <Setter Property="IsEnabled" Value="False"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+            <Button IsCancel="True" Margin="8 0 0 0" Style="{DynamicResource MaterialDesignFlatButton}"
+                    Command="{x:Static wpf:DialogHost.CloseDialogCommand}" Content="CANCEL">
+                <Button.CommandParameter><dashboard:CreateProfileDialogViewModel/></Button.CommandParameter>
+            </Button>
+        </StackPanel>
     </Grid>
 </UserControl>

@@ -1,16 +1,20 @@
-﻿<UserControl x:Class="HidWizards.UCR.Views.Dialogs.DeviceManagerDialog"
-             Style="{StaticResource UcrDialogRoot}"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-             mc:Ignorable="d"
-             Background="#212121"
-             Foreground="#FFFFFF"
-             d:DesignHeight="650" d:DesignWidth="900">
-    <Grid Margin="18" MinWidth="540" MinHeight="480" MaxWidth="980" MaxHeight="760"
-          Background="#212121" TextElement.Foreground="#FFFFFF">
+﻿<Window x:Class="HidWizards.UCR.Views.Dialogs.DeviceManagerDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        mc:Ignorable="d"
+        Title="Devices" Width="980" Height="650" MinWidth="720" MinHeight="460"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResize"
+        Background="#212121" Foreground="#FFFFFF"
+        TextElement.Foreground="#FFFFFF" FontFamily="{DynamicResource MaterialDesignFont}"
+        PreviewMouseWheel="DeviceManagerWindow_OnPreviewMouseWheel"
+        PreviewKeyDown="DeviceManagerWindow_OnPreviewKeyDown">
+    <Grid Margin="18" Background="#212121">
+        <Grid.LayoutTransform>
+            <ScaleTransform ScaleX="{DynamicResource UcrUiScale}" ScaleY="{DynamicResource UcrUiScale}"/>
+        </Grid.LayoutTransform>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -24,22 +28,27 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <TextBlock Grid.Column="0" Text="Devices" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignTitleTextBlock}" VerticalAlignment="Center"/>
-            <Button Grid.Column="1" Content="{Binding DetectionButtonText}" Click="DetectDevice_OnClick"
-                    Style="{StaticResource MaterialDesignFlatButton}" ToolTip="Identify an input device by pressing one of its buttons or keys"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button Content="REMOVE STALE" Click="RemoveStale_OnClick" Margin="0 0 6 0"
+                        Style="{StaticResource MaterialDesignFlatButton}" ToolTip="Remove obsolete UCR cache copies of devices that Windows currently reports live"/>
+                <Button Content="WINDOWS DEVICES" Click="OpenWindowsDevices_OnClick" Margin="0 0 6 0"
+                        Style="{StaticResource MaterialDesignFlatButton}" ToolTip="Open Windows Device Manager for live hardware removal or driver management"/>
+                <Button Content="{Binding DetectionButtonText}" Click="DetectDevice_OnClick"
+                        Style="{StaticResource MaterialDesignFlatButton}" ToolTip="Identify an input device by pressing one of its buttons or keys"/>
+            </StackPanel>
         </Grid>
         <StackPanel Grid.Row="1" Margin="0 6 0 12">
             <TextBlock Opacity="0.72" TextWrapping="Wrap"
-                       Text="Give devices readable names, hide devices you never want in add-device lists, and set their display order. Existing profile bindings are never removed by hiding a device."/>
+                       Text="Live devices stay usable even when their provider cannot supply a stable identity. Friendly-name/hide/order settings are only persisted when UCR can identify a device safely."/>
+            <TextBlock Text="Cached/disconnected records can be forgotten here. Live Windows hardware is managed through Windows Devices."
+                       Opacity="0.55" TextWrapping="Wrap" Margin="0 2 0 0"/>
             <TextBlock Text="{Binding DetectionStatus}" Margin="0 5 0 0" Foreground="{DynamicResource PrimaryHueMidBrush}"
                        FontWeight="SemiBold" TextWrapping="Wrap"/>
         </StackPanel>
 
         <ListView x:Name="DeviceList" Grid.Row="2" ItemsSource="{Binding Devices}" SelectedItem="{Binding SelectedDevice, Mode=TwoWay}"
-                  HorizontalContentAlignment="Stretch"
-                  Background="#212121"
-                  Foreground="#FFFFFF"
-                  BorderBrush="#424242"
-                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                  HorizontalContentAlignment="Stretch" Background="#212121" Foreground="#FFFFFF"
+                  BorderBrush="#424242" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <ListView.ItemContainerStyle>
                 <Style TargetType="ListViewItem">
                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -50,40 +59,45 @@
             </ListView.ItemContainerStyle>
             <ListView.ItemTemplate>
                 <DataTemplate>
-                    <Border BorderBrush="{DynamicResource PrimaryHueMidBrush}" BorderThickness="0 0 0 1" Padding="6 7">
+                    <Border BorderBrush="#3C3C3C" BorderThickness="0 0 0 1" Padding="8 8">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="160"/>
+                                <ColumnDefinition Width="190"/>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="78"/>
+                                <ColumnDefinition Width="82"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Margin="0 0 12 0">
                                 <TextBlock Text="{Binding ProviderDeviceName}" Foreground="#FFFFFF" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding ProviderDeviceName}"/>
-                                <TextBlock Text="{Binding ProviderName}" Foreground="#D0D0D0" FontSize="14" Opacity="0.82" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="{Binding IoTypes}" Foreground="#D0D0D0" FontSize="14" Opacity="0.82"/>
+                                <TextBlock Text="{Binding ProviderName}" Foreground="#D0D0D0" FontSize="13" Opacity="0.72" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding IoTypes}" Foreground="#D0D0D0" FontSize="13" Opacity="0.72"/>
                             </StackPanel>
 
                             <StackPanel Grid.Column="1" Margin="0 0 12 0">
                                 <TextBox Text="{Binding Alias, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                         IsEnabled="{Binding CanPersist}"
-                                         Background="#2B2B2B"
-                                         Foreground="#FFFFFF"
-                                         CaretBrush="#FFFFFF"
-                                         BorderBrush="#555555"
-                                         materialDesign:HintAssist.Hint="Friendly name"/>
-                                <TextBlock Text="{Binding IdentityNote}" Foreground="#C8C8C8" FontSize="13" Opacity="0.78" TextWrapping="Wrap" Margin="0 2 0 0"/>
+                                         IsEnabled="{Binding CanPersist}" Background="#2B2B2B" Foreground="#FFFFFF"
+                                         CaretBrush="#FFFFFF" BorderBrush="#555555" materialDesign:HintAssist.Hint="Friendly name"/>
+                                <TextBlock Text="{Binding IdentityNote}" Foreground="#C8C8C8" FontSize="12.5" Opacity="0.75" TextWrapping="Wrap" Margin="0 2 0 0"/>
                             </StackPanel>
 
                             <CheckBox Grid.Column="2" Content="Hidden" Foreground="#FFFFFF" VerticalAlignment="Center"
                                       IsChecked="{Binding Hidden, Mode=TwoWay}" IsEnabled="{Binding CanPersist}"/>
 
                             <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
-                                <Button ToolTip="Move up" Style="{StaticResource MaterialDesignCardButton}" IsEnabled="{Binding CanPersist}" Click="MoveUp_OnClick" Padding="5">
+                                <Button ToolTip="{Binding RemoveFromUcrToolTip}" Style="{StaticResource MaterialDesignCardButton}"
+                                        Click="RemoveFromUcr_OnClick" Padding="4">
+                                    <materialDesign:PackIcon Kind="Trash" Width="18" Height="18"/>
+                                </Button>
+                                <Button ToolTip="Remove this exact device instance from Windows (administrator approval required)"
+                                        Style="{StaticResource MaterialDesignCardButton}" IsEnabled="{Binding CanRemoveFromWindows}"
+                                        Click="RemoveFromWindows_OnClick" Padding="4">
+                                    <materialDesign:PackIcon Kind="Usb" Width="18" Height="18"/>
+                                </Button>
+                                <Button ToolTip="Move up" Style="{StaticResource MaterialDesignCardButton}" IsEnabled="{Binding CanPersist}" Click="MoveUp_OnClick" Padding="4">
                                     <materialDesign:PackIcon Kind="ArrowUp" Width="18" Height="18"/>
                                 </Button>
-                                <Button ToolTip="Move down" Style="{StaticResource MaterialDesignCardButton}" IsEnabled="{Binding CanPersist}" Click="MoveDown_OnClick" Padding="5">
+                                <Button ToolTip="Move down" Style="{StaticResource MaterialDesignCardButton}" IsEnabled="{Binding CanPersist}" Click="MoveDown_OnClick" Padding="4">
                                     <materialDesign:PackIcon Kind="ArrowDown" Width="18" Height="18"/>
                                 </Button>
                             </StackPanel>
@@ -94,10 +108,8 @@
         </ListView>
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 14 0 0">
-            <Button Content="SAVE" IsDefault="True" Style="{StaticResource MaterialDesignRaisedButton}"
-                    Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" CommandParameter="{Binding ViewModel}"/>
-            <Button Content="CANCEL" IsCancel="True" Margin="8 0 0 0" Style="{StaticResource MaterialDesignFlatButton}"
-                    Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"/>
+            <Button Content="SAVE" IsDefault="True" Style="{StaticResource MaterialDesignRaisedButton}" Click="Save_OnClick"/>
+            <Button Content="CANCEL" Margin="8 0 0 0" Style="{StaticResource MaterialDesignFlatButton}" Click="Cancel_OnClick"/>
         </StackPanel>
     </Grid>
-</UserControl>
+</Window>

@@ -10,6 +10,7 @@ using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Utilities;
+using HidWizards.UCR.ViewModels.Dashboard;
 using HidWizards.UCR.ViewModels.Dialogs;
 using HidWizards.UCR.ViewModels.ProfileViewModels;
 using HidWizards.UCR.Views.Dialogs;
@@ -177,6 +178,61 @@ namespace HidWizards.UCR.Views.ProfileViews
 
             ProfileViewModel.ApplyMappingNames(result.Items);
             Logger.Info("Bulk mapping rename completed for profile: " + Profile.Title);
+        }
+
+        private void AddProfileInputDevice_OnClick(object sender, RoutedEventArgs e)
+        {
+            ProfileViewModel.InputDeviceControlViewModel?.AddDevices();
+        }
+
+        private void RemoveProfileInputDevice_OnClick(object sender, RoutedEventArgs e)
+        {
+            var viewModel = ProfileViewModel.InputDeviceControlViewModel;
+            viewModel?.RemoveDevice(viewModel.SelectedDeviceConfiguration);
+        }
+
+        private void ManageProfileInputDevice_OnClick(object sender, RoutedEventArgs e)
+        {
+            ProfileViewModel.InputDeviceControlViewModel?.ManageDeviceConfiguration();
+        }
+
+        private async void DetectProfileInputDevice_OnClick(object sender, RoutedEventArgs e)
+        {
+            Keyboard.ClearFocus();
+            var item = await ProfileViewModel.InputDeviceControlViewModel.DetectAndAddInputDeviceAsync();
+            if (item == null) return;
+            InputProfileDeviceList.UpdateLayout();
+            InputProfileDeviceList.ScrollIntoView(item);
+        }
+
+        private void AddProfileOutputDevice_OnClick(object sender, RoutedEventArgs e)
+        {
+            ProfileViewModel.OutputDeviceControlViewModel?.AddDevices();
+        }
+
+        private void RemoveProfileOutputDevice_OnClick(object sender, RoutedEventArgs e)
+        {
+            var viewModel = ProfileViewModel.OutputDeviceControlViewModel;
+            viewModel?.RemoveDevice(viewModel.SelectedDeviceConfiguration);
+        }
+
+        private void ManageProfileOutputDevice_OnClick(object sender, RoutedEventArgs e)
+        {
+            ProfileViewModel.OutputDeviceControlViewModel?.ManageDeviceConfiguration();
+        }
+
+        private void PrimaryInputDevice_OnClick(object sender, RoutedEventArgs e)
+        {
+            var item = (sender as FrameworkElement)?.DataContext as DeviceItem;
+            ProfileViewModel.InputDeviceControlViewModel?.SetPrimaryDevice(item);
+            e.Handled = true;
+        }
+
+        private void PrimaryOutputDevice_OnClick(object sender, RoutedEventArgs e)
+        {
+            var item = (sender as FrameworkElement)?.DataContext as DeviceItem;
+            ProfileViewModel.OutputDeviceControlViewModel?.SetPrimaryDevice(item);
+            e.Handled = true;
         }
 
         private void CollapseAllMappings_OnClick(object sender, RoutedEventArgs e)

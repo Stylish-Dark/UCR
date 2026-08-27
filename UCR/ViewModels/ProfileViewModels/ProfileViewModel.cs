@@ -4,10 +4,11 @@ using System.ComponentModel;
 using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Models;
+using HidWizards.UCR.ViewModels.Dashboard;
 using HidWizards.UCR.Views.Dialogs;
-using MaterialDesignThemes.Wpf;
 
 namespace HidWizards.UCR.ViewModels.ProfileViewModels
 {
@@ -34,6 +35,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<string> FilterNames { get; private set; }
         public ObservableCollection<FilterDefinitionItemViewModel> FilterDefinitions { get; private set; }
         public PluginToolboxViewModel PluginToolbox { get; set; }
+        public ProfileDeviceListControlViewModel InputDeviceControlViewModel { get; private set; }
+        public ProfileDeviceListControlViewModel OutputDeviceControlViewModel { get; private set; }
 
         public string ProfileDialogIdentifier => $"ProfileDialog-{Profile.Guid}";
         private bool _disposed;
@@ -53,6 +56,22 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var pluginList = profile.Context.GetPlugins();
             pluginList.Sort();
             PluginToolbox = new PluginToolboxViewModel(profile, pluginList);
+            InputDeviceControlViewModel = new ProfileDeviceListControlViewModel(profile,
+                profile.GetDeviceConfigurationList(DeviceIoType.Input), DeviceIoType.Input, RefreshDevicePresentation, ProfileDialogIdentifier);
+            OutputDeviceControlViewModel = new ProfileDeviceListControlViewModel(profile,
+                profile.GetDeviceConfigurationList(DeviceIoType.Output), DeviceIoType.Output, RefreshDevicePresentation, ProfileDialogIdentifier);
+        }
+
+        public void RefreshDevicePresentation()
+        {
+            PluginToolbox?.RefreshDeviceCapabilities();
+            foreach (var binding in GetAllBindingViewModels().ToList()) binding?.RefreshDeviceList();
+            foreach (var mapping in MappingsList ?? new ObservableCollection<MappingViewModel>())
+            {
+                mapping.RefreshCollapsedSummary();
+            }
+            OnPropertyChanged(nameof(InputDeviceControlViewModel));
+            OnPropertyChanged(nameof(OutputDeviceControlViewModel));
         }
 
         private void ContextOnActiveProfileChangedEvent(Profile profile)
@@ -233,13 +252,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
-        public async void RemoveMapping(MappingViewModel mappingViewModel)
+        public void RemoveMapping(MappingViewModel mappingViewModel)
         {
-            if (mappingViewModel.Mapping.DeviceBindings.Count > 0)
+            if (mappingViewModel == null) return;
+            if (mappingViewModel.Mapping.DeviceBindings.Count > 0 || mappingViewModel.Plugins.Count > 0)
             {
-                var dialog = new BoolDialog("Remove mapping", "Are you sure you want to remove the mapping: " + mappingViewModel.Mapping.Title + "?");
-                var result = (bool?)await DialogHost.Show(dialog, ProfileDialogIdentifier);
-                if (result == null || !result.Value) return;
+                var result = HidWizards.UCR.Utilities.DarkMessageBox.Show(
+                    "Remove mapping '" + mappingViewModel.Mapping.Title + "'?",
+                    "Remove mapping", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (result != MessageBoxResult.Yes) return;
             }
 
             if (Profile.RemoveMapping(mappingViewModel.Mapping))
@@ -259,6 +280,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             _disposed = true;
             Profile.Context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;
             PluginToolbox?.Dispose();
+            InputDeviceControlViewModel?.Dispose();
+            OutputDeviceControlViewModel?.Dispose();
             foreach (var mapping in MappingsList ?? new ObservableCollection<MappingViewModel>()) mapping.Dispose();
         }
 

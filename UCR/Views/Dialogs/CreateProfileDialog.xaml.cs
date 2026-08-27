@@ -1,6 +1,5 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
-using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.ViewModels.Dashboard;
 using HidWizards.UCR.ViewModels.Dialogs;
 
@@ -10,9 +9,9 @@ namespace HidWizards.UCR.Views.Dialogs
     {
         private CreateProfileDialogViewModel ViewModel { get; set; }
 
-        public CreateProfileDialog(string title, DevicesManager devicesManager)
+        public CreateProfileDialog(string title)
         {
-            ViewModel = new CreateProfileDialogViewModel(title, devicesManager);
+            ViewModel = new CreateProfileDialogViewModel(title);
             DataContext = ViewModel;
             InitializeComponent();
             Loaded += OnLoaded;

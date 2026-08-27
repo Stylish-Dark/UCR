@@ -254,7 +254,42 @@ namespace HidWizards.UCR.Tests.FactoryTests
 
 
         [Test]
-        public void UnsafeDeviceManagerEntryIsForcedHidden()
+        public void CacheCopyWithSamePhysicalHandleIsRecognizedAcrossProviderSlotChanges()
+        {
+            var cached = CreateIdentityDevice("Cached Keyboard", "Core_Interception",
+                @"Keyboard\VID_1111&PID_2222", 1, null);
+            var live = CreateIdentityDevice("Live Keyboard", "Core_Interception",
+                @"Keyboard\VID_1111&PID_2222", 6, null);
+
+            Assert.That(DevicesManager.CacheRepresentsLiveEndpoint(cached, live), Is.True,
+                "A changing provider slot must not create another cached copy of the same physical endpoint.");
+        }
+
+        [Test]
+        public void WindowsDeviceInstanceIdCanBeDerivedFromHidInterfacePath()
+        {
+            var device = CreateIdentityDevice("Keyboard", "Core_Interception",
+                @"Keyboard\VID_1111&PID_2222", 0,
+                @"\\?\HID#VID_046D&PID_C52B&MI_00#7&2ABCDEF&0&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}");
+
+            string instanceId;
+            Assert.That(DevicesManager.TryGetWindowsDeviceInstanceId(device, out instanceId), Is.True);
+            Assert.That(instanceId, Is.EqualTo(@"HID\VID_046D&PID_C52B&MI_00\7&2ABCDEF&0&0000"));
+        }
+
+        [Test]
+        public void WindowsDeviceInstanceIdIsUnavailableWithoutADeviceInterfacePath()
+        {
+            var device = CreateIdentityDevice("Keyboard", "Core_Interception",
+                @"Keyboard\VID_1111&PID_2222", 0, null);
+
+            string instanceId;
+            Assert.That(DevicesManager.TryGetWindowsDeviceInstanceId(device, out instanceId), Is.False);
+            Assert.That(instanceId, Is.Null);
+        }
+
+        [Test]
+        public void SessionOnlyDeviceManagerEntryRemainsSelectable()
         {
             var device = CreateIdentityDevice("Ambiguous Keyboard", "Core_Interception",
                 @"Keyboard\VID_1111&PID_2222", 1, null);
@@ -263,8 +298,9 @@ namespace HidWizards.UCR.Tests.FactoryTests
                 false, null, false, "ephemeral");
 
             Assert.That(item.CanPersist, Is.False);
-            Assert.That(item.Hidden, Is.True);
-            Assert.That(item.IdentityNote, Does.Contain("forced hidden"));
+            Assert.That(item.Hidden, Is.False,
+                "A live device with session-only identity must remain usable even when UCR cannot safely persist alias/hide/order metadata for it.");
+            Assert.That(item.IdentityNote, Does.Contain("session"));
         }
 
         [Test]

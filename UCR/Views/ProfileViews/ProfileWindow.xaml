@@ -122,6 +122,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <Border Grid.Row="0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
@@ -274,6 +275,103 @@
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="2" Margin="0 8 0 0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0" Background="#242424" BorderBrush="{DynamicResource PrimaryHueMidBrush}" BorderThickness="3 0 0 0" Padding="10 7">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Usb" Width="16" Height="16" Margin="0 0 7 0" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                                    <TextBlock Text="Devices" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Grid Grid.Row="1" Margin="8 7 8 2">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <TextBlock Text="INPUT" FontSize="10.5" FontWeight="SemiBold" Opacity="0.55" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <Button ToolTip="Detect and add input device" Width="25" Height="25" Padding="3" Style="{StaticResource MaterialDesignFlatButton}" Click="DetectProfileInputDevice_OnClick">
+                                        <materialDesign:PackIcon Kind="Radar" Width="15" Height="15"/>
+                                    </Button>
+                                    <Button ToolTip="Add input device" Width="25" Height="25" Padding="3" Style="{StaticResource MaterialDesignFlatButton}" Click="AddProfileInputDevice_OnClick">
+                                        <materialDesign:PackIcon Kind="Plus" Width="15" Height="15"/>
+                                    </Button>
+                                    <Button ToolTip="Remove selected input device" Width="25" Height="25" Padding="3" Style="{StaticResource MaterialDesignFlatButton}" Click="RemoveProfileInputDevice_OnClick" IsEnabled="{Binding InputDeviceControlViewModel.IsRemoveEnabled}">
+                                        <materialDesign:PackIcon Kind="Minus" Width="15" Height="15"/>
+                                    </Button>
+                                    <Button ToolTip="Configure selected input device" Width="25" Height="25" Padding="3" Style="{StaticResource MaterialDesignFlatButton}" Click="ManageProfileInputDevice_OnClick" IsEnabled="{Binding InputDeviceControlViewModel.IsConfigurationEnabled}">
+                                        <materialDesign:PackIcon Kind="Cog" Width="15" Height="15"/>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                            <ListBox Grid.Row="2" x:Name="InputProfileDeviceList" Margin="6 0 6 4" MaxHeight="82"
+                                     ItemsSource="{Binding InputDeviceControlViewModel.Devices}"
+                                     SelectedItem="{Binding InputDeviceControlViewModel.SelectedDeviceConfiguration, Mode=TwoWay}"
+                                     BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="1 2">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Button Grid.Column="0" Width="20" Height="20" Padding="4" Background="Transparent" BorderThickness="0" ToolTip="{Binding PrimaryToolTip}" Click="PrimaryInputDevice_OnClick">
+                                                <Ellipse Width="8" Height="8" Stroke="#777" StrokeThickness="1.4">
+                                                    <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueMidBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueMidBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
+                                                </Ellipse>
+                                            </Button>
+                                            <Border Grid.Column="1" Width="32" Height="21" CornerRadius="4" BorderThickness="1" BorderBrush="{Binding Visual.AccentBrush}" Background="#191919">
+                                                <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}" FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <Grid Grid.Row="3" Margin="8 3 8 7">
+                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="OUTPUT" FontSize="10.5" FontWeight="SemiBold" Opacity="0.55" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <Button ToolTip="Add output device" Width="25" Height="25" Padding="3" Style="{StaticResource MaterialDesignFlatButton}" Click="AddProfileOutputDevice_OnClick">
+                                            <materialDesign:PackIcon Kind="Plus" Width="15" Height="15"/>
+                                        </Button>
+                                        <Button ToolTip="Remove selected output device" Width="25" Height="25" Padding="3" Style="{StaticResource MaterialDesignFlatButton}" Click="RemoveProfileOutputDevice_OnClick" IsEnabled="{Binding OutputDeviceControlViewModel.IsRemoveEnabled}">
+                                            <materialDesign:PackIcon Kind="Minus" Width="15" Height="15"/>
+                                        </Button>
+                                        <Button ToolTip="Configure selected output device" Width="25" Height="25" Padding="3" Style="{StaticResource MaterialDesignFlatButton}" Click="ManageProfileOutputDevice_OnClick" IsEnabled="{Binding OutputDeviceControlViewModel.IsConfigurationEnabled}">
+                                            <materialDesign:PackIcon Kind="Cog" Width="15" Height="15"/>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                                <ListBox Grid.Row="1" x:Name="OutputProfileDeviceList" Margin="-2 2 -2 0" MaxHeight="72"
+                                         ItemsSource="{Binding OutputDeviceControlViewModel.Devices}"
+                                         SelectedItem="{Binding OutputDeviceControlViewModel.SelectedDeviceConfiguration, Mode=TwoWay}"
+                                         BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="1 2">
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                <Button Grid.Column="0" Width="20" Height="20" Padding="4" Background="Transparent" BorderThickness="0" ToolTip="{Binding PrimaryToolTip}" Click="PrimaryOutputDevice_OnClick">
+                                                    <Ellipse Width="8" Height="8" Stroke="#777" StrokeThickness="1.4">
+                                                        <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueMidBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueMidBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
+                                                    </Ellipse>
+                                                </Button>
+                                                <Border Grid.Column="1" Width="32" Height="21" CornerRadius="4" BorderThickness="1" BorderBrush="{Binding Visual.AccentBrush}" Background="#191919">
+                                                    <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}" FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Grid>
                         </Grid>
                     </Border>
                 </Grid>

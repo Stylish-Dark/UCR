@@ -15,11 +15,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public Plugin Plugin { get; set; }
         public string OutputType => GetOutputType();
         public int OutputTypeOrder => GetOutputTypeOrder(OutputType);
-        public string MenuLabel => string.IsNullOrWhiteSpace(OutputType) ? Name : OutputType + "  ·  " + Name;
+        public string MenuLabel
+        {
+            get
+            {
+                if (!string.IsNullOrWhiteSpace(OutputType) &&
+                    Name.EndsWith(" to " + OutputType, StringComparison.OrdinalIgnoreCase))
+                {
+                    return OutputType;
+                }
+
+                return Name;
+            }
+        }
 
         private string GetOutputType()
         {
-            if (!string.IsNullOrWhiteSpace(Plugin.GetDefinedFilterName())) return "Filter";
+            if (string.Equals(Plugin.Group, "Filter", StringComparison.OrdinalIgnoreCase) ||
+                !string.IsNullOrWhiteSpace(Plugin.GetDefinedFilterName())) return "Filter";
             if (Plugin.OutputCategories == null || Plugin.OutputCategories.Count == 0) return "Action";
             var category = Plugin.OutputCategories[0].Category;
             if (Plugin.OutputCategories.Any(definition => definition.Category != category)) return "Multiple";
