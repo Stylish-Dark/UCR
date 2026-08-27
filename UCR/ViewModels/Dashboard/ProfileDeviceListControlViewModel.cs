@@ -103,7 +103,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public async void AddDevices()
         {
             var deviceList = _profile.GetMissingDeviceList(_deviceIoType);
-            var dialog = new AddDevicesDialog(deviceList, _deviceIoType, _profile.Context.DevicesManager);
+            var dialog = new AddDevicesDialog(deviceList, _deviceIoType);
             var result = (AddDevicesDialogViewModel)await DialogHost.Show(dialog, "RootDialog");
             if (result?.Devices == null) return;
 

@@ -42,14 +42,6 @@ namespace HidWizards.UCR.Core.Managers
         private bool bindCommitPending;
         private DateTime bindAcceptAfterUtc = DateTime.MaxValue;
 
-        public bool IsBindModeActive
-        {
-            get
-            {
-                lock (bindmodeLock) return bindmodeActive;
-            }
-        }
-
         public delegate void EndBindModeDelegate(DeviceBinding deviceBinding);
         public event EndBindModeDelegate EndBindModeHandler;
 
@@ -73,11 +65,6 @@ namespace HidWizards.UCR.Core.Managers
                 _dispatcher.BeginInvoke(new Action(() => BeginBindMode(deviceBinding)), DispatcherPriority.Input);
                 return;
             }
-
-            // Device identification and binding both use provider detection mode. If another window
-            // is currently identifying a device, binding takes precedence and cleanly ends that transient
-            // detector before arming this binding.
-            _context.DevicesManager?.CancelInputDeviceDetection();
 
             if (bindmodeActive) EndBindMode();
 

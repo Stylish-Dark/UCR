@@ -18,23 +18,11 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0" Text="Devices" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignTitleTextBlock}" VerticalAlignment="Center"/>
-            <Button Grid.Column="1" Content="{Binding DetectionButtonText}" Click="DetectDevice_OnClick"
-                    Style="{StaticResource MaterialDesignFlatButton}" ToolTip="Identify an input device by pressing one of its buttons or keys"/>
-        </Grid>
-        <StackPanel Grid.Row="1" Margin="0 6 0 12">
-            <TextBlock Opacity="0.72" TextWrapping="Wrap"
-                       Text="Give devices readable names, hide devices you never want in add-device lists, and set their display order. Existing profile bindings are never removed by hiding a device."/>
-            <TextBlock Text="{Binding DetectionStatus}" Margin="0 5 0 0" Foreground="{DynamicResource PrimaryHueMidBrush}"
-                       FontWeight="SemiBold" TextWrapping="Wrap"/>
-        </StackPanel>
+        <TextBlock Grid.Row="0" Text="Devices" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignTitleTextBlock}"/>
+        <TextBlock Grid.Row="1" Margin="0 6 0 12" Opacity="0.72" TextWrapping="Wrap"
+                   Text="Give devices readable names, hide devices you never want in add-device lists, and set their display order. Existing profile bindings are never removed by hiding a device."/>
 
-        <ListView x:Name="DeviceList" Grid.Row="2" ItemsSource="{Binding Devices}" SelectedItem="{Binding SelectedDevice, Mode=TwoWay}"
+        <ListView Grid.Row="2" ItemsSource="{Binding Devices}"
                   HorizontalContentAlignment="Stretch"
                   Background="#212121"
                   Foreground="#FFFFFF"

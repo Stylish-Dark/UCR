@@ -30,13 +30,5 @@ namespace HidWizards.UCR.Views.Controls
             var device = (sender as Grid)?.DataContext as DeviceViewModel;
             device?.ToggleSelection();
         }
-
-        public void BringDeviceIntoView(DeviceViewModel device)
-        {
-            if (device == null) return;
-            DeviceItems.UpdateLayout();
-            var container = DeviceItems.ItemContainerGenerator.ContainerFromItem(device) as FrameworkElement;
-            container?.BringIntoView();
-        }
     }
 }
