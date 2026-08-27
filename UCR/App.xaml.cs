@@ -276,7 +276,7 @@ namespace HidWizards.UCR
             }
             catch (Exception e)
             {
-                Logger.Error(e, "Unable to send args to existing process");
+                Logger.Error("Unable to send args to existing process", e);
             }
             finally
             {

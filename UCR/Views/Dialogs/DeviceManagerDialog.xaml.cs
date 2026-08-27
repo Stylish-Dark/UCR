@@ -152,13 +152,13 @@ namespace HidWizards.UCR.Views.Dialogs
                 // ERROR_CANCELLED (1223) is the ordinary UAC-cancel path. Keep it non-fatal.
                 if (exception.NativeErrorCode != 1223)
                 {
-                    Logger.Error(exception, "Unable to remove Windows device instance: " + instanceId);
+                    Logger.Error("Unable to remove Windows device instance: " + instanceId, exception);
                     DarkMessageBox.Show(this, exception.Message, "Windows device removal", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
             }
             catch (Exception exception)
             {
-                Logger.Error(exception, "Unable to remove Windows device instance: " + instanceId);
+                Logger.Error("Unable to remove Windows device instance: " + instanceId, exception);
                 DarkMessageBox.Show(this, exception.Message, "Windows device removal", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
@@ -171,7 +171,7 @@ namespace HidWizards.UCR.Views.Dialogs
             }
             catch (Exception exception)
             {
-                Logger.Error(exception, "Unable to open Windows Device Manager");
+                Logger.Error("Unable to open Windows Device Manager", exception);
                 DarkMessageBox.Show(this, "UCR could not open Windows Device Manager.", "Windows Devices",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }

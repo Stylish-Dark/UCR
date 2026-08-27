@@ -11,6 +11,7 @@ using System.Windows;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
+using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Views.Dialogs;
 using MaterialDesignThemes.Wpf;
 
@@ -157,7 +158,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                     return null;
                 }
 
-                var existing = Devices.FirstOrDefault(item => SameDevice(item.DeviceConfiguration?.Device, detected));
+                var existing = Devices.FirstOrDefault(deviceItem => SameDevice(deviceItem.DeviceConfiguration?.Device, detected));
                 if (existing != null)
                 {
                     SelectedDeviceConfiguration = existing;
@@ -190,7 +191,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             catch (Exception exception)
             {
                 DetectionStatus = "Device detection failed. Check the UCR log for details.";
-                NLog.LogManager.GetCurrentClassLogger().Error(exception, "Input-device detection failed in profile editor");
+                Logger.Error("Input-device detection failed in profile editor", exception);
                 return null;
             }
             finally
