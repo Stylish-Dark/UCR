@@ -13,6 +13,7 @@ using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Core.Utilities;
 using Newtonsoft.Json;
 using NLog;
+using Logger = NLog.Logger;
 
 namespace HidWizards.UCR.Core.Managers
 {
