@@ -291,13 +291,19 @@ namespace HidWizards.UCR.Tests.FactoryTests
         [Test]
         public void SessionOnlyDeviceManagerEntryRemainsSelectable()
         {
-            var device = CreateIdentityDevice("Ambiguous Keyboard", "Core_Interception",
+            var device = CreateLiveIdentityDevice("Ambiguous Keyboard", "Core_Interception",
                 @"Keyboard\VID_1111&PID_2222", 1, null);
+
+            Assert.That(device.IsCache, Is.False,
+                "Regression fixture must be a live device; cached devices intentionally use the cached/disconnected presentation path.");
 
             var item = new DeviceManagerItemViewModel(device, DeviceIoType.Input,
                 false, null, false, "ephemeral");
 
+            Assert.That(item.IsCachedOnly, Is.False);
             Assert.That(item.CanPersist, Is.False);
+            Assert.That(item.CanDismiss, Is.True);
+            Assert.That(item.CanForget, Is.False);
             Assert.That(item.Hidden, Is.False,
                 "A live device with session-only identity must remain usable even when UCR cannot safely persist alias/hide/order metadata for it.");
             Assert.That(item.IdentityNote, Does.Contain("session"));
@@ -440,6 +446,27 @@ namespace HidWizards.UCR.Tests.FactoryTests
                 Assert.That(result.Compatibility, Is.EqualTo(DeviceBindingTransferCompatibility.Incompatible),
                     "DS4-only button index " + ds4OnlyIndex + " must require explicit rebinding.");
             }
+        }
+
+        private static Device CreateLiveIdentityDevice(string title, string providerName, string deviceHandle,
+            int deviceNumber, string hidPath)
+        {
+            return new Device(
+                new DeviceReport
+                {
+                    DeviceName = title,
+                    HidPath = hidPath,
+                    DeviceDescriptor = new DeviceDescriptor
+                    {
+                        DeviceHandle = deviceHandle,
+                        DeviceInstance = deviceNumber
+                    }
+                },
+                new ProviderReport
+                {
+                    ProviderDescriptor = new ProviderDescriptor { ProviderName = providerName }
+                },
+                new List<DeviceBindingNode>());
         }
 
         private static Device CreateIdentityDevice(string title, string providerName, string deviceHandle,
