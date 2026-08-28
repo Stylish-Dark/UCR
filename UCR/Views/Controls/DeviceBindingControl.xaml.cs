@@ -57,12 +57,14 @@ namespace HidWizards.UCR.Views.Controls
         {
             BindMenu = new ObservableCollection<ContextMenuItem>();
             var deviceConfiguration = GetSelectedDeviceConfiguration();
-            if (deviceConfiguration == null) return;
-            BindMenu = BuildMenu(deviceConfiguration.Device.GetDeviceBindingMenu(DeviceBinding.Profile.Context, DeviceBinding.DeviceIoType));
+            if (deviceConfiguration?.Device == null || DeviceBinding?.Profile?.Context == null) return;
+            BindMenu = BuildMenu(
+                deviceConfiguration.Device.GetDeviceBindingMenu(DeviceBinding.Profile.Context, DeviceBinding.DeviceIoType),
+                deviceConfiguration.Guid);
             BindMenu.Add(CreateClearCommandMenuItem());
         }
 
-        private ObservableCollection<ContextMenuItem> BuildMenu(List<DeviceBindingNode> deviceBindingNodes)
+        private ObservableCollection<ContextMenuItem> BuildMenu(List<DeviceBindingNode> deviceBindingNodes, Guid deviceConfigurationGuid)
         {
             var menuList = new ObservableCollection<ContextMenuItem>();
             if (deviceBindingNodes == null) return menuList;
@@ -71,7 +73,7 @@ namespace HidWizards.UCR.Views.Controls
             {
                 if (IsKeyboardKeyGroup(deviceBindingNode))
                 {
-                    foreach (var categoryMenu in BuildMenu(BuildKeyboardCategories(deviceBindingNode.ChildrenNodes)))
+                    foreach (var categoryMenu in BuildMenu(BuildKeyboardCategories(deviceBindingNode.ChildrenNodes), deviceConfigurationGuid))
                     {
                         menuList.Add(categoryMenu);
                     }
@@ -84,12 +86,12 @@ namespace HidWizards.UCR.Views.Controls
                     if (Category != null && deviceBindingNode.DeviceBindingInfo.DeviceBindingCategory != Category) continue;
                     cmd = new RelayCommand(c =>
                     {
-                        DeviceBinding.SetDeviceConfigurationGuid(GetSelectedDeviceConfiguration().Guid);
+                        DeviceBinding.SetDeviceConfigurationGuid(deviceConfigurationGuid);
                         DeviceBinding.SetKeyTypeValue(deviceBindingNode.DeviceBindingInfo.KeyType, deviceBindingNode.DeviceBindingInfo.KeyValue, deviceBindingNode.DeviceBindingInfo.KeySubValue);
                     });
                 }
 
-                var menu = new ContextMenuItem(deviceBindingNode.Title, BuildMenu(deviceBindingNode.ChildrenNodes), cmd);
+                var menu = new ContextMenuItem(deviceBindingNode.Title, BuildMenu(deviceBindingNode.ChildrenNodes, deviceConfigurationGuid), cmd);
                 if (deviceBindingNode.IsBinding || !deviceBindingNode.IsBinding && menu.Children.Count > 0)
                 {
                     menuList.Add(menu);
@@ -255,8 +257,9 @@ namespace HidWizards.UCR.Views.Controls
 
         private DeviceConfiguration GetSelectedDeviceConfiguration()
         {
-            Guid guid = ((ComboBoxItemViewModel) DeviceSelectionBox.SelectedItem).Value;
-            return DeviceBinding.Profile.GetDeviceConfiguration(DeviceBinding.DeviceIoType, guid);
+            var selectedItem = DeviceSelectionBox.SelectedItem as ComboBoxItemViewModel;
+            if (selectedItem == null || DeviceBinding?.Profile == null) return null;
+            return DeviceBinding.Profile.GetDeviceConfiguration(DeviceBinding.DeviceIoType, selectedItem.Value);
         }
 
         private void BindButton_OnClick(object sender, RoutedEventArgs e)

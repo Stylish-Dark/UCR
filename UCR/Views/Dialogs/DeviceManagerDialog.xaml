@@ -76,7 +76,6 @@
                                 <TextBox Text="{Binding Alias, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          IsEnabled="{Binding CanPersist}" Background="#2B2B2B" Foreground="#FFFFFF"
                                          CaretBrush="#FFFFFF" BorderBrush="#555555" materialDesign:HintAssist.Hint="Friendly name"/>
-                                <TextBlock Text="{Binding IdentityNote}" Foreground="#C8C8C8" FontSize="12.5" Opacity="0.75" TextWrapping="Wrap" Margin="0 2 0 0"/>
                             </StackPanel>
 
                             <CheckBox Grid.Column="2" Content="Hidden" Foreground="#FFFFFF" VerticalAlignment="Center"

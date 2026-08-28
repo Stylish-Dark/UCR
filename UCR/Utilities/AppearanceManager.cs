@@ -17,12 +17,12 @@ namespace HidWizards.UCR.Utilities
     {
         private static readonly List<AccentPalette> Palettes = new List<AccentPalette>
         {
-            Palette("Blue", 0x3D, 0x63, 0xBF, Colors.White),
-            Palette("Green", 0x3F, 0xA8, 0x5B, Colors.White),
-            Palette("Yellow", 0xD6, 0xA5, 0x2E, Color.FromRgb(24, 24, 24)),
-            Palette("Pink", 0xD8, 0x62, 0xA0, Colors.White),
-            Palette("Orange", 0xE4, 0x74, 0x39, Colors.White),
-            Palette("Purple", 0x8E, 0x65, 0xD5, Colors.White)
+            Palette("Blue", 0x31, 0x52, 0xA3, Colors.White),
+            Palette("Green", 0x32, 0x85, 0x48, Colors.White),
+            Palette("Yellow", 0xA8, 0x78, 0x18, Color.FromRgb(24, 24, 24)),
+            Palette("Pink", 0xB4, 0x47, 0x83, Colors.White),
+            Palette("Orange", 0xB8, 0x54, 0x28, Colors.White),
+            Palette("Purple", 0x70, 0x4B, 0xB8, Colors.White)
         };
 
         public static IEnumerable<AccentPalette> AvailablePalettes => Palettes;
@@ -115,7 +115,7 @@ namespace HidWizards.UCR.Utilities
         public static Brush BrushFor(string name)
         {
             var palette = Find(name) ?? Find("Blue");
-            var brush = new SolidColorBrush(palette?.Color ?? Color.FromRgb(61, 99, 191));
+            var brush = new SolidColorBrush(palette?.Color ?? Color.FromRgb(49, 82, 163));
             brush.Freeze();
             return brush;
         }

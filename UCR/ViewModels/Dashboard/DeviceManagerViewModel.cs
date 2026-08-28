@@ -21,11 +21,6 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public string ProviderDeviceName => Device?.Title ?? "Device";
         public string ProviderName => Device?.ProviderName ?? string.Empty;
         public string IoTypes { get; private set; }
-        public string IdentityNote => IsCachedOnly
-            ? "Disconnected device record"
-            : HasInput
-                ? "Input device — Remove from UCR is reversible with Detect Device."
-                : "Output device — use Hidden to suppress it from normal selection lists.";
         public bool IsCachedOnly => Device?.IsCache ?? false;
         public bool HasInput { get; private set; }
         public bool HasOutput { get; private set; }
@@ -98,7 +93,6 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             OnPropertyChanged(nameof(HasOutput));
             OnPropertyChanged(nameof(CanRemoveFromUcr));
             OnPropertyChanged(nameof(CanHide));
-            OnPropertyChanged(nameof(IdentityNote));
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
