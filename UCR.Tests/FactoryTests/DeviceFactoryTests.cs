@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Xml.Serialization;
 using HidWizards.IOWrapper.DataTransferObjects;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
