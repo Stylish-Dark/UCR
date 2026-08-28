@@ -306,7 +306,7 @@ namespace HidWizards.UCR.Tests.FactoryTests
             Assert.That(item.CanForget, Is.False);
             Assert.That(item.Hidden, Is.False,
                 "A live device with session-only identity must remain usable even when UCR cannot safely persist alias/hide/order metadata for it.");
-            Assert.That(item.IdentityNote, Does.Contain("session"));
+            Assert.That(item.IdentityNote, Does.Contain("Session identity only"));
         }
 
         [Test]
