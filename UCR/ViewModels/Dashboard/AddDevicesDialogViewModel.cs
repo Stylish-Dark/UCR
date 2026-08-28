@@ -97,11 +97,12 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                     return null;
                 }
 
-                var item = Devices.Devices.FirstOrDefault(candidate => SameDevice(candidate.Device, detected));
+                var logicalDevice = _devicesManager.RegisterDetectedInputDevice(detected) ?? detected;
+                var item = Devices.Devices.FirstOrDefault(candidate => SameDevice(candidate.Device, logicalDevice));
                 if (item == null)
                 {
-                    DetectionStatus = $"Detected: {detected.DisplayTitle} — already added, hidden, or unavailable in this list.";
-                    return null;
+                    item = new DeviceViewModel(logicalDevice);
+                    Devices.Devices.Add(item);
                 }
 
                 item.IsDetected = true;
@@ -130,7 +131,9 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         private static bool SameDevice(Device left, Device right)
         {
-            return DevicesManager.PersistedIdentityEquals(left, right) || DevicesManager.DescriptorEquals(left, right);
+            return DevicesManager.DescriptorEquals(left, right) ||
+                   (DevicesManager.LogicalIdentityEquals(left, right) &&
+                    left.LogicalInstanceNumber == right.LogicalInstanceNumber);
         }
 
         public void Dispose()

@@ -33,6 +33,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public string ToolTip { get; set; }
     }
 
+    public sealed class QuickBindingOption
+    {
+        public string Title { get; set; }
+        public Guid DeviceConfigurationGuid { get; set; }
+        public int KeyType { get; set; }
+        public int KeyValue { get; set; }
+        public int KeySubValue { get; set; }
+        public BindingVisualDescriptor Visual { get; set; }
+    }
+
     public class MappingViewModel : INotifyPropertyChanged, IDisposable
     {
         public string MappingTitle => Mapping.FullTitle;
@@ -302,6 +312,107 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+
+        public DeviceBindingViewModel ResolveCollapsedBinding(BindingVisualDescriptor descriptor, DeviceIoType ioType)
+        {
+            if (descriptor == null || descriptor.BindingGuid == Guid.Empty) return null;
+            IEnumerable<DeviceBindingViewModel> candidates = ioType == DeviceIoType.Input
+                ? DeviceBindings
+                : Plugins.SelectMany(plugin => plugin.DeviceBindings);
+            return candidates.FirstOrDefault(candidate => candidate?.DeviceBinding != null &&
+                candidate.DeviceBinding.Guid == descriptor.BindingGuid &&
+                candidate.DeviceBinding.DeviceIoType == ioType);
+        }
+
+        public bool QuickBindInput(BindingVisualDescriptor descriptor)
+        {
+            if (!ButtonsEnabled) return false;
+            var bindingViewModel = ResolveCollapsedBinding(descriptor, DeviceIoType.Input);
+            if (bindingViewModel?.DeviceBinding == null || !bindingViewModel.BindingEnabled) return false;
+
+            bindingViewModel.DeviceBinding.DeviceBindingCategory = bindingViewModel.DeviceBindingCategory;
+            bindingViewModel.DeviceBinding.EnterBindMode();
+            return true;
+        }
+
+        public List<QuickBindingOption> GetQuickOutputBindingOptions(BindingVisualDescriptor descriptor)
+        {
+            var result = new List<QuickBindingOption>();
+            if (!ButtonsEnabled) return result;
+
+            var bindingViewModel = ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
+            if (bindingViewModel?.DeviceBinding == null || !bindingViewModel.BindingEnabled) return result;
+
+            var binding = bindingViewModel.DeviceBinding;
+            var configurationGuid = binding.DeviceConfigurationGuid;
+            if (configurationGuid == Guid.Empty && bindingViewModel.SelectedDevice != null)
+                configurationGuid = bindingViewModel.SelectedDevice.Value;
+            if (configurationGuid == Guid.Empty)
+                configurationGuid = ProfileViewModel.Profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output)?.Guid ?? Guid.Empty;
+
+            var configuration = ProfileViewModel.Profile.GetDeviceConfiguration(DeviceIoType.Output, configurationGuid);
+            if (configuration?.Device == null) return result;
+
+            var menu = ProfileViewModel.Profile.Context.DevicesManager.GetDeviceBindingMenu(
+                configuration.Device, DeviceIoType.Output);
+            foreach (var node in FlattenBindingNodes(menu))
+            {
+                if (node?.DeviceBindingInfo == null ||
+                    node.DeviceBindingInfo.DeviceBindingCategory != bindingViewModel.DeviceBindingCategory) continue;
+
+                var info = node.DeviceBindingInfo;
+                var temporary = new DeviceBinding
+                {
+                    Profile = ProfileViewModel.Profile,
+                    DeviceIoType = DeviceIoType.Output,
+                    DeviceBindingCategory = bindingViewModel.DeviceBindingCategory,
+                    DeviceConfigurationGuid = configuration.Guid,
+                    IsBound = true,
+                    KeyType = info.KeyType,
+                    KeyValue = info.KeyValue,
+                    KeySubValue = info.KeySubValue
+                };
+
+                result.Add(new QuickBindingOption
+                {
+                    Title = node.Title,
+                    DeviceConfigurationGuid = configuration.Guid,
+                    KeyType = info.KeyType,
+                    KeyValue = info.KeyValue,
+                    KeySubValue = info.KeySubValue,
+                    Visual = DeviceVisualCatalog.DescribeBinding(
+                        temporary, bindingViewModel.DeviceBindingCategory, ProfileViewModel.Profile)
+                });
+            }
+
+            return result;
+        }
+
+        public bool ApplyQuickOutputBinding(BindingVisualDescriptor descriptor, QuickBindingOption option)
+        {
+            if (!ButtonsEnabled || option == null) return false;
+            var bindingViewModel = ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
+            if (bindingViewModel?.DeviceBinding == null || !bindingViewModel.BindingEnabled) return false;
+
+            var binding = bindingViewModel.DeviceBinding;
+            binding.DeviceBindingCategory = bindingViewModel.DeviceBindingCategory;
+            binding.SetDeviceConfigurationGuid(option.DeviceConfigurationGuid);
+            binding.SetKeyTypeValue(option.KeyType, option.KeyValue, option.KeySubValue);
+            bindingViewModel.RefreshDeviceList();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
+        private static IEnumerable<DeviceBindingNode> FlattenBindingNodes(IEnumerable<DeviceBindingNode> nodes)
+        {
+            if (nodes == null) yield break;
+            foreach (var node in nodes)
+            {
+                if (node == null) continue;
+                if (node.IsBinding) yield return node;
+                foreach (var child in FlattenBindingNodes(node.ChildrenNodes)) yield return child;
+            }
+        }
 
         private List<BindingVisualDescriptor> BuildCollapsedInputVisuals()
         {

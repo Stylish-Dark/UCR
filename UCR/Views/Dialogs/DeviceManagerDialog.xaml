@@ -29,8 +29,6 @@
             </Grid.ColumnDefinitions>
             <TextBlock Grid.Column="0" Text="Devices" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignTitleTextBlock}" VerticalAlignment="Center"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <Button Content="REMOVE STALE" Click="RemoveStale_OnClick" Margin="0 0 6 0"
-                        Style="{StaticResource MaterialDesignFlatButton}" ToolTip="Remove obsolete UCR cache copies of devices that Windows currently reports live"/>
                 <Button Content="WINDOWS DEVICES" Click="OpenWindowsDevices_OnClick" Margin="0 0 6 0"
                         Style="{StaticResource MaterialDesignFlatButton}" ToolTip="Open Windows Device Manager for live hardware removal or driver management"/>
                 <Button Content="{Binding DetectionButtonText}" Click="DetectDevice_OnClick"
@@ -39,8 +37,8 @@
         </Grid>
         <StackPanel Grid.Row="1" Margin="0 6 0 12">
             <TextBlock Opacity="0.72" TextWrapping="Wrap"
-                       Text="Live devices stay usable even when their provider cannot supply a stable identity. Friendly-name/hide/order settings are only persisted when UCR can identify a device safely."/>
-            <TextBlock Text="Cached/disconnected records can be forgotten here. Live Windows hardware is managed through Windows Devices."
+                       Text="Input devices can be removed from UCR and restored later with Detect Device. Output devices stay registered and can be hidden from normal selection lists."/>
+            <TextBlock Text="Provider slot numbers are reconciled internally; Windows hardware removal remains under Windows Devices."
                        Opacity="0.55" TextWrapping="Wrap" Margin="0 2 0 0"/>
             <TextBlock Text="{Binding DetectionStatus}" Margin="0 5 0 0" Foreground="{DynamicResource PrimaryHueMidBrush}"
                        FontWeight="SemiBold" TextWrapping="Wrap"/>
@@ -82,11 +80,31 @@
                             </StackPanel>
 
                             <CheckBox Grid.Column="2" Content="Hidden" Foreground="#FFFFFF" VerticalAlignment="Center"
-                                      IsChecked="{Binding Hidden, Mode=TwoWay}" IsEnabled="{Binding CanPersist}"/>
+                                      IsChecked="{Binding Hidden, Mode=TwoWay}" IsEnabled="{Binding CanHide}">
+                                <CheckBox.Style>
+                                    <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CanHide}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </CheckBox.Style>
+                            </CheckBox>
 
                             <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
-                                <Button ToolTip="{Binding RemoveFromUcrToolTip}" Style="{StaticResource MaterialDesignCardButton}"
-                                        Click="RemoveFromUcr_OnClick" Padding="4">
+                                <Button ToolTip="{Binding RemoveFromUcrToolTip}" Click="RemoveFromUcr_OnClick" Padding="4">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignCardButton}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding CanRemoveFromUcr}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
                                     <materialDesign:PackIcon Kind="Trash" Width="18" Height="18"/>
                                 </Button>
                                 <Button ToolTip="Remove this exact device instance from Windows (administrator approval required)"

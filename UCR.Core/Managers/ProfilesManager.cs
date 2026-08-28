@@ -252,6 +252,7 @@ namespace HidWizards.UCR.Core.Managers
             // preferences and must not unexpectedly rearrange another machine when a profile is imported.
             var portableAlias = alias.Clone();
             portableAlias.Hidden = false;
+            portableAlias.Removed = false;
             portableAlias.SortOrder = int.MaxValue;
             aliases.Add(portableAlias);
         }

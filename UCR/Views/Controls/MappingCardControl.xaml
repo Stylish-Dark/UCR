@@ -36,10 +36,10 @@
         <!-- A device badge is intentionally shown only when the mapping deviates from the profile's
              primary device, unless the user explicitly enables the Show all devices toggle. -->
         <DataTemplate x:Key="MappingBindingVisualTemplate">
-            <Border Margin="3 0" Padding="6 4" MinWidth="52" MinHeight="34"
+            <Border Margin="3 0" Padding="6 4" MinWidth="64" MinHeight="38" ClipToBounds="False"
                     Background="#1D1D1D" BorderBrush="#353535" BorderThickness="1" CornerRadius="4"
                     ToolTip="{Binding ToolTip}">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" ClipToBounds="False">
                     <Border Margin="0 0 5 0" Padding="4 1" MinWidth="25" CornerRadius="3"
                             Background="#191919" BorderBrush="{Binding Device.AccentBrush}" BorderThickness="1"
                             ToolTip="{Binding Device.ToolTip}">
@@ -113,7 +113,9 @@
                     <Border Grid.Column="0" Margin="0 4 0 4" CornerRadius="2"
                             Background="{Binding MappingOutputTypeLabel, Converter={StaticResource MappingTypeBrushConverter}}"/>
 
-                    <StackPanel Grid.Column="1" Margin="10 6 8 6" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="1" Margin="10 6 8 6" VerticalAlignment="Center"
+                                Cursor="Hand" ToolTip="Right-click to rename mapping"
+                                PreviewMouseRightButtonUp="RenameHeader_OnMouseRightButtonUp">
                         <TextBlock Text="{Binding MappingTitle}" FontSize="15.5" FontWeight="SemiBold"
                                    Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"/>
                         <ItemsControl ItemsSource="{Binding MappingRouteTokens}" Margin="0 2 0 0" Opacity="0.78">
@@ -129,15 +131,19 @@
                         </ItemsControl>
                     </StackPanel>
 
-                    <Grid Grid.Column="2" Margin="8 5 12 5" VerticalAlignment="Center">
+                    <Grid Grid.Column="2" Margin="8 5 12 5" VerticalAlignment="Center"
+                          HorizontalAlignment="Center" ClipToBounds="False">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto" MinWidth="70"/>
                             <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto" MinWidth="70"/>
                         </Grid.ColumnDefinitions>
 
                         <ItemsControl Grid.Column="0" ItemsSource="{Binding CollapsedInputVisuals}"
-                                      ItemTemplate="{StaticResource MappingBindingVisualTemplate}" HorizontalAlignment="Right">
+                                      ItemTemplate="{StaticResource MappingBindingVisualTemplate}" HorizontalAlignment="Right"
+                                      MinWidth="64" ClipToBounds="False" Cursor="Hand"
+                                      ToolTip="Right-click to detect and bind this input"
+                                      PreviewMouseRightButtonUp="QuickBindInput_OnMouseRightButtonUp">
                             <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                         </ItemsControl>
 
@@ -145,7 +151,10 @@
                                    Foreground="#AFAFAF" VerticalAlignment="Center"/>
 
                         <ItemsControl Grid.Column="2" ItemsSource="{Binding CollapsedOutputVisuals}"
-                                      ItemTemplate="{StaticResource MappingBindingVisualTemplate}" HorizontalAlignment="Left">
+                                      ItemTemplate="{StaticResource MappingBindingVisualTemplate}" HorizontalAlignment="Left"
+                                      MinWidth="64" ClipToBounds="False" Cursor="Hand"
+                                      ToolTip="Right-click to choose an output control"
+                                      PreviewMouseRightButtonUp="QuickBindOutput_OnMouseRightButtonUp">
                             <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                         </ItemsControl>
                     </Grid>

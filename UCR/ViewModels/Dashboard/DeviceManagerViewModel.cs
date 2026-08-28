@@ -21,10 +21,16 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public string ProviderDeviceName => Device?.Title ?? "Device";
         public string ProviderName => Device?.ProviderName ?? string.Empty;
         public string IoTypes { get; private set; }
-        public string IdentityNote { get; }
+        public string IdentityNote => IsCachedOnly
+            ? "Disconnected device record"
+            : HasInput
+                ? "Input device — Remove from UCR is reversible with Detect Device."
+                : "Output device — use Hidden to suppress it from normal selection lists.";
         public bool IsCachedOnly => Device?.IsCache ?? false;
-        public bool CanForget => IsCachedOnly;
-        public bool CanDismiss => Device != null && !IsCachedOnly;
+        public bool HasInput { get; private set; }
+        public bool HasOutput { get; private set; }
+        public bool CanRemoveFromUcr => HasInput;
+        public bool CanHide => HasOutput && !HasInput && CanPersist;
         public bool CanRemoveFromWindows
         {
             get
@@ -33,9 +39,8 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 return !IsCachedOnly && DevicesManager.TryGetWindowsDeviceInstanceId(Device, out instanceId);
             }
         }
-        public string RemoveFromUcrToolTip => IsCachedOnly
-            ? "Forget this cached/disconnected UCR record"
-            : "Remove this live device from UCR selection lists for this session";
+        public string RemoveFromUcrToolTip =>
+            "Remove this input device from UCR. Use Detect Device to add it back.";
 
         private string _alias;
         public string Alias
@@ -55,8 +60,9 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             get => _hidden;
             set
             {
-                if (_hidden == value) return;
-                _hidden = value;
+                var normalized = CanHide && value;
+                if (_hidden == normalized) return;
+                _hidden = normalized;
                 OnPropertyChanged();
             }
         }
@@ -70,26 +76,29 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             ValidationType = type;
             CanPersist = canPersist;
             Alias = alias;
-            // Runtime selectability and persistent presentation settings are deliberately separate.
-            // Some providers can tell UCR exactly which live slot produced input without exposing a
-            // stable identity that survives enumeration changes. Keep those devices usable now, while
-            // disabling only the metadata that would be unsafe to persist.
-            Hidden = canPersist && hidden;
             StableKey = stableKey;
-            IoTypes = type == DeviceIoType.Input ? "Input" : "Output";
-            IdentityNote = IsCachedOnly
-                ? "Cached/disconnected device record"
-                : canPersist
-                    ? "Persistent identity available"
-                    : "Session identity only — selectable now, but friendly name/hide/order cannot be persisted reliably.";
+            AddIoType(type);
+            Hidden = hidden;
         }
 
         public void AddIoType(DeviceIoType type)
         {
-            var label = type == DeviceIoType.Input ? "Input" : "Output";
-            if (IoTypes.IndexOf(label, StringComparison.OrdinalIgnoreCase) >= 0) return;
-            IoTypes += " + " + label;
+            if (type == DeviceIoType.Input) HasInput = true;
+            if (type == DeviceIoType.Output) HasOutput = true;
+
+            IoTypes = HasInput && HasOutput ? "Input + Output" : HasInput ? "Input" : "Output";
+            if (HasInput && _hidden)
+            {
+                _hidden = false;
+                OnPropertyChanged(nameof(Hidden));
+            }
+
             OnPropertyChanged(nameof(IoTypes));
+            OnPropertyChanged(nameof(HasInput));
+            OnPropertyChanged(nameof(HasOutput));
+            OnPropertyChanged(nameof(CanRemoveFromUcr));
+            OnPropertyChanged(nameof(CanHide));
+            OnPropertyChanged(nameof(IdentityNote));
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -151,9 +160,6 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         {
             _devicesManager = devicesManager;
             Devices = new ObservableCollection<DeviceManagerItemViewModel>();
-            // Clean automatically whenever the manager opens; the user should not have to manually
-            // remove cache copies that correspond to endpoints Windows is already reporting live.
-            _devicesManager.RemoveStaleDeviceCacheCopies();
             Populate();
         }
 
@@ -161,8 +167,15 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         {
             Devices.Clear();
             var byStableIdentity = new Dictionary<string, DeviceManagerItemViewModel>(StringComparer.OrdinalIgnoreCase);
-            AddDevices(DeviceIoType.Input, byStableIdentity);
-            AddDevices(DeviceIoType.Output, byStableIdentity);
+            var allInputs = _devicesManager.GetAvailableDeviceList(DeviceIoType.Input);
+            var removedInputKeys = new HashSet<string>(
+                allInputs.Where(_devicesManager.IsInputRemoved)
+                    .Select(BuildLogicalInstanceKey)
+                    .Where(key => key != null),
+                StringComparer.OrdinalIgnoreCase);
+
+            AddDevices(DeviceIoType.Input, byStableIdentity, removedInputKeys);
+            AddDevices(DeviceIoType.Output, byStableIdentity, removedInputKeys);
 
             var ordered = Devices
                 .OrderBy(item => item.CanPersist ? _devicesManager.GetDeviceSortOrder(item.Device) : int.MaxValue)
@@ -172,20 +185,26 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             foreach (var item in ordered) Devices.Add(item);
         }
 
-        private void AddDevices(DeviceIoType type, IDictionary<string, DeviceManagerItemViewModel> byStableIdentity)
+        private void AddDevices(DeviceIoType type,
+            IDictionary<string, DeviceManagerItemViewModel> byStableIdentity,
+            ISet<string> removedInputKeys)
         {
             var liveDevices = _devicesManager.GetAvailableDeviceList(type, false);
             var devices = _devicesManager.GetAvailableDeviceList(type);
             foreach (var device in devices)
             {
-                if (_devicesManager.IsSessionDismissed(device)) continue;
+                var logicalInstanceKey = BuildLogicalInstanceKey(device);
+                if (type == DeviceIoType.Input && _devicesManager.IsInputRemoved(device)) continue;
+                if (type == DeviceIoType.Output && logicalInstanceKey != null && removedInputKeys.Contains(logicalInstanceKey)) continue;
+
                 var canPersist = _devicesManager.CanPersistDeviceAlias(device, liveDevices);
                 var identity = DevicesManager.BuildAliasIdentity(device);
                 var stableKey = canPersist && identity != null
                     ? BuildStableKey(identity)
                     : BuildEphemeralKey(device);
 
-                if (byStableIdentity.TryGetValue(stableKey, out var existing))
+                DeviceManagerItemViewModel existing;
+                if (byStableIdentity.TryGetValue(stableKey, out existing))
                 {
                     existing.AddIoType(type);
                     continue;
@@ -196,7 +215,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                     type,
                     canPersist,
                     _devicesManager.GetDeviceAlias(device),
-                    _devicesManager.GetDeviceHidden(device),
+                    type == DeviceIoType.Output && _devicesManager.GetDeviceHidden(device),
                     stableKey);
 
                 Devices.Add(item);
@@ -207,6 +226,12 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         private static string BuildStableKey(DeviceAlias alias)
         {
             return alias.ProviderName + "|" + alias.IdentityKind + "|" + alias.IdentityValue + "|" + alias.DeviceNumber;
+        }
+
+        private static string BuildLogicalInstanceKey(Device device)
+        {
+            var logicalKey = DevicesManager.BuildLogicalDeviceKey(device);
+            return logicalKey == null ? null : logicalKey + "|instance|" + Math.Max(1, device.LogicalInstanceNumber);
         }
 
         private static string BuildEphemeralKey(Device device)
@@ -246,10 +271,12 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                     return null;
                 }
 
-                var item = Devices.FirstOrDefault(candidate => SameDevice(candidate.Device, detected));
+                var logicalDevice = _devicesManager.RegisterDetectedInputDevice(detected) ?? detected;
+                Populate();
+                var item = Devices.FirstOrDefault(candidate => SameDevice(candidate.Device, logicalDevice));
                 if (item == null)
                 {
-                    DetectionStatus = $"Detected: {detected.DisplayTitle} — device list may need refreshing.";
+                    DetectionStatus = $"Detected: {_devicesManager.GetDisplayTitle(logicalDevice)}";
                     return null;
                 }
 
@@ -278,7 +305,9 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         private static bool SameDevice(Device left, Device right)
         {
-            return DevicesManager.PersistedIdentityEquals(left, right) || DevicesManager.DescriptorEquals(left, right);
+            return DevicesManager.DescriptorEquals(left, right) ||
+                   (DevicesManager.LogicalIdentityEquals(left, right) &&
+                    left.LogicalInstanceNumber == right.LogicalInstanceNumber);
         }
 
         public bool Move(DeviceManagerItemViewModel item, int offset)
@@ -291,40 +320,19 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             return true;
         }
 
-        public int RemoveStaleCacheCopies()
+        public bool RemoveFromUcr(DeviceManagerItemViewModel item)
         {
-            var removed = _devicesManager.RemoveStaleDeviceCacheCopies();
-            Populate();
-            DetectionStatus = removed == 1
-                ? "Removed 1 stale cached device record."
-                : "Removed " + removed + " stale cached device records.";
-            return removed;
-        }
-
-        public bool ForgetCachedDevice(DeviceManagerItemViewModel item, out string error)
-        {
-            error = null;
-            if (item == null) return false;
-            if (!_devicesManager.ForgetCachedDevice(item.Device, out error)) return false;
+            if (item == null || !item.CanRemoveFromUcr) return false;
+            if (!_devicesManager.RemoveInputDevice(item.Device)) return false;
             Devices.Remove(item);
             if (ReferenceEquals(SelectedDevice, item)) SelectedDevice = null;
-            return true;
-        }
-
-        public bool DismissLiveDevice(DeviceManagerItemViewModel item)
-        {
-            if (item == null || item.IsCachedOnly) return false;
-            if (!_devicesManager.DismissDeviceForSession(item.Device)) return false;
-            Devices.Remove(item);
-            if (ReferenceEquals(SelectedDevice, item)) SelectedDevice = null;
-            DetectionStatus = "Removed from UCR lists for this session: " + item.ProviderDeviceName;
+            DetectionStatus = "Removed from UCR: " + item.ProviderDeviceName + ". Use Detect Device to add it back.";
             return true;
         }
 
         public void Refresh()
         {
             _devicesManager.RefreshDeviceList();
-            _devicesManager.RemoveStaleDeviceCacheCopies();
             Populate();
         }
 
@@ -336,8 +344,9 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 var item = Devices[index];
                 if (!item.CanPersist) continue;
 
+                var hidden = item.CanHide && item.Hidden;
                 if (_devicesManager.TrySetDevicePresentation(item.Device, item.ValidationType,
-                        item.Alias, item.Hidden, index, out error)) continue;
+                        item.Alias, hidden, index, out error)) continue;
 
                 return false;
             }

@@ -121,23 +121,21 @@
                 <Grid Grid.Column="0" Margin="0 0 10 0">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
                     <Border Grid.Row="0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <Border Grid.Row="0" Background="#242424" BorderBrush="{DynamicResource PrimaryHueMidBrush}" BorderThickness="3 0 0 0" Padding="10 8">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Plus" Width="17" Height="17" Margin="0 0 7 0" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
-                                    <TextBlock Text="Add mapping" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-                            <Grid Grid.Row="1" Margin="10">
+                        <Expander IsExpanded="True" HorizontalContentAlignment="Stretch" Background="#202020">
+                            <Expander.Header>
+                                <Border Background="#242424" BorderBrush="{DynamicResource PrimaryHueMidBrush}" BorderThickness="3 0 0 0" Padding="10 8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Plus" Width="17" Height="17" Margin="0 0 7 0" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                                        <TextBlock Text="Add mapping" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </Expander.Header>
+                            <Grid Margin="10">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
@@ -212,24 +210,22 @@
                                     <TextBlock Text="{Binding PluginToolbox.SelectedPluginDescription}" Margin="0 2 0 0" Opacity="0.55" TextWrapping="Wrap" FontSize="12.5"/>
                                 </StackPanel>
                             </Grid>
-                        </Grid>
+                        </Expander>
                     </Border>
 
                     <Border Grid.Row="1" Margin="0 8 0 0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-                            <Border Grid.Row="0" Background="#242424" BorderBrush="{StaticResource MappingTypeFilterBrush}" BorderThickness="3 0 0 0" Padding="10 8">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Filter" Width="16" Height="16" Margin="0 0 7 0" Foreground="{StaticResource MappingTypeFilterBrush}"/>
-                                    <TextBlock Text="Filters" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding FilterDefinitions.Count, StringFormat={}  {0}}" FontSize="12" Opacity="0.45" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-                            <ListBox Grid.Row="1" x:Name="FilterDefinitionList" Margin="8" ItemsSource="{Binding FilterDefinitions}"
-                                     BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                        <Expander IsExpanded="True" HorizontalContentAlignment="Stretch" Background="#202020">
+                            <Expander.Header>
+                                <Border Background="#242424" BorderBrush="{StaticResource MappingTypeFilterBrush}" BorderThickness="3 0 0 0" Padding="10 8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Filter" Width="16" Height="16" Margin="0 0 7 0" Foreground="{StaticResource MappingTypeFilterBrush}"/>
+                                        <TextBlock Text="Filters" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding FilterDefinitions.Count, StringFormat={}  {0}}" FontSize="12" Opacity="0.45" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </Expander.Header>
+                            <ListBox x:Name="FilterDefinitionList" Margin="8" MaxHeight="150" ItemsSource="{Binding FilterDefinitions}"
+                                     BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto"
                                      SelectionChanged="FilterDefinitionList_OnSelectionChanged">
                                 <ListBox.Style>
                                     <Style TargetType="ListBox" BasedOn="{StaticResource {x:Type ListBox}}">
@@ -275,25 +271,26 @@
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
-                        </Grid>
+                        </Expander>
                     </Border>
 
                     <Border Grid.Row="2" Margin="0 8 0 0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <Border Grid.Row="0" Background="#242424" BorderBrush="{DynamicResource PrimaryHueMidBrush}" BorderThickness="3 0 0 0" Padding="10 7">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Usb" Width="16" Height="16" Margin="0 0 7 0" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
-                                    <TextBlock Text="Devices" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-
-                            <Grid Grid.Row="1" Margin="8 7 8 2">
+                        <Expander IsExpanded="True" HorizontalContentAlignment="Stretch" VerticalAlignment="Stretch" Background="#202020">
+                            <Expander.Header>
+                                <Border Background="#242424" BorderBrush="{DynamicResource PrimaryHueMidBrush}" BorderThickness="3 0 0 0" Padding="10 7">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Usb" Width="16" Height="16" Margin="0 0 7 0" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                                        <TextBlock Text="Devices" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </Expander.Header>
+                            <Grid MinHeight="215">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                            <Grid Margin="8 7 8 2">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                 <TextBlock Text="INPUT" FontSize="10.5" FontWeight="SemiBold" Opacity="0.55" VerticalAlignment="Center"/>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal">
@@ -311,10 +308,10 @@
                                     </Button>
                                 </StackPanel>
                             </Grid>
-                            <ListBox Grid.Row="2" x:Name="InputProfileDeviceList" Margin="6 0 6 4" MaxHeight="82"
+                            <ListBox Grid.Row="1" x:Name="InputProfileDeviceList" Margin="6 0 6 4" MaxHeight="110"
                                      ItemsSource="{Binding InputDeviceControlViewModel.Devices}"
                                      SelectedItem="{Binding InputDeviceControlViewModel.SelectedDeviceConfiguration, Mode=TwoWay}"
-                                     BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                     BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <Grid Margin="1 2">
@@ -332,8 +329,7 @@
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
-
-                            <Grid Grid.Row="3" Margin="8 3 8 7">
+                            <Grid Grid.Row="2" Margin="8 3 8 7">
                                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                 <Grid Grid.Row="0">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -350,10 +346,10 @@
                                         </Button>
                                     </StackPanel>
                                 </Grid>
-                                <ListBox Grid.Row="1" x:Name="OutputProfileDeviceList" Margin="-2 2 -2 0" MaxHeight="72"
+                                <ListBox Grid.Row="1" x:Name="OutputProfileDeviceList" Margin="-2 2 -2 0" MaxHeight="110"
                                          ItemsSource="{Binding OutputDeviceControlViewModel.Devices}"
                                          SelectedItem="{Binding OutputDeviceControlViewModel.SelectedDeviceConfiguration, Mode=TwoWay}"
-                                         BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                         BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <Grid Margin="1 2">
@@ -372,7 +368,8 @@
                                     </ListBox.ItemTemplate>
                                 </ListBox>
                             </Grid>
-                        </Grid>
+                            </Grid>
+                        </Expander>
                     </Border>
                 </Grid>
                 <Grid Grid.Column="1">

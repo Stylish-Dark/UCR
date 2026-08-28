@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
@@ -22,7 +23,11 @@ namespace HidWizards.UCR.Core.Managers
         private readonly Context _context;
 
         private Dictionary<string, List<Device>> _providerCache;
-        private readonly HashSet<string> _sessionDismissedDevices = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Raw provider slots are runtime endpoints, not user-facing physical identity. Detection claims
+        // let us distinguish a genuinely second identical Core_Interception device without leaking
+        // ordinary slot churn such as #4/#6 into the UI.
+        private readonly Dictionary<string, List<string>> _detectedLogicalInputEndpoints =
+            new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private static readonly TimeSpan DeviceDetectionArmDelay = TimeSpan.FromMilliseconds(350);
@@ -46,6 +51,14 @@ namespace HidWizards.UCR.Core.Managers
         /// <param name="type"></param>
         public List<Device> GetAvailableDeviceList(DeviceIoType type, bool includeCache = true)
         {
+            var raw = GetRawAvailableDeviceList(type, includeCache);
+            var result = CollapseLogicalDevicesForDisplay(raw, type);
+            ApplyAliases(result);
+            return SortDevices(result);
+        }
+
+        private List<Device> GetRawAvailableDeviceList(DeviceIoType type, bool includeCache)
+        {
             var result = new List<Device>();
             var providerList = type == DeviceIoType.Input
                 ? _context.IOController.GetInputList()
@@ -58,23 +71,248 @@ namespace HidWizards.UCR.Core.Managers
                     result.Add(new Device(ioWrapperDevice, providerReport.Value, BuildDeviceBindingMenu(ioWrapperDevice.Nodes, type)));
                 }
 
-                if (includeCache)
+                if (!includeCache) continue;
+                var cachedDevices = LoadDeviceCache(providerReport.Value.ProviderDescriptor.ProviderName);
+                foreach (var cachedDevice in cachedDevices)
                 {
-                    var cachedDevices = LoadDeviceCache(providerReport.Value.ProviderDescriptor.ProviderName);
-                    foreach (var cachedDevice in cachedDevices)
-                    {
-                        // A cache entry is only useful when its endpoint is currently absent. Old
-                        // provider instance numbers can otherwise accumulate across restarts and make
-                        // one physical keyboard/mouse appear several times. Prefer the live report.
-                        if (result.Any(liveDevice => CacheRepresentsLiveEndpoint(cachedDevice, liveDevice))) continue;
-                        result.Add(cachedDevice);
-                    }
-                    
+                    if (result.Any(liveDevice => CacheRepresentsLiveEndpoint(cachedDevice, liveDevice))) continue;
+                    result.Add(cachedDevice);
                 }
             }
 
-            ApplyAliases(result);
-            return SortDevices(result);
+            return result;
+        }
+
+        private static readonly Regex CoreInterceptionSlotSuffix =
+            new Regex(@"\s+#\d+\s*$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+        public static string GetLogicalDeviceTitle(Device device)
+        {
+            if (device == null) return string.Empty;
+            var title = (device.Title ?? string.Empty).Trim();
+            if (!string.Equals(device.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase))
+            {
+                return title;
+            }
+
+            return CoreInterceptionSlotSuffix.Replace(title, string.Empty).Trim();
+        }
+
+        public static string BuildLogicalDeviceKey(Device device)
+        {
+            if (device == null || string.IsNullOrWhiteSpace(device.ProviderName)) return null;
+            var provider = device.ProviderName.Trim();
+
+            if (string.Equals(provider, "Core_Interception", StringComparison.OrdinalIgnoreCase))
+            {
+                var handle = (device.DeviceHandle ?? string.Empty).Trim();
+                var title = GetLogicalDeviceTitle(device);
+                var family = title.StartsWith("K:", StringComparison.OrdinalIgnoreCase) ||
+                             handle.StartsWith("Keyboard", StringComparison.OrdinalIgnoreCase)
+                    ? "keyboard"
+                    : title.StartsWith("M:", StringComparison.OrdinalIgnoreCase) ||
+                      handle.StartsWith("Mouse", StringComparison.OrdinalIgnoreCase)
+                        ? "mouse"
+                        : "input";
+                var hardwareIdentity = !string.IsNullOrWhiteSpace(handle) ? handle : title;
+                return provider + "|logical-physical|" + family + "|" + hardwareIdentity;
+            }
+
+            if (!string.IsNullOrWhiteSpace(device.HidPath))
+                return provider + "|hid|" + device.HidPath.Trim();
+
+            if (UsesLogicalSlotIdentity(provider))
+                return provider + "|slot|" + (device.DeviceHandle ?? string.Empty).Trim() + "|" + device.DeviceNumber;
+
+            if (!string.IsNullOrWhiteSpace(device.DeviceHandle))
+                return provider + "|handle|" + device.DeviceHandle.Trim();
+
+            return provider + "|descriptor|" + device.DeviceNumber + "|" + GetLogicalDeviceTitle(device);
+        }
+
+        private static string BuildRuntimeEndpointKey(Device device)
+        {
+            if (device == null) return null;
+            return (device.ProviderName ?? string.Empty) + "|" +
+                   (device.DeviceHandle ?? string.Empty) + "|" + device.DeviceNumber + "|" +
+                   (device.HidPath ?? string.Empty);
+        }
+
+        public static List<Device> CollapseLogicalDevices(IEnumerable<Device> devices)
+        {
+            var source = (devices ?? Enumerable.Empty<Device>()).Where(device => device != null).ToList();
+            var result = new List<Device>();
+            var seenCore = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var device in source)
+            {
+                if (!string.Equals(device.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase))
+                {
+                    result.Add(device);
+                    continue;
+                }
+
+                var logicalKey = BuildLogicalDeviceKey(device);
+                if (logicalKey == null || seenCore.Add(logicalKey)) result.Add(device);
+            }
+
+            return result;
+        }
+
+        private List<Device> CollapseLogicalDevicesForDisplay(IEnumerable<Device> devices, DeviceIoType type)
+        {
+            var source = (devices ?? Enumerable.Empty<Device>()).Where(device => device != null).ToList();
+            var result = new List<Device>();
+            var coreGroups = source
+                .Where(device => string.Equals(device.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase))
+                .GroupBy(BuildLogicalDeviceKey, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            result.AddRange(source.Where(device =>
+                !string.Equals(device.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase)));
+
+            foreach (var group in coreGroups)
+            {
+                var endpoints = group.ToList();
+                var liveEndpoints = endpoints.Where(device => !device.IsCache).ToList();
+                var candidateEndpoints = liveEndpoints.Count > 0 ? liveEndpoints : endpoints;
+                if (candidateEndpoints.Count == 0) continue;
+
+                var liveKeys = new HashSet<string>(liveEndpoints.Select(BuildRuntimeEndpointKey),
+                    StringComparer.OrdinalIgnoreCase);
+                List<string> claims;
+                if (!_detectedLogicalInputEndpoints.TryGetValue(group.Key, out claims))
+                {
+                    claims = new List<string>();
+                }
+                else if (type == DeviceIoType.Input)
+                {
+                    // Input enumeration is authoritative for the detection claims. Output enumeration may
+                    // expose a different subset of the same physical endpoints, so it must never prune them.
+                    claims.RemoveAll(endpointKey => !liveKeys.Contains(endpointKey));
+                    if (claims.Count == 0) _detectedLogicalInputEndpoints.Remove(group.Key);
+                }
+
+                var representatives = new List<Device>();
+                foreach (var endpointKey in claims)
+                {
+                    var match = liveEndpoints.FirstOrDefault(device =>
+                        string.Equals(BuildRuntimeEndpointKey(device), endpointKey, StringComparison.OrdinalIgnoreCase));
+                    if (match != null) representatives.Add(match);
+                }
+                if (representatives.Count == 0) representatives.Add(candidateEndpoints[0]);
+
+                for (var index = 0; index < representatives.Count; index++)
+                {
+                    var representative = representatives[index];
+                    representative.LogicalInstanceNumber = index + 1;
+                    var title = GetLogicalDeviceTitle(representative);
+                    representative.Title = index == 0 ? title : title + " #" + (index + 1);
+                    result.Add(representative);
+                }
+            }
+
+            return result;
+        }
+
+        internal int RegisterDetectedInputEndpoint(Device detectedDevice, IEnumerable<Device> liveDevices)
+        {
+            if (detectedDevice == null ||
+                !string.Equals(detectedDevice.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase))
+                return 0;
+
+            var logicalKey = BuildLogicalDeviceKey(detectedDevice);
+            var live = (liveDevices ?? Enumerable.Empty<Device>())
+                .Where(device => device != null && string.Equals(BuildLogicalDeviceKey(device), logicalKey,
+                    StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var liveKeys = new HashSet<string>(live.Select(BuildRuntimeEndpointKey),
+                StringComparer.OrdinalIgnoreCase);
+
+            List<string> claims;
+            if (!_detectedLogicalInputEndpoints.TryGetValue(logicalKey, out claims))
+            {
+                claims = new List<string>();
+                _detectedLogicalInputEndpoints[logicalKey] = claims;
+            }
+
+            claims.RemoveAll(endpointKey => !liveKeys.Contains(endpointKey));
+            var detectedKey = BuildRuntimeEndpointKey(detectedDevice);
+            if (claims.Any(endpointKey => string.Equals(endpointKey, detectedKey, StringComparison.OrdinalIgnoreCase)))
+                return claims.Count;
+
+            if (claims.Count == 0)
+            {
+                claims.Add(detectedKey);
+                return claims.Count;
+            }
+
+            var claimedDevices = claims.Select(endpointKey => live.FirstOrDefault(device =>
+                    string.Equals(BuildRuntimeEndpointKey(device), endpointKey, StringComparison.OrdinalIgnoreCase)))
+                .Where(device => device != null).ToList();
+            var samePhysicalIndex = claimedDevices.FindIndex(device => SamePhysicalEvidence(device, detectedDevice));
+            if (samePhysicalIndex >= 0)
+            {
+                // Same physical path, new provider slot: ordinary slot churn. Replace the endpoint claim.
+                claims[samePhysicalIndex] = detectedKey;
+            }
+            else if (claimedDevices.Count > 0)
+            {
+                // This different raw endpoint has now itself produced deliberate input while a previously
+                // detected endpoint for the same hardware identity is still live. That explicit activity is
+                // the evidence required to expose a real second identical device as #2. Passive enumeration
+                // alone never creates numbered duplicates.
+                claims.Add(detectedKey);
+            }
+            else
+            {
+                claims[0] = detectedKey;
+            }
+
+            return claims.Count;
+        }
+
+        public Device RegisterDetectedInputDevice(Device detectedDevice)
+        {
+            if (detectedDevice == null) return null;
+
+            if (string.Equals(detectedDevice.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase))
+            {
+                RegisterDetectedInputEndpoint(detectedDevice, GetRawAvailableDeviceList(DeviceIoType.Input, false));
+            }
+
+            var reconciled = GetAvailableDeviceList(DeviceIoType.Input, false);
+            var endpoint = BuildRuntimeEndpointKey(detectedDevice);
+            var logicalDevice = reconciled.FirstOrDefault(device =>
+                                    string.Equals(BuildRuntimeEndpointKey(device), endpoint, StringComparison.OrdinalIgnoreCase))
+                                ?? reconciled.FirstOrDefault(device => LogicalIdentityEquals(device, detectedDevice))
+                                ?? detectedDevice;
+
+            // Restore the reconciled logical ordinal, not the raw provider endpoint. This matters for an
+            // explicitly removed second identical device: the raw endpoint itself always starts at ordinal 1.
+            RestoreInputDevice(logicalDevice);
+            return logicalDevice;
+        }
+
+        private static bool SamePhysicalEvidence(Device left, Device right)
+        {
+            return left != null && right != null &&
+                   !string.IsNullOrWhiteSpace(left.HidPath) &&
+                   !string.IsNullOrWhiteSpace(right.HidPath) &&
+                   string.Equals(left.HidPath, right.HidPath, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool LogicalIdentityEquals(Device left, Device right)
+        {
+            if (left == null || right == null) return false;
+            if (!string.Equals(left.ProviderName, right.ProviderName, StringComparison.OrdinalIgnoreCase)) return false;
+            if (!string.Equals(left.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase))
+                return PersistedIdentityEquals(left, right);
+
+            var leftKey = BuildLogicalDeviceKey(left);
+            var rightKey = BuildLogicalDeviceKey(right);
+            return leftKey != null && rightKey != null &&
+                   string.Equals(leftKey, rightKey, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -87,28 +325,48 @@ namespace HidWizards.UCR.Core.Managers
         public List<Device> GetVisibleDeviceList(DeviceIoType type, bool includeCache = false)
         {
             var devices = GetAvailableDeviceList(type, includeCache);
-            return devices.Where(device => !IsDeviceHidden(device, devices) && !IsSessionDismissed(device)).ToList();
+            return type == DeviceIoType.Input
+                ? devices.Where(device => !IsInputRemoved(device)).ToList()
+                : devices.Where(device => !IsInputRemoved(device) && !IsDeviceHidden(device, devices)).ToList();
         }
 
-        public bool DismissDeviceForSession(Device device)
+        public bool IsInputRemoved(Device device)
         {
-            var key = BuildSessionDeviceKey(device);
-            if (key == null) return false;
-            return _sessionDismissedDevices.Add(key);
+            return FindAlias(device)?.Removed ?? false;
         }
 
-        public bool IsSessionDismissed(Device device)
+        public bool RemoveInputDevice(Device device)
         {
-            var key = BuildSessionDeviceKey(device);
-            return key != null && _sessionDismissedDevices.Contains(key);
+            if (device == null) return false;
+            if (_context.DeviceAliases == null) _context.DeviceAliases = new List<DeviceAlias>();
+            var identity = BuildAliasIdentity(device);
+            if (identity == null) return false;
+
+            var existing = _context.DeviceAliases.FirstOrDefault(candidate => AliasIdentityEquals(candidate, identity));
+            if (existing == null)
+            {
+                existing = identity;
+                _context.DeviceAliases.Add(existing);
+            }
+            if (existing.Removed) return true;
+
+            existing.Removed = true;
+            existing.Hidden = false;
+            _context.ContextChanged();
+            _context.OnDeviceAliasesChangedEvent();
+            return true;
         }
 
-        private static string BuildSessionDeviceKey(Device device)
+        public bool RestoreInputDevice(Device device)
         {
-            if (device == null || string.IsNullOrWhiteSpace(device.ProviderName)) return null;
-            if (!string.IsNullOrWhiteSpace(device.HidPath))
-                return "hid|" + device.ProviderName + "|" + device.HidPath;
-            return "slot|" + device.ProviderName + "|" + device.DeviceHandle + "|" + device.DeviceNumber;
+            var existing = FindAlias(device);
+            if (existing == null || !existing.Removed) return false;
+
+            existing.Removed = false;
+            if (!existing.HasPresentationSettings) _context.DeviceAliases.Remove(existing);
+            _context.ContextChanged();
+            _context.OnDeviceAliasesChangedEvent();
+            return true;
         }
 
         /// <summary>
@@ -124,7 +382,10 @@ namespace HidWizards.UCR.Core.Managers
                 throw new InvalidOperationException("Finish the current binding operation before detecting a device.");
             }
 
-            var devices = GetAvailableDeviceList(DeviceIoType.Input, false);
+            // Detection must listen to raw provider endpoints. User-facing enumeration deliberately
+            // collapses Core_Interception slot churn, but the detector needs the exact endpoint that
+            // produced input so it can distinguish churn from a genuinely second identical device.
+            var devices = GetRawAvailableDeviceList(DeviceIoType.Input, false);
             if (devices.Count == 0) return Task.FromResult<Device>(null);
 
             TaskCompletionSource<Device> completion;
@@ -336,12 +597,48 @@ namespace HidWizards.UCR.Core.Managers
         {
             if (configuredDevice == null) return null;
 
-            var availableDevices = GetAvailableDeviceList(type, false);
-            var resolvedDevice = ResolveDevice(configuredDevice, availableDevices);
+            // "Remove from UCR" is persistent operational exclusion, not merely list decoration. Keep
+            // profile configuration intact so Detect Device can restore it later, but do not resolve or
+            // subscribe a removed logical device while it is excluded from UCR. This also suppresses
+            // the output side of a combined input/output device.
+            if (IsInputRemoved(configuredDevice)) return null;
 
-            // Migrate legacy profiles forward only when the match is unambiguous. This allows an older
-            // configuration that pre-dates HidPath persistence to acquire the stronger identity without
-            // cementing a possibly-wrong device when duplicate handles are present.
+            // Profiles store a provider descriptor, but Core_Interception endpoint slots are volatile.
+            // Resolve against raw endpoints so the runtime provider still receives the exact current slot.
+            var availableDevices = GetRawAvailableDeviceList(type, false);
+            Device resolvedDevice;
+
+            if (string.Equals(configuredDevice.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase))
+            {
+                var logicalKey = BuildLogicalDeviceKey(configuredDevice);
+                var candidates = availableDevices.Where(device =>
+                    string.Equals(BuildLogicalDeviceKey(device), logicalKey, StringComparison.OrdinalIgnoreCase)).ToList();
+
+                if (candidates.Count == 0) return null;
+
+                List<string> claims;
+                _detectedLogicalInputEndpoints.TryGetValue(logicalKey, out claims);
+                if (type == DeviceIoType.Input && claims != null && claims.Count > 0)
+                {
+                    var claimed = claims.Select(endpointKey => candidates.FirstOrDefault(device =>
+                            string.Equals(BuildRuntimeEndpointKey(device), endpointKey, StringComparison.OrdinalIgnoreCase)))
+                        .Where(device => device != null).ToList();
+                    var logicalIndex = Math.Max(0, configuredDevice.LogicalInstanceNumber - 1);
+                    resolvedDevice = claimed.FirstOrDefault(device => DescriptorEquals(device, configuredDevice))
+                                     ?? (logicalIndex < claimed.Count ? claimed[logicalIndex] : claimed.FirstOrDefault());
+                }
+                else
+                {
+                    resolvedDevice = candidates.FirstOrDefault(device => DescriptorEquals(device, configuredDevice))
+                                     ?? candidates[0];
+                }
+            }
+            else
+            {
+                resolvedDevice = ResolveDevice(configuredDevice, availableDevices);
+            }
+
+            // Migrate legacy profiles forward only when the match is unambiguous.
             if (resolvedDevice != null && string.IsNullOrEmpty(configuredDevice.HidPath) &&
                 !string.IsNullOrEmpty(resolvedDevice.HidPath))
             {
@@ -407,9 +704,19 @@ namespace HidWizards.UCR.Core.Managers
 
             if (handleMatches.Count == 1) return handleMatches[0];
 
+            if (string.Equals(configuredDevice.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase))
+            {
+                var logicalKey = BuildLogicalDeviceKey(configuredDevice);
+                var logicalMatches = providerCandidates.Where(device =>
+                    string.Equals(BuildLogicalDeviceKey(device), logicalKey, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (logicalMatches.Count > 0)
+                {
+                    return logicalMatches.FirstOrDefault(device => DescriptorEquals(device, configuredDevice))
+                           ?? logicalMatches[0];
+                }
+            }
+
             // Numbered virtual/API slots are the identity those providers intentionally expose.
-            // For physical-device providers, duplicate hardware handles without a stronger path are
-            // indistinguishable; refusing to guess is safer than silently following enumeration order.
             if (UsesLogicalSlotIdentity(configuredDevice.ProviderName))
             {
                 return handleMatches.FirstOrDefault(d => DescriptorEquals(d, configuredDevice));
@@ -477,6 +784,8 @@ namespace HidWizards.UCR.Core.Managers
         public bool CanPersistDeviceAlias(Device device, IEnumerable<Device> liveDevices)
         {
             if (device == null || string.IsNullOrWhiteSpace(device.ProviderName)) return false;
+            if (string.Equals(device.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase))
+                return !string.IsNullOrWhiteSpace(BuildLogicalDeviceKey(device));
             if (!string.IsNullOrWhiteSpace(device.HidPath)) return true;
             if (UsesLogicalSlotIdentity(device.ProviderName)) return !string.IsNullOrWhiteSpace(device.DeviceHandle);
             if (string.IsNullOrWhiteSpace(device.DeviceHandle)) return false;
@@ -636,10 +945,12 @@ namespace HidWizards.UCR.Core.Managers
                 else if (overwriteExisting &&
                          (!string.Equals(existing.Alias, imported.Alias, StringComparison.Ordinal) ||
                           existing.Hidden != imported.Hidden ||
+                          existing.Removed != imported.Removed ||
                           existing.SortOrder != imported.SortOrder))
                 {
                     existing.Alias = imported.Alias;
                     existing.Hidden = imported.Hidden;
+                    existing.Removed = imported.Removed;
                     existing.SortOrder = imported.SortOrder;
                     changed = true;
                 }
@@ -668,6 +979,21 @@ namespace HidWizards.UCR.Core.Managers
         public static DeviceAlias BuildAliasIdentity(Device device)
         {
             if (device == null || string.IsNullOrWhiteSpace(device.ProviderName)) return null;
+
+            // Core_Interception DeviceNumber and trailing title #N values are provider endpoint slots,
+            // not physical identity. Use the reconciled logical identity and runtime logical ordinal.
+            if (string.Equals(device.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase))
+            {
+                var logicalKey = BuildLogicalDeviceKey(device);
+                if (string.IsNullOrWhiteSpace(logicalKey)) return null;
+                return new DeviceAlias
+                {
+                    ProviderName = device.ProviderName,
+                    IdentityKind = DeviceAliasIdentityKind.HardwareHandle,
+                    IdentityValue = logicalKey,
+                    DeviceNumber = Math.Max(0, device.LogicalInstanceNumber - 1)
+                };
+            }
 
             if (!string.IsNullOrWhiteSpace(device.HidPath))
             {
@@ -707,7 +1033,29 @@ namespace HidWizards.UCR.Core.Managers
             if (device == null || _context.DeviceAliases == null) return null;
             var identity = BuildAliasIdentity(device);
             if (identity == null) return null;
-            return _context.DeviceAliases.FirstOrDefault(alias => AliasIdentityEquals(alias, identity));
+
+            var exact = _context.DeviceAliases.FirstOrDefault(alias => AliasIdentityEquals(alias, identity));
+            if (exact != null) return exact;
+
+            // v0.9.9q and earlier stored Core_Interception aliases directly against DeviceHandle.
+            // Migrate that record in-place the first time the logical device is seen so existing friendly
+            // names/order settings survive the slot-churn fix instead of silently disappearing.
+            if (string.Equals(device.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(device.DeviceHandle) && device.LogicalInstanceNumber <= 1)
+            {
+                var legacy = _context.DeviceAliases.FirstOrDefault(alias => alias != null &&
+                    alias.IdentityKind == DeviceAliasIdentityKind.HardwareHandle && alias.DeviceNumber == 0 &&
+                    string.Equals(alias.ProviderName, device.ProviderName, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(alias.IdentityValue, device.DeviceHandle, StringComparison.OrdinalIgnoreCase));
+                if (legacy != null)
+                {
+                    legacy.IdentityValue = identity.IdentityValue;
+                    _context.ContextChanged();
+                    return legacy;
+                }
+            }
+
+            return null;
         }
 
         private void ApplyAliases(List<Device> devices)
@@ -720,6 +1068,7 @@ namespace HidWizards.UCR.Core.Managers
                 if (alias == null || string.IsNullOrWhiteSpace(alias.Alias)) continue;
 
                 if (alias.IdentityKind == DeviceAliasIdentityKind.HardwareHandle &&
+                    !string.Equals(device.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase) &&
                     CountHandleMatches(device, GetRelevantIdentityPopulation(device, devices)) != 1)
                 {
                     continue;
@@ -753,6 +1102,7 @@ namespace HidWizards.UCR.Core.Managers
 
             var devices = population == null ? new List<Device>() : population.ToList();
             if (preference.IdentityKind == DeviceAliasIdentityKind.HardwareHandle &&
+                !string.Equals(device.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase) &&
                 CountHandleMatches(device, GetRelevantIdentityPopulation(device, devices)) != 1)
             {
                 return false;
@@ -768,6 +1118,7 @@ namespace HidWizards.UCR.Core.Managers
                 {
                     var preference = FindAlias(device);
                     if (preference != null && preference.IdentityKind == DeviceAliasIdentityKind.HardwareHandle &&
+                        !string.Equals(device.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase) &&
                         CountHandleMatches(device, GetRelevantIdentityPopulation(device, devices)) != 1)
                     {
                         preference = null;

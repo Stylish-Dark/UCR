@@ -44,11 +44,14 @@ namespace HidWizards.UCR.Core.Models
         [DefaultValue(false)]
         public bool Hidden { get; set; }
         [XmlAttribute]
+        [DefaultValue(false)]
+        public bool Removed { get; set; }
+        [XmlAttribute]
         [DefaultValue(int.MaxValue)]
         public int SortOrder { get; set; } = int.MaxValue;
 
         [XmlIgnore]
-        public bool HasPresentationSettings => !string.IsNullOrWhiteSpace(Alias) || Hidden || SortOrder != int.MaxValue;
+        public bool HasPresentationSettings => !string.IsNullOrWhiteSpace(Alias) || Hidden || Removed || SortOrder != int.MaxValue;
 
         public DeviceAlias Clone()
         {
@@ -60,6 +63,7 @@ namespace HidWizards.UCR.Core.Models
                 DeviceNumber = DeviceNumber,
                 Alias = Alias,
                 Hidden = Hidden,
+                Removed = Removed,
                 SortOrder = SortOrder
             };
         }
@@ -364,6 +368,12 @@ namespace HidWizards.UCR.Core.Models
         private List<DeviceBindingNode> DeviceBindingMenu { get; set; }
         [XmlIgnore] public Profile Profile { get; set; }
         [XmlIgnore] public bool IsCache { get; set; }
+        // UCR logical ordinal for otherwise-identical physical devices. Provider DeviceNumber remains
+        // untouched because IOWrapper still needs the raw endpoint slot. Old profiles omit this attribute
+        // and therefore remain logical instance 1.
+        [XmlAttribute]
+        [DefaultValue(1)]
+        public int LogicalInstanceNumber { get; set; } = 1;
 
         #region Constructors
 

@@ -158,7 +158,8 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                     return null;
                 }
 
-                var existing = Devices.FirstOrDefault(deviceItem => SameDevice(deviceItem.DeviceConfiguration?.Device, detected));
+                var logicalDevice = _profile.Context.DevicesManager.RegisterDetectedInputDevice(detected) ?? detected;
+                var existing = Devices.FirstOrDefault(deviceItem => SameDevice(deviceItem.DeviceConfiguration?.Device, logicalDevice));
                 if (existing != null)
                 {
                     SelectedDeviceConfiguration = existing;
@@ -167,7 +168,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 }
 
                 var candidate = _profile.GetMissingDeviceList(DeviceIoType.Input)
-                    .FirstOrDefault(device => SameDevice(device, detected)) ?? detected;
+                    .FirstOrDefault(device => SameDevice(device, logicalDevice)) ?? logicalDevice;
                 var configuration = new DeviceConfiguration(candidate);
                 _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { configuration }, DeviceIoType.Input);
                 var item = new DeviceItem(configuration, _profile, DeviceIoType.Input);
@@ -204,11 +205,15 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         private static bool SameDevice(Device left, Device right)
         {
             if (left == null || right == null) return false;
-            if (DevicesManager.PersistedIdentityEquals(left, right) || DevicesManager.DescriptorEquals(left, right)) return true;
+            if (DevicesManager.DescriptorEquals(left, right) ||
+                (DevicesManager.LogicalIdentityEquals(left, right) &&
+                 left.LogicalInstanceNumber == right.LogicalInstanceNumber)) return true;
 
             // Handle-only matching is appropriate when reconciling a stale cache entry with a live
             // endpoint, but must never merge two simultaneously live identical keyboards/mice.
-            return left.IsCache != right.IsCache && DevicesManager.CacheRepresentsLiveEndpoint(left, right);
+            return left.LogicalInstanceNumber == right.LogicalInstanceNumber &&
+                   left.IsCache != right.IsCache &&
+                   DevicesManager.CacheRepresentsLiveEndpoint(left, right);
         }
 
         public void SetPrimaryDevice(DeviceItem deviceItem)

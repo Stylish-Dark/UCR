@@ -64,40 +64,19 @@ namespace HidWizards.UCR.Views.Dialogs
             DeviceList.ScrollIntoView(detected);
         }
 
-        private void RemoveStale_OnClick(object sender, RoutedEventArgs e)
-        {
-            var viewModel = DataContext as DeviceManagerViewModel;
-            if (viewModel == null) return;
-            var removed = viewModel.RemoveStaleCacheCopies();
-            DarkMessageBox.Show(this,
-                removed == 1 ? "Removed 1 stale cached device record." : "Removed " + removed + " stale cached device records.",
-                "Device cache cleanup", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-
         private void RemoveFromUcr_OnClick(object sender, RoutedEventArgs e)
         {
             var item = (sender as FrameworkElement)?.DataContext as DeviceManagerItemViewModel;
             var viewModel = DataContext as DeviceManagerViewModel;
-            if (item == null || viewModel == null) return;
-
-            if (item.IsCachedOnly)
-            {
-                if (DarkMessageBox.Show(this, "Forget this cached/disconnected UCR device record?", "Forget device record",
-                        MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-
-                if (!viewModel.ForgetCachedDevice(item, out var error))
-                {
-                    DarkMessageBox.Show(this, error, "Could not forget device", MessageBoxButton.OK, MessageBoxImage.Warning);
-                }
-                return;
-            }
+            if (item == null || viewModel == null || !item.CanRemoveFromUcr) return;
 
             if (DarkMessageBox.Show(this,
-                    "Remove this live device from UCR selection lists for the rest of this session?\n\n" +
-                    "This does not uninstall it from Windows and does not remove existing profile bindings.",
+                    "Remove this input device from UCR?\n\n" +
+                    "This does not uninstall it from Windows and does not remove existing profile bindings. " +
+                    "Use Detect Device whenever you want to add it back.",
                     "Remove from UCR", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
 
-            viewModel.DismissLiveDevice(item);
+            viewModel.RemoveFromUcr(item);
         }
 
         private void RemoveFromWindows_OnClick(object sender, RoutedEventArgs e)

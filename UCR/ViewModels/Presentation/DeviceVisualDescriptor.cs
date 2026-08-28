@@ -55,6 +55,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
         public string ToolTip { get; set; }
         public bool IsBound { get; set; }
         public Guid DeviceConfigurationGuid { get; set; }
+        public Guid BindingGuid { get; set; }
         public bool ShowDeviceBadge { get; set; }
         public bool IsFilterControl => ControlKind == ControlVisualKind.Filter;
     }
@@ -167,6 +168,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
                     ToolTip = "No binding",
                     IsBound = false,
                     DeviceConfigurationGuid = Guid.Empty,
+                    BindingGuid = Guid.Empty,
                     ShowDeviceBadge = false
                 };
             }
@@ -183,6 +185,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 ToolTip = deviceDescriptor.ToolTip + " — " + boundName,
                 IsBound = binding.IsBound,
                 DeviceConfigurationGuid = binding.DeviceConfigurationGuid,
+                BindingGuid = binding.Guid,
                 ShowDeviceBadge = false
             };
 
@@ -205,6 +208,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 ToolTip = "Creates/defines filter — " + cleanName,
                 IsBound = true,
                 DeviceConfigurationGuid = Guid.Empty,
+                BindingGuid = Guid.Empty,
                 ShowDeviceBadge = false
             };
         }

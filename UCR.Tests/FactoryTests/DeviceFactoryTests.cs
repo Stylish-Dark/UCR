@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using HidWizards.IOWrapper.DataTransferObjects;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
@@ -120,7 +121,7 @@ namespace HidWizards.UCR.Tests.FactoryTests
         }
 
         [Test]
-        public void StableResolverRefusesEnumerationOrderForDuplicatePhysicalDevicesWithoutHardwarePath()
+        public void StableResolverTreatsCoreInterceptionSlotDuplicatesAsOneLogicalDevice()
         {
             var configured = CreateIdentityDevice("Keyboard #2", "Core_Interception",
                 @"Keyboard\HID\VID_1111&PID_2222", 1, null);
@@ -131,7 +132,8 @@ namespace HidWizards.UCR.Tests.FactoryTests
 
             var resolved = DevicesManager.ResolveDevice(configured, new List<Device> { first, second });
 
-            Assert.That(resolved, Is.Null);
+            Assert.That(resolved, Is.SameAs(second),
+                "An exact live endpoint may be reused, but Core_Interception slot duplication must no longer make the logical device unresolvable.");
         }
 
         [Test]
@@ -185,7 +187,7 @@ namespace HidWizards.UCR.Tests.FactoryTests
             var identity = DevicesManager.BuildAliasIdentity(device);
 
             Assert.That(identity.IdentityKind, Is.EqualTo(DeviceAliasIdentityKind.HardwareHandle));
-            Assert.That(identity.IdentityValue, Is.EqualTo(device.DeviceHandle));
+            Assert.That(identity.IdentityValue, Is.EqualTo(DevicesManager.BuildLogicalDeviceKey(device)));
             Assert.That(identity.DeviceNumber, Is.EqualTo(0),
                 "Enumeration order must not become part of a physical-device alias identity.");
         }
@@ -227,6 +229,7 @@ namespace HidWizards.UCR.Tests.FactoryTests
                 DeviceNumber = 2,
                 Alias = "Player Three",
                 Hidden = true,
+                Removed = true,
                 SortOrder = 7
             };
 
@@ -235,23 +238,157 @@ namespace HidWizards.UCR.Tests.FactoryTests
             Assert.That(clone, Is.Not.SameAs(source));
             Assert.That(clone.Alias, Is.EqualTo("Player Three"));
             Assert.That(clone.Hidden, Is.True);
+            Assert.That(clone.Removed, Is.True);
             Assert.That(clone.SortOrder, Is.EqualTo(7));
             Assert.That(clone.HasPresentationSettings, Is.True);
         }
 
         [Test]
-        public void HardwareHandlePresentationRequiresUniquePhysicalDevice()
+        public void CoreInterceptionSlotChurnDoesNotDisablePersistentPresentation()
         {
-            var device = CreateIdentityDevice("Keyboard", "Core_Interception",
-                @"Keyboard\VID_1111&PID_2222", 0, null);
-            var duplicate = CreateIdentityDevice("Keyboard #2", "Core_Interception",
-                @"Keyboard\VID_1111&PID_2222", 1, null);
+            var device = CreateIdentityDevice("K: Logitech USB Receiver #4", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 3, null);
+            var duplicateSlot = CreateIdentityDevice("K: Logitech USB Receiver #6", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 5, null);
             var manager = new DevicesManager(new HidWizards.UCR.Core.Context());
 
             Assert.That(manager.CanPersistDeviceAlias(device, new[] { device }), Is.True);
-            Assert.That(manager.CanPersistDeviceAlias(device, new[] { device, duplicate }), Is.False);
+            Assert.That(manager.CanPersistDeviceAlias(device, new[] { device, duplicateSlot }), Is.True,
+                "Provider slot churn for one Core_Interception device must not disable its persistent settings.");
         }
 
+        [Test]
+        public void CoreInterceptionLogicalIdentityIgnoresProviderSlotSuffixButKeepsDeviceFamily()
+        {
+            var keyboard4 = CreateIdentityDevice("K: Logitech USB Receiver #4", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 3, null);
+            var keyboard6 = CreateIdentityDevice("K: Logitech USB Receiver #6", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 5, null);
+            var mouse = CreateIdentityDevice("M: Logitech USB Receiver", "Core_Interception",
+                @"Mouse\VID_046D&PID_C52B", 0, null);
+
+            Assert.That(DevicesManager.BuildLogicalDeviceKey(keyboard4), Is.EqualTo(DevicesManager.BuildLogicalDeviceKey(keyboard6)));
+            Assert.That(DevicesManager.BuildLogicalDeviceKey(keyboard4), Is.Not.EqualTo(DevicesManager.BuildLogicalDeviceKey(mouse)));
+            Assert.That(DevicesManager.GetLogicalDeviceTitle(keyboard6), Is.EqualTo("K: Logitech USB Receiver"));
+        }
+
+        [Test]
+        public void LogicalDeviceOrdinalSurvivesProfileSerialization()
+        {
+            var source = CreateIdentityDevice("K: Logitech USB Receiver #2", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 5, null);
+            source.LogicalInstanceNumber = 2;
+
+            var serializer = new XmlSerializer(typeof(Device));
+            string xml;
+            using (var writer = new StringWriter())
+            {
+                serializer.Serialize(writer, source);
+                xml = writer.ToString();
+            }
+
+            Device roundTrip;
+            using (var reader = new StringReader(xml))
+            {
+                roundTrip = (Device)serializer.Deserialize(reader);
+            }
+
+            Assert.That(roundTrip.LogicalInstanceNumber, Is.EqualTo(2));
+            Assert.That(roundTrip.DeviceNumber, Is.EqualTo(source.DeviceNumber),
+                "Persisting the logical ordinal must not replace IOWrapper's raw provider slot.");
+        }
+
+        [Test]
+        public void CoreInterceptionLogicalIdentityDoesNotDependOnProviderFriendlyTitle()
+        {
+            var before = CreateIdentityDevice("K: Generic Keyboard #4", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 3, null);
+            var after = CreateIdentityDevice("K: Logitech USB Receiver #6", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 5, null);
+
+            Assert.That(DevicesManager.BuildLogicalDeviceKey(before),
+                Is.EqualTo(DevicesManager.BuildLogicalDeviceKey(after)),
+                "The stable logical identity must come from the hardware handle, not a provider-friendly title that can change.");
+        }
+
+        [Test]
+        public void CoreInterceptionRawSlotDuplicatesCollapseToOneLogicalDevice()
+        {
+            var keyboard4 = CreateIdentityDevice("K: Logitech USB Receiver #4", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 3, null);
+            var keyboard6 = CreateIdentityDevice("K: Logitech USB Receiver #6", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 5, null);
+            var mouse = CreateIdentityDevice("M: Logitech USB Receiver", "Core_Interception",
+                @"Mouse\VID_046D&PID_C52B", 0, null);
+
+            var collapsed = DevicesManager.CollapseLogicalDevices(new[] { keyboard4, keyboard6, mouse });
+
+            Assert.That(collapsed.Count, Is.EqualTo(2));
+            Assert.That(collapsed, Does.Contain(keyboard4));
+            Assert.That(collapsed, Does.Contain(mouse));
+        }
+
+        [Test]
+        public void DetectingDifferentStillLiveCoreInterceptionEndpointCreatesSecondLogicalInstance()
+        {
+            var manager = new DevicesManager(new HidWizards.UCR.Core.Context());
+            var first = CreateLiveIdentityDevice("K: Logitech USB Receiver #4", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 3, null);
+            var second = CreateLiveIdentityDevice("K: Logitech USB Receiver #6", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 5, null);
+
+            Assert.That(manager.RegisterDetectedInputEndpoint(first, new[] { first, second }), Is.EqualTo(1));
+            Assert.That(manager.RegisterDetectedInputEndpoint(second, new[] { first, second }), Is.EqualTo(2),
+                "A different raw endpoint only earns #2 after it deliberately produces input while the first detected endpoint is still live.");
+        }
+
+        [Test]
+        public void DetectingSamePhysicalPathOnNewSlotIsTreatedAsSlotChurnNotSecondDevice()
+        {
+            var manager = new DevicesManager(new HidWizards.UCR.Core.Context());
+            const string hidPath = @"\\?\HID#VID_046D&PID_C52B#same-physical-keyboard";
+            var first = CreateLiveIdentityDevice("K: Logitech USB Receiver #4", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 3, hidPath);
+            var laterSlot = CreateLiveIdentityDevice("K: Logitech USB Receiver #6", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 5, hidPath);
+
+            Assert.That(manager.RegisterDetectedInputEndpoint(first, new[] { first, laterSlot }), Is.EqualTo(1));
+            Assert.That(manager.RegisterDetectedInputEndpoint(laterSlot, new[] { first, laterSlot }), Is.EqualTo(1),
+                "The same physical HID path moving to a different provider slot must never manufacture #2.");
+        }
+
+        [Test]
+        public void RemovedInputIsOperationallyUnavailableUntilDetectRestoresIt()
+        {
+            var context = new HidWizards.UCR.Core.Context();
+            var manager = context.DevicesManager;
+            var device = CreateLiveIdentityDevice("K: Logitech USB Receiver", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 3, null);
+
+            Assert.That(manager.RemoveInputDevice(device), Is.True);
+            Assert.That(manager.ResolveDevice(device, DeviceIoType.Input), Is.Null);
+            Assert.That(manager.ResolveDevice(device, DeviceIoType.Output), Is.Null,
+                "A removed combined input/output device must be absent from UCR operationally, not just hidden from selection lists.");
+            Assert.That(manager.RestoreInputDevice(device), Is.True);
+        }
+
+        [Test]
+        public void RemovedSecondLogicalInputRestoresOnlyItsOwnOrdinal()
+        {
+            var context = new HidWizards.UCR.Core.Context();
+            var manager = context.DevicesManager;
+            var first = CreateLiveIdentityDevice("K: Logitech USB Receiver", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 3, null);
+            var second = CreateLiveIdentityDevice("K: Logitech USB Receiver #2", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 5, null);
+            second.LogicalInstanceNumber = 2;
+
+            Assert.That(manager.RemoveInputDevice(second), Is.True);
+            Assert.That(manager.IsInputRemoved(first), Is.False);
+            Assert.That(manager.IsInputRemoved(second), Is.True);
+            Assert.That(manager.RestoreInputDevice(second), Is.True);
+            Assert.That(manager.IsInputRemoved(second), Is.False);
+        }
 
         [Test]
         public void CacheCopyWithSamePhysicalHandleIsRecognizedAcrossProviderSlotChanges()
@@ -289,24 +426,58 @@ namespace HidWizards.UCR.Tests.FactoryTests
         }
 
         [Test]
-        public void SessionOnlyDeviceManagerEntryRemainsSelectable()
+        public void DeviceManagerUsesRemoveForInputsAndHiddenForOutputs()
         {
-            var device = CreateLiveIdentityDevice("Ambiguous Keyboard", "Core_Interception",
-                @"Keyboard\VID_1111&PID_2222", 1, null);
+            var input = CreateLiveIdentityDevice("K: Logitech USB Receiver #6", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 5, null);
+            var output = CreateLiveIdentityDevice("ViGEm DS4 Controller 1", "Core_ViGEm",
+                "ds4", 0, null);
 
-            Assert.That(device.IsCache, Is.False,
-                "Regression fixture must be a live device; cached devices intentionally use the cached/disconnected presentation path.");
+            var inputItem = new DeviceManagerItemViewModel(input, DeviceIoType.Input,
+                true, null, false, "input");
+            var outputItem = new DeviceManagerItemViewModel(output, DeviceIoType.Output,
+                true, null, false, "output");
 
-            var item = new DeviceManagerItemViewModel(device, DeviceIoType.Input,
-                false, null, false, "ephemeral");
+            Assert.That(inputItem.CanRemoveFromUcr, Is.True);
+            Assert.That(inputItem.CanHide, Is.False);
+            Assert.That(outputItem.CanRemoveFromUcr, Is.False);
+            Assert.That(outputItem.CanHide, Is.True);
+        }
 
-            Assert.That(item.IsCachedOnly, Is.False);
-            Assert.That(item.CanPersist, Is.False);
-            Assert.That(item.CanDismiss, Is.True);
-            Assert.That(item.CanForget, Is.False);
+        [Test]
+        public void DeviceManagerCombinedInputOutputDeviceUsesRemoveNotHidden()
+        {
+            var keyboard = CreateLiveIdentityDevice("K: Logitech USB Receiver", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 0, null);
+            var item = new DeviceManagerItemViewModel(keyboard, DeviceIoType.Input,
+                true, null, true, "keyboard");
+
+            item.AddIoType(DeviceIoType.Output);
+
+            Assert.That(item.HasInput, Is.True);
+            Assert.That(item.HasOutput, Is.True);
+            Assert.That(item.CanRemoveFromUcr, Is.True);
+            Assert.That(item.CanHide, Is.False);
             Assert.That(item.Hidden, Is.False,
-                "A live device with session-only identity must remain usable even when UCR cannot safely persist alias/hide/order metadata for it.");
-            Assert.That(item.IdentityNote, Does.Contain("Session identity only"));
+                "A combined input/output physical device follows the input rule because Detect Device can restore it.");
+        }
+
+        [Test]
+        public void InputRemovalPersistsOnLogicalIdentityUntilRestored()
+        {
+            var context = new HidWizards.UCR.Core.Context();
+            var manager = context.DevicesManager;
+            var firstSlot = CreateLiveIdentityDevice("K: Logitech USB Receiver #4", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 3, null);
+            var laterSlot = CreateLiveIdentityDevice("K: Logitech USB Receiver #6", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 5, null);
+
+            Assert.That(manager.IsInputRemoved(firstSlot), Is.False);
+            Assert.That(manager.RemoveInputDevice(firstSlot), Is.True);
+            Assert.That(manager.IsInputRemoved(laterSlot), Is.True,
+                "Removal must follow the logical hardware identity rather than a transient provider slot.");
+            Assert.That(manager.RestoreInputDevice(laterSlot), Is.True);
+            Assert.That(manager.IsInputRemoved(firstSlot), Is.False);
         }
 
         [Test]
