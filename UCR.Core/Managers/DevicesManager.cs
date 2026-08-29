@@ -18,6 +18,12 @@ using Logger = NLog.Logger;
 
 namespace HidWizards.UCR.Core.Managers
 {
+    public sealed class DetectedInputControl
+    {
+        public Device Device { get; set; }
+        public string ControlTitle { get; set; }
+    }
+
     public class DevicesManager
     {
         private readonly Context _context;
@@ -32,11 +38,12 @@ namespace HidWizards.UCR.Core.Managers
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private static readonly TimeSpan DeviceDetectionArmDelay = TimeSpan.FromMilliseconds(350);
         private readonly object _deviceDetectionLock = new object();
-        private TaskCompletionSource<Device> _deviceDetectionCompletion;
+        private TaskCompletionSource<DetectedInputControl> _deviceDetectionCompletion;
         private List<Device> _deviceDetectionDevices;
         private Timer _deviceDetectionTimer;
         private CancellationTokenRegistration _deviceDetectionCancellation;
         private DateTime _deviceDetectionAcceptAfterUtc = DateTime.MaxValue;
+        private DeviceBindingCategory? _deviceDetectionRequiredCategory;
 
 
         public DevicesManager(Context context)
@@ -372,34 +379,53 @@ namespace HidWizards.UCR.Core.Managers
         /// <summary>
         /// Temporarily listens to all live input devices and returns the first device that produces a
         /// deliberate button/key-style input. Axis movement and delta input are ignored so mouse motion,
-        /// stick drift and resting analogue values cannot win detection accidentally.
+        /// stick drift and resting analogue values cannot win device identification accidentally.
         /// </summary>
-        public Task<Device> DetectInputDeviceAsync(TimeSpan timeout, CancellationToken cancellationToken)
+        public async Task<Device> DetectInputDeviceAsync(TimeSpan timeout, CancellationToken cancellationToken)
+        {
+            var detected = await DetectInputAsync(timeout, cancellationToken, null);
+            return detected?.Device;
+        }
+
+        /// <summary>
+        /// Captures one control from any live input endpoint. The caller receives the control identity
+        /// separately from the physical device so it can use the gesture as a selector without changing
+        /// a target output-device assignment.
+        /// </summary>
+        public Task<DetectedInputControl> DetectInputControlAsync(DeviceBindingCategory requiredCategory,
+            TimeSpan timeout, CancellationToken cancellationToken)
+        {
+            return DetectInputAsync(timeout, cancellationToken, requiredCategory);
+        }
+
+        private Task<DetectedInputControl> DetectInputAsync(TimeSpan timeout, CancellationToken cancellationToken,
+            DeviceBindingCategory? requiredCategory)
         {
             if (timeout <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
             if (_context.BindingManager != null && _context.BindingManager.IsBindModeActive)
             {
-                throw new InvalidOperationException("Finish the current binding operation before detecting a device.");
+                throw new InvalidOperationException("Finish the current binding operation before detecting an input.");
             }
 
             // Detection must listen to raw provider endpoints. User-facing enumeration deliberately
             // collapses Core_Interception slot churn, but the detector needs the exact endpoint that
             // produced input so it can distinguish churn from a genuinely second identical device.
             var devices = GetRawAvailableDeviceList(DeviceIoType.Input, false);
-            if (devices.Count == 0) return Task.FromResult<Device>(null);
+            if (devices.Count == 0) return Task.FromResult<DetectedInputControl>(null);
 
-            TaskCompletionSource<Device> completion;
+            TaskCompletionSource<DetectedInputControl> completion;
             lock (_deviceDetectionLock)
             {
                 if (_deviceDetectionCompletion != null)
                 {
-                    throw new InvalidOperationException("Device detection is already running.");
+                    throw new InvalidOperationException("Input detection is already running.");
                 }
 
-                completion = new TaskCompletionSource<Device>();
+                completion = new TaskCompletionSource<DetectedInputControl>();
                 _deviceDetectionCompletion = completion;
                 _deviceDetectionDevices = devices;
                 _deviceDetectionAcceptAfterUtc = DateTime.MaxValue;
+                _deviceDetectionRequiredCategory = requiredCategory;
             }
 
             try
@@ -414,7 +440,7 @@ namespace HidWizards.UCR.Core.Managers
                     catch (Exception exception)
                     {
                         Logger.Error(exception,
-                            $"Could not enable device detection for provider={device.ProviderName}, handle={device.DeviceHandle}, instance={device.DeviceNumber}");
+                            $"Could not enable input detection for provider={device.ProviderName}, handle={device.DeviceHandle}, instance={device.DeviceNumber}");
                     }
                 }
 
@@ -452,19 +478,30 @@ namespace HidWizards.UCR.Core.Managers
         {
             List<Device> devices;
             DateTime acceptAfter;
+            DeviceBindingCategory? requiredCategory;
             lock (_deviceDetectionLock)
             {
                 if (_deviceDetectionCompletion == null) return;
                 devices = _deviceDetectionDevices;
                 acceptAfter = _deviceDetectionAcceptAfterUtc;
+                requiredCategory = _deviceDetectionRequiredCategory;
             }
 
             if (DateTime.UtcNow < acceptAfter || bindingReport == null) return;
 
             var category = DeviceBinding.MapCategory(bindingReport.Category);
-            var isDeliberatePress = category == DeviceBindingCategory.Momentary && value != 0;
-            var isDiscreteEvent = category == DeviceBindingCategory.Event;
-            if (!isDeliberatePress && !isDiscreteEvent) return;
+            if (requiredCategory.HasValue)
+            {
+                if (category != requiredCategory.Value || !IsDetectedControlValueValid(category, value)) return;
+            }
+            else
+            {
+                // Device identification intentionally ignores analogue/delta motion so ordinary mouse
+                // movement, stick drift and resting values cannot select a device by accident.
+                var isDeliberatePress = category == DeviceBindingCategory.Momentary && value != 0;
+                var isDiscreteEvent = category == DeviceBindingCategory.Event;
+                if (!isDeliberatePress && !isDiscreteEvent) return;
+            }
 
             var device = devices?.FirstOrDefault(candidate =>
                 string.Equals(candidate.ProviderName, providerDescriptor?.ProviderName,
@@ -475,13 +512,37 @@ namespace HidWizards.UCR.Core.Managers
 
             if (device == null) return;
 
-            Logger.Debug($"Detected input device: provider={device.ProviderName}, handle={device.DeviceHandle}, instance={device.DeviceNumber}, title={device.DisplayTitle}");
-            ThreadPool.QueueUserWorkItem(_ => CompleteDeviceDetection(device));
+            var descriptor = bindingReport.BindingDescriptor;
+            var detected = new DetectedInputControl
+            {
+                Device = device,
+                ControlTitle = bindingReport.Title ?? string.Empty
+            };
+
+            Logger.Debug($"Detected input: provider={device.ProviderName}, handle={device.DeviceHandle}, instance={device.DeviceNumber}, control={detected.ControlTitle}, category={category}, type={descriptor.Type}, index={descriptor.Index}, subIndex={descriptor.SubIndex}");
+            ThreadPool.QueueUserWorkItem(_ => CompleteDeviceDetection(detected));
         }
 
-        private void CompleteDeviceDetection(Device detectedDevice)
+        private static bool IsDetectedControlValueValid(DeviceBindingCategory category, short value)
         {
-            TaskCompletionSource<Device> completion;
+            switch (category)
+            {
+                case DeviceBindingCategory.Delta:
+                case DeviceBindingCategory.Event:
+                    return value != 0 || category == DeviceBindingCategory.Event;
+                case DeviceBindingCategory.Momentary:
+                    return value != 0;
+                case DeviceBindingCategory.Range:
+                    var wideValue = Functions.WideAbs(value);
+                    return Constants.AxisMaxValue * 0.4 < wideValue && Constants.AxisMaxValue * 0.6 > wideValue;
+                default:
+                    return false;
+            }
+        }
+
+        private void CompleteDeviceDetection(DetectedInputControl detectedInput)
+        {
+            TaskCompletionSource<DetectedInputControl> completion;
             List<Device> devices;
             Timer timer;
             CancellationTokenRegistration cancellation;
@@ -500,6 +561,7 @@ namespace HidWizards.UCR.Core.Managers
                 _deviceDetectionTimer = null;
                 _deviceDetectionCancellation = default(CancellationTokenRegistration);
                 _deviceDetectionAcceptAfterUtc = DateTime.MaxValue;
+                _deviceDetectionRequiredCategory = null;
             }
 
             timer?.Dispose();
@@ -515,11 +577,11 @@ namespace HidWizards.UCR.Core.Managers
                 catch (Exception exception)
                 {
                     Logger.Error(exception,
-                        $"Could not restore input subscription after device detection for provider={device.ProviderName}, handle={device.DeviceHandle}, instance={device.DeviceNumber}");
+                        $"Could not restore input subscription after detection for provider={device.ProviderName}, handle={device.DeviceHandle}, instance={device.DeviceNumber}");
                 }
             }
 
-            completion.TrySetResult(detectedDevice);
+            completion.TrySetResult(detectedInput);
         }
 
         private static DeviceDescriptor GetDeviceDescriptor(Device device)

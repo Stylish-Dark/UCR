@@ -43,6 +43,7 @@
                 <Setter Property="Padding" Value="0"/>
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="{x:Type ListBoxItem}">
@@ -118,11 +119,14 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <Grid Grid.Column="0" Margin="0 0 10 0">
+                <ScrollViewer x:Name="SidebarScrollViewer" Grid.Column="0" Margin="0 0 10 0"
+                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              PanningMode="VerticalOnly">
+                    <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <Border Grid.Row="0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
@@ -289,6 +293,7 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
                             <Grid Margin="8 7 8 2">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -329,7 +334,24 @@
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
-                            <Grid Grid.Row="2" Margin="8 3 8 7">
+                            <StackPanel Grid.Row="2" Margin="9 1 9 5">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding InputDeviceControlViewModel.IsDetecting}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="{Binding InputDeviceControlViewModel.DetectionStatus}" FontSize="10.5"
+                                           Foreground="{DynamicResource PrimaryHueMidBrush}" TextTrimming="CharacterEllipsis"/>
+                                <ProgressBar Height="2" Margin="0 2 0 0" Minimum="0" Maximum="100"
+                                             Value="{Binding InputDeviceControlViewModel.DetectionProgress}"
+                                             Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                            </StackPanel>
+                            <Grid Grid.Row="3" Margin="8 3 8 7">
                                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                 <Grid Grid.Row="0">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -372,6 +394,7 @@
                         </Expander>
                     </Border>
                 </Grid>
+                </ScrollViewer>
                 <Grid Grid.Column="1">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -438,8 +461,7 @@
                           LostMouseCapture="MappingListView_OnLostMouseCapture">
                     <ListView.ItemContainerStyle>
                         <Style TargetType="{x:Type ListViewItem}">
-                            <Setter Property="Focusable" Value="False"/>
-                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                             <Setter Property="Padding" Value="0"/>
                             <Setter Property="Margin" Value="0"/>
                             <Setter Property="Background" Value="Transparent"/>

@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
@@ -40,7 +41,45 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         private readonly Action _presentationChanged;
         private readonly string _dialogIdentifier;
         private CancellationTokenSource _detectionCancellation;
+        private DispatcherTimer _detectionUiTimer;
+        private DateTime _detectionDeadlineUtc;
+        private bool _isDetecting;
+        private double _detectionSecondsRemaining;
+        private double _detectionProgress;
         private bool _disposed;
+
+        public bool IsDetecting
+        {
+            get => _isDetecting;
+            private set
+            {
+                if (_isDetecting == value) return;
+                _isDetecting = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public double DetectionSecondsRemaining
+        {
+            get => _detectionSecondsRemaining;
+            private set
+            {
+                if (Math.Abs(_detectionSecondsRemaining - value) < 0.01) return;
+                _detectionSecondsRemaining = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public double DetectionProgress
+        {
+            get => _detectionProgress;
+            private set
+            {
+                if (Math.Abs(_detectionProgress - value) < 0.01) return;
+                _detectionProgress = value;
+                OnPropertyChanged();
+            }
+        }
 
         private string _detectionStatus;
         public string DetectionStatus
@@ -143,15 +182,26 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         {
             if (_disposed || _profile == null || _deviceIoType != DeviceIoType.Input) return null;
 
-            _detectionCancellation?.Cancel();
+            if (IsDetecting)
+            {
+                _detectionCancellation?.Cancel();
+                DetectionStatus = "Detection cancelled.";
+                return null;
+            }
+
+            var timeout = TimeSpan.FromSeconds(8);
             var cancellation = new CancellationTokenSource();
             _detectionCancellation = cancellation;
-            DetectionStatus = "Listening — press a button or key…";
+            StartDetectionCountdown(timeout);
 
             try
             {
-                var detected = await _profile.Context.DevicesManager.DetectInputDeviceAsync(TimeSpan.FromSeconds(8), cancellation.Token);
-                if (cancellation.IsCancellationRequested) return null;
+                var detected = await _profile.Context.DevicesManager.DetectInputDeviceAsync(timeout, cancellation.Token);
+                if (cancellation.IsCancellationRequested)
+                {
+                    DetectionStatus = "Detection cancelled.";
+                    return null;
+                }
                 if (detected == null)
                 {
                     DetectionStatus = "No button or key press detected.";
@@ -197,9 +247,50 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             }
             finally
             {
+                StopDetectionCountdown();
                 if (ReferenceEquals(_detectionCancellation, cancellation)) _detectionCancellation = null;
                 cancellation.Dispose();
             }
+        }
+
+        private void StartDetectionCountdown(TimeSpan timeout)
+        {
+            _detectionDeadlineUtc = DateTime.UtcNow.Add(timeout);
+            IsDetecting = true;
+            UpdateDetectionCountdown();
+            _detectionUiTimer?.Stop();
+            _detectionUiTimer = new DispatcherTimer(DispatcherPriority.Render)
+            {
+                Interval = TimeSpan.FromMilliseconds(100)
+            };
+            _detectionUiTimer.Tick += DetectionUiTimerOnTick;
+            _detectionUiTimer.Start();
+        }
+
+        private void DetectionUiTimerOnTick(object sender, EventArgs e)
+        {
+            UpdateDetectionCountdown();
+        }
+
+        private void UpdateDetectionCountdown()
+        {
+            var remaining = Math.Max(0, (_detectionDeadlineUtc - DateTime.UtcNow).TotalSeconds);
+            DetectionSecondsRemaining = remaining;
+            DetectionProgress = Math.Max(0, Math.Min(100, remaining / 8.0 * 100.0));
+            DetectionStatus = "Listening — press a button or key — " + remaining.ToString("0.0") + "s";
+        }
+
+        private void StopDetectionCountdown()
+        {
+            if (_detectionUiTimer != null)
+            {
+                _detectionUiTimer.Stop();
+                _detectionUiTimer.Tick -= DetectionUiTimerOnTick;
+                _detectionUiTimer = null;
+            }
+            IsDetecting = false;
+            DetectionSecondsRemaining = 0;
+            DetectionProgress = 0;
         }
 
         private static bool SameDevice(Device left, Device right)
@@ -272,6 +363,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         {
             if (_disposed) return;
             _disposed = true;
+            StopDetectionCountdown();
             if (_detectionCancellation != null)
             {
                 _detectionCancellation.Cancel();

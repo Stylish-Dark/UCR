@@ -104,9 +104,9 @@
                 <Grid MinHeight="64" ToolTip="Right-drag this card while collapsed to reorder it">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="4"/>
-                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="140"/>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="190"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- The strip describes what the mapping produces, not what happened to feed it. -->
@@ -131,32 +131,58 @@
                         </ItemsControl>
                     </StackPanel>
 
-                    <Grid Grid.Column="2" Margin="8 5 12 5" VerticalAlignment="Center"
-                          HorizontalAlignment="Center" ClipToBounds="False">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" MinWidth="70"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto" MinWidth="70"/>
-                        </Grid.ColumnDefinitions>
+                    <Grid Grid.Column="2" Margin="6 5 8 5" VerticalAlignment="Center" ClipToBounds="False">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-                        <ItemsControl Grid.Column="0" ItemsSource="{Binding CollapsedInputVisuals}"
-                                      ItemTemplate="{StaticResource MappingBindingVisualTemplate}" HorizontalAlignment="Right"
-                                      MinWidth="64" ClipToBounds="False" Cursor="Hand"
-                                      ToolTip="Right-click to detect and bind this input"
-                                      PreviewMouseRightButtonUp="QuickBindInput_OnMouseRightButtonUp">
-                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                        </ItemsControl>
+                        <Viewbox Grid.Row="0" Stretch="Uniform" StretchDirection="DownOnly"
+                                 HorizontalAlignment="Stretch" VerticalAlignment="Center" ClipToBounds="False">
+                            <Grid ClipToBounds="False">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
 
-                        <TextBlock Grid.Column="1" Text="→" Margin="8 0" FontSize="20" FontWeight="Light"
-                                   Foreground="#AFAFAF" VerticalAlignment="Center"/>
+                                <ItemsControl Grid.Column="0" ItemsSource="{Binding CollapsedInputVisuals}"
+                                              ItemTemplate="{StaticResource MappingBindingVisualTemplate}" HorizontalAlignment="Right"
+                                              ClipToBounds="False" Cursor="Hand"
+                                              ToolTip="Right-click to detect and bind this input"
+                                              PreviewMouseRightButtonUp="QuickBindInput_OnMouseRightButtonUp">
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                </ItemsControl>
 
-                        <ItemsControl Grid.Column="2" ItemsSource="{Binding CollapsedOutputVisuals}"
-                                      ItemTemplate="{StaticResource MappingBindingVisualTemplate}" HorizontalAlignment="Left"
-                                      MinWidth="64" ClipToBounds="False" Cursor="Hand"
-                                      ToolTip="Right-click to choose an output control"
-                                      PreviewMouseRightButtonUp="QuickBindOutput_OnMouseRightButtonUp">
-                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                        </ItemsControl>
+                                <TextBlock Grid.Column="1" Text="→" Margin="8 0" FontSize="20" FontWeight="Light"
+                                           Foreground="#AFAFAF" VerticalAlignment="Center"/>
+
+                                <ItemsControl Grid.Column="2" ItemsSource="{Binding CollapsedOutputVisuals}"
+                                              ItemTemplate="{StaticResource MappingBindingVisualTemplate}" HorizontalAlignment="Left"
+                                              ClipToBounds="False" Cursor="Hand"
+                                              ToolTip="Right-click, then press the control you want on the selected output device"
+                                              PreviewMouseRightButtonUp="QuickBindOutput_OnMouseRightButtonUp">
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </Grid>
+                        </Viewbox>
+
+                        <StackPanel Grid.Row="1" Margin="2 2 2 0">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsQuickOutputDetecting}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock Text="{Binding QuickOutputDetectionStatus}" FontSize="10.5" Foreground="#E4E4E4"
+                                       HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            <ProgressBar Height="2" Margin="0 2 0 0" Minimum="0" Maximum="100"
+                                         Value="{Binding QuickOutputDetectionProgress}" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                        </StackPanel>
                     </Grid>
 
                     <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="2 0 6 0">

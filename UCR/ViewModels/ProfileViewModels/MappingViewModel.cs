@@ -4,8 +4,12 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Threading;
 using System.Text.RegularExpressions;
 using HidWizards.UCR.Core.Annotations;
+using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Core.Utilities;
@@ -31,16 +35,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
     {
         public string Name { get; set; }
         public string ToolTip { get; set; }
-    }
-
-    public sealed class QuickBindingOption
-    {
-        public string Title { get; set; }
-        public Guid DeviceConfigurationGuid { get; set; }
-        public int KeyType { get; set; }
-        public int KeyValue { get; set; }
-        public int KeySubValue { get; set; }
-        public BindingVisualDescriptor Visual { get; set; }
     }
 
     public class MappingViewModel : INotifyPropertyChanged, IDisposable
@@ -100,6 +94,46 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 if (_isDragging == value) return;
                 _isDragging = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private CancellationTokenSource _quickOutputDetectionCancellation;
+        private DispatcherTimer _quickOutputDetectionTimer;
+        private DateTime _quickOutputDetectionDeadlineUtc;
+        private bool _isQuickOutputDetecting;
+        private string _quickOutputDetectionStatus;
+        private double _quickOutputDetectionProgress;
+
+        public bool IsQuickOutputDetecting
+        {
+            get => _isQuickOutputDetecting;
+            private set
+            {
+                if (_isQuickOutputDetecting == value) return;
+                _isQuickOutputDetecting = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string QuickOutputDetectionStatus
+        {
+            get => _quickOutputDetectionStatus;
+            private set
+            {
+                if (_quickOutputDetectionStatus == value) return;
+                _quickOutputDetectionStatus = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public double QuickOutputDetectionProgress
+        {
+            get => _quickOutputDetectionProgress;
+            private set
+            {
+                if (Math.Abs(_quickOutputDetectionProgress - value) < 0.01) return;
+                _quickOutputDetectionProgress = value;
                 OnPropertyChanged();
             }
         }
@@ -335,13 +369,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return true;
         }
 
-        public List<QuickBindingOption> GetQuickOutputBindingOptions(BindingVisualDescriptor descriptor)
+        public async Task<bool> QuickBindOutputAsync(BindingVisualDescriptor descriptor)
         {
-            var result = new List<QuickBindingOption>();
-            if (!ButtonsEnabled) return result;
+            if (!ButtonsEnabled) return false;
+
+            if (IsQuickOutputDetecting)
+            {
+                _quickOutputDetectionCancellation?.Cancel();
+                return false;
+            }
 
             var bindingViewModel = ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
-            if (bindingViewModel?.DeviceBinding == null || !bindingViewModel.BindingEnabled) return result;
+            if (bindingViewModel?.DeviceBinding == null || !bindingViewModel.BindingEnabled) return false;
 
             var binding = bindingViewModel.DeviceBinding;
             var configurationGuid = binding.DeviceConfigurationGuid;
@@ -351,56 +390,126 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 configurationGuid = ProfileViewModel.Profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output)?.Guid ?? Guid.Empty;
 
             var configuration = ProfileViewModel.Profile.GetDeviceConfiguration(DeviceIoType.Output, configurationGuid);
-            if (configuration?.Device == null) return result;
-
-            var menu = ProfileViewModel.Profile.Context.DevicesManager.GetDeviceBindingMenu(
-                configuration.Device, DeviceIoType.Output);
-            foreach (var node in FlattenBindingNodes(menu))
+            if (configuration?.Device == null)
             {
-                if (node?.DeviceBindingInfo == null ||
-                    node.DeviceBindingInfo.DeviceBindingCategory != bindingViewModel.DeviceBindingCategory) continue;
-
-                var info = node.DeviceBindingInfo;
-                var temporary = new DeviceBinding
-                {
-                    Profile = ProfileViewModel.Profile,
-                    DeviceIoType = DeviceIoType.Output,
-                    DeviceBindingCategory = bindingViewModel.DeviceBindingCategory,
-                    DeviceConfigurationGuid = configuration.Guid,
-                    IsBound = true,
-                    KeyType = info.KeyType,
-                    KeyValue = info.KeyValue,
-                    KeySubValue = info.KeySubValue
-                };
-
-                result.Add(new QuickBindingOption
-                {
-                    Title = node.Title,
-                    DeviceConfigurationGuid = configuration.Guid,
-                    KeyType = info.KeyType,
-                    KeyValue = info.KeyValue,
-                    KeySubValue = info.KeySubValue,
-                    Visual = DeviceVisualCatalog.DescribeBinding(
-                        temporary, bindingViewModel.DeviceBindingCategory, ProfileViewModel.Profile)
-                });
+                QuickOutputDetectionStatus = "Choose an output device first.";
+                return false;
             }
 
-            return result;
+            var timeout = TimeSpan.FromSeconds(5);
+            var cancellation = new CancellationTokenSource();
+            _quickOutputDetectionCancellation = cancellation;
+            StartQuickOutputCountdown(timeout);
+
+            try
+            {
+                var detected = await ProfileViewModel.Profile.Context.DevicesManager.DetectInputControlAsync(
+                    bindingViewModel.DeviceBindingCategory, timeout, cancellation.Token);
+
+                if (cancellation.IsCancellationRequested)
+                {
+                    QuickOutputDetectionStatus = "Input capture cancelled.";
+                    return false;
+                }
+                if (detected == null)
+                {
+                    QuickOutputDetectionStatus = "No input detected.";
+                    return false;
+                }
+
+                return ApplyDetectedOutputControl(bindingViewModel, configuration, detected);
+            }
+            catch (InvalidOperationException exception)
+            {
+                QuickOutputDetectionStatus = exception.Message;
+                return false;
+            }
+            catch (Exception exception)
+            {
+                Logger.Error("Quick output binding failed", exception);
+                QuickOutputDetectionStatus = "Input capture failed.";
+                return false;
+            }
+            finally
+            {
+                StopQuickOutputCountdown();
+                cancellation.Dispose();
+                if (ReferenceEquals(_quickOutputDetectionCancellation, cancellation))
+                    _quickOutputDetectionCancellation = null;
+            }
         }
 
-        public bool ApplyQuickOutputBinding(BindingVisualDescriptor descriptor, QuickBindingOption option)
+        private bool ApplyDetectedOutputControl(DeviceBindingViewModel bindingViewModel,
+            DeviceConfiguration outputConfiguration, DetectedInputControl detected)
         {
-            if (!ButtonsEnabled || option == null) return false;
-            var bindingViewModel = ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
-            if (bindingViewModel?.DeviceBinding == null || !bindingViewModel.BindingEnabled) return false;
+            if (bindingViewModel?.DeviceBinding == null || outputConfiguration?.Device == null || detected == null)
+                return false;
 
+            // A press on an input device is only a selector. Resolve the same named control on the
+            // already-selected output device, then bind that output control. The input device itself
+            // is deliberately ignored here and can never replace the output-device configuration.
+            var outputNode = FlattenBindingNodes(ProfileViewModel.Profile.Context.DevicesManager.GetDeviceBindingMenu(
+                    outputConfiguration.Device, DeviceIoType.Output))
+                .FirstOrDefault(node => node?.DeviceBindingInfo != null &&
+                                        node.DeviceBindingInfo.DeviceBindingCategory == bindingViewModel.DeviceBindingCategory &&
+                                        string.Equals(node.Title, detected.ControlTitle, StringComparison.CurrentCultureIgnoreCase));
+
+            if (outputNode?.DeviceBindingInfo == null)
+            {
+                QuickOutputDetectionStatus = string.IsNullOrWhiteSpace(detected.ControlTitle)
+                    ? "That input has no matching output control."
+                    : "No matching output control named " + detected.ControlTitle + ".";
+                return false;
+            }
+
+            var info = outputNode.DeviceBindingInfo;
             var binding = bindingViewModel.DeviceBinding;
             binding.DeviceBindingCategory = bindingViewModel.DeviceBindingCategory;
-            binding.SetDeviceConfigurationGuid(option.DeviceConfigurationGuid);
-            binding.SetKeyTypeValue(option.KeyType, option.KeyValue, option.KeySubValue);
+            binding.SetDeviceConfigurationGuid(outputConfiguration.Guid);
+            binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
             bindingViewModel.RefreshDeviceList();
             RefreshCollapsedSummary();
+            QuickOutputDetectionStatus = "Bound output: " + outputNode.Title;
             return true;
+        }
+
+        private void StartQuickOutputCountdown(TimeSpan timeout)
+        {
+            _quickOutputDetectionDeadlineUtc = DateTime.UtcNow.Add(timeout);
+            IsQuickOutputDetecting = true;
+            UpdateQuickOutputCountdown();
+
+            _quickOutputDetectionTimer?.Stop();
+            _quickOutputDetectionTimer = new DispatcherTimer(DispatcherPriority.Render)
+            {
+                Interval = TimeSpan.FromMilliseconds(100)
+            };
+            _quickOutputDetectionTimer.Tick += QuickOutputDetectionTimerOnTick;
+            _quickOutputDetectionTimer.Start();
+        }
+
+        private void QuickOutputDetectionTimerOnTick(object sender, EventArgs e)
+        {
+            UpdateQuickOutputCountdown();
+        }
+
+        private void UpdateQuickOutputCountdown()
+        {
+            var remaining = Math.Max(0, (_quickOutputDetectionDeadlineUtc - DateTime.UtcNow).TotalSeconds);
+            QuickOutputDetectionStatus = "Press an input — " + remaining.ToString("0.0") + "s";
+            QuickOutputDetectionProgress = Math.Max(0, Math.Min(100, remaining / 5.0 * 100.0));
+        }
+
+        private void StopQuickOutputCountdown()
+        {
+            if (_quickOutputDetectionTimer != null)
+            {
+                _quickOutputDetectionTimer.Stop();
+                _quickOutputDetectionTimer.Tick -= QuickOutputDetectionTimerOnTick;
+                _quickOutputDetectionTimer = null;
+            }
+            IsQuickOutputDetecting = false;
+            QuickOutputDetectionProgress = 0;
         }
 
         private static IEnumerable<DeviceBindingNode> FlattenBindingNodes(IEnumerable<DeviceBindingNode> nodes)
@@ -638,6 +747,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (_disposed) return;
             _disposed = true;
 
+            _quickOutputDetectionCancellation?.Cancel();
+            StopQuickOutputCountdown();
             ProfileViewModel.Profile.Context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;
 
             foreach (var binding in DeviceBindings ?? new ObservableCollection<DeviceBindingViewModel>())

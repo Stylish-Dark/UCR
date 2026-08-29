@@ -140,7 +140,7 @@ namespace HidWizards.UCR.Views.Controls
             foreach (var name in order)
             {
                 if (groups[name].Count == 0) continue;
-                groups[name].Sort((left, right) => string.Compare(left?.Title, right?.Title, StringComparison.CurrentCultureIgnoreCase));
+                groups[name].Sort((left, right) => CompareKeyboardBindingTitles(left?.Title, right?.Title));
                 result.Add(new DeviceBindingNode
                 {
                     Title = name,
@@ -149,6 +149,26 @@ namespace HidWizards.UCR.Views.Controls
             }
 
             return result;
+        }
+
+
+        public static int CompareKeyboardBindingTitles(string left, string right)
+        {
+            int leftFunction;
+            int rightFunction;
+            var leftIsFunction = TryGetFunctionKeyNumber(left, out leftFunction);
+            var rightIsFunction = TryGetFunctionKeyNumber(right, out rightFunction);
+            if (leftIsFunction && rightIsFunction) return leftFunction.CompareTo(rightFunction);
+            if (leftIsFunction != rightIsFunction) return leftIsFunction ? -1 : 1;
+            return string.Compare(left, right, StringComparison.CurrentCultureIgnoreCase);
+        }
+
+        private static bool TryGetFunctionKeyNumber(string title, out int number)
+        {
+            number = 0;
+            var name = (title ?? string.Empty).Trim();
+            if (name.Length < 2 || (name[0] != 'F' && name[0] != 'f')) return false;
+            return int.TryParse(name.Substring(1), out number) && number >= 1 && number <= 24;
         }
 
         private static string GetKeyboardCategory(string title)

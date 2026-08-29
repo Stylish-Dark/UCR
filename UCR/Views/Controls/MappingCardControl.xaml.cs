@@ -68,66 +68,23 @@ namespace HidWizards.UCR.Views.Controls
             }
         }
 
-        private void QuickBindOutput_OnMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        private async void QuickBindOutput_OnMouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
             var mappingViewModel = DataContext as MappingViewModel;
             var descriptor = FindBindingDescriptor(e.OriginalSource as DependencyObject);
-            var placementTarget = sender as FrameworkElement;
-            if (mappingViewModel == null || descriptor == null || placementTarget == null || !mappingViewModel.ButtonsEnabled) return;
+            if (mappingViewModel == null || descriptor == null || !mappingViewModel.ButtonsEnabled) return;
 
             e.Handled = true;
-            var options = mappingViewModel.GetQuickOutputBindingOptions(descriptor);
-            var menu = CreateDarkContextMenu(placementTarget);
-
-            if (options.Count == 0)
+            try
             {
-                menu.Items.Add(new MenuItem
-                {
-                    Header = "No compatible controls",
-                    IsEnabled = false,
-                    Foreground = Brushes.Gray,
-                    Background = Brushes.Transparent,
-                    Padding = new Thickness(10, 6, 14, 6)
-                });
+                await mappingViewModel.QuickBindOutputAsync(descriptor);
             }
-            else
+            catch (Exception exception)
             {
-                foreach (var option in options)
-                {
-                    var capturedOption = option;
-                    var header = new StackPanel { Orientation = Orientation.Horizontal };
-                    var visual = capturedOption.Visual;
-                    header.Children.Add(new ControlGlyphControl
-                    {
-                        Width = 46,
-                        Height = 27,
-                        Margin = new Thickness(0, 0, 8, 0),
-                        Kind = visual?.ControlKind ?? ControlVisualKind.Unknown,
-                        AccentBrush = visual?.ControlBrush ?? Brushes.Gray,
-                        Label = visual?.ControlLabel ?? "?"
-                    });
-                    header.Children.Add(new TextBlock
-                    {
-                        Text = capturedOption.Title,
-                        VerticalAlignment = VerticalAlignment.Center,
-                        Foreground = Brushes.White
-                    });
-
-                    var item = new MenuItem
-                    {
-                        Header = header,
-                        ToolTip = visual?.ToolTip,
-                        Foreground = Brushes.White,
-                        Background = Brushes.Transparent,
-                        Padding = new Thickness(8, 4, 12, 4)
-                    };
-                    item.Click += (clickSender, clickArgs) =>
-                        mappingViewModel.ApplyQuickOutputBinding(descriptor, capturedOption);
-                    menu.Items.Add(item);
-                }
+                Logger.Error("Failed to start mapping-card quick output bind", exception);
+                DarkMessageBox.Show("UCR could not capture an input for this output binding. The error has been written to the log.",
+                    "Unable to bind output", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-
-            menu.IsOpen = true;
         }
 
         private static BindingVisualDescriptor FindBindingDescriptor(DependencyObject source)
@@ -141,21 +98,6 @@ namespace HidWizards.UCR.Views.Controls
                 current = VisualTreeHelper.GetParent(current);
             }
             return null;
-        }
-
-        private static ContextMenu CreateDarkContextMenu(FrameworkElement placementTarget)
-        {
-            var menu = new ContextMenu
-            {
-                PlacementTarget = placementTarget,
-                Placement = PlacementMode.MousePoint,
-                Background = new SolidColorBrush(Color.FromRgb(0x24, 0x24, 0x24)),
-                Foreground = Brushes.White,
-                BorderBrush = new SolidColorBrush(Color.FromRgb(0x45, 0x45, 0x45)),
-                BorderThickness = new Thickness(1),
-                Padding = new Thickness(4)
-            };
-            return menu;
         }
 
         private void AddPlugin_OnClick(object sender, RoutedEventArgs e)
