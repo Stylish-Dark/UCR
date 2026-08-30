@@ -348,7 +348,7 @@
                                 <TextBlock Text="{Binding InputDeviceControlViewModel.DetectionStatus}" FontSize="10.5"
                                            Foreground="{DynamicResource PrimaryHueMidBrush}" TextTrimming="CharacterEllipsis"/>
                                 <ProgressBar Height="2" Margin="0 2 0 0" Minimum="0" Maximum="100"
-                                             Value="{Binding InputDeviceControlViewModel.DetectionProgress}"
+                                             Value="{Binding InputDeviceControlViewModel.DetectionProgress, Mode=OneWay}"
                                              Foreground="{DynamicResource PrimaryHueMidBrush}"/>
                             </StackPanel>
                             <Grid Grid.Row="3" Margin="8 3 8 7">

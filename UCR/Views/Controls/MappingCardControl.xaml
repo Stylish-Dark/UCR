@@ -181,7 +181,7 @@
                             <TextBlock Text="{Binding QuickOutputDetectionStatus}" FontSize="10.5" Foreground="#E4E4E4"
                                        HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                             <ProgressBar Height="2" Margin="0 2 0 0" Minimum="0" Maximum="100"
-                                         Value="{Binding QuickOutputDetectionProgress}" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                                         Value="{Binding QuickOutputDetectionProgress, Mode=OneWay}" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
                         </StackPanel>
                     </Grid>
 
