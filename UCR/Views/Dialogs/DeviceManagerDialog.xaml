@@ -46,13 +46,16 @@
 
         <ListView x:Name="DeviceList" Grid.Row="2" ItemsSource="{Binding Devices}" SelectedItem="{Binding SelectedDevice, Mode=TwoWay}"
                   HorizontalContentAlignment="Stretch" Background="#212121" Foreground="#FFFFFF"
-                  BorderBrush="#424242" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                  BorderBrush="#424242" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                  KeyboardNavigation.TabNavigation="Continue" IsTabStop="False">
             <ListView.ItemContainerStyle>
                 <Style TargetType="ListViewItem">
                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                     <Setter Property="Padding" Value="0"/>
                     <Setter Property="Background" Value="#212121"/>
                     <Setter Property="Foreground" Value="#FFFFFF"/>
+                    <Setter Property="IsTabStop" Value="False"/>
+                    <Setter Property="KeyboardNavigation.TabNavigation" Value="Continue"/>
                 </Style>
             </ListView.ItemContainerStyle>
             <ListView.ItemTemplate>
@@ -75,10 +78,12 @@
                             <StackPanel Grid.Column="1" Margin="0 0 12 0">
                                 <TextBox Text="{Binding Alias, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          IsEnabled="{Binding CanPersist}" Background="#2B2B2B" Foreground="#FFFFFF"
-                                         CaretBrush="#FFFFFF" BorderBrush="#555555" materialDesign:HintAssist.Hint="Friendly name"/>
+                                         CaretBrush="#FFFFFF" BorderBrush="#555555" materialDesign:HintAssist.Hint="Friendly name"
+                                         ToolTip="Tab through device names. Alt+Up / Alt+Down moves this device while keeping focus here."
+                                         PreviewKeyDown="AliasTextBox_OnPreviewKeyDown"/>
                             </StackPanel>
 
-                            <CheckBox Grid.Column="2" Content="Hidden" Foreground="#FFFFFF" VerticalAlignment="Center"
+                            <CheckBox Grid.Column="2" Content="Hidden" Foreground="#FFFFFF" VerticalAlignment="Center" IsTabStop="False"
                                       IsChecked="{Binding Hidden, Mode=TwoWay}" IsEnabled="{Binding CanHide}">
                                 <CheckBox.Style>
                                     <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
@@ -93,7 +98,7 @@
                             </CheckBox>
 
                             <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
-                                <Button ToolTip="{Binding RemoveFromUcrToolTip}" Click="RemoveFromUcr_OnClick" Padding="4">
+                                <Button ToolTip="{Binding RemoveFromUcrToolTip}" Click="RemoveFromUcr_OnClick" Padding="4" IsTabStop="False">
                                     <Button.Style>
                                         <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignCardButton}">
                                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -107,14 +112,14 @@
                                     <materialDesign:PackIcon Kind="Trash" Width="18" Height="18"/>
                                 </Button>
                                 <Button ToolTip="Remove this exact device instance from Windows (administrator approval required)"
-                                        Style="{StaticResource MaterialDesignCardButton}" IsEnabled="{Binding CanRemoveFromWindows}"
+                                        Style="{StaticResource MaterialDesignCardButton}" IsEnabled="{Binding CanRemoveFromWindows}" IsTabStop="False"
                                         Click="RemoveFromWindows_OnClick" Padding="4">
                                     <materialDesign:PackIcon Kind="Usb" Width="18" Height="18"/>
                                 </Button>
-                                <Button ToolTip="Move up" Style="{StaticResource MaterialDesignCardButton}" IsEnabled="{Binding CanPersist}" Click="MoveUp_OnClick" Padding="4">
+                                <Button ToolTip="Move up (Alt+Up while editing the name)" Style="{StaticResource MaterialDesignCardButton}" IsEnabled="{Binding CanPersist}" IsTabStop="False" Click="MoveUp_OnClick" Padding="4">
                                     <materialDesign:PackIcon Kind="ArrowUp" Width="18" Height="18"/>
                                 </Button>
-                                <Button ToolTip="Move down" Style="{StaticResource MaterialDesignCardButton}" IsEnabled="{Binding CanPersist}" Click="MoveDown_OnClick" Padding="4">
+                                <Button ToolTip="Move down (Alt+Down while editing the name)" Style="{StaticResource MaterialDesignCardButton}" IsEnabled="{Binding CanPersist}" IsTabStop="False" Click="MoveDown_OnClick" Padding="4">
                                     <materialDesign:PackIcon Kind="ArrowDown" Width="18" Height="18"/>
                                 </Button>
                             </StackPanel>

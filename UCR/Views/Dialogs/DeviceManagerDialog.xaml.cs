@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Utilities;
@@ -38,6 +39,38 @@ namespace HidWizards.UCR.Views.Dialogs
             if (e.Key != Key.Escape) return;
             Close();
             e.Handled = true;
+        }
+
+        private void AliasTextBox_OnPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            var textBox = sender as TextBox;
+            if (textBox == null || (Keyboard.Modifiers & ModifierKeys.Alt) != ModifierKeys.Alt) return;
+
+            var key = e.Key == Key.System ? e.SystemKey : e.Key;
+            var offset = key == Key.Up ? -1 : key == Key.Down ? 1 : 0;
+            if (offset == 0) return;
+            e.Handled = true;
+
+            var item = textBox.DataContext as DeviceManagerItemViewModel;
+            var viewModel = DataContext as DeviceManagerViewModel;
+            if (item == null || viewModel == null || !viewModel.Move(item, offset)) return;
+
+            var selectionStart = textBox.SelectionStart;
+            var selectionLength = textBox.SelectionLength;
+            viewModel.SelectedDevice = item;
+            DeviceList.ScrollIntoView(item);
+
+            // ObservableCollection.Move keeps the row logically selected, but layout may briefly
+            // recycle its container. Restore keyboard focus and the exact text selection after the
+            // move so Alt+Up/Down can be pressed repeatedly without touching the mouse.
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                textBox.Focus();
+                var length = textBox.Text?.Length ?? 0;
+                var start = Math.Max(0, Math.Min(selectionStart, length));
+                textBox.SelectionStart = start;
+                textBox.SelectionLength = Math.Max(0, Math.Min(selectionLength, length - start));
+            }));
         }
 
         private void MoveUp_OnClick(object sender, RoutedEventArgs e)

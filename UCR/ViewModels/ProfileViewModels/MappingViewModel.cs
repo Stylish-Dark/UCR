@@ -37,6 +37,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public string ToolTip { get; set; }
     }
 
+    public sealed class QuickBindingOption
+    {
+        public string Title { get; set; }
+        public Guid DeviceConfigurationGuid { get; set; }
+        public int KeyType { get; set; }
+        public int KeyValue { get; set; }
+        public int KeySubValue { get; set; }
+        public BindingVisualDescriptor Visual { get; set; }
+    }
+
     public class MappingViewModel : INotifyPropertyChanged, IDisposable
     {
         public string MappingTitle => Mapping.FullTitle;
@@ -369,6 +379,91 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return true;
         }
 
+        public bool UsesPressCaptureForQuickOutput(BindingVisualDescriptor descriptor)
+        {
+            if (!ButtonsEnabled) return false;
+            var bindingViewModel = ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
+            var configuration = ResolveQuickOutputConfiguration(bindingViewModel);
+            if (configuration?.Device == null) return false;
+
+            return DeviceVisualCatalog.Describe(configuration, ProfileViewModel.Profile, DeviceIoType.Output).Kind ==
+                   DeviceVisualKind.Keyboard;
+        }
+
+        public List<QuickBindingOption> GetQuickOutputBindingOptions(BindingVisualDescriptor descriptor)
+        {
+            var result = new List<QuickBindingOption>();
+            if (!ButtonsEnabled) return result;
+
+            var bindingViewModel = ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
+            if (bindingViewModel?.DeviceBinding == null || !bindingViewModel.BindingEnabled) return result;
+
+            var configuration = ResolveQuickOutputConfiguration(bindingViewModel);
+            if (configuration?.Device == null) return result;
+
+            var menu = ProfileViewModel.Profile.Context.DevicesManager.GetDeviceBindingMenu(
+                configuration.Device, DeviceIoType.Output);
+            foreach (var node in FlattenBindingNodes(menu))
+            {
+                if (node?.DeviceBindingInfo == null ||
+                    node.DeviceBindingInfo.DeviceBindingCategory != bindingViewModel.DeviceBindingCategory) continue;
+
+                var info = node.DeviceBindingInfo;
+                var temporary = new DeviceBinding
+                {
+                    Profile = ProfileViewModel.Profile,
+                    DeviceIoType = DeviceIoType.Output,
+                    DeviceBindingCategory = bindingViewModel.DeviceBindingCategory,
+                    DeviceConfigurationGuid = configuration.Guid,
+                    IsBound = true,
+                    KeyType = info.KeyType,
+                    KeyValue = info.KeyValue,
+                    KeySubValue = info.KeySubValue
+                };
+
+                result.Add(new QuickBindingOption
+                {
+                    Title = node.Title,
+                    DeviceConfigurationGuid = configuration.Guid,
+                    KeyType = info.KeyType,
+                    KeyValue = info.KeyValue,
+                    KeySubValue = info.KeySubValue,
+                    Visual = DeviceVisualCatalog.DescribeBinding(
+                        temporary, bindingViewModel.DeviceBindingCategory, ProfileViewModel.Profile)
+                });
+            }
+
+            return result;
+        }
+
+        public bool ApplyQuickOutputBinding(BindingVisualDescriptor descriptor, QuickBindingOption option)
+        {
+            if (!ButtonsEnabled || option == null) return false;
+            var bindingViewModel = ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
+            if (bindingViewModel?.DeviceBinding == null || !bindingViewModel.BindingEnabled) return false;
+
+            var binding = bindingViewModel.DeviceBinding;
+            binding.DeviceBindingCategory = bindingViewModel.DeviceBindingCategory;
+            binding.SetDeviceConfigurationGuid(option.DeviceConfigurationGuid);
+            binding.SetKeyTypeValue(option.KeyType, option.KeyValue, option.KeySubValue);
+            bindingViewModel.RefreshDeviceList();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
+        private DeviceConfiguration ResolveQuickOutputConfiguration(DeviceBindingViewModel bindingViewModel)
+        {
+            if (bindingViewModel?.DeviceBinding == null) return null;
+            var binding = bindingViewModel.DeviceBinding;
+            var configurationGuid = binding.DeviceConfigurationGuid;
+            if (configurationGuid == Guid.Empty && bindingViewModel.SelectedDevice != null)
+                configurationGuid = bindingViewModel.SelectedDevice.Value;
+            if (configurationGuid == Guid.Empty)
+                configurationGuid = ProfileViewModel.Profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output)?.Guid ?? Guid.Empty;
+
+            return ProfileViewModel.Profile.GetDeviceConfiguration(DeviceIoType.Output, configurationGuid);
+        }
+
         public async Task<bool> QuickBindOutputAsync(BindingVisualDescriptor descriptor)
         {
             if (!ButtonsEnabled) return false;
@@ -382,14 +477,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var bindingViewModel = ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
             if (bindingViewModel?.DeviceBinding == null || !bindingViewModel.BindingEnabled) return false;
 
-            var binding = bindingViewModel.DeviceBinding;
-            var configurationGuid = binding.DeviceConfigurationGuid;
-            if (configurationGuid == Guid.Empty && bindingViewModel.SelectedDevice != null)
-                configurationGuid = bindingViewModel.SelectedDevice.Value;
-            if (configurationGuid == Guid.Empty)
-                configurationGuid = ProfileViewModel.Profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output)?.Guid ?? Guid.Empty;
-
-            var configuration = ProfileViewModel.Profile.GetDeviceConfiguration(DeviceIoType.Output, configurationGuid);
+            var configuration = ResolveQuickOutputConfiguration(bindingViewModel);
             if (configuration?.Device == null)
             {
                 QuickOutputDetectionStatus = "Choose an output device first.";

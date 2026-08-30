@@ -62,13 +62,13 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
     public static class DeviceVisualCatalog
     {
-        public static readonly Brush XboxBrush = Freeze(Color.FromRgb(70, 166, 70));
-        public static readonly Brush PlayStationBrush = Freeze(Color.FromRgb(68, 126, 220));
-        public static readonly Brush VJoyBrush = Freeze(Color.FromRgb(155, 102, 221));
-        public static readonly Brush ArcadeBrush = Freeze(Color.FromRgb(214, 72, 72));
+        public static readonly Brush XboxBrush = Freeze(Color.FromRgb(0, 112, 0));
+        public static readonly Brush PlayStationBrush = Freeze(Color.FromRgb(0, 104, 217));
+        public static readonly Brush VJoyBrush = Freeze(Color.FromRgb(106, 0, 200));
+        public static readonly Brush ArcadeBrush = Freeze(Color.FromRgb(176, 0, 0));
         public static readonly Brush NeutralBrush = Freeze(Color.FromRgb(202, 205, 210));
         public static readonly Brush DirectInputBrush = Freeze(Color.FromRgb(125, 139, 154));
-        public static readonly Brush FilterBrush = Freeze(Color.FromRgb(102, 187, 106));
+        public static readonly Brush FilterBrush = Freeze(Color.FromRgb(0, 112, 0));
 
         public static DeviceVisualDescriptor Describe(DeviceConfiguration configuration, Profile profile, DeviceIoType ioType)
         {
@@ -204,7 +204,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 Device = null,
                 ControlKind = ControlVisualKind.Filter,
                 ControlBrush = FilterBrush,
-                ControlLabel = "DEFINE · " + cleanName,
+                ControlLabel = cleanName,
                 ToolTip = "Creates/defines filter — " + cleanName,
                 IsBound = true,
                 DeviceConfigurationGuid = Guid.Empty,

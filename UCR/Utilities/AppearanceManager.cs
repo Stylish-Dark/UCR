@@ -17,12 +17,12 @@ namespace HidWizards.UCR.Utilities
     {
         private static readonly List<AccentPalette> Palettes = new List<AccentPalette>
         {
-            Palette("Blue", 0x00, 0x5F, 0xD7, Colors.White),
-            Palette("Green", 0x00, 0x9F, 0x4E, Colors.White),
-            Palette("Yellow", 0xC9, 0x91, 0x00, Color.FromRgb(20, 20, 20)),
-            Palette("Pink", 0xCE, 0x2C, 0x83, Colors.White),
-            Palette("Orange", 0xDB, 0x45, 0x18, Colors.White),
-            Palette("Purple", 0x76, 0x2F, 0xD6, Colors.White)
+            Palette("Blue", 0x00, 0x38, 0xC8, Colors.White),
+            Palette("Green", 0x00, 0x70, 0x00, Colors.White),
+            Palette("Yellow", 0xB8, 0x9A, 0x00, Color.FromRgb(18, 18, 18)),
+            Palette("Red", 0xB0, 0x00, 0x00, Colors.White),
+            Palette("Orange", 0xC8, 0x3C, 0x00, Colors.White),
+            Palette("Purple", 0x62, 0x00, 0xB8, Colors.White)
         };
 
         public static IEnumerable<AccentPalette> AvailablePalettes => Palettes;
@@ -76,8 +76,10 @@ namespace HidWizards.UCR.Utilities
             if (palette == null || Application.Current == null) return;
 
             CurrentAccentName = palette.Name;
-            var light = Blend(palette.Color, Colors.White, 0.12);
-            var dark = Blend(palette.Color, Colors.Black, 0.18);
+            // Keep every accent on its original hue instead of washing it toward white/grey.
+            // Scaling RGB intensity preserves zero channels, so green stays green, red stays red, etc.
+            var light = ScaleRgb(palette.Color, 1.16);
+            var dark = ScaleRgb(palette.Color, 0.82);
 
             SetBrushColor("PrimaryHueLightBrush", light);
             SetBrushColor("PrimaryHueMidBrush", palette.Color);
@@ -105,6 +107,10 @@ namespace HidWizards.UCR.Utilities
 
         public static AccentPalette Find(string name)
         {
+            // Older builds exposed a Pink swatch. Preserve saved settings by mapping it to the
+            // replacement true-red palette instead of silently falling back to blue.
+            if (string.Equals(name, "Pink", StringComparison.OrdinalIgnoreCase)) name = "Red";
+
             foreach (var palette in Palettes)
             {
                 if (string.Equals(palette.Name, name, StringComparison.OrdinalIgnoreCase)) return palette;
@@ -137,13 +143,13 @@ namespace HidWizards.UCR.Utilities
             return new AccentPalette { Name = name, Color = Color.FromRgb(r, g, b), Foreground = foreground };
         }
 
-        private static Color Blend(Color first, Color second, double amount)
+        private static Color ScaleRgb(Color color, double multiplier)
         {
-            amount = Math.Max(0, Math.Min(1, amount));
+            multiplier = Math.Max(0, multiplier);
             return Color.FromRgb(
-                (byte)(first.R + (second.R - first.R) * amount),
-                (byte)(first.G + (second.G - first.G) * amount),
-                (byte)(first.B + (second.B - first.B) * amount));
+                (byte)Math.Min(255, Math.Round(color.R * multiplier)),
+                (byte)Math.Min(255, Math.Round(color.G * multiplier)),
+                (byte)Math.Min(255, Math.Round(color.B * multiplier)));
         }
     }
 }

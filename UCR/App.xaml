@@ -21,15 +21,15 @@
             <SolidColorBrush x:Key="MaterialDesignPaper" Color="#212121"/>
             <SolidColorBrush x:Key="MaterialDesignCardBackground" Color="#212121"/>
             <SolidColorBrush x:Key="MaterialDesignToolBarBackground" Color="#212121"/>
-            <SolidColorBrush x:Key="MaterialDesignSelection" Color="#005FD7"/>
-            <SolidColorBrush x:Key="PrimaryHueLightBrush" Color="#005FD7"/>
-            <SolidColorBrush x:Key="PrimaryHueMidBrush" Color="#005FD7"/>
-            <SolidColorBrush x:Key="PrimaryHueDarkBrush" Color="#005FD7"/>
+            <SolidColorBrush x:Key="MaterialDesignSelection" Color="#0038C8"/>
+            <SolidColorBrush x:Key="PrimaryHueLightBrush" Color="#0041E8"/>
+            <SolidColorBrush x:Key="PrimaryHueMidBrush" Color="#0038C8"/>
+            <SolidColorBrush x:Key="PrimaryHueDarkBrush" Color="#002EA4"/>
             <SolidColorBrush x:Key="PrimaryHueLightForegroundBrush" Color="#FFFFFF"/>
             <SolidColorBrush x:Key="PrimaryHueMidForegroundBrush" Color="#FFFFFF"/>
             <SolidColorBrush x:Key="PrimaryHueDarkForegroundBrush" Color="#FFFFFF"/>
-            <SolidColorBrush x:Key="SecondaryAccentBrush" Color="#005FD7"/>
-            <SolidColorBrush x:Key="UcrAccentBrush" Color="#005FD7"/>
+            <SolidColorBrush x:Key="SecondaryAccentBrush" Color="#0038C8"/>
+            <SolidColorBrush x:Key="UcrAccentBrush" Color="#0038C8"/>
             <SolidColorBrush x:Key="SecondaryAccentForegroundBrush" Color="#FFFFFF"/>
 
             <!-- Explicit dark surfaces so dialogs never fall back to system/light control colours. -->
@@ -39,12 +39,12 @@
             <SolidColorBrush x:Key="UcrSecondaryTextBrush" Color="#D0D0D0"/>
 
             <!-- Mapping endpoint colours. Keep these centralized so headers and selectors stay consistent. -->
-            <SolidColorBrush x:Key="MappingTypeButtonBrush" Color="#168BFF"/>
-            <SolidColorBrush x:Key="MappingTypeAxisBrush" Color="#F0B000"/>
-            <SolidColorBrush x:Key="MappingTypeFilterBrush" Color="#14C65A"/>
-            <SolidColorBrush x:Key="MappingTypeEventBrush" Color="#DC47F5"/>
-            <SolidColorBrush x:Key="MappingTypeDeltaBrush" Color="#FF5934"/>
-            <SolidColorBrush x:Key="MappingTypeValueBrush" Color="#00B5C7"/>
+            <SolidColorBrush x:Key="MappingTypeButtonBrush" Color="#0068D9"/>
+            <SolidColorBrush x:Key="MappingTypeAxisBrush" Color="#D0A000"/>
+            <SolidColorBrush x:Key="MappingTypeFilterBrush" Color="#007000"/>
+            <SolidColorBrush x:Key="MappingTypeEventBrush" Color="#B00000"/>
+            <SolidColorBrush x:Key="MappingTypeDeltaBrush" Color="#C83C00"/>
+            <SolidColorBrush x:Key="MappingTypeValueBrush" Color="#6A00C8"/>
             <SolidColorBrush x:Key="MappingTypeNoneBrush" Color="#858585"/>
             <converter:MappingTypeBrushConverter x:Key="MappingTypeBrushConverter"/>
 
@@ -72,7 +72,7 @@
                     </Trigger>
                 </Style.Triggers>
             </Style>
-            <SolidColorBrush x:Key="Red" Color="#FFE81123"/>
+            <SolidColorBrush x:Key="Red" Color="#FFB00000"/>
             <Style x:Key="MaterialDesignCardButton" TargetType="{x:Type ButtonBase}" BasedOn="{StaticResource MaterialDesignToolButton}">
                 <Setter Property="Width" Value="24"/>
                 <Setter Property="Height" Value="24"/>
