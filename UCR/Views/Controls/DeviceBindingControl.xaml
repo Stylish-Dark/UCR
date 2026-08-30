@@ -8,6 +8,23 @@
              d:DesignHeight="160" d:DesignWidth="900"
              UseLayoutRounding="True"
              mc:Ignorable="d">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <Style x:Key="UcrBindingProgressBar" TargetType="{x:Type ProgressBar}">
+            <Setter Property="Background" Value="#303030"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryHueLightBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ProgressBar}">
+                        <Grid SnapsToDevicePixels="False" UseLayoutRounding="False">
+                            <Border x:Name="PART_Track" Background="{TemplateBinding Background}" CornerRadius="1"/>
+                            <Border x:Name="PART_Indicator" Background="{TemplateBinding Foreground}" CornerRadius="1" HorizontalAlignment="Left"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
     <Grid Margin="4 3">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -41,7 +58,8 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="40"/>
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0"
+            <Grid Grid.Column="0">
+            <Button
                     HorizontalAlignment="Stretch"
                     Content="{Binding BindButtonText}"
                     IsEnabled="{Binding BindingEnabled}"
@@ -49,8 +67,6 @@
                     Margin="0"
                     Click="BindButton_OnClick"
                     MinWidth="110"
-                    materialDesign:ButtonProgressAssist.Value="{Binding PreviewValue}"
-                    materialDesign:ButtonProgressAssist.IsIndicatorVisible="{Binding ShowButtonPreview}"
                     materialDesign:TransitionAssist.DisableTransitions="True"
                     materialDesign:ShadowAssist.ShadowEdges="Left, Top, Bottom">
                 <Button.ContextMenu>
@@ -65,6 +81,11 @@
                     </ContextMenu>
                 </Button.ContextMenu>
             </Button>
+                <ProgressBar Height="3" Margin="8 0 8 2" VerticalAlignment="Bottom" IsHitTestVisible="False" UseLayoutRounding="False" SnapsToDevicePixels="False"
+                             Minimum="0" Maximum="100" Value="{Binding PreviewValue, Mode=OneWay}"
+                             Visibility="{Binding ShowButtonPreview, Converter={StaticResource BoolToVisibilityConverter}}"
+                             Style="{StaticResource UcrBindingProgressBar}"/>
+            </Grid>
             <Button Grid.Column="1" IsEnabled="{Binding BindingEnabled}" Margin="0"
                     Click="BindMenuButton_OnClick"
                     Width="40" Padding="0"

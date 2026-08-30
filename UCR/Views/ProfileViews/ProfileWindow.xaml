@@ -135,7 +135,7 @@
                 </Grid.ColumnDefinitions>
 
                 <ScrollViewer x:Name="SidebarScrollViewer" Grid.Column="0" Margin="0 0 10 0"
-                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled"
                               PanningMode="VerticalOnly">
                     <Grid>
                     <Grid.RowDefinitions>

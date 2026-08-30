@@ -16,7 +16,7 @@
         <TextBlock Grid.Row="1" Margin="0 7 0 12" Opacity="0.72" TextWrapping="Wrap"
                    Text="Edit the names in one pass. Tab moves directly to the next mapping instead of opening a separate dialog for every card."/>
         <ScrollViewer Grid.Row="2" MaxHeight="520" VerticalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{Binding Items}">
+            <ItemsControl x:Name="MappingItemsControl" ItemsSource="{Binding Items}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Grid Margin="0 4">

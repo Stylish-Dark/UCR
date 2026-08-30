@@ -31,13 +31,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ? Visibility.Visible
             : Visibility.Collapsed;
         public PluginPropertyGroupViewModel PluginPropertyGroup { get; set; }
-        public long PreviewValue => GetPreviewValue();
+        public double PreviewValue => GetPreviewValue();
         public bool ShowButtonPreview => DeviceBinding.IsInBindMode || DeviceBinding.Profile.IsActive();
 
         private bool GuiInvalidated { get; set; }
         private bool _disposed;
 
-        private long GetPreviewValue()
+        private double GetPreviewValue()
         {
             if (DeviceBinding.IsInBindMode)
             {
@@ -123,12 +123,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
-        private long _bindModeProgress;
-        public long BindModeProgress
+        private double _bindModeProgress;
+        public double BindModeProgress
         {
             get => _bindModeProgress;
             set
             {
+                if (Math.Abs(_bindModeProgress - value) < 0.001) return;
                 _bindModeProgress = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(PreviewValue));
@@ -139,7 +140,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public DeviceBindingViewModel(DeviceBinding deviceBinding)
         {
             DeviceBinding = deviceBinding;
-            deviceBinding.Profile.Context.BindingManager.PropertyChanged += BindingManagerOnPropertyChanged;
             deviceBinding.Profile.Context.SubscriptionsManager.PropertyChanged += SubscriptionsManagerOnPropertyChanged;
             deviceBinding.Profile.Context.DeviceAliasesChangedEvent += ContextOnDeviceAliasesChanged;
             BindingEnabled = !DeviceBinding.Profile.Context.SubscriptionsManager.ProfileActive;
@@ -293,6 +293,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             CurrentValue = deviceBinding.CurrentValue;
 
+            if (propertyChangedEventArgs.PropertyName.Equals(nameof(DeviceBinding.IsInBindMode)))
+            {
+                var bindingManager = deviceBinding.Profile?.Context?.BindingManager;
+                if (bindingManager != null)
+                {
+                    // Only the binding currently waiting for input needs the high-frequency countdown.
+                    // Keeping every mapping subscribed caused thousands of needless WPF updates per second.
+                    bindingManager.PropertyChanged -= BindingManagerOnPropertyChanged;
+                    if (deviceBinding.IsInBindMode) bindingManager.PropertyChanged += BindingManagerOnPropertyChanged;
+                }
+            }
+
             if (propertyChangedEventArgs.PropertyName.Equals(nameof(DeviceBinding.IsBound))
                 || propertyChangedEventArgs.PropertyName.Equals(nameof(DeviceBinding.IsInBindMode)))
             {
@@ -327,8 +339,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         
         private void BindingManagerOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            var bindingManger = sender as BindingManager;
-            BindModeProgress = (long)bindingManger.BindModeProgress;
+            if (!string.Equals(e.PropertyName, nameof(BindingManager.BindModeProgress), StringComparison.Ordinal)) return;
+            if (!DeviceBinding.IsInBindMode) return;
+
+            var bindingManager = sender as BindingManager;
+            if (bindingManager == null) return;
+            BindModeProgress = bindingManager.BindModeProgress;
         }
 
         private void SubscriptionsManagerOnPropertyChanged(object sender, PropertyChangedEventArgs propertyChangedEventArgs)

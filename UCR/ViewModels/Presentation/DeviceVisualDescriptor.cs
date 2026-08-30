@@ -62,13 +62,13 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
     public static class DeviceVisualCatalog
     {
-        public static readonly Brush XboxBrush = Freeze(Color.FromRgb(0, 112, 0));
-        public static readonly Brush PlayStationBrush = Freeze(Color.FromRgb(0, 104, 217));
-        public static readonly Brush VJoyBrush = Freeze(Color.FromRgb(106, 0, 200));
-        public static readonly Brush ArcadeBrush = Freeze(Color.FromRgb(176, 0, 0));
+        public static readonly Brush XboxBrush = Freeze(Color.FromRgb(0, 168, 0));
+        public static readonly Brush PlayStationBrush = Freeze(Color.FromRgb(0, 105, 255));
+        public static readonly Brush VJoyBrush = Freeze(Color.FromRgb(140, 0, 232));
+        public static readonly Brush ArcadeBrush = Freeze(Color.FromRgb(216, 0, 0));
         public static readonly Brush NeutralBrush = Freeze(Color.FromRgb(202, 205, 210));
-        public static readonly Brush DirectInputBrush = Freeze(Color.FromRgb(125, 139, 154));
-        public static readonly Brush FilterBrush = Freeze(Color.FromRgb(0, 112, 0));
+        public static readonly Brush DirectInputBrush = Freeze(Color.FromRgb(150, 166, 184));
+        public static readonly Brush FilterBrush = Freeze(Color.FromRgb(0, 144, 0));
 
         public static DeviceVisualDescriptor Describe(DeviceConfiguration configuration, Profile profile, DeviceIoType ioType)
         {
@@ -432,10 +432,10 @@ namespace HidWizards.UCR.ViewModels.Presentation
         {
             switch (label)
             {
-                case "A": return Freeze(Color.FromRgb(76, 175, 80));
-                case "B": return Freeze(Color.FromRgb(229, 72, 72));
-                case "X": return Freeze(Color.FromRgb(66, 147, 213));
-                case "Y": return Freeze(Color.FromRgb(236, 188, 54));
+                case "A": return Freeze(Color.FromRgb(0, 190, 80));
+                case "B": return Freeze(Color.FromRgb(238, 55, 55));
+                case "X": return Freeze(Color.FromRgb(40, 145, 255));
+                case "Y": return Freeze(Color.FromRgb(238, 184, 0));
                 default: return XboxBrush;
             }
         }
@@ -444,10 +444,10 @@ namespace HidWizards.UCR.ViewModels.Presentation
         {
             switch (label)
             {
-                case "×": return Freeze(Color.FromRgb(92, 145, 230));
-                case "○": return Freeze(Color.FromRgb(229, 105, 118));
-                case "□": return Freeze(Color.FromRgb(220, 123, 190));
-                case "△": return Freeze(Color.FromRgb(89, 192, 142));
+                case "×": return Freeze(Color.FromRgb(70, 145, 255));
+                case "○": return Freeze(Color.FromRgb(240, 80, 105));
+                case "□": return Freeze(Color.FromRgb(225, 92, 190));
+                case "△": return Freeze(Color.FromRgb(50, 205, 135));
                 default: return PlayStationBrush;
             }
         }

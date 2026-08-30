@@ -103,11 +103,11 @@ namespace HidWizards.UCR.Views.Controls
         {
             var w = Math.Min(b.Width * 0.62, b.Height * 0.68);
             var mouse = new Rect(b.Left + 1, b.Top + b.Height * 0.12, w, b.Height * 0.76);
-            dc.DrawRoundedRectangle(null, Pen(accent, 1.15), mouse, w * 0.4, w * 0.4);
-            dc.DrawLine(Pen(accent, 0.9), new Point(mouse.Left + mouse.Width / 2.0, mouse.Top), new Point(mouse.Left + mouse.Width / 2.0, mouse.Top + mouse.Height * 0.36));
-            dc.DrawLine(Pen(accent, 0.9), new Point(mouse.Left, mouse.Top + mouse.Height * 0.37), new Point(mouse.Right, mouse.Top + mouse.Height * 0.37));
+            dc.DrawRoundedRectangle(null, Pen(accent, 1.55), mouse, w * 0.4, w * 0.4);
+            dc.DrawLine(Pen(accent, 1.35), new Point(mouse.Left + mouse.Width / 2.0, mouse.Top), new Point(mouse.Left + mouse.Width / 2.0, mouse.Top + mouse.Height * 0.36));
+            dc.DrawLine(Pen(accent, 1.35), new Point(mouse.Left, mouse.Top + mouse.Height * 0.37), new Point(mouse.Right, mouse.Top + mouse.Height * 0.37));
             var labelRect = new Rect(mouse.Right + 2, b.Top, Math.Max(1, b.Right - mouse.Right - 2), b.Height);
-            DeviceGlyphControl.DrawCenteredText(dc, label, accent, labelRect, FontFor(label, b.Height * 0.46), FontWeights.SemiBold);
+            DeviceGlyphControl.DrawCenteredText(dc, label, accent, labelRect, FontFor(label, b.Height * 0.46), FontWeights.Bold);
         }
 
         private static void DrawFaceButton(DrawingContext dc, Rect b, Brush accent, string label, bool filled)
@@ -123,10 +123,10 @@ namespace HidWizards.UCR.Views.Controls
             }
             else
             {
-                dc.DrawEllipse(null, Pen(accent, 1.7), center, radius, radius);
+                dc.DrawEllipse(null, Pen(accent, 1.9), center, radius, radius);
                 DeviceGlyphControl.DrawCenteredText(dc, label, accent,
                     new Rect(center.X - radius, center.Y - radius, radius * 2, radius * 2),
-                    FontFor(label, radius * 1.15), FontWeights.SemiBold);
+                    FontFor(label, radius * 1.15), FontWeights.Bold);
             }
         }
 
@@ -135,7 +135,7 @@ namespace HidWizards.UCR.Views.Controls
             var cx = b.Left + b.Width * 0.42;
             var cy = b.Top + b.Height * 0.5;
             var r = Math.Min(b.Width, b.Height) * 0.28;
-            var pen = Pen(accent, 1.2);
+            var pen = Pen(accent, 1.55);
             dc.DrawLine(pen, new Point(cx - r, cy), new Point(cx + r, cy));
             dc.DrawLine(pen, new Point(cx, cy - r), new Point(cx, cy + r));
             var labelRect = new Rect(b.Left + b.Width * 0.62, b.Top, b.Width * 0.38, b.Height);
@@ -146,20 +146,20 @@ namespace HidWizards.UCR.Views.Controls
         {
             var rect = new Rect(b.Left + 1, b.Top + b.Height * 0.18, Math.Max(1, b.Width - 2), b.Height * 0.64);
             var fill = stronger ? new SolidColorBrush(Color.FromArgb(42, 255, 255, 255)) : null;
-            dc.DrawRoundedRectangle(fill, Pen(accent, 1.2), rect, rect.Height * 0.32, rect.Height * 0.32);
-            DeviceGlyphControl.DrawCenteredText(dc, label, accent, rect, FontFor(label, b.Height * 0.44), FontWeights.SemiBold);
+            dc.DrawRoundedRectangle(fill, Pen(accent, 1.55), rect, rect.Height * 0.32, rect.Height * 0.32);
+            DeviceGlyphControl.DrawCenteredText(dc, label, accent, rect, FontFor(label, b.Height * 0.44), FontWeights.Bold);
         }
 
         private static void DrawStickAxis(DrawingContext dc, Rect b, Brush accent, string label)
         {
             var center = new Point(b.Left + b.Width * 0.28, b.Top + b.Height * 0.5);
             var radius = Math.Min(b.Width, b.Height) * 0.19;
-            dc.DrawEllipse(null, Pen(accent, 1.1), center, radius, radius);
-            dc.DrawLine(Pen(accent, 1.0), new Point(center.X - radius * 0.7, center.Y), new Point(center.X + radius * 0.7, center.Y));
-            dc.DrawLine(Pen(accent, 1.0), new Point(center.X, center.Y - radius * 0.7), new Point(center.X, center.Y + radius * 0.7));
+            dc.DrawEllipse(null, Pen(accent, 1.5), center, radius, radius);
+            dc.DrawLine(Pen(accent, 1.4), new Point(center.X - radius * 0.7, center.Y), new Point(center.X + radius * 0.7, center.Y));
+            dc.DrawLine(Pen(accent, 1.4), new Point(center.X, center.Y - radius * 0.7), new Point(center.X, center.Y + radius * 0.7));
             DeviceGlyphControl.DrawCenteredText(dc, label, accent,
                 new Rect(b.Left + b.Width * 0.48, b.Top, b.Width * 0.52, b.Height),
-                FontFor(label, b.Height * 0.45), FontWeights.SemiBold);
+                FontFor(label, b.Height * 0.45), FontWeights.Bold);
         }
 
         private static void DrawAxis(DrawingContext dc, Rect b, Brush accent, string label)
@@ -167,24 +167,24 @@ namespace HidWizards.UCR.Views.Controls
             var y = b.Top + b.Height * 0.5;
             var x1 = b.Left + 2;
             var x2 = b.Left + b.Width * 0.43;
-            dc.DrawLine(Pen(accent, 1.2), new Point(x1, y), new Point(x2, y));
-            dc.DrawLine(Pen(accent, 1.0), new Point(x1, y), new Point(x1 + 3, y - 3));
-            dc.DrawLine(Pen(accent, 1.0), new Point(x1, y), new Point(x1 + 3, y + 3));
-            dc.DrawLine(Pen(accent, 1.0), new Point(x2, y), new Point(x2 - 3, y - 3));
-            dc.DrawLine(Pen(accent, 1.0), new Point(x2, y), new Point(x2 - 3, y + 3));
+            dc.DrawLine(Pen(accent, 1.55), new Point(x1, y), new Point(x2, y));
+            dc.DrawLine(Pen(accent, 1.4), new Point(x1, y), new Point(x1 + 3, y - 3));
+            dc.DrawLine(Pen(accent, 1.4), new Point(x1, y), new Point(x1 + 3, y + 3));
+            dc.DrawLine(Pen(accent, 1.4), new Point(x2, y), new Point(x2 - 3, y - 3));
+            dc.DrawLine(Pen(accent, 1.4), new Point(x2, y), new Point(x2 - 3, y + 3));
             DeviceGlyphControl.DrawCenteredText(dc, label, accent,
                 new Rect(b.Left + b.Width * 0.48, b.Top, b.Width * 0.52, b.Height),
-                FontFor(label, b.Height * 0.44), FontWeights.SemiBold);
+                FontFor(label, b.Height * 0.44), FontWeights.Bold);
         }
 
         private static void DrawGenericButton(DrawingContext dc, Rect b, Brush accent, string label)
         {
             var radius = Math.Min(b.Width, b.Height) * 0.35;
             var center = new Point(b.Left + b.Width / 2.0, b.Top + b.Height / 2.0);
-            dc.DrawEllipse(null, Pen(accent, 1.25), center, radius, radius);
+            dc.DrawEllipse(null, Pen(accent, 1.55), center, radius, radius);
             DeviceGlyphControl.DrawCenteredText(dc, label, accent,
                 new Rect(center.X - radius, center.Y - radius, radius * 2, radius * 2),
-                FontFor(label, radius), FontWeights.SemiBold);
+                FontFor(label, radius), FontWeights.Bold);
         }
 
         private static void DrawFilter(DrawingContext dc, Rect b, Brush accent)

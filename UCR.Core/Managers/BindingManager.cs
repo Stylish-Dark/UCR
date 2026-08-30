@@ -116,7 +116,7 @@ namespace HidWizards.UCR.Core.Managers
                 bindAcceptAfterUtc = DateTime.UtcNow.Add(BindArmDelay);
 
                 BindingTimer?.Stop();
-                BindingTimer = new DispatcherTimer(DispatcherPriority.Render, _dispatcher);
+                BindingTimer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher);
                 BindingTimer.Tick += BindingTimerOnTick;
                 BindingTimer.Interval = TimeSpan.FromMilliseconds(BindModeTick);
                 BindModeProgress = BindModeTime;
