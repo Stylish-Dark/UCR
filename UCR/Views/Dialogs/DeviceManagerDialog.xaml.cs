@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Threading;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Utilities;
@@ -53,24 +55,56 @@ namespace HidWizards.UCR.Views.Dialogs
 
             var item = textBox.DataContext as DeviceManagerItemViewModel;
             var viewModel = DataContext as DeviceManagerViewModel;
-            if (item == null || viewModel == null || !viewModel.Move(item, offset)) return;
+            if (item == null || viewModel == null) return;
 
+            // Capture the selection before ObservableCollection.Move makes WPF rebuild/recycle the row.
             var selectionStart = textBox.SelectionStart;
             var selectionLength = textBox.SelectionLength;
-            viewModel.SelectedDevice = item;
-            DeviceList.ScrollIntoView(item);
+            if (!viewModel.Move(item, offset)) return;
 
-            // ObservableCollection.Move keeps the row logically selected, but layout may briefly
-            // recycle its container. Restore keyboard focus and the exact text selection after the
-            // move so Alt+Up/Down can be pressed repeatedly without touching the mouse.
-            Dispatcher.BeginInvoke(new Action(() =>
+            viewModel.SelectedDevice = item;
+            RestoreAliasFocus(item, selectionStart, selectionLength);
+        }
+
+        private void RestoreAliasFocus(DeviceManagerItemViewModel item, int selectionStart, int selectionLength, int attemptsRemaining = 2)
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
             {
-                textBox.Focus();
-                var length = textBox.Text?.Length ?? 0;
+                DeviceList.ScrollIntoView(item);
+                DeviceList.UpdateLayout();
+
+                var container = DeviceList.ItemContainerGenerator.ContainerFromItem(item) as ListViewItem;
+                var target = FindVisualChild<TextBox>(container);
+                if (target == null)
+                {
+                    if (attemptsRemaining > 0)
+                        RestoreAliasFocus(item, selectionStart, selectionLength, attemptsRemaining - 1);
+                    return;
+                }
+
+                var length = target.Text?.Length ?? 0;
                 var start = Math.Max(0, Math.Min(selectionStart, length));
-                textBox.SelectionStart = start;
-                textBox.SelectionLength = Math.Max(0, Math.Min(selectionLength, length - start));
+                var selected = Math.Max(0, Math.Min(selectionLength, length - start));
+
+                target.Focus();
+                Keyboard.Focus(target);
+                target.Select(start, selected);
             }));
+        }
+
+        private static T FindVisualChild<T>(DependencyObject root) where T : DependencyObject
+        {
+            if (root == null) return null;
+            var childCount = VisualTreeHelper.GetChildrenCount(root);
+            for (var index = 0; index < childCount; index++)
+            {
+                var child = VisualTreeHelper.GetChild(root, index);
+                var typed = child as T;
+                if (typed != null) return typed;
+                var nested = FindVisualChild<T>(child);
+                if (nested != null) return nested;
+            }
+            return null;
         }
 
         private void MoveUp_OnClick(object sender, RoutedEventArgs e)

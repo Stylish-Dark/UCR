@@ -17,12 +17,12 @@ namespace HidWizards.UCR.Utilities
     {
         private static readonly List<AccentPalette> Palettes = new List<AccentPalette>
         {
-            Palette("Blue", 0x00, 0x38, 0xC8, Colors.White),
-            Palette("Green", 0x00, 0x70, 0x00, Colors.White),
-            Palette("Yellow", 0xB8, 0x9A, 0x00, Color.FromRgb(18, 18, 18)),
-            Palette("Red", 0xB0, 0x00, 0x00, Colors.White),
-            Palette("Orange", 0xC8, 0x3C, 0x00, Colors.White),
-            Palette("Purple", 0x62, 0x00, 0xB8, Colors.White)
+            Palette("Blue", 0x00, 0x30, 0xA8, Colors.White),
+            Palette("Green", 0x00, 0x58, 0x00, Colors.White),
+            Palette("Yellow", 0x8C, 0x70, 0x00, Colors.White),
+            Palette("Red", 0x90, 0x00, 0x00, Colors.White),
+            Palette("Orange", 0xA0, 0x30, 0x00, Colors.White),
+            Palette("Purple", 0x52, 0x00, 0x98, Colors.White)
         };
 
         public static IEnumerable<AccentPalette> AvailablePalettes => Palettes;

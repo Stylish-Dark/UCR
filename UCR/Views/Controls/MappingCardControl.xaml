@@ -133,8 +133,8 @@
                 <Grid MinHeight="64" ToolTip="Right-drag this card while collapsed to reorder it">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="4"/>
-                        <ColumnDefinition Width="140"/>
-                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="3*"/>
                         <ColumnDefinition Width="{Binding FilterColumnWidth, ElementName=MappingCardRoot}"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
@@ -147,7 +147,7 @@
                                 Cursor="Hand" ToolTip="Right-click to rename mapping"
                                 PreviewMouseRightButtonUp="RenameHeader_OnMouseRightButtonUp">
                         <TextBlock Text="{Binding MappingTitle}" FontSize="15.5" FontWeight="SemiBold"
-                                   Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"/>
+                                   Foreground="#FFFFFF" TextTrimming="CharacterEllipsis" ToolTip="{Binding MappingTitle}"/>
                         <ItemsControl ItemsSource="{Binding MappingRouteTokens}" Margin="0 2 0 0" Opacity="0.78">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>

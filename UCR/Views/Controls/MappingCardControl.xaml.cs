@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -14,6 +15,7 @@ namespace HidWizards.UCR.Views.Controls
     public partial class MappingCardControl : UserControl
     {
         private const double CompactFilterBadgeThreshold = 620.0;
+        private static readonly GridLength NoFilterColumnWidth = new GridLength(0.0);
         private static readonly GridLength FullFilterColumnWidth = new GridLength(220.0);
         private static readonly GridLength CompactFilterColumnWidth = new GridLength(54.0);
 
@@ -22,7 +24,7 @@ namespace HidWizards.UCR.Views.Controls
 
         public static readonly DependencyProperty FilterColumnWidthProperty = DependencyProperty.Register(
             nameof(FilterColumnWidth), typeof(GridLength), typeof(MappingCardControl),
-            new PropertyMetadata(FullFilterColumnWidth));
+            new PropertyMetadata(NoFilterColumnWidth));
 
         public bool UseCompactFilterBadges
         {
@@ -36,16 +38,48 @@ namespace HidWizards.UCR.Views.Controls
             private set => SetValue(FilterColumnWidthProperty, value);
         }
 
+        private MappingViewModel _observedViewModel;
+
         public MappingCardControl()
         {
             InitializeComponent();
             Loaded += MappingCardControl_OnLoaded;
+            Unloaded += MappingCardControl_OnUnloaded;
             SizeChanged += MappingCardControl_OnSizeChanged;
+            DataContextChanged += MappingCardControl_OnDataContextChanged;
         }
 
         private void MappingCardControl_OnLoaded(object sender, RoutedEventArgs e)
         {
+            ObserveViewModel(DataContext as MappingViewModel);
             UpdateResponsiveHeader();
+        }
+
+        private void MappingCardControl_OnUnloaded(object sender, RoutedEventArgs e)
+        {
+            ObserveViewModel(null);
+        }
+
+        private void MappingCardControl_OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            ObserveViewModel(e.NewValue as MappingViewModel);
+            UpdateResponsiveHeader();
+        }
+
+        private void ObserveViewModel(MappingViewModel viewModel)
+        {
+            if (ReferenceEquals(_observedViewModel, viewModel)) return;
+            if (_observedViewModel != null) _observedViewModel.PropertyChanged -= ObservedViewModel_OnPropertyChanged;
+            _observedViewModel = viewModel;
+            if (_observedViewModel != null) _observedViewModel.PropertyChanged += ObservedViewModel_OnPropertyChanged;
+        }
+
+        private void ObservedViewModel_OnPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (string.IsNullOrEmpty(e.PropertyName) ||
+                e.PropertyName == nameof(MappingViewModel.HasFilterReferences) ||
+                e.PropertyName == nameof(MappingViewModel.ReferencedFilters))
+                UpdateResponsiveHeader();
         }
 
         private void MappingCardControl_OnSizeChanged(object sender, SizeChangedEventArgs e)
@@ -55,9 +89,12 @@ namespace HidWizards.UCR.Views.Controls
 
         private void UpdateResponsiveHeader()
         {
-            var compact = ActualWidth > 0 && ActualWidth < CompactFilterBadgeThreshold;
+            var hasFilters = (DataContext as MappingViewModel)?.HasFilterReferences == true;
+            var compact = hasFilters && ActualWidth > 0 && ActualWidth < CompactFilterBadgeThreshold;
             UseCompactFilterBadges = compact;
-            FilterColumnWidth = compact ? CompactFilterColumnWidth : FullFilterColumnWidth;
+            FilterColumnWidth = !hasFilters
+                ? NoFilterColumnWidth
+                : compact ? CompactFilterColumnWidth : FullFilterColumnWidth;
         }
 
 
