@@ -15,7 +15,10 @@ namespace HidWizards.UCR.ViewModels.Dialogs
         public DeviceIoType IoType { get; set; }
         public string Title { get; set; }
         public DeviceVisualDescriptor Visual { get; set; }
-        public string DisplayTitle => IoType + " — " + Title;
+        public bool IsAvailable { get; set; }
+        public int ReferenceCount { get; set; }
+        public string AvailabilityText => IsAvailable ? IoType.ToString() : IoType + " — UNAVAILABLE";
+        public string DisplayTitle => IoType + " — " + Title + (IsAvailable ? string.Empty : " — Unavailable");
     }
 
     public sealed class BatchDeviceChangeResult
@@ -80,12 +83,15 @@ namespace HidWizards.UCR.ViewModels.Dialogs
                 foreach (var configuration in profile.GetDeviceConfigurationList(type))
                 {
                     if (configuration == null) continue;
+                    var available = configuration.Device != null &&
+                                    profile.Context.DevicesManager.ResolveDevice(configuration.Device, type) != null;
                     result.Add(new BatchDeviceOption
                     {
                         Guid = configuration.Guid,
                         IoType = type,
                         Title = configuration.GetFullTitleForProfile(profile),
-                        Visual = DeviceVisualCatalog.Describe(configuration, profile, type)
+                        Visual = DeviceVisualCatalog.Describe(configuration, profile, type),
+                        IsAvailable = available
                     });
                 }
             }
@@ -94,19 +100,52 @@ namespace HidWizards.UCR.ViewModels.Dialogs
 
         private IEnumerable<BatchDeviceOption> BuildUsedDeviceOptions()
         {
-            var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var binding in _profileViewModel.GetAllBindingViewModels())
+            var used = _profileViewModel.GetAllBindingViewModels()
+                .Where(binding => binding?.DeviceBinding != null)
+                .GroupBy(binding => new
+                {
+                    binding.DeviceBinding.DeviceIoType,
+                    binding.DeviceBinding.DeviceConfigurationGuid
+                })
+                .ToList();
+
+            var result = new List<BatchDeviceOption>();
+            foreach (var group in used)
             {
-                if (binding?.DeviceBinding == null) continue;
-                var key = binding.DeviceBinding.DeviceIoType + "|" + binding.DeviceBinding.DeviceConfigurationGuid;
-                used.Add(key);
+                var option = _allDevices.FirstOrDefault(candidate =>
+                    candidate.IoType == group.Key.DeviceIoType && candidate.Guid == group.Key.DeviceConfigurationGuid);
+                if (option == null)
+                {
+                    option = BuildMissingUsedDeviceOption(group.Key.DeviceIoType,
+                        group.Key.DeviceConfigurationGuid, group.Count());
+                    _allDevices.Add(option);
+                }
+                else
+                {
+                    option.ReferenceCount = group.Count();
+                }
+                result.Add(option);
             }
 
-            return _allDevices
-                .Where(option => used.Contains(option.IoType + "|" + option.Guid))
+            return result
                 .OrderBy(option => option.IoType)
+                .ThenBy(option => option.IsAvailable ? 0 : 1)
                 .ThenBy(option => option.Title, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
+        }
+
+        private BatchDeviceOption BuildMissingUsedDeviceOption(DeviceIoType ioType, Guid configurationGuid, int referenceCount)
+        {
+            var isUnassigned = configurationGuid == Guid.Empty;
+            return new BatchDeviceOption
+            {
+                Guid = configurationGuid,
+                IoType = ioType,
+                Title = isUnassigned ? "Unassigned " + ioType.ToString().ToLowerInvariant() + " device" : "Unavailable device",
+                Visual = DeviceVisualCatalog.Describe((DeviceConfiguration)null, _profileViewModel.Profile, ioType),
+                IsAvailable = false,
+                ReferenceCount = referenceCount
+            };
         }
 
         private void RebuildTargets()
@@ -116,7 +155,7 @@ namespace HidWizards.UCR.ViewModels.Dialogs
             if (SelectedSource == null) return;
 
             foreach (var option in _allDevices
-                .Where(option => option.IoType == SelectedSource.IoType && option.Guid != SelectedSource.Guid)
+                .Where(option => option.IoType == SelectedSource.IoType && option.Guid != SelectedSource.Guid && option.IsAvailable)
                 .OrderBy(option => option.Title, StringComparer.CurrentCultureIgnoreCase))
             {
                 TargetDevices.Add(option);

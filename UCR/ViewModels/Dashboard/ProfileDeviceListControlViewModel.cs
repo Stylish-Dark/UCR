@@ -259,7 +259,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             IsDetecting = true;
             UpdateDetectionCountdown();
             _detectionUiTimer?.Stop();
-            _detectionUiTimer = new DispatcherTimer(DispatcherPriority.Render)
+            _detectionUiTimer = new DispatcherTimer(DispatcherPriority.Background)
             {
                 Interval = TimeSpan.FromMilliseconds(100)
             };

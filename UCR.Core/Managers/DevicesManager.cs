@@ -424,7 +424,7 @@ namespace HidWizards.UCR.Core.Managers
                 completion = new TaskCompletionSource<DetectedInputControl>();
                 _deviceDetectionCompletion = completion;
                 _deviceDetectionDevices = devices;
-                _deviceDetectionAcceptAfterUtc = DateTime.MaxValue;
+                _deviceDetectionAcceptAfterUtc = DateTime.UtcNow.Add(DeviceDetectionArmDelay);
                 _deviceDetectionRequiredCategory = requiredCategory;
             }
 
@@ -448,7 +448,6 @@ namespace HidWizards.UCR.Core.Managers
                 {
                     if (_deviceDetectionCompletion == completion)
                     {
-                        _deviceDetectionAcceptAfterUtc = DateTime.UtcNow.Add(DeviceDetectionArmDelay);
                         _deviceDetectionTimer = new Timer(_ => CompleteDeviceDetection(null), null, timeout,
                             Timeout.InfiniteTimeSpan);
                         if (cancellationToken.CanBeCanceled)
@@ -487,7 +486,7 @@ namespace HidWizards.UCR.Core.Managers
                 requiredCategory = _deviceDetectionRequiredCategory;
             }
 
-            if (DateTime.UtcNow < acceptAfter || bindingReport == null) return;
+            if (bindingReport == null) return;
 
             var category = DeviceBinding.MapCategory(bindingReport.Category);
             if (requiredCategory.HasValue)
@@ -512,6 +511,11 @@ namespace HidWizards.UCR.Core.Managers
 
             if (device == null) return;
 
+            // The mouse gesture that opened a detector can leak into Interception briefly. Suppress
+            // only pointer presses during that arm window; keyboard/controller input must be accepted
+            // immediately instead of being thrown away for a blanket 350ms.
+            if (DateTime.UtcNow < acceptAfter && IsPointerDetectionDevice(device)) return;
+
             var descriptor = bindingReport.BindingDescriptor;
             var detected = new DetectedInputControl
             {
@@ -521,6 +525,17 @@ namespace HidWizards.UCR.Core.Managers
 
             Logger.Debug($"Detected input: provider={device.ProviderName}, handle={device.DeviceHandle}, instance={device.DeviceNumber}, control={detected.ControlTitle}, category={category}, type={descriptor.Type}, index={descriptor.Index}, subIndex={descriptor.SubIndex}");
             ThreadPool.QueueUserWorkItem(_ => CompleteDeviceDetection(detected));
+        }
+
+        private static bool IsPointerDetectionDevice(Device device)
+        {
+            if (device == null) return false;
+            var title = GetLogicalDeviceTitle(device) ?? string.Empty;
+            var handle = device.DeviceHandle ?? string.Empty;
+            return title.StartsWith("M:", StringComparison.OrdinalIgnoreCase) ||
+                   title.IndexOf("mouse", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   handle.StartsWith("Mouse", StringComparison.OrdinalIgnoreCase) ||
+                   handle.IndexOf("mouse", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static bool IsDetectedControlValueValid(DeviceBindingCategory category, short value)

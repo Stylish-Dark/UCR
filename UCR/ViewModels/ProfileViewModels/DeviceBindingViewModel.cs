@@ -133,7 +133,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 _bindModeProgress = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(PreviewValue));
-                OnPropertyChanged(nameof(ShowButtonPreview));
             }
         }
 

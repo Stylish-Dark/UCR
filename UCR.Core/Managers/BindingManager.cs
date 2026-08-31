@@ -28,7 +28,7 @@ namespace HidWizards.UCR.Core.Managers
         }
 
         private static readonly double BindModeTime = 5000.0;
-        private static readonly int BindModeTick = 20;
+        private static readonly int BindModeTick = 50;
         private static readonly TimeSpan BindArmDelay = TimeSpan.FromMilliseconds(150);
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private readonly Context _context;
@@ -87,7 +87,7 @@ namespace HidWizards.UCR.Core.Managers
                 _deviceConfigurationList = new List<DeviceConfiguration>();
                 _bindModeRuntimeDevices = new Dictionary<Guid, Device>();
                 bindCommitPending = false;
-                bindAcceptAfterUtc = DateTime.MaxValue;
+                bindAcceptAfterUtc = DateTime.UtcNow.Add(BindArmDelay);
                 bindmodeActive = true;
             }
 
@@ -110,11 +110,6 @@ namespace HidWizards.UCR.Core.Managers
                     _bindModeRuntimeDevices[deviceConfiguration.Guid] = runtimeDevice;
                 }
 
-                // Do not let the mouse/key event that clicked the Bind button become the new
-                // binding. WPF raises Button.Click at the tail of that same input gesture, while
-                // Interception can still deliver the gesture to detection mode immediately after.
-                bindAcceptAfterUtc = DateTime.UtcNow.Add(BindArmDelay);
-
                 BindingTimer?.Stop();
                 BindingTimer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher);
                 BindingTimer.Tick += BindingTimerOnTick;
@@ -133,7 +128,15 @@ namespace HidWizards.UCR.Core.Managers
         private void BindingTimerOnTick(object sender, EventArgs e)
         {
             BindModeProgress = _bindModeProgress - BindModeTick;
-            if (BindModeProgress <= 0.0) EndBindMode();
+            if (BindModeProgress > 0.0) return;
+
+            lock (bindmodeLock)
+            {
+                // Once a provider callback has reserved a real input, never let a cosmetic UI timer
+                // cancel it while the final model mutation is queued on the dispatcher.
+                if (bindCommitPending) return;
+            }
+            EndBindMode();
         }
 
         private void EndBindMode()
@@ -209,57 +212,125 @@ namespace HidWizards.UCR.Core.Managers
             };
         }
 
+        private sealed class PendingBindInput
+        {
+            public DeviceBinding Binding { get; set; }
+            public Guid DeviceConfigurationGuid { get; set; }
+            public int KeyType { get; set; }
+            public int KeyValue { get; set; }
+            public int KeySubValue { get; set; }
+            public string ProviderName { get; set; }
+            public string DeviceHandle { get; set; }
+            public int DeviceInstance { get; set; }
+            public short Value { get; set; }
+        }
+
         private void InputChanged(ProviderDescriptor providerDescriptor, DeviceDescriptor deviceDescriptor, BindingReport bindingReport, short value)
         {
-            if (!_dispatcher.CheckAccess())
+            // Reserve the first valid physical input on the provider callback thread. The old path
+            // marshalled the whole callback to WPF before reserving it, so a busy UI could make a
+            // perfectly real key/button press arrive late enough to look "missed". Only the tiny
+            // model mutation is dispatched now; detection itself wins immediately.
+            var pendingInput = TryReserveDetectedInput(providerDescriptor, deviceDescriptor, bindingReport, value);
+            if (pendingInput == null) return;
+
+            if (_dispatcher.CheckAccess())
             {
-                // Core Interception and several other providers deliver detection callbacks from worker/
-                // timer threads. Mutating DeviceBinding directly there can raise WPF PropertyChanged events
-                // off-thread and crash the application. Marshal the entire commit to UCR's UI dispatcher.
-                try
-                {
-                    _dispatcher.BeginInvoke(new Action(() => InputChanged(providerDescriptor, deviceDescriptor, bindingReport, value)), DispatcherPriority.Input);
-                }
-                catch (InvalidOperationException exception)
-                {
-                    Logger.Error(exception, "Could not marshal detected input to the UCR dispatcher");
-                }
+                CommitDetectedInput(pendingInput);
                 return;
-            }
-
-            lock (bindmodeLock)
-            {
-                if (!bindmodeActive || bindCommitPending || _deviceBinding == null) return;
-                if (DateTime.UtcNow < bindAcceptAfterUtc) return;
-            }
-
-            if (bindingReport == null) return;
-            if (!DeviceBinding.MapCategory(bindingReport.Category).Equals(_deviceBinding.DeviceBindingCategory)) return;
-            if (!IsInputValid(bindingReport.Category, value)) return;
-
-            var deviceConfiguration = FindDeviceConfiguration(providerDescriptor, deviceDescriptor);
-            if (deviceConfiguration == null) return;
-
-            lock (bindmodeLock)
-            {
-                if (!bindmodeActive || bindCommitPending || _deviceBinding == null) return;
-                bindCommitPending = true;
             }
 
             try
             {
-                Logger.Debug($"Bind input accepted: provider={providerDescriptor?.ProviderName}, handle={deviceDescriptor.DeviceHandle}, instance={deviceDescriptor.DeviceInstance}, type={bindingReport.BindingDescriptor.Type}, index={bindingReport.BindingDescriptor.Index}, subIndex={bindingReport.BindingDescriptor.SubIndex}, value={value}");
-                _deviceBinding.SetDeviceConfigurationGuid(deviceConfiguration.Guid);
-                _deviceBinding.SetKeyTypeValue((int)bindingReport.BindingDescriptor.Type,
-                    bindingReport.BindingDescriptor.Index, bindingReport.BindingDescriptor.SubIndex);
+                _dispatcher.BeginInvoke(new Action(() => CommitDetectedInput(pendingInput)), DispatcherPriority.Input);
+            }
+            catch (InvalidOperationException exception)
+            {
+                Logger.Error(exception, "Could not marshal detected input to the UCR dispatcher");
+                lock (bindmodeLock)
+                {
+                    if (ReferenceEquals(_deviceBinding, pendingInput.Binding)) bindCommitPending = false;
+                }
+            }
+        }
+
+        private PendingBindInput TryReserveDetectedInput(ProviderDescriptor providerDescriptor,
+            DeviceDescriptor deviceDescriptor, BindingReport bindingReport, short value)
+        {
+            lock (bindmodeLock)
+            {
+                if (!bindmodeActive || bindCommitPending || _deviceBinding == null || bindingReport == null) return null;
+
+                var category = DeviceBinding.MapCategory(bindingReport.Category);
+                if (!category.Equals(_deviceBinding.DeviceBindingCategory) || !IsInputValid(bindingReport.Category, value))
+                    return null;
+
+                var deviceConfiguration = FindDeviceConfiguration(providerDescriptor, deviceDescriptor);
+                if (deviceConfiguration == null) return null;
+
+                // The click that opened bind mode can only contaminate pointer bindings. Keyboard,
+                // controller and other device input is accepted immediately instead of being thrown
+                // away by the former blanket 150ms arm delay.
+                if (DateTime.UtcNow < bindAcceptAfterUtc &&
+                    ShouldSuppressInitiatingPointerInput(deviceConfiguration, category))
+                {
+                    return null;
+                }
+
+                bindCommitPending = true;
+                return new PendingBindInput
+                {
+                    Binding = _deviceBinding,
+                    DeviceConfigurationGuid = deviceConfiguration.Guid,
+                    KeyType = (int)bindingReport.BindingDescriptor.Type,
+                    KeyValue = bindingReport.BindingDescriptor.Index,
+                    KeySubValue = bindingReport.BindingDescriptor.SubIndex,
+                    ProviderName = providerDescriptor?.ProviderName,
+                    DeviceHandle = deviceDescriptor.DeviceHandle,
+                    DeviceInstance = deviceDescriptor.DeviceInstance,
+                    Value = value
+                };
+            }
+        }
+
+        private bool ShouldSuppressInitiatingPointerInput(DeviceConfiguration deviceConfiguration,
+            DeviceBindingCategory category)
+        {
+            if (category != DeviceBindingCategory.Momentary || deviceConfiguration == null) return false;
+
+            Device runtimeDevice;
+            if (!_bindModeRuntimeDevices.TryGetValue(deviceConfiguration.Guid, out runtimeDevice) || runtimeDevice == null)
+                return false;
+
+            var title = DevicesManager.GetLogicalDeviceTitle(runtimeDevice) ?? string.Empty;
+            var handle = runtimeDevice.DeviceHandle ?? string.Empty;
+            return title.StartsWith("M:", StringComparison.OrdinalIgnoreCase) ||
+                   title.IndexOf("mouse", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   handle.StartsWith("Mouse", StringComparison.OrdinalIgnoreCase) ||
+                   handle.IndexOf("mouse", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private void CommitDetectedInput(PendingBindInput pendingInput)
+        {
+            if (pendingInput == null) return;
+
+            lock (bindmodeLock)
+            {
+                if (!bindmodeActive || !bindCommitPending || !ReferenceEquals(_deviceBinding, pendingInput.Binding))
+                    return;
+            }
+
+            try
+            {
+                Logger.Debug($"Bind input accepted: provider={pendingInput.ProviderName}, handle={pendingInput.DeviceHandle}, instance={pendingInput.DeviceInstance}, type={pendingInput.KeyType}, index={pendingInput.KeyValue}, subIndex={pendingInput.KeySubValue}, value={pendingInput.Value}");
+                pendingInput.Binding.SetDeviceConfigurationGuid(pendingInput.DeviceConfigurationGuid);
+                pendingInput.Binding.SetKeyTypeValue(pendingInput.KeyType, pendingInput.KeyValue, pendingInput.KeySubValue);
                 EndBindMode();
             }
             catch (Exception exception)
             {
                 Logger.Error(exception, "Failed to commit detected input binding");
                 lock (bindmodeLock) bindCommitPending = false;
-                // A failed rebind should never take down the whole application. End detection cleanly;
-                // the improved crash/bind logging above preserves the diagnostic information.
                 EndBindMode();
             }
         }

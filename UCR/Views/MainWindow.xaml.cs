@@ -25,6 +25,7 @@ using MaterialDesignThemes.Wpf;
 using Microsoft.Win32;
 using Forms = System.Windows.Forms;
 using ProfileWindow = HidWizards.UCR.Views.ProfileViews.ProfileWindow;
+using ProfilePage = HidWizards.UCR.Views.ProfileViews.ProfilePage;
 
 namespace HidWizards.UCR.Views
 {
@@ -44,6 +45,7 @@ namespace HidWizards.UCR.Views
         private DeviceManagerDialog _deviceManagerWindow;
         private bool _deviceManagerHiddenToTray;
         private bool _exitRequested;
+        private IDisposable _navigationPage;
 
         enum CloseState
         {
@@ -243,9 +245,24 @@ namespace HidWizards.UCR.Views
             DeactivateCurrentProfile();
         }
 
+        private void AddAutoActivateApplication_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (!GetSelectedItem(out var profileItem)) return;
+            profileItem.Profile.AddAutoActivateApplication();
+        }
+
+        private void RemoveAutoActivateApplication_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (!GetSelectedItem(out var profileItem)) return;
+            var rule = (sender as FrameworkElement)?.DataContext as ProfileApplicationRule;
+            profileItem.Profile.RemoveAutoActivateApplication(rule);
+        }
+
         private void BrowseAutoActivateExecutable(object sender, RoutedEventArgs e)
         {
             if (!GetSelectedItem(out var profileItem)) return;
+            var rule = (sender as FrameworkElement)?.DataContext as ProfileApplicationRule;
+            if (rule == null) rule = profileItem.Profile.AddAutoActivateApplication();
 
             var dialog = new OpenFileDialog
             {
@@ -257,7 +274,7 @@ namespace HidWizards.UCR.Views
             };
 
             if (dialog.ShowDialog(this) != true) return;
-            profileItem.Profile.AutoActivateExecutable = Path.GetFileName(dialog.FileName);
+            rule.Executable = Path.GetFileName(dialog.FileName);
         }
 
         private void DeactivateCurrentProfile()
@@ -303,42 +320,49 @@ namespace HidWizards.UCR.Views
                 if (!profileItem.Id.Equals(senderItem?.Id)) return;
             }
 
-            if (ProfileWindows.TryGetValue(profileItem.Profile.Guid, out var profileWindow))
-            {
-                Dispatcher.BeginInvoke((Action)(() => SurfaceProfileWindow(profileWindow)));
-                return;
-            }
-
             OpenProfileWindow(profileItem.Profile);
         }
 
         private void OpenProfileWindow(Profile profile)
         {
-            void ShowAction()
+            if (profile == null) return;
+            Dispatcher.BeginInvoke((Action)(() =>
             {
-                CloseDeviceManagerWindow();
+                var page = new ProfilePage(Context, profile);
+                page.BackRequested += NavigationPage_OnBackRequested;
+                ShowNavigationPage(page);
+            }));
+        }
 
-                if (ProfileWindows.TryGetValue(profile.Guid, out var existing))
-                {
-                    SurfaceProfileWindow(existing);
-                    return;
-                }
+        private void ShowNavigationPage(UserControl page)
+        {
+            CloseNavigationPage(false);
+            _navigationPage = page as IDisposable;
+            NavigationHost.Content = page;
+            NavigationHost.Visibility = Visibility.Visible;
+            RootDialog.Visibility = Visibility.Collapsed;
+            MainToolbarHost.Visibility = Visibility.Collapsed;
+        }
 
-                // Keep one profile editor form open at a time. Closing the previous editor also
-                // releases its binding/plugin view-model graph immediately.
-                var previousWindows = new List<ProfileWindow>(ProfileWindows.Values);
-                foreach (var previous in previousWindows) previous.Close();
+        private void NavigationPage_OnBackRequested(object sender, EventArgs e)
+        {
+            CloseNavigationPage(true);
+        }
 
-                var win = new ProfileWindow(Context, profile) { Owner = this };
-                ProfileWindows[win.ProfileGuid] = win;
-                win.Closed += OnProfileWindowClosed;
-                win.Show();
-                SurfaceProfileWindow(win);
-                var restoreFocusDialogClose = RootDialog.GetType().GetField("_restoreFocusDialogClose", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                restoreFocusDialogClose?.SetValue(RootDialog, null);
+        private void CloseNavigationPage(bool showDashboard)
+        {
+            if (NavigationHost.Content is ProfilePage profilePage) profilePage.BackRequested -= NavigationPage_OnBackRequested;
+            if (NavigationHost.Content is DeviceManagerPage devicePage) devicePage.BackRequested -= NavigationPage_OnBackRequested;
+            _navigationPage?.Dispose();
+            _navigationPage = null;
+            NavigationHost.Content = null;
+            NavigationHost.Visibility = Visibility.Collapsed;
+            if (showDashboard)
+            {
+                RootDialog.Visibility = Visibility.Visible;
+                MainToolbarHost.Visibility = Visibility.Visible;
+                ReloadProfileTree();
             }
-
-            Dispatcher.BeginInvoke((Action)ShowAction);
         }
 
         private static void SurfaceProfileWindow(ProfileWindow window)
@@ -526,18 +550,9 @@ namespace HidWizards.UCR.Views
 
         private void ManageDevices_OnClick(object sender, RoutedEventArgs e)
         {
-            if (_deviceManagerWindow != null)
-            {
-                SurfaceAuxiliaryWindow(_deviceManagerWindow);
-                return;
-            }
-
-            CloseAllProfileWindows();
-            var dialog = new DeviceManagerDialog(Context.DevicesManager) { Owner = this };
-            _deviceManagerWindow = dialog;
-            dialog.Closed += DeviceManagerWindow_OnClosed;
-            dialog.Show();
-            SurfaceAuxiliaryWindow(dialog);
+            var page = new DeviceManagerPage(Context.DevicesManager);
+            page.BackRequested += NavigationPage_OnBackRequested;
+            ShowNavigationPage(page);
         }
 
         private void DeviceManagerWindow_OnClosed(object sender, EventArgs e)
@@ -698,19 +713,17 @@ namespace HidWizards.UCR.Views
             }
         }
 
-        private void CloseAllProfileWindows()
+        private void CloseAllProfileWindows(bool showDashboard = true)
         {
+            CloseNavigationPage(showDashboard);
             var windows = new List<ProfileWindow>(ProfileWindows.Values);
-            foreach (var profileWindow in windows)
-            {
-                profileWindow.Close();
-            }
+            foreach (var profileWindow in windows) profileWindow.Close();
         }
 
         internal void PrepareForShutdown()
         {
             _autoProfileMonitor?.Dispose();
-            CloseAllProfileWindows();
+            CloseAllProfileWindows(false);
             CloseDeviceManagerWindow();
             if (_trayIcon != null) _trayIcon.Visible = false;
         }

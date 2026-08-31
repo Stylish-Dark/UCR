@@ -79,7 +79,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <controls:WindowBar Grid.Row="0"/>
-        <Grid Grid.Row="1">
+        <Grid x:Name="MainToolbarHost" Grid.Row="1">
             <Border Background="Transparent"
                     BorderBrush="{DynamicResource MaterialDesignShadowBrush}"
                     BorderThickness="0 0 0 1"
@@ -349,37 +349,63 @@
                                 </Button>
                             </StackPanel>
                             <Separator Grid.Row="1" Grid.ColumnSpan="2" Margin="8 0 8 4" Height="4"  Style="{StaticResource MaterialDesignDarkSeparator}" />
-                            <Border Grid.Row="2" Grid.ColumnSpan="2" Margin="8 2 8 6" Padding="8 5" Background="#212121" CornerRadius="2">
+                            <Border Grid.Row="2" Grid.ColumnSpan="2" Margin="8 2 8 6" Padding="8 7" Background="#212121" CornerRadius="2">
                                 <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <CheckBox Grid.Column="0"
-                                              Margin="0 0 10 0"
-                                              VerticalAlignment="Center"
-                                              Foreground="White"
-                                              Content="Auto-apply while EXE is running"
-                                              IsChecked="{Binding SelectedProfileItem.Profile.AutoActivateEnabled, Mode=TwoWay}"
-                                              ToolTip="Automatically activates this profile while the specified executable is running and stops it when the executable exits."/>
-                                    <TextBox Grid.Column="1"
-                                             Margin="0 0 6 0"
-                                             Padding="6 3"
-                                             VerticalContentAlignment="Center"
-                                             Background="#2B2B2B"
-                                             Foreground="White"
-                                             CaretBrush="White"
-                                             IsEnabled="{Binding SelectedProfileItem.Profile.AutoActivateEnabled}"
-                                             Text="{Binding SelectedProfileItem.Profile.AutoActivateExecutable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                             ToolTip="Executable filename, for example game.exe"/>
-                                    <Button Grid.Column="2"
-                                            Width="34" Height="30" Padding="4"
-                                            IsEnabled="{Binding SelectedProfileItem.Profile.AutoActivateEnabled}"
-                                            ToolTip="Choose executable"
-                                            Click="BrowseAutoActivateExecutable">
-                                        <materialDesign:PackIcon Kind="Folder" Width="18" Height="18"/>
-                                    </Button>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid Grid.Row="0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <CheckBox Grid.Column="0" VerticalAlignment="Center" Foreground="White"
+                                                  Content="Auto-apply while an application is running"
+                                                  IsChecked="{Binding SelectedProfileItem.Profile.AutoActivateEnabled, Mode=TwoWay}"
+                                                  ToolTip="Automatically activates this profile while any configured application rule matches."/>
+                                        <Button Grid.Column="1" Width="30" Height="28" Padding="4" Margin="6 0 0 0"
+                                                IsEnabled="{Binding SelectedProfileItem.Profile.AutoActivateEnabled}"
+                                                ToolTip="Add application rule" Click="AddAutoActivateApplication_OnClick"
+                                                Style="{StaticResource MaterialDesignFlatButton}">
+                                            <materialDesign:PackIcon Kind="Plus" Width="17" Height="17"/>
+                                        </Button>
+                                    </Grid>
+                                    <ScrollViewer Grid.Row="1" Margin="0 6 0 0" MaxHeight="116" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                        <ItemsControl ItemsSource="{Binding SelectedProfileItem.Profile.AutoActivateApplications}"
+                                                      IsEnabled="{Binding SelectedProfileItem.Profile.AutoActivateEnabled}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0 2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="1.1*"/>
+                                                            <ColumnDefinition Width="1*"/>
+                                                            <ColumnDefinition Width="30"/>
+                                                            <ColumnDefinition Width="30"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBox Grid.Column="0" Margin="0 0 5 0" Padding="6 3" VerticalContentAlignment="Center"
+                                                                 Background="#2B2B2B" Foreground="White" CaretBrush="White"
+                                                                 Text="{Binding Executable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                 materialDesign:HintAssist.Hint="Executable (game.exe)"/>
+                                                        <TextBox Grid.Column="1" Margin="0 0 5 0" Padding="6 3" VerticalContentAlignment="Center"
+                                                                 Background="#2B2B2B" Foreground="White" CaretBrush="White"
+                                                                 Text="{Binding Arguments, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                 materialDesign:HintAssist.Hint="Optional parameters"/>
+                                                        <Button Grid.Column="2" Width="28" Height="28" Padding="4" Margin="0 0 2 0"
+                                                                ToolTip="Choose executable" Click="BrowseAutoActivateExecutable"
+                                                                Style="{StaticResource MaterialDesignFlatButton}">
+                                                            <materialDesign:PackIcon Kind="Folder" Width="16" Height="16"/>
+                                                        </Button>
+                                                        <Button Grid.Column="3" Width="28" Height="28" Padding="4"
+                                                                ToolTip="Remove application rule" Click="RemoveAutoActivateApplication_OnClick"
+                                                                Style="{StaticResource MaterialDesignFlatButton}">
+                                                            <materialDesign:PackIcon Kind="Close" Width="16" Height="16"/>
+                                                        </Button>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
                                 </Grid>
                             </Border>
                             <Grid Grid.Row="3" Grid.ColumnSpan="2" Margin="0 0 0 4">
@@ -395,5 +421,6 @@
                 </Grid>
             </Grid>
         </materialDesign:DialogHost>
+        <ContentControl x:Name="NavigationHost" Grid.Row="2" Visibility="Collapsed" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
     </Grid>
 </Window>

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -29,6 +31,21 @@ namespace HidWizards.UCR.Core.Models
 
         private bool _autoActivateEnabled;
         private string _autoActivateExecutable;
+        private ObservableCollection<ProfileApplicationRule> _autoActivateApplications;
+
+        public ObservableCollection<ProfileApplicationRule> AutoActivateApplications
+        {
+            get => _autoActivateApplications;
+            set
+            {
+                if (ReferenceEquals(_autoActivateApplications, value)) return;
+                if (_autoActivateApplications != null) _autoActivateApplications.CollectionChanged -= AutoActivateApplicationsOnCollectionChanged;
+                _autoActivateApplications = value ?? new ObservableCollection<ProfileApplicationRule>();
+                foreach (var rule in _autoActivateApplications) rule?.Attach(this);
+                _autoActivateApplications.CollectionChanged += AutoActivateApplicationsOnCollectionChanged;
+                OnPropertyChanged();
+            }
+        }
 
         [XmlAttribute]
         public bool AutoActivateEnabled
@@ -89,6 +106,7 @@ namespace HidWizards.UCR.Core.Models
             Mappings = new List<Mapping>();
             InputDeviceConfigurations = new List<DeviceConfiguration>();
             OutputDeviceConfigurations = new List<DeviceConfiguration>();
+            AutoActivateApplications = new ObservableCollection<ProfileApplicationRule>();
         }
 
         public Profile(Context context, Profile parentProfile = null) : this(context)
@@ -155,6 +173,31 @@ namespace HidWizards.UCR.Core.Models
         internal void PrepareProfile()
         {
             
+        }
+
+
+        public ProfileApplicationRule AddAutoActivateApplication(string executable = null, string arguments = null)
+        {
+            var rule = new ProfileApplicationRule(executable, arguments);
+            rule.Attach(this);
+            AutoActivateApplications.Add(rule);
+            return rule;
+        }
+
+        public bool RemoveAutoActivateApplication(ProfileApplicationRule rule)
+        {
+            if (rule == null || AutoActivateApplications == null) return false;
+            return AutoActivateApplications.Remove(rule);
+        }
+
+        private void AutoActivateApplicationsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e?.NewItems != null)
+            {
+                foreach (var rule in e.NewItems.OfType<ProfileApplicationRule>()) rule.Attach(this);
+            }
+            Context?.ContextChanged();
+            OnPropertyChanged(nameof(AutoActivateApplications));
         }
 
         #endregion
@@ -445,8 +488,29 @@ namespace HidWizards.UCR.Core.Models
 
         internal void PostLoad(Context context, Profile parentProfile = null)
         {
-            Context = context;
             ParentProfile = parentProfile;
+
+            if (AutoActivateApplications == null) AutoActivateApplications = new ObservableCollection<ProfileApplicationRule>();
+            foreach (var rule in AutoActivateApplications) rule?.Attach(this);
+            if (AutoActivateApplications.Count == 0 && !string.IsNullOrWhiteSpace(_autoActivateExecutable))
+            {
+                // Migrate the legacy single-executable field without making a freshly loaded
+                // context look user-modified simply because it was opened by a newer UCR.
+                AutoActivateApplications.CollectionChanged -= AutoActivateApplicationsOnCollectionChanged;
+                try
+                {
+                    var legacyRule = new ProfileApplicationRule(_autoActivateExecutable);
+                    legacyRule.Attach(this);
+                    AutoActivateApplications.Add(legacyRule);
+                    _autoActivateExecutable = null;
+                }
+                finally
+                {
+                    AutoActivateApplications.CollectionChanged += AutoActivateApplicationsOnCollectionChanged;
+                }
+            }
+
+            Context = context;
 
             foreach (var profile in ChildProfiles)
             {

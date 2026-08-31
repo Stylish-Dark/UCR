@@ -38,7 +38,7 @@
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{Binding IoType}" FontSize="12" Opacity="0.50"/>
+                                    <TextBlock Text="{Binding AvailabilityText}" FontSize="12" Opacity="0.62"/>
                                 </StackPanel>
                             </Grid>
                         </DataTemplate>
@@ -60,7 +60,7 @@
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{Binding IoType}" FontSize="12" Opacity="0.50"/>
+                                    <TextBlock Text="{Binding AvailabilityText}" FontSize="12" Opacity="0.62"/>
                                 </StackPanel>
                             </Grid>
                         </DataTemplate>

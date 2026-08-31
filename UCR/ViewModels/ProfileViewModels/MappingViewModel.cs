@@ -108,6 +108,44 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+        private DeviceBinding _quickInputBinding;
+        private bool _isQuickInputDetecting;
+        private string _quickInputDetectionStatus;
+        private double _quickInputDetectionProgress;
+
+        public bool IsQuickInputDetecting
+        {
+            get => _isQuickInputDetecting;
+            private set
+            {
+                if (_isQuickInputDetecting == value) return;
+                _isQuickInputDetecting = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string QuickInputDetectionStatus
+        {
+            get => _quickInputDetectionStatus;
+            private set
+            {
+                if (_quickInputDetectionStatus == value) return;
+                _quickInputDetectionStatus = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public double QuickInputDetectionProgress
+        {
+            get => _quickInputDetectionProgress;
+            private set
+            {
+                if (Math.Abs(_quickInputDetectionProgress - value) < 0.01) return;
+                _quickInputDetectionProgress = value;
+                OnPropertyChanged();
+            }
+        }
+
         private CancellationTokenSource _quickOutputDetectionCancellation;
         private DispatcherTimer _quickOutputDetectionTimer;
         private DateTime _quickOutputDetectionDeadlineUtc;
@@ -218,6 +256,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void SummaryBindingOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
+            // Countdown/preview animation is deliberately high-frequency and does not change the
+            // collapsed route summary. Rebuilding all glyph descriptors on every progress tick was
+            // needless WPF churn while the user was trying to press the input we were listening for.
+            if (string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.BindModeProgress), StringComparison.Ordinal) ||
+                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.PreviewValue), StringComparison.Ordinal) ||
+                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.ShowButtonPreview), StringComparison.Ordinal))
+            {
+                return;
+            }
+
             RefreshCollapsedSummary();
         }
 
@@ -374,9 +422,65 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var bindingViewModel = ResolveCollapsedBinding(descriptor, DeviceIoType.Input);
             if (bindingViewModel?.DeviceBinding == null || !bindingViewModel.BindingEnabled) return false;
 
-            bindingViewModel.DeviceBinding.DeviceBindingCategory = bindingViewModel.DeviceBindingCategory;
-            bindingViewModel.DeviceBinding.EnterBindMode();
-            return true;
+            StopQuickInputDetection();
+            var binding = bindingViewModel.DeviceBinding;
+            var bindingManager = binding.Profile?.Context?.BindingManager;
+            _quickInputBinding = binding;
+            binding.PropertyChanged += QuickInputBindingOnPropertyChanged;
+            if (bindingManager != null) bindingManager.PropertyChanged += QuickInputBindingManagerOnPropertyChanged;
+
+            IsQuickInputDetecting = true;
+            QuickInputDetectionStatus = "WAITING FOR INPUT — 5.0s";
+            QuickInputDetectionProgress = 100;
+
+            try
+            {
+                binding.DeviceBindingCategory = bindingViewModel.DeviceBindingCategory;
+                binding.EnterBindMode();
+                if (!binding.IsInBindMode) StopQuickInputDetection();
+                return binding.IsInBindMode;
+            }
+            catch
+            {
+                StopQuickInputDetection();
+                throw;
+            }
+        }
+
+        private void QuickInputBindingManagerOnPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (!string.Equals(e.PropertyName, nameof(BindingManager.BindModeProgress), StringComparison.Ordinal)) return;
+            if (_quickInputBinding == null || !_quickInputBinding.IsInBindMode) return;
+
+            var bindingManager = sender as BindingManager;
+            if (bindingManager == null) return;
+            QuickInputDetectionProgress = bindingManager.BindModeProgress;
+            QuickInputDetectionStatus = "WAITING FOR INPUT — " +
+                                        Math.Max(0, bindingManager.BindModeProgress / 20.0).ToString("0.0") + "s";
+        }
+
+        private void QuickInputBindingOnPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (!string.Equals(e.PropertyName, nameof(DeviceBinding.IsInBindMode), StringComparison.Ordinal)) return;
+            var binding = sender as DeviceBinding;
+            if (binding == null || !ReferenceEquals(binding, _quickInputBinding) || binding.IsInBindMode) return;
+            StopQuickInputDetection();
+        }
+
+        private void StopQuickInputDetection()
+        {
+            var binding = _quickInputBinding;
+            if (binding != null)
+            {
+                binding.PropertyChanged -= QuickInputBindingOnPropertyChanged;
+                var bindingManager = binding.Profile?.Context?.BindingManager;
+                if (bindingManager != null) bindingManager.PropertyChanged -= QuickInputBindingManagerOnPropertyChanged;
+            }
+
+            _quickInputBinding = null;
+            IsQuickInputDetecting = false;
+            QuickInputDetectionProgress = 0;
+            QuickInputDetectionStatus = null;
         }
 
         public bool UsesPressCaptureForQuickOutput(BindingVisualDescriptor descriptor)
@@ -568,7 +672,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             UpdateQuickOutputCountdown();
 
             _quickOutputDetectionTimer?.Stop();
-            _quickOutputDetectionTimer = new DispatcherTimer(DispatcherPriority.Render)
+            _quickOutputDetectionTimer = new DispatcherTimer(DispatcherPriority.Background)
             {
                 Interval = TimeSpan.FromMilliseconds(100)
             };
@@ -835,6 +939,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (_disposed) return;
             _disposed = true;
 
+            StopQuickInputDetection();
             _quickOutputDetectionCancellation?.Cancel();
             StopQuickOutputCountdown();
             ProfileViewModel.Profile.Context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;

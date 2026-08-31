@@ -43,7 +43,18 @@
                 <Button Style="{StaticResource MaterialDesignFlatBarButton}"
                         Padding="12 0"
                         Click="Resize_OnClick">
-                    <materialDesign:PackIcon Kind="WindowMaximize" Height="16" Width="16" />
+                    <materialDesign:PackIcon Height="16" Width="16">
+                        <materialDesign:PackIcon.Style>
+                            <Style TargetType="materialDesign:PackIcon">
+                                <Setter Property="Kind" Value="WindowMaximize"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}}, Path=WindowState}" Value="Maximized">
+                                        <Setter Property="Kind" Value="WindowRestore"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </materialDesign:PackIcon.Style>
+                    </materialDesign:PackIcon>
                 </Button>
                 <Button Style="{StaticResource MaterialDesignFlatBarButton}"
                         Padding="12 0"

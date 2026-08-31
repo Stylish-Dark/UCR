@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Management;
 using System.Windows.Threading;
 using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Models;
@@ -11,9 +12,9 @@ using HidWizards.UCR.Core.Utilities;
 namespace HidWizards.UCR.Utilities
 {
     /// <summary>
-    /// Watches configured executable names and owns only the profile activations that it starts.
-    /// Manual profile changes suppress an auto-started profile until its executable exits, so
-    /// automatic behaviour never fights a deliberate stop/switch from the user.
+    /// Watches configured application rules and owns only the profile activations that it starts.
+    /// A profile may match any of several executables. Optional arguments narrow a rule to processes
+    /// whose command line contains that argument string.
     /// </summary>
     public sealed class AutoProfileMonitor : IDisposable
     {
@@ -31,45 +32,30 @@ namespace HidWizards.UCR.Utilities
         public AutoProfileMonitor(Context context)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
-
             _context = context;
             _context.ActiveProfileChangedEvent += OnActiveProfileChanged;
-
-            // MainWindow constructs the monitor on WPF's UI thread, so use the same proven
-            // DispatcherTimer constructor already used elsewhere in UCR.
-            _timer = new DispatcherTimer(DispatcherPriority.Background)
-            {
-                Interval = PollInterval
-            };
+            _timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = PollInterval };
             _timer.Tick += OnTimerTick;
             _timer.Start();
-
-            // Apply an eligible profile immediately if its process was already running before UCR.
             Evaluate();
         }
 
-        private void OnTimerTick(object sender, EventArgs e)
-        {
-            Evaluate();
-        }
+        private void OnTimerTick(object sender, EventArgs e) => Evaluate();
 
         private void Evaluate()
         {
             if (_disposed || _autoOperationInProgress) return;
 
-            var runningExecutables = GetRunningExecutableNames();
             var profiles = EnumerateProfiles(_context.Profiles).ToList();
-            ClearExpiredRuntimeState(profiles, runningExecutables);
+            var rules = profiles.SelectMany(GetRules).Where(IsConfigured).ToList();
+            var runningApplications = GetRunningApplications(rules.Any(rule => !string.IsNullOrWhiteSpace(rule.Arguments)));
+            ClearExpiredRuntimeState(profiles, runningApplications);
 
-            var eligibleProfiles = profiles
-                .Where(profile => IsEligible(profile, runningExecutables))
-                .ToList();
-
+            var eligibleProfiles = profiles.Where(profile => IsEligible(profile, runningApplications)).ToList();
             var activeProfile = _context.ActiveProfile;
             var targetProfile = activeProfile != null
                 ? eligibleProfiles.FirstOrDefault(profile => profile.Guid == activeProfile.Guid)
                 : null;
-
             if (targetProfile == null) targetProfile = eligibleProfiles.FirstOrDefault();
 
             if (targetProfile == null)
@@ -79,7 +65,6 @@ namespace HidWizards.UCR.Utilities
             }
 
             if (activeProfile != null && activeProfile.Guid == targetProfile.Guid) return;
-
             ActivateAutomatically(targetProfile);
         }
 
@@ -95,18 +80,18 @@ namespace HidWizards.UCR.Utilities
                 {
                     _ownedProfileGuid = profile.Guid;
                     _nextActivationAttemptUtc.Remove(profile.Guid);
-                    Logger.Info($"Auto-applied profile '{profile.ProfileBreadCrumbs()}' for '{profile.AutoActivateExecutable}'.");
+                    Logger.Info("Auto-applied profile '" + profile.ProfileBreadCrumbs() + "'.");
                 }
                 else
                 {
                     _nextActivationAttemptUtc[profile.Guid] = DateTime.UtcNow.Add(FailedActivationRetryDelay);
-                    Logger.Warn($"Auto-apply failed for profile '{profile.ProfileBreadCrumbs()}'; retrying in 5 seconds.");
+                    Logger.Warn("Auto-apply failed for profile '" + profile.ProfileBreadCrumbs() + "'; retrying in 5 seconds.");
                 }
             }
             catch (Exception exception)
             {
                 _nextActivationAttemptUtc[profile.Guid] = DateTime.UtcNow.Add(FailedActivationRetryDelay);
-                Logger.Error($"Auto-apply failed for profile '{profile.ProfileBreadCrumbs()}'; retrying in 5 seconds.", exception);
+                Logger.Error("Auto-apply failed for profile '" + profile.ProfileBreadCrumbs() + "'; retrying in 5 seconds.", exception);
             }
             finally
             {
@@ -117,7 +102,6 @@ namespace HidWizards.UCR.Utilities
         private void StopOwnedProfileIfNecessary(Profile activeProfile)
         {
             if (!_ownedProfileGuid.HasValue) return;
-
             if (activeProfile == null || activeProfile.Guid != _ownedProfileGuid.Value)
             {
                 _ownedProfileGuid = null;
@@ -129,18 +113,12 @@ namespace HidWizards.UCR.Utilities
             try
             {
                 var success = _context.SubscriptionsManager.DeactivateCurrentProfile();
-                if (success)
-                {
-                    Logger.Info($"Auto-stopped profile '{profileName}' because its executable is no longer running.");
-                }
-                else
-                {
-                    Logger.Warn($"Auto-stop completed with unsubscribe errors for profile '{profileName}'.");
-                }
+                if (success) Logger.Info("Auto-stopped profile '" + profileName + "' because none of its application rules are running.");
+                else Logger.Warn("Auto-stop completed with unsubscribe errors for profile '" + profileName + "'.");
             }
             catch (Exception exception)
             {
-                Logger.Error($"Auto-stop failed for profile '{profileName}'.", exception);
+                Logger.Error("Auto-stop failed for profile '" + profileName + "'.", exception);
             }
             finally
             {
@@ -152,49 +130,71 @@ namespace HidWizards.UCR.Utilities
         private void OnActiveProfileChanged(Profile profile)
         {
             if (_disposed || _autoOperationInProgress || !_ownedProfileGuid.HasValue) return;
-
-            // Any manual transition away from an auto-owned profile is intentional. Do not reactivate
-            // it every second; suppress it until its configured executable has actually exited.
             if (profile == null || profile.Guid != _ownedProfileGuid.Value)
             {
                 _suppressedProfileGuids.Add(_ownedProfileGuid.Value);
-                Logger.Info("Manual profile change detected; suppressing the previous auto-profile until its executable exits.");
+                Logger.Info("Manual profile change detected; suppressing the previous auto-profile until all matching applications exit.");
                 _ownedProfileGuid = null;
             }
         }
 
-        private bool IsEligible(Profile profile, HashSet<string> runningExecutables)
+        private bool IsEligible(Profile profile, IList<RunningApplication> runningApplications)
         {
             if (profile == null || !profile.AutoActivateEnabled || _suppressedProfileGuids.Contains(profile.Guid)) return false;
-
-            var executableName = NormalizeExecutableName(profile.AutoActivateExecutable);
-            return !string.IsNullOrEmpty(executableName) && runningExecutables.Contains(executableName);
+            return GetRules(profile).Any(rule => IsConfigured(rule) && runningApplications.Any(app => RuleMatches(rule, app)));
         }
 
-        private void ClearExpiredRuntimeState(IEnumerable<Profile> profiles, HashSet<string> runningExecutables)
+        private void ClearExpiredRuntimeState(IEnumerable<Profile> profiles, IList<RunningApplication> runningApplications)
         {
-            var profileList = profiles.ToList();
             var configuredAndRunning = new HashSet<Guid>();
-
-            foreach (var profile in profileList)
+            foreach (var profile in profiles)
             {
                 if (!profile.AutoActivateEnabled) continue;
-                var executableName = NormalizeExecutableName(profile.AutoActivateExecutable);
-                if (!string.IsNullOrEmpty(executableName) && runningExecutables.Contains(executableName))
-                {
+                if (GetRules(profile).Any(rule => IsConfigured(rule) && runningApplications.Any(app => RuleMatches(rule, app))))
                     configuredAndRunning.Add(profile.Guid);
-                }
             }
 
             foreach (var profileGuid in _suppressedProfileGuids.ToList())
-            {
                 if (!configuredAndRunning.Contains(profileGuid)) _suppressedProfileGuids.Remove(profileGuid);
-            }
-
             foreach (var profileGuid in _nextActivationAttemptUtc.Keys.ToList())
-            {
                 if (!configuredAndRunning.Contains(profileGuid)) _nextActivationAttemptUtc.Remove(profileGuid);
-            }
+        }
+
+        internal static IEnumerable<ProfileApplicationRule> GetRules(Profile profile)
+        {
+            if (profile?.AutoActivateApplications != null && profile.AutoActivateApplications.Count > 0)
+                return profile.AutoActivateApplications;
+
+            if (!string.IsNullOrWhiteSpace(profile?.AutoActivateExecutable))
+                return new[] { new ProfileApplicationRule(profile.AutoActivateExecutable) };
+
+            return Enumerable.Empty<ProfileApplicationRule>();
+        }
+
+        private static bool IsConfigured(ProfileApplicationRule rule)
+        {
+            return rule != null && !string.IsNullOrWhiteSpace(NormalizeExecutableName(rule.Executable));
+        }
+
+        internal static bool RuleMatches(ProfileApplicationRule rule, string executableName, string commandLine)
+        {
+            return RuleMatches(rule, new RunningApplication
+            {
+                ExecutableName = NormalizeExecutableName(executableName),
+                CommandLine = commandLine ?? string.Empty
+            });
+        }
+
+        private static bool RuleMatches(ProfileApplicationRule rule, RunningApplication application)
+        {
+            if (rule == null || application == null) return false;
+            var expectedExecutable = NormalizeExecutableName(rule.Executable);
+            if (string.IsNullOrWhiteSpace(expectedExecutable) ||
+                !string.Equals(expectedExecutable, application.ExecutableName, StringComparison.OrdinalIgnoreCase)) return false;
+
+            var arguments = (rule.Arguments ?? string.Empty).Trim();
+            if (arguments.Length == 0) return true;
+            return (application.CommandLine ?? string.Empty).IndexOf(arguments, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static IEnumerable<Profile> EnumerateProfiles(IEnumerable<Profile> roots)
@@ -203,22 +203,27 @@ namespace HidWizards.UCR.Utilities
             {
                 if (profile == null) continue;
                 yield return profile;
-
-                foreach (var child in EnumerateProfiles(profile.ChildProfiles))
-                {
-                    yield return child;
-                }
+                foreach (var child in EnumerateProfiles(profile.ChildProfiles)) yield return child;
             }
         }
 
-        private static HashSet<string> GetRunningExecutableNames()
+        private static List<RunningApplication> GetRunningApplications(bool includeCommandLines)
         {
-            var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            Process[] processes;
-            try
+            if (includeCommandLines)
             {
-                processes = Process.GetProcesses();
+                try
+                {
+                    return GetRunningApplicationsWithCommandLines();
+                }
+                catch (Exception exception)
+                {
+                    Logger.Warn("Unable to query process command lines; falling back to executable-only matching.", exception);
+                }
             }
+
+            var result = new List<RunningApplication>();
+            Process[] processes;
+            try { processes = Process.GetProcesses(); }
             catch (Exception exception)
             {
                 Logger.Error("Unable to enumerate running processes for auto-profile detection.", exception);
@@ -230,18 +235,31 @@ namespace HidWizards.UCR.Utilities
                 try
                 {
                     var name = NormalizeExecutableName(process.ProcessName);
-                    if (!string.IsNullOrEmpty(name)) result.Add(name);
+                    if (!string.IsNullOrWhiteSpace(name)) result.Add(new RunningApplication { ExecutableName = name, CommandLine = string.Empty });
                 }
-                catch
+                catch { }
+                finally { process.Dispose(); }
+            }
+            return result;
+        }
+
+        private static List<RunningApplication> GetRunningApplicationsWithCommandLines()
+        {
+            var result = new List<RunningApplication>();
+            using (var searcher = new ManagementObjectSearcher("SELECT Name, CommandLine FROM Win32_Process"))
+            {
+                var collection = searcher.Get();
+                foreach (ManagementObject process in collection)
                 {
-                    // A process can exit between enumeration and inspection. Ignore that race.
-                }
-                finally
-                {
-                    process.Dispose();
+                    var name = NormalizeExecutableName(process["Name"] as string);
+                    if (string.IsNullOrWhiteSpace(name)) continue;
+                    result.Add(new RunningApplication
+                    {
+                        ExecutableName = name,
+                        CommandLine = process["CommandLine"] as string ?? string.Empty
+                    });
                 }
             }
-
             return result;
         }
 
@@ -249,7 +267,6 @@ namespace HidWizards.UCR.Utilities
         {
             if (string.IsNullOrWhiteSpace(value)) return null;
             var trimmed = value.Trim().Trim('"');
-
             try
             {
                 var fileName = Path.GetFileName(trimmed);
@@ -273,6 +290,12 @@ namespace HidWizards.UCR.Utilities
             _timer.Stop();
             _timer.Tick -= OnTimerTick;
             _context.ActiveProfileChangedEvent -= OnActiveProfileChanged;
+        }
+
+        private sealed class RunningApplication
+        {
+            public string ExecutableName { get; set; }
+            public string CommandLine { get; set; }
         }
     }
 }

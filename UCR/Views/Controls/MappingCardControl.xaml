@@ -201,22 +201,49 @@
                             </Viewbox>
                         </Grid>
 
-                        <StackPanel Grid.Row="1" Margin="2 2 2 0">
-                            <StackPanel.Style>
-                                <Style TargetType="StackPanel">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsQuickOutputDetecting}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </StackPanel.Style>
-                            <TextBlock Text="{Binding QuickOutputDetectionStatus}" FontSize="10.5" Foreground="#E4E4E4"
-                                       HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                            <ProgressBar Height="2" Margin="0 2 0 0" Minimum="0" Maximum="100"
-                                         Value="{Binding QuickOutputDetectionProgress, Mode=OneWay}" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
-                        </StackPanel>
+                        <Grid Grid.Row="1" Margin="2 3 2 0">
+                            <Border Padding="7 3" CornerRadius="3" Background="#171D29"
+                                    BorderBrush="{DynamicResource PrimaryHueLightBrush}" BorderThickness="1">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsQuickInputDetecting}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding QuickInputDetectionStatus}" FontSize="11" FontWeight="Bold"
+                                               Foreground="{DynamicResource PrimaryHueLightBrush}" HorizontalAlignment="Center"/>
+                                    <ProgressBar Height="3" Margin="0 3 0 0" Minimum="0" Maximum="100"
+                                                 Value="{Binding QuickInputDetectionProgress, Mode=OneWay}"
+                                                 Foreground="{DynamicResource PrimaryHueLightBrush}" Background="#303030"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Padding="7 3" CornerRadius="3" Background="#171D29"
+                                    BorderBrush="{DynamicResource PrimaryHueLightBrush}" BorderThickness="1">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsQuickOutputDetecting}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding QuickOutputDetectionStatus}" FontSize="11" FontWeight="Bold"
+                                               Foreground="{DynamicResource PrimaryHueLightBrush}" HorizontalAlignment="Center"/>
+                                    <ProgressBar Height="3" Margin="0 3 0 0" Minimum="0" Maximum="100"
+                                                 Value="{Binding QuickOutputDetectionProgress, Mode=OneWay}"
+                                                 Foreground="{DynamicResource PrimaryHueLightBrush}" Background="#303030"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
                     </Grid>
 
                     <!-- Give filter references a real lane instead of truncating each one to 72px.
