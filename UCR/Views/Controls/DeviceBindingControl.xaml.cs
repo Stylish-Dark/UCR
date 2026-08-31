@@ -4,6 +4,8 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Core.Utilities;
@@ -282,7 +284,7 @@ namespace HidWizards.UCR.Views.Controls
             return DeviceBinding.Profile.GetDeviceConfiguration(DeviceBinding.DeviceIoType, selectedItem.Value);
         }
 
-        private void BindButton_OnClick(object sender, RoutedEventArgs e)
+        private async void BindButton_OnClick(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -294,7 +296,17 @@ namespace HidWizards.UCR.Views.Controls
                 }
                 else
                 {
-                    OpenContextMenu();
+                    var mappingCard = FindAncestor<MappingCardControl>(this);
+                    var bindingViewModel = DataContext as DeviceBindingViewModel;
+                    if (mappingCard != null && bindingViewModel != null)
+                    {
+                        await mappingCard.OpenQuickOutputPickerAsync(bindingViewModel, BindButton);
+                    }
+                    else
+                    {
+                        // Legacy/non-card hosts retain the original picker rather than losing output binding.
+                        OpenContextMenu();
+                    }
                 }
             }
             catch (Exception exception)
@@ -303,6 +315,13 @@ namespace HidWizards.UCR.Views.Controls
                 HidWizards.UCR.Utilities.DarkMessageBox.Show("UCR could not start input detection for this binding. The error has been written to the log.",
                     "Unable to bind input", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private void BindButton_OnMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (DeviceBinding == null || DeviceBinding.DeviceIoType != DeviceIoType.Output) return;
+            e.Handled = true;
+            OpenContextMenu();
         }
 
         private void BindMenuButton_OnClick(object sender, RoutedEventArgs e)
@@ -316,6 +335,18 @@ namespace HidWizards.UCR.Views.Controls
             var contextMenu = BindButton.ContextMenu;
             contextMenu.PlacementTarget = BindButton;
             contextMenu.IsOpen = true;
+        }
+
+        private static T FindAncestor<T>(DependencyObject start) where T : DependencyObject
+        {
+            var current = VisualTreeHelper.GetParent(start);
+            while (current != null)
+            {
+                var match = current as T;
+                if (match != null) return match;
+                current = VisualTreeHelper.GetParent(current);
+            }
+            return null;
         }
     }
 }

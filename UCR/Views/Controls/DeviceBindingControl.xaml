@@ -66,6 +66,7 @@
                     Name="BindButton"
                     Margin="0"
                     Click="BindButton_OnClick"
+                    PreviewMouseRightButtonUp="BindButton_OnMouseRightButtonUp"
                     MinWidth="110"
                     materialDesign:TransitionAssist.DisableTransitions="True"
                     materialDesign:ShadowAssist.ShadowEdges="Left, Top, Bottom">

@@ -74,7 +74,7 @@
                                 <ColumnDefinition Width="190"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="82"/>
-                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="140"/>
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Margin="0 0 12 0">
@@ -89,6 +89,12 @@
                                          CaretBrush="#FFFFFF" BorderBrush="#555555" materialDesign:HintAssist.Hint="Friendly name"
                                          ToolTip="Tab through device names. Alt+Up / Alt+Down moves this device while keeping focus here."
                                          PreviewKeyDown="AliasTextBox_OnPreviewKeyDown"/>
+                                <ComboBox Margin="0 7 0 0"
+                                          ItemsSource="{Binding AvailableOutlineColors}"
+                                          SelectedItem="{Binding OutlineColor, Mode=TwoWay}"
+                                          IsEnabled="{Binding CanPersist}" IsTabStop="False"
+                                          materialDesign:HintAssist.Hint="Outline color"
+                                          ToolTip="Choose the outline colour used to identify this device. Default is unique to this device."/>
                             </StackPanel>
 
                             <CheckBox Grid.Column="2" Content="Hidden" Foreground="#FFFFFF" VerticalAlignment="Center" IsTabStop="False"
@@ -105,7 +111,7 @@
                                 </CheckBox.Style>
                             </CheckBox>
 
-                            <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                            <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                                 <Button ToolTip="{Binding RemoveFromUcrToolTip}" Click="RemoveFromUcr_OnClick" Padding="4" IsTabStop="False">
                                     <Button.Style>
                                         <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignCardButton}">

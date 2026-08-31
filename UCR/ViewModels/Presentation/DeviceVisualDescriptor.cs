@@ -40,6 +40,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
     {
         public DeviceVisualKind Kind { get; set; }
         public Brush AccentBrush { get; set; }
+        public Brush OutlineBrush { get; set; }
         public string ToolTip { get; set; }
         public int SlotNumber { get; set; }
         public bool ShowSlotIndicator { get; set; }
@@ -78,6 +79,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
             }
 
             var descriptor = Describe(configuration.Device, ioType);
+            ApplyConfiguredOutline(descriptor, configuration.Device, profile);
             descriptor.ToolTip = configuration.GetFullTitleForProfile(profile);
 
             // Physical/generic provider device numbers can be large implementation identifiers
@@ -108,51 +110,89 @@ namespace HidWizards.UCR.ViewModels.Presentation
             {
                 if (handle.Equals("ds4", StringComparison.OrdinalIgnoreCase))
                 {
-                    return Build(DeviceVisualKind.PlayStation, PlayStationBrush, title, device.DeviceNumber + 1, ioType == DeviceIoType.Output);
+                    return WithConfiguredOutline(Build(DeviceVisualKind.PlayStation, PlayStationBrush, title, device.DeviceNumber + 1, ioType == DeviceIoType.Output), device);
                 }
                 if (handle.Equals("xb360", StringComparison.OrdinalIgnoreCase))
                 {
-                    return Build(DeviceVisualKind.Xbox, XboxBrush, title, device.DeviceNumber + 1, ioType == DeviceIoType.Output);
+                    return WithConfiguredOutline(Build(DeviceVisualKind.Xbox, XboxBrush, title, device.DeviceNumber + 1, ioType == DeviceIoType.Output), device);
                 }
             }
 
             if (provider.Equals("SharpDX_XInput", StringComparison.OrdinalIgnoreCase) ||
                 searchable.Contains("xinput") || searchable.Contains("xbox") || searchable.Contains("vid_045e"))
             {
-                return Build(DeviceVisualKind.Xbox, XboxBrush, title, device.DeviceNumber + 1, true);
+                return WithConfiguredOutline(Build(DeviceVisualKind.Xbox, XboxBrush, title, device.DeviceNumber + 1, true), device);
             }
 
             if (searchable.Contains("dualshock") || searchable.Contains("dualsense") ||
                 searchable.Contains("playstation") || searchable.Contains("vid_054c"))
             {
-                return Build(DeviceVisualKind.PlayStation, PlayStationBrush, title, device.DeviceNumber + 1, true);
+                return WithConfiguredOutline(Build(DeviceVisualKind.PlayStation, PlayStationBrush, title, device.DeviceNumber + 1, true), device);
             }
 
             if (searchable.Contains("vjoy"))
             {
-                return Build(DeviceVisualKind.VJoy, VJoyBrush, title, device.DeviceNumber + 1, true);
+                return WithConfiguredOutline(Build(DeviceVisualKind.VJoy, VJoyBrush, title, device.DeviceNumber + 1, true), device);
             }
 
             if (searchable.Contains("arcade") || searchable.Contains("fightstick") || searchable.Contains("fight stick"))
             {
-                return Build(DeviceVisualKind.ArcadeStick, ArcadeBrush, title, device.DeviceNumber + 1, true);
+                return WithConfiguredOutline(Build(DeviceVisualKind.ArcadeStick, ArcadeBrush, title, device.DeviceNumber + 1, true), device);
             }
 
             if (provider.Equals("Core_Interception", StringComparison.OrdinalIgnoreCase))
             {
-                if (searchable.Contains("mouse")) return Build(DeviceVisualKind.Mouse, NeutralBrush, title, device.DeviceNumber + 1, true);
-                return Build(DeviceVisualKind.Keyboard, NeutralBrush, title, device.DeviceNumber + 1, true);
+                if (searchable.Contains("mouse")) return WithConfiguredOutline(Build(DeviceVisualKind.Mouse, NeutralBrush, title, device.DeviceNumber + 1, true), device);
+                return WithConfiguredOutline(Build(DeviceVisualKind.Keyboard, NeutralBrush, title, device.DeviceNumber + 1, true), device);
             }
 
-            if (searchable.Contains("keyboard")) return Build(DeviceVisualKind.Keyboard, NeutralBrush, title, device.DeviceNumber + 1, true);
-            if (searchable.Contains("mouse")) return Build(DeviceVisualKind.Mouse, NeutralBrush, title, device.DeviceNumber + 1, true);
+            if (searchable.Contains("keyboard")) return WithConfiguredOutline(Build(DeviceVisualKind.Keyboard, NeutralBrush, title, device.DeviceNumber + 1, true), device);
+            if (searchable.Contains("mouse")) return WithConfiguredOutline(Build(DeviceVisualKind.Mouse, NeutralBrush, title, device.DeviceNumber + 1, true), device);
 
             if (provider.Equals("SharpDX_DirectInput", StringComparison.OrdinalIgnoreCase) || searchable.Contains("directinput"))
             {
-                return Build(DeviceVisualKind.DirectInput, DirectInputBrush, title, device.DeviceNumber + 1, true);
+                return WithConfiguredOutline(Build(DeviceVisualKind.DirectInput, DirectInputBrush, title, device.DeviceNumber + 1, true), device);
             }
 
-            return Build(DeviceVisualKind.Unknown, DirectInputBrush, title, device.DeviceNumber + 1, true);
+            return WithConfiguredOutline(Build(DeviceVisualKind.Unknown, DirectInputBrush, title, device.DeviceNumber + 1, true), device);
+        }
+
+        private static DeviceVisualDescriptor WithConfiguredOutline(DeviceVisualDescriptor descriptor, Device device)
+        {
+            ApplyConfiguredOutline(descriptor, device, device?.Profile);
+            return descriptor;
+        }
+
+        private static void ApplyConfiguredOutline(DeviceVisualDescriptor descriptor, Device device, Profile profile)
+        {
+            if (descriptor == null || device == null) return;
+            var context = profile?.Context ?? device.Profile?.Context;
+            var manager = context?.DevicesManager;
+            if (manager == null) return;
+
+            var choice = manager.GetDeviceOutlineColor(device);
+            var hex = choice == DeviceOutlineColor.Default
+                ? manager.GetDeviceDefaultOutlineColor(device)
+                : DeviceOutlineColors.GetPresetHex(choice);
+            var brush = BrushFromHex(hex);
+            if (brush != null) descriptor.OutlineBrush = brush;
+        }
+
+        private static Brush BrushFromHex(string value)
+        {
+            var hex = DeviceOutlineColors.NormalizeHex(value);
+            if (hex == null) return null;
+            try
+            {
+                return Freeze(Color.FromRgb(
+                    Convert.ToByte(hex.Substring(1, 2), 16),
+                    Convert.ToByte(hex.Substring(3, 2), 16),
+                    Convert.ToByte(hex.Substring(5, 2), 16)));
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public static BindingVisualDescriptor DescribeBinding(DeviceBinding binding, DeviceBindingCategory category, Profile profile)
@@ -595,6 +635,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
             {
                 Kind = kind,
                 AccentBrush = brush,
+                OutlineBrush = brush,
                 ToolTip = string.IsNullOrWhiteSpace(tooltip) ? "Device" : tooltip,
                 SlotNumber = normalizedSlot,
                 ShowSlotIndicator = showSlot,

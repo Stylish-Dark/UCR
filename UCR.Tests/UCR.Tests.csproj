@@ -61,6 +61,7 @@
     <Compile Include="ModelTests\ProfileTransferTests.cs" />
     <Compile Include="ModelTests\ProfileTests.cs" />
     <Compile Include="ModelTests\ContextTests.cs" />
+    <Compile Include="ModelTests\DeviceOutlineColorTests.cs" />
     <Compile Include="ModelTests\SubscriptionTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

@@ -33,7 +33,7 @@
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" Margin="0 0 3 0">
                                                 <Border Width="27" Height="18" Margin="0 0 3 0" Padding="3 0" CornerRadius="3" Background="#1B1B1B"
-                                                        BorderBrush="{Binding Device.AccentBrush}" BorderThickness="1" ToolTip="{Binding Device.ToolTip}">
+                                                        BorderBrush="{Binding Device.OutlineBrush}" BorderThickness="1" ToolTip="{Binding Device.ToolTip}">
                                                     <Border.Style>
                                                         <Style TargetType="Border">
                                                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -57,7 +57,7 @@
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" Margin="0 0 3 0">
                                                 <Border Width="27" Height="18" Margin="0 0 3 0" Padding="3 0" CornerRadius="3" Background="#1B1B1B"
-                                                        BorderBrush="{Binding Device.AccentBrush}" BorderThickness="1" ToolTip="{Binding Device.ToolTip}">
+                                                        BorderBrush="{Binding Device.OutlineBrush}" BorderThickness="1" ToolTip="{Binding Device.ToolTip}">
                                                     <Border.Style>
                                                         <Style TargetType="Border">
                                                             <Setter Property="Visibility" Value="Collapsed"/>

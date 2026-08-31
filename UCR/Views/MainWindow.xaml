@@ -35,7 +35,7 @@
             <converter:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
             <DataTemplate x:Key="DeviceBadgeTemplate">
                 <Border MinWidth="31" Height="22" Padding="5 1" CornerRadius="4"
-                        Background="#1B1B1B" BorderBrush="{Binding AccentBrush}" BorderThickness="1"
+                        Background="#1B1B1B" BorderBrush="{Binding OutlineBrush}" BorderThickness="1"
                         ToolTip="{Binding ToolTip}">
                     <TextBlock Text="{Binding BadgeText}" Foreground="{Binding AccentBrush}"
                                FontSize="11.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>

@@ -28,6 +28,133 @@ namespace HidWizards.UCR.Core.Models
         LogicalSlot
     }
 
+    public enum DeviceOutlineColor
+    {
+        Default,
+        Red,
+        Green,
+        Blue,
+        Yellow,
+        Cyan,
+        Pink,
+        Orange,
+        Purple,
+        White
+    }
+
+    public static class DeviceOutlineColors
+    {
+        public static readonly DeviceOutlineColor[] Options =
+        {
+            DeviceOutlineColor.Default,
+            DeviceOutlineColor.Red,
+            DeviceOutlineColor.Green,
+            DeviceOutlineColor.Blue,
+            DeviceOutlineColor.Yellow,
+            DeviceOutlineColor.Cyan,
+            DeviceOutlineColor.Pink,
+            DeviceOutlineColor.Orange,
+            DeviceOutlineColor.Purple,
+            DeviceOutlineColor.White
+        };
+
+        public static string GetPresetHex(DeviceOutlineColor color)
+        {
+            switch (color)
+            {
+                case DeviceOutlineColor.Red: return "#E53935";
+                case DeviceOutlineColor.Green: return "#00B34A";
+                case DeviceOutlineColor.Blue: return "#1976FF";
+                case DeviceOutlineColor.Yellow: return "#FFD600";
+                case DeviceOutlineColor.Cyan: return "#00D5FF";
+                case DeviceOutlineColor.Pink: return "#FF4081";
+                case DeviceOutlineColor.Orange: return "#FF8A00";
+                case DeviceOutlineColor.Purple: return "#9C4DFF";
+                case DeviceOutlineColor.White: return "#FFFFFF";
+                default: return null;
+            }
+        }
+
+        public static string NormalizeHex(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            var text = value.Trim();
+            if (text.Length != 7 || text[0] != '#') return null;
+            for (var i = 1; i < text.Length; i++)
+            {
+                var c = text[i];
+                var isHex = c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F';
+                if (!isHex) return null;
+            }
+            return text.ToUpperInvariant();
+        }
+
+        public static string GenerateUniqueDefault(string stableKey, ISet<string> usedColors)
+        {
+            var used = usedColors ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var hash = StableHash(stableKey ?? string.Empty);
+
+            // Work through a large deterministic colour space. Hue is deliberately stepped by a
+            // prime-ish offset so adjacent devices do not bunch together visually. Saturation and
+            // lightness vary too, giving us far more than the small named-preset palette.
+            for (var attempt = 0; attempt < 4096; attempt++)
+            {
+                var hue = (int)((hash + (uint)(attempt * 137)) % 360);
+                var saturation = 0.66 + (((hash >> 9) + (uint)(attempt * 17)) % 19) / 100.0;
+                var lightness = 0.48 + (((hash >> 17) + (uint)(attempt * 11)) % 17) / 100.0;
+                var candidate = HslToHex(hue, saturation, lightness);
+                if (!used.Contains(candidate)) return candidate;
+            }
+
+            // This is practically unreachable for a device list, but retain deterministic
+            // behaviour rather than silently sharing a colour if the normal space is exhausted.
+            for (var value = 0; value <= 0xFFFFFF; value++)
+            {
+                var candidate = "#" + value.ToString("X6");
+                if (!used.Contains(candidate)) return candidate;
+            }
+            return "#FFFFFF";
+        }
+
+        private static uint StableHash(string value)
+        {
+            unchecked
+            {
+                uint hash = 2166136261;
+                foreach (var c in value)
+                {
+                    hash ^= char.ToUpperInvariant(c);
+                    hash *= 16777619;
+                }
+                return hash;
+            }
+        }
+
+        private static string HslToHex(double hue, double saturation, double lightness)
+        {
+            var chroma = (1 - Math.Abs(2 * lightness - 1)) * saturation;
+            var h = hue / 60.0;
+            var x = chroma * (1 - Math.Abs(h % 2 - 1));
+            double r1 = 0, g1 = 0, b1 = 0;
+            if (h < 1) { r1 = chroma; g1 = x; }
+            else if (h < 2) { r1 = x; g1 = chroma; }
+            else if (h < 3) { g1 = chroma; b1 = x; }
+            else if (h < 4) { g1 = x; b1 = chroma; }
+            else if (h < 5) { r1 = x; b1 = chroma; }
+            else { r1 = chroma; b1 = x; }
+            var m = lightness - chroma / 2;
+            var r = ClampByte((r1 + m) * 255);
+            var g = ClampByte((g1 + m) * 255);
+            var b = ClampByte((b1 + m) * 255);
+            return string.Format("#{0:X2}{1:X2}{2:X2}", r, g, b);
+        }
+
+        private static int ClampByte(double value)
+        {
+            return Math.Max(0, Math.Min(255, (int)Math.Round(value)));
+        }
+    }
+
     public class DeviceAlias
     {
         [XmlAttribute]
@@ -49,9 +176,16 @@ namespace HidWizards.UCR.Core.Models
         [XmlAttribute]
         [DefaultValue(int.MaxValue)]
         public int SortOrder { get; set; } = int.MaxValue;
+        [XmlAttribute]
+        [DefaultValue(DeviceOutlineColor.Default)]
+        public DeviceOutlineColor OutlineColor { get; set; } = DeviceOutlineColor.Default;
+        [XmlAttribute]
+        public string DefaultOutlineColor { get; set; }
 
         [XmlIgnore]
-        public bool HasPresentationSettings => !string.IsNullOrWhiteSpace(Alias) || Hidden || Removed || SortOrder != int.MaxValue;
+        public bool HasPresentationSettings => !string.IsNullOrWhiteSpace(Alias) || Hidden || Removed ||
+                                               SortOrder != int.MaxValue || OutlineColor != DeviceOutlineColor.Default ||
+                                               !string.IsNullOrWhiteSpace(DefaultOutlineColor);
 
         public DeviceAlias Clone()
         {
@@ -64,7 +198,9 @@ namespace HidWizards.UCR.Core.Models
                 Alias = Alias,
                 Hidden = Hidden,
                 Removed = Removed,
-                SortOrder = SortOrder
+                SortOrder = SortOrder,
+                OutlineColor = OutlineColor,
+                DefaultOutlineColor = DefaultOutlineColor
             };
         }
     }

@@ -15,6 +15,9 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 {
     public class DeviceManagerItemViewModel : INotifyPropertyChanged
     {
+        public static readonly DeviceOutlineColor[] OutlineColorOptions = DeviceOutlineColors.Options;
+        public DeviceOutlineColor[] AvailableOutlineColors => OutlineColorOptions;
+
         public Device Device { get; }
         public DeviceIoType ValidationType { get; }
         public bool CanPersist { get; }
@@ -62,16 +65,44 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             }
         }
 
+        private DeviceOutlineColor _outlineColor;
+        public DeviceOutlineColor OutlineColor
+        {
+            get => _outlineColor;
+            set
+            {
+                if (_outlineColor == value) return;
+                _outlineColor = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private string _defaultOutlineColor;
+        public string DefaultOutlineColor
+        {
+            get => _defaultOutlineColor;
+            set
+            {
+                var normalized = DeviceOutlineColors.NormalizeHex(value);
+                if (string.Equals(_defaultOutlineColor, normalized, StringComparison.OrdinalIgnoreCase)) return;
+                _defaultOutlineColor = normalized;
+                OnPropertyChanged();
+            }
+        }
+
         internal string StableKey { get; }
 
         public DeviceManagerItemViewModel(Device device, DeviceIoType type, bool canPersist,
-            string alias, bool hidden, string stableKey)
+            string alias, bool hidden, string stableKey, DeviceOutlineColor outlineColor,
+            string defaultOutlineColor)
         {
             Device = device;
             ValidationType = type;
             CanPersist = canPersist;
             Alias = alias;
             StableKey = stableKey;
+            OutlineColor = outlineColor;
+            DefaultOutlineColor = defaultOutlineColor;
             AddIoType(type);
             Hidden = hidden;
         }
@@ -177,6 +208,22 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 .ToList();
             Devices.Clear();
             foreach (var item in ordered) Devices.Add(item);
+            AssignUniqueDefaultOutlineColors();
+        }
+
+        private void AssignUniqueDefaultOutlineColors()
+        {
+            var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var item in Devices)
+            {
+                var current = DeviceOutlineColors.NormalizeHex(item.DefaultOutlineColor);
+                if (current == null || used.Contains(current))
+                {
+                    current = DeviceOutlineColors.GenerateUniqueDefault(item.StableKey, used);
+                    item.DefaultOutlineColor = current;
+                }
+                used.Add(current);
+            }
         }
 
         private void AddDevices(DeviceIoType type,
@@ -210,7 +257,9 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                     canPersist,
                     _devicesManager.GetDeviceAlias(device),
                     type == DeviceIoType.Output && _devicesManager.GetDeviceHidden(device),
-                    stableKey);
+                    stableKey,
+                    _devicesManager.GetDeviceOutlineColor(device),
+                    _devicesManager.GetDeviceDefaultOutlineColor(device));
 
                 Devices.Add(item);
                 byStableIdentity[stableKey] = item;
@@ -340,7 +389,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
                 var hidden = item.CanHide && item.Hidden;
                 if (_devicesManager.TrySetDevicePresentation(item.Device, item.ValidationType,
-                        item.Alias, hidden, index, out error)) continue;
+                        item.Alias, hidden, index, item.OutlineColor, item.DefaultOutlineColor, out error)) continue;
 
                 return false;
             }

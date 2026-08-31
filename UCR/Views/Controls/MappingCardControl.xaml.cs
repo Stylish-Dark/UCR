@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -155,6 +156,28 @@ namespace HidWizards.UCR.Views.Controls
             if (mappingViewModel == null || descriptor == null || placementTarget == null || !mappingViewModel.ButtonsEnabled) return;
 
             e.Handled = true;
+            await OpenQuickOutputPickerAsync(mappingViewModel, descriptor, placementTarget);
+        }
+
+        internal async Task<bool> OpenQuickOutputPickerAsync(DeviceBindingViewModel bindingViewModel,
+            FrameworkElement placementTarget)
+        {
+            var mappingViewModel = DataContext as MappingViewModel;
+            if (mappingViewModel == null || bindingViewModel?.DeviceBinding == null || placementTarget == null ||
+                !mappingViewModel.ButtonsEnabled || !bindingViewModel.BindingEnabled)
+                return false;
+
+            var descriptor = new BindingVisualDescriptor
+            {
+                BindingGuid = bindingViewModel.DeviceBinding.Guid,
+                DeviceConfigurationGuid = bindingViewModel.DeviceBinding.DeviceConfigurationGuid
+            };
+            return await OpenQuickOutputPickerAsync(mappingViewModel, descriptor, placementTarget);
+        }
+
+        private async Task<bool> OpenQuickOutputPickerAsync(MappingViewModel mappingViewModel,
+            BindingVisualDescriptor descriptor, FrameworkElement placementTarget)
+        {
             try
             {
                 // Keyboard outputs are fastest to choose by pressing the desired key. For every
@@ -163,16 +186,18 @@ namespace HidWizards.UCR.Views.Controls
                 if (mappingViewModel.UsesPressCaptureForQuickOutput(descriptor))
                 {
                     await mappingViewModel.QuickBindOutputAsync(descriptor);
-                    return;
+                    return true;
                 }
 
                 ShowQuickOutputMenu(mappingViewModel, descriptor, placementTarget);
+                return true;
             }
             catch (Exception exception)
             {
                 Logger.Error("Failed to start mapping-card quick output bind", exception);
                 DarkMessageBox.Show("UCR could not bind this output control. The error has been written to the log.",
                     "Unable to bind output", MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
             }
         }
 

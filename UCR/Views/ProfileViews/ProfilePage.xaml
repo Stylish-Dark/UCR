@@ -343,7 +343,7 @@
                                                     <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueMidBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueMidBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
                                                 </Ellipse>
                                             </Button>
-                                            <Border Grid.Column="1" Width="32" Height="21" CornerRadius="4" BorderThickness="1" BorderBrush="{Binding Visual.AccentBrush}" Background="#191919">
+                                            <Border Grid.Column="1" Width="32" Height="21" CornerRadius="4" BorderThickness="1" BorderBrush="{Binding Visual.OutlineBrush}" Background="#191919">
                                                 <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}" FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             </Border>
                                             <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
@@ -398,7 +398,7 @@
                                                         <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueMidBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueMidBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
                                                     </Ellipse>
                                                 </Button>
-                                                <Border Grid.Column="1" Width="32" Height="21" CornerRadius="4" BorderThickness="1" BorderBrush="{Binding Visual.AccentBrush}" Background="#191919">
+                                                <Border Grid.Column="1" Width="32" Height="21" CornerRadius="4" BorderThickness="1" BorderBrush="{Binding Visual.OutlineBrush}" Background="#191919">
                                                     <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}" FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                 </Border>
                                                 <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>

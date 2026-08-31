@@ -853,6 +853,34 @@ namespace HidWizards.UCR.Core.Managers
             return FindAlias(device)?.SortOrder ?? int.MaxValue;
         }
 
+        public DeviceOutlineColor GetDeviceOutlineColor(Device device)
+        {
+            return FindAlias(device)?.OutlineColor ?? DeviceOutlineColor.Default;
+        }
+
+        public string GetDeviceDefaultOutlineColor(Device device)
+        {
+            var existing = DeviceOutlineColors.NormalizeHex(FindAlias(device)?.DefaultOutlineColor);
+            if (existing != null) return existing;
+
+            var identity = BuildAliasIdentity(device);
+            if (identity == null) return null;
+            var stableKey = identity.ProviderName + "|" + identity.IdentityKind + "|" +
+                            identity.IdentityValue + "|" + identity.DeviceNumber;
+
+            // A handle-only provider can expose two live devices with the same persistent identity.
+            // Until the user saves a stable device presentation, keep their default visual colours
+            // distinct by including the runtime slot. Interception already supplies our reconciled
+            // logical instance in BuildAliasIdentity, so do not reintroduce its volatile raw slot.
+            if (identity.IdentityKind == DeviceAliasIdentityKind.HardwareHandle &&
+                !string.Equals(device.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase))
+            {
+                stableKey += "|runtime|" + device.DeviceNumber + "|" + Math.Max(1, device.LogicalInstanceNumber);
+            }
+            return DeviceOutlineColors.GenerateUniqueDefault(stableKey,
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        }
+
         public bool CanPersistDeviceAlias(Device device, DeviceIoType type)
         {
             return CanPersistDeviceAlias(device, GetAvailableDeviceList(type, false));
@@ -940,7 +968,7 @@ namespace HidWizards.UCR.Core.Managers
         }
 
         public bool TrySetDevicePresentation(Device device, DeviceIoType type, string alias, bool hidden,
-            int sortOrder, out string error)
+            int sortOrder, DeviceOutlineColor outlineColor, string defaultOutlineColor, out string error)
         {
             error = null;
             if (device == null)
@@ -961,7 +989,9 @@ namespace HidWizards.UCR.Core.Managers
             var existing = _context.DeviceAliases.FirstOrDefault(candidate => AliasIdentityEquals(candidate, identity));
             var normalizedAlias = string.IsNullOrWhiteSpace(alias) ? null : alias.Trim();
             var normalizedSortOrder = sortOrder < 0 ? int.MaxValue : sortOrder;
-            var wantsPersistentSettings = normalizedAlias != null || hidden || normalizedSortOrder != int.MaxValue;
+            var normalizedDefaultOutlineColor = DeviceOutlineColors.NormalizeHex(defaultOutlineColor);
+            var wantsPersistentSettings = normalizedAlias != null || hidden || normalizedSortOrder != int.MaxValue ||
+                                          outlineColor != DeviceOutlineColor.Default || normalizedDefaultOutlineColor != null;
 
             // HID paths and intentional logical slots are stable. A handle-only physical device is safe
             // only while that provider exposes exactly one matching live device; otherwise two identical
@@ -990,7 +1020,10 @@ namespace HidWizards.UCR.Core.Managers
                 _context.DeviceAliases.Add(existing);
             }
             else if (string.Equals(existing.Alias, normalizedAlias, StringComparison.Ordinal) &&
-                     existing.Hidden == hidden && existing.SortOrder == normalizedSortOrder)
+                     existing.Hidden == hidden && existing.SortOrder == normalizedSortOrder &&
+                     existing.OutlineColor == outlineColor &&
+                     string.Equals(DeviceOutlineColors.NormalizeHex(existing.DefaultOutlineColor),
+                         normalizedDefaultOutlineColor, StringComparison.OrdinalIgnoreCase))
             {
                 device.Alias = normalizedAlias;
                 return true;
@@ -999,6 +1032,8 @@ namespace HidWizards.UCR.Core.Managers
             existing.Alias = normalizedAlias;
             existing.Hidden = hidden;
             existing.SortOrder = normalizedSortOrder;
+            existing.OutlineColor = outlineColor;
+            existing.DefaultOutlineColor = normalizedDefaultOutlineColor;
             device.Alias = normalizedAlias;
             _context.ContextChanged();
             _context.OnDeviceAliasesChangedEvent();
@@ -1023,12 +1058,17 @@ namespace HidWizards.UCR.Core.Managers
                          (!string.Equals(existing.Alias, imported.Alias, StringComparison.Ordinal) ||
                           existing.Hidden != imported.Hidden ||
                           existing.Removed != imported.Removed ||
-                          existing.SortOrder != imported.SortOrder))
+                          existing.SortOrder != imported.SortOrder ||
+                          existing.OutlineColor != imported.OutlineColor ||
+                          !string.Equals(existing.DefaultOutlineColor, imported.DefaultOutlineColor,
+                              StringComparison.OrdinalIgnoreCase)))
                 {
                     existing.Alias = imported.Alias;
                     existing.Hidden = imported.Hidden;
                     existing.Removed = imported.Removed;
                     existing.SortOrder = imported.SortOrder;
+                    existing.OutlineColor = imported.OutlineColor;
+                    existing.DefaultOutlineColor = DeviceOutlineColors.NormalizeHex(imported.DefaultOutlineColor);
                     changed = true;
                 }
             }
