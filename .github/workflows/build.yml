@@ -175,6 +175,45 @@ jobs:
           }
           Write-Host 'Verified Core Interception build artifact has BlockingEnabled=true.'
 
+      - name: Apply approved provider DLL overrides
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $overrides = @(
+            @{
+              Source = '.\build\ProviderOverrides\Providers\Core_Interception\IOWrapper.Libraries.PollingDeviceHandler.dll'
+              Destination = '.\submodules\IOWrapper\Artifacts\Providers\Core_Interception\IOWrapper.Libraries.PollingDeviceHandler.dll'
+              Sha256 = 'dec7437219bb5b410955c0fc50d1a3f92af31cf08bc1c23ec7e5dcdfa4207b25'
+            },
+            @{
+              Source = '.\build\ProviderOverrides\Providers\Core_ViGEm\Core_ViGEm.dll'
+              Destination = '.\submodules\IOWrapper\Artifacts\Providers\Core_ViGEm\Core_ViGEm.dll'
+              Sha256 = 'bb6a4862a723fd5b6e40ecfcb955f577d36373e6ae425fe82bffaf88fd87ec65'
+            }
+          )
+
+          foreach ($override in $overrides) {
+            if (-not (Test-Path -LiteralPath $override.Source -PathType Leaf)) {
+              throw "Approved provider DLL is missing: $($override.Source)"
+            }
+
+            $sourceHash = (Get-FileHash -LiteralPath $override.Source -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($sourceHash -ne $override.Sha256) {
+              throw "Approved provider DLL hash mismatch for $($override.Source). Expected $($override.Sha256), got $sourceHash."
+            }
+
+            $destinationDirectory = Split-Path -Parent $override.Destination
+            New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
+            Copy-Item -LiteralPath $override.Source -Destination $override.Destination -Force
+
+            $destinationHash = (Get-FileHash -LiteralPath $override.Destination -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($destinationHash -ne $override.Sha256) {
+              throw "Provider override copy failed hash verification for $($override.Destination)."
+            }
+            Write-Host "Applied approved provider DLL: $($override.Destination) [$destinationHash]"
+          }
+
       - name: Stage IOWrapper dependencies for UCR
         shell: pwsh
         run: |
@@ -372,6 +411,33 @@ jobs:
           Write-Host "UCR.exe size: $($exeInfo.Length) bytes"
           Write-Host "UCR.exe SHA-256: $hash"
           Write-Host 'Verified final Core Interception settings have BlockingEnabled=true.'
+
+      - name: Verify approved provider DLLs in final output
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $expected = @(
+            @{
+              Path = '.\UCR\bin\Release\Providers\Core_Interception\IOWrapper.Libraries.PollingDeviceHandler.dll'
+              Sha256 = 'dec7437219bb5b410955c0fc50d1a3f92af31cf08bc1c23ec7e5dcdfa4207b25'
+            },
+            @{
+              Path = '.\UCR\bin\Release\Providers\Core_ViGEm\Core_ViGEm.dll'
+              Sha256 = 'bb6a4862a723fd5b6e40ecfcb955f577d36373e6ae425fe82bffaf88fd87ec65'
+            }
+          )
+
+          foreach ($item in $expected) {
+            if (-not (Test-Path -LiteralPath $item.Path -PathType Leaf)) {
+              throw "Approved provider DLL is missing from final output: $($item.Path)"
+            }
+            $actual = (Get-FileHash -LiteralPath $item.Path -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actual -ne $item.Sha256) {
+              throw "Final provider DLL hash mismatch for $($item.Path). Expected $($item.Sha256), got $actual."
+            }
+            Write-Host "Verified final provider DLL: $($item.Path) [$actual]"
+          }
 
       - name: Run UCR unit tests
         shell: pwsh

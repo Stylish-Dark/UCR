@@ -435,9 +435,9 @@ namespace HidWizards.UCR.Tests.FactoryTests
                 "ds4", 0, null);
 
             var inputItem = new DeviceManagerItemViewModel(input, DeviceIoType.Input,
-                true, null, false, "input");
+                true, null, false, "input", DeviceOutlineColor.Default, null);
             var outputItem = new DeviceManagerItemViewModel(output, DeviceIoType.Output,
-                true, null, false, "output");
+                true, null, false, "output", DeviceOutlineColor.Default, null);
 
             Assert.That(inputItem.CanRemoveFromUcr, Is.True);
             Assert.That(inputItem.CanHide, Is.False);
@@ -451,7 +451,7 @@ namespace HidWizards.UCR.Tests.FactoryTests
             var keyboard = CreateLiveIdentityDevice("K: Logitech USB Receiver", "Core_Interception",
                 @"Keyboard\VID_046D&PID_C52B", 0, null);
             var item = new DeviceManagerItemViewModel(keyboard, DeviceIoType.Input,
-                true, null, true, "keyboard");
+                true, null, true, "keyboard", DeviceOutlineColor.Default, null);
 
             item.AddIoType(DeviceIoType.Output);
 

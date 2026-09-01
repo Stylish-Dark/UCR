@@ -129,7 +129,9 @@
 "$(MSBuildBinPath)\msbuild.exe" $(SolutionDir)\submodules\IOWrapper\IOWrapper.sln /v:q</PreBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PostBuildEvent>xcopy /Y /S "$(SolutionDir)\submodules\IOWrapper\Artifacts" "$(SolutionDir)\dependencies"</PostBuildEvent>
+    <PostBuildEvent>xcopy /Y /S "$(SolutionDir)\submodules\IOWrapper\Artifacts" "$(SolutionDir)\dependencies"
+copy /Y "$(SolutionDir)\build\ProviderOverrides\Providers\Core_Interception\IOWrapper.Libraries.PollingDeviceHandler.dll" "$(SolutionDir)\dependencies\Providers\Core_Interception\IOWrapper.Libraries.PollingDeviceHandler.dll" || exit /b 1
+copy /Y "$(SolutionDir)\build\ProviderOverrides\Providers\Core_ViGEm\Core_ViGEm.dll" "$(SolutionDir)\dependencies\Providers\Core_ViGEm\Core_ViGEm.dll" || exit /b 1</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
