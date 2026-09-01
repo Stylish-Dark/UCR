@@ -171,10 +171,12 @@ namespace HidWizards.UCR.ViewModels.Presentation
             if (manager == null) return;
 
             var choice = manager.GetDeviceOutlineColor(device);
-            var hex = choice == DeviceOutlineColor.Default
-                ? manager.GetDeviceDefaultOutlineColor(device)
-                : DeviceOutlineColors.GetPresetHex(choice);
-            var brush = BrushFromHex(hex);
+            // Default means exactly what UCR always meant visually: keep the device-family colour
+            // already assigned by Build (Xbox green, PlayStation blue, vJoy purple, keyboard/mouse
+            // neutral, etc.). A user override changes the outline only; AccentBrush/text never moves.
+            if (choice == DeviceOutlineColor.Default) return;
+
+            var brush = BrushFromHex(DeviceOutlineColors.GetPresetHex(choice));
             if (brush != null) descriptor.OutlineBrush = brush;
         }
 

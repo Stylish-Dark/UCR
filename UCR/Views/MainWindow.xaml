@@ -6,6 +6,7 @@
         xmlns:dashboard="clr-namespace:HidWizards.UCR.ViewModels.Dashboard"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:controls="clr-namespace:HidWizards.UCR.Views.Controls"
+        xmlns:dialogs="clr-namespace:HidWizards.UCR.Views.Dialogs"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:system="clr-namespace:System;assembly=mscorlib"
         xmlns:converter="clr-namespace:HidWizards.UCR.Utilities.Converter"
@@ -16,6 +17,7 @@
         Title="Universal Control Remapper" 
         Height="600" MinHeight="400" Width="800" MinWidth="600"
         Closing="MainWindow_OnClosing"
+        PreviewKeyDown="MainWindow_OnPreviewKeyDown"
         PreviewMouseWheel="MainWindow_OnPreviewMouseWheel"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         TextElement.FontWeight="Regular"
@@ -106,7 +108,7 @@
                     <Button ToolTip="Manage devices" Click="ManageDevices_OnClick">
                         <materialDesign:PackIcon Kind="Settings"/>
                     </Button>
-                    <Button ToolTip="Appearance" Click="Appearance_OnClick" Padding="8 0">
+                    <Button x:Name="AppearanceButton" ToolTip="Appearance" Click="Appearance_OnClick" Padding="8 0">
                         <Grid Width="20" Height="20">
                             <Ellipse Width="16" Height="16" Fill="{DynamicResource PrimaryHueMidBrush}" Stroke="#D8D8D8" StrokeThickness="1"/>
                             <Ellipse Width="5" Height="5" Fill="#212121" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -122,6 +124,16 @@
                     </Button>
                 </ToolBar>
             </ToolBarTray>
+            <Popup x:Name="AppearancePopup"
+                   PlacementTarget="{Binding ElementName=AppearanceButton}"
+                   Placement="Bottom"
+                   StaysOpen="False"
+                   Opened="AppearancePopup_OnOpened"
+                   Closed="AppearancePopup_OnClosed">
+                <dialogs:AppearanceDialog x:Name="AppearancePicker"
+                                          AccentSelected="AppearancePicker_OnAccentSelected"
+                                          CancelRequested="AppearancePicker_OnCancelRequested"/>
+            </Popup>
         </Grid>
         <materialDesign:DialogHost x:Name="RootDialog" Grid.Row="2" Identifier="RootDialog">
             <Grid Margin="8">

@@ -88,71 +88,6 @@ namespace HidWizards.UCR.Core.Models
             }
             return text.ToUpperInvariant();
         }
-
-        public static string GenerateUniqueDefault(string stableKey, ISet<string> usedColors)
-        {
-            var used = usedColors ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var hash = StableHash(stableKey ?? string.Empty);
-
-            // Work through a large deterministic colour space. Hue is deliberately stepped by a
-            // prime-ish offset so adjacent devices do not bunch together visually. Saturation and
-            // lightness vary too, giving us far more than the small named-preset palette.
-            for (var attempt = 0; attempt < 4096; attempt++)
-            {
-                var hue = (int)((hash + (uint)(attempt * 137)) % 360);
-                var saturation = 0.66 + (((hash >> 9) + (uint)(attempt * 17)) % 19) / 100.0;
-                var lightness = 0.48 + (((hash >> 17) + (uint)(attempt * 11)) % 17) / 100.0;
-                var candidate = HslToHex(hue, saturation, lightness);
-                if (!used.Contains(candidate)) return candidate;
-            }
-
-            // This is practically unreachable for a device list, but retain deterministic
-            // behaviour rather than silently sharing a colour if the normal space is exhausted.
-            for (var value = 0; value <= 0xFFFFFF; value++)
-            {
-                var candidate = "#" + value.ToString("X6");
-                if (!used.Contains(candidate)) return candidate;
-            }
-            return "#FFFFFF";
-        }
-
-        private static uint StableHash(string value)
-        {
-            unchecked
-            {
-                uint hash = 2166136261;
-                foreach (var c in value)
-                {
-                    hash ^= char.ToUpperInvariant(c);
-                    hash *= 16777619;
-                }
-                return hash;
-            }
-        }
-
-        private static string HslToHex(double hue, double saturation, double lightness)
-        {
-            var chroma = (1 - Math.Abs(2 * lightness - 1)) * saturation;
-            var h = hue / 60.0;
-            var x = chroma * (1 - Math.Abs(h % 2 - 1));
-            double r1 = 0, g1 = 0, b1 = 0;
-            if (h < 1) { r1 = chroma; g1 = x; }
-            else if (h < 2) { r1 = x; g1 = chroma; }
-            else if (h < 3) { g1 = chroma; b1 = x; }
-            else if (h < 4) { g1 = x; b1 = chroma; }
-            else if (h < 5) { r1 = x; b1 = chroma; }
-            else { r1 = chroma; b1 = x; }
-            var m = lightness - chroma / 2;
-            var r = ClampByte((r1 + m) * 255);
-            var g = ClampByte((g1 + m) * 255);
-            var b = ClampByte((b1 + m) * 255);
-            return string.Format("#{0:X2}{1:X2}{2:X2}", r, g, b);
-        }
-
-        private static int ClampByte(double value)
-        {
-            return Math.Max(0, Math.Min(255, (int)Math.Round(value)));
-        }
     }
 
     public class DeviceAlias
@@ -179,13 +114,14 @@ namespace HidWizards.UCR.Core.Models
         [XmlAttribute]
         [DefaultValue(DeviceOutlineColor.Default)]
         public DeviceOutlineColor OutlineColor { get; set; } = DeviceOutlineColor.Default;
+        // Legacy 0.9.9q migration field. Kept only so those context.xml files still deserialize;
+        // 0.9.9r ignores and scrubs it because Default now means UCR's original semantic colour.
         [XmlAttribute]
         public string DefaultOutlineColor { get; set; }
 
         [XmlIgnore]
         public bool HasPresentationSettings => !string.IsNullOrWhiteSpace(Alias) || Hidden || Removed ||
-                                               SortOrder != int.MaxValue || OutlineColor != DeviceOutlineColor.Default ||
-                                               !string.IsNullOrWhiteSpace(DefaultOutlineColor);
+                                               SortOrder != int.MaxValue || OutlineColor != DeviceOutlineColor.Default;
 
         public DeviceAlias Clone()
         {

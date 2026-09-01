@@ -1,18 +1,39 @@
+﻿using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Utilities;
 using HidWizards.UCR.ViewModels.Dialogs;
-using MaterialDesignThemes.Wpf;
 
 namespace HidWizards.UCR.Views.Dialogs
 {
     public partial class AppearanceDialog : UserControl
     {
+        public event EventHandler AccentSelected;
+        public event EventHandler CancelRequested;
+
         public AppearanceDialog()
         {
             InitializeComponent();
+            Refresh();
+        }
+
+        public void Refresh()
+        {
             DataContext = new AppearanceDialogViewModel();
+        }
+
+        protected override void OnPreviewKeyDown(KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                CancelRequested?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+
+            base.OnPreviewKeyDown(e);
         }
 
         private void AccentSwatch_OnClick(object sender, RoutedEventArgs e)
@@ -23,7 +44,7 @@ namespace HidWizards.UCR.Views.Dialogs
 
             AppearanceManager.ApplyAccent(option.Name);
             Logger.Info("Appearance accent changed to: " + option.Name);
-            DialogHost.CloseDialogCommand.Execute(null, button);
+            AccentSelected?.Invoke(this, EventArgs.Empty);
         }
     }
 }

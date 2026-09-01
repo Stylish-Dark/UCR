@@ -91,12 +91,21 @@
                                          CaretBrush="#FFFFFF" BorderBrush="#555555" materialDesign:HintAssist.Hint="Friendly name"
                                          ToolTip="Tab through device names. Alt+Up / Alt+Down moves this device while keeping focus here."
                                          PreviewKeyDown="AliasTextBox_OnPreviewKeyDown"/>
-                                <ComboBox Margin="0 7 0 0"
-                                          ItemsSource="{Binding AvailableOutlineColors}"
-                                          SelectedItem="{Binding OutlineColor, Mode=TwoWay}"
-                                          IsEnabled="{Binding CanPersist}" IsTabStop="False"
-                                          materialDesign:HintAssist.Hint="Outline color"
-                                          ToolTip="Choose the outline colour used to identify this device. Default is unique to this device."/>
+                                <ListBox Margin="0 7 0 0"
+                                         ItemsSource="{Binding AvailableOutlineColors}"
+                                         SelectedValuePath="Value"
+                                         SelectedValue="{Binding OutlineColor, Mode=TwoWay}"
+                                         IsEnabled="{Binding CanPersist}" IsTabStop="False"
+                                         Style="{StaticResource DeviceOutlineSwatchList}"
+                                         ItemContainerStyle="{StaticResource DeviceOutlineSwatchItem}"
+                                         ItemTemplate="{StaticResource DeviceOutlineSwatchTemplate}"
+                                         ToolTip="Outline colour — first swatch restores the original device colour">
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                </ListBox>
                             </StackPanel>
 
                             <CheckBox Grid.Column="2" Content="Hidden" Foreground="#FFFFFF" VerticalAlignment="Center" IsTabStop="False"

@@ -65,6 +65,13 @@ namespace HidWizards.UCR.Views
             _autoProfileMonitor = new AutoProfileMonitor(context);
         }
 
+        private void MainWindow_OnPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (!AppearancePopup.IsOpen || e.Key != Key.Escape) return;
+            AppearancePopup.IsOpen = false;
+            e.Handled = true;
+        }
+
         private void MainWindow_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
             if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control) return;
@@ -572,9 +579,33 @@ namespace HidWizards.UCR.Views
             _deviceManagerHiddenToTray = false;
         }
 
-        private async void Appearance_OnClick(object sender, RoutedEventArgs e)
+        private void Appearance_OnClick(object sender, RoutedEventArgs e)
         {
-            await DialogHost.Show(new AppearanceDialog(), "RootDialog");
+            AppearancePopup.IsOpen = true;
+        }
+
+        private void AppearancePopup_OnOpened(object sender, EventArgs e)
+        {
+            AppearancePicker.Refresh();
+            AppearancePicker.Focus();
+            Keyboard.Focus(AppearancePicker);
+        }
+
+        private void AppearancePopup_OnClosed(object sender, EventArgs e)
+        {
+            // Closing by Escape or click-away is a pure cancel: no colour is applied unless a swatch
+            // was explicitly clicked. Return keyboard focus to the control that opened the picker.
+            AppearanceButton.Focus();
+        }
+
+        private void AppearancePicker_OnAccentSelected(object sender, EventArgs e)
+        {
+            AppearancePopup.IsOpen = false;
+        }
+
+        private void AppearancePicker_OnCancelRequested(object sender, EventArgs e)
+        {
+            AppearancePopup.IsOpen = false;
         }
 
         private void ExportProfile(object sender, RoutedEventArgs e)

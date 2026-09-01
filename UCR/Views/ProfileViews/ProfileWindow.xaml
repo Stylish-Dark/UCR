@@ -134,14 +134,12 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <ScrollViewer x:Name="SidebarScrollViewer" Grid.Column="0" Margin="0 0 10 0"
-                              VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled"
-                              PanningMode="VerticalOnly">
+                <Grid x:Name="SidebarGrid" Grid.Column="0" Margin="0 0 10 0">
                     <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
                     <Border Grid.Row="0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
@@ -294,7 +292,7 @@
                     </Border>
 
                     <Border Grid.Row="2" Margin="0 8 0 0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
-                        <Expander IsExpanded="True" HorizontalContentAlignment="Stretch" VerticalAlignment="Stretch" Background="#202020">
+                        <Expander IsExpanded="True" HorizontalContentAlignment="Stretch" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch" Background="#202020">
                             <Expander.Header>
                                 <Border Background="#242424" BorderBrush="{DynamicResource PrimaryHueMidBrush}" BorderThickness="3 0 0 0" Padding="10 7">
                                     <StackPanel Orientation="Horizontal">
@@ -303,12 +301,12 @@
                                     </StackPanel>
                                 </Border>
                             </Expander.Header>
-                            <Grid MinHeight="215">
+                            <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
                                     <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
                                 </Grid.RowDefinitions>
                             <Grid Margin="8 7 8 2">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -328,7 +326,7 @@
                                     </Button>
                                 </StackPanel>
                             </Grid>
-                            <ListBox Grid.Row="1" x:Name="InputProfileDeviceList" Margin="6 0 6 4" MaxHeight="110"
+                            <ListBox Grid.Row="1" x:Name="InputProfileDeviceList" Margin="6 0 6 4"
                                      ItemsSource="{Binding InputDeviceControlViewModel.Devices}"
                                      SelectedItem="{Binding InputDeviceControlViewModel.SelectedDeviceConfiguration, Mode=TwoWay}"
                                      BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto">
@@ -383,7 +381,7 @@
                                         </Button>
                                     </StackPanel>
                                 </Grid>
-                                <ListBox Grid.Row="1" x:Name="OutputProfileDeviceList" Margin="-2 2 -2 0" MaxHeight="110"
+                                <ListBox Grid.Row="1" x:Name="OutputProfileDeviceList" Margin="-2 2 -2 0"
                                          ItemsSource="{Binding OutputDeviceControlViewModel.Devices}"
                                          SelectedItem="{Binding OutputDeviceControlViewModel.SelectedDeviceConfiguration, Mode=TwoWay}"
                                          BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto">
@@ -409,7 +407,7 @@
                         </Expander>
                     </Border>
                 </Grid>
-                </ScrollViewer>
+                </Grid>
                 <Grid Grid.Column="1">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>

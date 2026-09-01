@@ -360,6 +360,10 @@ jobs:
           Write-Host "Original UCR.csproj SHA-256: $originalHash"
           Write-Host "Patched  UCR.csproj SHA-256: $patchedHash"
 
+      - name: Verify UI regression guardrails
+        shell: pwsh
+        run: .\build\verify-ui-regressions.ps1
+
       - name: Build UCR Stylish Release
         shell: pwsh
         run: |

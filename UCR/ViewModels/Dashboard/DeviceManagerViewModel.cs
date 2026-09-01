@@ -6,17 +6,35 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Media;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Utilities;
+using HidWizards.UCR.ViewModels.Presentation;
 
 namespace HidWizards.UCR.ViewModels.Dashboard
 {
+    public sealed class DeviceOutlineColorChoice
+    {
+        public DeviceOutlineColor Value { get; private set; }
+        public Brush Brush { get; private set; }
+        public string ToolTip { get; private set; }
+        public bool IsDefault => Value == DeviceOutlineColor.Default;
+
+        public DeviceOutlineColorChoice(DeviceOutlineColor value, Brush brush)
+        {
+            Value = value;
+            Brush = brush;
+            ToolTip = value == DeviceOutlineColor.Default
+                ? "Default — original device colour"
+                : value.ToString();
+        }
+    }
+
     public class DeviceManagerItemViewModel : INotifyPropertyChanged
     {
-        public static readonly DeviceOutlineColor[] OutlineColorOptions = DeviceOutlineColors.Options;
-        public DeviceOutlineColor[] AvailableOutlineColors => OutlineColorOptions;
+        public DeviceOutlineColorChoice[] AvailableOutlineColors { get; private set; }
 
         public Device Device { get; }
         public DeviceIoType ValidationType { get; }
@@ -77,24 +95,10 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             }
         }
 
-        private string _defaultOutlineColor;
-        public string DefaultOutlineColor
-        {
-            get => _defaultOutlineColor;
-            set
-            {
-                var normalized = DeviceOutlineColors.NormalizeHex(value);
-                if (string.Equals(_defaultOutlineColor, normalized, StringComparison.OrdinalIgnoreCase)) return;
-                _defaultOutlineColor = normalized;
-                OnPropertyChanged();
-            }
-        }
-
         internal string StableKey { get; }
 
         public DeviceManagerItemViewModel(Device device, DeviceIoType type, bool canPersist,
-            string alias, bool hidden, string stableKey, DeviceOutlineColor outlineColor,
-            string defaultOutlineColor)
+            string alias, bool hidden, string stableKey, DeviceOutlineColor outlineColor)
         {
             Device = device;
             ValidationType = type;
@@ -102,11 +106,38 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             Alias = alias;
             StableKey = stableKey;
             OutlineColor = outlineColor;
-            DefaultOutlineColor = defaultOutlineColor;
+            AvailableOutlineColors = BuildOutlineColorChoices(device, type);
             AddIoType(type);
             Hidden = hidden;
         }
 
+
+        private static DeviceOutlineColorChoice[] BuildOutlineColorChoices(Device device, DeviceIoType type)
+        {
+            var semanticDefault = DeviceVisualCatalog.Describe(device, type).AccentBrush ?? Brushes.Gray;
+            return DeviceOutlineColors.Options
+                .Select(value => new DeviceOutlineColorChoice(
+                    value,
+                    value == DeviceOutlineColor.Default
+                        ? semanticDefault
+                        : BrushFromHex(DeviceOutlineColors.GetPresetHex(value))))
+                .ToArray();
+        }
+
+        private static Brush BrushFromHex(string value)
+        {
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(value);
+                var brush = new SolidColorBrush(color);
+                brush.Freeze();
+                return brush;
+            }
+            catch
+            {
+                return Brushes.Gray;
+            }
+        }
         public void AddIoType(DeviceIoType type)
         {
             if (type == DeviceIoType.Input) HasInput = true;
@@ -208,22 +239,6 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 .ToList();
             Devices.Clear();
             foreach (var item in ordered) Devices.Add(item);
-            AssignUniqueDefaultOutlineColors();
-        }
-
-        private void AssignUniqueDefaultOutlineColors()
-        {
-            var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var item in Devices)
-            {
-                var current = DeviceOutlineColors.NormalizeHex(item.DefaultOutlineColor);
-                if (current == null || used.Contains(current))
-                {
-                    current = DeviceOutlineColors.GenerateUniqueDefault(item.StableKey, used);
-                    item.DefaultOutlineColor = current;
-                }
-                used.Add(current);
-            }
         }
 
         private void AddDevices(DeviceIoType type,
@@ -258,8 +273,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                     _devicesManager.GetDeviceAlias(device),
                     type == DeviceIoType.Output && _devicesManager.GetDeviceHidden(device),
                     stableKey,
-                    _devicesManager.GetDeviceOutlineColor(device),
-                    _devicesManager.GetDeviceDefaultOutlineColor(device));
+                    _devicesManager.GetDeviceOutlineColor(device));
 
                 Devices.Add(item);
                 byStableIdentity[stableKey] = item;
@@ -389,7 +403,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
                 var hidden = item.CanHide && item.Hidden;
                 if (_devicesManager.TrySetDevicePresentation(item.Device, item.ValidationType,
-                        item.Alias, hidden, index, item.OutlineColor, item.DefaultOutlineColor, out error)) continue;
+                        item.Alias, hidden, index, item.OutlineColor, out error)) continue;
 
                 return false;
             }
