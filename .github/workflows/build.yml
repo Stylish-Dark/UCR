@@ -457,6 +457,23 @@ jobs:
             throw "UCR test assembly is missing: $tests"
           }
 
+          # The WPF smoke test initializes the real App resources. Old-style .NET Framework
+          # project references do not reliably carry UCR's package dependencies transitively,
+          # so require the test output to contain the exact theme assemblies before NUnit runs.
+          $wpfRuntimeDependencies = @(
+            '.\UCR.Tests\bin\Release\MaterialDesignThemes.Wpf.dll',
+            '.\UCR.Tests\bin\Release\MaterialDesignColors.dll'
+          )
+          foreach ($dependency in $wpfRuntimeDependencies) {
+            if (-not (Test-Path -LiteralPath $dependency -PathType Leaf)) {
+              throw "WPF runtime test dependency is missing from UCR.Tests output: $dependency"
+            }
+            if ((Get-Item -LiteralPath $dependency).Length -le 0) {
+              throw "WPF runtime test dependency is empty: $dependency"
+            }
+          }
+          Write-Host 'Verified WPF runtime test dependency closure.'
+
           & $runner $tests --noresult
           if ($LASTEXITCODE -ne 0) {
             throw "UCR unit tests failed with exit code $LASTEXITCODE."
