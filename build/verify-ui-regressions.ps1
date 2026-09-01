@@ -18,6 +18,7 @@ function Forbid-Regex([string]$Text, [string]$Pattern, [string]$Message) {
 $deviceModel = Read-RepoText '.\UCR.Core\Models\Device.cs'
 $deviceVisuals = Read-RepoText '.\UCR\ViewModels\Presentation\DeviceVisualDescriptor.cs'
 $deviceManagerVm = Read-RepoText '.\UCR\ViewModels\Dashboard\DeviceManagerViewModel.cs'
+$testProject = Read-RepoText '.\UCR.Tests\UCR.Tests.csproj'
 
 Forbid-Regex $deviceModel 'GenerateUniqueDefault|StableHash|HslToHex' `
     'Generated/random default device colours must not return. Default means the original semantic device colour.'
@@ -27,6 +28,10 @@ Require-Text $deviceVisuals 'if (choice == DeviceOutlineColor.Default) return;' 
     'Default outline no longer explicitly preserves the original semantic device colour.'
 Require-Text $deviceVisuals 'descriptor.OutlineBrush = brush;' `
     'User outline overrides are no longer isolated to OutlineBrush.'
+Require-Text $testProject '<Reference Include="PresentationCore" />' `
+    'UCR.Tests uses WPF Brush-backed visual descriptors but is missing its explicit PresentationCore reference.'
+Require-Text $testProject '<Reference Include="WindowsBase" />' `
+    'UCR.Tests WPF dependency closure is missing the explicit WindowsBase reference.'
 
 foreach ($path in @('.\UCR\Views\Dialogs\DeviceManagerDialog.xaml', '.\UCR\Views\Dialogs\DeviceManagerPage.xaml')) {
     $text = Read-RepoText $path
