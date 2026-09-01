@@ -120,6 +120,109 @@
                     </Ellipse>
                 </Grid>
             </DataTemplate>
+            <Style x:Key="DeviceOutlinePickerItem" TargetType="{x:Type ComboBoxItem}">
+                <Setter Property="Width" Value="24"/>
+                <Setter Property="Height" Value="24"/>
+                <Setter Property="Margin" Value="0 0 5 0"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ComboBoxItem}">
+                            <Border x:Name="SelectionRing" CornerRadius="4" Background="#252525"
+                                    BorderBrush="#505050" BorderThickness="1" Padding="3">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="SelectionRing" Property="Background" Value="#343434"/>
+                                    <Setter TargetName="SelectionRing" Property="BorderBrush" Value="#808080"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="SelectionRing" Property="BorderBrush" Value="#F2F2F2"/>
+                                    <Setter TargetName="SelectionRing" Property="BorderThickness" Value="2"/>
+                                    <Setter TargetName="SelectionRing" Property="Padding" Value="2"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.35"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- One-button device outline picker. The closed state shows only the current colour;
+                 opening it reveals the opaque visual palette. -->
+            <Style x:Key="DeviceOutlinePicker" TargetType="{x:Type ComboBox}">
+                <Setter Property="Width" Value="34"/>
+                <Setter Property="Height" Value="32"/>
+                <Setter Property="Background" Value="#252525"/>
+                <Setter Property="BorderBrush" Value="#505050"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Focusable" Value="True"/>
+                <Setter Property="ItemTemplate" Value="{StaticResource DeviceOutlineSwatchTemplate}"/>
+                <Setter Property="ItemContainerStyle" Value="{StaticResource DeviceOutlinePickerItem}"/>
+                <Setter Property="ItemsPanel">
+                    <Setter.Value>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ComboBox}">
+                            <Grid>
+                                <ToggleButton x:Name="PickerButton" Focusable="False" ClickMode="Press"
+                                              IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                            <Border x:Name="PickerBorder" CornerRadius="4"
+                                                    Background="#252525" BorderBrush="#505050" BorderThickness="1">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                  Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType={x:Type ComboBox}}}"
+                                                                  ContentTemplate="{StaticResource DeviceOutlineSwatchTemplate}"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="PickerBorder" Property="Background" Value="#303030"/>
+                                                    <Setter TargetName="PickerBorder" Property="BorderBrush" Value="#777777"/>
+                                                </Trigger>
+                                                <Trigger Property="IsChecked" Value="True">
+                                                    <Setter TargetName="PickerBorder" Property="BorderBrush" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                                </Trigger>
+                                                <Trigger Property="IsEnabled" Value="False">
+                                                    <Setter TargetName="PickerBorder" Property="Opacity" Value="0.35"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                </ToggleButton>
+                                <Popup x:Name="PART_Popup" Placement="Bottom" PlacementTarget="{Binding ElementName=PickerButton}" AllowsTransparency="True" Focusable="False"
+                                       IsOpen="{TemplateBinding IsDropDownOpen}" PopupAnimation="Fade">
+                                    <Border Margin="0 4 0 0" Padding="6" CornerRadius="5"
+                                            Background="#252525" BorderBrush="#555555" BorderThickness="1"
+                                            MinWidth="294">
+                                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled">
+                                            <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Popup>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="HasItems" Value="False">
+                                    <Setter Property="MinHeight" Value="32"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <Style TargetType="{x:Type Window}" >
                 <Setter Property="FontSize" Value="14"/>
                 <Setter Property="WindowChrome.WindowChrome">

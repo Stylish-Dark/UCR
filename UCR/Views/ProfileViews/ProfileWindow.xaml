@@ -301,12 +301,13 @@
                                     </StackPanel>
                                 </Border>
                             </Expander.Header>
+                            <ScrollViewer x:Name="ProfileDevicesScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
                                     <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
                             <Grid Margin="8 7 8 2">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -329,7 +330,7 @@
                             <ListBox Grid.Row="1" x:Name="InputProfileDeviceList" Margin="6 0 6 4"
                                      ItemsSource="{Binding InputDeviceControlViewModel.Devices}"
                                      SelectedItem="{Binding InputDeviceControlViewModel.SelectedDeviceConfiguration, Mode=TwoWay}"
-                                     BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                     BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <Grid Margin="1 2">
@@ -384,7 +385,7 @@
                                 <ListBox Grid.Row="1" x:Name="OutputProfileDeviceList" Margin="-2 2 -2 0"
                                          ItemsSource="{Binding OutputDeviceControlViewModel.Devices}"
                                          SelectedItem="{Binding OutputDeviceControlViewModel.SelectedDeviceConfiguration, Mode=TwoWay}"
-                                         BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                         BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <Grid Margin="1 2">
@@ -404,6 +405,7 @@
                                 </ListBox>
                             </Grid>
                             </Grid>
+                            </ScrollViewer>
                         </Expander>
                     </Border>
                 </Grid>

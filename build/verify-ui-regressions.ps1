@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 
 function Read-RepoText([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
@@ -33,25 +33,51 @@ Require-Text $testProject '<Reference Include="PresentationCore" />' `
 Require-Text $testProject '<Reference Include="WindowsBase" />' `
     'UCR.Tests WPF dependency closure is missing the explicit WindowsBase reference.'
 
+$appXaml = Read-RepoText '.\UCR\App.xaml'
+[xml]$null = $appXaml
+Require-Text $appXaml 'x:Key="DeviceOutlinePicker"' `
+    'The device outline selector must be one compact current-colour picker, not an always-visible palette.'
+Require-Text $appXaml 'Background="#252525"' `
+    'The device outline picker popup must use an opaque dark surface.'
+
 foreach ($path in @('.\UCR\Views\Dialogs\DeviceManagerDialog.xaml', '.\UCR\Views\Dialogs\DeviceManagerPage.xaml')) {
     $text = Read-RepoText $path
     [xml]$null = $text
-    Forbid-Regex $text '<ComboBox[^>]*(?:AvailableOutlineColors)|AvailableOutlineColors[^>]*</ComboBox>' `
-        "$path regressed to the text-heavy outline colour ComboBox."
-    Require-Text $text 'Style="{StaticResource DeviceOutlineSwatchList}"' `
-        "$path is missing the compact visual outline swatches."
+    Forbid-Regex $text 'Style="\{StaticResource DeviceOutlineSwatchList\}"' `
+        "$path must not render the full colour palette permanently in every device row."
+    Require-Text $text 'Style="{StaticResource DeviceOutlinePicker}"' `
+        "$path is missing the compact current-colour outline picker."
     Require-Text $text 'SelectedValue="{Binding OutlineColor, Mode=TwoWay}"' `
-        "$path no longer binds the selected swatch to the persisted outline choice."
+        "$path no longer binds the selected colour to the persisted outline choice."
 }
 
 foreach ($path in @('.\UCR\Views\ProfileViews\ProfilePage.xaml', '.\UCR\Views\ProfileViews\ProfileWindow.xaml')) {
     $text = Read-RepoText $path
     [xml]$null = $text
     Forbid-Regex $text 'x:Name="SidebarScrollViewer"|MaxHeight="110"' `
-        "$path has reintroduced the fixed-height/ScrollViewer layout that prevented Devices from filling available height."
-    Require-Text $text 'x:Name="SidebarGrid"' "$path is missing the stretchable sidebar grid."
-    Require-Text $text 'VerticalContentAlignment="Stretch"' "$path Devices expander is no longer stretching its content."
+        "$path has reintroduced the old fixed-height sidebar layout."
+    Forbid-Regex $text '<RowDefinition Height="Auto"\s*/>\s*<RowDefinition Height="\*"\s*/>\s*<RowDefinition Height="Auto"\s*/>\s*<RowDefinition Height="\*"\s*/>' `
+        "$path is again distributing spare Devices-panel height between INPUT and OUTPUT."
+    Require-Text $text 'x:Name="ProfileDevicesScrollViewer"' `
+        "$path must keep INPUT/OUTPUT content top-aligned in a single scrolling surface."
+    Require-Text $text 'VerticalContentAlignment="Stretch"' `
+        "$path Devices expander must give the single scroll surface the available panel height."
 }
+
+$deviceConfigDialog = Read-RepoText '.\UCR\Views\Dialogs\ManageDeviceConfigurationDialog.xaml'
+$deviceAddRemove = Read-RepoText '.\UCR\Views\Controls\DeviceAddRemoveControl.xaml'
+[xml]$null = $deviceConfigDialog
+[xml]$null = $deviceAddRemove
+Require-Text $deviceConfigDialog 'x:Name="DeviceConfigurationShell"' `
+    'Device configuration must use the rebuilt dark UCR shell.'
+Forbid-Regex $deviceConfigDialog 'MaterialDesignPaper|MaterialDesignFloatingHintTextBox' `
+    'Legacy light MaterialDesign surfaces must not return to Device Configuration.'
+Require-Text $deviceAddRemove 'x:Name="AvailableDevicesPanel"' `
+    'The rebuilt shadow-device selector is missing its available-devices panel.'
+Require-Text $deviceAddRemove 'x:Name="SelectedDevicesPanel"' `
+    'The rebuilt shadow-device selector is missing its selected-devices panel.'
+Forbid-Regex $deviceAddRemove 'MaterialDesignCardGroupBox|<GroupBox' `
+    'The legacy light card/group-box device selector must not return.'
 
 $mainWindowXaml = Read-RepoText '.\UCR\Views\MainWindow.xaml'
 $mainWindowCode = Read-RepoText '.\UCR\Views\MainWindow.xaml.cs'
@@ -64,4 +90,4 @@ Forbid-Regex $mainWindowCode 'DialogHost\.Show\(new AppearanceDialog' `
 Require-Text $appearanceCode 'e.Key == Key.Escape' 'Escape cancellation is missing from the appearance picker.'
 Require-Text $appearanceCode 'CancelRequested?.Invoke' 'Escape no longer closes the appearance picker through its cancel path.'
 
-Write-Host 'Verified device-colour, sidebar-stretch, and appearance-cancel UI regression guardrails.'
+Write-Host 'Verified compact device-colour picker, top-aligned Devices layout, rebuilt dark device configuration, and appearance-cancel UI guardrails.'

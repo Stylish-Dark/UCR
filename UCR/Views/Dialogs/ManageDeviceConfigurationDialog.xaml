@@ -2,84 +2,139 @@
              Style="{StaticResource UcrDialogRoot}"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:HidWizards.UCR.Views.Dialogs"
-             xmlns:system="clr-namespace:System;assembly=mscorlib"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:wpf="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:controls="clr-namespace:HidWizards.UCR.Views.Controls"
              xmlns:dashboard="clr-namespace:HidWizards.UCR.ViewModels.Dashboard"
-             mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800"
-             
-             Height="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type wpf:DialogHost}},Path=ActualHeight}"
-             Width="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type wpf:DialogHost}},Path=ActualWidth}"
-             MaxHeight="800"
-             MaxWidth="800"
-             Margin="-16"
-             Padding="16"
-             Background="{DynamicResource MaterialDesignPaper}">
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="2*"/>
-        </Grid.ColumnDefinitions>
-        <Grid Margin="16" Grid.Column="0">
+             mc:Ignorable="d"
+             d:DesignHeight="620" d:DesignWidth="920"
+             Width="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type wpf:DialogHost}}, Path=ActualWidth}"
+             Height="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type wpf:DialogHost}}, Path=ActualHeight}"
+             MaxWidth="960" MaxHeight="680" Margin="-16" Background="Transparent">
+    <UserControl.Resources>
+        <Style x:Key="DeviceConfigField" TargetType="{x:Type TextBox}">
+            <Setter Property="Background" Value="#181818"/>
+            <Setter Property="Foreground" Value="#F4F4F4"/>
+            <Setter Property="CaretBrush" Value="#FFFFFF"/>
+            <Setter Property="SelectionBrush" Value="{DynamicResource PrimaryHueMidBrush}"/>
+            <Setter Property="BorderBrush" Value="#484848"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10 7"/>
+            <Setter Property="MinHeight" Value="36"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TextBox}">
+                        <Border x:Name="FieldBorder" CornerRadius="4"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"
+                                          VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="FieldBorder" Property="BorderBrush" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="FieldBorder" Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="DeviceConfigEyebrow" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontSize" Value="10.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryHueMidBrush}"/>
+        </Style>
+        <Style x:Key="DeviceConfigFieldLabel" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#ECECEC"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Border x:Name="DeviceConfigurationShell" Background="#1B1B1B" BorderBrush="#3B3B3B"
+            BorderThickness="1" CornerRadius="7" ClipToBounds="True">
+        <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <TextBlock Grid.Row="0" Text="{Binding Title}" Style="{StaticResource MaterialDesignTitleTextBlock}"/>
+            <Border Grid.Row="0" Background="#232323" BorderBrush="#343434" BorderThickness="0 0 0 1" Padding="20 14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Width="34" Height="34" CornerRadius="5" Background="#191919"
+                            BorderBrush="{DynamicResource PrimaryHueMidBrush}" BorderThickness="1" Margin="0 0 12 0">
+                        <wpf:PackIcon Kind="Cog" Width="18" Height="18" Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Device configuration" FontSize="18" FontWeight="SemiBold" Foreground="#FFFFFF"/>
+                        <TextBlock Text="{Binding ProviderDeviceName}" FontSize="12.5" Foreground="#AFAFAF"
+                                   TextTrimming="CharacterEllipsis" Margin="0 2 0 0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
 
-            <StackPanel Grid.Row="1" Margin="0 18 0 0">
-                <TextBlock Text="Global device name" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
-                <TextBox wpf:HintAssist.Hint="{Binding ProviderDeviceName}"
-                         IsEnabled="{Binding CanEditDeviceAlias}"
-                         Style="{DynamicResource MaterialDesignFloatingHintTextBox}"
-                         Margin="0 4 0 0" FontSize="18">
-                    <TextBox.Text>
-                        <Binding Path="DeviceAlias" UpdateSourceTrigger="PropertyChanged"/>
-                    </TextBox.Text>
-                </TextBox>
-                <TextBlock Text="{Binding DeviceAliasHelp}"
-                           TextWrapping="Wrap" Opacity="0.72" Margin="0 6 0 0"
-                           Style="{StaticResource MaterialDesignCaptionTextBlock}"/>
-            </StackPanel>
+            <Grid Grid.Row="1" Margin="18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="1"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Row="2" Margin="0 22 0 0">
-                <TextBlock Text="Profile configuration name" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
-                <TextBox wpf:HintAssist.Hint="{Binding ConfigurationNameHint}"
-                         Style="{DynamicResource MaterialDesignFloatingHintTextBox}"
-                         Margin="0 4 0 0" FontSize="18">
-                    <TextBox.Text>
-                        <Binding Path="DeviceConfigurationName" UpdateSourceTrigger="PropertyChanged"/>
-                    </TextBox.Text>
-                </TextBox>
-                <TextBlock Text="Optional label for this profile configuration only."
-                           Opacity="0.72" Margin="0 6 0 0"
-                           Style="{StaticResource MaterialDesignCaptionTextBlock}"/>
-            </StackPanel>
+                <Border Grid.Column="0" Background="#202020" BorderBrush="#353535" BorderThickness="1" CornerRadius="5" Padding="16">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel>
+                            <TextBlock Text="IDENTITY" Style="{StaticResource DeviceConfigEyebrow}"/>
+                            <TextBlock Text="Global device name" Style="{StaticResource DeviceConfigFieldLabel}" Margin="0 8 0 6"/>
+                            <TextBox Text="{Binding DeviceAlias, UpdateSourceTrigger=PropertyChanged}"
+                                     IsEnabled="{Binding CanEditDeviceAlias}"
+                                     Style="{StaticResource DeviceConfigField}"/>
+                            <TextBlock Text="{Binding DeviceAliasHelp}" TextWrapping="Wrap" Foreground="#A8A8A8"
+                                       FontSize="11.5" Margin="0 7 0 0"/>
 
-            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Grid.Row="4"
-                        Margin="0 16 0 0">
-                <Button IsDefault="True"
-                        Style="{StaticResource MaterialDesignRaisedButton}"
-                        Command="{x:Static wpf:DialogHost.CloseDialogCommand}"
-                        Content="SAVE" CommandParameter="{Binding ViewModel}">
-                </Button>
-                <Button IsCancel="True" Margin="8 0 0 0" Style="{DynamicResource MaterialDesignFlatButton}"
-                        Command="{x:Static wpf:DialogHost.CloseDialogCommand}"
-                        Content="CANCEL">
-                    <Button.CommandParameter>
-                        <dashboard:ManageDeviceConfigurationViewModel/>
-                    </Button.CommandParameter>
-                </Button>
-            </StackPanel>
+                            <Border Height="1" Background="#383838" Margin="0 18"/>
+
+                            <TextBlock Text="PROFILE" Style="{StaticResource DeviceConfigEyebrow}"/>
+                            <TextBlock Text="Configuration name" Style="{StaticResource DeviceConfigFieldLabel}" Margin="0 8 0 6"/>
+                            <TextBox Text="{Binding DeviceConfigurationName, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource DeviceConfigField}"/>
+                            <TextBlock Text="Optional label used only for this device configuration in the current profile."
+                                       TextWrapping="Wrap" Foreground="#A8A8A8" FontSize="11.5" Margin="0 7 0 0"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+
+                <Border Grid.Column="1" Background="#353535" Margin="14 0"/>
+
+                <controls:DeviceAddRemoveControl Grid.Column="2" Margin="14 0 0 0" DataContext="{Binding ShadowDevices}"/>
+            </Grid>
+
+            <Border Grid.Row="2" Background="#202020" BorderBrush="#343434" BorderThickness="0 1 0 0" Padding="16 11">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="CANCEL" IsCancel="True" Margin="0 0 8 0"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Command="{x:Static wpf:DialogHost.CloseDialogCommand}">
+                        <Button.CommandParameter>
+                            <dashboard:ManageDeviceConfigurationViewModel/>
+                        </Button.CommandParameter>
+                    </Button>
+                    <Button Content="SAVE" IsDefault="True" MinWidth="76"
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            Command="{x:Static wpf:DialogHost.CloseDialogCommand}"
+                            CommandParameter="{Binding ViewModel}"/>
+                </StackPanel>
+            </Border>
         </Grid>
-        <controls:DeviceAddRemoveControl Grid.Column="1" Margin="8" DataContext="{Binding ShadowDevices}"/>
-    </Grid>
+    </Border>
 </UserControl>
