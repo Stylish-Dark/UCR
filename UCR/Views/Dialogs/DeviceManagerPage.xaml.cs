@@ -16,10 +16,16 @@ namespace HidWizards.UCR.Views.Dialogs
     {
         private bool _disposed;
 
-        public DeviceManagerPage(DevicesManager devicesManager)
+        // Kept parameterless so the Windows UI smoke test can instantiate the real compiled page
+        // with a synthetic ItemsSource and prove that WPF actually materializes device rows.
+        public DeviceManagerPage()
+        {
+            InitializeComponent();
+        }
+
+        public DeviceManagerPage(DevicesManager devicesManager) : this()
         {
             DataContext = new DeviceManagerViewModel(devicesManager);
-            InitializeComponent();
         }
 
         public event EventHandler BackRequested;
@@ -112,6 +118,32 @@ namespace HidWizards.UCR.Views.Dialogs
                 if (nested != null) return nested;
             }
             return null;
+        }
+
+        private void OutlineColorButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var menu = button?.ContextMenu;
+            if (button == null || menu == null) return;
+
+            menu.PlacementTarget = button;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            menu.IsOpen = true;
+            e.Handled = true;
+        }
+
+        private void OutlineColorChoice_OnClick(object sender, RoutedEventArgs e)
+        {
+            var menuItem = sender as MenuItem;
+            var choice = menuItem?.DataContext as DeviceOutlineColorChoice;
+            var menu = menuItem == null ? null : ItemsControl.ItemsControlFromItemContainer(menuItem) as ContextMenu;
+            var button = menu?.PlacementTarget as Button;
+            var device = button?.DataContext as DeviceManagerItemViewModel;
+            if (choice == null || device == null) return;
+
+            device.OutlineColor = choice.Value;
+            menu.IsOpen = false;
+            e.Handled = true;
         }
 
         private void MoveUp_OnClick(object sender, RoutedEventArgs e)

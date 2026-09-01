@@ -18,8 +18,8 @@ namespace HidWizards.UCR.Views.Dialogs
 
         public DeviceManagerDialog(DevicesManager devicesManager)
         {
-            DataContext = new DeviceManagerViewModel(devicesManager);
             InitializeComponent();
+            DataContext = new DeviceManagerViewModel(devicesManager);
         }
 
         protected override void OnClosed(EventArgs e)
@@ -105,6 +105,32 @@ namespace HidWizards.UCR.Views.Dialogs
                 if (nested != null) return nested;
             }
             return null;
+        }
+
+        private void OutlineColorButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var menu = button?.ContextMenu;
+            if (button == null || menu == null) return;
+
+            menu.PlacementTarget = button;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            menu.IsOpen = true;
+            e.Handled = true;
+        }
+
+        private void OutlineColorChoice_OnClick(object sender, RoutedEventArgs e)
+        {
+            var menuItem = sender as MenuItem;
+            var choice = menuItem?.DataContext as DeviceOutlineColorChoice;
+            var menu = menuItem == null ? null : ItemsControl.ItemsControlFromItemContainer(menuItem) as ContextMenu;
+            var button = menu?.PlacementTarget as Button;
+            var device = button?.DataContext as DeviceManagerItemViewModel;
+            if (choice == null || device == null) return;
+
+            device.OutlineColor = choice.Value;
+            menu.IsOpen = false;
+            e.Handled = true;
         }
 
         private void MoveUp_OnClick(object sender, RoutedEventArgs e)

@@ -95,13 +95,28 @@
                                          CaretBrush="#FFFFFF" BorderBrush="#555555" materialDesign:HintAssist.Hint="Friendly name"
                                          ToolTip="Tab through device names. Alt+Up / Alt+Down moves this device while keeping focus here."
                                          PreviewKeyDown="AliasTextBox_OnPreviewKeyDown"/>
-                                <ComboBox Grid.Column="1" Margin="8 0 0 0"
-                                          ItemsSource="{Binding AvailableOutlineColors}"
-                                          SelectedValuePath="Value"
-                                          SelectedValue="{Binding OutlineColor, Mode=TwoWay}"
-                                          IsEnabled="{Binding CanPersist}" IsTabStop="False"
-                                          Style="{StaticResource DeviceOutlinePicker}"
-                                          ToolTip="Outline colour — open palette; first swatch restores the original device colour"/>
+                                <Button Grid.Column="1" Margin="8 0 0 0" IsEnabled="{Binding CanPersist}"
+                                        Style="{StaticResource DeviceOutlineButton}" Click="OutlineColorButton_OnClick"
+                                        ToolTip="Outline colour — click to choose; Default restores the original device colour">
+                                    <Border Width="16" Height="16" CornerRadius="2" Background="{Binding CurrentOutlineBrush}"
+                                            BorderBrush="#8A8A8A" BorderThickness="1"/>
+                                    <Button.ContextMenu>
+                                        <ContextMenu Placement="Bottom" StaysOpen="False" Background="#252525"
+                                                     BorderBrush="#555555" BorderThickness="1" Padding="6"
+                                                     ItemsSource="{Binding PlacementTarget.DataContext.AvailableOutlineColors, RelativeSource={RelativeSource Self}}">
+                                            <ContextMenu.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal"/>
+                                                </ItemsPanelTemplate>
+                                            </ContextMenu.ItemsPanel>
+                                            <ContextMenu.ItemContainerStyle>
+                                                <Style TargetType="{x:Type MenuItem}" BasedOn="{StaticResource DeviceOutlineMenuItem}">
+                                                    <EventSetter Event="Click" Handler="OutlineColorChoice_OnClick"/>
+                                                </Style>
+                                            </ContextMenu.ItemContainerStyle>
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
+                                </Button>
                             </Grid>
 
                             <CheckBox Grid.Column="2" Content="Hidden" Foreground="#FFFFFF" VerticalAlignment="Center" IsTabStop="False"

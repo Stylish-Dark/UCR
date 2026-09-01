@@ -92,6 +92,16 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 if (_outlineColor == value) return;
                 _outlineColor = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(CurrentOutlineBrush));
+            }
+        }
+
+        public Brush CurrentOutlineBrush
+        {
+            get
+            {
+                var choice = AvailableOutlineColors?.FirstOrDefault(candidate => candidate.Value == OutlineColor);
+                return choice?.Brush ?? Brushes.Gray;
             }
         }
 
@@ -214,9 +224,10 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         public DeviceManagerViewModel(DevicesManager devicesManager)
         {
+            if (devicesManager == null) throw new ArgumentNullException(nameof(devicesManager));
             _devicesManager = devicesManager;
             Devices = new ObservableCollection<DeviceManagerItemViewModel>();
-            Populate();
+            Refresh();
         }
 
         private void Populate()
@@ -389,7 +400,23 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         public void Refresh()
         {
-            _devicesManager.RefreshDeviceList();
+            if (_disposed) return;
+
+            try
+            {
+                // IOController device lists are not guaranteed to have been enumerated just because
+                // profile configuration exists. Always refresh the live providers before building the
+                // global Devices page; otherwise a perfectly healthy UCR session can render an empty list.
+                _devicesManager.RefreshDeviceList();
+            }
+            catch (Exception exception)
+            {
+                // A provider-specific refresh failure must not make the entire Devices page unusable.
+                // Populate from the last known live/cache state and surface the failure in the page.
+                Logger.Error("Unable to refresh devices before populating Device Manager", exception);
+                DetectionStatus = "Some device providers could not be refreshed. Showing the last known device list.";
+            }
+
             Populate();
         }
 

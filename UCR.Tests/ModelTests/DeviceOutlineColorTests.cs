@@ -107,6 +107,20 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void DeviceManagerCurrentOutlineBrushTracksSelectedOutline()
+        {
+            var xbox = new Device("ViGEm Xbox 360 Controller 1", "Core_ViGEm", "xb360", 0);
+            var item = new DeviceManagerItemViewModel(xbox, DeviceIoType.Output, true, null, false,
+                "xbox", DeviceOutlineColor.Default);
+
+            Assert.That(item.CurrentOutlineBrush, Is.SameAs(DeviceVisualCatalog.XboxBrush));
+
+            item.OutlineColor = DeviceOutlineColor.Red;
+
+            Assert.That(item.CurrentOutlineBrush.ToString(), Is.EqualTo("#FFE53935"));
+        }
+
+        [Test]
         public void DeviceAliasClonePreservesOutlinePresentation()
         {
             var alias = new DeviceAlias

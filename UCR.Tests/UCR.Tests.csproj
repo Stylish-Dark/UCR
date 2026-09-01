@@ -45,6 +45,7 @@
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
     <Reference Include="WindowsBase" />
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
@@ -64,6 +65,7 @@
     <Compile Include="ModelTests\ProfileTests.cs" />
     <Compile Include="ModelTests\ContextTests.cs" />
     <Compile Include="ModelTests\DeviceOutlineColorTests.cs" />
+    <Compile Include="UiTests\DeviceManagerPageSmokeTests.cs" />
     <Compile Include="ModelTests\SubscriptionTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
