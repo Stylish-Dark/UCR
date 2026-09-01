@@ -227,7 +227,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             if (devicesManager == null) throw new ArgumentNullException(nameof(devicesManager));
             _devicesManager = devicesManager;
             Devices = new ObservableCollection<DeviceManagerItemViewModel>();
-            Refresh();
+            Populate();
         }
 
         private void Populate()
@@ -250,6 +250,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 .ToList();
             Devices.Clear();
             foreach (var item in ordered) Devices.Add(item);
+            Logger.Info("Device Manager populated " + Devices.Count + " device row(s).");
         }
 
         private void AddDevices(DeviceIoType type,
@@ -401,22 +402,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public void Refresh()
         {
             if (_disposed) return;
-
-            try
-            {
-                // IOController device lists are not guaranteed to have been enumerated just because
-                // profile configuration exists. Always refresh the live providers before building the
-                // global Devices page; otherwise a perfectly healthy UCR session can render an empty list.
-                _devicesManager.RefreshDeviceList();
-            }
-            catch (Exception exception)
-            {
-                // A provider-specific refresh failure must not make the entire Devices page unusable.
-                // Populate from the last known live/cache state and surface the failure in the page.
-                Logger.Error("Unable to refresh devices before populating Device Manager", exception);
-                DetectionStatus = "Some device providers could not be refreshed. Showing the last known device list.";
-            }
-
+            _devicesManager.RefreshDeviceList();
             Populate();
         }
 

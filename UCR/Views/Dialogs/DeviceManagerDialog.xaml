@@ -93,27 +93,12 @@
                                          CaretBrush="#FFFFFF" BorderBrush="#555555" materialDesign:HintAssist.Hint="Friendly name"
                                          ToolTip="Tab through device names. Alt+Up / Alt+Down moves this device while keeping focus here."
                                          PreviewKeyDown="AliasTextBox_OnPreviewKeyDown"/>
-                                <Button Grid.Column="1" Margin="8 0 0 0" IsEnabled="{Binding CanPersist}"
-                                        Style="{StaticResource DeviceOutlineButton}" Click="OutlineColorButton_OnClick"
+                                <Button Grid.Column="1" Margin="8 0 0 0" Width="34" Height="32" Padding="0"
+                                        IsEnabled="{Binding CanPersist}" Click="OutlineColorButton_OnClick"
+                                        Background="#252525" BorderBrush="#505050" BorderThickness="1"
                                         ToolTip="Outline colour — click to choose; Default restores the original device colour">
                                     <Border Width="16" Height="16" CornerRadius="2" Background="{Binding CurrentOutlineBrush}"
                                             BorderBrush="#8A8A8A" BorderThickness="1"/>
-                                    <Button.ContextMenu>
-                                        <ContextMenu Placement="Bottom" StaysOpen="False" Background="#252525"
-                                                     BorderBrush="#555555" BorderThickness="1" Padding="6"
-                                                     ItemsSource="{Binding PlacementTarget.DataContext.AvailableOutlineColors, RelativeSource={RelativeSource Self}}">
-                                            <ContextMenu.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <StackPanel Orientation="Horizontal"/>
-                                                </ItemsPanelTemplate>
-                                            </ContextMenu.ItemsPanel>
-                                            <ContextMenu.ItemContainerStyle>
-                                                <Style TargetType="{x:Type MenuItem}" BasedOn="{StaticResource DeviceOutlineMenuItem}">
-                                                    <EventSetter Event="Click" Handler="OutlineColorChoice_OnClick"/>
-                                                </Style>
-                                            </ContextMenu.ItemContainerStyle>
-                                        </ContextMenu>
-                                    </Button.ContextMenu>
                                 </Button>
                             </Grid>
 

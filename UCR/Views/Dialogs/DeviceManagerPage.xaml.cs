@@ -16,16 +16,17 @@ namespace HidWizards.UCR.Views.Dialogs
     {
         private bool _disposed;
 
-        // Kept parameterless so the Windows UI smoke test can instantiate the real compiled page
-        // with a synthetic ItemsSource and prove that WPF actually materializes device rows.
+        // Test-only construction path. Production always supplies DevicesManager below.
         public DeviceManagerPage()
         {
             InitializeComponent();
         }
 
-        public DeviceManagerPage(DevicesManager devicesManager) : this()
+        public DeviceManagerPage(DevicesManager devicesManager)
         {
+            // Keep the proven pre-regression ordering: bindings see the real view model while XAML is built.
             DataContext = new DeviceManagerViewModel(devicesManager);
+            InitializeComponent();
         }
 
         public event EventHandler BackRequested;
@@ -123,26 +124,86 @@ namespace HidWizards.UCR.Views.Dialogs
         private void OutlineColorButton_OnClick(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
-            var menu = button?.ContextMenu;
-            if (button == null || menu == null) return;
-
-            menu.PlacementTarget = button;
-            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
-            menu.IsOpen = true;
-            e.Handled = true;
-        }
-
-        private void OutlineColorChoice_OnClick(object sender, RoutedEventArgs e)
-        {
-            var menuItem = sender as MenuItem;
-            var choice = menuItem?.DataContext as DeviceOutlineColorChoice;
-            var menu = menuItem == null ? null : ItemsControl.ItemsControlFromItemContainer(menuItem) as ContextMenu;
-            var button = menu?.PlacementTarget as Button;
             var device = button?.DataContext as DeviceManagerItemViewModel;
-            if (choice == null || device == null) return;
+            if (button == null || device == null || device.AvailableOutlineColors == null) return;
 
-            device.OutlineColor = choice.Value;
-            menu.IsOpen = false;
+            // Build the palette only after the click. Nothing picker-specific lives in the ListView
+            // row template, so a picker failure cannot prevent device rows from being created.
+            var strip = new StackPanel { Orientation = Orientation.Horizontal };
+            var popup = new System.Windows.Controls.Primitives.Popup
+            {
+                PlacementTarget = button,
+                Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+                StaysOpen = false,
+                AllowsTransparency = true,
+                PopupAnimation = System.Windows.Controls.Primitives.PopupAnimation.Fade
+            };
+
+            var shell = new Border
+            {
+                Margin = new Thickness(0, 4, 0, 0),
+                Padding = new Thickness(6),
+                CornerRadius = new CornerRadius(5),
+                Background = new SolidColorBrush(Color.FromRgb(37, 37, 37)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(85, 85, 85)),
+                BorderThickness = new Thickness(1),
+                Child = strip
+            };
+
+            foreach (var choice in device.AvailableOutlineColors)
+            {
+                var selectedChoice = choice;
+                var tile = new Border
+                {
+                    Width = 28,
+                    Height = 28,
+                    Margin = new Thickness(0, 0, 5, 0),
+                    Padding = new Thickness(5),
+                    CornerRadius = new CornerRadius(4),
+                    Background = new SolidColorBrush(Color.FromRgb(37, 37, 37)),
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(80, 80, 80)),
+                    BorderThickness = new Thickness(1),
+                    Cursor = Cursors.Hand,
+                    ToolTip = selectedChoice.ToolTip
+                };
+
+                var swatch = new Grid { Width = 16, Height = 16 };
+                swatch.Children.Add(new Border
+                {
+                    CornerRadius = new CornerRadius(2),
+                    Background = selectedChoice.Brush,
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(138, 138, 138)),
+                    BorderThickness = new Thickness(1)
+                });
+
+                if (selectedChoice.IsDefault)
+                {
+                    swatch.Children.Add(new System.Windows.Shapes.Ellipse
+                    {
+                        Width = 6,
+                        Height = 6,
+                        Fill = new SolidColorBrush(Color.FromRgb(32, 32, 32)),
+                        Stroke = new SolidColorBrush(Color.FromRgb(242, 242, 242)),
+                        StrokeThickness = 1,
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center
+                    });
+                }
+
+                tile.Child = swatch;
+                tile.MouseEnter += (o, args) => tile.Background = new SolidColorBrush(Color.FromRgb(52, 52, 52));
+                tile.MouseLeave += (o, args) => tile.Background = new SolidColorBrush(Color.FromRgb(37, 37, 37));
+                tile.MouseLeftButtonUp += (o, args) =>
+                {
+                    device.OutlineColor = selectedChoice.Value;
+                    popup.IsOpen = false;
+                    args.Handled = true;
+                };
+                strip.Children.Add(tile);
+            }
+
+            popup.Child = shell;
+            popup.IsOpen = true;
             e.Handled = true;
         }
 

@@ -38,42 +38,50 @@ Require-Text $testProject '<Reference Include="WindowsBase" />' `
 $uiSmokeTest = Read-RepoText '.\UCR.Tests\UiTests\DeviceManagerPageSmokeTests.cs'
 Require-Text $testProject '<Compile Include="UiTests\DeviceManagerPageSmokeTests.cs" />' `
     'The real WPF Devices-page row-materialization smoke test is no longer compiled.'
-Require-Text $uiSmokeTest 'DeviceManagerPageMaterializesARowWhenItemsSourceHasADevice' `
-    'The Devices-page runtime smoke test has been removed or renamed unexpectedly.'
+Require-Text $uiSmokeTest 'DeviceManagerPageMaterializesRealDeviceRowAndColourButton' `
+    'The Devices-page runtime smoke test no longer exercises a real DeviceManagerItemViewModel.'
+Require-Text $uiSmokeTest 'new DeviceManagerItemViewModel' `
+    'The Devices-page smoke test has regressed to a fake row object and can miss real binding/template failures.'
 Require-Text $uiSmokeTest '[Apartment(ApartmentState.STA)]' `
     'The WPF Devices-page smoke test must run on an STA thread.'
+Require-Text $uiSmokeTest 'AvailableOutlineColors.Length, Is.EqualTo(10)' `
+    'The WPF smoke test no longer proves the real row has its full outline-colour model.'
 
 $appXaml = Read-RepoText '.\UCR\App.xaml'
 [xml]$null = $appXaml
-Require-Text $appXaml 'x:Key="DeviceOutlineButton"' `
-    'The device outline selector must be one compact current-colour button, not an always-visible palette.'
-Require-Text $appXaml 'x:Key="DeviceOutlineMenuItem"' `
-    'The compact device outline popup is missing its swatch item style.'
-Forbid-Regex $appXaml 'x:Key="DeviceOutlinePicker"|DeviceOutlineSwatchList|DeviceOutlineSwatchItem|TargetType="\{x:Type ComboBoxItem\}"' `
-    'The custom ComboBox outline picker must not return to the device-row rendering path.'
+Forbid-Regex $appXaml 'DeviceOutlinePicker|DeviceOutlineSwatchList|DeviceOutlineSwatchItem|DeviceOutlineButton|DeviceOutlineMenuItem' `
+    'Device outline picker templates must not live in Application resources; a picker failure must not block row materialisation.'
 
 Require-Text $deviceManagerVm 'Devices = new ObservableCollection<DeviceManagerItemViewModel>();' `
     'Device Manager collection initialization is missing.'
-Require-Text $deviceManagerVm '            Refresh();' `
-    'Device Manager must refresh live providers before its first population; otherwise the Devices page can open blank.'
+Require-Text $deviceManagerVm '            Populate();' `
+    'Device Manager must populate from the already-enumerated provider state on construction.'
+Forbid-Regex $deviceManagerVm 'Devices = new ObservableCollection<DeviceManagerItemViewModel>\(\);\s*Refresh\(\);' `
+    'Do not eagerly refresh providers while constructing Devices; that regression produced an empty real device list.'
 Require-Text $deviceManagerVm '_devicesManager.RefreshDeviceList();' `
-    'Device Manager no longer refreshes the live provider list before populating.'
+    'Explicit Device Manager refresh no longer refreshes the provider list when actually requested.'
 Require-Text $deviceManagerVm 'public Brush CurrentOutlineBrush' `
     'The compact colour button no longer exposes the currently selected outline brush.'
 
 foreach ($path in @('.\UCR\Views\Dialogs\DeviceManagerDialog.xaml', '.\UCR\Views\Dialogs\DeviceManagerPage.xaml')) {
     $text = Read-RepoText $path
     [xml]$null = $text
-    Forbid-Regex $text '<ComboBox[^>]+AvailableOutlineColors|DeviceOutlineSwatchList|DeviceOutlinePicker' `
-        "$path must not put a ComboBox or permanent palette back into every device row."
-    Require-Text $text 'Style="{StaticResource DeviceOutlineButton}"' `
+    Forbid-Regex $text '<ComboBox[^>]+AvailableOutlineColors|DeviceOutlineSwatchList|DeviceOutlinePicker|<Button.ContextMenu>|<ListBox[^>]+AvailableOutlineColors' `
+        "$path must not put picker infrastructure or a permanent palette into every device row."
+    Require-Text $text 'Click="OutlineColorButton_OnClick"' `
         "$path is missing the compact current-colour button."
     Require-Text $text 'Background="{Binding CurrentOutlineBrush}"' `
         "$path no longer shows the currently selected outline colour on the closed button."
-    Require-Text $text 'ItemsSource="{Binding PlacementTarget.DataContext.AvailableOutlineColors, RelativeSource={RelativeSource Self}}"' `
-        "$path is missing the on-demand swatch popup."
-    Require-Text $text 'Background="#252525"' `
-        "$path colour popup must use an opaque dark surface."
+}
+
+foreach ($path in @('.\UCR\Views\Dialogs\DeviceManagerDialog.xaml.cs', '.\UCR\Views\Dialogs\DeviceManagerPage.xaml.cs')) {
+    $text = Read-RepoText $path
+    Require-Text $text 'new System.Windows.Controls.Primitives.Popup' `
+        "$path must build the outline palette only after the user clicks the colour button."
+    Require-Text $text 'device.AvailableOutlineColors' `
+        "$path no longer builds the requested ten-colour palette from the device model."
+    Require-Text $text 'StaysOpen = false' `
+        "$path outline palette must close on click-away."
 }
 
 foreach ($path in @('.\UCR\Views\ProfileViews\ProfilePage.xaml', '.\UCR\Views\ProfileViews\ProfileWindow.xaml')) {
@@ -115,4 +123,4 @@ Forbid-Regex $mainWindowCode 'DialogHost\.Show\(new AppearanceDialog' `
 Require-Text $appearanceCode 'e.Key == Key.Escape' 'Escape cancellation is missing from the appearance picker.'
 Require-Text $appearanceCode 'CancelRequested?.Invoke' 'Escape no longer closes the appearance picker through its cancel path.'
 
-Write-Host 'Verified live-refreshing Devices page, compact on-demand colour menu, top-aligned Devices layout, rebuilt dark device configuration, and appearance-cancel UI guardrails.'
+Write-Host 'Verified population-first Devices page, real-row WPF smoke coverage, isolated on-demand colour popup, top-aligned Devices layout, rebuilt dark device configuration, and appearance-cancel UI guardrails.'
