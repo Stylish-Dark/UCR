@@ -73,10 +73,17 @@ namespace HidWizards.UCR.Tests.ModelTests
                 Directory.SetCurrentDirectory(temporary);
                 var applicationDirectory = RuntimePathManager.NormalizeWorkingDirectory();
 
-                Assert.That(Path.GetFullPath(Environment.CurrentDirectory),
-                    Is.EqualTo(Path.GetFullPath(AppDomain.CurrentDomain.BaseDirectory)));
-                Assert.That(Path.GetFullPath(applicationDirectory),
-                    Is.EqualTo(Path.GetFullPath(AppDomain.CurrentDomain.BaseDirectory)));
+                var expectedDirectory = Path.GetFullPath(AppDomain.CurrentDomain.BaseDirectory)
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+                Assert.That(
+                    Path.GetFullPath(Environment.CurrentDirectory)
+                        .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                    Is.EqualTo(expectedDirectory));
+                Assert.That(
+                    Path.GetFullPath(applicationDirectory)
+                        .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                    Is.EqualTo(expectedDirectory));
             }
             finally
             {
