@@ -364,6 +364,43 @@ jobs:
         shell: pwsh
         run: .\build\verify-ui-regressions.ps1
 
+      - name: Verify UCR test compile dependency closure
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $projectPath = '.\UCR.Tests\UCR.Tests.csproj'
+          [xml]$project = Get-Content -LiteralPath $projectPath -Raw
+          $namespace = New-Object System.Xml.XmlNamespaceManager -ArgumentList $project.NameTable
+          $namespace.AddNamespace('msb', 'http://schemas.microsoft.com/developer/msbuild/2003')
+
+          $requiredReferences = @(
+            @{ Include = 'IOWrapper.Core'; HintPath = '..\dependencies\IOWrapper\IOWrapper.Core.dll'; File = '.\dependencies\IOWrapper\IOWrapper.Core.dll' },
+            @{ Include = 'IOWrapper.DTOs'; HintPath = '..\dependencies\IOWrapper\IOWrapper.DTOs.dll'; File = '.\dependencies\IOWrapper\IOWrapper.DTOs.dll' },
+            @{ Include = 'IOWrapper.IProvider'; HintPath = '..\dependencies\IOWrapper\IOWrapper.IProvider.dll'; File = '.\dependencies\IOWrapper\IOWrapper.IProvider.dll' }
+          )
+
+          foreach ($required in $requiredReferences) {
+            $reference = $project.SelectSingleNode("/msb:Project/msb:ItemGroup/msb:Reference[@Include='$($required.Include)']", $namespace)
+            if ($null -eq $reference) {
+              throw "UCR.Tests is missing direct compile reference: $($required.Include)"
+            }
+
+            $hintPath = $reference.SelectSingleNode('msb:HintPath', $namespace)
+            if ($null -eq $hintPath -or $hintPath.InnerText -ne $required.HintPath) {
+              throw "UCR.Tests reference $($required.Include) has an unexpected HintPath. Expected '$($required.HintPath)'."
+            }
+
+            if (-not (Test-Path -LiteralPath $required.File -PathType Leaf)) {
+              throw "UCR.Tests compile dependency is not staged: $($required.File)"
+            }
+            if ((Get-Item -LiteralPath $required.File).Length -le 0) {
+              throw "UCR.Tests compile dependency is empty: $($required.File)"
+            }
+          }
+
+          Write-Host 'Verified UCR.Tests direct IOWrapper compile dependency closure.'
+
       - name: Build UCR Stylish Release
         shell: pwsh
         run: |
@@ -512,19 +549,22 @@ jobs:
           # The WPF smoke test initializes the real App resources. Old-style .NET Framework
           # project references do not reliably carry UCR's package dependencies transitively,
           # so require the test output to contain the exact theme assemblies before NUnit runs.
-          $wpfRuntimeDependencies = @(
+          $testRuntimeDependencies = @(
             '.\UCR.Tests\bin\Release\MaterialDesignThemes.Wpf.dll',
-            '.\UCR.Tests\bin\Release\MaterialDesignColors.dll'
+            '.\UCR.Tests\bin\Release\MaterialDesignColors.dll',
+            '.\UCR.Tests\bin\Release\IOWrapper.Core.dll',
+            '.\UCR.Tests\bin\Release\IOWrapper.DTOs.dll',
+            '.\UCR.Tests\bin\Release\IOWrapper.IProvider.dll'
           )
-          foreach ($dependency in $wpfRuntimeDependencies) {
+          foreach ($dependency in $testRuntimeDependencies) {
             if (-not (Test-Path -LiteralPath $dependency -PathType Leaf)) {
-              throw "WPF runtime test dependency is missing from UCR.Tests output: $dependency"
+              throw "Runtime test dependency is missing from UCR.Tests output: $dependency"
             }
             if ((Get-Item -LiteralPath $dependency).Length -le 0) {
-              throw "WPF runtime test dependency is empty: $dependency"
+              throw "Runtime test dependency is empty: $dependency"
             }
           }
-          Write-Host 'Verified WPF runtime test dependency closure.'
+          Write-Host 'Verified UCR.Tests runtime dependency closure.'
 
           & $runner $tests --noresult
           if ($LASTEXITCODE -ne 0) {

@@ -44,8 +44,17 @@
       <HintPath>..\packages\MaterialDesignThemes.2.5.1\lib\net45\MaterialDesignThemes.Wpf.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="IOWrapper.Core">
+      <HintPath>..\dependencies\IOWrapper\IOWrapper.Core.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="IOWrapper.DTOs">
       <HintPath>..\dependencies\IOWrapper\IOWrapper.DTOs.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="IOWrapper.IProvider">
+      <HintPath>..\dependencies\IOWrapper\IOWrapper.IProvider.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
