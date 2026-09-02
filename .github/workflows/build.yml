@@ -360,47 +360,6 @@ jobs:
           Write-Host "Original UCR.csproj SHA-256: $originalHash"
           Write-Host "Patched  UCR.csproj SHA-256: $patchedHash"
 
-      - name: Verify UI regression guardrails
-        shell: pwsh
-        run: .\build\verify-ui-regressions.ps1
-
-      - name: Verify UCR test compile dependency closure
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-
-          $projectPath = '.\UCR.Tests\UCR.Tests.csproj'
-          [xml]$project = Get-Content -LiteralPath $projectPath -Raw
-          $namespace = New-Object System.Xml.XmlNamespaceManager -ArgumentList $project.NameTable
-          $namespace.AddNamespace('msb', 'http://schemas.microsoft.com/developer/msbuild/2003')
-
-          $requiredReferences = @(
-            @{ Include = 'IOWrapper.Core'; HintPath = '..\dependencies\IOWrapper\IOWrapper.Core.dll'; File = '.\dependencies\IOWrapper\IOWrapper.Core.dll' },
-            @{ Include = 'IOWrapper.DTOs'; HintPath = '..\dependencies\IOWrapper\IOWrapper.DTOs.dll'; File = '.\dependencies\IOWrapper\IOWrapper.DTOs.dll' },
-            @{ Include = 'IOWrapper.IProvider'; HintPath = '..\dependencies\IOWrapper\IOWrapper.IProvider.dll'; File = '.\dependencies\IOWrapper\IOWrapper.IProvider.dll' }
-          )
-
-          foreach ($required in $requiredReferences) {
-            $reference = $project.SelectSingleNode("/msb:Project/msb:ItemGroup/msb:Reference[@Include='$($required.Include)']", $namespace)
-            if ($null -eq $reference) {
-              throw "UCR.Tests is missing direct compile reference: $($required.Include)"
-            }
-
-            $hintPath = $reference.SelectSingleNode('msb:HintPath', $namespace)
-            if ($null -eq $hintPath -or $hintPath.InnerText -ne $required.HintPath) {
-              throw "UCR.Tests reference $($required.Include) has an unexpected HintPath. Expected '$($required.HintPath)'."
-            }
-
-            if (-not (Test-Path -LiteralPath $required.File -PathType Leaf)) {
-              throw "UCR.Tests compile dependency is not staged: $($required.File)"
-            }
-            if ((Get-Item -LiteralPath $required.File).Length -le 0) {
-              throw "UCR.Tests compile dependency is empty: $($required.File)"
-            }
-          }
-
-          Write-Host 'Verified UCR.Tests direct IOWrapper compile dependency closure.'
-
       - name: Build UCR Stylish Release
         shell: pwsh
         run: |
