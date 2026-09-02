@@ -443,6 +443,58 @@ jobs:
             Write-Host "Verified final provider DLL: $($item.Path) [$actual]"
           }
 
+      - name: Verify provider entry DLLs in final runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $providerEntries = @(
+            '.\UCR\bin\Release\Providers\Core_DS4WindowsApi\Core_DS4WindowsApi.dll',
+            '.\UCR\bin\Release\Providers\Core_Interception\Core_Interception.dll',
+            '.\UCR\bin\Release\Providers\Core_Midi\Core_Midi.dll',
+            '.\UCR\bin\Release\Providers\Core_SpaceMouse\Core_SpaceMouse.dll',
+            '.\UCR\bin\Release\Providers\Core_TitanOne\Core_TitanOne.dll',
+            '.\UCR\bin\Release\Providers\Core_Tobii_Interaction\Core_Tobii_Interaction.dll',
+            '.\UCR\bin\Release\Providers\Core_ViGEm\Core_ViGEm.dll',
+            '.\UCR\bin\Release\Providers\Core_vJoyInterfaceWrap\Core_vJoyInterfaceWrap.dll',
+            '.\UCR\bin\Release\Providers\SharpDX_DirectInput\SharpDX_DirectInput.dll',
+            '.\UCR\bin\Release\Providers\SharpDX_XInput\SharpDX_XInput.dll'
+          )
+
+          foreach ($providerEntry in $providerEntries) {
+            if (-not (Test-Path -LiteralPath $providerEntry -PathType Leaf)) {
+              throw "Provider entry DLL is missing from final runtime: $providerEntry"
+            }
+            $providerEntryInfo = Get-Item -LiteralPath $providerEntry
+            if ($providerEntryInfo.Length -le 0) {
+              throw "Provider entry DLL is empty in final runtime: $providerEntry"
+            }
+            Write-Host "Verified provider entry DLL: $providerEntry [$($providerEntryInfo.Length) bytes]"
+          }
+
+          Write-Host "Verified all $($providerEntries.Count) expected IOWrapper provider entry DLLs in final runtime."
+
+      - name: Smoke-test final IOWrapper provider composition
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          # UCR runs on the 32-bit .NET Framework path. Test the deployed providers in that same
+          # CLR/bitness rather than loading net452 assemblies into 64-bit PowerShell 7.
+          $x86PowerShell = Join-Path $env:WINDIR 'SysWOW64\WindowsPowerShell\v1.0\powershell.exe'
+          if (-not (Test-Path -LiteralPath $x86PowerShell -PathType Leaf)) {
+            throw "32-bit Windows PowerShell is unavailable: $x86PowerShell"
+          }
+
+          & $x86PowerShell -NoProfile -NonInteractive -ExecutionPolicy Bypass `
+            -File '.\build\verify-provider-composition.ps1' `
+            -RuntimePath '.\UCR\bin\Release'
+          if ($LASTEXITCODE -ne 0) {
+            throw "Final provider-composition smoke test failed with exit code $LASTEXITCODE."
+          }
+
+          Write-Host 'Verified final deployed IOWrapper provider composition in the 32-bit .NET Framework runtime.'
+
       - name: Run UCR unit tests
         shell: pwsh
         run: |

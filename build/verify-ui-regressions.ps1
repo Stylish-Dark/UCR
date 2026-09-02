@@ -18,7 +18,16 @@ function Forbid-Regex([string]$Text, [string]$Pattern, [string]$Message) {
 $deviceModel = Read-RepoText '.\UCR.Core\Models\Device.cs'
 $deviceVisuals = Read-RepoText '.\UCR\ViewModels\Presentation\DeviceVisualDescriptor.cs'
 $deviceManagerVm = Read-RepoText '.\UCR\ViewModels\Dashboard\DeviceManagerViewModel.cs'
+$devicesManager = Read-RepoText '.\UCR.Core\Managers\DevicesManager.cs'
+$appCode = Read-RepoText '.\UCR\App.xaml.cs'
+$runtimePathManager = Read-RepoText '.\UCR.Core\Utilities\RuntimePathManager.cs'
 $testProject = Read-RepoText '.\UCR.Tests\UCR.Tests.csproj'
+
+$providerCompositionSmoke = Read-RepoText '.\build\verify-provider-composition.ps1'
+Require-Text $providerCompositionSmoke "Core_Interception" `
+    'Provider-composition smoke test no longer requires Core_Interception.'
+Require-Text $providerCompositionSmoke "Core_ViGEm" `
+    'Provider-composition smoke test no longer requires Core_ViGEm.'
 
 Forbid-Regex $deviceModel 'GenerateUniqueDefault|StableHash|HslToHex' `
     'Generated/random default device colours must not return. Default means the original semantic device colour.'
@@ -62,6 +71,50 @@ Require-Text $deviceManagerVm '_devicesManager.RefreshDeviceList();' `
     'Explicit Device Manager refresh no longer refreshes the provider list when actually requested.'
 Require-Text $deviceManagerVm 'public Brush CurrentOutlineBrush' `
     'The compact colour button no longer exposes the currently selected outline brush.'
+
+Require-Text $devicesManager 'public List<Device> GetManagementDeviceList(DeviceIoType type)' `
+    'The Devices page has lost its management-specific resilient inventory.'
+Require-Text $devicesManager 'var configured = GetConfiguredManagementDevices(type).ToList();' `
+    'Persisted profile devices are no longer collected for the management fallback.'
+Require-Text $devicesManager 'AddManagementCandidates(candidates, configured);' `
+    'Persisted profile devices are no longer merged when live enumeration fails.'
+Require-Text $devicesManager 'var cached = LoadAllDeviceCaches().ToList();' `
+    'Persisted input cache devices are no longer collected for the management fallback.'
+Require-Text $devicesManager 'AddManagementCandidates(candidates, cached);' `
+    'Persisted input cache devices are no longer merged into the management fallback.'
+Require-Text $deviceManagerVm '_devicesManager.GetManagementDeviceList(DeviceIoType.Input)' `
+    'Device Manager no longer computes removed-input state from the resilient management inventory.'
+Require-Text $deviceManagerVm '_devicesManager.GetManagementDeviceList(type)' `
+    'Device Manager rows no longer come from the resilient management inventory.'
+Require-Text $devicesManager 'public bool HasLoadedProviderReports()' `
+    'Runtime health can no longer distinguish mapping-plugin success from missing IOWrapper providers.'
+Require-Text $appCode 'RuntimePathManager.NormalizeWorkingDirectory();' `
+    'UCR must normalize relative Providers/Plugins/Cache/context paths to the executable directory at startup.'
+Require-Text $runtimePathManager 'Directory.SetCurrentDirectory(applicationDirectory);' `
+    'Runtime path normalization no longer anchors the process working directory to the executable directory.'
+Require-Text $appCode 'context.DevicesManager.HasLoadedProviderReports()' `
+    'Blocked-DLL recovery no longer validates IOWrapper device-provider availability.'
+
+$normalizeIndex = $appCode.IndexOf('RuntimePathManager.NormalizeWorkingDirectory();', [System.StringComparison]::Ordinal)
+$loggerIndex = $appCode.IndexOf('Logger.InitializeSession();', [System.StringComparison]::Ordinal)
+if ($normalizeIndex -lt 0 -or $loggerIndex -lt 0 -or $normalizeIndex -gt $loggerIndex) {
+    throw 'Runtime working-directory normalization must happen before logging and all provider/plugin/context initialization.'
+}
+
+$inventoryTests = Read-RepoText '.\UCR.Tests\ModelTests\DeviceManagementInventoryTests.cs'
+Require-Text $testProject '<Compile Include="ModelTests\DeviceManagementInventoryTests.cs" />' `
+    'The resilient management-inventory regression tests are no longer compiled.'
+foreach ($testName in @(
+    'ManagementInventoryKeepsConfiguredDevicesWhenIoControllerIsUnavailable',
+    'ManagementInventoryIncludesNestedProfileAndShadowDevicesWithoutDuplicatingPrimaryDevice',
+    'ManagementInventoryKeepsDistinctLogicalOutputSlots',
+    'DeviceManagerViewModelUsesConfiguredFallbackWhenIoControllerIsUnavailable',
+    'DeviceManagerViewModelExplainsEmptyInventoryWhenProvidersUnavailable',
+    'ProviderHealthCheckReportsUnavailableControllerInsteadOfPretendingRuntimeIsHealthy',
+    'RuntimePathManagerNormalizesRelativeRuntimePathsToExecutableDirectory'
+)) {
+    Require-Text $inventoryTests $testName "Required Devices-management regression test is missing: $testName"
+}
 
 foreach ($path in @('.\UCR\Views\Dialogs\DeviceManagerDialog.xaml', '.\UCR\Views\Dialogs\DeviceManagerPage.xaml')) {
     $text = Read-RepoText $path
@@ -123,4 +176,4 @@ Forbid-Regex $mainWindowCode 'DialogHost\.Show\(new AppearanceDialog' `
 Require-Text $appearanceCode 'e.Key == Key.Escape' 'Escape cancellation is missing from the appearance picker.'
 Require-Text $appearanceCode 'CancelRequested?.Invoke' 'Escape no longer closes the appearance picker through its cancel path.'
 
-Write-Host 'Verified population-first Devices page, real-row WPF smoke coverage, isolated on-demand colour popup, top-aligned Devices layout, rebuilt dark device configuration, and appearance-cancel UI guardrails.'
+Write-Host 'Verified resilient Devices inventory/provider health, executable-root runtime paths, population-first Devices page, real-row WPF smoke coverage, isolated on-demand colour popup, top-aligned Devices layout, rebuilt dark device configuration, and appearance-cancel UI guardrails.'

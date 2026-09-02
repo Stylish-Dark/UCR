@@ -112,6 +112,7 @@
     <Compile Include="Utilities\Functions.cs" />
     <Compile Include="Utilities\InputValidation.cs" />
     <Compile Include="Utilities\Logger.cs" />
+    <Compile Include="Utilities\RuntimePathManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="NLog.config">

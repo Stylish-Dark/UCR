@@ -234,7 +234,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         {
             Devices.Clear();
             var byStableIdentity = new Dictionary<string, DeviceManagerItemViewModel>(StringComparer.OrdinalIgnoreCase);
-            var allInputs = _devicesManager.GetAvailableDeviceList(DeviceIoType.Input);
+            var allInputs = _devicesManager.GetManagementDeviceList(DeviceIoType.Input);
             var removedInputKeys = new HashSet<string>(
                 allInputs.Where(_devicesManager.IsInputRemoved)
                     .Select(BuildLogicalInstanceKey)
@@ -250,15 +250,38 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 .ToList();
             Devices.Clear();
             foreach (var item in ordered) Devices.Add(item);
-            Logger.Info("Device Manager populated " + Devices.Count + " device row(s).");
+
+            if (Devices.Count == 0)
+            {
+                DetectionStatus = _devicesManager.HasLoadedProviderReports()
+                    ? "No devices are currently available to UCR."
+                    : "Device providers are unavailable. Check the UCR log or restart and accept the unblock prompt if offered.";
+            }
+            else if (!IsDetecting)
+            {
+                // A successful population supersedes a stale provider/refresh warning from an earlier visit.
+                DetectionStatus = null;
+            }
+
+            Logger.Info("Device Manager populated " + Devices.Count + " device row(s)." +
+                        (string.IsNullOrWhiteSpace(DetectionStatus) ? string.Empty : " Status: " + DetectionStatus));
         }
 
         private void AddDevices(DeviceIoType type,
             IDictionary<string, DeviceManagerItemViewModel> byStableIdentity,
             ISet<string> removedInputKeys)
         {
-            var liveDevices = _devicesManager.GetAvailableDeviceList(type, false);
-            var devices = _devicesManager.GetAvailableDeviceList(type);
+            List<Device> liveDevices;
+            try
+            {
+                liveDevices = _devicesManager.GetAvailableDeviceList(type, false);
+            }
+            catch (Exception exception)
+            {
+                Logger.Error("Unable to enumerate live devices while building Device Manager", exception);
+                liveDevices = new List<Device>();
+            }
+            var devices = _devicesManager.GetManagementDeviceList(type);
             foreach (var device in devices)
             {
                 var logicalInstanceKey = BuildLogicalInstanceKey(device);
@@ -402,7 +425,15 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public void Refresh()
         {
             if (_disposed) return;
-            _devicesManager.RefreshDeviceList();
+            try
+            {
+                _devicesManager.RefreshDeviceList();
+            }
+            catch (Exception exception)
+            {
+                Logger.Error("Unable to refresh live devices from Device Manager", exception);
+                DetectionStatus = "Live device refresh failed. Showing devices already known to UCR.";
+            }
             Populate();
         }
 

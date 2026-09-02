@@ -40,6 +40,7 @@ namespace HidWizards.UCR
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+            RuntimePathManager.NormalizeWorkingDirectory();
             Logger.InitializeSession();
             AppearanceManager.ApplySavedAccent();
             AppearanceManager.ApplySavedUiScale();
@@ -203,9 +204,12 @@ namespace HidWizards.UCR
 
         private void CheckForBlockedDll()
         {
-            if (context.GetPlugins().Count != 0) return;
+            var mappingPluginsLoaded = context.GetPlugins().Count != 0;
+            var deviceProvidersLoaded = context.DevicesManager.HasLoadedProviderReports();
+            if (mappingPluginsLoaded && deviceProvidersLoaded) return;
 
-            var result = HidWizards.UCR.Utilities.DarkMessageBox.Show("UCR has detected blocked files which are required, do you want to unblock blocked UCR files?", "Unblock files?", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            Logger.Warn($"Required runtime component check failed. Mapping plugins loaded: {mappingPluginsLoaded}; device provider reports loaded: {deviceProvidersLoaded}.");
+            var result = HidWizards.UCR.Utilities.DarkMessageBox.Show("UCR could not load one or more required plugin/provider DLLs. Do you want to unblock the UCR files and retry?", "Unblock files?", MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (result != MessageBoxResult.Yes) return;
 
             UpdateSplash("Unblocking UCR files...");
@@ -230,6 +234,10 @@ namespace HidWizards.UCR
             }
 
             InitializeUcr();
+            if (context.GetPlugins().Count == 0 || !context.DevicesManager.HasLoadedProviderReports())
+            {
+                Logger.Error("Required UCR plugins/providers are still unavailable after the unblock retry.");
+            }
         }
 
         private static Process[] GetProcesses()

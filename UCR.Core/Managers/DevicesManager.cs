@@ -64,6 +64,171 @@ namespace HidWizards.UCR.Core.Managers
             return SortDevices(result);
         }
 
+        /// <summary>
+        /// Returns the inventory used by the global Devices management page. Live provider state remains
+        /// authoritative when it is available, but management must not become an empty screen merely because
+        /// provider discovery is temporarily unavailable. Persisted profile devices and on-disk cache entries
+        /// are therefore merged as disconnected fallbacks without changing the operational selection APIs.
+        /// </summary>
+        public List<Device> GetManagementDeviceList(DeviceIoType type)
+        {
+            var candidates = new List<Device>();
+            var liveCount = 0;
+            var configuredCount = 0;
+            var cacheCount = 0;
+
+            try
+            {
+                var liveAndProviderCache = GetRawAvailableDeviceList(type, true);
+                liveCount = liveAndProviderCache.Count;
+                AddManagementCandidates(candidates, liveAndProviderCache);
+            }
+            catch (Exception exception)
+            {
+                Logger.Error(exception, "Unable to enumerate live devices for the Devices management inventory");
+            }
+
+            var configured = GetConfiguredManagementDevices(type).ToList();
+            configuredCount = configured.Count;
+            AddManagementCandidates(candidates, configured);
+
+            // UCR's cache writer persists input-device descriptors. Do not reinterpret those files as
+            // output capability when live provider reports are unavailable.
+            if (type == DeviceIoType.Input)
+            {
+                var cached = LoadAllDeviceCaches().ToList();
+                cacheCount = cached.Count;
+                AddManagementCandidates(candidates, cached);
+            }
+
+            var result = CollapseLogicalDevicesForDisplay(candidates, type);
+            ApplyAliases(result);
+            result = SortDevices(result);
+            Logger.Info($"Devices management inventory {type}: provider/cache={liveCount}, configured={configuredCount}, global-cache={cacheCount}, final={result.Count}");
+            return result;
+        }
+
+        public bool HasLoadedProviderReports()
+        {
+            if (_context.IOController == null) return false;
+
+            try
+            {
+                var inputs = _context.IOController.GetInputList();
+                var outputs = _context.IOController.GetOutputList();
+                return (inputs != null && inputs.Count > 0) || (outputs != null && outputs.Count > 0);
+            }
+            catch (Exception exception)
+            {
+                Logger.Error(exception, "Unable to query IOWrapper provider health");
+                return false;
+            }
+        }
+
+        private IEnumerable<Device> GetConfiguredManagementDevices(DeviceIoType type)
+        {
+            foreach (var profile in EnumerateProfiles(_context.Profiles))
+            {
+                var configurations = type == DeviceIoType.Input
+                    ? profile.InputDeviceConfigurations
+                    : profile.OutputDeviceConfigurations;
+                if (configurations == null) continue;
+
+                foreach (var configuration in configurations)
+                {
+                    if (configuration == null) continue;
+                    if (configuration.Device != null) yield return CloneAsDisconnectedManagementDevice(configuration.Device);
+                    if (configuration.ShadowDevices == null) continue;
+                    foreach (var shadow in configuration.ShadowDevices)
+                    {
+                        if (shadow != null) yield return CloneAsDisconnectedManagementDevice(shadow);
+                    }
+                }
+            }
+        }
+
+        private static IEnumerable<Profile> EnumerateProfiles(IEnumerable<Profile> roots)
+        {
+            if (roots == null) yield break;
+            var stack = new Stack<Profile>(roots.Where(profile => profile != null).Reverse());
+            while (stack.Count > 0)
+            {
+                var profile = stack.Pop();
+                yield return profile;
+                if (profile.ChildProfiles == null) continue;
+                for (var index = profile.ChildProfiles.Count - 1; index >= 0; index--)
+                {
+                    var child = profile.ChildProfiles[index];
+                    if (child != null) stack.Push(child);
+                }
+            }
+        }
+
+        private static Device CloneAsDisconnectedManagementDevice(Device source)
+        {
+            return new Device(source.Title, source.ProviderName, source.DeviceHandle, source.DeviceNumber)
+            {
+                HidPath = source.HidPath,
+                LogicalInstanceNumber = Math.Max(1, source.LogicalInstanceNumber),
+                IsCache = true
+            };
+        }
+
+        private void AddManagementCandidates(ICollection<Device> target, IEnumerable<Device> candidates)
+        {
+            if (candidates == null) return;
+            foreach (var candidate in candidates)
+            {
+                if (candidate == null || string.IsNullOrWhiteSpace(candidate.ProviderName)) continue;
+
+                var existing = target.FirstOrDefault(device => ManagementIdentityEquals(device, candidate));
+                if (existing == null)
+                {
+                    target.Add(candidate);
+                    continue;
+                }
+
+                // Prefer a live provider object over a persisted/cache fallback for the same endpoint.
+                if (existing.IsCache && !candidate.IsCache)
+                {
+                    target.Remove(existing);
+                    target.Add(candidate);
+                }
+            }
+        }
+
+        private static bool ManagementIdentityEquals(Device left, Device right)
+        {
+            if (left == null || right == null) return false;
+            if (DescriptorEquals(left, right)) return true;
+            return LogicalIdentityEquals(left, right) &&
+                   Math.Max(1, left.LogicalInstanceNumber) == Math.Max(1, right.LogicalInstanceNumber);
+        }
+
+        private IEnumerable<Device> LoadAllDeviceCaches()
+        {
+            const string cacheRoot = @".\Cache";
+            if (!Directory.Exists(cacheRoot)) yield break;
+
+            string[] providerDirectories;
+            try
+            {
+                providerDirectories = Directory.GetDirectories(cacheRoot, "*", SearchOption.TopDirectoryOnly);
+            }
+            catch (Exception exception)
+            {
+                Logger.Error(exception, "Unable to enumerate the device cache root");
+                yield break;
+            }
+
+            foreach (var providerDirectory in providerDirectories)
+            {
+                var provider = Path.GetFileName(providerDirectory);
+                if (string.IsNullOrWhiteSpace(provider)) continue;
+                foreach (var device in LoadDeviceCache(provider)) yield return device;
+            }
+        }
+
         private List<Device> GetRawAvailableDeviceList(DeviceIoType type, bool includeCache)
         {
             var result = new List<Device>();
