@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using HidWizards.IOWrapper.DataTransferObjects;
+using HidWizards.IOWrapper.ProviderInterface.Interfaces;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Core.Utilities;
@@ -65,52 +67,162 @@ namespace HidWizards.UCR.Core.Managers
         }
 
         /// <summary>
-        /// Returns the runtime inventory used by the global Devices page. Provider-backed state is the
-        /// authority; persisted profile configuration is not a substitute for successful enumeration.
+        /// Returns the inventory used by the global Devices page. Live provider reports remain authoritative.
+        /// If provider enumeration is temporarily unavailable, the input side may fall back to UCR's real
+        /// provider-generated device cache; profile configuration is never fabricated into inventory rows.
         /// </summary>
         public List<Device> GetManagementDeviceList(DeviceIoType type)
         {
-            if (_context.IOController == null) return new List<Device>();
+            if (_context.IOController != null)
+            {
+                try
+                {
+                    var devices = GetAvailableDeviceList(type);
+                    if (devices.Count > 0 || type == DeviceIoType.Output) return devices;
+                }
+                catch (Exception exception)
+                {
+                    Logger.Error(exception, "Unable to enumerate devices for the Devices management page");
+                }
+            }
 
+            // Device caches are provider-generated records of hardware UCR has actually enumerated before.
+            // They are a valid management fallback when live provider enumeration is temporarily unavailable,
+            // unlike profile configuration rows, which can be stale or refer to entirely different machines.
+            return type == DeviceIoType.Input
+                ? GetCachedManagementInputInventory()
+                : new List<Device>();
+        }
+
+        private List<Device> GetCachedManagementInputInventory()
+        {
+            const string cacheRoot = @".\Cache";
+            if (!Directory.Exists(cacheRoot)) return new List<Device>();
+
+            var cachedDevices = new List<Device>();
+            string[] providerDirectories;
             try
             {
-                return GetAvailableDeviceList(type);
+                providerDirectories = Directory.GetDirectories(cacheRoot, "*", SearchOption.TopDirectoryOnly);
             }
             catch (Exception exception)
             {
-                Logger.Error(exception, "Unable to enumerate devices for the Devices management page");
-                return new List<Device>();
+                Logger.Error(exception, "Unable to enumerate provider cache directories for the Devices management page");
+                return cachedDevices;
             }
+
+            foreach (var providerDirectory in providerDirectories)
+            {
+                var providerName = new DirectoryInfo(providerDirectory).Name;
+                if (string.IsNullOrWhiteSpace(providerName)) continue;
+
+                try
+                {
+                    cachedDevices.AddRange(LoadDeviceCache(providerName));
+                }
+                catch (Exception exception)
+                {
+                    Logger.Error(exception, "Unable to load cached Devices inventory for provider: " + providerName);
+                }
+            }
+
+            var result = CollapseLogicalDevicesForDisplay(cachedDevices, DeviceIoType.Input);
+            ApplyAliases(result);
+            return SortDevices(result);
         }
 
         public bool HasLoadedProviderReports()
         {
             if (_context.IOController == null) return false;
 
+            var inputs = GetProviderReportsResilient(DeviceIoType.Input);
+            var outputs = GetProviderReportsResilient(DeviceIoType.Output);
+            return inputs.Count > 0 || outputs.Count > 0;
+        }
+
+        private SortedDictionary<string, ProviderReport> GetProviderReportsResilient(DeviceIoType type)
+        {
+            if (_context.IOController == null) return new SortedDictionary<string, ProviderReport>();
+
             try
             {
-                var inputs = _context.IOController.GetInputList();
-                var outputs = _context.IOController.GetOutputList();
-                return (inputs != null && inputs.Count > 0) || (outputs != null && outputs.Count > 0);
+                // IOWrapper's aggregate GetInputList/GetOutputList calls every provider without isolating
+                // exceptions. One bad optional provider must not hide every healthy keyboard/controller.
+                // The pinned IOWrapper exposes its provider dictionary through this stable private field;
+                // CI's provider-composition smoke test already verifies the same field contract.
+                var providersField = _context.IOController.GetType().GetField(
+                    "_providers", BindingFlags.Instance | BindingFlags.NonPublic);
+                var providers = providersField?.GetValue(_context.IOController) as IDictionary<string, IProvider>;
+                if (providers == null)
+                {
+                    return type == DeviceIoType.Input
+                        ? _context.IOController.GetInputList()
+                        : _context.IOController.GetOutputList();
+                }
+
+                var probes = new List<KeyValuePair<string, Func<ProviderReport>>>();
+                foreach (var entry in providers)
+                {
+                    var providerName = entry.Key;
+                    var provider = entry.Value;
+                    if (provider == null || string.IsNullOrWhiteSpace(providerName)) continue;
+
+                    if (type == DeviceIoType.Input && provider is IInputProvider inputProvider)
+                    {
+                        probes.Add(new KeyValuePair<string, Func<ProviderReport>>(
+                            providerName, () => inputProvider.GetInputList()));
+                    }
+                    else if (type == DeviceIoType.Output && provider is IOutputProvider outputProvider)
+                    {
+                        probes.Add(new KeyValuePair<string, Func<ProviderReport>>(
+                            providerName, () => outputProvider.GetOutputList()));
+                    }
+                }
+
+                return CollectProviderReports(probes, (providerName, exception) =>
+                    Logger.Error(exception, "Unable to enumerate " + type + " devices from provider: " + providerName));
             }
             catch (Exception exception)
             {
-                Logger.Error(exception, "Unable to query IOWrapper provider health");
-                return false;
+                Logger.Error(exception, "Unable to enumerate IOWrapper providers individually");
+                return new SortedDictionary<string, ProviderReport>();
             }
+        }
+
+        internal static SortedDictionary<string, ProviderReport> CollectProviderReports(
+            IEnumerable<KeyValuePair<string, Func<ProviderReport>>> probes,
+            Action<string, Exception> onProviderError = null)
+        {
+            var reports = new SortedDictionary<string, ProviderReport>(StringComparer.OrdinalIgnoreCase);
+            if (probes == null) return reports;
+
+            foreach (var probe in probes)
+            {
+                try
+                {
+                    var report = probe.Value?.Invoke();
+                    if (report != null && !string.IsNullOrWhiteSpace(probe.Key)) reports[probe.Key] = report;
+                }
+                catch (Exception exception)
+                {
+                    onProviderError?.Invoke(probe.Key, exception);
+                }
+            }
+
+            return reports;
         }
 
         private List<Device> GetRawAvailableDeviceList(DeviceIoType type, bool includeCache)
         {
             var result = new List<Device>();
-            var providerList = type == DeviceIoType.Input
-                ? _context.IOController.GetInputList()
-                : _context.IOController.GetOutputList();
+            var providerList = GetProviderReportsResilient(type);
 
             foreach (var providerReport in providerList)
             {
-                foreach (var ioWrapperDevice in providerReport.Value.Devices)
+                var devices = providerReport.Value?.Devices ?? new List<DeviceReport>();
+                foreach (var ioWrapperDevice in devices)
                 {
+                    if (ioWrapperDevice == null) continue;
                     result.Add(new Device(ioWrapperDevice, providerReport.Value, BuildDeviceBindingMenu(ioWrapperDevice.Nodes, type)));
                 }
 

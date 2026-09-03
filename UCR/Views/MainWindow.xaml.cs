@@ -453,15 +453,16 @@ namespace HidWizards.UCR.Views
         {
             var dialog = new OpenFileDialog
             {
-                Title = "Import UCR profile or profile list",
-                Filter = "UCR files (*.ucrprofile;*.ucrprofiles)|*.ucrprofile;*.ucrprofiles|UCR profile (*.ucrprofile)|*.ucrprofile|UCR profile list (*.ucrprofiles)|*.ucrprofiles",
+                Title = "Import UCR profile, profile list, or legacy context",
+                Filter = "UCR import files (*.ucrprofile;*.ucrprofiles;context.xml)|*.ucrprofile;*.ucrprofiles;context.xml|UCR profile (*.ucrprofile)|*.ucrprofile|UCR profile list (*.ucrprofiles)|*.ucrprofiles|Legacy UCR context (context.xml)|context.xml",
                 CheckFileExists = true,
                 Multiselect = false
             };
             if (dialog.ShowDialog(this) != true) return;
 
             var extension = Path.GetExtension(dialog.FileName);
-            if (string.Equals(extension, ".ucrprofiles", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(extension, ".ucrprofiles", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(extension, ".xml", StringComparison.OrdinalIgnoreCase))
             {
                 ImportProfileListFromPath(dialog.FileName);
             }
@@ -701,8 +702,8 @@ namespace HidWizards.UCR.Views
         {
             var dialog = new OpenFileDialog
             {
-                Title = "Import UCR profile list",
-                Filter = "UCR profile list (*.ucrprofiles)|*.ucrprofiles",
+                Title = "Import UCR profile list or legacy context",
+                Filter = "UCR profile list or legacy context (*.ucrprofiles;context.xml)|*.ucrprofiles;context.xml|UCR profile list (*.ucrprofiles)|*.ucrprofiles|Legacy UCR context (context.xml)|context.xml",
                 DefaultExt = ".ucrprofiles",
                 CheckFileExists = true,
                 Multiselect = false

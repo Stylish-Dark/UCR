@@ -23,8 +23,13 @@ namespace HidWizards.UCR.Tests.UiTests
             public string DetectionStatus => string.Empty;
 
             public FakeDevicePageViewModel(DeviceManagerItemViewModel device)
+                : this(new[] { device })
             {
-                Devices = new List<DeviceManagerItemViewModel> { device };
+            }
+
+            public FakeDevicePageViewModel(IEnumerable<DeviceManagerItemViewModel> devices)
+            {
+                Devices = devices.ToList();
             }
         }
 
@@ -58,12 +63,54 @@ namespace HidWizards.UCR.Tests.UiTests
 
             var aliasBox = FindVisualChildren<TextBox>(row).FirstOrDefault();
             Assert.That(aliasBox, Is.Not.Null, "The real device row failed before its friendly-name editor was created.");
+            Assert.That(aliasBox.FontSize, Is.GreaterThanOrEqualTo(16),
+                "Friendly names should visually fill the editor rather than render like small form text.");
+            Assert.That(aliasBox.FontWeight, Is.EqualTo(FontWeights.SemiBold),
+                "Friendly names should be slightly emphasized.");
+            Assert.That(aliasBox.Padding.Left, Is.GreaterThanOrEqualTo(8));
+            Assert.That(ScrollViewer.GetVerticalScrollBarVisibility(list), Is.EqualTo(ScrollBarVisibility.Auto));
 
             var colourButton = FindVisualChildren<Button>(row)
                 .FirstOrDefault(candidate => (candidate.ToolTip as string)?.StartsWith("Outline colour") == true);
             Assert.That(colourButton, Is.Not.Null,
                 "The real device row failed before its compact outline-colour button was created.");
             Assert.That(colourButton.ActualHeight, Is.GreaterThan(0));
+        }
+
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void DeviceManagerPageUsesSlimVerticalScrollbarWhenRowsOverflow()
+        {
+            EnsureApplicationResources();
+
+            var items = Enumerable.Range(0, 24)
+                .Select(index => new DeviceManagerItemViewModel(
+                    new Device("Keyboard " + index, "Core_Interception", "Keyboard\\" + index, index),
+                    DeviceIoType.Input, true, null, false, "keyboard", DeviceOutlineColor.Default))
+                .ToList();
+
+            var page = new DeviceManagerPage();
+            page.DataContext = new FakeDevicePageViewModel(items);
+            page.Measure(new Size(900, 360));
+            page.Arrange(new Rect(0, 0, 900, 360));
+            page.UpdateLayout();
+
+            var list = page.FindName("DeviceList") as ListView;
+            Assert.That(list, Is.Not.Null);
+            list.UpdateLayout();
+
+            var verticalScrollBar = FindVisualChildren<ScrollBar>(list)
+                .FirstOrDefault(scrollBar => scrollBar.Orientation == Orientation.Vertical && scrollBar.Visibility == Visibility.Visible);
+            Assert.That(verticalScrollBar, Is.Not.Null,
+                "Overflowing device rows should expose a vertical scrollbar.");
+            Assert.That(verticalScrollBar.ActualWidth, Is.GreaterThan(0));
+            Assert.That(verticalScrollBar.ActualWidth, Is.LessThanOrEqualTo(9),
+                "The Devices scrollbar should stay sleek and narrow.");
+            var track = verticalScrollBar.Template.FindName("PART_Track", verticalScrollBar) as System.Windows.Controls.Primitives.Track;
+            Assert.That(track, Is.Not.Null);
+            Assert.That(track.Orientation, Is.EqualTo(Orientation.Vertical),
+                "The slim scrollbar template must preserve vertical track orientation.");
         }
 
         private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Xml;
 using System.Xml.Serialization;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
@@ -40,6 +41,24 @@ namespace HidWizards.UCR.Core.Managers
         public List<DeviceAlias> DeviceAliases { get; set; }
 
         public ProfileExportPackage()
+        {
+            Profiles = new List<Profile>();
+            DeviceAliases = new List<DeviceAlias>();
+        }
+    }
+
+    [XmlRoot("Context")]
+    public class LegacyContextImportPackage
+    {
+        [XmlArray("Profiles")]
+        [XmlArrayItem("Profile")]
+        public List<Profile> Profiles { get; set; }
+
+        [XmlArray("DeviceAliases")]
+        [XmlArrayItem("DeviceAlias")]
+        public List<DeviceAlias> DeviceAliases { get; set; }
+
+        public LegacyContextImportPackage()
         {
             Profiles = new List<Profile>();
             DeviceAliases = new List<DeviceAlias>();
@@ -180,7 +199,7 @@ namespace HidWizards.UCR.Core.Managers
         public int ImportProfileList(string filePath, ProfileListImportMode mode, List<Type> pluginTypes = null)
         {
             ValidateFilePath(filePath);
-            var package = DeserializePackage(filePath, pluginTypes);
+            var package = DeserializeProfileListPackage(filePath, pluginTypes);
             ValidatePackage(package, ProfileExportKind.ProfileList);
 
             if (mode == ProfileListImportMode.Merge)
@@ -336,6 +355,45 @@ namespace HidWizards.UCR.Core.Managers
             using (var writer = new StreamWriter(fileStream, new UTF8Encoding(false)))
             {
                 serializer.Serialize(writer, package);
+            }
+        }
+
+        private static ProfileExportPackage DeserializeProfileListPackage(string filePath, List<Type> pluginTypes)
+        {
+            if (!string.Equals(ReadRootElementName(filePath), "Context", StringComparison.Ordinal))
+            {
+                return DeserializePackage(filePath, pluginTypes);
+            }
+
+            var serializer = Context.GetXmlSerializer(pluginTypes, typeof(LegacyContextImportPackage));
+            LegacyContextImportPackage legacy;
+            using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                legacy = (LegacyContextImportPackage)serializer.Deserialize(fileStream);
+            }
+
+            if (legacy == null) throw new InvalidDataException("The legacy UCR context.xml file is empty or invalid.");
+            return new ProfileExportPackage
+            {
+                FormatVersion = ExportFormatVersion,
+                Kind = ProfileExportKind.ProfileList,
+                Profiles = legacy.Profiles ?? new List<Profile>(),
+                DeviceAliases = legacy.DeviceAliases ?? new List<DeviceAlias>()
+            };
+        }
+
+        private static string ReadRootElementName(string filePath)
+        {
+            var settings = new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Prohibit,
+                IgnoreComments = true,
+                IgnoreWhitespace = true
+            };
+            using (var reader = XmlReader.Create(filePath, settings))
+            {
+                reader.MoveToContent();
+                return reader.LocalName;
             }
         }
 

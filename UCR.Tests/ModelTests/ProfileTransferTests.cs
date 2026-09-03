@@ -533,6 +533,85 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void LegacyContextXmlReplaceImportsProfilesChildrenBindingsAndAliases()
+        {
+            var source = new Context();
+            var root = AddProfile(source, "Legacy Root");
+            var input = AddDeviceConfiguration(root, DeviceIoType.Input, "Legacy Keyboard",
+                "Core_Interception", "Keyboard\\Legacy", 0);
+            var output = AddDeviceConfiguration(root, DeviceIoType.Output, "Legacy Pad",
+                "Core_ViGEm", "xb360", 0);
+            AddButtonMapping(root, "Jump", input.Guid, output.Guid, 30, 1);
+
+            var child = source.ProfilesManager.CreateProfile("Legacy Child", null, null);
+            root.AddChildProfile(child);
+            AddButtonMapping(child, "Crouch", input.Guid, output.Guid, 31, 2);
+
+            source.DeviceAliases.Add(new DeviceAlias
+            {
+                ProviderName = "Core_Interception",
+                IdentityKind = DeviceAliasIdentityKind.HardwareHandle,
+                IdentityValue = "Keyboard\\Legacy",
+                DeviceNumber = 0,
+                Alias = "Old Main Keyboard",
+                Hidden = true,
+                SortOrder = 4
+            });
+
+            var originalProfileGuid = root.Guid;
+            var originalInputGuid = input.Guid;
+            var originalOutputGuid = output.Guid;
+            var file = WriteLegacyContext(source);
+
+            var destination = new Context();
+            AddProfile(destination, "Should disappear");
+
+            var importedCount = destination.ProfilesManager.ImportProfileList(
+                file, ProfileListImportMode.Replace, _pluginTypes);
+
+            Assert.That(importedCount, Is.EqualTo(1));
+            Assert.That(destination.Profiles.Count, Is.EqualTo(1));
+            var imported = destination.Profiles[0];
+            Assert.That(imported.Title, Is.EqualTo("Legacy Root"));
+            Assert.That(imported.Guid, Is.EqualTo(originalProfileGuid));
+            Assert.That(imported.InputDeviceConfigurations[0].Guid, Is.EqualTo(originalInputGuid));
+            Assert.That(imported.OutputDeviceConfigurations[0].Guid, Is.EqualTo(originalOutputGuid));
+            Assert.That(imported.ChildProfiles.Single().Title, Is.EqualTo("Legacy Child"));
+            AssertAllBindingReferencesResolve(imported);
+            Assert.That(destination.DeviceAliases.Single().Alias, Is.EqualTo("Old Main Keyboard"));
+            Assert.That(destination.DeviceAliases.Single().Hidden, Is.True);
+            Assert.That(destination.DeviceAliases.Single().SortOrder, Is.EqualTo(4));
+        }
+
+        [Test]
+        public void LegacyContextXmlMergeRegeneratesImportedIdentifiersAndPreservesExistingProfiles()
+        {
+            var source = new Context();
+            var root = AddProfile(source, "Legacy Merge");
+            var input = AddDeviceConfiguration(root, DeviceIoType.Input, "Keyboard",
+                "Core_Interception", "Keyboard\\Merge", 0);
+            var output = AddDeviceConfiguration(root, DeviceIoType.Output, "Pad",
+                "Core_ViGEm", "xb360", 0);
+            AddButtonMapping(root, "Fire", input.Guid, output.Guid, 32, 3);
+            var oldProfileGuid = root.Guid;
+            var oldInputGuid = input.Guid;
+            var file = WriteLegacyContext(source);
+
+            var destination = new Context();
+            AddProfile(destination, "Existing");
+
+            destination.ProfilesManager.ImportProfileList(file, ProfileListImportMode.Merge, _pluginTypes);
+
+            Assert.That(destination.Profiles.Count, Is.EqualTo(2));
+            Assert.That(destination.Profiles[0].Title, Is.EqualTo("Existing"));
+            var imported = destination.Profiles[1];
+            Assert.That(imported.Title, Is.EqualTo("Legacy Merge"));
+            Assert.That(imported.Guid, Is.Not.EqualTo(oldProfileGuid));
+            Assert.That(imported.InputDeviceConfigurations[0].Guid, Is.Not.EqualTo(oldInputGuid));
+            AssertAllBindingReferencesResolve(imported);
+        }
+
+        [Test]
         public void ProfileImporterRejectsProfileListPackageWithoutMutatingContext()
         {
             var source = new Context();
@@ -546,6 +625,17 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.Throws<InvalidDataException>(() => destination.ProfilesManager.ImportProfile(file, null, _pluginTypes));
             Assert.That(destination.Profiles.Count, Is.EqualTo(1));
             Assert.That(destination.Profiles[0].Title, Is.EqualTo("Existing"));
+        }
+
+        private string WriteLegacyContext(Context source)
+        {
+            var file = TempFile(".xml");
+            var serializer = Context.GetXmlSerializer(_pluginTypes);
+            using (var writer = new StreamWriter(file))
+            {
+                serializer.Serialize(writer, source);
+            }
+            return file;
         }
 
         private string TempFile(string extension)

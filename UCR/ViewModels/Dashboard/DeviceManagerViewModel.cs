@@ -251,16 +251,18 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             Devices.Clear();
             foreach (var item in ordered) Devices.Add(item);
 
+            var providersAvailable = _devicesManager.HasLoadedProviderReports();
             if (Devices.Count == 0)
             {
-                DetectionStatus = _devicesManager.HasLoadedProviderReports()
+                DetectionStatus = providersAvailable
                     ? "No devices are currently available to UCR."
                     : "Device providers are unavailable. Check the UCR log or restart and accept the unblock prompt if offered.";
             }
             else if (!IsDetecting)
             {
-                // A successful population supersedes a stale provider/refresh warning from an earlier visit.
-                DetectionStatus = null;
+                DetectionStatus = providersAvailable
+                    ? null
+                    : "Showing previously detected devices from UCR's cache; live device providers are currently unavailable.";
             }
 
             Logger.Info("Device Manager populated " + Devices.Count + " device row(s)." +
