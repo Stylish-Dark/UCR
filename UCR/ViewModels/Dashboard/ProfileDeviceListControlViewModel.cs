@@ -295,16 +295,14 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         private static bool SameDevice(Device left, Device right)
         {
+            if (DeviceIdentity.SelectionEquals(left, right)) return true;
             if (left == null || right == null) return false;
-            if (DevicesManager.DescriptorEquals(left, right) ||
-                (DevicesManager.LogicalIdentityEquals(left, right) &&
-                 left.LogicalInstanceNumber == right.LogicalInstanceNumber)) return true;
 
             // Handle-only matching is appropriate when reconciling a stale cache entry with a live
             // endpoint, but must never merge two simultaneously live identical keyboards/mice.
             return left.LogicalInstanceNumber == right.LogicalInstanceNumber &&
                    left.IsCache != right.IsCache &&
-                   DevicesManager.CacheRepresentsLiveEndpoint(left, right);
+                   DeviceIdentity.CacheRepresentsLiveEndpoint(left, right);
         }
 
         public void SetPrimaryDevice(DeviceItem deviceItem)

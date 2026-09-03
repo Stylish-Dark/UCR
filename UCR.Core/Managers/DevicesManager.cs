@@ -1,20 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Reflection;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Serialization;
 using HidWizards.IOWrapper.DataTransferObjects;
 using HidWizards.IOWrapper.ProviderInterface.Interfaces;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Core.Utilities;
-using Newtonsoft.Json;
 using NLog;
 using Logger = NLog.Logger;
 
@@ -30,7 +24,7 @@ namespace HidWizards.UCR.Core.Managers
     {
         private readonly Context _context;
 
-        private Dictionary<string, List<Device>> _providerCache;
+        private readonly DeviceCacheStore _deviceCacheStore;
         // Raw provider slots are runtime endpoints, not user-facing physical identity. Detection claims
         // let us distinguish a genuinely second identical Core_Interception device without leaking
         // ordinary slot churn such as #4/#6 into the UI.
@@ -51,7 +45,7 @@ namespace HidWizards.UCR.Core.Managers
         public DevicesManager(Context context)
         {
             _context = context;
-            _providerCache = new Dictionary<string, List<Device>>();
+            _deviceCacheStore = new DeviceCacheStore();
         }
 
         /// <summary>
@@ -96,37 +90,7 @@ namespace HidWizards.UCR.Core.Managers
 
         private List<Device> GetCachedManagementInputInventory()
         {
-            const string cacheRoot = @".\Cache";
-            if (!Directory.Exists(cacheRoot)) return new List<Device>();
-
-            var cachedDevices = new List<Device>();
-            string[] providerDirectories;
-            try
-            {
-                providerDirectories = Directory.GetDirectories(cacheRoot, "*", SearchOption.TopDirectoryOnly);
-            }
-            catch (Exception exception)
-            {
-                Logger.Error(exception, "Unable to enumerate provider cache directories for the Devices management page");
-                return cachedDevices;
-            }
-
-            foreach (var providerDirectory in providerDirectories)
-            {
-                var providerName = new DirectoryInfo(providerDirectory).Name;
-                if (string.IsNullOrWhiteSpace(providerName)) continue;
-
-                try
-                {
-                    cachedDevices.AddRange(LoadDeviceCache(providerName));
-                }
-                catch (Exception exception)
-                {
-                    Logger.Error(exception, "Unable to load cached Devices inventory for provider: " + providerName);
-                }
-            }
-
-            var result = CollapseLogicalDevicesForDisplay(cachedDevices, DeviceIoType.Input);
+            var result = CollapseLogicalDevicesForDisplay(_deviceCacheStore.LoadAllProviders(), DeviceIoType.Input);
             ApplyAliases(result);
             return SortDevices(result);
         }
@@ -227,7 +191,7 @@ namespace HidWizards.UCR.Core.Managers
                 }
 
                 if (!includeCache) continue;
-                var cachedDevices = LoadDeviceCache(providerReport.Value.ProviderDescriptor.ProviderName);
+                var cachedDevices = _deviceCacheStore.LoadProvider(providerReport.Value.ProviderDescriptor.ProviderName);
                 foreach (var cachedDevice in cachedDevices)
                 {
                     if (result.Any(liveDevice => CacheRepresentsLiveEndpoint(cachedDevice, liveDevice))) continue;
@@ -238,59 +202,19 @@ namespace HidWizards.UCR.Core.Managers
             return result;
         }
 
-        private static readonly Regex CoreInterceptionSlotSuffix =
-            new Regex(@"\s+#\d+\s*$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
         public static string GetLogicalDeviceTitle(Device device)
         {
-            if (device == null) return string.Empty;
-            var title = (device.Title ?? string.Empty).Trim();
-            if (!string.Equals(device.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase))
-            {
-                return title;
-            }
-
-            return CoreInterceptionSlotSuffix.Replace(title, string.Empty).Trim();
+            return DeviceIdentity.GetLogicalTitle(device);
         }
 
         public static string BuildLogicalDeviceKey(Device device)
         {
-            if (device == null || string.IsNullOrWhiteSpace(device.ProviderName)) return null;
-            var provider = device.ProviderName.Trim();
-
-            if (string.Equals(provider, "Core_Interception", StringComparison.OrdinalIgnoreCase))
-            {
-                var handle = (device.DeviceHandle ?? string.Empty).Trim();
-                var title = GetLogicalDeviceTitle(device);
-                var family = title.StartsWith("K:", StringComparison.OrdinalIgnoreCase) ||
-                             handle.StartsWith("Keyboard", StringComparison.OrdinalIgnoreCase)
-                    ? "keyboard"
-                    : title.StartsWith("M:", StringComparison.OrdinalIgnoreCase) ||
-                      handle.StartsWith("Mouse", StringComparison.OrdinalIgnoreCase)
-                        ? "mouse"
-                        : "input";
-                var hardwareIdentity = !string.IsNullOrWhiteSpace(handle) ? handle : title;
-                return provider + "|logical-physical|" + family + "|" + hardwareIdentity;
-            }
-
-            if (!string.IsNullOrWhiteSpace(device.HidPath))
-                return provider + "|hid|" + device.HidPath.Trim();
-
-            if (UsesLogicalSlotIdentity(provider))
-                return provider + "|slot|" + (device.DeviceHandle ?? string.Empty).Trim() + "|" + device.DeviceNumber;
-
-            if (!string.IsNullOrWhiteSpace(device.DeviceHandle))
-                return provider + "|handle|" + device.DeviceHandle.Trim();
-
-            return provider + "|descriptor|" + device.DeviceNumber + "|" + GetLogicalDeviceTitle(device);
+            return DeviceIdentity.BuildLogicalKey(device);
         }
 
         private static string BuildRuntimeEndpointKey(Device device)
         {
-            if (device == null) return null;
-            return (device.ProviderName ?? string.Empty) + "|" +
-                   (device.DeviceHandle ?? string.Empty) + "|" + device.DeviceNumber + "|" +
-                   (device.HidPath ?? string.Empty);
+            return DeviceIdentity.BuildRuntimeEndpointKey(device);
         }
 
         public static List<Device> CollapseLogicalDevices(IEnumerable<Device> devices)
@@ -459,15 +383,7 @@ namespace HidWizards.UCR.Core.Managers
 
         public static bool LogicalIdentityEquals(Device left, Device right)
         {
-            if (left == null || right == null) return false;
-            if (!string.Equals(left.ProviderName, right.ProviderName, StringComparison.OrdinalIgnoreCase)) return false;
-            if (!string.Equals(left.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase))
-                return PersistedIdentityEquals(left, right);
-
-            var leftKey = BuildLogicalDeviceKey(left);
-            var rightKey = BuildLogicalDeviceKey(right);
-            return leftKey != null && rightKey != null &&
-                   string.Equals(leftKey, rightKey, StringComparison.OrdinalIgnoreCase);
+            return DeviceIdentity.LogicalEquals(left, right);
         }
 
         /// <summary>
@@ -766,16 +682,7 @@ namespace HidWizards.UCR.Core.Managers
 
         public static bool CacheRepresentsLiveEndpoint(Device cachedDevice, Device liveDevice)
         {
-            if (cachedDevice == null || liveDevice == null) return false;
-            if (!string.Equals(cachedDevice.ProviderName, liveDevice.ProviderName, StringComparison.OrdinalIgnoreCase)) return false;
-
-            if (!string.IsNullOrWhiteSpace(cachedDevice.HidPath) && !string.IsNullOrWhiteSpace(liveDevice.HidPath))
-            {
-                return string.Equals(cachedDevice.HidPath, liveDevice.HidPath, StringComparison.OrdinalIgnoreCase);
-            }
-
-            return !string.IsNullOrWhiteSpace(cachedDevice.DeviceHandle) &&
-                   string.Equals(cachedDevice.DeviceHandle, liveDevice.DeviceHandle, StringComparison.OrdinalIgnoreCase);
+            return DeviceIdentity.CacheRepresentsLiveEndpoint(cachedDevice, liveDevice);
         }
 
         public static bool TryGetWindowsDeviceInstanceId(Device device, out string instanceId)
@@ -952,29 +859,17 @@ namespace HidWizards.UCR.Core.Managers
 
         private static bool UsesLogicalSlotIdentity(string providerName)
         {
-            return string.Equals(providerName, "SharpDX_XInput", StringComparison.OrdinalIgnoreCase)
-                   || string.Equals(providerName, "Core_ViGEm", StringComparison.OrdinalIgnoreCase);
+            return DeviceIdentity.UsesLogicalSlotIdentity(providerName);
         }
 
         public static bool DescriptorEquals(Device left, Device right)
         {
-            if (left == null || right == null) return false;
-            return string.Equals(left.ProviderName, right.ProviderName, StringComparison.OrdinalIgnoreCase)
-                   && string.Equals(left.DeviceHandle, right.DeviceHandle, StringComparison.OrdinalIgnoreCase)
-                   && left.DeviceNumber == right.DeviceNumber;
+            return DeviceIdentity.DescriptorEquals(left, right);
         }
 
         public static bool PersistedIdentityEquals(Device left, Device right)
         {
-            if (left == null || right == null) return false;
-            if (!string.Equals(left.ProviderName, right.ProviderName, StringComparison.OrdinalIgnoreCase)) return false;
-
-            if (!string.IsNullOrEmpty(left.HidPath) && !string.IsNullOrEmpty(right.HidPath))
-            {
-                return string.Equals(left.HidPath, right.HidPath, StringComparison.OrdinalIgnoreCase);
-            }
-
-            return DescriptorEquals(left, right);
+            return DeviceIdentity.PersistedEquals(left, right);
         }
 
         #region Device aliases
@@ -1218,63 +1113,12 @@ namespace HidWizards.UCR.Core.Managers
 
         public static bool AliasIdentityEquals(DeviceAlias left, DeviceAlias right)
         {
-            if (left == null || right == null) return false;
-            return left.IdentityKind == right.IdentityKind
-                   && left.DeviceNumber == right.DeviceNumber
-                   && string.Equals(left.ProviderName, right.ProviderName, StringComparison.OrdinalIgnoreCase)
-                   && string.Equals(left.IdentityValue, right.IdentityValue, StringComparison.OrdinalIgnoreCase);
+            return DeviceIdentity.AliasEquals(left, right);
         }
 
         public static DeviceAlias BuildAliasIdentity(Device device)
         {
-            if (device == null || string.IsNullOrWhiteSpace(device.ProviderName)) return null;
-
-            // Core_Interception DeviceNumber and trailing title #N values are provider endpoint slots,
-            // not physical identity. Use the reconciled logical identity and runtime logical ordinal.
-            if (string.Equals(device.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase))
-            {
-                var logicalKey = BuildLogicalDeviceKey(device);
-                if (string.IsNullOrWhiteSpace(logicalKey)) return null;
-                return new DeviceAlias
-                {
-                    ProviderName = device.ProviderName,
-                    IdentityKind = DeviceAliasIdentityKind.HardwareHandle,
-                    IdentityValue = logicalKey,
-                    DeviceNumber = Math.Max(0, device.LogicalInstanceNumber - 1)
-                };
-            }
-
-            if (!string.IsNullOrWhiteSpace(device.HidPath))
-            {
-                return new DeviceAlias
-                {
-                    ProviderName = device.ProviderName,
-                    IdentityKind = DeviceAliasIdentityKind.HidPath,
-                    IdentityValue = device.HidPath.Trim(),
-                    DeviceNumber = 0
-                };
-            }
-
-            if (string.IsNullOrWhiteSpace(device.DeviceHandle)) return null;
-
-            if (UsesLogicalSlotIdentity(device.ProviderName))
-            {
-                return new DeviceAlias
-                {
-                    ProviderName = device.ProviderName,
-                    IdentityKind = DeviceAliasIdentityKind.LogicalSlot,
-                    IdentityValue = device.DeviceHandle.Trim(),
-                    DeviceNumber = device.DeviceNumber
-                };
-            }
-
-            return new DeviceAlias
-            {
-                ProviderName = device.ProviderName,
-                IdentityKind = DeviceAliasIdentityKind.HardwareHandle,
-                IdentityValue = device.DeviceHandle.Trim(),
-                DeviceNumber = 0
-            };
+            return DeviceIdentity.BuildAliasIdentity(device);
         }
 
         private DeviceAlias FindAlias(Device device)
@@ -1459,193 +1303,17 @@ namespace HidWizards.UCR.Core.Managers
             RefreshDeviceList();
             var availableDeviceList = GetAvailableDeviceList(DeviceIoType.Input, false);
 
-            // Remove obsolete cache copies for endpoints that are live now before writing the current
-            // provider descriptors. This stops changing provider instance numbers from accumulating as
-            // duplicate devices across UCR sessions while retaining caches for genuinely disconnected
-            // hardware (which are still useful for old profile binding menus).
-            RemoveCacheEntriesOverlappingLiveDevices(availableDeviceList);
+            // Remove obsolete cache copies for endpoints that are live now before writing current
+            // provider descriptors. Disconnected-device caches remain available for old binding menus.
+            _deviceCacheStore.RemoveOverlapping(availableDeviceList);
 
             foreach (var device in availableDeviceList)
             {
-                success &= SaveDeviceCache(device);
+                success &= _deviceCacheStore.Save(device, GetDeviceBindingMenu(device, DeviceIoType.Input, false));
             }
 
-            _providerCache.Clear();
+            _deviceCacheStore.ClearMemoryCache();
             return success;
-        }
-
-        public int RemoveStaleDeviceCacheCopies()
-        {
-            RefreshDeviceList();
-            var liveDevices = GetAvailableDeviceList(DeviceIoType.Input, false)
-                .Concat(GetAvailableDeviceList(DeviceIoType.Output, false))
-                .ToList();
-            var removed = RemoveCacheEntriesOverlappingLiveDevices(liveDevices);
-            _providerCache.Clear();
-            return removed;
-        }
-
-        public bool ForgetCachedDevice(Device device, out string error)
-        {
-            error = null;
-            if (device == null || !device.IsCache)
-            {
-                error = "Only cached/disconnected device records can be forgotten. Live devices are reported by Windows and their provider.";
-                return false;
-            }
-
-            try
-            {
-                var directory = GetProviderCacheDirectory(device.ProviderName);
-                if (!Directory.Exists(directory)) return true;
-
-                foreach (var path in Directory.GetFiles(directory, "*.json", SearchOption.TopDirectoryOnly))
-                {
-                    var cached = ReadDeviceCache(device.ProviderName, path);
-                    if (cached == null) continue;
-                    if (!DescriptorEquals(cached, device) && !PersistedIdentityEquals(cached, device)) continue;
-                    File.Delete(path);
-                }
-
-                _providerCache.Remove(device.ProviderName);
-                return true;
-            }
-            catch (Exception exception)
-            {
-                error = "UCR could not remove the cached device record. See the log for details.";
-                Logger.Error(exception, "Failed to forget cached device: " + device.LogName());
-                return false;
-            }
-        }
-
-        private int RemoveCacheEntriesOverlappingLiveDevices(IEnumerable<Device> liveDevices)
-        {
-            var live = (liveDevices ?? Enumerable.Empty<Device>()).Where(device => device != null).ToList();
-            if (live.Count == 0) return 0;
-
-            var removed = 0;
-            var providers = live.Select(device => device.ProviderName)
-                .Where(provider => !string.IsNullOrWhiteSpace(provider))
-                .Distinct(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var provider in providers)
-            {
-                var directory = GetProviderCacheDirectory(provider);
-                if (!Directory.Exists(directory)) continue;
-
-                foreach (var path in Directory.GetFiles(directory, "*.json", SearchOption.TopDirectoryOnly))
-                {
-                    var cached = ReadDeviceCache(provider, path);
-                    if (cached == null) continue;
-                    if (!live.Any(liveDevice => CacheRepresentsLiveEndpoint(cached, liveDevice))) continue;
-
-                    try
-                    {
-                        File.Delete(path);
-                        removed++;
-                    }
-                    catch (Exception exception)
-                    {
-                        Logger.Error(exception, "Failed to remove stale device cache: " + path);
-                    }
-                }
-            }
-
-            return removed;
-        }
-
-        private bool SaveDeviceCache(Device device)
-        {
-            var serializer = new JsonSerializer();
-            Directory.CreateDirectory(GetProviderCacheDirectory(device.ProviderName));
-            using (var streamWriter = new StreamWriter(GetDeviceCachePath(device)))
-            {
-                var deviceCache = new DeviceCache()
-                {
-                    Title = device.Title,
-                    ProviderName = device.ProviderName,
-                    DeviceHandle = device.DeviceHandle,
-                    DeviceNumber = device.DeviceNumber,
-                    HidPath = device.HidPath,
-                    DeviceBindingMenu = GetDeviceBindingMenu(device, DeviceIoType.Input, false)
-                };
-
-                serializer.Serialize(streamWriter, deviceCache);
-            }
-
-            return true;
-        }
-
-        private List<Device> LoadDeviceCache(string provider)
-        {
-            if (_providerCache.ContainsKey(provider)) return _providerCache[provider];
-
-            var result = new List<Device>();
-            string[] deviceCacheFiles;
-            try
-            {
-                deviceCacheFiles = Directory.GetFiles(GetProviderCacheDirectory(provider), "*.json",
-                    SearchOption.TopDirectoryOnly);
-            }
-            catch (DirectoryNotFoundException)
-            {
-                return result;
-            }
-
-            foreach (var deviceCacheFile in deviceCacheFiles)
-            {
-                var device = ReadDeviceCache(provider, deviceCacheFile);
-                if (device != null)  result.Add(device);
-            }
-
-            _providerCache.Add(provider, result);
-            return result;
-
-        }
-
-        private static Device ReadDeviceCache(string provider, string devicePath)
-        {
-            if (string.IsNullOrEmpty(provider) || string.IsNullOrEmpty(devicePath)) return null;
-
-            try
-            {
-                using (var fileStream = new FileStream(devicePath, FileMode.Open))  
-                {
-                    using (var reader = new StreamReader(fileStream))
-                    {
-                        return new Device(JsonConvert.DeserializeObject<DeviceCache>(reader.ReadToEnd()));
-                    }
-                }
-            }
-            catch (IOException e)
-            {
-                Logger.Error($"Failed to load Cache for Provider: {provider}. Path: {devicePath}", e);
-            }
-            catch (InvalidOperationException e)
-            {
-                Logger.Error($"Errors processing XML for Provider cache: {provider}. Path: {devicePath}", e);
-            }
-
-            try
-            {
-                File.Delete(devicePath);
-            }
-            catch (Exception e)
-            {
-                Logger.Error($"Failed to delete invalid cache file: {devicePath}", e);
-            }
-
-            return null;
-        }
-
-        private static string GetDeviceCachePath(Device device)
-        {
-            return $"{GetProviderCacheDirectory(device.ProviderName)}\\{device.GetHashCode()}.json";
-        }
-
-        private static string GetProviderCacheDirectory(string provider)
-        {
-            return $".\\Cache\\{provider}\\";
         }
 
         #endregion

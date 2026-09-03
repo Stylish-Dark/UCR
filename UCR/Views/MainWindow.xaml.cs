@@ -42,8 +42,6 @@ namespace HidWizards.UCR.Views
         private Forms.NotifyIcon _trayIcon;
         private Forms.ToolStripMenuItem _stopCurrentProfileMenuItem;
         private readonly AutoProfileMonitor _autoProfileMonitor;
-        private DeviceManagerDialog _deviceManagerWindow;
-        private bool _deviceManagerHiddenToTray;
         private bool _exitRequested;
         private IDisposable _navigationPage;
 
@@ -563,23 +561,6 @@ namespace HidWizards.UCR.Views
             ShowNavigationPage(page);
         }
 
-        private void DeviceManagerWindow_OnClosed(object sender, EventArgs e)
-        {
-            if (sender is DeviceManagerDialog dialog) dialog.Closed -= DeviceManagerWindow_OnClosed;
-            if (ReferenceEquals(_deviceManagerWindow, sender)) _deviceManagerWindow = null;
-            _deviceManagerHiddenToTray = false;
-        }
-
-        private void CloseDeviceManagerWindow()
-        {
-            var dialog = _deviceManagerWindow;
-            if (dialog == null) return;
-            _deviceManagerWindow = null;
-            dialog.Closed -= DeviceManagerWindow_OnClosed;
-            dialog.Close();
-            _deviceManagerHiddenToTray = false;
-        }
-
         private void Appearance_OnClick(object sender, RoutedEventArgs e)
         {
             AppearancePopup.IsOpen = true;
@@ -756,7 +737,6 @@ namespace HidWizards.UCR.Views
         {
             _autoProfileMonitor?.Dispose();
             CloseAllProfileWindows(false);
-            CloseDeviceManagerWindow();
             if (_trayIcon != null) _trayIcon.Visible = false;
         }
 
@@ -822,9 +802,6 @@ namespace HidWizards.UCR.Views
                 profileWindow.Hide();
             }
 
-            _deviceManagerHiddenToTray = _deviceManagerWindow != null && _deviceManagerWindow.IsVisible;
-            if (_deviceManagerHiddenToTray) _deviceManagerWindow.Hide();
-
             _trayIcon.Visible = true;
             Hide();
         }
@@ -845,14 +822,7 @@ namespace HidWizards.UCR.Views
             }
             _profileWindowsHiddenToTray.Clear();
 
-            if (_deviceManagerHiddenToTray && _deviceManagerWindow != null) _deviceManagerWindow.Show();
-            _deviceManagerHiddenToTray = false;
-
-            if (_deviceManagerWindow != null && _deviceManagerWindow.IsVisible)
-            {
-                SurfaceAuxiliaryWindow(_deviceManagerWindow);
-            }
-            else if (restoredProfile != null)
+            if (restoredProfile != null)
             {
                 SurfaceProfileWindow(restoredProfile);
             }

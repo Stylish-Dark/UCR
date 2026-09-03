@@ -74,6 +74,8 @@
     <Compile Include="Attributes\PluginInput.cs" />
     <Compile Include="Attributes\PluginIoAttribute.cs" />
     <Compile Include="Managers\BindingManager.cs" />
+    <Compile Include="Managers\DeviceIdentity.cs" />
+    <Compile Include="Managers\DeviceCacheStore.cs" />
     <Compile Include="Managers\SubscriptionsManager.cs" />
     <Compile Include="Models\Binding\DeviceBindingInfo.cs" />
     <Compile Include="Models\Binding\DeviceBindingNode.cs" />

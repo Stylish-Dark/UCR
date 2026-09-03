@@ -399,9 +399,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         private static bool SameDevice(Device left, Device right)
         {
-            return DevicesManager.DescriptorEquals(left, right) ||
-                   (DevicesManager.LogicalIdentityEquals(left, right) &&
-                    left.LogicalInstanceNumber == right.LogicalInstanceNumber);
+            return DeviceIdentity.SelectionEquals(left, right);
         }
 
         public bool Move(DeviceManagerItemViewModel item, int offset)

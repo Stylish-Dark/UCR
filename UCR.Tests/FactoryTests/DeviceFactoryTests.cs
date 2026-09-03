@@ -259,6 +259,43 @@ namespace HidWizards.UCR.Tests.FactoryTests
         }
 
         [Test]
+        public void SelectionIdentityMatchesProviderDescriptorRegardlessOfLogicalOrdinal()
+        {
+            var left = CreateIdentityDevice("Pad", "SharpDX_XInput", "xb360", 1, null);
+            var right = CreateIdentityDevice("Pad", "SharpDX_XInput", "xb360", 1, null);
+            left.LogicalInstanceNumber = 1;
+            right.LogicalInstanceNumber = 2;
+
+            Assert.That(DeviceIdentity.SelectionEquals(left, right), Is.True);
+        }
+
+        [Test]
+        public void SelectionIdentityMatchesCoreInterceptionSlotChurnAtSameLogicalOrdinal()
+        {
+            var oldSlot = CreateIdentityDevice("K: Logitech USB Receiver #4", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 3, null);
+            var newSlot = CreateIdentityDevice("K: Logitech USB Receiver #6", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 5, null);
+            oldSlot.LogicalInstanceNumber = 1;
+            newSlot.LogicalInstanceNumber = 1;
+
+            Assert.That(DeviceIdentity.SelectionEquals(oldSlot, newSlot), Is.True);
+        }
+
+        [Test]
+        public void SelectionIdentityKeepsDistinctLogicalOrdinalsSeparate()
+        {
+            var first = CreateIdentityDevice("K: Logitech USB Receiver", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 3, null);
+            var second = CreateIdentityDevice("K: Logitech USB Receiver #2", "Core_Interception",
+                @"Keyboard\VID_046D&PID_C52B", 5, null);
+            first.LogicalInstanceNumber = 1;
+            second.LogicalInstanceNumber = 2;
+
+            Assert.That(DeviceIdentity.SelectionEquals(first, second), Is.False);
+        }
+
+        [Test]
         public void CoreInterceptionLogicalIdentityIgnoresProviderSlotSuffixButKeepsDeviceFamily()
         {
             var keyboard4 = CreateIdentityDevice("K: Logitech USB Receiver #4", "Core_Interception",

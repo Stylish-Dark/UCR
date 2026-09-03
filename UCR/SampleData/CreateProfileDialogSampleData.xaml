@@ -1,3 +1,0 @@
-﻿<dashboard:CreateProfileDialogViewModel xmlns:dashboard="clr-namespace:HidWizards.UCR.ViewModels.Dashboard"
-                                        Title="Create profile"
-                                        ProfileName="Example profile"/>
