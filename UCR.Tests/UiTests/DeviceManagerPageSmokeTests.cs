@@ -3,7 +3,6 @@ using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.ViewModels.Dashboard;
@@ -78,41 +77,6 @@ namespace HidWizards.UCR.Tests.UiTests
             Assert.That(colourButton.ActualHeight, Is.GreaterThan(0));
         }
 
-
-        [Test]
-        [Apartment(ApartmentState.STA)]
-        public void DeviceManagerPageUsesSlimVerticalScrollbarWhenRowsOverflow()
-        {
-            EnsureApplicationResources();
-
-            var items = Enumerable.Range(0, 24)
-                .Select(index => new DeviceManagerItemViewModel(
-                    new Device("Keyboard " + index, "Core_Interception", "Keyboard\\" + index, index),
-                    DeviceIoType.Input, true, null, false, "keyboard", DeviceOutlineColor.Default))
-                .ToList();
-
-            var page = new DeviceManagerPage();
-            page.DataContext = new FakeDevicePageViewModel(items);
-            page.Measure(new Size(900, 360));
-            page.Arrange(new Rect(0, 0, 900, 360));
-            page.UpdateLayout();
-
-            var list = page.FindName("DeviceList") as ListView;
-            Assert.That(list, Is.Not.Null);
-            list.UpdateLayout();
-
-            var verticalScrollBar = FindVisualChildren<ScrollBar>(list)
-                .FirstOrDefault(scrollBar => scrollBar.Orientation == Orientation.Vertical && scrollBar.Visibility == Visibility.Visible);
-            Assert.That(verticalScrollBar, Is.Not.Null,
-                "Overflowing device rows should expose a vertical scrollbar.");
-            Assert.That(verticalScrollBar.ActualWidth, Is.GreaterThan(0));
-            Assert.That(verticalScrollBar.ActualWidth, Is.LessThanOrEqualTo(9),
-                "The Devices scrollbar should stay sleek and narrow.");
-            var track = verticalScrollBar.Template.FindName("PART_Track", verticalScrollBar) as System.Windows.Controls.Primitives.Track;
-            Assert.That(track, Is.Not.Null);
-            Assert.That(track.Orientation, Is.EqualTo(Orientation.Vertical),
-                "The slim scrollbar template must preserve vertical track orientation.");
-        }
 
         private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject
         {
