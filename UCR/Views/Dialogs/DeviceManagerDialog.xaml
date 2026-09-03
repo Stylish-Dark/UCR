@@ -72,8 +72,7 @@
                                            Maximum="{TemplateBinding Maximum}"
                                            Value="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
                                            ViewportSize="{TemplateBinding ViewportSize}"
-                                           IsDirectionReversed="True"
-                                           IsMoveToPointEnabled="True">
+                                           IsDirectionReversed="True">
                                         <Track.DecreaseRepeatButton>
                                             <RepeatButton Command="{x:Static ScrollBar.PageUpCommand}"
                                                           CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
