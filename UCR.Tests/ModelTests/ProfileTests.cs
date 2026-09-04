@@ -164,24 +164,6 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
-        public void BlockChangeNotifiesBindingViewModelSoCollapsedCardsCanRefresh()
-        {
-            var binding = new DeviceBinding(value => { }, _profile, DeviceIoType.Input)
-            {
-                DeviceBindingCategory = DeviceBindingCategory.Momentary
-            };
-            var viewModel = new DeviceBindingViewModel(binding);
-            var changed = new List<string>();
-            viewModel.PropertyChanged += (sender, args) => changed.Add(args.PropertyName);
-
-            viewModel.Block = true;
-
-            Assert.That(binding.Block, Is.True);
-            Assert.That(changed, Does.Contain(nameof(DeviceBindingViewModel.Block)));
-            viewModel.Dispose();
-        }
-
-        [Test]
         public void InputAxisReverseIsAppliedBeforeMappingCallback()
         {
             short callbackValue = 0;

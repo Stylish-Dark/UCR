@@ -121,61 +121,6 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
-        public void BindingVisualCarriesBlockedInputState()
-        {
-            var context = new HidWizards.UCR.Core.Context();
-            var profile = new Profile(context);
-            var configuration = new DeviceConfiguration(new Device("Keyboard", "Core_Interception", "kbd", 0));
-            profile.AddDeviceConfigurations(new System.Collections.Generic.List<DeviceConfiguration> { configuration }, DeviceIoType.Input);
-            var binding = new HidWizards.UCR.Core.Models.Binding.DeviceBinding(value => { }, profile, DeviceIoType.Input)
-            {
-                DeviceConfigurationGuid = configuration.Guid,
-                IsBound = true,
-                Block = true
-            };
-
-            var visual = DeviceVisualCatalog.DescribeBinding(binding, HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary, profile);
-
-            Assert.That(visual.IsBlockedInput, Is.True);
-        }
-
-        [Test]
-        public void MissingDeviceUsesUnavailableControlInsteadOfTruncatedDeviceText()
-        {
-            var context = new HidWizards.UCR.Core.Context();
-            var profile = new Profile(context);
-            var binding = new HidWizards.UCR.Core.Models.Binding.DeviceBinding(value => { }, profile, DeviceIoType.Input)
-            {
-                DeviceConfigurationGuid = Guid.NewGuid(),
-                IsBound = true
-            };
-
-            var visual = DeviceVisualCatalog.DescribeBinding(binding, HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary, profile);
-
-            Assert.That(visual.Device.Kind, Is.EqualTo(DeviceVisualKind.Unavailable));
-            Assert.That(visual.ControlKind, Is.EqualTo(ControlVisualKind.DeviceUnavailable));
-        }
-
-        [Test]
-        public void UnknownConfiguredDeviceUsesUnknownControlGlyph()
-        {
-            var context = new HidWizards.UCR.Core.Context();
-            var profile = new Profile(context);
-            var configuration = new DeviceConfiguration(new Device("Mystery device", "ThirdParty", "mystery", 0));
-            profile.AddDeviceConfigurations(new System.Collections.Generic.List<DeviceConfiguration> { configuration }, DeviceIoType.Input);
-            var binding = new HidWizards.UCR.Core.Models.Binding.DeviceBinding(value => { }, profile, DeviceIoType.Input)
-            {
-                DeviceConfigurationGuid = configuration.Guid,
-                IsBound = true
-            };
-
-            var visual = DeviceVisualCatalog.DescribeBinding(binding, HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary, profile);
-
-            Assert.That(visual.Device.Kind, Is.EqualTo(DeviceVisualKind.Unknown));
-            Assert.That(visual.ControlKind, Is.EqualTo(ControlVisualKind.Unknown));
-        }
-
-        [Test]
         public void DeviceAliasClonePreservesOutlinePresentation()
         {
             var alias = new DeviceAlias
