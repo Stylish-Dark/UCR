@@ -9,6 +9,7 @@ using HidWizards.IOWrapper.Core;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
+using HidWizards.UCR.Core.Persistence;
 using Mono.Options;
 using NLog;
 
@@ -17,7 +18,6 @@ namespace HidWizards.UCR.Core
     public sealed class Context : IDisposable
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-        private const string ContextName = "context.xml";
         private const string PluginPath = "Plugins";
 
         /* Persistence */
@@ -40,10 +40,16 @@ namespace HidWizards.UCR.Core
         
         internal bool IsNotSaved { get; private set; }
         internal IOController IOController { get; set; }
+        [XmlIgnore] internal ContextStore Store { get; private set; }
         private OptionSet options;
 
-        public Context()
+        public Context() : this(ContextStore.CreateDefault())
         {
+        }
+
+        internal Context(ContextStore store)
+        {
+            Store = store ?? throw new ArgumentNullException(nameof(store));
             Init();
             SetCommandLineOptions();
         }
@@ -105,37 +111,23 @@ namespace HidWizards.UCR.Core
         
         public bool SaveContext(List<Type> pluginTypes = null)
         {
-            var serializer = GetXmlSerializer(pluginTypes);
-            using (var streamWriter = new StreamWriter(ContextName))
-            {
-                serializer.Serialize(streamWriter, this);
-            }
+            Store.Save(this, pluginTypes);
             IsNotSaved = false;
-
             return true;
         }
 
         public static Context Load(List<Type> pluginTypes = null)
         {
-            Context context;
-            var serializer = GetXmlSerializer(pluginTypes);
-            try
-            {
-                using (var fileStream = new FileStream(ContextName, FileMode.Open))
-                {
-                    context = (Context) serializer.Deserialize(fileStream);
-                    context.PostLoad();
-                }
-            }
-            catch (IOException e)
-            {
-                Logger.Error(e, "Failed to load context.xml");
-                context = new Context();
-            }
-            return context;
+            return ContextStore.CreateDefault().Load(pluginTypes);
         }
 
-        private void PostLoad()
+        internal static Context Load(ContextStore store, List<Type> pluginTypes = null)
+        {
+            if (store == null) throw new ArgumentNullException(nameof(store));
+            return store.Load(pluginTypes);
+        }
+
+        internal void PostLoad()
         {
             if (Profiles == null) Profiles = new List<Profile>();
             if (DeviceAliases == null) DeviceAliases = new List<DeviceAlias>();

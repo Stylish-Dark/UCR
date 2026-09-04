@@ -3,6 +3,7 @@ using System.IO;
 using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
+using HidWizards.UCR.Core.Persistence;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.ViewModels.Dashboard;
 using NUnit.Framework;
@@ -23,7 +24,7 @@ namespace HidWizards.UCR.Tests.ModelTests
             try
             {
                 Directory.SetCurrentDirectory(temporary);
-                var context = new Context();
+                var context = CreateIsolatedContext(temporary);
                 context.IOController?.Dispose();
                 context.IOController = null;
 
@@ -50,7 +51,7 @@ namespace HidWizards.UCR.Tests.ModelTests
         {
             var original = Environment.CurrentDirectory;
             var temporary = Path.Combine(Path.GetTempPath(), "ucr-device-cache-test-" + Guid.NewGuid().ToString("N"));
-            var providerDirectory = Path.Combine(temporary, "Cache", "Core_Interception");
+            var providerDirectory = Path.Combine(temporary, "Data", "Cache", "Core_Interception");
             Directory.CreateDirectory(providerDirectory);
 
             try
@@ -59,7 +60,7 @@ namespace HidWizards.UCR.Tests.ModelTests
                 File.WriteAllText(Path.Combine(providerDirectory, "keyboard.json"),
                     "{\"Title\":\"K: Cached Keyboard\",\"ProviderName\":\"Core_Interception\",\"DeviceHandle\":\"Keyboard\\\\Cached\",\"DeviceNumber\":0,\"HidPath\":\"HID\\\\VID_CAFE&PID_BEEF\",\"DeviceBindingMenu\":[]}");
 
-                var context = new Context();
+                var context = CreateIsolatedContext(temporary);
                 context.IOController?.Dispose();
                 context.IOController = null;
 
@@ -84,7 +85,7 @@ namespace HidWizards.UCR.Tests.ModelTests
         {
             var original = Environment.CurrentDirectory;
             var temporary = Path.Combine(Path.GetTempPath(), "ucr-device-cache-viewmodel-test-" + Guid.NewGuid().ToString("N"));
-            var providerDirectory = Path.Combine(temporary, "Cache", "Core_Interception");
+            var providerDirectory = Path.Combine(temporary, "Data", "Cache", "Core_Interception");
             Directory.CreateDirectory(providerDirectory);
 
             try
@@ -93,7 +94,7 @@ namespace HidWizards.UCR.Tests.ModelTests
                 File.WriteAllText(Path.Combine(providerDirectory, "keyboard.json"),
                     "{\"Title\":\"K: Cached Keyboard\",\"ProviderName\":\"Core_Interception\",\"DeviceHandle\":\"Keyboard\\\\Cached\",\"DeviceNumber\":0,\"HidPath\":\"HID\\\\VID_CAFE&PID_BEEF\",\"DeviceBindingMenu\":[]}");
 
-                var context = new Context();
+                var context = CreateIsolatedContext(temporary);
                 context.IOController?.Dispose();
                 context.IOController = null;
 
@@ -162,7 +163,7 @@ namespace HidWizards.UCR.Tests.ModelTests
             try
             {
                 Directory.SetCurrentDirectory(temporary);
-                var context = new Context();
+                var context = CreateIsolatedContext(temporary);
                 context.IOController?.Dispose();
                 context.IOController = null;
 
@@ -183,6 +184,11 @@ namespace HidWizards.UCR.Tests.ModelTests
                 Directory.SetCurrentDirectory(original);
                 Directory.Delete(temporary, true);
             }
+        }
+
+        private static Context CreateIsolatedContext(string temporaryRoot)
+        {
+            return new Context(new ContextStore(Path.Combine(temporaryRoot, "Data"), null));
         }
 
         [Test]

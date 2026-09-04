@@ -20,7 +20,7 @@ namespace HidWizards.UCR.Core.Managers
         private readonly Dictionary<string, List<Device>> _providerCache =
             new Dictionary<string, List<Device>>(StringComparer.OrdinalIgnoreCase);
 
-        public DeviceCacheStore(string cacheRoot = @".\Cache")
+        public DeviceCacheStore(string cacheRoot)
         {
             if (string.IsNullOrWhiteSpace(cacheRoot)) throw new ArgumentException("Cache root is required.", nameof(cacheRoot));
             _cacheRoot = cacheRoot;

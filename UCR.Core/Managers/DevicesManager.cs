@@ -45,7 +45,7 @@ namespace HidWizards.UCR.Core.Managers
         public DevicesManager(Context context)
         {
             _context = context;
-            _deviceCacheStore = new DeviceCacheStore();
+            _deviceCacheStore = new DeviceCacheStore(_context.Store.CacheRoot);
         }
 
         /// <summary>

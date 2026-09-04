@@ -37,41 +37,39 @@
         <!-- A device badge is intentionally shown only when the mapping deviates from the profile's
              primary device, unless the user explicitly enables the Show all devices toggle. -->
         <DataTemplate x:Key="MappingBindingVisualTemplate">
-            <Border Margin="3 0" MinHeight="38" ClipToBounds="False"
-                    CornerRadius="4" ToolTip="{Binding ToolTip}">
-                <Border.Style>
-                    <Style TargetType="Border">
-                        <Setter Property="Padding" Value="6 4"/>
-                        <Setter Property="MinWidth" Value="64"/>
-                        <Setter Property="Background" Value="#1D1D1D"/>
-                        <Setter Property="BorderBrush" Value="#353535"/>
-                        <Setter Property="BorderThickness" Value="1"/>
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsFilterControl}" Value="True">
-                                <Setter Property="Background" Value="#191919"/>
-                                <Setter Property="BorderBrush" Value="{StaticResource MappingTypeFilterBrush}"/>
-                                <Setter Property="MinWidth" Value="0"/>
-                                <Setter Property="Padding" Value="7 4"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" ClipToBounds="False">
-                    <TextBlock Text="⊘" Foreground="#E85A5A" FontSize="16" FontWeight="Bold"
-                               Margin="0 0 4 0" VerticalAlignment="Center" ToolTip="Input blocking enabled">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsBlockedInput}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                    <Border Margin="0 0 5 0" Padding="4 1" MinWidth="25" CornerRadius="3"
-                            Background="#191919" BorderBrush="{Binding Device.OutlineBrush}" BorderThickness="1"
+            <Grid Margin="3 0" MinHeight="42" ClipToBounds="False" ToolTip="{Binding ToolTip}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Blocking here means interception/rerouting, not an error. Use the active accent. -->
+                <TextBlock Grid.Column="0" Text="⊘" Foreground="{DynamicResource PrimaryHueMidBrush}"
+                           FontSize="16" FontWeight="Bold" Margin="0 0 4 0"
+                           VerticalAlignment="Bottom" Padding="0 0 0 3"
+                           ToolTip="Input blocking enabled">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsBlockedInput}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+                <Grid Grid.Column="1" HorizontalAlignment="Center" ClipToBounds="False">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Only non-primary/explicitly-requested device identity is shown, above the control. -->
+                    <Border Grid.Row="0" Margin="0 0 0 2" Padding="4 1" MinWidth="25" CornerRadius="3"
+                            HorizontalAlignment="Center" Background="#191919"
+                            BorderBrush="{Binding Device.OutlineBrush}" BorderThickness="1"
                             ToolTip="{Binding Device.ToolTip}">
                         <Border.Style>
                             <Style TargetType="Border">
@@ -86,9 +84,11 @@
                         <TextBlock Text="{Binding Device.BadgeText}" Foreground="{Binding Device.AccentBrush}"
                                    FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center"/>
                     </Border>
-                    <local:ControlGlyphControl Kind="{Binding ControlKind}"
+
+                    <local:ControlGlyphControl Grid.Row="1" Kind="{Binding ControlKind}"
                                                AccentBrush="{Binding ControlBrush}"
-                                               Label="{Binding ControlLabel}">
+                                               Label="{Binding ControlLabel}"
+                                               HorizontalAlignment="Center">
                         <local:ControlGlyphControl.Style>
                             <Style TargetType="{x:Type local:ControlGlyphControl}">
                                 <Setter Property="Width" Value="46"/>
@@ -102,22 +102,8 @@
                             </Style>
                         </local:ControlGlyphControl.Style>
                     </local:ControlGlyphControl>
-                    <TextBlock Margin="5 0 1 0" Text="{Binding ControlLabel}" FontSize="12.5" FontWeight="SemiBold"
-                               Foreground="{Binding ControlBrush}" VerticalAlignment="Center" MaxWidth="180"
-                               TextTrimming="CharacterEllipsis">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsFilterControl}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                </StackPanel>
-            </Border>
+                </Grid>
+            </Grid>
         </DataTemplate>
     </UserControl.Resources>
 

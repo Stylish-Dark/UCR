@@ -138,8 +138,9 @@
         <materialDesign:DialogHost x:Name="RootDialog" Grid.Row="2" Identifier="RootDialog">
             <Grid Margin="8">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1*"/>
-                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="320" MinWidth="210"/>
+                    <ColumnDefinition Width="5"/>
+                    <ColumnDefinition Width="*" MinWidth="240"/>
                 </Grid.ColumnDefinitions>
                 <materialDesign:Card Grid.Column="0" Height="{Binding RelativeSource={RelativeSource AncestorType={x:Type Grid}}, Path=ActualHeight}" Margin="0">
                     <Grid Height="Auto">
@@ -248,12 +249,12 @@
                                 <HierarchicalDataTemplate DataType="{x:Type dashboard:ProfileItem}" ItemsSource="{Binding Items}">
                                     <Grid Margin="0 2" MinHeight="38" ToolTip="{Binding Title}" HorizontalAlignment="Stretch">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="64"/>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="64"/>
+                                            <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
 
-                                        <!-- Strict, fixed columns: primary input | centered profile name | primary output. -->
+                                        <!-- Device badges consume only the width they need; the profile title owns the remainder. -->
                                         <ItemsControl Grid.Column="0" ItemsSource="{Binding InputVisuals}"
                                                       ItemTemplate="{StaticResource DeviceBadgeTemplate}"
                                                       HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -289,7 +290,19 @@
                     </Grid>
                 </materialDesign:Card>
 
-                <Grid Grid.Column="1" Margin="8 0 0 0" Visibility="{Binding ProfileDetailsActive}">
+                <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                              ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
+                              Background="Transparent" Cursor="SizeWE" ToolTip="Resize Profiles pane">
+                    <GridSplitter.Template>
+                        <ControlTemplate TargetType="GridSplitter">
+                            <Border Background="Transparent">
+                                <Border Width="1" HorizontalAlignment="Center" Background="#454545"/>
+                            </Border>
+                        </ControlTemplate>
+                    </GridSplitter.Template>
+                </GridSplitter>
+
+                <Grid Grid.Column="2" Margin="8 0 0 0" Visibility="{Binding ProfileDetailsActive}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
