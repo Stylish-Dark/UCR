@@ -41,7 +41,7 @@
             <!-- Mapping endpoint colours. Keep these centralized so headers and selectors stay consistent. -->
             <SolidColorBrush x:Key="MappingTypeButtonBrush" Color="#0058B8"/>
             <SolidColorBrush x:Key="MappingTypeAxisBrush" Color="#9C7800"/>
-            <SolidColorBrush x:Key="MappingTypeFilterBrush" Color="#005800"/>
+            <SolidColorBrush x:Key="MappingTypeFilterBrush" Color="#00A82A"/>
             <SolidColorBrush x:Key="MappingTypeEventBrush" Color="#900000"/>
             <SolidColorBrush x:Key="MappingTypeDeltaBrush" Color="#A03000"/>
             <SolidColorBrush x:Key="MappingTypeValueBrush" Color="#520098"/>

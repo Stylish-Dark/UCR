@@ -89,6 +89,17 @@ namespace HidWizards.UCR.Views.ProfileViews
             e.Handled = true;
         }
 
+        private void ProfileDevicesScrollViewer_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control) return;
+            var viewer = sender as ScrollViewer;
+            if (viewer == null || viewer.ScrollableHeight <= 0) return;
+
+            var step = Math.Max(24.0, Math.Min(60.0, Math.Abs(e.Delta) / 2.5));
+            viewer.ScrollToVerticalOffset(viewer.VerticalOffset + (e.Delta < 0 ? step : -step));
+            e.Handled = true;
+        }
+
         #region GUI
 
         private void StartGuiTimer()

@@ -66,6 +66,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public string DefinedFilterName => GetDefinedFilterName();
         public List<FilterReferenceBadge> ReferencedFilters => BuildReferencedFilters();
         public bool HasFilterReferences => ReferencedFilters.Count > 0;
+        public string FilterIndicatorToolTip => BuildFilterIndicatorToolTip();
         public bool HasFilters => Mapping != null && Mapping.Plugins != null &&
                                   Mapping.Plugins.Any(plugin => plugin.Filters != null && plugin.Filters.Count > 0);
         public string CollapsedSummary => BuildCollapsedSummary();
@@ -231,6 +232,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(CollapsedOutputVisuals));
             OnPropertyChanged(nameof(ReferencedFilters));
             OnPropertyChanged(nameof(HasFilterReferences));
+            OnPropertyChanged(nameof(FilterIndicatorToolTip));
         }
 
         public void RefreshTitle()
@@ -854,6 +856,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (!string.IsNullOrWhiteSpace(name)) return name.Trim();
             }
             return null;
+        }
+
+        private string BuildFilterIndicatorToolTip()
+        {
+            var filters = ReferencedFilters;
+            if (filters.Count == 0) return null;
+            if (filters.Count == 1) return "Filter: " + filters[0].Name;
+            return "Filters: " + string.Join(", ", filters.Select(filter => filter.Name));
         }
 
         private List<FilterReferenceBadge> BuildReferencedFilters()

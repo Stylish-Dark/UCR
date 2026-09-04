@@ -10,6 +10,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
     public enum DeviceVisualKind
     {
         Unknown,
+        Unavailable,
         Keyboard,
         Mouse,
         Xbox,
@@ -22,6 +23,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
     public enum ControlVisualKind
     {
         Unknown,
+        DeviceUnavailable,
         Unbound,
         Key,
         MouseButton,
@@ -58,6 +60,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
         public Guid DeviceConfigurationGuid { get; set; }
         public Guid BindingGuid { get; set; }
         public bool ShowDeviceBadge { get; set; }
+        public bool IsBlockedInput { get; set; }
         public bool IsFilterControl => ControlKind == ControlVisualKind.Filter;
     }
 
@@ -69,13 +72,13 @@ namespace HidWizards.UCR.ViewModels.Presentation
         public static readonly Brush ArcadeBrush = Freeze(Color.FromRgb(216, 0, 0));
         public static readonly Brush NeutralBrush = Freeze(Color.FromRgb(202, 205, 210));
         public static readonly Brush DirectInputBrush = Freeze(Color.FromRgb(150, 166, 184));
-        public static readonly Brush FilterBrush = Freeze(Color.FromRgb(0, 144, 0));
+        public static readonly Brush FilterBrush = Freeze(Color.FromRgb(0, 168, 42));
 
         public static DeviceVisualDescriptor Describe(DeviceConfiguration configuration, Profile profile, DeviceIoType ioType)
         {
             if (configuration == null)
             {
-                return Unknown("Device unavailable");
+                return Unavailable("Device unavailable");
             }
 
             var descriptor = Describe(configuration.Device, ioType);
@@ -98,7 +101,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
         public static DeviceVisualDescriptor Describe(Device device, DeviceIoType ioType)
         {
-            if (device == null) return Unknown("Device unavailable");
+            if (device == null) return Unavailable("Device unavailable");
 
             var provider = device.ProviderName ?? string.Empty;
             var handle = device.DeviceHandle ?? string.Empty;
@@ -211,7 +214,8 @@ namespace HidWizards.UCR.ViewModels.Presentation
                     IsBound = false,
                     DeviceConfigurationGuid = Guid.Empty,
                     BindingGuid = Guid.Empty,
-                    ShowDeviceBadge = false
+                    ShowDeviceBadge = false,
+                    IsBlockedInput = false
                 };
             }
 
@@ -228,10 +232,27 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 IsBound = binding.IsBound,
                 DeviceConfigurationGuid = binding.DeviceConfigurationGuid,
                 BindingGuid = binding.Guid,
-                ShowDeviceBadge = false
+                ShowDeviceBadge = false,
+                IsBlockedInput = binding.DeviceIoType == DeviceIoType.Input && binding.Block
             };
 
             if (!binding.IsBound) return result;
+
+            if (deviceDescriptor.Kind == DeviceVisualKind.Unavailable)
+            {
+                result.ControlKind = ControlVisualKind.DeviceUnavailable;
+                result.ControlBrush = NeutralBrush;
+                result.ControlLabel = string.Empty;
+                return result;
+            }
+
+            if (deviceDescriptor.Kind == DeviceVisualKind.Unknown)
+            {
+                result.ControlKind = ControlVisualKind.Unknown;
+                result.ControlBrush = DirectInputBrush;
+                result.ControlLabel = "?";
+                return result;
+            }
 
             var leaf = ExtractLeaf(boundName);
             PopulateControl(result, binding, category, leaf, configuration?.Device);
@@ -251,7 +272,8 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 IsBound = true,
                 DeviceConfigurationGuid = Guid.Empty,
                 BindingGuid = Guid.Empty,
-                ShowDeviceBadge = false
+                ShowDeviceBadge = false,
+                IsBlockedInput = false
             };
         }
 
@@ -659,6 +681,11 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 case DeviceVisualKind.DirectInput: prefix = "D"; break;
             }
             return prefix + Math.Max(1, slotNumber);
+        }
+
+        private static DeviceVisualDescriptor Unavailable(string tooltip)
+        {
+            return Build(DeviceVisualKind.Unavailable, NeutralBrush, tooltip, 0, false);
         }
 
         private static DeviceVisualDescriptor Unknown(string tooltip)

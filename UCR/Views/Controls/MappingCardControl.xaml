@@ -12,8 +12,8 @@
              d:DesignHeight="320" d:DesignWidth="800">
     <UserControl.Resources>
         <Style x:Key="UcrMappingActionButton" TargetType="{x:Type ButtonBase}" BasedOn="{StaticResource MaterialDesignCardButton}">
-            <Setter Property="Foreground" Value="#BDBDBD"/>
-            <Setter Property="Opacity" Value="0.58"/>
+            <Setter Property="Foreground" Value="#DADADA"/>
+            <Setter Property="Opacity" Value="0.84"/>
             <Setter Property="Margin" Value="2"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
@@ -57,6 +57,19 @@
                     </Style>
                 </Border.Style>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" ClipToBounds="False">
+                    <TextBlock Text="⊘" Foreground="#E85A5A" FontSize="16" FontWeight="Bold"
+                               Margin="0 0 4 0" VerticalAlignment="Center" ToolTip="Input blocking enabled">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBlockedInput}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                     <Border Margin="0 0 5 0" Padding="4 1" MinWidth="25" CornerRadius="3"
                             Background="#191919" BorderBrush="{Binding Device.OutlineBrush}" BorderThickness="1"
                             ToolTip="{Binding Device.ToolTip}">
@@ -130,12 +143,12 @@
                   Background="#242424"
                   Style="{StaticResource MaterialDesignExpander}">
             <Expander.Header>
-                <Grid MinHeight="64" ToolTip="Right-drag this card while collapsed to reorder it">
+                <Grid x:Name="HeaderGrid" MinHeight="64" ToolTip="Right-drag this card while collapsed to reorder it">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="4"/>
                         <ColumnDefinition Width="2*"/>
                         <ColumnDefinition Width="3*"/>
-                        <ColumnDefinition Width="{Binding FilterColumnWidth, ElementName=MappingCardRoot}"/>
+                        <ColumnDefinition Width="34"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
@@ -246,46 +259,26 @@
                         </Grid>
                     </Grid>
 
-                    <!-- Give filter references a real lane instead of truncating each one to 72px.
-                         At genuinely narrow card widths every badge switches to the same icon-only mode. -->
-                    <ItemsControl Grid.Column="3" ItemsSource="{Binding ReferencedFilters}" Margin="4 0 4 0"
-                                  VerticalAlignment="Center" HorizontalAlignment="Right" ClipToBounds="False">
-                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Margin="2 0" Padding="6 3" CornerRadius="3" Background="Transparent"
-                                        BorderBrush="{StaticResource MappingTypeFilterBrush}" BorderThickness="1" ToolTip="{Binding ToolTip}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="Filter" Width="12" Height="12"
-                                                                 Foreground="{StaticResource MappingTypeFilterBrush}">
-                                            <materialDesign:PackIcon.Style>
-                                                <Style TargetType="{x:Type materialDesign:PackIcon}">
-                                                    <Setter Property="Margin" Value="0 0 5 0"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding UseCompactFilterBadges, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="True">
-                                                            <Setter Property="Margin" Value="0"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </materialDesign:PackIcon.Style>
-                                        </materialDesign:PackIcon>
-                                        <TextBlock Text="{Binding Name}" FontSize="11" Foreground="{StaticResource MappingTypeFilterBrush}">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding UseCompactFilterBadges, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="True">
-                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <!-- A fixed-width icon lane keeps every mapping route aligned. Filter names
+                         live in the tooltip instead of changing card geometry. -->
+                    <Border x:Name="FilterIndicator" Grid.Column="3" Width="26" Height="26" Margin="4 0"
+                            CornerRadius="4" Background="#162319"
+                            BorderBrush="{StaticResource MappingTypeFilterBrush}" BorderThickness="1"
+                            ToolTip="{Binding FilterIndicatorToolTip}" VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasFilterReferences}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <materialDesign:PackIcon Kind="Filter" Width="14" Height="14"
+                                                 Foreground="{StaticResource MappingTypeFilterBrush}"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
 
                     <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="2 0 6 0">
                         <Border Width="1" Height="22" Margin="1 0 4 0" Background="#3A3A3A"

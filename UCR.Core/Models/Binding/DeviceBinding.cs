@@ -158,8 +158,10 @@ namespace HidWizards.UCR.Core.Models.Binding
 
         public void SetBlock(bool block)
         {
+            if (Block == block) return;
             Block = block;
             Profile.Context.ContextChanged();
+            OnPropertyChanged(nameof(Block));
         }
 
         public void SetInvertInput(bool invert)

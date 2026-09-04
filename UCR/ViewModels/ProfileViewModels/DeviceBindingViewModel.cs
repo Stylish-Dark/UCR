@@ -330,6 +330,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(ShowInvertInput));
                 OnPropertyChanged(nameof(InvertInput));
             }
+            if (propertyChangedEventArgs.PropertyName.Equals(nameof(DeviceBinding.Block)))
+            {
+                OnPropertyChanged(nameof(Block));
+            }
             if (propertyChangedEventArgs.PropertyName.Equals(nameof(DeviceBinding.InvertInput)))
             {
                 OnPropertyChanged(nameof(InvertInput));

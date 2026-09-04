@@ -82,8 +82,14 @@ namespace HidWizards.UCR.Views.Controls
                 case ControlVisualKind.Filter:
                     DrawFilter(dc, b, accent);
                     break;
+                case ControlVisualKind.DeviceUnavailable:
+                    DrawDeviceUnavailable(dc, b, accent);
+                    break;
                 case ControlVisualKind.Unbound:
                     DrawUnbound(dc, b, accent);
+                    break;
+                case ControlVisualKind.Unknown:
+                    DrawUnknown(dc, b, accent);
                     break;
                 default:
                     DrawGenericButton(dc, b, accent, string.IsNullOrEmpty(Label) ? "?" : Label);
@@ -202,6 +208,49 @@ namespace HidWizards.UCR.Views.Controls
             }
             geometry.Freeze();
             dc.DrawGeometry(accent, null, geometry);
+        }
+
+
+        private static void DrawUnknown(DrawingContext dc, Rect b, Brush accent)
+        {
+            var size = Math.Min(b.Width, b.Height) * 0.68;
+            var center = new Point(b.Left + b.Width / 2.0, b.Top + b.Height / 2.0);
+            var half = size / 2.0;
+            var diamond = new StreamGeometry();
+            using (var ctx = diamond.Open())
+            {
+                ctx.BeginFigure(new Point(center.X, center.Y - half), false, true);
+                ctx.LineTo(new Point(center.X + half, center.Y), true, false);
+                ctx.LineTo(new Point(center.X, center.Y + half), true, false);
+                ctx.LineTo(new Point(center.X - half, center.Y), true, false);
+            }
+            diamond.Freeze();
+            dc.DrawGeometry(null, Pen(accent, 1.45), diamond);
+            DeviceGlyphControl.DrawCenteredText(dc, "?", accent,
+                new Rect(center.X - half, center.Y - half - 0.5, size, size + 1),
+                Math.Max(8, b.Height * 0.48), FontWeights.Bold);
+        }
+
+        private static void DrawDeviceUnavailable(DrawingContext dc, Rect b, Brush accent)
+        {
+            var device = new Rect(b.Left + b.Width * 0.12, b.Top + b.Height * 0.22,
+                b.Width * 0.48, b.Height * 0.56);
+            dc.DrawRoundedRectangle(null, Pen(accent, 1.35), device, 2.2, 2.2);
+
+            var cableY = b.Top + b.Height * 0.5;
+            var cableStart = device.Right + b.Width * 0.05;
+            dc.DrawLine(Pen(accent, 1.35), new Point(cableStart, cableY),
+                new Point(b.Left + b.Width * 0.78, cableY));
+            dc.DrawLine(Pen(accent, 1.2), new Point(b.Left + b.Width * 0.78, cableY - 3),
+                new Point(b.Left + b.Width * 0.78, cableY + 3));
+            dc.DrawLine(Pen(accent, 1.2), new Point(b.Left + b.Width * 0.84, cableY - 3),
+                new Point(b.Left + b.Width * 0.84, cableY + 3));
+
+            var unavailable = new SolidColorBrush(Color.FromRgb(220, 92, 92));
+            unavailable.Freeze();
+            dc.DrawLine(Pen(unavailable, 1.8),
+                new Point(b.Left + b.Width * 0.12, b.Bottom - b.Height * 0.12),
+                new Point(b.Right - b.Width * 0.08, b.Top + b.Height * 0.12));
         }
 
         private static void DrawUnbound(DrawingContext dc, Rect b, Brush accent)

@@ -124,6 +124,9 @@ namespace HidWizards.UCR.Views.Controls
                 case DeviceVisualKind.DirectInput:
                     DrawGenericController(dc, bounds, accent);
                     break;
+                case DeviceVisualKind.Unavailable:
+                    DrawUnavailable(dc, bounds, accent);
+                    break;
                 default:
                     DrawUnknown(dc, bounds, accent);
                     break;
@@ -322,9 +325,25 @@ namespace HidWizards.UCR.Views.Controls
 
         private static void DrawUnknown(DrawingContext dc, Rect b, Brush accent)
         {
-            var rect = new Rect(b.Left + b.Width * 0.18, b.Top + b.Height * 0.12, b.Width * 0.64, b.Height * 0.76);
-            dc.DrawRoundedRectangle(accent, null, rect, 3, 3);
-            DrawCenteredText(dc, "?", DetailDark, rect, Math.Max(8, b.Height * 0.48), FontWeights.Bold);
+            var center = new Point(b.Left + b.Width / 2.0, b.Top + b.Height / 2.0);
+            var radius = Math.Min(b.Width, b.Height) * 0.34;
+            dc.DrawEllipse(null, NewPen(accent, Math.Max(1.0, b.Height * 0.055)), center, radius, radius);
+            DrawCenteredText(dc, "?", accent,
+                new Rect(center.X - radius, center.Y - radius - 0.5, radius * 2, radius * 2 + 1),
+                Math.Max(8, b.Height * 0.46), FontWeights.Bold);
+        }
+
+        private static void DrawUnavailable(DrawingContext dc, Rect b, Brush accent)
+        {
+            var rect = new Rect(b.Left + b.Width * 0.12, b.Top + b.Height * 0.18, b.Width * 0.63, b.Height * 0.64);
+            dc.DrawRoundedRectangle(null, NewPen(accent, Math.Max(1.0, b.Height * 0.05)), rect, 2.5, 2.5);
+            dc.DrawEllipse(accent, null, new Point(rect.Right - b.Width * 0.08, rect.Top + b.Height * 0.10),
+                Math.Max(1.2, b.Height * 0.045), Math.Max(1.2, b.Height * 0.045));
+
+            var unavailable = Solid(220, 92, 92);
+            dc.DrawLine(NewPen(unavailable, Math.Max(1.3, b.Height * 0.07)),
+                new Point(b.Left + b.Width * 0.12, b.Bottom - b.Height * 0.12),
+                new Point(b.Right - b.Width * 0.08, b.Top + b.Height * 0.10));
         }
 
         private static void DrawSlotBadge(DrawingContext dc, double x, double y, double size, int slot)

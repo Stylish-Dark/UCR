@@ -73,6 +73,98 @@
                     </Setter.Value>
                 </Setter>
             </Style>
+
+            <Style x:Key="UcrSidebarIconButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                <Setter Property="Foreground" Value="#DADADA"/>
+                <Setter Property="Opacity" Value="0.9"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Foreground" Value="#FFFFFF"/>
+                        <Setter Property="Background" Value="#303030"/>
+                        <Setter Property="Opacity" Value="1"/>
+                    </Trigger>
+                    <Trigger Property="IsKeyboardFocused" Value="True">
+                        <Setter Property="Foreground" Value="#FFFFFF"/>
+                        <Setter Property="Opacity" Value="1"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.48"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="UcrProfileActionButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                <Setter Property="Foreground" Value="#DEDEDE"/>
+                <Setter Property="Background" Value="#282828"/>
+                <Setter Property="BorderBrush" Value="#3D3D3D"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Opacity" Value="0.94"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Foreground" Value="#FFFFFF"/>
+                        <Setter Property="Background" Value="#343434"/>
+                        <Setter Property="BorderBrush" Value="#555555"/>
+                        <Setter Property="Opacity" Value="1"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.48"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="UcrSlimVerticalScrollBar" TargetType="{x:Type ScrollBar}">
+                <Setter Property="Width" Value="8"/>
+                <Setter Property="MinWidth" Value="8"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ScrollBar}">
+                            <Grid Width="{TemplateBinding Width}" Background="Transparent">
+                                <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}"
+                                       Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
+                                       Value="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                       ViewportSize="{TemplateBinding ViewportSize}" IsDirectionReversed="True">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Command="{x:Static ScrollBar.PageUpCommand}"
+                                                      CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                                                      Focusable="False" Opacity="0"/>
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb MinHeight="32">
+                                            <Thumb.Style>
+                                                <Style TargetType="{x:Type Thumb}">
+                                                    <Setter Property="Background" Value="#747474"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="{x:Type Thumb}">
+                                                                <Border Background="{TemplateBinding Background}" CornerRadius="4"/>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                    <Style.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="Background" Value="#999999"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsDragging" Value="True">
+                                                            <Setter Property="Background" Value="#B0B0B0"/>
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Thumb.Style>
+                                        </Thumb>
+                                    </Track.Thumb>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Command="{x:Static ScrollBar.PageDownCommand}"
+                                                      CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                                                      Focusable="False" Opacity="0"/>
+                                    </Track.IncreaseRepeatButton>
+                                </Track>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
         </ResourceDictionary>
     </UserControl.Resources>
     <UserControl.CommandBindings>
@@ -92,12 +184,9 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Margin="4 4 8 4" Padding="8 0" Click="Back_OnClick"
-                    Style="{StaticResource MaterialDesignFlatButton}" ToolTip="Back to profiles">
-                <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="ArrowLeft" Width="18" Height="18" Margin="0 0 5 0"/>
-                    <TextBlock Text="BACK" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                </StackPanel>
+            <Button x:Name="BackButton" Grid.Column="0" Margin="5 2 8 2" Padding="0" Width="38" Height="38"
+                    Click="Back_OnClick" Style="{StaticResource UcrProfileActionButton}" ToolTip="Back to profiles">
+                <materialDesign:PackIcon Kind="ArrowLeft" Width="23" Height="23"/>
             </Button>
             <TextBlock x:Name="PageTitle" Grid.Column="1" Margin="4 0 12 0" FontSize="17" FontWeight="SemiBold"
                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
@@ -282,9 +371,9 @@
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
                                                 <TextBlock Text="{Binding KindText}" FontSize="9.5" FontWeight="SemiBold"
-                                                           Foreground="{StaticResource MappingTypeFilterBrush}" Opacity="0.72"/>
+                                                           Foreground="{StaticResource MappingTypeFilterBrush}" Opacity="0.9"/>
                                             </StackPanel>
-                                            <TextBlock Grid.Column="2" Text="{Binding ReferenceText}" FontSize="11" Opacity="0.48"
+                                            <TextBlock Grid.Column="2" Text="{Binding ReferenceText}" FontSize="11" Opacity="0.62"
                                                        Margin="8 0 2 0" VerticalAlignment="Center"/>
                                         </Grid>
                                     </DataTemplate>
@@ -293,120 +382,123 @@
                         </Expander>
                     </Border>
 
-                    <Border Grid.Row="2" Margin="0 8 0 0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
-                        <Expander IsExpanded="True" HorizontalContentAlignment="Stretch" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch" Background="#202020">
+                    <Border x:Name="ProfileDevicesPanel" Grid.Row="2" Margin="0 8 0 0" Background="#202020"
+                            BorderBrush="#383838" BorderThickness="1" CornerRadius="4" VerticalAlignment="Top">
+                        <Expander x:Name="ProfileDevicesExpander" IsExpanded="True" HorizontalContentAlignment="Stretch"
+                                  VerticalAlignment="Top" Background="#202020">
                             <Expander.Header>
                                 <Border Background="#242424" BorderBrush="{DynamicResource PrimaryHueMidBrush}" BorderThickness="3 0 0 0" Padding="10 7">
                                     <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="Usb" Width="16" Height="16" Margin="0 0 7 0" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
+                                        <materialDesign:PackIcon Kind="Usb" Width="16" Height="16" Margin="0 0 7 0" Foreground="{DynamicResource PrimaryHueLightBrush}"/>
                                         <TextBlock Text="Devices" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Border>
                             </Expander.Header>
-                            <ScrollViewer x:Name="ProfileDevicesScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                            <Grid Margin="8 7 8 2">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <TextBlock Text="INPUT" FontSize="10.5" FontWeight="SemiBold" Opacity="0.55" VerticalAlignment="Center"/>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                    <Button ToolTip="Detect and add input device" Width="25" Height="25" Padding="3" Style="{StaticResource MaterialDesignFlatButton}" Click="DetectProfileInputDevice_OnClick">
-                                        <materialDesign:PackIcon Kind="Radar" Width="15" Height="15"/>
-                                    </Button>
-                                    <Button ToolTip="Add input device" Width="25" Height="25" Padding="3" Style="{StaticResource MaterialDesignFlatButton}" Click="AddProfileInputDevice_OnClick">
-                                        <materialDesign:PackIcon Kind="Plus" Width="15" Height="15"/>
-                                    </Button>
-                                    <Button ToolTip="Remove selected input device" Width="25" Height="25" Padding="3" Style="{StaticResource MaterialDesignFlatButton}" Click="RemoveProfileInputDevice_OnClick" IsEnabled="{Binding InputDeviceControlViewModel.IsRemoveEnabled}">
-                                        <materialDesign:PackIcon Kind="Minus" Width="15" Height="15"/>
-                                    </Button>
-                                    <Button ToolTip="Configure selected input device" Width="25" Height="25" Padding="3" Style="{StaticResource MaterialDesignFlatButton}" Click="ManageProfileInputDevice_OnClick" IsEnabled="{Binding InputDeviceControlViewModel.IsConfigurationEnabled}">
-                                        <materialDesign:PackIcon Kind="Cog" Width="15" Height="15"/>
-                                    </Button>
-                                </StackPanel>
-                            </Grid>
-                            <ListBox Grid.Row="1" x:Name="InputProfileDeviceList" Margin="6 0 6 4"
-                                     ItemsSource="{Binding InputDeviceControlViewModel.Devices}"
-                                     SelectedItem="{Binding InputDeviceControlViewModel.SelectedDeviceConfiguration, Mode=TwoWay}"
-                                     BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="1 2">
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <Button Grid.Column="0" Width="20" Height="20" Padding="4" Background="Transparent" BorderThickness="0" ToolTip="{Binding PrimaryToolTip}" Click="PrimaryInputDevice_OnClick">
-                                                <Ellipse Width="8" Height="8" Stroke="#777" StrokeThickness="1.4">
-                                                    <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueMidBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueMidBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
-                                                </Ellipse>
+                            <ScrollViewer x:Name="ProfileDevicesScrollViewer" MaxHeight="340"
+                                          VerticalAlignment="Top" VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly" Padding="0 0 2 0"
+                                          PreviewMouseWheel="ProfileDevicesScrollViewer_OnPreviewMouseWheel">
+                                <ScrollViewer.Resources>
+                                    <Style TargetType="{x:Type ScrollBar}" BasedOn="{StaticResource UcrSlimVerticalScrollBar}"/>
+                                </ScrollViewer.Resources>
+                                <StackPanel VerticalAlignment="Top">
+                                    <Grid Margin="8 7 8 2">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <TextBlock Text="INPUT" FontSize="10.5" FontWeight="SemiBold" Opacity="0.68" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <Button ToolTip="Detect and add input device" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="DetectProfileInputDevice_OnClick">
+                                                <materialDesign:PackIcon Kind="Radar" Width="15" Height="15"/>
                                             </Button>
-                                            <Border Grid.Column="1" Width="32" Height="21" CornerRadius="4" BorderThickness="1" BorderBrush="{Binding Visual.OutlineBrush}" Background="#191919">
-                                                <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}" FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                            <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                            <StackPanel Grid.Row="2" Margin="9 1 9 5">
-                                <StackPanel.Style>
-                                    <Style TargetType="StackPanel">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding InputDeviceControlViewModel.IsDetecting}" Value="True">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </StackPanel.Style>
-                                <TextBlock Text="{Binding InputDeviceControlViewModel.DetectionStatus}" FontSize="10.5"
-                                           Foreground="{DynamicResource PrimaryHueMidBrush}" TextTrimming="CharacterEllipsis"/>
-                                <ProgressBar Height="2" Margin="0 2 0 0" Minimum="0" Maximum="100"
-                                             Value="{Binding InputDeviceControlViewModel.DetectionProgress, Mode=OneWay}"
-                                             Foreground="{DynamicResource PrimaryHueMidBrush}"/>
-                            </StackPanel>
-                            <Grid Grid.Row="3" Margin="8 3 8 7">
-                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                                <Grid Grid.Row="0">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                    <TextBlock Text="OUTPUT" FontSize="10.5" FontWeight="SemiBold" Opacity="0.55" VerticalAlignment="Center"/>
-                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                        <Button ToolTip="Add output device" Width="25" Height="25" Padding="3" Style="{StaticResource MaterialDesignFlatButton}" Click="AddProfileOutputDevice_OnClick">
-                                            <materialDesign:PackIcon Kind="Plus" Width="15" Height="15"/>
-                                        </Button>
-                                        <Button ToolTip="Remove selected output device" Width="25" Height="25" Padding="3" Style="{StaticResource MaterialDesignFlatButton}" Click="RemoveProfileOutputDevice_OnClick" IsEnabled="{Binding OutputDeviceControlViewModel.IsRemoveEnabled}">
-                                            <materialDesign:PackIcon Kind="Minus" Width="15" Height="15"/>
-                                        </Button>
-                                        <Button ToolTip="Configure selected output device" Width="25" Height="25" Padding="3" Style="{StaticResource MaterialDesignFlatButton}" Click="ManageProfileOutputDevice_OnClick" IsEnabled="{Binding OutputDeviceControlViewModel.IsConfigurationEnabled}">
-                                            <materialDesign:PackIcon Kind="Cog" Width="15" Height="15"/>
-                                        </Button>
+                                            <Button ToolTip="Add input device" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="AddProfileInputDevice_OnClick">
+                                                <materialDesign:PackIcon Kind="Plus" Width="15" Height="15"/>
+                                            </Button>
+                                            <Button ToolTip="Remove selected input device" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="RemoveProfileInputDevice_OnClick" IsEnabled="{Binding InputDeviceControlViewModel.IsRemoveEnabled}">
+                                                <materialDesign:PackIcon Kind="Minus" Width="15" Height="15"/>
+                                            </Button>
+                                            <Button ToolTip="Configure selected input device" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="ManageProfileInputDevice_OnClick" IsEnabled="{Binding InputDeviceControlViewModel.IsConfigurationEnabled}">
+                                                <materialDesign:PackIcon Kind="Cog" Width="15" Height="15"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                    <ListBox x:Name="InputProfileDeviceList" Margin="6 0 6 4"
+                                             ItemsSource="{Binding InputDeviceControlViewModel.Devices}"
+                                             SelectedItem="{Binding InputDeviceControlViewModel.SelectedDeviceConfiguration, Mode=TwoWay}"
+                                             BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="1 2">
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                    <Button Grid.Column="0" Width="20" Height="20" Padding="4" Background="Transparent" BorderThickness="0" ToolTip="{Binding PrimaryToolTip}" Click="PrimaryInputDevice_OnClick">
+                                                        <Ellipse Width="8" Height="8" Stroke="#929292" StrokeThickness="1.4">
+                                                            <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueLightBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueLightBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
+                                                        </Ellipse>
+                                                    </Button>
+                                                    <Border Grid.Column="1" Width="32" Height="21" CornerRadius="4" BorderThickness="1" BorderBrush="{Binding Visual.OutlineBrush}" Background="#191919">
+                                                        <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}" FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    <StackPanel Margin="9 1 9 5">
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding InputDeviceControlViewModel.IsDetecting}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <TextBlock Text="{Binding InputDeviceControlViewModel.DetectionStatus}" FontSize="10.5"
+                                                   Foreground="{DynamicResource PrimaryHueLightBrush}" TextTrimming="CharacterEllipsis"/>
+                                        <ProgressBar Height="2" Margin="0 2 0 0" Minimum="0" Maximum="100"
+                                                     Value="{Binding InputDeviceControlViewModel.DetectionProgress, Mode=OneWay}"
+                                                     Foreground="{DynamicResource PrimaryHueLightBrush}"/>
                                     </StackPanel>
-                                </Grid>
-                                <ListBox Grid.Row="1" x:Name="OutputProfileDeviceList" Margin="-2 2 -2 0"
-                                         ItemsSource="{Binding OutputDeviceControlViewModel.Devices}"
-                                         SelectedItem="{Binding OutputDeviceControlViewModel.SelectedDeviceConfiguration, Mode=TwoWay}"
-                                         BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <Grid Margin="1 2">
-                                                <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                                <Button Grid.Column="0" Width="20" Height="20" Padding="4" Background="Transparent" BorderThickness="0" ToolTip="{Binding PrimaryToolTip}" Click="PrimaryOutputDevice_OnClick">
-                                                    <Ellipse Width="8" Height="8" Stroke="#777" StrokeThickness="1.4">
-                                                        <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueMidBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueMidBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
-                                                    </Ellipse>
+
+                                    <Grid Margin="8 3 8 7">
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                        <Grid Grid.Row="0">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                            <TextBlock Text="OUTPUT" FontSize="10.5" FontWeight="SemiBold" Opacity="0.68" VerticalAlignment="Center"/>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                <Button ToolTip="Add output device" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="AddProfileOutputDevice_OnClick">
+                                                    <materialDesign:PackIcon Kind="Plus" Width="15" Height="15"/>
                                                 </Button>
-                                                <Border Grid.Column="1" Width="32" Height="21" CornerRadius="4" BorderThickness="1" BorderBrush="{Binding Visual.OutlineBrush}" Background="#191919">
-                                                    <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}" FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                </Border>
-                                                <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-                            </Grid>
-                            </Grid>
+                                                <Button ToolTip="Remove selected output device" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="RemoveProfileOutputDevice_OnClick" IsEnabled="{Binding OutputDeviceControlViewModel.IsRemoveEnabled}">
+                                                    <materialDesign:PackIcon Kind="Minus" Width="15" Height="15"/>
+                                                </Button>
+                                                <Button ToolTip="Configure selected output device" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="ManageProfileOutputDevice_OnClick" IsEnabled="{Binding OutputDeviceControlViewModel.IsConfigurationEnabled}">
+                                                    <materialDesign:PackIcon Kind="Cog" Width="15" Height="15"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+                                        <ListBox Grid.Row="1" x:Name="OutputProfileDeviceList" Margin="-2 2 -2 0"
+                                                 ItemsSource="{Binding OutputDeviceControlViewModel.Devices}"
+                                                 SelectedItem="{Binding OutputDeviceControlViewModel.SelectedDeviceConfiguration, Mode=TwoWay}"
+                                                 BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="1 2">
+                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                        <Button Grid.Column="0" Width="20" Height="20" Padding="4" Background="Transparent" BorderThickness="0" ToolTip="{Binding PrimaryToolTip}" Click="PrimaryOutputDevice_OnClick">
+                                                            <Ellipse Width="8" Height="8" Stroke="#929292" StrokeThickness="1.4">
+                                                                <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueLightBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueLightBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
+                                                            </Ellipse>
+                                                        </Button>
+                                                        <Border Grid.Column="1" Width="32" Height="21" CornerRadius="4" BorderThickness="1" BorderBrush="{Binding Visual.OutlineBrush}" Background="#191919">
+                                                            <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}" FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </Grid>
+                                </StackPanel>
                             </ScrollViewer>
                         </Expander>
                     </Border>
@@ -432,7 +524,7 @@
 
                         <Button Grid.Column="1" Margin="6 0 2 0" Padding="9 2" Height="30"
                                 ToolTip="Rename mappings in one pass" IsEnabled="{Binding CanEditProfile}"
-                                Style="{StaticResource MaterialDesignFlatButton}" Click="RenameMappings_OnClick">
+                                Style="{StaticResource UcrProfileActionButton}" Click="RenameMappings_OnClick">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Edit" Width="15" Height="15" Margin="0 0 6 0" VerticalAlignment="Center"/>
                                 <TextBlock Text="Rename mappings" VerticalAlignment="Center"/>
@@ -441,7 +533,7 @@
 
                         <Button Grid.Column="2" Margin="6 0 2 0" Padding="9 2" Height="30"
                                 ToolTip="Replace one device throughout this profile" IsEnabled="{Binding CanEditProfile}"
-                                Style="{StaticResource MaterialDesignFlatButton}" Click="BatchDevices_OnClick">
+                                Style="{StaticResource UcrProfileActionButton}" Click="BatchDevices_OnClick">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="↔" FontSize="16" Margin="0 0 6 0" VerticalAlignment="Center" Opacity="0.82"/>
                                 <TextBlock Text="Replace device" VerticalAlignment="Center"/>
@@ -449,13 +541,13 @@
                         </Button>
 
                         <Button Grid.Column="3" Margin="5 0 1 0" Padding="4" Width="28" Height="28"
-                                ToolTip="Collapse all mappings" Style="{StaticResource MaterialDesignFlatButton}"
+                                ToolTip="Collapse all mappings" Style="{StaticResource UcrProfileActionButton}"
                                 Click="CollapseAllMappings_OnClick">
                             <materialDesign:PackIcon Kind="Minus" Width="16" Height="16"/>
                         </Button>
 
                         <Button Grid.Column="4" Margin="1 0 0 0" Padding="4" Width="28" Height="28"
-                                ToolTip="Expand all mappings" Style="{StaticResource MaterialDesignFlatButton}"
+                                ToolTip="Expand all mappings" Style="{StaticResource UcrProfileActionButton}"
                                 Click="ExpandAllMappings_OnClick">
                             <materialDesign:PackIcon Kind="Plus" Width="16" Height="16"/>
                         </Button>
