@@ -424,8 +424,9 @@ namespace HidWizards.UCR.Tests.ModelTests
 
             var path = Path.Combine(_store.ProfilesRoot, profile.Guid.ToString("D") + ".json");
             var json = File.ReadAllText(path);
-            var truncated = System.Text.RegularExpressions.Regex.Replace(
-                json, @"""mappings""\s*:\s*\[\s*\]\s*,", string.Empty, 1);
+            var mappingsPattern = new System.Text.RegularExpressions.Regex(
+                @"""mappings""\s*:\s*\[\s*\]\s*,");
+            var truncated = mappingsPattern.Replace(json, string.Empty, 1);
             Assert.That(truncated, Is.Not.EqualTo(json), "Test fixture could not remove the mappings collection.");
             File.WriteAllText(path, truncated);
 
