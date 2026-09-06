@@ -215,7 +215,11 @@
                             <TreeView.ItemContainerStyle>
                                 <Style TargetType="{x:Type TreeViewItem}" BasedOn="{StaticResource MaterialDesignTreeViewItem}">
                                     <Setter Property="IsExpanded" Value="True"/>
+                                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <!-- MaterialDesign 2.5.1 applies its Padding inside Ripple. Remove it here so
+                                         the profile template can own its inset while explicitly filling Ripple. -->
+                                    <Setter Property="Padding" Value="0"/>
                                     <EventSetter Event="MouseDoubleClick" Handler="EditProfile"/>
                                 </Style>
                             </TreeView.ItemContainerStyle>
@@ -247,42 +251,49 @@
                             </TreeView.GroupStyle>
                             <TreeView.ItemTemplate>
                                 <HierarchicalDataTemplate DataType="{x:Type dashboard:ProfileItem}" ItemsSource="{Binding Items}">
-                                    <Grid Margin="0 2" MinHeight="38" ToolTip="{Binding Title}" HorizontalAlignment="Stretch">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
+                                    <!-- MaterialDesign 2.5.1 can arrange a TreeView header at its desired width even
+                                         when the selected-row chrome is much wider. Bind to the owning Ripple so the
+                                         profile row always receives the real header width instead of collapsing the
+                                         title to a few characters. -->
+                                    <Grid Width="{Binding RelativeSource={RelativeSource AncestorType={x:Type materialDesign:Ripple}}, Path=ActualWidth}"
+                                          HorizontalAlignment="Left" ToolTip="{Binding Title}">
+                                        <Grid Margin="8 2" MinHeight="38" HorizontalAlignment="Stretch">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
 
-                                        <!-- Device badges consume only the width they need; the profile title owns the remainder. -->
-                                        <ItemsControl Grid.Column="0" ItemsSource="{Binding InputVisuals}"
-                                                      ItemTemplate="{StaticResource DeviceBadgeTemplate}"
-                                                      HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                                        </ItemsControl>
+                                            <!-- Device badges consume only the width they need; the profile title owns the remainder. -->
+                                            <ItemsControl Grid.Column="0" ItemsSource="{Binding InputVisuals}"
+                                                          ItemTemplate="{StaticResource DeviceBadgeTemplate}"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                            </ItemsControl>
 
-                                        <Grid Grid.Column="1" Margin="6 0">
-                                            <TextBlock Text="{Binding Title}" FontSize="15.5" FontWeight="Medium"
-                                                       HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis"/>
-                                            <Ellipse Width="7" Height="7" Margin="0 0 4 0" HorizontalAlignment="Right"
-                                                     Fill="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center" ToolTip="Auto-apply enabled">
-                                                <Ellipse.Style>
-                                                    <Style TargetType="Ellipse">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Profile.AutoActivateEnabled}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Ellipse.Style>
-                                            </Ellipse>
+                                            <Grid Grid.Column="1" Margin="6 0">
+                                                <TextBlock Text="{Binding Title}" FontSize="15.5" FontWeight="Medium"
+                                                           HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <Ellipse Width="7" Height="7" Margin="0 0 4 0" HorizontalAlignment="Right"
+                                                         Fill="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center" ToolTip="Auto-apply enabled">
+                                                    <Ellipse.Style>
+                                                        <Style TargetType="Ellipse">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Profile.AutoActivateEnabled}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Ellipse.Style>
+                                                </Ellipse>
+                                            </Grid>
+
+                                            <ItemsControl Grid.Column="2" ItemsSource="{Binding OutputVisuals}"
+                                                          ItemTemplate="{StaticResource DeviceBadgeTemplate}"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                            </ItemsControl>
                                         </Grid>
-
-                                        <ItemsControl Grid.Column="2" ItemsSource="{Binding OutputVisuals}"
-                                                      ItemTemplate="{StaticResource DeviceBadgeTemplate}"
-                                                      HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                                        </ItemsControl>
                                     </Grid>
                                 </HierarchicalDataTemplate>
                             </TreeView.ItemTemplate>
