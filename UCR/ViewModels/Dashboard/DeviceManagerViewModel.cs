@@ -176,6 +176,14 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
     public class DeviceManagerViewModel : INotifyPropertyChanged, IDisposable
     {
+        private sealed class PendingPresentationState
+        {
+            public string Alias { get; set; }
+            public bool Hidden { get; set; }
+            public DeviceOutlineColor OutlineColor { get; set; }
+            public int Order { get; set; }
+        }
+
         private readonly DevicesManager _devicesManager;
         private CancellationTokenSource _detectionCancellation;
         private bool _disposed;
@@ -230,8 +238,13 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             Populate();
         }
 
-        private void Populate()
+        private void Populate(bool preservePendingPresentation = false)
         {
+            // This page is an editor: friendly names, colours and ordering live in the row view-models
+            // until Apply. Detect/Refresh may rebuild provider inventory, but must not erase those edits.
+            var pendingPresentation = preservePendingPresentation ? CapturePendingPresentation() : null;
+            var selectedStableKey = preservePendingPresentation ? SelectedDevice?.StableKey : null;
+
             Devices.Clear();
             var byStableIdentity = new Dictionary<string, DeviceManagerItemViewModel>(StringComparer.OrdinalIgnoreCase);
             var allInputs = _devicesManager.GetManagementDeviceList(DeviceIoType.Input);
@@ -244,12 +257,54 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             AddDevices(DeviceIoType.Input, byStableIdentity, removedInputKeys);
             AddDevices(DeviceIoType.Output, byStableIdentity, removedInputKeys);
 
-            var ordered = Devices
-                .OrderBy(item => item.CanPersist ? _devicesManager.GetDeviceSortOrder(item.Device) : int.MaxValue)
-                .ThenBy(item => item.ProviderDeviceName, StringComparer.CurrentCultureIgnoreCase)
-                .ToList();
+            if (pendingPresentation != null)
+            {
+                foreach (var item in Devices)
+                {
+                    PendingPresentationState pending;
+                    if (string.IsNullOrWhiteSpace(item.StableKey) ||
+                        !pendingPresentation.TryGetValue(item.StableKey, out pending)) continue;
+                    item.Alias = pending.Alias;
+                    item.Hidden = pending.Hidden;
+                    item.OutlineColor = pending.OutlineColor;
+                }
+            }
+
+            List<DeviceManagerItemViewModel> ordered;
+            if (pendingPresentation == null)
+            {
+                ordered = Devices
+                    .OrderBy(item => item.CanPersist ? _devicesManager.GetDeviceSortOrder(item.Device) : int.MaxValue)
+                    .ThenBy(item => item.ProviderDeviceName, StringComparer.CurrentCultureIgnoreCase)
+                    .ToList();
+            }
+            else
+            {
+                ordered = Devices
+                    .OrderBy(item => !string.IsNullOrWhiteSpace(item.StableKey) &&
+                                     pendingPresentation.ContainsKey(item.StableKey) ? 0 : 1)
+                    .ThenBy(item =>
+                    {
+                        PendingPresentationState pending;
+                        return !string.IsNullOrWhiteSpace(item.StableKey) &&
+                               pendingPresentation.TryGetValue(item.StableKey, out pending)
+                            ? pending.Order
+                            : item.CanPersist ? _devicesManager.GetDeviceSortOrder(item.Device) : int.MaxValue;
+                    })
+                    .ThenBy(item => item.ProviderDeviceName, StringComparer.CurrentCultureIgnoreCase)
+                    .ToList();
+            }
+
             Devices.Clear();
             foreach (var item in ordered) Devices.Add(item);
+
+            if (preservePendingPresentation)
+            {
+                SelectedDevice = selectedStableKey == null
+                    ? null
+                    : Devices.FirstOrDefault(item => string.Equals(item.StableKey, selectedStableKey,
+                        StringComparison.OrdinalIgnoreCase));
+            }
 
             var providersAvailable = _devicesManager.HasLoadedProviderReports();
             if (Devices.Count == 0)
@@ -267,6 +322,24 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
             Logger.Info("Device Manager populated " + Devices.Count + " device row(s)." +
                         (string.IsNullOrWhiteSpace(DetectionStatus) ? string.Empty : " Status: " + DetectionStatus));
+        }
+
+        private Dictionary<string, PendingPresentationState> CapturePendingPresentation()
+        {
+            var pending = new Dictionary<string, PendingPresentationState>(StringComparer.OrdinalIgnoreCase);
+            for (var index = 0; index < Devices.Count; index++)
+            {
+                var item = Devices[index];
+                if (item == null || string.IsNullOrWhiteSpace(item.StableKey)) continue;
+                pending[item.StableKey] = new PendingPresentationState
+                {
+                    Alias = item.Alias,
+                    Hidden = item.Hidden,
+                    OutlineColor = item.OutlineColor,
+                    Order = index
+                };
+            }
+            return pending;
         }
 
         private void AddDevices(DeviceIoType type,
@@ -366,7 +439,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 }
 
                 var logicalDevice = _devicesManager.RegisterDetectedInputDevice(detected) ?? detected;
-                Populate();
+                Populate(true);
                 var item = Devices.FirstOrDefault(candidate => SameDevice(candidate.Device, logicalDevice));
                 if (item == null)
                 {
@@ -434,7 +507,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 Logger.Error("Unable to refresh live devices from Device Manager", exception);
                 DetectionStatus = "Live device refresh failed. Showing devices already known to UCR.";
             }
-            Populate();
+            Populate(true);
         }
 
         public bool Apply(out string error)

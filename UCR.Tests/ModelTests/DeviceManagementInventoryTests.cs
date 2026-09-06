@@ -115,6 +115,54 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void DeviceManagerRefreshPreservesPendingFriendlyNameWithoutApplyingIt()
+        {
+            var original = Environment.CurrentDirectory;
+            var temporary = Path.Combine(Path.GetTempPath(), "ucr-device-pending-alias-test-" + Guid.NewGuid().ToString("N"));
+            var providerDirectory = Path.Combine(temporary, "Data", "Cache", "Core_Interception");
+            Directory.CreateDirectory(providerDirectory);
+
+            try
+            {
+                Directory.SetCurrentDirectory(temporary);
+                File.WriteAllText(Path.Combine(providerDirectory, "keyboard.json"),
+                    "{\"Title\":\"K: Cached Keyboard\",\"ProviderName\":\"Core_Interception\",\"DeviceHandle\":\"Keyboard\\\\Cached\",\"DeviceNumber\":0,\"HidPath\":\"HID\\\\VID_CAFE&PID_BEEF\",\"DeviceBindingMenu\":[]}");
+
+                var context = CreateIsolatedContext(temporary);
+                context.IOController?.Dispose();
+                context.IOController = null;
+
+                using (var viewModel = new DeviceManagerViewModel(context.DevicesManager))
+                {
+                    Assert.That(viewModel.Devices.Count, Is.EqualTo(1));
+                    viewModel.Devices[0].Alias = "Typed but not saved";
+                    viewModel.Devices[0].OutlineColor = DeviceOutlineColor.Cyan;
+
+                    viewModel.Refresh();
+
+                    Assert.That(viewModel.Devices.Count, Is.EqualTo(1));
+                    Assert.That(viewModel.Devices[0].Alias, Is.EqualTo("Typed but not saved"),
+                        "Refreshing/re-detecting device inventory must not discard friendly names still being edited in the Devices page.");
+                    Assert.That(viewModel.Devices[0].OutlineColor, Is.EqualTo(DeviceOutlineColor.Cyan),
+                        "Pending presentation edits should survive the same inventory reconciliation.");
+                    Assert.That(context.DeviceAliases, Is.Empty,
+                        "Preserving an in-progress editor value must not silently turn Refresh/Detect into Save.");
+
+                    string applyError;
+                    Assert.That(viewModel.Apply(out applyError), Is.True, applyError);
+                    Assert.That(context.DeviceAliases.Count, Is.EqualTo(1));
+                    Assert.That(context.DeviceAliases[0].Alias, Is.EqualTo("Typed but not saved"),
+                        "The preserved editor value must still save normally when the user explicitly applies it.");
+                }
+            }
+            finally
+            {
+                Directory.SetCurrentDirectory(original);
+                Directory.Delete(temporary, true);
+            }
+        }
+
+        [Test]
         public void ProviderReportCollectionKeepsHealthyProvidersWhenOneProviderThrows()
         {
             var healthyReport = new HidWizards.IOWrapper.DataTransferObjects.ProviderReport
