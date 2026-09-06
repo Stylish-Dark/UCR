@@ -3,6 +3,7 @@ using System.IO;
 using System.Xml.Serialization;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.ViewModels.Dashboard;
+using HidWizards.UCR.ViewModels.DeviceViewModels;
 using HidWizards.UCR.ViewModels.Presentation;
 using NUnit.Framework;
 
@@ -88,6 +89,18 @@ namespace HidWizards.UCR.Tests.ModelTests
                 "Badge/text colour must stay at the original semantic device colour.");
             Assert.That(visual.OutlineBrush, Is.Not.SameAs(DeviceVisualCatalog.XboxBrush));
             Assert.That(visual.OutlineBrush.ToString(), Is.EqualTo("#FFE53935"));
+        }
+
+        [Test]
+        public void AddDevicePickerRowsExposeSemanticDeviceIcons()
+        {
+            var playStation = new Device("PS4 DualShock", "Core_ViGEm", "ds4", 0);
+            var xbox = new Device("X360 Controller", "Core_ViGEm", "xb360", 0);
+
+            Assert.That(new DeviceViewModel(playStation, DeviceIoType.Output).Visual.Kind,
+                Is.EqualTo(DeviceVisualKind.PlayStation));
+            Assert.That(new DeviceViewModel(xbox, DeviceIoType.Output).Visual.Kind,
+                Is.EqualTo(DeviceVisualKind.Xbox));
         }
 
         [Test]

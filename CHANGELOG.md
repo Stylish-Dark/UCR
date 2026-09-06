@@ -5,6 +5,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.9.9z] - 2026-09-07
+
+### Added
+- Added semantic device glyphs to the Add input/output device pickers.
+
+### Changed
+- Inherited profile devices now use the concise `(Inherited)` label without exposing the parent profile name.
+- Release metadata now identifies this Stylish build as v0.9.9z.
+
+### Fixed
+- Preserved unsaved friendly names, colours, hidden state, and ordering when device detection refreshes the Devices page.
+
 ## [0.9.0] - 2020-01-02
 
 ### Added

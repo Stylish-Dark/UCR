@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Models;
+using HidWizards.UCR.ViewModels.Presentation;
 
 namespace HidWizards.UCR.ViewModels.DeviceViewModels
 {
@@ -16,6 +17,8 @@ namespace HidWizards.UCR.ViewModels.DeviceViewModels
 
         public string Title { get; set; }
         public string ProviderName { get; set; }
+        public DeviceIoType DeviceIoType { get; }
+        public DeviceVisualDescriptor Visual => DeviceVisualCatalog.Describe(Device, DeviceIoType);
         private bool _checked;
         public bool Checked
         {
@@ -60,9 +63,14 @@ namespace HidWizards.UCR.ViewModels.DeviceViewModels
         {
         }
 
-        public DeviceViewModel(Device device)
+        public DeviceViewModel(Device device) : this(device, DeviceIoType.Input)
+        {
+        }
+
+        public DeviceViewModel(Device device, DeviceIoType deviceIoType)
         {
             Device = device;
+            DeviceIoType = deviceIoType;
             Title = device.DisplayTitle;
             ProviderName = device.ProviderName;
         }

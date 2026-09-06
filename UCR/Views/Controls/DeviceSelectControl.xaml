@@ -16,14 +16,19 @@
                             <Separator Margin="0" Visibility="{Binding SeparatorVisibility}" Style="{StaticResource MaterialDesignSeparator}"/>
                             <Grid Width="Auto" MouseDown="Device_OnMouseDown">
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0" Margin="0 12">
+                                <local:DeviceGlyphControl Grid.Column="0" Width="30" Height="30" Margin="2 0 10 0"
+                                                          VerticalAlignment="Center" Kind="{Binding Visual.Kind}"
+                                                          AccentBrush="{Binding Visual.AccentBrush}"
+                                                          ToolTip="{Binding Visual.ToolTip}"/>
+                                <StackPanel Grid.Column="1" Margin="0 12">
                                     <TextBlock Text="{Binding Title}" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
                                     <TextBlock Text="{Binding ProviderName}" Foreground="#D0D0D0" Style="{StaticResource MaterialDesignCaptionTextBlock}"/>
                                 </StackPanel>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4 0 0 0">
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="4 0 0 0">
                                     <TextBlock Text="DETECTED" Foreground="{DynamicResource PrimaryHueMidBrush}" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
@@ -38,7 +43,7 @@
                                     </TextBlock>
                                     <CheckBox Style="{StaticResource MaterialDesignCheckBox}" IsChecked="{Binding Checked}" HorizontalAlignment="Center"/>
                                 </StackPanel>
-                                <materialDesign:Ripple Grid.Column="0" Grid.ColumnSpan="2" Feedback="{DynamicResource MaterialDesignFlatButtonRipple}" ToolTip="{Binding Title}"/>
+                                <materialDesign:Ripple Grid.Column="0" Grid.ColumnSpan="3" Feedback="{DynamicResource MaterialDesignFlatButtonRipple}" ToolTip="{Binding Title}"/>
                             </Grid>
                         </StackPanel>
                     </DataTemplate>

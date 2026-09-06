@@ -1,4 +1,8 @@
-﻿using HidWizards.UCR.Core.Models.Binding;
+﻿using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Reflection;
+using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Plugins.Remapper;
 using NUnit.Framework;
 
@@ -31,6 +35,21 @@ namespace HidWizards.UCR.Tests.ModelTests
             var invertProperty = guiMatrix[0].PluginProperties[0];
 
             Assert.AreEqual(invertProperty.Name, "Invert");
+        }
+
+        [Test]
+        public void ReleaseMetadataIdentifiesV099z()
+        {
+            var assembly = typeof(HidWizards.UCR.App).Assembly;
+            var informational = assembly.GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false)
+                .Cast<AssemblyInformationalVersionAttribute>()
+                .Single();
+            var versionInfo = FileVersionInfo.GetVersionInfo(assembly.Location);
+
+            Assert.That(assembly.GetName().Version, Is.EqualTo(new Version(0, 9, 9, 0)));
+            Assert.That(versionInfo.FileVersion, Is.EqualTo("0.9.9.0"));
+            Assert.That(informational.InformationalVersion, Is.EqualTo("v0.9.9z"));
+            Assert.That(versionInfo.ProductVersion, Is.EqualTo("v0.9.9z"));
         }
     }
 }

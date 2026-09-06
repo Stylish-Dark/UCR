@@ -5,7 +5,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using HidWizards.UCR.Core.Models;
+using HidWizards.UCR.ViewModels.Controls;
 using HidWizards.UCR.ViewModels.Dashboard;
+using HidWizards.UCR.Views.Controls;
 using HidWizards.UCR.Views.Dialogs;
 using NUnit.Framework;
 
@@ -77,6 +79,32 @@ namespace HidWizards.UCR.Tests.UiTests
             Assert.That(colourButton.ActualHeight, Is.GreaterThan(0));
         }
 
+
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void AddDevicePickerMaterializesSemanticDeviceGlyphs()
+        {
+            EnsureApplicationResources();
+
+            var devices = new List<Device>
+            {
+                new Device("PS4 DualShock", "Core_ViGEm", "ds4", 0),
+                new Device("X360 Controller", "Core_ViGEm", "xb360", 0)
+            };
+            var picker = new DeviceSelectControl
+            {
+                DataContext = new DeviceSelectControlViewModel("Add output devices", devices, DeviceIoType.Output)
+            };
+            picker.Measure(new Size(360, 500));
+            picker.Arrange(new Rect(0, 0, 360, 500));
+            picker.UpdateLayout();
+
+            var glyphs = FindVisualChildren<DeviceGlyphControl>(picker).ToList();
+            Assert.That(glyphs.Count, Is.EqualTo(2), "Every add-device row should materialize one device-family glyph.");
+            Assert.That(glyphs[0].Kind, Is.EqualTo(HidWizards.UCR.ViewModels.Presentation.DeviceVisualKind.PlayStation));
+            Assert.That(glyphs[1].Kind, Is.EqualTo(HidWizards.UCR.ViewModels.Presentation.DeviceVisualKind.Xbox));
+        }
 
         private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject
         {

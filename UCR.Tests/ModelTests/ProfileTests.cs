@@ -87,6 +87,18 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void InheritedDeviceTitleDoesNotExposeParentProfileName()
+        {
+            var device = new Device("Laptop KB", "Core_Interception", @"Keyboard\VID_1111&PID_2222", 0);
+            var configuration = new DeviceConfiguration(device);
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { configuration }, DeviceIoType.Input);
+            var child = _context.ProfilesManager.CreateProfile("Devil May Cry 3 - Player 2", null, null);
+            _profile.AddChildProfile(child);
+
+            Assert.That(configuration.GetFullTitleForProfile(child), Is.EqualTo("Laptop KB (Inherited)"));
+        }
+
+        [Test]
         public void AddOutputMenuUsesConciseDestinationNameForSimpleRoutes()
         {
             var option = new SimplePluginViewModel(new ButtonToFilter());

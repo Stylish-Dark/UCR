@@ -31,13 +31,18 @@ namespace HidWizards.UCR.ViewModels.Controls
         }
 
         public DeviceSelectControlViewModel(string title, List<Device> devices)
+            : this(title, devices, DeviceIoType.Input)
+        {
+        }
+
+        public DeviceSelectControlViewModel(string title, List<Device> devices, DeviceIoType deviceIoType)
         {
             Title = title;
             var result = new ObservableCollection<DeviceViewModel>();
 
             foreach (var device in devices)
             {
-                result.Add(new DeviceViewModel(device));
+                result.Add(new DeviceViewModel(device, deviceIoType));
             }
 
             if (result.Count > 0) result[0].FirstElement = true;

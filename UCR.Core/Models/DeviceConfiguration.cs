@@ -59,7 +59,7 @@ namespace HidWizards.UCR.Core.Models
             var title = ConfigurationName ?? deviceTitle;
             if (profile == null || Device.Profile.Guid == profile.Guid) return title;
 
-            return $"{title} (Inherited from {Device.Profile.Title})";
+            return $"{title} (Inherited)";
         }
     }
 }
