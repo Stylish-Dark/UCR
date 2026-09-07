@@ -102,6 +102,18 @@ jobs:
           }
           Write-Host "Verified IOWrapper commit: $actual"
 
+      - name: Preserve IOWrapper input callback order
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\build\ProviderPatches\Apply-IOWrapperInputOrdering.ps1 -IOWrapperRoot .\submodules\IOWrapper
+
+      - name: Serialize Core ViGEm DS4 report writes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\build\ProviderPatches\Apply-CoreViGEmDs4Serialization.ps1 -IOWrapperRoot .\submodules\IOWrapper
+
       - name: Enable Core Interception blocking
         shell: pwsh
         run: |
@@ -175,21 +187,18 @@ jobs:
           }
           Write-Host 'Verified Core Interception build artifact has BlockingEnabled=true.'
 
-      - name: Apply approved provider DLL overrides
+      - name: Apply approved Core Interception DLL override
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
 
+          # Core_ViGEm is deliberately not overridden here. Its DS4 handler is patched
+          # from pinned source above and the provider is rebuilt by this workflow.
           $overrides = @(
             @{
               Source = '.\build\ProviderOverrides\Providers\Core_Interception\IOWrapper.Libraries.PollingDeviceHandler.dll'
               Destination = '.\submodules\IOWrapper\Artifacts\Providers\Core_Interception\IOWrapper.Libraries.PollingDeviceHandler.dll'
               Sha256 = 'dec7437219bb5b410955c0fc50d1a3f92af31cf08bc1c23ec7e5dcdfa4207b25'
-            },
-            @{
-              Source = '.\build\ProviderOverrides\Providers\Core_ViGEm\Core_ViGEm.dll'
-              Destination = '.\submodules\IOWrapper\Artifacts\Providers\Core_ViGEm\Core_ViGEm.dll'
-              Sha256 = 'bb6a4862a723fd5b6e40ecfcb955f577d36373e6ae425fe82bffaf88fd87ec65'
             }
           )
 
@@ -412,7 +421,7 @@ jobs:
           Write-Host "UCR.exe SHA-256: $hash"
           Write-Host 'Verified final Core Interception settings have BlockingEnabled=true.'
 
-      - name: Verify approved provider DLLs in final output
+      - name: Verify provider fixes in final output
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -421,10 +430,6 @@ jobs:
             @{
               Path = '.\UCR\bin\Release\Providers\Core_Interception\IOWrapper.Libraries.PollingDeviceHandler.dll'
               Sha256 = 'dec7437219bb5b410955c0fc50d1a3f92af31cf08bc1c23ec7e5dcdfa4207b25'
-            },
-            @{
-              Path = '.\UCR\bin\Release\Providers\Core_ViGEm\Core_ViGEm.dll'
-              Sha256 = 'bb6a4862a723fd5b6e40ecfcb955f577d36373e6ae425fe82bffaf88fd87ec65'
             }
           )
 
@@ -438,6 +443,17 @@ jobs:
             }
             Write-Host "Verified final provider DLL: $($item.Path) [$actual]"
           }
+
+          $vigemPath = '.\UCR\bin\Release\Providers\Core_ViGEm\Core_ViGEm.dll'
+          $oldUnpatchedHash = 'bb6a4862a723fd5b6e40ecfcb955f577d36373e6ae425fe82bffaf88fd87ec65'
+          if (-not (Test-Path -LiteralPath $vigemPath -PathType Leaf)) {
+            throw "Patched Core_ViGEm provider is missing from final output: $vigemPath"
+          }
+          $vigemHash = (Get-FileHash -LiteralPath $vigemPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($vigemHash -eq $oldUnpatchedHash) {
+            throw 'Final Core_ViGEm provider is still the old unpatched pinned DLL.'
+          }
+          Write-Host "Verified rebuilt Core_ViGEm DS4 provider: $vigemPath [$vigemHash]"
 
       - name: Verify provider entry DLLs in final runtime
         shell: pwsh

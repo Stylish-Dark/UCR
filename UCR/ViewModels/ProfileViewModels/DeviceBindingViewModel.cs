@@ -281,6 +281,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public void CurrentValueChanged()
         {
             if (!GuiInvalidated) return;
+            GuiInvalidated = false;
             OnPropertyChanged(nameof(CurrentValue));
             OnPropertyChanged(nameof(PreviewValue));
         }

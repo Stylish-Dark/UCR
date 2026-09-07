@@ -262,6 +262,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             // collapsed route summary. Rebuilding all glyph descriptors on every progress tick was
             // needless WPF churn while the user was trying to press the input we were listening for.
             if (string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.BindModeProgress), StringComparison.Ordinal) ||
+                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.CurrentValue), StringComparison.Ordinal) ||
                 string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.PreviewValue), StringComparison.Ordinal) ||
                 string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.ShowButtonPreview), StringComparison.Ordinal))
             {

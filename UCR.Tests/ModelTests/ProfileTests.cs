@@ -132,6 +132,31 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void GuiInvalidationIsConsumedAfterOneRefresh()
+        {
+            var binding = new DeviceBinding(value => { }, _profile, DeviceIoType.Input)
+            {
+                DeviceBindingCategory = DeviceBindingCategory.Momentary
+            };
+            var viewModel = new DeviceBindingViewModel(binding);
+            var currentValueNotifications = 0;
+            var previewNotifications = 0;
+            viewModel.PropertyChanged += (sender, args) =>
+            {
+                if (args.PropertyName == nameof(DeviceBindingViewModel.CurrentValue)) currentValueNotifications++;
+                if (args.PropertyName == nameof(DeviceBindingViewModel.PreviewValue)) previewNotifications++;
+            };
+
+            viewModel.CurrentValue = 1;
+            viewModel.CurrentValueChanged();
+            viewModel.CurrentValueChanged();
+
+            Assert.That(currentValueNotifications, Is.EqualTo(1));
+            Assert.That(previewNotifications, Is.EqualTo(1));
+            viewModel.Dispose();
+        }
+
+        [Test]
         public void PrimaryDeviceDefaultsToFirstAndCanBeChangedPerProfile()
         {
             var first = new DeviceConfiguration(new Device("Keyboard A", "Core_Interception", "kbd-a", 0));
