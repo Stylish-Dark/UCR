@@ -85,9 +85,37 @@
                   ItemsSource="{Binding Devices}"
                   SelectedItem="{Binding SelectedDevice}"
                   IsEnabled="{Binding BindingEnabled}"
-                  DisplayMemberPath="Title"
                   SelectedValuePath="Value"
-                  SelectionChanged="DeviceNumberBox_OnSelected"/>
+                  SelectionChanged="DeviceNumberBox_OnSelected">
+            <ComboBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid MinWidth="110">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" MinWidth="31" Height="20" Margin="0 0 7 0" Padding="4 1"
+                                VerticalAlignment="Center" CornerRadius="4" Background="#1B1B1B"
+                                BorderBrush="{Binding Visual.OutlineBrush}" BorderThickness="1" ToolTip="{Binding Visual.ToolTip}">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Visual}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}"
+                                       FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Grid.Column="1" Text="{Binding Title}" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}"/>
+                    </Grid>
+                </DataTemplate>
+            </ComboBox.ItemTemplate>
+        </ComboBox>
 
         <Grid Grid.Row="0" Grid.Column="2" MinWidth="120">
             <Grid.ColumnDefinitions>

@@ -10,6 +10,7 @@ using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Core.Utilities;
+using HidWizards.UCR.ViewModels.Presentation;
 
 namespace HidWizards.UCR.ViewModels.ProfileViewModels
 {
@@ -164,7 +165,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             Devices = new ObservableCollection<ComboBoxItemViewModel>();
             foreach (var deviceConfiguration in deviceConfigurationList)
             {
-                Devices.Add(new ComboBoxItemViewModel(deviceConfiguration.GetFullTitleForProfile(DeviceBinding.Profile), deviceConfiguration.Guid));
+                Devices.Add(new ComboBoxItemViewModel(
+                    deviceConfiguration.GetFullTitleForProfile(DeviceBinding.Profile),
+                    deviceConfiguration.Guid,
+                    DeviceVisualCatalog.Describe(deviceConfiguration, DeviceBinding.Profile, DeviceBinding.DeviceIoType)));
             }
 
             SetSelectDevice();

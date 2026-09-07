@@ -3,7 +3,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:HidWizards.UCR.Views.Controls"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="300">
@@ -20,10 +19,12 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <local:DeviceGlyphControl Grid.Column="0" Width="30" Height="30" Margin="2 0 10 0"
-                                                          VerticalAlignment="Center" Kind="{Binding Visual.Kind}"
-                                                          AccentBrush="{Binding Visual.AccentBrush}"
-                                                          ToolTip="{Binding Visual.ToolTip}"/>
+                                <Border Grid.Column="0" MinWidth="34" Height="22" Margin="2 0 10 0" Padding="5 1"
+                                        VerticalAlignment="Center" CornerRadius="4" Background="#1B1B1B"
+                                        BorderBrush="{Binding Visual.OutlineBrush}" BorderThickness="1" ToolTip="{Binding Visual.ToolTip}">
+                                    <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}"
+                                               FontSize="11.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
                                 <StackPanel Grid.Column="1" Margin="0 12">
                                     <TextBlock Text="{Binding Title}" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
                                     <TextBlock Text="{Binding ProviderName}" Foreground="#D0D0D0" Style="{StaticResource MaterialDesignCaptionTextBlock}"/>

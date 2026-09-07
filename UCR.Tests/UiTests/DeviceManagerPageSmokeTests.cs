@@ -72,6 +72,11 @@ namespace HidWizards.UCR.Tests.UiTests
             Assert.That(aliasBox.Padding.Left, Is.GreaterThanOrEqualTo(8));
             Assert.That(ScrollViewer.GetVerticalScrollBarVisibility(list), Is.EqualTo(ScrollBarVisibility.Auto));
 
+            var semanticBadge = FindVisualChildren<TextBlock>(row)
+                .FirstOrDefault(candidate => candidate.Text == "X1");
+            Assert.That(semanticBadge, Is.Not.Null,
+                "Every device-manager row should expose its semantic device badge.");
+
             var colourButton = FindVisualChildren<Button>(row)
                 .FirstOrDefault(candidate => (candidate.ToolTip as string)?.StartsWith("Outline colour") == true);
             Assert.That(colourButton, Is.Not.Null,
@@ -83,7 +88,7 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
-        public void AddDevicePickerMaterializesSemanticDeviceGlyphs()
+        public void AddDevicePickerMaterializesSemanticDeviceBadges()
         {
             EnsureApplicationResources();
 
@@ -100,10 +105,12 @@ namespace HidWizards.UCR.Tests.UiTests
             picker.Arrange(new Rect(0, 0, 360, 500));
             picker.UpdateLayout();
 
-            var glyphs = FindVisualChildren<DeviceGlyphControl>(picker).ToList();
-            Assert.That(glyphs.Count, Is.EqualTo(2), "Every add-device row should materialize one device-family glyph.");
-            Assert.That(glyphs[0].Kind, Is.EqualTo(HidWizards.UCR.ViewModels.Presentation.DeviceVisualKind.PlayStation));
-            Assert.That(glyphs[1].Kind, Is.EqualTo(HidWizards.UCR.ViewModels.Presentation.DeviceVisualKind.Xbox));
+            var badgeTexts = FindVisualChildren<TextBlock>(picker)
+                .Select(candidate => candidate.Text)
+                .Where(candidate => candidate == "P1" || candidate == "X1")
+                .ToList();
+            Assert.That(badgeTexts, Is.EquivalentTo(new[] { "P1", "X1" }),
+                "Every add-device row should materialize the semantic device-family badge, not a controller silhouette.");
         }
 
         private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject

@@ -41,6 +41,15 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public bool CanPersist { get; }
         public string ProviderDeviceName => Device?.Title ?? "Device";
         public string ProviderName => Device?.ProviderName ?? string.Empty;
+        public DeviceVisualDescriptor Visual
+        {
+            get
+            {
+                var visual = DeviceVisualCatalog.Describe(Device, ValidationType);
+                visual.OutlineBrush = CurrentOutlineBrush;
+                return visual;
+            }
+        }
         public string IoTypes { get; private set; }
         public bool IsCachedOnly => Device?.IsCache ?? false;
         public bool HasInput { get; private set; }
@@ -93,6 +102,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 _outlineColor = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(CurrentOutlineBrush));
+                OnPropertyChanged(nameof(Visual));
             }
         }
 

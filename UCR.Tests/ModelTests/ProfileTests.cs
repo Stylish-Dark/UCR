@@ -128,6 +128,8 @@ namespace HidWizards.UCR.Tests.ModelTests
 
             Assert.That(viewModel.Devices.Count, Is.EqualTo(2));
             Assert.That(viewModel.Devices.Any(item => item.Value == second.Guid), Is.True);
+            Assert.That(viewModel.Devices.All(item => item.Visual != null), Is.True,
+                "Every real device choice should carry its semantic visual shorthand.");
             viewModel.Dispose();
         }
 

@@ -53,16 +53,23 @@
                                     <Border Style="{StaticResource ShadowDeviceRow}">
                                         <Grid Background="Transparent" Cursor="Hand" MouseDown="Device_OnAddDevice" ToolTip="Add this shadow device">
                                             <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <StackPanel VerticalAlignment="Center">
+                                            <Border Grid.Column="0" MinWidth="34" Height="22" Margin="0 0 9 0" Padding="5 1"
+                                                    VerticalAlignment="Center" CornerRadius="4" Background="#181818"
+                                                    BorderBrush="{Binding Visual.OutlineBrush}" BorderThickness="1" ToolTip="{Binding Visual.ToolTip}">
+                                                <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}"
+                                                           FontSize="11.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" Foreground="#F4F4F4"
                                                            TextTrimming="CharacterEllipsis"/>
                                                 <TextBlock Text="{Binding ProviderName}" FontSize="10.5" Foreground="#929292"
                                                            Margin="0 2 0 0" TextTrimming="CharacterEllipsis"/>
                                             </StackPanel>
-                                            <Border Grid.Column="1" Width="26" Height="26" CornerRadius="4" Margin="10 0 0 0"
+                                            <Border Grid.Column="2" Width="26" Height="26" CornerRadius="4" Margin="10 0 0 0"
                                                     Background="#181818" BorderBrush="#444444" BorderThickness="1">
                                                 <materialDesign:PackIcon Kind="Plus" Width="15" Height="15"
                                                                          Foreground="{DynamicResource PrimaryHueMidBrush}"
@@ -118,16 +125,23 @@
                                     <Border Style="{StaticResource ShadowDeviceRow}">
                                         <Grid Background="Transparent" Cursor="Hand" MouseDown="Device_OnRemoveDevice" ToolTip="Remove this shadow device">
                                             <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <StackPanel VerticalAlignment="Center">
+                                            <Border Grid.Column="0" MinWidth="34" Height="22" Margin="0 0 9 0" Padding="5 1"
+                                                    VerticalAlignment="Center" CornerRadius="4" Background="#181818"
+                                                    BorderBrush="{Binding Visual.OutlineBrush}" BorderThickness="1" ToolTip="{Binding Visual.ToolTip}">
+                                                <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}"
+                                                           FontSize="11.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" Foreground="#F4F4F4"
                                                            TextTrimming="CharacterEllipsis"/>
                                                 <TextBlock Text="{Binding ProviderName}" FontSize="10.5" Foreground="#929292"
                                                            Margin="0 2 0 0" TextTrimming="CharacterEllipsis"/>
                                             </StackPanel>
-                                            <Border Grid.Column="1" Width="26" Height="26" CornerRadius="4" Margin="10 0 0 0"
+                                            <Border Grid.Column="2" Width="26" Height="26" CornerRadius="4" Margin="10 0 0 0"
                                                     Background="#181818" BorderBrush="#444444" BorderThickness="1">
                                                 <materialDesign:PackIcon Kind="Minus" Width="15" Height="15" Foreground="#D8D8D8"
                                                                          HorizontalAlignment="Center" VerticalAlignment="Center"/>

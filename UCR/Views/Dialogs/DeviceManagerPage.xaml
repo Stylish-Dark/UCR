@@ -131,19 +131,27 @@
                     <Border BorderBrush="#3C3C3C" BorderThickness="0 0 0 1" Padding="8 8">
                         <Grid>
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="44"/>
                                 <ColumnDefinition Width="190"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="82"/>
                                 <ColumnDefinition Width="140"/>
                             </Grid.ColumnDefinitions>
 
-                            <StackPanel Grid.Column="0" Margin="0 0 12 0">
+                            <Border Grid.Column="0" MinWidth="34" Height="22" Margin="0 0 10 0" Padding="5 1"
+                                    VerticalAlignment="Center" CornerRadius="4" Background="#1B1B1B"
+                                    BorderBrush="{Binding Visual.OutlineBrush}" BorderThickness="1" ToolTip="{Binding Visual.ToolTip}">
+                                <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}"
+                                           FontSize="11.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+
+                            <StackPanel Grid.Column="1" Margin="0 0 12 0">
                                 <TextBlock Text="{Binding ProviderDeviceName}" Foreground="#FFFFFF" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding ProviderDeviceName}"/>
                                 <TextBlock Text="{Binding ProviderName}" Foreground="#D0D0D0" FontSize="13" Opacity="0.72" TextTrimming="CharacterEllipsis"/>
                                 <TextBlock Text="{Binding IoTypes}" Foreground="#D0D0D0" FontSize="13" Opacity="0.72"/>
                             </StackPanel>
 
-                            <Grid Grid.Column="1" Margin="0 0 12 0">
+                            <Grid Grid.Column="2" Margin="0 0 12 0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
@@ -163,7 +171,7 @@
                                 </Button>
                             </Grid>
 
-                            <CheckBox Grid.Column="2" Content="Hidden" Foreground="#FFFFFF" VerticalAlignment="Center" IsTabStop="False"
+                            <CheckBox Grid.Column="3" Content="Hidden" Foreground="#FFFFFF" VerticalAlignment="Center" IsTabStop="False"
                                       IsChecked="{Binding Hidden, Mode=TwoWay}" IsEnabled="{Binding CanHide}">
                                 <CheckBox.Style>
                                     <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
@@ -177,7 +185,7 @@
                                 </CheckBox.Style>
                             </CheckBox>
 
-                            <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                                 <Button ToolTip="{Binding RemoveFromUcrToolTip}" Click="RemoveFromUcr_OnClick" Padding="4" IsTabStop="False">
                                     <Button.Style>
                                         <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignCardButton}">
