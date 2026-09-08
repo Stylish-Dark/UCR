@@ -9,8 +9,9 @@ namespace HidWizards.UCR.ViewModels
         public DeviceVisualDescriptor Visual { get; set; }
 
         public ComboBoxItemViewModel(string title, dynamic value)
-            : this(title, value, null)
         {
+            Title = title;
+            Value = value;
         }
 
         public ComboBoxItemViewModel(string title, dynamic value, DeviceVisualDescriptor visual)
