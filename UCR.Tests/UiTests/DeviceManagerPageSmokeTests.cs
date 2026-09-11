@@ -37,6 +37,14 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void ApplicationUsesSoftwareRenderingToAvoidCompetingForGpuTime()
+        {
+            EnsureApplicationResources();
+            Assert.That(RenderOptions.ProcessRenderMode, Is.EqualTo(System.Windows.Interop.RenderMode.SoftwareOnly));
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void DeviceManagerPageMaterializesRealDeviceRowAndColourButton()
         {
             EnsureApplicationResources();

@@ -21,6 +21,13 @@ namespace HidWizards.UCR
     /// </summary>
     public partial class App : Application, IDisposable
     {
+        static App()
+        {
+            // UCR is a background input utility, not a GPU workload. Keep its WPF shell off the
+            // hardware-rendering path so games, emulators and other GPU-heavy applications get it.
+            System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
+        }
+
         private Context context;
         private HidGuardianClient _hidGuardianClient;
         private SingleGlobalInstance mutex;

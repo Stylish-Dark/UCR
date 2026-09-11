@@ -120,7 +120,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (_currentValue == value) return;
                 _currentValue = value;
                 GuiInvalidated = true;
-                OnPropertyChanged(nameof(ShowButtonPreview));
             }
         }
 
@@ -307,6 +306,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     bindingManager.PropertyChanged -= BindingManagerOnPropertyChanged;
                     if (deviceBinding.IsInBindMode) bindingManager.PropertyChanged += BindingManagerOnPropertyChanged;
                 }
+
+                OnPropertyChanged(nameof(ShowButtonPreview));
             }
 
             if (propertyChangedEventArgs.PropertyName.Equals(nameof(DeviceBinding.IsBound))

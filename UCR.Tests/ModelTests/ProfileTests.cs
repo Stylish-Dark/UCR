@@ -143,10 +143,12 @@ namespace HidWizards.UCR.Tests.ModelTests
             var viewModel = new DeviceBindingViewModel(binding);
             var currentValueNotifications = 0;
             var previewNotifications = 0;
+            var previewVisibilityNotifications = 0;
             viewModel.PropertyChanged += (sender, args) =>
             {
                 if (args.PropertyName == nameof(DeviceBindingViewModel.CurrentValue)) currentValueNotifications++;
                 if (args.PropertyName == nameof(DeviceBindingViewModel.PreviewValue)) previewNotifications++;
+                if (args.PropertyName == nameof(DeviceBindingViewModel.ShowButtonPreview)) previewVisibilityNotifications++;
             };
 
             viewModel.CurrentValue = 1;
@@ -155,6 +157,29 @@ namespace HidWizards.UCR.Tests.ModelTests
 
             Assert.That(currentValueNotifications, Is.EqualTo(1));
             Assert.That(previewNotifications, Is.EqualTo(1));
+            Assert.That(previewVisibilityNotifications, Is.EqualTo(0),
+                "Input value changes must not invalidate preview visibility; visibility depends only on bind/profile state.");
+            viewModel.Dispose();
+        }
+
+        [Test]
+        public void BindModeChangeInvalidatesPreviewVisibility()
+        {
+            var binding = new DeviceBinding(value => { }, _profile, DeviceIoType.Input)
+            {
+                DeviceBindingCategory = DeviceBindingCategory.Momentary
+            };
+            var viewModel = new DeviceBindingViewModel(binding);
+            var previewVisibilityNotifications = 0;
+            viewModel.PropertyChanged += (sender, args) =>
+            {
+                if (args.PropertyName == nameof(DeviceBindingViewModel.ShowButtonPreview)) previewVisibilityNotifications++;
+            };
+
+            var setter = typeof(DeviceBinding).GetProperty(nameof(DeviceBinding.IsInBindMode)).GetSetMethod(true);
+            setter.Invoke(binding, new object[] { true });
+
+            Assert.That(previewVisibilityNotifications, Is.EqualTo(1));
             viewModel.Dispose();
         }
 

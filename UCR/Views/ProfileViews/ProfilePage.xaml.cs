@@ -105,8 +105,10 @@ namespace HidWizards.UCR.Views.ProfileViews
         private void StartGuiTimer()
         {
             if (!Profile.IsActive() || DispatcherTimer != null) return;
-            DispatcherTimer = new DispatcherTimer(DispatcherPriority.Render);
-            DispatcherTimer.Interval = TimeSpan.FromMilliseconds(15);
+            // Preview bars are informational UI only. Keep their polling below input/render work and
+            // cap it at ~30 Hz instead of driving WPF at ~67 Hz.
+            DispatcherTimer = new DispatcherTimer(DispatcherPriority.Background);
+            DispatcherTimer.Interval = TimeSpan.FromMilliseconds(33);
             DispatcherTimer.Tick += DispatcherTimerOnTick;
 
             DeviceBindingViewModels = new List<DeviceBindingViewModel>();
