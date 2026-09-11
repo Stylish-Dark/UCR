@@ -47,9 +47,9 @@ namespace HidWizards.UCR.Tests.ModelTests
             var versionInfo = FileVersionInfo.GetVersionInfo(assembly.Location);
 
             Assert.That(assembly.GetName().Version, Is.EqualTo(new Version(0, 9, 9, 0)));
-            Assert.That(versionInfo.FileVersion, Is.EqualTo("0.9.9.0"));
-            Assert.That(informational.InformationalVersion, Is.EqualTo("v0.9.9z"));
-            Assert.That(versionInfo.ProductVersion, Is.EqualTo("v0.9.9z"));
+            Assert.That(versionInfo.FileVersion, Is.EqualTo("1.0.0.0"));
+            Assert.That(informational.InformationalVersion, Is.EqualTo("v1.0.0"));
+            Assert.That(versionInfo.ProductVersion, Is.EqualTo("v1.0.0"));
         }
     }
 }
