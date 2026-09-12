@@ -7,10 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [1.0.0] - 2026-09-12
 
-### Changed
-- Promoted the Stylish Edition to version 1.0.0.
-- Updated repository release information and the primary application screenshot for the 1.0.0 presentation.
-- No functional application changes were made in the 1.0.0 release-metadata commit.
+### Release
+- First stable Stylish Edition release.
+- Updated GitHub release presentation to version 1.0.0.
+- Replaced the repository screenshot with the current interface.
 
 ## [0.9.9z] - 2026-09-07
 

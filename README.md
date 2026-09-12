@@ -1,11 +1,11 @@
 <img src="icon.png" align="right" />
 
 # Universal Control Remapper
-[![GitHub release](https://img.shields.io/badge/release-v1.0.0-blue.svg)](https://github.com/Stylish-Dark/UCR/releases/tag/v1.0.0) [![Windows build](https://github.com/Stylish-Dark/UCR/actions/workflows/build.yml/badge.svg)](https://github.com/Stylish-Dark/UCR/actions/workflows/build.yml) [![IOWrapper version](https://img.shields.io/badge/IOWrapper-v0.11.2-blue.svg)](https://github.com/evilC/IOWrapper) [![license](https://img.shields.io/github/license/Stylish-Dark/UCR.svg)](https://github.com/Stylish-Dark/UCR/blob/master/LICENSE) [![GitHub All Releases](https://img.shields.io/github/downloads/Stylish-Dark/UCR/total.svg)](https://github.com/Stylish-Dark/UCR/releases)
+
+**Stylish Edition — v1.0.0**
+[![GitHub release](https://img.shields.io/badge/release-v1.0.0-blue.svg)](https://github.com/Stylish-Dark/UCR/releases/tag/v1.0.0) [![IOWrapper version](https://img.shields.io/badge/IOWrapper-v0.11.2-blue.svg)](https://github.com/evilC/IOWrapper) [![license](https://img.shields.io/github/license/snoothy/ucr.svg)](https://github.com/Snoothy/UCR/blob/master/LICENSE) [![Github All Releases](https://img.shields.io/github/downloads/snoothy/ucr/total.svg)](https://github.com/Snoothy/UCR/releases) [![AppVeyor](https://ci.appveyor.com/api/projects/status/github/Snoothy/UCR?svg=true)](https://ci.appveyor.com/project/Snoothy/ucr) [![Sonarcloud Status](https://sonarcloud.io/api/project_badges/measure?project=Snoothy_UCR&metric=alert_status)](https://sonarcloud.io/dashboard?id=Snoothy_UCR)
 
 Universal Control Remapper is a complete rewrite of the original [UCR](https://github.com/evilC/UCR), created in collaboration with [evilC](https://github.com/evilC/).
-
-**Stylish Edition 1.0.0** is the current release of this fork, preserving UCR's remapping core while carrying the modern interface, device-management and profile-workflow work in this repository.
 
 Universal Control Remapper is a Windows application which allows the end-user to remap any inputs from devices, such as keyboards, mice, joysticks, racing wheels, eye trackers, etc. to virtual output devices. Remapping is achieved by transforming inputs through plugins to a desired output device.
 
@@ -24,7 +24,7 @@ Universal Control Remapper is a Windows application which allows the end-user to
 
 ## Downloads ##
 
-The latest release of Universal Control Remapper can be [downloaded from GitHub](https://github.com/Stylish-Dark/UCR/releases) and with a number of basic plugins. Extra experimental or niche plugins can be found in the [UCR-Plugins repository](https://github.com/HidWizards/UCR-Plugins).
+The latest Stylish Edition release of Universal Control Remapper can be [downloaded from GitHub](https://github.com/Stylish-Dark/UCR/releases) and with a number of basic plugins. Extra experimental or niche plugins can be found in the [UCR-Plugins repository](https://github.com/HidWizards/UCR-Plugins).
 You may also need to install other drivers etc, for example to allow creation of virtual Xbox or DirectInput controllers. See the [Providers page](https://github.com/Snoothy/UCR/wiki/Core-Providers) for details on these.
 
 Test builds, patches, updated components, new or enhanced plugins etc., are often posted to the UCR channel in the HidWizards Discord server linked below. If you encounter any problems, it is best to check this channel for pinned patches.
