@@ -192,6 +192,70 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void ProviderRefreshKeepsHealthyProvidersWhenOneProviderThrows()
+        {
+            var healthyRefreshes = 0;
+            var errors = new System.Collections.Generic.List<string>();
+            var refreshes = new[]
+            {
+                new System.Collections.Generic.KeyValuePair<string, Action>(
+                    "Broken", () => { throw new InvalidOperationException("provider refresh failure"); }),
+                new System.Collections.Generic.KeyValuePair<string, Action>(
+                    "Healthy", () => healthyRefreshes++)
+            };
+
+            DevicesManager.RefreshProviders(refreshes,
+                (providerName, exception) => errors.Add(providerName + ":" + exception.Message));
+
+            Assert.That(healthyRefreshes, Is.EqualTo(1),
+                "A broken provider must not prevent healthy providers from refreshing after USB hotplug.");
+            Assert.That(errors.Count, Is.EqualTo(1));
+            Assert.That(errors[0], Does.StartWith("Broken:"));
+        }
+
+        [Test]
+        public void CrashReportAlsoWritesStableLastCrashFile()
+        {
+            Logger.InitializeSession();
+
+            var flags = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic;
+            var logDirectoryField = typeof(Logger).GetField("_logDirectory", flags);
+            var crashFlagField = typeof(Logger).GetField("_crashReportWritten", flags);
+            var lastCrashField = typeof(Logger).GetField("<LastCrashReportPath>k__BackingField", flags);
+            Assert.That(logDirectoryField, Is.Not.Null);
+            Assert.That(crashFlagField, Is.Not.Null);
+
+            var previousDirectory = (string)logDirectoryField.GetValue(null);
+            var previousCrashFlag = (int)crashFlagField.GetValue(null);
+            var previousLastCrash = lastCrashField?.GetValue(null);
+            var temporary = Path.Combine(Path.GetTempPath(), "ucr-crash-log-test-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(temporary);
+
+            try
+            {
+                logDirectoryField.SetValue(null, temporary);
+                crashFlagField.SetValue(null, 0);
+
+                var path = Logger.WriteCrashReport("regression-test",
+                    new InvalidOperationException("simulated crash diagnostics"));
+
+                Assert.That(path, Is.Not.Null.And.Not.Empty);
+                Assert.That(File.Exists(path), Is.True);
+
+                var stablePath = Path.Combine(temporary, "LAST-CRASH.txt");
+                Assert.That(File.Exists(stablePath), Is.True,
+                    "There must always be one predictable crash-report filename.");
+                Assert.That(File.ReadAllText(stablePath), Does.Contain("simulated crash diagnostics"));
+            }
+            finally
+            {
+                logDirectoryField.SetValue(null, previousDirectory);
+                crashFlagField.SetValue(null, previousCrashFlag);
+                lastCrashField?.SetValue(null, previousLastCrash);
+                if (Directory.Exists(temporary)) Directory.Delete(temporary, true);
+            }
+        }
+        [Test]
         public void ProviderHealthCheckReportsUnavailableControllerInsteadOfPretendingRuntimeIsHealthy()
         {
             var context = new Context();

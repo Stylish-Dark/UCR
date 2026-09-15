@@ -1,4 +1,4 @@
-name: Build UCR Stylish
+﻿name: Build UCR Stylish
 
 on:
   push:
@@ -107,6 +107,12 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           .\build\ProviderPatches\Apply-IOWrapperInputOrdering.ps1 -IOWrapperRoot .\submodules\IOWrapper
+
+      - name: Harden Core Interception hotplug handling
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\build\ProviderPatches\Apply-CoreInterceptionHotplugSafety.ps1 -IOWrapperRoot .\submodules\IOWrapper
 
       - name: Serialize Core ViGEm DS4 report writes
         shell: pwsh
@@ -406,6 +412,15 @@ jobs:
             throw "The built UCR.exe is empty."
           }
 
+          $loggingConfig = '.\UCR\bin\Release\NLog.config'
+          if (-not (Test-Path -LiteralPath $loggingConfig -PathType Leaf)) {
+            throw "Final UCR build is missing NLog.config."
+          }
+          $loggingConfigText = Get-Content -LiteralPath $loggingConfig -Raw
+          if ($loggingConfigText -notmatch 'UCR-latest\.log' -or $loggingConfigText -notmatch 'name="latest"') {
+            throw 'Final UCR logging configuration is missing the stable UCR-latest.log target.'
+          }
+          Write-Host 'Verified final UCR logging configuration includes UCR-latest.log.'
           $finalInterceptionSettings = '.\UCR\bin\Release\Providers\Core_Interception\Settings.xml'
           if (-not (Test-Path -LiteralPath $finalInterceptionSettings -PathType Leaf)) {
             throw "Final Core Interception settings are missing: $finalInterceptionSettings"

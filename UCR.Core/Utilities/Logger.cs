@@ -177,7 +177,18 @@ namespace HidWizards.UCR.Core.Utilities
                     foreach (var breadcrumb in Breadcrumbs) builder.AppendLine(breadcrumb);
                 }
 
-                File.WriteAllText(path, builder.ToString(), Encoding.UTF8);
+                var report = builder.ToString();
+                File.WriteAllText(path, report, Encoding.UTF8);
+
+                // Keep one predictable crash filename alongside the timestamped forensic copy.
+                try
+                {
+                    File.WriteAllText(Path.Combine(directory, "LAST-CRASH.txt"), report, Encoding.UTF8);
+                }
+                catch (Exception stableReportFailure)
+                {
+                    logger.Warn(stableReportFailure, "Failed to update LAST-CRASH.txt");
+                }
                 LastCrashReportPath = path;
                 logger.Fatal("Crash diagnostics written to " + path);
                 Flush();

@@ -707,7 +707,60 @@ namespace HidWizards.UCR.Core.Managers
 
         public void RefreshDeviceList()
         {
-            _context.IOController.RefreshDevices();
+            if (_context.IOController == null) return;
+
+            try
+            {
+                var providersField = _context.IOController.GetType().GetField(
+                    "_providers", BindingFlags.Instance | BindingFlags.NonPublic);
+                var providers = providersField?.GetValue(_context.IOController) as IDictionary<string, IProvider>;
+
+                if (providers == null)
+                {
+                    // Fall back to the public API if a future IOWrapper build changes its internals.
+                    // Keep the exception contained so a provider refresh can never tear down the UI.
+                    try
+                    {
+                        _context.IOController.RefreshDevices();
+                    }
+                    catch (Exception exception)
+                    {
+                        Logger.Error(exception, "Unable to refresh devices through the IOWrapper fallback API");
+                    }
+                    return;
+                }
+
+                var refreshes = providers
+                    .Where(entry => entry.Value != null && !string.IsNullOrWhiteSpace(entry.Key))
+                    .Select(entry => new KeyValuePair<string, Action>(entry.Key, entry.Value.RefreshDevices))
+                    .ToList();
+
+                RefreshProviders(refreshes, (providerName, exception) =>
+                    Logger.Error(exception, "Unable to refresh devices from provider: " + providerName));
+            }
+            catch (Exception exception)
+            {
+                Logger.Error(exception, "Unable to refresh IOWrapper providers");
+            }
+        }
+
+        internal static void RefreshProviders(
+            IEnumerable<KeyValuePair<string, Action>> refreshes,
+            Action<string, Exception> onProviderError = null)
+        {
+            if (refreshes == null) return;
+
+            foreach (var refresh in refreshes)
+            {
+                try
+                {
+                    refresh.Value?.Invoke();
+                }
+                catch (Exception exception)
+                {
+                    onProviderError?.Invoke(refresh.Key, exception);
+                }
+            }
         }
 
         public List<Device> GetAvailableDevicesListFromSameProvider(DeviceIoType type, Device device)

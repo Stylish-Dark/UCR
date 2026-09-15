@@ -87,6 +87,20 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.That(state.FilterRuntimeDictionary, Is.Empty);
         }
 
+        [Test]
+        public void PressingPlayOnActiveProfileRebuildsRuntimeStateAfterDeviceRefresh()
+        {
+            Assert.IsTrue(_context.SubscriptionsManager.ActivateProfile(_profile, false));
+            var originalState = getSubscriptionState();
+
+            Assert.IsTrue(_context.SubscriptionsManager.ActivateProfile(_profile, true));
+            var rebuiltState = getSubscriptionState();
+
+            Assert.That(rebuiltState, Is.Not.SameAs(originalState),
+                "Play after a device refresh must not leave stale subscriptions attached to the old USB endpoint.");
+            Assert.That(rebuiltState.StateGuid, Is.Not.EqualTo(originalState.StateGuid));
+            Assert.That(rebuiltState.IsActive, Is.True);
+        }
         private SubscriptionState getSubscriptionState()
         {
             return _context.SubscriptionsManager.SubscriptionState;

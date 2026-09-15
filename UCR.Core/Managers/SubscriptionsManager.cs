@@ -44,7 +44,23 @@ namespace HidWizards.UCR.Core.Managers
 
         public bool ActivateProfile(Profile profile, bool refreshDevices = true)
         {
-            if (refreshDevices) _context.IOController.RefreshDevices();
+            var reactivatingCurrentProfile = refreshDevices &&
+                SubscriptionState?.ActiveProfile?.Guid == profile.Guid;
+
+            if (reactivatingCurrentProfile)
+            {
+                // USB reconnects can invalidate the provider endpoint while this profile still looks active.
+                // Tear down the old runtime state before re-enumeration, then rebuild subscriptions below.
+                Logger.Info($"Reactivating active profile after device refresh: {{{profile.ProfileBreadCrumbs()}}}");
+                if (!DeactivateCurrentProfile())
+                    Logger.Warn("One or more stale subscriptions could not be removed before hotplug reactivation.");
+            }
+
+            if (refreshDevices)
+            {
+                Logger.Debug("Refreshing device providers before profile activation");
+                _context.DevicesManager.RefreshDeviceList();
+            }
 
             if (profile.PruneUndefinedFilterReferencesRecursive())
             {
