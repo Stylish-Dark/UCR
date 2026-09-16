@@ -193,6 +193,14 @@ namespace HidWizards.UCR.Views
             e.Handled = true;
         }
 
+        private void ProfileExpandCollapse_OnClick(object sender, RoutedEventArgs e)
+        {
+            var container = GetTreeViewItem(sender as DependencyObject);
+            if (container == null) return;
+            container.IsExpanded = !container.IsExpanded;
+            e.Handled = true;
+        }
+
         private static bool CanReorderProfile(ProfileItem sourceItem, ProfileItem targetItem)
         {
             if (sourceItem?.Profile == null || targetItem?.Profile == null) return false;

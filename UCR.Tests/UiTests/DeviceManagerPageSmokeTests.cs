@@ -63,7 +63,7 @@ namespace HidWizards.UCR.Tests.UiTests
             Assert.That(list.Items.Count, Is.EqualTo(1));
             Assert.That(list.HasItems, Is.True);
             Assert.That(list.Items[0], Is.SameAs(item), "The real DeviceManagerItemViewModel did not reach the ListView.");
-            Assert.That(item.AvailableOutlineColors.Length, Is.EqualTo(10));
+            Assert.That(item.AvailableTextColors.Length, Is.EqualTo(10));
 
             list.UpdateLayout();
             var row = list.ItemContainerGenerator.ContainerFromIndex(0) as ListViewItem;
@@ -86,9 +86,9 @@ namespace HidWizards.UCR.Tests.UiTests
                 "Every device-manager row should expose its semantic device badge.");
 
             var colourButton = FindVisualChildren<Button>(row)
-                .FirstOrDefault(candidate => (candidate.ToolTip as string)?.StartsWith("Outline colour") == true);
+                .FirstOrDefault(candidate => (candidate.ToolTip as string)?.StartsWith("Badge text colour") == true);
             Assert.That(colourButton, Is.Not.Null,
-                "The real device row failed before its compact outline-colour button was created.");
+                "The real device row failed before its compact badge-text-colour button was created.");
             Assert.That(colourButton.ActualHeight, Is.GreaterThan(0));
         }
 

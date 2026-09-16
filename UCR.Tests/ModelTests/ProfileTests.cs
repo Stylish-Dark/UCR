@@ -10,6 +10,7 @@ using HidWizards.UCR.Plugins.Filter;
 using HidWizards.UCR.Plugins.Remapper;
 using HidWizards.UCR.Tests.Factory;
 using HidWizards.UCR.ViewModels.ProfileViewModels;
+using HidWizards.UCR.ViewModels.Dashboard;
 using NUnit.Framework;
 
 namespace HidWizards.UCR.Tests.ModelTests
@@ -96,6 +97,54 @@ namespace HidWizards.UCR.Tests.ModelTests
             _profile.AddChildProfile(child);
 
             Assert.That(configuration.GetFullTitleForProfile(child), Is.EqualTo("Laptop KB (Inherited)"));
+        }
+
+
+        [Test]
+        public void ProfileTreeExposesHierarchyAndStartsCollapsed()
+        {
+            var child = _context.ProfilesManager.CreateProfile("Child", null, null);
+            _profile.AddChildProfile(child);
+            var grandChild = _context.ProfilesManager.CreateProfile("Grandchild", null, null);
+            child.AddChildProfile(grandChild);
+
+            var tree = ProfileItem.GetProfileTree(_context.Profiles);
+
+            Assert.That(tree[0].Depth, Is.EqualTo(0));
+            Assert.That(tree[0].HasChildren, Is.True);
+            Assert.That(tree[0].IsChild, Is.False);
+            Assert.That(tree[0].IsExpanded, Is.False);
+            Assert.That(tree[0].Items[0].Depth, Is.EqualTo(1));
+            Assert.That(tree[0].Items[0].IsChild, Is.True);
+            Assert.That(tree[0].Items[0].Items[0].Depth, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void ProfileTreeTracksWhichProfileIsRunning()
+        {
+            var child = _context.ProfilesManager.CreateProfile("Child", null, null);
+            _profile.AddChildProfile(child);
+            var tree = ProfileItem.GetProfileTree(_context.Profiles);
+
+            ProfileItem.SetActiveProfile(tree, child.Guid);
+
+            Assert.That(tree[0].IsActive, Is.False);
+            Assert.That(tree[0].Items[0].IsActive, Is.True);
+        }
+
+        [Test]
+        public void ProfileViewModelExplainsWhyEditingIsLockedWhileRunning()
+        {
+            var viewModel = new ProfileViewModel(_profile);
+            Assert.That(viewModel.IsProfileActive, Is.False);
+            Assert.That(viewModel.EditLockReason, Is.Null);
+
+            Assert.That(_context.SubscriptionsManager.ActivateProfile(_profile, false), Is.True);
+
+            Assert.That(viewModel.IsProfileActive, Is.True);
+            Assert.That(viewModel.CanEditProfile, Is.False);
+            Assert.That(viewModel.EditLockReason, Is.EqualTo("Profile is running — stop it to edit mappings."));
+            viewModel.Dispose();
         }
 
         [Test]

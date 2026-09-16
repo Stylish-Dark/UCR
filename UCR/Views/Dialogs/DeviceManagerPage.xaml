@@ -141,7 +141,7 @@
                             <Border Grid.Column="0" MinWidth="34" Height="22" Margin="0 0 10 0" Padding="5 1"
                                     VerticalAlignment="Center" CornerRadius="4" Background="#1B1B1B"
                                     BorderBrush="{Binding Visual.OutlineBrush}" BorderThickness="1" ToolTip="{Binding Visual.ToolTip}">
-                                <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}"
+                                <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.BadgeTextBrush}"
                                            FontSize="11.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
 
@@ -163,10 +163,10 @@
                                          ToolTip="Tab through device names. Alt+Up / Alt+Down moves this device while keeping focus here."
                                          PreviewKeyDown="AliasTextBox_OnPreviewKeyDown"/>
                                 <Button Grid.Column="1" Margin="8 0 0 0" Width="34" Height="32" Padding="0"
-                                        IsEnabled="{Binding CanPersist}" Click="OutlineColorButton_OnClick"
+                                        IsEnabled="{Binding CanPersist}" Click="TextColorButton_OnClick"
                                         Background="#252525" BorderBrush="#505050" BorderThickness="1"
-                                        ToolTip="Outline colour — click to choose; Default restores the original device colour">
-                                    <Border Width="16" Height="16" CornerRadius="2" Background="{Binding CurrentOutlineBrush}"
+                                        ToolTip="Badge text colour — click to choose; Default follows the device type">
+                                    <Border Width="16" Height="16" CornerRadius="2" Background="{Binding CurrentTextBrush}"
                                             BorderBrush="#8A8A8A" BorderThickness="1"/>
                                 </Button>
                             </Grid>

@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Windows;
 using System.Linq;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
@@ -33,7 +36,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         }
     }
 
-    public class ProfileItem
+    public class ProfileItem : INotifyPropertyChanged
     {
         public ProfileItem()
         {
@@ -57,6 +60,38 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public string InputGroupName { get; set; }
         public DeviceVisualDescriptor InputGroupVisual { get; set; }
         public ProfileInputGroupKey InputGroup { get; set; }
+        public int Depth { get; private set; }
+        public bool IsChild => Depth > 0;
+        public bool HasChildren => Items != null && Items.Count > 0;
+
+        // MaterialDesign's TreeView indents the entire nested row. Counter that indentation so the
+        // input/output badge columns stay aligned; hierarchy is expressed inside the title column.
+        public Thickness TreeRowMargin => new Thickness(8 - (24 * Depth), 2, 8, 2);
+        public Thickness TitleHierarchyMargin => new Thickness(Depth * 14, 0, 0, 0);
+
+        private bool _isExpanded;
+        public bool IsExpanded
+        {
+            get => _isExpanded;
+            set
+            {
+                if (_isExpanded == value) return;
+                _isExpanded = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private bool _isActive;
+        public bool IsActive
+        {
+            get => _isActive;
+            private set
+            {
+                if (_isActive == value) return;
+                _isActive = value;
+                OnPropertyChanged();
+            }
+        }
 
         public void RefreshPresentation()
         {
@@ -67,6 +102,11 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         public static ObservableCollection<ProfileItem> GetProfileTree(List<Profile> profiles)
         {
+            return GetProfileTree(profiles, 0);
+        }
+
+        private static ObservableCollection<ProfileItem> GetProfileTree(List<Profile> profiles, int depth)
+        {
             var profileItems = new ObservableCollection<ProfileItem>();
             if (profiles == null) return profileItems;
 
@@ -76,14 +116,26 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 {
                     Title = profile.Title,
                     Id = profile.Guid,
-                    Items = GetProfileTree(profile.ChildProfiles),
-                    Profile = profile
+                    Depth = depth,
+                    Items = GetProfileTree(profile.ChildProfiles, depth + 1),
+                    Profile = profile,
+                    IsActive = profile.Context?.ActiveProfile?.Guid == profile.Guid
                 };
                 PopulatePresentation(item, profile);
                 profileItems.Add(item);
             }
 
             return profileItems;
+        }
+
+        public static void SetActiveProfile(IEnumerable<ProfileItem> items, Guid activeProfileGuid)
+        {
+            if (items == null) return;
+            foreach (var item in items)
+            {
+                item.IsActive = activeProfileGuid != Guid.Empty && item.Id == activeProfileGuid;
+                SetActiveProfile(item.Items, activeProfileGuid);
+            }
         }
 
         private static void PopulatePresentation(ProfileItem item, Profile profile)
@@ -177,6 +229,13 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 device.DeviceNumber.ToString(),
                 device.HidPath ?? string.Empty
             });
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }

@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using HidWizards.UCR.Core.Annotations;
+using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.ViewModels.Presentation;
 
@@ -14,11 +15,12 @@ namespace HidWizards.UCR.ViewModels.DeviceViewModels
 {
     public class DeviceViewModel : INotifyPropertyChanged
     {
+        private readonly DevicesManager _devicesManager;
 
         public string Title { get; set; }
         public string ProviderName { get; set; }
         public DeviceIoType DeviceIoType { get; }
-        public DeviceVisualDescriptor Visual => DeviceVisualCatalog.Describe(Device, DeviceIoType);
+        public DeviceVisualDescriptor Visual => DeviceVisualCatalog.Describe(Device, DeviceIoType, _devicesManager);
         private bool _checked;
         public bool Checked
         {
@@ -68,9 +70,15 @@ namespace HidWizards.UCR.ViewModels.DeviceViewModels
         }
 
         public DeviceViewModel(Device device, DeviceIoType deviceIoType)
+            : this(device, deviceIoType, null)
+        {
+        }
+
+        public DeviceViewModel(Device device, DeviceIoType deviceIoType, DevicesManager devicesManager)
         {
             Device = device;
             DeviceIoType = deviceIoType;
+            _devicesManager = devicesManager;
             Title = device.DisplayTitle;
             ProviderName = device.ProviderName;
         }

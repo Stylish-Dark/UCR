@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.ViewModels.DeviceViewModels;
 
@@ -36,13 +37,18 @@ namespace HidWizards.UCR.ViewModels.Controls
         }
 
         public DeviceSelectControlViewModel(string title, List<Device> devices, DeviceIoType deviceIoType)
+            : this(title, devices, deviceIoType, null)
+        {
+        }
+
+        public DeviceSelectControlViewModel(string title, List<Device> devices, DeviceIoType deviceIoType, DevicesManager devicesManager)
         {
             Title = title;
             var result = new ObservableCollection<DeviceViewModel>();
 
             foreach (var device in devices)
             {
-                result.Add(new DeviceViewModel(device, deviceIoType));
+                result.Add(new DeviceViewModel(device, deviceIoType, devicesManager));
             }
 
             if (result.Count > 0) result[0].FirstElement = true;

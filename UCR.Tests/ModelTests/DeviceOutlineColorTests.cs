@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Xml.Serialization;
+using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.ViewModels.Dashboard;
 using HidWizards.UCR.ViewModels.DeviceViewModels;
@@ -66,7 +67,7 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
-        public void OutlineOverrideChangesOnlyTheOutline()
+        public void ConfiguredColourChangesBadgeTextOnlyAndKeepsSemanticOutline()
         {
             var context = new HidWizards.UCR.Core.Context();
             var profile = new Profile(context);
@@ -86,9 +87,11 @@ namespace HidWizards.UCR.Tests.ModelTests
             var visual = DeviceVisualCatalog.Describe(xbox, DeviceIoType.Output);
 
             Assert.That(visual.AccentBrush, Is.SameAs(DeviceVisualCatalog.XboxBrush),
-                "Badge/text colour must stay at the original semantic device colour.");
-            Assert.That(visual.OutlineBrush, Is.Not.SameAs(DeviceVisualCatalog.XboxBrush));
-            Assert.That(visual.OutlineBrush.ToString(), Is.EqualTo("#FFE53935"));
+                "Semantic device accent must remain controller-family aligned.");
+            Assert.That(visual.OutlineBrush, Is.SameAs(DeviceVisualCatalog.XboxBrush),
+                "Badge outline must remain controller-family aligned.");
+            Assert.That(visual.BadgeTextBrush.ToString(), Is.EqualTo("#FFE53935"),
+                "The per-device colour choice now customizes badge text only.");
         }
 
         [Test]
@@ -103,34 +106,51 @@ namespace HidWizards.UCR.Tests.ModelTests
                 Is.EqualTo(DeviceVisualKind.Xbox));
         }
 
+
         [Test]
-        public void DeviceManagerOffersTenVisualSwatchesWithSemanticDefault()
+        public void AddDevicePickerUsesStoredBadgeTextColourWithoutChangingSemanticOutline()
+        {
+            var context = new HidWizards.UCR.Core.Context();
+            var keyboard = new Device("Kayla's KB", "Core_Interception", @"Keyboard\HID\VID_046D&PID_C534", 0);
+            var alias = DevicesManager.BuildAliasIdentity(keyboard);
+            Assert.That(alias, Is.Not.Null);
+            alias.OutlineColor = DeviceOutlineColor.Pink;
+            context.DeviceAliases.Add(alias);
+
+            var item = new DeviceViewModel(keyboard, DeviceIoType.Input, context.DevicesManager);
+
+            Assert.That(item.Visual.OutlineBrush, Is.SameAs(DeviceVisualCatalog.NeutralBrush));
+            Assert.That(item.Visual.BadgeTextBrush.ToString(), Is.EqualTo("#FFFF4081"));
+        }
+
+        [Test]
+        public void DeviceManagerOffersTenBadgeTextSwatchesWithSemanticDefault()
         {
             var xbox = new Device("ViGEm Xbox 360 Controller 1", "Core_ViGEm", "xb360", 0);
             var item = new DeviceManagerItemViewModel(xbox, DeviceIoType.Output, true, null, false,
                 "xbox", DeviceOutlineColor.Default);
 
-            Assert.That(item.AvailableOutlineColors.Length, Is.EqualTo(10));
-            Assert.That(item.AvailableOutlineColors[0].Value, Is.EqualTo(DeviceOutlineColor.Default));
-            Assert.That(item.AvailableOutlineColors[0].Brush, Is.SameAs(DeviceVisualCatalog.XboxBrush));
-            foreach (var choice in item.AvailableOutlineColors)
+            Assert.That(item.AvailableTextColors.Length, Is.EqualTo(10));
+            Assert.That(item.AvailableTextColors[0].Value, Is.EqualTo(DeviceOutlineColor.Default));
+            Assert.That(item.AvailableTextColors[0].Brush, Is.SameAs(DeviceVisualCatalog.XboxBrush));
+            foreach (var choice in item.AvailableTextColors)
             {
                 Assert.That(choice.Brush, Is.Not.Null);
             }
         }
 
         [Test]
-        public void DeviceManagerCurrentOutlineBrushTracksSelectedOutline()
+        public void DeviceManagerCurrentTextBrushTracksSelectedTextColour()
         {
             var xbox = new Device("ViGEm Xbox 360 Controller 1", "Core_ViGEm", "xb360", 0);
             var item = new DeviceManagerItemViewModel(xbox, DeviceIoType.Output, true, null, false,
                 "xbox", DeviceOutlineColor.Default);
 
-            Assert.That(item.CurrentOutlineBrush, Is.SameAs(DeviceVisualCatalog.XboxBrush));
+            Assert.That(item.CurrentTextBrush, Is.SameAs(DeviceVisualCatalog.XboxBrush));
 
-            item.OutlineColor = DeviceOutlineColor.Red;
+            item.TextColor = DeviceOutlineColor.Red;
 
-            Assert.That(item.CurrentOutlineBrush.ToString(), Is.EqualTo("#FFE53935"));
+            Assert.That(item.CurrentTextBrush.ToString(), Is.EqualTo("#FFE53935"));
         }
 
         [Test]

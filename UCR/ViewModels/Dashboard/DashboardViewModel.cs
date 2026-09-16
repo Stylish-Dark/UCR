@@ -175,6 +175,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         private void OnActiveProfileChangedEvent(Profile profile)
         {
+            ProfileItem.SetActiveProfile(ProfileList, profile?.Guid ?? Guid.Empty);
             OnPropertyChanged(nameof(ActiveProfileBreadCrumbs));
             OnPropertyChanged(nameof(CanDeactivateProfile));
         }

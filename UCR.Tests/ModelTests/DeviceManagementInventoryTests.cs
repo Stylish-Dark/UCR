@@ -136,14 +136,14 @@ namespace HidWizards.UCR.Tests.ModelTests
                 {
                     Assert.That(viewModel.Devices.Count, Is.EqualTo(1));
                     viewModel.Devices[0].Alias = "Typed but not saved";
-                    viewModel.Devices[0].OutlineColor = DeviceOutlineColor.Cyan;
+                    viewModel.Devices[0].TextColor = DeviceOutlineColor.Cyan;
 
                     viewModel.Refresh();
 
                     Assert.That(viewModel.Devices.Count, Is.EqualTo(1));
                     Assert.That(viewModel.Devices[0].Alias, Is.EqualTo("Typed but not saved"),
                         "Refreshing/re-detecting device inventory must not discard friendly names still being edited in the Devices page.");
-                    Assert.That(viewModel.Devices[0].OutlineColor, Is.EqualTo(DeviceOutlineColor.Cyan),
+                    Assert.That(viewModel.Devices[0].TextColor, Is.EqualTo(DeviceOutlineColor.Cyan),
                         "Pending presentation edits should survive the same inventory reconciliation.");
                     Assert.That(context.DeviceAliases, Is.Empty,
                         "Preserving an in-progress editor value must not silently turn Refresh/Detect into Save.");

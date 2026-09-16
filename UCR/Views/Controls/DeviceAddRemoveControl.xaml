@@ -60,7 +60,7 @@
                                             <Border Grid.Column="0" MinWidth="34" Height="22" Margin="0 0 9 0" Padding="5 1"
                                                     VerticalAlignment="Center" CornerRadius="4" Background="#181818"
                                                     BorderBrush="{Binding Visual.OutlineBrush}" BorderThickness="1" ToolTip="{Binding Visual.ToolTip}">
-                                                <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}"
+                                                <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.BadgeTextBrush}"
                                                            FontSize="11.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             </Border>
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
@@ -132,7 +132,7 @@
                                             <Border Grid.Column="0" MinWidth="34" Height="22" Margin="0 0 9 0" Padding="5 1"
                                                     VerticalAlignment="Center" CornerRadius="4" Background="#181818"
                                                     BorderBrush="{Binding Visual.OutlineBrush}" BorderThickness="1" ToolTip="{Binding Visual.ToolTip}">
-                                                <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}"
+                                                <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.BadgeTextBrush}"
                                                            FontSize="11.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             </Border>
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center">

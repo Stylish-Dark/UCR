@@ -54,7 +54,7 @@
                 <Setter Property="FontSize" Value="14"/>
             </Style>
 
-            <!-- Device outline picker visuals are created only after the user clicks a row's colour button.
+            <!-- Device badge-text picker visuals are created only after the user clicks a row's colour button.
                  Keeping the picker out of Application resources prevents a picker/template failure from
                  preventing the Devices ListView from materialising its rows. -->
 

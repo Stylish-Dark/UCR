@@ -39,7 +39,7 @@
                 <Border MinWidth="31" Height="22" Padding="5 1" CornerRadius="4"
                         Background="#1B1B1B" BorderBrush="{Binding OutlineBrush}" BorderThickness="1"
                         ToolTip="{Binding ToolTip}">
-                    <TextBlock Text="{Binding BadgeText}" Foreground="{Binding AccentBrush}"
+                    <TextBlock Text="{Binding BadgeText}" Foreground="{Binding BadgeTextBrush}"
                                FontSize="11.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
             </DataTemplate>
@@ -99,7 +99,32 @@
                         <materialDesign:PackIcon Kind="Play"/>
                     </Button>
                     <Button IsEnabled="{Binding CanDeactivateProfile}" ToolTip="Stop active profile" Click="DeactivateProfile">
-                        <materialDesign:PackIcon Kind="Stop"/>
+                        <Grid Width="24" Height="24">
+                            <Border CornerRadius="12" Background="#4A2020" BorderBrush="#D65C5C" BorderThickness="1">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CanDeactivateProfile}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                            </Border>
+                            <materialDesign:PackIcon Kind="Stop" Width="18" Height="18" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <materialDesign:PackIcon.Style>
+                                    <Style TargetType="materialDesign:PackIcon">
+                                        <Setter Property="Foreground" Value="#DADADA"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CanDeactivateProfile}" Value="True">
+                                                <Setter Property="Foreground" Value="#FF8B8B"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </materialDesign:PackIcon.Style>
+                            </materialDesign:PackIcon>
+                        </Grid>
                     </Button>
                     <Separator />
                     <Button ToolTip="Import / Export" Click="ImportExport_OnClick">
@@ -214,7 +239,7 @@
                             </TreeView.Style>
                             <TreeView.ItemContainerStyle>
                                 <Style TargetType="{x:Type TreeViewItem}" BasedOn="{StaticResource MaterialDesignTreeViewItem}">
-                                    <Setter Property="IsExpanded" Value="True"/>
+                                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
                                     <Setter Property="HorizontalAlignment" Value="Stretch"/>
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                                     <!-- MaterialDesign 2.5.1 applies its Padding inside Ripple. Remove it here so
@@ -257,7 +282,7 @@
                                          title to a few characters. -->
                                     <Grid Width="{Binding RelativeSource={RelativeSource AncestorType={x:Type materialDesign:Ripple}}, Path=ActualWidth}"
                                           HorizontalAlignment="Left" ToolTip="{Binding Title}">
-                                        <Grid Margin="8 2" MinHeight="38" HorizontalAlignment="Stretch">
+                                        <Grid Margin="{Binding TreeRowMargin}" MinHeight="38" HorizontalAlignment="Stretch">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="*"/>
@@ -272,9 +297,65 @@
                                             </ItemsControl>
 
                                             <Grid Grid.Column="1" Margin="6 0">
-                                                <TextBlock Text="{Binding Title}" FontSize="15.5" FontWeight="Medium"
-                                                           HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center"
-                                                           TextTrimming="CharacterEllipsis"/>
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                            Margin="{Binding TitleHierarchyMargin}">
+                                                    <Grid Width="13" Height="22" Margin="0 0 3 0" VerticalAlignment="Center">
+                                                        <Grid.Style>
+                                                            <Style TargetType="Grid">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsChild}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Grid.Style>
+                                                        <Border Width="1" Height="11" Background="#555555" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                                                        <Border Width="9" Height="1" Background="#555555" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                                    </Grid>
+                                                    <Button Width="22" Height="22" Padding="0" Margin="0 0 2 0"
+                                                            Click="ProfileExpandCollapse_OnClick" ToolTip="Expand / collapse child profiles">
+                                                        <Button.Style>
+                                                            <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignCardButton}">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding HasChildren}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Button.Style>
+                                                        <materialDesign:PackIcon Width="17" Height="17">
+                                                            <materialDesign:PackIcon.Style>
+                                                                <Style TargetType="materialDesign:PackIcon">
+                                                                    <Setter Property="Kind" Value="ChevronRight"/>
+                                                                    <Setter Property="Foreground" Value="#BDBDBD"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                                            <Setter Property="Kind" Value="ChevronDown"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </materialDesign:PackIcon.Style>
+                                                        </materialDesign:PackIcon>
+                                                    </Button>
+                                                    <TextBlock Text="{Binding Title}" FontSize="15.5" FontWeight="Medium" MaxWidth="165"
+                                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                    <Border Margin="6 0 0 0" Padding="5 1" CornerRadius="7" Background="#26382B" BorderBrush="#4B8B58" BorderThickness="1"
+                                                            VerticalAlignment="Center" ToolTip="This profile is currently running">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <TextBlock Text="ACTIVE" FontSize="8.5" FontWeight="Bold" Foreground="#8FD69C"/>
+                                                    </Border>
+                                                </StackPanel>
                                                 <Ellipse Width="7" Height="7" Margin="0 0 4 0" HorizontalAlignment="Right"
                                                          Fill="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center" ToolTip="Auto-apply enabled">
                                                     <Ellipse.Style>

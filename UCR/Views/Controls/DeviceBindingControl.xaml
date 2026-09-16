@@ -107,7 +107,7 @@
                                     </Style.Triggers>
                                 </Style>
                             </Border.Style>
-                            <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}"
+                            <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.BadgeTextBrush}"
                                        FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <TextBlock Grid.Column="1" Text="{Binding Title}" VerticalAlignment="Center"
@@ -127,6 +127,8 @@
                     HorizontalAlignment="Stretch"
                     Content="{Binding BindButtonText}"
                     IsEnabled="{Binding BindingEnabled}"
+                    ToolTip="Stop the active profile to edit this binding."
+                    ToolTipService.ShowOnDisabled="True"
                     Name="BindButton"
                     Margin="0"
                     Click="BindButton_OnClick"
@@ -152,6 +154,7 @@
                              Style="{StaticResource UcrBindingProgressBar}"/>
             </Grid>
             <Button Grid.Column="1" IsEnabled="{Binding BindingEnabled}" Margin="0"
+                    ToolTip="Stop the active profile to edit this binding." ToolTipService.ShowOnDisabled="True"
                     Click="BindMenuButton_OnClick"
                     Width="40" Padding="0"
                     Style="{StaticResource MaterialDesignRaisedButton}"

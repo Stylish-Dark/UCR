@@ -31,6 +31,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool CanActivateProfile => Profile.Context.ActiveProfile != Profile;
         public bool CanDeactivateProfile => Profile.Context.ActiveProfile != null;
         public bool CanEditProfile => !Profile.IsActive();
+        public bool IsProfileActive => Profile.IsActive();
+        public string EditLockReason => IsProfileActive ? "Profile is running — stop it to edit mappings." : null;
         public ObservableCollection<MappingViewModel> MappingsList { get; set; }
         public ObservableCollection<string> FilterNames { get; private set; }
         public ObservableCollection<FilterDefinitionItemViewModel> FilterDefinitions { get; private set; }
@@ -79,6 +81,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(CanActivateProfile));
             OnPropertyChanged(nameof(CanDeactivateProfile));
             OnPropertyChanged(nameof(CanEditProfile));
+            OnPropertyChanged(nameof(IsProfileActive));
+            OnPropertyChanged(nameof(EditLockReason));
         }
 
         private void PopulateMappingsList(Profile profile)

@@ -59,7 +59,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         {
             _devicesManager = devicesManager;
             _deviceIoType = deviceIoType;
-            Devices = new DeviceSelectControlViewModel($"Add {(deviceIoType == DeviceIoType.Input ? "input" : "output")} devices", devices, deviceIoType);
+            Devices = new DeviceSelectControlViewModel($"Add {(deviceIoType == DeviceIoType.Input ? "input" : "output")} devices", devices, deviceIoType, devicesManager);
             ViewModel = this;
         }
 
@@ -101,7 +101,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 var item = Devices.Devices.FirstOrDefault(candidate => SameDevice(candidate.Device, logicalDevice));
                 if (item == null)
                 {
-                    item = new DeviceViewModel(logicalDevice, _deviceIoType);
+                    item = new DeviceViewModel(logicalDevice, _deviceIoType, _devicesManager);
                     Devices.Devices.Add(item);
                 }
 

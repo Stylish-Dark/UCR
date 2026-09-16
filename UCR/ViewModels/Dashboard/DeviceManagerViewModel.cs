@@ -27,14 +27,16 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             Value = value;
             Brush = brush;
             ToolTip = value == DeviceOutlineColor.Default
-                ? "Default — original device colour"
+                ? "Default — device type colour"
                 : value.ToString();
         }
     }
 
     public class DeviceManagerItemViewModel : INotifyPropertyChanged
     {
-        public DeviceOutlineColorChoice[] AvailableOutlineColors { get; private set; }
+        public DeviceOutlineColorChoice[] AvailableTextColors { get; private set; }
+        // Compatibility alias for older code paths; the persisted setting now controls badge text.
+        public DeviceOutlineColorChoice[] AvailableOutlineColors => AvailableTextColors;
 
         public Device Device { get; }
         public DeviceIoType ValidationType { get; }
@@ -46,7 +48,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             get
             {
                 var visual = DeviceVisualCatalog.Describe(Device, ValidationType);
-                visual.OutlineBrush = CurrentOutlineBrush;
+                visual.BadgeTextBrush = CurrentTextBrush;
                 return visual;
             }
         }
@@ -92,28 +94,40 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             }
         }
 
-        private DeviceOutlineColor _outlineColor;
-        public DeviceOutlineColor OutlineColor
+        private DeviceOutlineColor _textColor;
+        public DeviceOutlineColor TextColor
         {
-            get => _outlineColor;
+            get => _textColor;
             set
             {
-                if (_outlineColor == value) return;
-                _outlineColor = value;
+                if (_textColor == value) return;
+                _textColor = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(OutlineColor));
+                OnPropertyChanged(nameof(CurrentTextBrush));
                 OnPropertyChanged(nameof(CurrentOutlineBrush));
                 OnPropertyChanged(nameof(Visual));
             }
         }
 
-        public Brush CurrentOutlineBrush
+        // OutlineColor is the historical persistence name. Keep it as a compatibility alias while
+        // presenting the setting to users as badge text colour.
+        public DeviceOutlineColor OutlineColor
+        {
+            get => TextColor;
+            set => TextColor = value;
+        }
+
+        public Brush CurrentTextBrush
         {
             get
             {
-                var choice = AvailableOutlineColors?.FirstOrDefault(candidate => candidate.Value == OutlineColor);
+                var choice = AvailableTextColors?.FirstOrDefault(candidate => candidate.Value == TextColor);
                 return choice?.Brush ?? Brushes.Gray;
             }
         }
+
+        public Brush CurrentOutlineBrush => CurrentTextBrush;
 
         internal string StableKey { get; }
 
@@ -125,8 +139,8 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             CanPersist = canPersist;
             Alias = alias;
             StableKey = stableKey;
-            OutlineColor = outlineColor;
-            AvailableOutlineColors = BuildOutlineColorChoices(device, type);
+            AvailableTextColors = BuildOutlineColorChoices(device, type);
+            TextColor = outlineColor;
             AddIoType(type);
             Hidden = hidden;
         }
@@ -276,7 +290,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                         !pendingPresentation.TryGetValue(item.StableKey, out pending)) continue;
                     item.Alias = pending.Alias;
                     item.Hidden = pending.Hidden;
-                    item.OutlineColor = pending.OutlineColor;
+                    item.TextColor = pending.OutlineColor;
                 }
             }
 
@@ -345,7 +359,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 {
                     Alias = item.Alias,
                     Hidden = item.Hidden,
-                    OutlineColor = item.OutlineColor,
+                    OutlineColor = item.TextColor,
                     Order = index
                 };
             }
@@ -530,7 +544,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
                 var hidden = item.CanHide && item.Hidden;
                 if (_devicesManager.TrySetDevicePresentation(item.Device, item.ValidationType,
-                        item.Alias, hidden, index, item.OutlineColor, out error)) continue;
+                        item.Alias, hidden, index, item.TextColor, out error)) continue;
 
                 return false;
             }

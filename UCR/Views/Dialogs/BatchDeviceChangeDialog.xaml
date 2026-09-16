@@ -33,7 +33,7 @@
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="42"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                 <Border Width="34" Height="22" Padding="4 1" CornerRadius="4" Background="#1B1B1B"
                                         BorderBrush="{Binding Visual.OutlineBrush}" BorderThickness="1" VerticalAlignment="Center" ToolTip="{Binding Visual.ToolTip}">
-                                    <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}" FontSize="11.5"
+                                    <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.BadgeTextBrush}" FontSize="11.5"
                                                FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
@@ -55,7 +55,7 @@
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="42"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                 <Border Width="34" Height="22" Padding="4 1" CornerRadius="4" Background="#1B1B1B"
                                         BorderBrush="{Binding Visual.OutlineBrush}" BorderThickness="1" VerticalAlignment="Center" ToolTip="{Binding Visual.ToolTip}">
-                                    <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.AccentBrush}" FontSize="11.5"
+                                    <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.BadgeTextBrush}" FontSize="11.5"
                                                FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">

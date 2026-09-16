@@ -121,11 +121,11 @@ namespace HidWizards.UCR.Views.Dialogs
             return null;
         }
 
-        private void OutlineColorButton_OnClick(object sender, RoutedEventArgs e)
+        private void TextColorButton_OnClick(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
             var device = button?.DataContext as DeviceManagerItemViewModel;
-            if (button == null || device == null || device.AvailableOutlineColors == null) return;
+            if (button == null || device == null || device.AvailableTextColors == null) return;
 
             // Build the palette only after the click. Nothing picker-specific lives in the ListView
             // row template, so a picker failure cannot prevent device rows from being created.
@@ -150,7 +150,7 @@ namespace HidWizards.UCR.Views.Dialogs
                 Child = strip
             };
 
-            foreach (var choice in device.AvailableOutlineColors)
+            foreach (var choice in device.AvailableTextColors)
             {
                 var selectedChoice = choice;
                 var tile = new Border
@@ -195,7 +195,7 @@ namespace HidWizards.UCR.Views.Dialogs
                 tile.MouseLeave += (o, args) => tile.Background = new SolidColorBrush(Color.FromRgb(37, 37, 37));
                 tile.MouseLeftButtonUp += (o, args) =>
                 {
-                    device.OutlineColor = selectedChoice.Value;
+                    device.TextColor = selectedChoice.Value;
                     popup.IsOpen = false;
                     args.Handled = true;
                 };
