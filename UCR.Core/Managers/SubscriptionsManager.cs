@@ -262,11 +262,51 @@ namespace HidWizards.UCR.Core.Managers
             foreach (var group in profile.MappingGroups ?? new List<MappingGroup>())
             {
                 if (group == null || !group.Enabled) continue;
-                state.AddMappings(profile, group.Mappings ?? new List<Mapping>(), runtimeScopeGuid, scopedOutputs);
+
+                var groupOutputs = scopedOutputs.ToList();
+                foreach (var configuration in group.OutputDeviceConfigurations ?? new List<DeviceConfiguration>())
+                {
+                    AddScopedOutputDevice(state, configuration, runtimeScopeGuid, groupOutputs);
+                }
+
+                // Legacy nested children could inherit an output from an ancestor child. Resolve any
+                // output referenced by this group's mappings even if that configuration lives in a
+                // different local group after migration.
+                foreach (var mapping in group.Mappings ?? new List<Mapping>())
+                {
+                    if (mapping == null) continue;
+                    foreach (var plugin in mapping.Plugins ?? new List<Plugin>())
+                    {
+                        if (plugin == null) continue;
+                        foreach (var binding in plugin.Outputs ?? new List<DeviceBinding>())
+                        {
+                            if (binding == null || binding.DeviceConfigurationGuid == Guid.Empty) continue;
+                            if (groupOutputs.Any(output =>
+                                    output?.DeviceConfiguration?.Guid == binding.DeviceConfigurationGuid)) continue;
+
+                            var configuration = profile.GetDeviceConfiguration(
+                                DeviceIoType.Output, binding.DeviceConfigurationGuid);
+                            if (configuration != null)
+                                AddScopedOutputDevice(state, configuration, runtimeScopeGuid, groupOutputs);
+                        }
+                    }
+                }
+
+                state.AddMappings(profile, group.Mappings ?? new List<Mapping>(), runtimeScopeGuid, groupOutputs);
             }
 
             populatedLayers.Add(profile.Guid);
             return success;
+        }
+
+        private static void AddScopedOutputDevice(SubscriptionState state,
+            DeviceConfiguration configuration, Guid runtimeScopeGuid,
+            ICollection<DeviceConfigurationSubscription> scopedOutputs)
+        {
+            if (state == null || configuration == null || scopedOutputs == null) return;
+            var subscription = state.AddOutputDeviceConfiguration(configuration, runtimeScopeGuid);
+            if (subscription != null && !scopedOutputs.Contains(subscription))
+                scopedOutputs.Add(subscription);
         }
 
         private bool ConfigureFiltersForState(SubscriptionState state)
