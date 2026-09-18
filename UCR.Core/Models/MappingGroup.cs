@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Xml.Serialization;
 
@@ -16,6 +17,7 @@ namespace HidWizards.UCR.Core.Models
         public string Title { get; set; }
 
         [XmlAttribute]
+        [DefaultValue(true)]
         public bool Enabled
         {
             get => _enabled;
