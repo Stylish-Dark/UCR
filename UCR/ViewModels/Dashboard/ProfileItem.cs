@@ -145,11 +145,11 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             var primaryInput = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input);
             var primaryOutput = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output);
 
-            var inputs = profile.GetDeviceConfigurationList(DeviceIoType.Input)
+            var inputs = profile.GetProfileDeviceConfigurationList(DeviceIoType.Input)
                 .Where(configuration => configuration != null)
                 .OrderBy(configuration => primaryInput != null && configuration.Guid == primaryInput.Guid ? 0 : 1)
                 .ToList();
-            var outputs = profile.GetDeviceConfigurationList(DeviceIoType.Output)
+            var outputs = profile.GetProfileDeviceConfigurationList(DeviceIoType.Output)
                 .Where(configuration => configuration != null)
                 .ToList();
 
