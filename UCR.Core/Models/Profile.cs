@@ -243,6 +243,7 @@ namespace HidWizards.UCR.Core.Models
             clone.Guid = Guid.NewGuid();
             clone.Title = GetUniqueMappingGroupTitle(string.IsNullOrWhiteSpace(title) ? source.Title + " Copy" : title);
             clone.Enabled = false;
+            RegenerateCopiedGroupDeviceConfigurationIds(clone);
 
             // Copy/paste is allowed between profiles. Preserve bindings when the destination profile
             // has the same configured device under a different configuration GUID; otherwise retain
@@ -253,6 +254,41 @@ namespace HidWizards.UCR.Core.Models
             Context?.ContextChanged();
             OnPropertyChanged(nameof(MappingGroups));
             return clone;
+        }
+
+        private static void RegenerateCopiedGroupDeviceConfigurationIds(MappingGroup group)
+        {
+            if (group == null) return;
+            var replacements = new Dictionary<Guid, Guid>();
+            foreach (var configuration in (group.InputDeviceConfigurations ?? new List<DeviceConfiguration>())
+                         .Concat(group.OutputDeviceConfigurations ?? new List<DeviceConfiguration>()))
+            {
+                if (configuration == null || configuration.Guid == Guid.Empty) continue;
+                var previous = configuration.Guid;
+                configuration.Guid = Guid.NewGuid();
+                replacements[previous] = configuration.Guid;
+            }
+
+            foreach (var mapping in group.Mappings ?? new List<Mapping>())
+            {
+                if (mapping == null) continue;
+                foreach (var binding in mapping.DeviceBindings ?? new List<DeviceBinding>())
+                {
+                    Guid replacement;
+                    if (binding != null && replacements.TryGetValue(binding.DeviceConfigurationGuid, out replacement))
+                        binding.DeviceConfigurationGuid = replacement;
+                }
+                foreach (var plugin in mapping.Plugins ?? new List<Plugin>())
+                {
+                    if (plugin == null) continue;
+                    foreach (var binding in plugin.Outputs ?? new List<DeviceBinding>())
+                    {
+                        Guid replacement;
+                        if (binding != null && replacements.TryGetValue(binding.DeviceConfigurationGuid, out replacement))
+                            binding.DeviceConfigurationGuid = replacement;
+                    }
+                }
+            }
         }
 
         private void RemapCopiedGroupBindings(MappingGroup group, Profile sourceProfile)
