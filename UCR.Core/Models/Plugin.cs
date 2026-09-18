@@ -246,28 +246,57 @@ namespace HidWizards.UCR.Core.Models
         public void PostLoad(Context context, Profile parentProfile)
         {
             SetProfile(parentProfile);
-            ZipDeviceBindingList(Outputs);
+            NormalizeOutputBindings();
             Outputs.ForEach(o => o.DeviceIoType = DeviceIoType.Output);
-
         }
 
-        private static void ZipDeviceBindingList(IList<DeviceBinding> deviceBindings)
+        private void NormalizeOutputBindings()
         {
-            if (deviceBindings.Count == 0) return;
-            var split = deviceBindings.Count / 2;
-            for (var i = 0; i < split; i++)
+            var expectedCount = OutputCategories.Count;
+
+            // Plugin constructors create one default binding for every declared output. Both the
+            // legacy XML serializer and the JSON serializer then populate the persisted collection
+            // onto that constructor-created list. Older UCR therefore needed to collapse the
+            // duplicated half after deserialization. Do that only when duplicates actually exist;
+            // PostLoad is intentionally idempotent because profile migration/copy paths may attach
+            // the same plugin more than once.
+            if (expectedCount == 0)
             {
-                deviceBindings[i].IsBound = deviceBindings[i + split].IsBound;
-                deviceBindings[i].DeviceConfigurationGuid = deviceBindings[i + split].DeviceConfigurationGuid;
-                deviceBindings[i].KeyType = deviceBindings[i + split].KeyType;
-                deviceBindings[i].KeyValue = deviceBindings[i + split].KeyValue;
-                deviceBindings[i].KeySubValue = deviceBindings[i + split].KeySubValue;
+                Outputs.Clear();
+                return;
             }
 
-            for (var i = deviceBindings.Count - 1; i >= split; i--)
+            if (Outputs.Count > expectedCount)
             {
-                deviceBindings.Remove(deviceBindings[i]);
+                var persistedCount = Math.Min(expectedCount, Outputs.Count - expectedCount);
+                for (var i = 0; i < persistedCount; i++)
+                {
+                    CopyBindingState(Outputs[expectedCount + i], Outputs[i]);
+                }
+
+                for (var i = Outputs.Count - 1; i >= expectedCount; i--)
+                {
+                    Outputs.RemoveAt(i);
+                }
             }
+
+            // Repair already-corrupted persisted plugins from the broken migration build instead of
+            // crashing the editor. Missing bindings cannot recover a lost assignment, but restoring
+            // the declared output shape leaves the mapping editable so the user can re-bind it.
+            while (Outputs.Count < expectedCount)
+            {
+                Outputs.Add(new DeviceBinding(null, Profile, DeviceIoType.Output));
+            }
+        }
+
+        private static void CopyBindingState(DeviceBinding source, DeviceBinding target)
+        {
+            if (source == null || target == null) return;
+            target.IsBound = source.IsBound;
+            target.DeviceConfigurationGuid = source.DeviceConfigurationGuid;
+            target.KeyType = source.KeyType;
+            target.KeyValue = source.KeyValue;
+            target.KeySubValue = source.KeySubValue;
         }
 
         #endregion
