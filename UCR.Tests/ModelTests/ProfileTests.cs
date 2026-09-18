@@ -261,6 +261,54 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void PreviouslyMergedGroupOnlyDeviceIsRehomedOnLoad()
+        {
+            var mainOutput = new DeviceConfiguration(new Device("P1 Pad", "Core_ViGEm", "p1", 0));
+            var playerTwoOutput = new DeviceConfiguration(new Device("P2 Pad", "Core_ViGEm", "p2", 1));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { mainOutput, playerTwoOutput }, DeviceIoType.Output);
+
+            var mainMapping = _profile.AddMapping("P1 Attack");
+            var mainPlugin = new ButtonToButton();
+            mainMapping.AddPlugin(mainPlugin);
+            mainPlugin.Outputs.Single().DeviceConfigurationGuid = mainOutput.Guid;
+            mainPlugin.Outputs.Single().IsBound = true;
+
+            var group = _profile.AddMappingGroup("Player 2");
+            group.Enabled = false;
+            var groupMapping = group.AddMapping("P2 Attack");
+            var groupPlugin = new ButtonToButton();
+            groupMapping.AddPlugin(groupPlugin);
+            groupPlugin.Outputs.Single().DeviceConfigurationGuid = playerTwoOutput.Guid;
+            groupPlugin.Outputs.Single().IsBound = true;
+
+            _profile.PostLoad(_context);
+
+            Assert.That(_profile.OutputDeviceConfigurations.Select(configuration => configuration.Guid),
+                Is.EqualTo(new[] { mainOutput.Guid }));
+            Assert.That(group.OutputDeviceConfigurations.Select(configuration => configuration.Guid),
+                Is.EqualTo(new[] { playerTwoOutput.Guid }));
+        }
+
+        [Test]
+        public void CopyingMappingGroupRegeneratesItsPrivateDeviceIdsAndBindings()
+        {
+            var group = _profile.AddMappingGroup("Player 2");
+            var privateOutput = new DeviceConfiguration(new Device("P2 Pad", "Core_ViGEm", "p2", 1));
+            group.OutputDeviceConfigurations.Add(privateOutput);
+            var mapping = group.AddMapping("P2 Attack");
+            var plugin = new ButtonToButton();
+            mapping.AddPlugin(plugin);
+            plugin.Outputs.Single().DeviceConfigurationGuid = privateOutput.Guid;
+            plugin.Outputs.Single().IsBound = true;
+
+            var copy = _profile.CopyMappingGroup(group, "Player 2 Copy");
+
+            Assert.That(copy.OutputDeviceConfigurations.Single().Guid, Is.Not.EqualTo(privateOutput.Guid));
+            Assert.That(copy.Mappings.Single().Plugins.Single().Outputs.Single().DeviceConfigurationGuid,
+                Is.EqualTo(copy.OutputDeviceConfigurations.Single().Guid));
+        }
+
+        [Test]
         public void DashboardProfileListIsFlatAfterChildMigration()
         {
             var child = _context.ProfilesManager.CreateProfile("Player 2", null, null);
