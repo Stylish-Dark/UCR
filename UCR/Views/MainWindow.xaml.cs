@@ -465,7 +465,7 @@ namespace HidWizards.UCR.Views
             }
             else
             {
-                ImportProfilePackageFromPath(dialog.FileName, null);
+                ImportProfileFromPath(dialog.FileName);
             }
         }
 
@@ -626,9 +626,14 @@ namespace HidWizards.UCR.Views
             };
             if (dialog.ShowDialog(this) != true) return;
 
+            ImportProfileFromPath(dialog.FileName);
+        }
+
+        private void ImportProfileFromPath(string fileName)
+        {
             try
             {
-                Context.ProfilesManager.ImportProfile(dialog.FileName);
+                Context.ProfilesManager.ImportProfile(fileName);
                 ReloadProfileTree();
                 HidWizards.UCR.Utilities.DarkMessageBox.Show(this, "Profile imported successfully.",
                     "Import profile", MessageBoxButton.OK, MessageBoxImage.Information);
