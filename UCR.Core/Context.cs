@@ -191,11 +191,70 @@ namespace HidWizards.UCR.Core
         {
             using (var ms = new MemoryStream())
             {
-                var formatter = GetXmlSerializer(null, typeof(T));
+                // XmlSerializer must be told about every concrete Plugin subclass present in the
+                // object graph. This matters for profile/group copies and legacy-child migration:
+                // those operations can clone mappings containing plugins even when the Plugins
+                // directory is not populated (for example in tests or portable tooling).
+                var formatter = GetXmlSerializer(GetClonePluginTypes(obj), typeof(T));
                 formatter.Serialize(ms, obj);
                 ms.Position = 0;
 
                 return (T)formatter.Deserialize(ms);
+            }
+        }
+
+        private static List<Type> GetClonePluginTypes(object value)
+        {
+            var result = new HashSet<Type>();
+            CollectClonePluginTypes(value, result);
+            return result.ToList();
+        }
+
+        private static void CollectClonePluginTypes(object value, ISet<Type> result)
+        {
+            if (value == null || result == null) return;
+
+            var plugin = value as Plugin;
+            if (plugin != null)
+            {
+                result.Add(plugin.GetType());
+                return;
+            }
+
+            var mapping = value as Mapping;
+            if (mapping != null)
+            {
+                foreach (var item in mapping.Plugins ?? new List<Plugin>())
+                {
+                    CollectClonePluginTypes(item, result);
+                }
+                return;
+            }
+
+            var group = value as MappingGroup;
+            if (group != null)
+            {
+                foreach (var item in group.Mappings ?? new List<Mapping>())
+                {
+                    CollectClonePluginTypes(item, result);
+                }
+                return;
+            }
+
+            var profile = value as Profile;
+            if (profile == null) return;
+
+            foreach (var item in profile.Mappings ?? new List<Mapping>())
+            {
+                CollectClonePluginTypes(item, result);
+            }
+            foreach (var item in profile.MappingGroups ?? new List<MappingGroup>())
+            {
+                CollectClonePluginTypes(item, result);
+            }
+            foreach (var child in profile.ChildProfiles ?? new List<Profile>())
+            {
+                CollectClonePluginTypes(child, result);
             }
         }
 
