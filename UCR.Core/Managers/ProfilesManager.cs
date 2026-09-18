@@ -520,8 +520,14 @@ namespace HidWizards.UCR.Core.Managers
             foreach (var mapping in profile.Mappings) ValidateMapping(mapping);
             foreach (var group in profile.MappingGroups)
             {
-                if (group == null || group.Guid == Guid.Empty || group.Mappings == null)
+                if (group == null || group.Guid == Guid.Empty || group.Mappings == null ||
+                    group.InputDeviceConfigurations == null || group.OutputDeviceConfigurations == null)
                     throw new InvalidDataException("The UCR export contains an invalid mapping group.");
+                foreach (var configuration in group.InputDeviceConfigurations.Concat(group.OutputDeviceConfigurations))
+                {
+                    if (configuration == null || configuration.Device == null)
+                        throw new InvalidDataException("The UCR export contains an invalid mapping-group device configuration.");
+                }
                 foreach (var mapping in group.Mappings) ValidateMapping(mapping);
             }
 
@@ -553,6 +559,14 @@ namespace HidWizards.UCR.Core.Managers
             if (profile.OutputDeviceConfigurations != null)
             {
                 foreach (var configuration in profile.OutputDeviceConfigurations) yield return configuration;
+            }
+            foreach (var group in profile.MappingGroups ?? new List<MappingGroup>())
+            {
+                if (group == null) continue;
+                foreach (var configuration in group.InputDeviceConfigurations ?? new List<DeviceConfiguration>())
+                    yield return configuration;
+                foreach (var configuration in group.OutputDeviceConfigurations ?? new List<DeviceConfiguration>())
+                    yield return configuration;
             }
         }
 
@@ -620,6 +634,20 @@ namespace HidWizards.UCR.Core.Managers
             foreach (var configuration in profile.OutputDeviceConfigurations)
             {
                 if (!outputs.ContainsKey(configuration.Guid)) outputs.Add(configuration.Guid, configuration);
+            }
+            foreach (var group in profile.MappingGroups ?? new List<MappingGroup>())
+            {
+                if (group == null) continue;
+                foreach (var configuration in group.InputDeviceConfigurations ?? new List<DeviceConfiguration>())
+                {
+                    if (configuration != null && !inputs.ContainsKey(configuration.Guid))
+                        inputs.Add(configuration.Guid, configuration);
+                }
+                foreach (var configuration in group.OutputDeviceConfigurations ?? new List<DeviceConfiguration>())
+                {
+                    if (configuration != null && !outputs.ContainsKey(configuration.Guid))
+                        outputs.Add(configuration.Guid, configuration);
+                }
             }
 
             foreach (var mapping in profile.GetAllMappings())
