@@ -102,30 +102,33 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         public static ObservableCollection<ProfileItem> GetProfileTree(List<Profile> profiles)
         {
-            return GetProfileTree(profiles, 0);
-        }
-
-        private static ObservableCollection<ProfileItem> GetProfileTree(List<Profile> profiles, int depth)
-        {
             var profileItems = new ObservableCollection<ProfileItem>();
             if (profiles == null) return profileItems;
 
-            foreach (var profile in profiles)
+            foreach (var profile in profiles.Where(profile => profile != null))
             {
                 var item = new ProfileItem
                 {
                     Title = profile.Title,
                     Id = profile.Guid,
-                    Depth = depth,
-                    Items = GetProfileTree(profile.ChildProfiles, depth + 1),
+                    Depth = 0,
+                    Items = new ObservableCollection<ProfileItem>(),
                     Profile = profile,
-                    IsActive = profile.Context?.ActiveProfile?.Guid == profile.Guid
+                    IsActive = profile.IsActive()
                 };
                 PopulatePresentation(item, profile);
                 profileItems.Add(item);
             }
-
             return profileItems;
+        }
+
+        public static void SetActiveProfiles(IEnumerable<ProfileItem> items)
+        {
+            if (items == null) return;
+            foreach (var item in items)
+            {
+                item.IsActive = item.Profile?.IsActive() == true;
+            }
         }
 
         public static void SetActiveProfile(IEnumerable<ProfileItem> items, Guid activeProfileGuid)
@@ -134,7 +137,6 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             foreach (var item in items)
             {
                 item.IsActive = activeProfileGuid != Guid.Empty && item.Id == activeProfileGuid;
-                SetActiveProfile(item.Items, activeProfileGuid);
             }
         }
 

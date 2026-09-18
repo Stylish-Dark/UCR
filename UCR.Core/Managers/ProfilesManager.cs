@@ -98,11 +98,33 @@ namespace HidWizards.UCR.Core.Managers
             return true;
         }
 
+        public int MigrateLegacyChildrenToMappingGroups()
+        {
+            var migrated = 0;
+            foreach (var profile in _profiles.Where(profile => profile != null))
+            {
+                if (!profile.MigrateLegacyChildProfilesToMappingGroups()) continue;
+                migrated++;
+            }
+            if (migrated > 0)
+            {
+                Logger.Info("Migrated legacy child profiles into local mapping groups for " + migrated + " profile(s).");
+                _context.ContextChanged();
+            }
+            return migrated;
+        }
+
         public bool CopyProfile(Profile profile, string title = "Untitled")
         {
+            if (profile == null) return false;
+
             var newProfile = Context.DeepXmlClone<Profile>(profile);
             newProfile.Title = title;
-            newProfile.Guid = Guid.NewGuid();
+
+            // A copied profile may now run alongside its source, so every runtime identity must be
+            // independent. Regenerate profile/device/group identifiers and rewrite every binding and
+            // primary-device reference to the corresponding regenerated configuration.
+            RegenerateIdentities(new[] { newProfile });
             newProfile.PostLoad(_context, profile.ParentProfile);
 
             if (profile.ParentProfile != null)
@@ -114,12 +136,7 @@ namespace HidWizards.UCR.Core.Managers
                 _profiles.Add(newProfile);
             }
 
-            // TODO Fix Configuration Guid and referenced DeviceBinding Guids
-            //newProfile.InputDeviceConfigurations.ForEach(configuration => configuration.Guid = Guid.NewGuid());
-            //newProfile.OutputDeviceConfigurations.ForEach(configuration => configuration.Guid = Guid.NewGuid());
-
             _context.ContextChanged();
-
             return true;
         }
 
@@ -163,6 +180,7 @@ namespace HidWizards.UCR.Core.Managers
 
             var profile = package.Profiles[0];
             profile.PostLoad(_context, parentProfile);
+            if (parentProfile == null) profile.MigrateLegacyChildProfilesToMappingGroups();
             AddProfile(profile, parentProfile);
             _context.DevicesManager.MergeDeviceAliases(package.DeviceAliases, false);
             return profile;
@@ -209,14 +227,15 @@ namespace HidWizards.UCR.Core.Managers
                 foreach (var profile in package.Profiles)
                 {
                     profile.PostLoad(_context);
+                    profile.MigrateLegacyChildProfilesToMappingGroups();
                     _profiles.Add(profile);
                 }
             }
             else if (mode == ProfileListImportMode.Replace)
             {
-                if (_context.ActiveProfile != null && !_context.SubscriptionsManager.DeactivateCurrentProfile())
+                if (_context.ActiveProfiles.Count > 0 && !_context.SubscriptionsManager.DeactivateCurrentProfile())
                 {
-                    throw new InvalidOperationException("The active profile could not be deactivated before replacing the profile list.");
+                    throw new InvalidOperationException("The active profiles could not be deactivated before replacing the profile list.");
                 }
 
                 _profiles.Clear();
@@ -224,6 +243,7 @@ namespace HidWizards.UCR.Core.Managers
                 foreach (var profile in package.Profiles)
                 {
                     profile.PostLoad(_context);
+                    profile.MigrateLegacyChildProfilesToMappingGroups();
                     _profiles.Add(profile);
                 }
             }
@@ -483,6 +503,7 @@ namespace HidWizards.UCR.Core.Managers
             if (profile == null) throw new InvalidDataException("The UCR export contains a null profile.");
             if (profile.ChildProfiles == null) throw new InvalidDataException("A profile has no child-profile collection.");
             if (profile.Mappings == null) throw new InvalidDataException("A profile has no mapping collection.");
+            if (profile.MappingGroups == null) throw new InvalidDataException("A profile has no mapping-group collection.");
             if (profile.InputDeviceConfigurations == null || profile.OutputDeviceConfigurations == null)
             {
                 throw new InvalidDataException("A profile has an invalid device-configuration collection.");
@@ -496,28 +517,30 @@ namespace HidWizards.UCR.Core.Managers
                 }
             }
 
-            foreach (var mapping in profile.Mappings)
+            foreach (var mapping in profile.Mappings) ValidateMapping(mapping);
+            foreach (var group in profile.MappingGroups)
             {
-                if (mapping == null || mapping.DeviceBindings == null || mapping.Plugins == null)
-                {
-                    throw new InvalidDataException("The UCR export contains an invalid mapping.");
-                }
-                if (mapping.DeviceBindings.Any(binding => binding == null))
-                {
-                    throw new InvalidDataException("The UCR export contains a null input binding.");
-                }
-                foreach (var plugin in mapping.Plugins)
-                {
-                    if (plugin == null || plugin.Outputs == null || plugin.Outputs.Any(binding => binding == null))
-                    {
-                        throw new InvalidDataException("The UCR export contains an invalid mapping plugin.");
-                    }
-                }
+                if (group == null || group.Guid == Guid.Empty || group.Mappings == null)
+                    throw new InvalidDataException("The UCR export contains an invalid mapping group.");
+                foreach (var mapping in group.Mappings) ValidateMapping(mapping);
             }
 
             foreach (var child in profile.ChildProfiles)
             {
                 ValidateProfileStructure(child);
+            }
+        }
+
+        private static void ValidateMapping(Mapping mapping)
+        {
+            if (mapping == null || mapping.DeviceBindings == null || mapping.Plugins == null)
+                throw new InvalidDataException("The UCR export contains an invalid mapping.");
+            if (mapping.DeviceBindings.Any(binding => binding == null))
+                throw new InvalidDataException("The UCR export contains a null input binding.");
+            foreach (var plugin in mapping.Plugins)
+            {
+                if (plugin == null || plugin.Outputs == null || plugin.Outputs.Any(binding => binding == null))
+                    throw new InvalidDataException("The UCR export contains an invalid mapping plugin.");
             }
         }
 
@@ -599,7 +622,7 @@ namespace HidWizards.UCR.Core.Managers
                 if (!outputs.ContainsKey(configuration.Guid)) outputs.Add(configuration.Guid, configuration);
             }
 
-            foreach (var mapping in profile.Mappings)
+            foreach (var mapping in profile.GetAllMappings())
             {
                 foreach (var binding in mapping.DeviceBindings)
                 {
@@ -699,6 +722,10 @@ namespace HidWizards.UCR.Core.Managers
             foreach (var configuration in EnumerateLocalConfigurations(profile))
             {
                 configuration.Guid = Guid.NewGuid();
+            }
+            foreach (var group in profile.MappingGroups ?? new List<MappingGroup>())
+            {
+                if (group != null) group.Guid = Guid.NewGuid();
             }
             foreach (var child in profile.ChildProfiles)
             {

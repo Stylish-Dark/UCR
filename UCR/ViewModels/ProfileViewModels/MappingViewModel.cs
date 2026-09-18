@@ -55,10 +55,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<PluginViewModel> Plugins { get; set; }
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public bool ButtonsEnabled => !ProfileViewModel.Profile.IsActive();
-        public bool CanMoveUp => ButtonsEnabled && ProfileViewModel.MappingsList != null && ProfileViewModel.MappingsList.IndexOf(this) > 0;
-        public bool CanMoveDown => ButtonsEnabled && ProfileViewModel.MappingsList != null &&
-                                   ProfileViewModel.MappingsList.IndexOf(this) >= 0 &&
-                                   ProfileViewModel.MappingsList.IndexOf(this) < ProfileViewModel.MappingsList.Count - 1;
+        public bool CanMoveUp => ButtonsEnabled && ProfileViewModel.CanMoveMapping(this, -1);
+        public bool CanMoveDown => ButtonsEnabled && ProfileViewModel.CanMoveMapping(this, 1);
         public string MappingRoute => Mapping != null && Mapping.Plugins.Count > 0 ? Mapping.Plugins[0].PluginName : "No plugin";
         public string MappingRouteDisplay => FormatMappingRoute(MappingRoute);
         public List<MappingHeaderToken> MappingRouteTokens => BuildMappingRouteTokens(MappingRouteDisplay);

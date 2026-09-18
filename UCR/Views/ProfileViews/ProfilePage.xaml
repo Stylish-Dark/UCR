@@ -21,6 +21,7 @@
              PreviewMouseWheel="ProfileWindow_OnPreviewMouseWheel">
     <UserControl.Resources>
         <ResourceDictionary>
+            <BooleanToVisibilityConverter x:Key="MappingSectionVisibilityConverter"/>
             <converter:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
             <Style x:Key="ToolboxChoiceList" TargetType="{x:Type ListBox}">
                 <Setter Property="Background" Value="Transparent"/>
@@ -278,6 +279,8 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
                                 <TextBlock Grid.Row="0" Text="FROM" FontSize="10.5" FontWeight="SemiBold" Opacity="0.48" Margin="2 0 0 5"/>
@@ -335,10 +338,18 @@
                                     </ListBox.ItemTemplate>
                                 </ListBox>
 
-                                <Button Grid.Row="6" Margin="0 6 0 0" Height="34" Content="ADD" FontSize="14" FontWeight="SemiBold"
+                                <TextBlock Grid.Row="6" Text="SECTION" FontSize="10.5" FontWeight="SemiBold" Opacity="0.48" Margin="2 7 0 5"/>
+                                <ComboBox Grid.Row="7" ItemsSource="{Binding MappingSections}"
+                                          SelectedItem="{Binding SelectedMappingSection, Mode=TwoWay}"
+                                          DisplayMemberPath="Title" Height="32" Padding="7 2"
+                                          IsEnabled="{Binding CanEditProfile}"
+                                          ToolTip="Choose which local section receives the new mapping. Stop the running profile to edit."
+                                          ToolTipService.ShowOnDisabled="True"/>
+
+                                <Button Grid.Row="8" Margin="0 7 0 0" Height="34" Content="ADD" FontSize="14" FontWeight="SemiBold"
                                         Style="{StaticResource MaterialDesignRaisedButton}" IsEnabled="{Binding PluginToolbox.CanAddMapping}" Click="AddMapping_OnClick"/>
 
-                                <StackPanel Grid.Row="7" Margin="2 8 2 0">
+                                <StackPanel Grid.Row="9" Margin="2 8 2 0">
                                     <TextBlock Text="{Binding PluginToolbox.SelectedPluginName}" FontWeight="SemiBold" TextWrapping="Wrap"/>
                                     <TextBlock Text="{Binding PluginToolbox.SelectedPluginDescription}" Margin="0 2 0 0" Opacity="0.55" TextWrapping="Wrap" FontSize="12.5"/>
                                 </StackPanel>
@@ -560,6 +571,8 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="Mappings" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center"/>
@@ -581,6 +594,23 @@
                         </StackPanel>
 
                         <Button Grid.Column="1" Margin="6 0 2 0" Padding="9 2" Height="30"
+                                ToolTip="Add a local mapping group such as Player 2 or Extras. Stop the running profile to edit."
+                                ToolTipService.ShowOnDisabled="True" IsEnabled="{Binding CanEditProfile}"
+                                Style="{StaticResource UcrProfileActionButton}" Click="AddMappingGroup_OnClick">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="FolderPlus" Width="15" Height="15" Margin="0 0 6 0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Add group" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Grid.Column="2" Margin="3 0 2 0" Padding="8 2" Height="30"
+                                ToolTip="Paste the last copied mapping group into this profile."
+                                ToolTipService.ShowOnDisabled="True" IsEnabled="{Binding CanPasteMappingGroup}"
+                                Style="{StaticResource UcrProfileActionButton}" Click="PasteMappingGroup_OnClick">
+                            <materialDesign:PackIcon Kind="ContentPaste" Width="15" Height="15"/>
+                        </Button>
+
+                        <Button Grid.Column="3" Margin="6 0 2 0" Padding="9 2" Height="30"
                                 ToolTip="Rename mappings in one pass. Stop the running profile to edit." ToolTipService.ShowOnDisabled="True" IsEnabled="{Binding CanEditProfile}"
                                 Style="{StaticResource UcrProfileActionButton}" Click="RenameMappings_OnClick">
                             <StackPanel Orientation="Horizontal">
@@ -589,7 +619,7 @@
                             </StackPanel>
                         </Button>
 
-                        <Button Grid.Column="2" Margin="6 0 2 0" Padding="9 2" Height="30"
+                        <Button Grid.Column="4" Margin="6 0 2 0" Padding="9 2" Height="30"
                                 ToolTip="Replace one device throughout this profile. Stop the running profile to edit." ToolTipService.ShowOnDisabled="True" IsEnabled="{Binding CanEditProfile}"
                                 Style="{StaticResource UcrProfileActionButton}" Click="BatchDevices_OnClick">
                             <StackPanel Orientation="Horizontal">
@@ -598,67 +628,182 @@
                             </StackPanel>
                         </Button>
 
-                        <Button Grid.Column="3" Margin="5 0 1 0" Padding="4" Width="28" Height="28"
+                        <Button Grid.Column="5" Margin="5 0 1 0" Padding="4" Width="28" Height="28"
                                 ToolTip="Collapse all mappings" Style="{StaticResource UcrProfileActionButton}"
                                 Click="CollapseAllMappings_OnClick">
                             <materialDesign:PackIcon Kind="Minus" Width="16" Height="16"/>
                         </Button>
 
-                        <Button Grid.Column="4" Margin="1 0 0 0" Padding="4" Width="28" Height="28"
+                        <Button Grid.Column="6" Margin="1 0 0 0" Padding="4" Width="28" Height="28"
                                 ToolTip="Expand all mappings" Style="{StaticResource UcrProfileActionButton}"
                                 Click="ExpandAllMappings_OnClick">
                             <materialDesign:PackIcon Kind="Plus" Width="16" Height="16"/>
                         </Button>
                     </Grid>
 
-                    <ListView Grid.Row="2"
-                          x:Name="MappingListView"
-                          ItemsSource="{Binding MappingsList}"
-                          Margin="0"
-                          Padding="0 1 0 4"
-                          Background="Transparent"
-                          BorderThickness="0"
-                          VirtualizingPanel.ScrollUnit="Pixel"
-                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                          HorizontalContentAlignment="Stretch"
-                          VirtualizingPanel.IsVirtualizing="False"
-                          PreviewMouseRightButtonDown="MappingListView_OnPreviewMouseRightButtonDown"
-                          PreviewMouseRightButtonUp="MappingListView_OnPreviewMouseRightButtonUp"
-                          PreviewMouseMove="MappingListView_OnPreviewMouseMove"
-                          LostMouseCapture="MappingListView_OnLostMouseCapture">
-                    <ListView.ItemContainerStyle>
-                        <Style TargetType="{x:Type ListViewItem}">
-                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                            <Setter Property="Padding" Value="0"/>
-                            <Setter Property="Margin" Value="0"/>
-                            <Setter Property="Background" Value="Transparent"/>
-                        </Style>
-                    </ListView.ItemContainerStyle>
-                    <ListView.Style>
-                        <Style TargetType="ListView" BasedOn="{StaticResource MaterialDesignListView}">
-                            <Style.Triggers>
-                                <Trigger Property="HasItems" Value="False">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate>
-                                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                    <materialDesign:PackIcon Kind="LibraryAdd" Width="30" Height="30" HorizontalAlignment="Center" Opacity="0.4"/>
-                                                    <TextBlock Margin="4 10 4 0" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center">No mappings yet</TextBlock>
-                                                    <TextBlock Margin="4" Opacity="0.62" HorizontalAlignment="Center">Choose a route on the left, then click ADD.</TextBlock>
-                                                </StackPanel>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ListView.Style>
-                    <ListView.ItemTemplate>
-                        <DataTemplate>
-                            <controls:MappingCardControl/>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                    </ListView>
+                    <ScrollViewer Grid.Row="2" x:Name="MappingSectionsScrollViewer"
+                                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                  CanContentScroll="False" Padding="0 1 0 4">
+                        <ItemsControl x:Name="MappingSectionsItemsControl" ItemsSource="{Binding MappingSections}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="4 2 6 9" Background="#1C1C1C" BorderBrush="#343434" BorderThickness="1" CornerRadius="5">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <Border Grid.Row="0" Padding="9 6" Background="#242424" BorderBrush="#3B3B3B" BorderThickness="0 0 0 1">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <Button Grid.Column="0" Width="24" Height="24" Margin="0 0 5 0" Padding="0"
+                                                            Background="Transparent" BorderThickness="0" ToolTip="Expand or collapse this section"
+                                                            Click="ToggleMappingGroupSection_OnClick">
+                                                        <TextBlock FontSize="13" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="▾"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsExpanded}" Value="False"><Setter Property="Text" Value="▸"/></DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Button>
+
+                                                    <CheckBox Grid.Column="1" Margin="0 0 8 0" VerticalAlignment="Center"
+                                                              IsChecked="{Binding Enabled, Mode=TwoWay}" IsEnabled="{Binding CanEdit}"
+                                                              ToolTip="Include this group when the profile runs. Stop the running profile to change it."
+                                                              ToolTipService.ShowOnDisabled="True">
+                                                        <CheckBox.Style>
+                                                            <Style TargetType="CheckBox" BasedOn="{StaticResource MaterialDesignCheckBox}">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsMain}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </CheckBox.Style>
+                                                    </CheckBox>
+
+                                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <materialDesign:PackIcon Width="16" Height="16" Margin="0 0 7 0" Foreground="{DynamicResource PrimaryHueMidBrush}">
+                                                            <materialDesign:PackIcon.Style>
+                                                                <Style TargetType="materialDesign:PackIcon">
+                                                                    <Setter Property="Kind" Value="FolderOutline"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsMain}" Value="True">
+                                                                            <Setter Property="Kind" Value="ViewList"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </materialDesign:PackIcon.Style>
+                                                        </materialDesign:PackIcon>
+                                                        <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding Mappings.Count, StringFormat={}  {0}}" Margin="4 0 0 0" FontSize="12" Opacity="0.45" VerticalAlignment="Center"/>
+                                                        <Border Margin="8 0 0 0" Padding="5 1" CornerRadius="7" Background="#252525" BorderBrush="#484848" BorderThickness="1">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsMain}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <TextBlock Text="ALWAYS" FontSize="8.5" FontWeight="Bold" Opacity="0.65"/>
+                                                        </Border>
+                                                    </StackPanel>
+
+                                                    <StackPanel Grid.Column="3" Orientation="Horizontal">
+                                                        <Button Width="27" Height="27" Padding="3" Margin="1 0"
+                                                                ToolTip="Rename group" IsEnabled="{Binding CanEdit}" Click="RenameMappingGroup_OnClick">
+                                                            <Button.Style>
+                                                                <Style TargetType="Button" BasedOn="{StaticResource UcrProfileActionButton}">
+                                                                    <Style.Triggers><DataTrigger Binding="{Binding IsMain}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                                                                </Style>
+                                                            </Button.Style>
+                                                            <materialDesign:PackIcon Kind="Pencil" Width="15" Height="15"/>
+                                                        </Button>
+                                                        <Button Width="27" Height="27" Padding="3" Margin="1 0" ToolTip="Duplicate group"
+                                                                IsEnabled="{Binding CanEdit}" Click="DuplicateMappingGroup_OnClick">
+                                                            <Button.Style>
+                                                                <Style TargetType="Button" BasedOn="{StaticResource UcrProfileActionButton}">
+                                                                    <Style.Triggers><DataTrigger Binding="{Binding IsMain}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                                                                </Style>
+                                                            </Button.Style>
+                                                            <materialDesign:PackIcon Kind="ContentCopy" Width="15" Height="15"/>
+                                                        </Button>
+                                                        <Button Width="27" Height="27" Padding="3" Margin="1 0" ToolTip="Copy group" Click="CopyMappingGroup_OnClick">
+                                                            <Button.Style>
+                                                                <Style TargetType="Button" BasedOn="{StaticResource UcrProfileActionButton}">
+                                                                    <Style.Triggers><DataTrigger Binding="{Binding IsMain}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                                                                </Style>
+                                                            </Button.Style>
+                                                            <materialDesign:PackIcon Kind="ContentDuplicate" Width="15" Height="15"/>
+                                                        </Button>
+                                                        <Button Width="27" Height="27" Padding="3" Margin="1 0" ToolTip="Delete group"
+                                                                IsEnabled="{Binding CanEdit}" Click="RemoveMappingGroup_OnClick">
+                                                            <Button.Style>
+                                                                <Style TargetType="Button" BasedOn="{StaticResource UcrProfileActionButton}">
+                                                                    <Style.Triggers><DataTrigger Binding="{Binding IsMain}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                                                                </Style>
+                                                            </Button.Style>
+                                                            <materialDesign:PackIcon Kind="Delete" Width="15" Height="15" Foreground="#FF8B8B"/>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+
+                                            <ListView Grid.Row="1" ItemsSource="{Binding Mappings}" Margin="0" Padding="0 2 0 3"
+                                                      Background="Transparent" BorderThickness="0"
+                                                      Visibility="{Binding IsExpanded, Converter={StaticResource MappingSectionVisibilityConverter}}"
+                                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                                      ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                                      HorizontalContentAlignment="Stretch" VirtualizingPanel.IsVirtualizing="False"
+                                                      PreviewMouseRightButtonDown="MappingListView_OnPreviewMouseRightButtonDown"
+                                                      PreviewMouseRightButtonUp="MappingListView_OnPreviewMouseRightButtonUp"
+                                                      PreviewMouseMove="MappingListView_OnPreviewMouseMove"
+                                                      LostMouseCapture="MappingListView_OnLostMouseCapture">
+                                                <ListView.ItemContainerStyle>
+                                                    <Style TargetType="{x:Type ListViewItem}">
+                                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                                        <Setter Property="Padding" Value="0"/>
+                                                        <Setter Property="Margin" Value="0"/>
+                                                        <Setter Property="Background" Value="Transparent"/>
+                                                    </Style>
+                                                </ListView.ItemContainerStyle>
+                                                <ListView.Style>
+                                                    <Style TargetType="ListView" BasedOn="{StaticResource MaterialDesignListView}">
+                                                        <Style.Triggers>
+                                                            <Trigger Property="HasItems" Value="False">
+                                                                <Setter Property="Template">
+                                                                    <Setter.Value>
+                                                                        <ControlTemplate>
+                                                                            <TextBlock Margin="12 10" Text="No mappings in this section." Opacity="0.45" HorizontalAlignment="Center"/>
+                                                                        </ControlTemplate>
+                                                                    </Setter.Value>
+                                                                </Setter>
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </ListView.Style>
+                                                <ListView.ItemTemplate>
+                                                    <DataTemplate><controls:MappingCardControl/></DataTemplate>
+                                                </ListView.ItemTemplate>
+                                            </ListView>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
                 </Grid>
             </Grid>
         </materialDesign:DialogHost>

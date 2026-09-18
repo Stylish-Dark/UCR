@@ -23,8 +23,10 @@ namespace HidWizards.UCR.Core.Models
         public string Title { get; set; }
         [XmlAttribute]
         public Guid Guid { get; set; }
+        // Legacy child profiles remain deserializable so old contexts/imports can be migrated safely.
         public List<Profile> ChildProfiles { get; set; }
         public List<Mapping> Mappings { get; set; }
+        public List<MappingGroup> MappingGroups { get; set; }
 
         public List<DeviceConfiguration> InputDeviceConfigurations { get; set; }
         public List<DeviceConfiguration> OutputDeviceConfigurations { get; set; }
@@ -104,6 +106,7 @@ namespace HidWizards.UCR.Core.Models
             Guid = Guid.NewGuid();
             ChildProfiles = new List<Profile>();
             Mappings = new List<Mapping>();
+            MappingGroups = new List<MappingGroup>();
             InputDeviceConfigurations = new List<DeviceConfiguration>();
             OutputDeviceConfigurations = new List<DeviceConfiguration>();
             AutoActivateApplications = new ObservableCollection<ProfileApplicationRule>();
@@ -149,6 +152,10 @@ namespace HidWizards.UCR.Core.Models
 
         public void Remove()
         {
+            // A profile can now be one member of a composite runtime. Never leave subscriptions
+            // pointing at a profile that has already been removed from the persistent profile list.
+            if (IsActive() && !Context.SubscriptionsManager.DeactivateProfile(this)) return;
+
             if (ParentProfile == null)
             {
                 Context.Profiles.Remove(this);
@@ -167,7 +174,7 @@ namespace HidWizards.UCR.Core.Models
 
         public bool Deactivate()
         {
-            return Context.SubscriptionsManager.DeactivateCurrentProfile();
+            return Context.SubscriptionsManager.DeactivateProfile(this);
         }
 
         internal void PrepareProfile()
@@ -208,29 +215,223 @@ namespace HidWizards.UCR.Core.Models
         {
             var mapping = new Mapping(this, title);
             Mappings.Add(mapping);
-            Context.ContextChanged();
+            Context?.ContextChanged();
             return mapping;
+        }
+
+        public MappingGroup AddMappingGroup(string title)
+        {
+            if (MappingGroups == null) MappingGroups = new List<MappingGroup>();
+            var group = new MappingGroup(this, GetUniqueMappingGroupTitle(title));
+            MappingGroups.Add(group);
+            Context?.ContextChanged();
+            OnPropertyChanged(nameof(MappingGroups));
+            return group;
+        }
+
+        public MappingGroup CopyMappingGroup(MappingGroup source, string title = null)
+        {
+            return CopyMappingGroup(source, source?.Profile, title);
+        }
+
+        public MappingGroup CopyMappingGroup(MappingGroup source, Profile sourceProfile, string title = null)
+        {
+            if (source == null) return null;
+            if (MappingGroups == null) MappingGroups = new List<MappingGroup>();
+
+            var clone = HidWizards.UCR.Core.Context.DeepXmlClone<MappingGroup>(source);
+            clone.Guid = Guid.NewGuid();
+            clone.Title = GetUniqueMappingGroupTitle(string.IsNullOrWhiteSpace(title) ? source.Title + " Copy" : title);
+            clone.Enabled = false;
+
+            // Copy/paste is allowed between profiles. Preserve bindings when the destination profile
+            // has the same configured device under a different configuration GUID; otherwise retain
+            // the old GUID so UCR presents the binding as unavailable instead of silently guessing.
+            RemapCopiedGroupBindings(clone, sourceProfile);
+            clone.PostLoad(Context, this);
+            MappingGroups.Add(clone);
+            Context?.ContextChanged();
+            OnPropertyChanged(nameof(MappingGroups));
+            return clone;
+        }
+
+        private void RemapCopiedGroupBindings(MappingGroup group, Profile sourceProfile)
+        {
+            if (group?.Mappings == null || sourceProfile == null || ReferenceEquals(sourceProfile, this)) return;
+
+            foreach (var mapping in group.Mappings.Where(mapping => mapping != null))
+            {
+                foreach (var binding in mapping.DeviceBindings ?? new List<DeviceBinding>())
+                {
+                    RemapCopiedBinding(binding, DeviceIoType.Input, sourceProfile);
+                }
+
+                foreach (var plugin in mapping.Plugins ?? new List<Plugin>())
+                {
+                    if (plugin?.Outputs == null) continue;
+                    foreach (var binding in plugin.Outputs)
+                    {
+                        RemapCopiedBinding(binding, DeviceIoType.Output, sourceProfile);
+                    }
+                }
+            }
+        }
+
+        private void RemapCopiedBinding(DeviceBinding binding, DeviceIoType deviceIoType, Profile sourceProfile)
+        {
+            if (binding == null || binding.DeviceConfigurationGuid == Guid.Empty) return;
+
+            var existing = GetDeviceConfiguration(deviceIoType, binding.DeviceConfigurationGuid);
+            if (existing != null) return;
+
+            var sourceConfiguration = sourceProfile.GetDeviceConfiguration(deviceIoType, binding.DeviceConfigurationGuid);
+            if (sourceConfiguration?.Device == null) return;
+
+            var target = GetDeviceConfigurationList(deviceIoType).FirstOrDefault(configuration =>
+                configuration?.Device != null &&
+                DevicesManager.PersistedIdentityEquals(configuration.Device, sourceConfiguration.Device));
+            if (target != null) binding.DeviceConfigurationGuid = target.Guid;
+        }
+
+        public bool RemoveMappingGroup(MappingGroup group)
+        {
+            if (group == null || MappingGroups == null || !MappingGroups.Remove(group)) return false;
+            PruneUndefinedFilterReferencesRecursive();
+            Context?.ContextChanged();
+            OnPropertyChanged(nameof(MappingGroups));
+            return true;
+        }
+
+        public IEnumerable<Mapping> GetAllMappings()
+        {
+            foreach (var mapping in Mappings ?? new List<Mapping>()) yield return mapping;
+            foreach (var group in MappingGroups ?? new List<MappingGroup>())
+            {
+                if (group?.Mappings == null) continue;
+                foreach (var mapping in group.Mappings) yield return mapping;
+            }
+        }
+
+        public IEnumerable<Mapping> GetRuntimeMappings()
+        {
+            foreach (var mapping in Mappings ?? new List<Mapping>()) yield return mapping;
+            foreach (var group in MappingGroups ?? new List<MappingGroup>())
+            {
+                if (group == null || !group.Enabled || group.Mappings == null) continue;
+                foreach (var mapping in group.Mappings) yield return mapping;
+            }
+        }
+
+        public MappingGroup GetMappingGroup(Mapping mapping)
+        {
+            if (mapping == null || MappingGroups == null) return null;
+            return MappingGroups.FirstOrDefault(group => group?.Mappings != null && group.Mappings.Contains(mapping));
         }
 
         public bool RemoveMapping(Mapping mapping)
         {
-            if (!Mappings.Remove(mapping)) return false;
+            if (mapping == null) return false;
+            var removed = Mappings.Remove(mapping);
+            if (!removed)
+            {
+                var group = GetMappingGroup(mapping);
+                removed = group != null && group.Mappings.Remove(mapping);
+            }
+            if (!removed) return false;
             PruneUndefinedFilterReferencesRecursive();
-            Context.ContextChanged();
+            Context?.ContextChanged();
             return true;
         }
 
         public bool MoveMapping(Mapping mapping, int targetIndex)
         {
             if (mapping == null) return false;
-            var sourceIndex = Mappings.IndexOf(mapping);
-            if (sourceIndex < 0) return false;
-            if (targetIndex < 0 || targetIndex >= Mappings.Count || targetIndex == sourceIndex) return false;
+            var container = Mappings.Contains(mapping)
+                ? Mappings
+                : GetMappingGroup(mapping)?.Mappings;
+            if (container == null) return false;
+            var sourceIndex = container.IndexOf(mapping);
+            if (sourceIndex < 0 || targetIndex < 0 || targetIndex >= container.Count || targetIndex == sourceIndex) return false;
 
-            Mappings.RemoveAt(sourceIndex);
-            Mappings.Insert(targetIndex, mapping);
-            Context.ContextChanged();
+            container.RemoveAt(sourceIndex);
+            container.Insert(targetIndex, mapping);
+            Context?.ContextChanged();
             return true;
+        }
+
+        private string GetUniqueMappingGroupTitle(string requested)
+        {
+            var baseTitle = string.IsNullOrWhiteSpace(requested) ? "Group" : requested.Trim();
+            var title = baseTitle;
+            var number = 2;
+            while ((MappingGroups ?? new List<MappingGroup>()).Any(group =>
+                       group != null && string.Equals(group.Title, title, StringComparison.CurrentCultureIgnoreCase)))
+            {
+                title = baseTitle + " " + number++;
+            }
+            return title;
+        }
+
+        internal bool MigrateLegacyChildProfilesToMappingGroups()
+        {
+            if (ChildProfiles == null || ChildProfiles.Count == 0 || Context == null) return false;
+            if (MappingGroups == null) MappingGroups = new List<MappingGroup>();
+
+            var changed = false;
+            foreach (var child in ChildProfiles.Where(profile => profile != null).ToList())
+            {
+                changed |= AddLegacyGroupsForDescendant(child, child.Title, new List<Profile>());
+            }
+            ChildProfiles.Clear();
+            return changed;
+        }
+
+        private bool AddLegacyGroupsForDescendant(Profile descendant, string relativeTitle, List<Profile> inheritedPath)
+        {
+            if (descendant == null) return false;
+            descendant.Context = Context;
+            MergeLegacyDeviceConfigurations(descendant.InputDeviceConfigurations, InputDeviceConfigurations);
+            MergeLegacyDeviceConfigurations(descendant.OutputDeviceConfigurations, OutputDeviceConfigurations);
+
+            var path = new List<Profile>(inheritedPath) { descendant };
+            var effectiveMappings = new List<Mapping>();
+            foreach (var layer in path)
+            {
+                foreach (var sourceMapping in layer.Mappings ?? new List<Mapping>())
+                {
+                    var previous = effectiveMappings.FirstOrDefault(mapping =>
+                        string.Equals(mapping.Title, sourceMapping.Title, StringComparison.CurrentCultureIgnoreCase));
+                    if (previous != null) effectiveMappings.Remove(previous);
+                    var clone = HidWizards.UCR.Core.Context.DeepXmlClone<Mapping>(sourceMapping);
+                    clone.PostLoad(Context, this);
+                    effectiveMappings.Add(clone);
+                }
+            }
+
+            var group = new MappingGroup(this, GetUniqueMappingGroupTitle(relativeTitle))
+            {
+                Enabled = false,
+                Mappings = effectiveMappings
+            };
+            group.PostLoad(Context, this);
+            MappingGroups.Add(group);
+
+            foreach (var child in descendant.ChildProfiles ?? new List<Profile>())
+            {
+                AddLegacyGroupsForDescendant(child, relativeTitle + " / " + child.Title, path);
+            }
+            return true;
+        }
+
+        private void MergeLegacyDeviceConfigurations(IEnumerable<DeviceConfiguration> source, ICollection<DeviceConfiguration> target)
+        {
+            if (source == null || target == null) return;
+            foreach (var configuration in source.Where(configuration => configuration != null))
+            {
+                if (target.Any(existing => existing.Guid == configuration.Guid)) continue;
+                if (configuration.Device != null) configuration.Device.Profile = this;
+                target.Add(configuration);
+            }
         }
 
         #endregion
@@ -370,18 +571,23 @@ namespace HidWizards.UCR.Core.Models
 
         public bool AddPlugin(Mapping mapping, Plugin plugin)
         {
-            if (!Mappings.Contains(mapping)) return false;
+            if (!OwnsMapping(mapping)) return false;
             mapping.AddPlugin(plugin);
             return true;
         }
 
         public bool RemovePlugin(Mapping mapping, Plugin plugin)
         {
-            if (!Mappings.Contains(mapping)) return false;
+            if (!OwnsMapping(mapping)) return false;
             mapping.Plugins.Remove(plugin);
             PruneUndefinedFilterReferencesRecursive();
             Context.ContextChanged();
             return true;
+        }
+
+        private bool OwnsMapping(Mapping mapping)
+        {
+            return mapping != null && (Mappings.Contains(mapping) || GetMappingGroup(mapping) != null);
         }
 
         #endregion
@@ -394,7 +600,7 @@ namespace HidWizards.UCR.Core.Models
                 ? ParentProfile.GetFilters()
                 : new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
 
-            foreach (var mapping in Mappings)
+            foreach (var mapping in GetAllMappings())
             {
                 foreach (var plugin in mapping.Plugins)
                 {
@@ -420,7 +626,7 @@ namespace HidWizards.UCR.Core.Models
             // existing references remain valid and must not be silently redirected.
             if (profile.GetFilters().Contains(oldName)) return;
 
-            foreach (var mapping in profile.Mappings)
+            foreach (var mapping in profile.GetAllMappings())
             {
                 foreach (var plugin in mapping.Plugins)
                 {
@@ -453,7 +659,7 @@ namespace HidWizards.UCR.Core.Models
         {
             var changed = false;
             var validNames = profile.GetFilters();
-            foreach (var mapping in profile.Mappings)
+            foreach (var mapping in profile.GetAllMappings())
             {
                 foreach (var plugin in mapping.Plugins)
                 {
@@ -481,7 +687,7 @@ namespace HidWizards.UCR.Core.Models
         /// <returns></returns>
         public bool IsActive()
         {
-            return Context.SubscriptionsManager.GetActiveProfile() != null && Context.SubscriptionsManager.GetActiveProfile().Guid == Guid;
+            return Context?.SubscriptionsManager != null && Context.SubscriptionsManager.IsProfileActive(Guid);
         }
 
         #endregion
@@ -489,6 +695,11 @@ namespace HidWizards.UCR.Core.Models
         internal void PostLoad(Context context, Profile parentProfile = null)
         {
             ParentProfile = parentProfile;
+            if (ChildProfiles == null) ChildProfiles = new List<Profile>();
+            if (Mappings == null) Mappings = new List<Mapping>();
+            if (MappingGroups == null) MappingGroups = new List<MappingGroup>();
+            if (InputDeviceConfigurations == null) InputDeviceConfigurations = new List<DeviceConfiguration>();
+            if (OutputDeviceConfigurations == null) OutputDeviceConfigurations = new List<DeviceConfiguration>();
 
             if (AutoActivateApplications == null) AutoActivateApplications = new ObservableCollection<ProfileApplicationRule>();
             foreach (var rule in AutoActivateApplications) rule?.Attach(this);
@@ -521,6 +732,14 @@ namespace HidWizards.UCR.Core.Models
             {
                 mapping.PostLoad(context, this);
             }
+            foreach (var group in MappingGroups.Where(group => group != null))
+            {
+                group.PostLoad(context, this);
+            }
+
+            // Top-level legacy trees are converted as part of attachment, before any dashboard or
+            // runtime code can observe them. ParentProfile is retained only for old import paths.
+            if (parentProfile == null && MigrateLegacyChildProfilesToMappingGroups()) Context?.ContextChanged();
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

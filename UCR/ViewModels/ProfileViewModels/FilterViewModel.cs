@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using HidWizards.UCR.Core.Annotations;
@@ -40,7 +41,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
 
             var subscriptionState = GetSubscriptionState();
-            if (subscriptionState != null && subscriptionState.IsActive && subscriptionState.ActiveProfile.Equals(_pluginViewModel.Plugin.Profile))
+            if (subscriptionState != null && subscriptionState.IsActive &&
+                subscriptionState.ActiveProfiles.Any(profile => profile.Guid == _pluginViewModel.Plugin.Profile.Guid))
             {
                 _subscribedFilterState = subscriptionState.FilterState;
                 _subscribedFilterState.FilterStateChangedEvent += OnFilterStateChanged;
@@ -54,7 +56,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void OnFilterStateChanged(string filterName, bool value)
         {
-            if (!string.Equals(filterName, Name, StringComparison.InvariantCultureIgnoreCase)) return;
+            var runtimeName = Mapping.GetRuntimeFilterKey(_pluginViewModel.Plugin.Profile.Guid, Name);
+            if (!string.Equals(filterName, runtimeName, StringComparison.InvariantCultureIgnoreCase)) return;
             OnPropertyChanged(nameof(ChipIcon));
             OnPropertyChanged(nameof(ChipOpacity));
             OnPropertyChanged(nameof(Name));
@@ -72,7 +75,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (state == null || string.IsNullOrWhiteSpace(Filter.Name)) return false;
 
             bool value;
-            if (!state.FilterState.FilterRuntimeDictionary.TryGetValue(Filter.Name.ToLowerInvariant(), out value)) return false;
+            var runtimeName = Mapping.GetRuntimeFilterKey(_pluginViewModel.Plugin.Profile.Guid, Filter.Name);
+            if (!state.FilterState.FilterRuntimeDictionary.TryGetValue(runtimeName, out value)) return false;
             return value ^ Negative;
         }
 

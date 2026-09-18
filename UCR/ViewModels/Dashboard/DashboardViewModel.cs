@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -17,8 +18,8 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public event PropertyChangedEventHandler PropertyChanged;
         public string Title => "Universal Control Remapper";
         public Visibility ProfileDetailsActive => SelectedProfileItem != null ? Visibility.Visible : Visibility.Hidden;
-        public bool CanActivateProfile => SelectedProfileItem != null;
-        public bool CanDeactivateProfile => Context?.ActiveProfile != null;
+        public bool CanActivateProfile => SelectedProfileItem?.Profile != null;
+        public bool CanDeactivateProfile => SelectedProfileItem?.Profile?.IsActive() == true;
         public ProfileDeviceListControlViewModel InputDeviceControlViewModel { get; set; }
         public ProfileDeviceListControlViewModel OutputDeviceControlViewModel { get; set; }
 
@@ -32,6 +33,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(ProfileDetailsActive));
                 OnPropertyChanged(nameof(CanActivateProfile));
+                OnPropertyChanged(nameof(CanDeactivateProfile));
                 if (_selectedProfileItem == null)
                 {
                     DisposeDeviceLists();
@@ -64,13 +66,16 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             set => ProfileGroupingMode = value ? "Input" : "Tree";
         }
 
-        public string ActiveProfileBreadCrumbs => Context?.ActiveProfile != null ? Context.ActiveProfile.ProfileBreadCrumbs() : "None";
+        public string ActiveProfileBreadCrumbs => Context == null || Context.ActiveProfiles.Count == 0
+            ? "None"
+            : string.Join(" + ", Context.ActiveProfiles.Select(profile => profile.Title));
 
         private Context Context { get; set; }
 
         public DashboardViewModel(Context context)
         {
             Context = context;
+            context.ProfilesManager.MigrateLegacyChildrenToMappingGroups();
             ProfileList = ProfileItem.GetProfileTree(context.Profiles);
             RebuildProfileView();
             PropertyChanged += OnPropertyChanged;
@@ -175,9 +180,10 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         private void OnActiveProfileChangedEvent(Profile profile)
         {
-            ProfileItem.SetActiveProfile(ProfileList, profile?.Guid ?? Guid.Empty);
+            ProfileItem.SetActiveProfiles(ProfileList);
             OnPropertyChanged(nameof(ActiveProfileBreadCrumbs));
             OnPropertyChanged(nameof(CanDeactivateProfile));
+            OnPropertyChanged(nameof(CanActivateProfile));
         }
 
         [NotifyPropertyChangedInvocator]

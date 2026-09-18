@@ -5,13 +5,18 @@ namespace HidWizards.UCR.Core.Models.Subscription
 {
     public class MappingSubscription
     {
+        public Profile Profile { get; }
+        public Guid RuntimeScopeGuid { get; }
         public Mapping Mapping { get; }
         public List<InputSubscription> DeviceBindingSubscriptions { get; }
         public List<PluginSubscription> PluginSubscriptions { get; }
         public bool Overriden { get; set; }
 
-        public MappingSubscription(Profile profile, Mapping mapping, Guid subscriptionStateGuid, List<DeviceConfigurationSubscription> subscriptionOutputDeviceConfigurations)
+        public MappingSubscription(Profile profile, Mapping mapping, Guid subscriptionStateGuid,
+            Guid runtimeScopeGuid, List<DeviceConfigurationSubscription> subscriptionOutputDeviceConfigurations)
         {
+            Profile = profile;
+            RuntimeScopeGuid = runtimeScopeGuid;
             Mapping = mapping;
             Overriden = false;
             DeviceBindingSubscriptions = new List<InputSubscription>();

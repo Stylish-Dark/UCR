@@ -118,13 +118,8 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void ContextOnActiveProfileChangedEvent(Profile profile)
         {
-            if (profile == null || profile.Guid != ProfileGuid)
-            {
-                StopGuiTimer();
-                return;
-            }
-
-            StartGuiTimer();
+            if (Profile.IsActive()) StartGuiTimer();
+            else StopGuiTimer();
         }
 
         private void DispatcherTimerOnTick(object sender, EventArgs e)

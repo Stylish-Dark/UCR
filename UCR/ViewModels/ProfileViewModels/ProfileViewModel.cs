@@ -28,12 +28,29 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
     public class ProfileViewModel : INotifyPropertyChanged, IDisposable
     {
         public Profile Profile { get; }
-        public bool CanActivateProfile => Profile.Context.ActiveProfile != Profile;
-        public bool CanDeactivateProfile => Profile.Context.ActiveProfile != null;
+        public bool CanActivateProfile => Profile != null;
+        public bool CanDeactivateProfile => Profile.IsActive();
         public bool CanEditProfile => !Profile.IsActive();
         public bool IsProfileActive => Profile.IsActive();
         public string EditLockReason => IsProfileActive ? "Profile is running — stop it to edit mappings." : null;
         public ObservableCollection<MappingViewModel> MappingsList { get; set; }
+        public ObservableCollection<MappingGroupViewModel> MappingSections { get; private set; }
+        private MappingGroupViewModel _selectedMappingSection;
+        private static MappingGroup _copiedMappingGroup;
+        private static Profile _copiedMappingGroupSourceProfile;
+
+        public MappingGroupViewModel SelectedMappingSection
+        {
+            get => _selectedMappingSection;
+            set
+            {
+                if (ReferenceEquals(_selectedMappingSection, value)) return;
+                _selectedMappingSection = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool CanPasteMappingGroup => _copiedMappingGroup != null && !Profile.IsActive();
         public ObservableCollection<string> FilterNames { get; private set; }
         public ObservableCollection<FilterDefinitionItemViewModel> FilterDefinitions { get; private set; }
         public PluginToolboxViewModel PluginToolbox { get; set; }
@@ -83,20 +100,49 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(CanEditProfile));
             OnPropertyChanged(nameof(IsProfileActive));
             OnPropertyChanged(nameof(EditLockReason));
+            OnPropertyChanged(nameof(CanPasteMappingGroup));
+            foreach (var section in MappingSections ?? new ObservableCollection<MappingGroupViewModel>()) section.RefreshActiveState();
         }
 
         private void PopulateMappingsList(Profile profile)
         {
             MappingsList = new ObservableCollection<MappingViewModel>();
-            foreach (var profileMapping in profile.Mappings)
+            MappingSections = new ObservableCollection<MappingGroupViewModel>();
+
+            var main = new MappingGroupViewModel(this, null, true);
+            MappingSections.Add(main);
+            SelectedMappingSection = main;
+            foreach (var profileMapping in profile.Mappings ?? new List<Mapping>())
             {
-                AddMapping(profileMapping);
+                AddMapping(profileMapping, main);
+            }
+
+            foreach (var group in profile.MappingGroups ?? new List<MappingGroup>())
+            {
+                if (group == null) continue;
+                var section = new MappingGroupViewModel(this, group, false);
+                MappingSections.Add(section);
+                foreach (var mapping in group.Mappings ?? new List<Mapping>()) AddMapping(mapping, section);
             }
         }
 
         public MappingViewModel AddMapping(string title)
         {
-            return AddMapping(Profile.AddMapping(title));
+            if (Profile.IsActive()) return null;
+            var main = MappingSections?.FirstOrDefault(section => section.IsMain);
+            return AddMapping(Profile.AddMapping(title), main);
+        }
+
+        public MappingViewModel AddMappingToSelectedSection(string title)
+        {
+            return AddMapping(title, SelectedMappingSection ?? MappingSections?.FirstOrDefault(section => section.IsMain));
+        }
+
+        public MappingViewModel AddMapping(string title, MappingGroupViewModel section)
+        {
+            if (section == null || section.IsMain) return AddMapping(title);
+            if (section.Model == null || Profile.IsActive()) return null;
+            return AddMapping(section.Model.AddMapping(title), section);
         }
 
         public string GetNextMappingTitle()
@@ -105,14 +151,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             while (true)
             {
                 var candidate = "Mapping " + number;
-                var exists = false;
-                foreach (var mapping in Profile.Mappings)
-                {
-                    if (!string.Equals(mapping.Title, candidate, StringComparison.CurrentCultureIgnoreCase)) continue;
-                    exists = true;
-                    break;
-                }
-
+                var exists = Profile.GetAllMappings().Any(mapping =>
+                    string.Equals(mapping.Title, candidate, StringComparison.CurrentCultureIgnoreCase));
                 if (!exists) return candidate;
                 number++;
             }
@@ -120,21 +160,127 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public MappingViewModel AddMapping(Mapping mapping)
         {
+            var group = Profile.GetMappingGroup(mapping);
+            var section = group == null
+                ? MappingSections?.FirstOrDefault(candidate => candidate.IsMain)
+                : MappingSections?.FirstOrDefault(candidate => ReferenceEquals(candidate.Model, group));
+            return AddMapping(mapping, section);
+        }
+
+        private MappingViewModel AddMapping(Mapping mapping, MappingGroupViewModel section)
+        {
+            if (mapping == null) return null;
             var mappingViewModel = new MappingViewModel(this, mapping);
-            MappingsList.Add(mappingViewModel);
+            if (section == null)
+            {
+                MappingsList.Add(mappingViewModel);
+            }
+            else
+            {
+                section.Mappings.Add(mappingViewModel);
+                RebuildFlatMappingsList();
+            }
             RefreshMappingPositions();
             return mappingViewModel;
+        }
+
+        public MappingGroupViewModel AddMappingGroup(string title)
+        {
+            if (Profile.IsActive()) return null;
+            var model = Profile.AddMappingGroup(title);
+            var section = new MappingGroupViewModel(this, model, false);
+            MappingSections.Add(section);
+            SelectedMappingSection = section;
+            OnPropertyChanged(nameof(MappingSections));
+            return section;
+        }
+
+        public bool RenameMappingGroup(MappingGroupViewModel section, string title)
+        {
+            if (section == null || section.IsMain || section.Model == null || Profile.IsActive()) return false;
+            if (!section.Model.Rename(title)) return false;
+            section.RefreshTitle();
+            return true;
+        }
+
+        public MappingGroupViewModel DuplicateMappingGroup(MappingGroupViewModel section)
+        {
+            if (section == null || section.IsMain || section.Model == null || Profile.IsActive()) return null;
+            var copy = Profile.CopyMappingGroup(section.Model);
+            return AddSection(copy);
+        }
+
+        public void CopyMappingGroup(MappingGroupViewModel section)
+        {
+            if (section == null || section.IsMain || section.Model == null) return;
+            _copiedMappingGroup = HidWizards.UCR.Core.Context.DeepXmlClone<MappingGroup>(section.Model);
+            _copiedMappingGroupSourceProfile = Profile;
+            OnPropertyChanged(nameof(CanPasteMappingGroup));
+        }
+
+        public MappingGroupViewModel PasteMappingGroup()
+        {
+            if (_copiedMappingGroup == null || Profile.IsActive()) return null;
+            var copy = Profile.CopyMappingGroup(_copiedMappingGroup, _copiedMappingGroupSourceProfile, _copiedMappingGroup.Title);
+            return AddSection(copy);
+        }
+
+        private MappingGroupViewModel AddSection(MappingGroup model)
+        {
+            if (model == null) return null;
+            var section = new MappingGroupViewModel(this, model, false);
+            MappingSections.Add(section);
+            foreach (var mapping in model.Mappings ?? new List<Mapping>()) AddMapping(mapping, section);
+            SelectedMappingSection = section;
+            OnPropertyChanged(nameof(MappingSections));
+            return section;
+        }
+
+        public bool RemoveMappingGroup(MappingGroupViewModel section)
+        {
+            if (section == null || section.IsMain || section.Model == null || Profile.IsActive()) return false;
+            if (!Profile.RemoveMappingGroup(section.Model)) return false;
+            foreach (var mapping in section.Mappings.ToList())
+            {
+                mapping.Dispose();
+                MappingsList.Remove(mapping);
+            }
+            MappingSections.Remove(section);
+            if (ReferenceEquals(SelectedMappingSection, section))
+                SelectedMappingSection = MappingSections.FirstOrDefault(candidate => candidate.IsMain);
+            RefreshMappingPositions();
+            RefreshFilterNames();
+            RefreshFilterReferenceLabels();
+            return true;
+        }
+
+        private MappingGroupViewModel FindSection(MappingViewModel mappingViewModel)
+        {
+            return MappingSections?.FirstOrDefault(section => section.Mappings.Contains(mappingViewModel));
+        }
+
+        public bool CanMoveMapping(MappingViewModel mappingViewModel, int offset)
+        {
+            if (mappingViewModel == null || Profile.IsActive()) return false;
+            var section = FindSection(mappingViewModel);
+            if (section == null) return false;
+            var index = section.Mappings.IndexOf(mappingViewModel);
+            var target = index + offset;
+            return index >= 0 && target >= 0 && target < section.Mappings.Count;
         }
 
         public bool MoveMapping(MappingViewModel mappingViewModel, int offset)
         {
             if (mappingViewModel == null || Profile.IsActive()) return false;
-            var sourceIndex = MappingsList.IndexOf(mappingViewModel);
+            var section = FindSection(mappingViewModel);
+            if (section == null) return false;
+            var sourceIndex = section.Mappings.IndexOf(mappingViewModel);
             var targetIndex = sourceIndex + offset;
-            if (sourceIndex < 0 || targetIndex < 0 || targetIndex >= MappingsList.Count) return false;
+            if (sourceIndex < 0 || targetIndex < 0 || targetIndex >= section.Mappings.Count) return false;
             if (!Profile.MoveMapping(mappingViewModel.Mapping, targetIndex)) return false;
 
-            MappingsList.Move(sourceIndex, targetIndex);
+            section.Mappings.Move(sourceIndex, targetIndex);
+            RebuildFlatMappingsList();
             RefreshMappingPositions();
             return true;
         }
@@ -142,13 +288,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool MoveMappingTo(MappingViewModel mappingViewModel, int targetIndex)
         {
             if (mappingViewModel == null || Profile.IsActive()) return false;
-            var sourceIndex = MappingsList.IndexOf(mappingViewModel);
-            if (sourceIndex < 0 || targetIndex < 0 || targetIndex >= MappingsList.Count || sourceIndex == targetIndex) return false;
+            var section = FindSection(mappingViewModel);
+            if (section == null) return false;
+            var sourceIndex = section.Mappings.IndexOf(mappingViewModel);
+            if (sourceIndex < 0 || targetIndex < 0 || targetIndex >= section.Mappings.Count || sourceIndex == targetIndex) return false;
             if (!Profile.MoveMapping(mappingViewModel.Mapping, targetIndex)) return false;
 
-            MappingsList.Move(sourceIndex, targetIndex);
+            section.Mappings.Move(sourceIndex, targetIndex);
+            RebuildFlatMappingsList();
             RefreshMappingPositions();
             return true;
+        }
+
+        private void RebuildFlatMappingsList()
+        {
+            var ordered = (MappingSections ?? new ObservableCollection<MappingGroupViewModel>())
+                .SelectMany(section => section.Mappings).ToList();
+            MappingsList.Clear();
+            foreach (var mapping in ordered) MappingsList.Add(mapping);
         }
 
         private void RefreshMappingPositions()
@@ -269,7 +426,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             if (Profile.RemoveMapping(mappingViewModel.Mapping))
             {
+                var section = FindSection(mappingViewModel);
                 mappingViewModel.Dispose();
+                section?.Mappings.Remove(mappingViewModel);
                 MappingsList.Remove(mappingViewModel);
                 RefreshMappingPositions();
                 RefreshFilterNames();

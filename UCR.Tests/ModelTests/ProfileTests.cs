@@ -61,6 +61,154 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.That(_context.IsNotSaved, Is.True);
         }
 
+
+        [Test]
+        public void NewMappingGroupsStartEnabled()
+        {
+            var group = _profile.AddMappingGroup("Extras");
+
+            Assert.That(group.Enabled, Is.True);
+        }
+
+        [Test]
+        public void MappingGroupsBelongOnlyToTheirProfileAndCopyIndependently()
+        {
+            var group = _profile.AddMappingGroup("Player 2");
+            var original = group.AddMapping("Attack");
+            original.AddPlugin(new ButtonToButton());
+
+            var copy = _profile.CopyMappingGroup(group, "Player 2 Copy");
+
+            Assert.That(_profile.MappingGroups.Count, Is.EqualTo(2));
+            Assert.That(copy.Title, Is.EqualTo("Player 2 Copy"));
+            Assert.That(copy.Mappings.Count, Is.EqualTo(1));
+            Assert.That(copy.Mappings[0], Is.Not.SameAs(original));
+            Assert.That(copy.Mappings[0].Title, Is.EqualTo("Attack"));
+            copy.Mappings[0].Rename("Changed");
+            Assert.That(original.Title, Is.EqualTo("Attack"));
+        }
+
+        [Test]
+        public void CopyingProfileRegeneratesDeviceConfigurationIdsAndBindingReferences()
+        {
+            var input = new DeviceConfiguration(new Device("Keyboard", "Core_Interception", "kbd", 0));
+            var output = new DeviceConfiguration(new Device("Controller", "Core_ViGEm", "pad", 0));
+            var source = _context.ProfilesManager.CreateProfile("Source",
+                new List<DeviceConfiguration> { input }, new List<DeviceConfiguration> { output });
+            _context.ProfilesManager.AddProfile(source);
+
+            var mapping = source.AddMapping("Bound mapping");
+            var plugin = new ButtonToButton();
+            mapping.AddPlugin(plugin);
+            mapping.DeviceBindings.Single().DeviceConfigurationGuid = input.Guid;
+            mapping.DeviceBindings.Single().IsBound = true;
+            plugin.Outputs.Single().DeviceConfigurationGuid = output.Guid;
+            plugin.Outputs.Single().IsBound = true;
+
+            var sourceGroup = source.AddMappingGroup("Extras");
+            var groupMapping = sourceGroup.AddMapping("Grouped binding");
+            var groupPlugin = new ButtonToButton();
+            groupMapping.AddPlugin(groupPlugin);
+            groupMapping.DeviceBindings.Single().DeviceConfigurationGuid = input.Guid;
+            groupMapping.DeviceBindings.Single().IsBound = true;
+            groupPlugin.Outputs.Single().DeviceConfigurationGuid = output.Guid;
+            groupPlugin.Outputs.Single().IsBound = true;
+
+            Assert.That(_context.ProfilesManager.CopyProfile(source, "Copy"), Is.True);
+            var copy = _context.Profiles.Last();
+
+            Assert.That(copy.Guid, Is.Not.EqualTo(source.Guid));
+            Assert.That(copy.InputDeviceConfigurations.Single().Guid, Is.Not.EqualTo(input.Guid));
+            Assert.That(copy.OutputDeviceConfigurations.Single().Guid, Is.Not.EqualTo(output.Guid));
+            Assert.That(copy.MappingGroups.Single().Guid, Is.Not.EqualTo(sourceGroup.Guid));
+            Assert.That(copy.Mappings.Single().DeviceBindings.Single().DeviceConfigurationGuid,
+                Is.EqualTo(copy.InputDeviceConfigurations.Single().Guid));
+            Assert.That(copy.Mappings.Single().Plugins.Single().Outputs.Single().DeviceConfigurationGuid,
+                Is.EqualTo(copy.OutputDeviceConfigurations.Single().Guid));
+            Assert.That(copy.MappingGroups.Single().Mappings.Single().DeviceBindings.Single().DeviceConfigurationGuid,
+                Is.EqualTo(copy.InputDeviceConfigurations.Single().Guid));
+            Assert.That(copy.MappingGroups.Single().Mappings.Single().Plugins.Single().Outputs.Single().DeviceConfigurationGuid,
+                Is.EqualTo(copy.OutputDeviceConfigurations.Single().Guid));
+        }
+
+        [Test]
+        public void MappingGroupCopyAcrossProfilesRemapsMatchingConfiguredDevices()
+        {
+            var sourceInput = new DeviceConfiguration(new Device("Keyboard", "Core_Interception", "kbd", 0));
+            var sourceOutput = new DeviceConfiguration(new Device("Controller", "Core_ViGEm", "pad", 1));
+            var source = _context.ProfilesManager.CreateProfile("Source",
+                new List<DeviceConfiguration> { sourceInput }, new List<DeviceConfiguration> { sourceOutput });
+            _context.ProfilesManager.AddProfile(source);
+
+            var targetInput = new DeviceConfiguration(new Device("Keyboard", "Core_Interception", "kbd", 0));
+            var targetOutput = new DeviceConfiguration(new Device("Controller", "Core_ViGEm", "pad", 1));
+            var target = _context.ProfilesManager.CreateProfile("Target",
+                new List<DeviceConfiguration> { targetInput }, new List<DeviceConfiguration> { targetOutput });
+            _context.ProfilesManager.AddProfile(target);
+
+            var group = source.AddMappingGroup("Player 2");
+            var mapping = group.AddMapping("Attack");
+            var plugin = new ButtonToButton();
+            mapping.AddPlugin(plugin);
+            mapping.DeviceBindings.Single().DeviceConfigurationGuid = sourceInput.Guid;
+            mapping.DeviceBindings.Single().IsBound = true;
+            plugin.Outputs.Single().DeviceConfigurationGuid = sourceOutput.Guid;
+            plugin.Outputs.Single().IsBound = true;
+
+            var copy = target.CopyMappingGroup(group, source, "Player 2");
+
+            Assert.That(copy.Mappings.Single().DeviceBindings.Single().DeviceConfigurationGuid, Is.EqualTo(targetInput.Guid));
+            Assert.That(copy.Mappings.Single().Plugins.Single().Outputs.Single().DeviceConfigurationGuid, Is.EqualTo(targetOutput.Guid));
+        }
+
+        [Test]
+        public void ProfileViewModelAddsMappingsToTheSelectedLocalGroup()
+        {
+            var viewModel = new ProfileViewModel(_profile);
+            var group = viewModel.AddMappingGroup("Extras");
+            viewModel.SelectedMappingSection = group;
+
+            var added = viewModel.AddMappingToSelectedSection("Utility mapping");
+
+            Assert.That(added, Is.Not.Null);
+            Assert.That(_profile.Mappings.Any(mapping => mapping.Title == "Utility mapping"), Is.False);
+            Assert.That(group.Model.Mappings.Single().Title, Is.EqualTo("Utility mapping"));
+            viewModel.Dispose();
+        }
+
+        [Test]
+        public void LegacyChildBecomesDisabledLocalMappingGroupOnPostLoad()
+        {
+            var secondOutput = new DeviceConfiguration(new Device("P2 Pad", "Core_ViGEm", "p2", 1));
+            var child = _context.ProfilesManager.CreateProfile("Player 2", null,
+                new List<DeviceConfiguration> { secondOutput });
+            child.AddMapping("P2 Attack");
+            _profile.AddChildProfile(child);
+
+            _profile.PostLoad(_context);
+
+            Assert.That(_profile.ChildProfiles, Is.Empty);
+            Assert.That(_profile.MappingGroups.Count, Is.EqualTo(1));
+            Assert.That(_profile.MappingGroups[0].Title, Is.EqualTo("Player 2"));
+            Assert.That(_profile.MappingGroups[0].Enabled, Is.False);
+            Assert.That(_profile.MappingGroups[0].Mappings.Select(mapping => mapping.Title), Is.EquivalentTo(new[] { "P2 Attack" }));
+            Assert.That(_profile.OutputDeviceConfigurations.Any(configuration => configuration.Guid == secondOutput.Guid), Is.True);
+        }
+
+        [Test]
+        public void DashboardProfileListIsFlatAfterChildMigration()
+        {
+            var child = _context.ProfilesManager.CreateProfile("Player 2", null, null);
+            _profile.AddChildProfile(child);
+            _profile.PostLoad(_context);
+
+            var profiles = ProfileItem.GetProfileTree(_context.Profiles);
+
+            Assert.That(profiles.Count, Is.EqualTo(1));
+            Assert.That(profiles[0].Items, Is.Empty);
+            Assert.That(profiles[0].HasChildren, Is.False);
+        }
+
         [Test]
         public void RenameProfile()
         {
@@ -101,35 +249,35 @@ namespace HidWizards.UCR.Tests.ModelTests
 
 
         [Test]
-        public void ProfileTreeExposesHierarchyAndStartsCollapsed()
+        public void DashboardProfileListStaysFlatAndDoesNotExposeLegacyChildren()
         {
             var child = _context.ProfilesManager.CreateProfile("Child", null, null);
             _profile.AddChildProfile(child);
-            var grandChild = _context.ProfilesManager.CreateProfile("Grandchild", null, null);
-            child.AddChildProfile(grandChild);
+            child.AddMapping("Child mapping");
+            _profile.PostLoad(_context);
 
-            var tree = ProfileItem.GetProfileTree(_context.Profiles);
+            var list = ProfileItem.GetProfileTree(_context.Profiles);
 
-            Assert.That(tree[0].Depth, Is.EqualTo(0));
-            Assert.That(tree[0].HasChildren, Is.True);
-            Assert.That(tree[0].IsChild, Is.False);
-            Assert.That(tree[0].IsExpanded, Is.False);
-            Assert.That(tree[0].Items[0].Depth, Is.EqualTo(1));
-            Assert.That(tree[0].Items[0].IsChild, Is.True);
-            Assert.That(tree[0].Items[0].Items[0].Depth, Is.EqualTo(2));
+            Assert.That(list.Count, Is.EqualTo(1));
+            Assert.That(list[0].Depth, Is.EqualTo(0));
+            Assert.That(list[0].HasChildren, Is.False);
+            Assert.That(list[0].Items, Is.Empty);
+            Assert.That(_profile.MappingGroups.Single().Title, Is.EqualTo("Child"));
         }
 
         [Test]
-        public void ProfileTreeTracksWhichProfileIsRunning()
+        public void DashboardTracksSeveralActiveProfilesAtOnce()
         {
-            var child = _context.ProfilesManager.CreateProfile("Child", null, null);
-            _profile.AddChildProfile(child);
-            var tree = ProfileItem.GetProfileTree(_context.Profiles);
+            var second = _context.ProfilesManager.CreateProfile("Second", null, null);
+            _context.ProfilesManager.AddProfile(second);
+            var list = ProfileItem.GetProfileTree(_context.Profiles);
 
-            ProfileItem.SetActiveProfile(tree, child.Guid);
+            Assert.That(_context.SubscriptionsManager.ActivateProfile(_profile, false), Is.True);
+            Assert.That(_context.SubscriptionsManager.ActivateProfile(second, false), Is.True);
+            ProfileItem.SetActiveProfiles(list);
 
-            Assert.That(tree[0].IsActive, Is.False);
-            Assert.That(tree[0].Items[0].IsActive, Is.True);
+            Assert.That(list.Count, Is.EqualTo(2));
+            Assert.That(list.All(item => item.IsActive), Is.True);
         }
 
         [Test]
@@ -143,6 +291,8 @@ namespace HidWizards.UCR.Tests.ModelTests
 
             Assert.That(viewModel.IsProfileActive, Is.True);
             Assert.That(viewModel.CanEditProfile, Is.False);
+            Assert.That(viewModel.CanActivateProfile, Is.True,
+                "Play remains available while active so USB hotplug can rebuild the composite runtime.");
             Assert.That(viewModel.EditLockReason, Is.EqualTo("Profile is running — stop it to edit mappings."));
             viewModel.Dispose();
         }

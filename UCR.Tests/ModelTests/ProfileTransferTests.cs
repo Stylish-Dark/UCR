@@ -60,8 +60,10 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.That(destination.Profiles.Count, Is.EqualTo(1));
             Assert.That(imported.Title, Is.EqualTo("Child"));
             Assert.That(imported.ParentProfile, Is.Null);
-            Assert.That(imported.ChildProfiles.Count, Is.EqualTo(1));
-            Assert.That(imported.ChildProfiles[0].Title, Is.EqualTo("Grandchild"));
+            Assert.That(imported.ChildProfiles, Is.Empty);
+            Assert.That(imported.MappingGroups.Count, Is.EqualTo(1));
+            Assert.That(imported.MappingGroups[0].Title, Is.EqualTo("Grandchild"));
+            Assert.That(imported.MappingGroups[0].Enabled, Is.False);
             Assert.That(imported.Mappings.Select(mapping => mapping.Title), Is.EquivalentTo(new[] { "Jump", "Crouch" }));
             Assert.That(imported.InputDeviceConfigurations.Count, Is.EqualTo(1));
             Assert.That(imported.OutputDeviceConfigurations.Count, Is.EqualTo(1));
@@ -576,7 +578,9 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.That(imported.Guid, Is.EqualTo(originalProfileGuid));
             Assert.That(imported.InputDeviceConfigurations[0].Guid, Is.EqualTo(originalInputGuid));
             Assert.That(imported.OutputDeviceConfigurations[0].Guid, Is.EqualTo(originalOutputGuid));
-            Assert.That(imported.ChildProfiles.Single().Title, Is.EqualTo("Legacy Child"));
+            Assert.That(imported.ChildProfiles, Is.Empty);
+            Assert.That(imported.MappingGroups.Single().Title, Is.EqualTo("Legacy Child"));
+            Assert.That(imported.MappingGroups.Single().Enabled, Is.False);
             AssertAllBindingReferencesResolve(imported);
             Assert.That(destination.DeviceAliases.Single().Alias, Is.EqualTo("Old Main Keyboard"));
             Assert.That(destination.DeviceAliases.Single().Hidden, Is.True);
@@ -688,7 +692,7 @@ namespace HidWizards.UCR.Tests.ModelTests
 
         private static void AssertProfileBindingReferencesResolve(Profile profile)
         {
-            foreach (var mapping in profile.Mappings)
+            foreach (var mapping in profile.GetAllMappings())
             {
                 foreach (var binding in mapping.DeviceBindings.Where(binding => binding.DeviceConfigurationGuid != Guid.Empty))
                 {

@@ -306,23 +306,18 @@ namespace HidWizards.UCR.Core.Persistence
             if (profile.Guid == Guid.Empty) throw new InvalidDataException("A UCR profile has an empty identifier.");
             if (profile.ChildProfiles == null) throw new InvalidDataException("UCR profile is missing its child profile collection: " + profile.Guid);
             if (profile.Mappings == null) throw new InvalidDataException("UCR profile is missing its mapping collection: " + profile.Guid);
+            if (profile.MappingGroups == null) throw new InvalidDataException("UCR profile is missing its mapping-group collection: " + profile.Guid);
             if (profile.InputDeviceConfigurations == null) throw new InvalidDataException("UCR profile is missing its input device collection: " + profile.Guid);
             if (profile.OutputDeviceConfigurations == null) throw new InvalidDataException("UCR profile is missing its output device collection: " + profile.Guid);
             if (profile.AutoActivateApplications == null) throw new InvalidDataException("UCR profile is missing its auto-activation collection: " + profile.Guid);
 
-            foreach (var mapping in profile.Mappings)
+            foreach (var mapping in profile.Mappings) ValidateMapping(mapping, profile.Guid);
+            foreach (var group in profile.MappingGroups)
             {
-                if (mapping == null) throw new InvalidDataException("UCR profile contains a null mapping: " + profile.Guid);
-                if (mapping.DeviceBindings == null) throw new InvalidDataException("UCR mapping is missing its input bindings: " + (mapping.Title ?? "<untitled>"));
-                if (mapping.Plugins == null) throw new InvalidDataException("UCR mapping is missing its plugins: " + (mapping.Title ?? "<untitled>"));
-                if (mapping.DeviceBindings.Any(binding => binding == null)) throw new InvalidDataException("UCR mapping contains a null input binding: " + (mapping.Title ?? "<untitled>"));
-                foreach (var plugin in mapping.Plugins)
-                {
-                    if (plugin == null) throw new InvalidDataException("UCR mapping contains a null plugin: " + (mapping.Title ?? "<untitled>"));
-                    if (plugin.Outputs == null) throw new InvalidDataException("UCR plugin is missing its output bindings: " + plugin.GetType().FullName);
-                    if (plugin.Filters == null) throw new InvalidDataException("UCR plugin is missing its filter collection: " + plugin.GetType().FullName);
-                    if (plugin.Outputs.Any(binding => binding == null)) throw new InvalidDataException("UCR plugin contains a null output binding: " + plugin.GetType().FullName);
-                }
+                if (group == null) throw new InvalidDataException("UCR profile contains a null mapping group: " + profile.Guid);
+                if (group.Guid == Guid.Empty) throw new InvalidDataException("UCR mapping group has an empty identifier in profile: " + profile.Guid);
+                if (group.Mappings == null) throw new InvalidDataException("UCR mapping group is missing its mapping collection: " + (group.Title ?? "<untitled>"));
+                foreach (var mapping in group.Mappings) ValidateMapping(mapping, profile.Guid);
             }
 
             ValidateDeviceConfigurations(profile.InputDeviceConfigurations, profile.Guid, "input");
@@ -331,6 +326,21 @@ namespace HidWizards.UCR.Core.Persistence
             foreach (var child in profile.ChildProfiles)
             {
                 ValidateProfileBranch(child);
+            }
+        }
+
+        private static void ValidateMapping(Mapping mapping, Guid profileId)
+        {
+            if (mapping == null) throw new InvalidDataException("UCR profile contains a null mapping: " + profileId);
+            if (mapping.DeviceBindings == null) throw new InvalidDataException("UCR mapping is missing its input bindings: " + (mapping.Title ?? "<untitled>"));
+            if (mapping.Plugins == null) throw new InvalidDataException("UCR mapping is missing its plugins: " + (mapping.Title ?? "<untitled>"));
+            if (mapping.DeviceBindings.Any(binding => binding == null)) throw new InvalidDataException("UCR mapping contains a null input binding: " + (mapping.Title ?? "<untitled>"));
+            foreach (var plugin in mapping.Plugins)
+            {
+                if (plugin == null) throw new InvalidDataException("UCR mapping contains a null plugin: " + (mapping.Title ?? "<untitled>"));
+                if (plugin.Outputs == null) throw new InvalidDataException("UCR plugin is missing its output bindings: " + plugin.GetType().FullName);
+                if (plugin.Filters == null) throw new InvalidDataException("UCR plugin is missing its filter collection: " + plugin.GetType().FullName);
+                if (plugin.Outputs.Any(binding => binding == null)) throw new InvalidDataException("UCR plugin contains a null output binding: " + plugin.GetType().FullName);
             }
         }
 
@@ -422,6 +432,9 @@ namespace HidWizards.UCR.Core.Persistence
             RequireValue(profile, "guid", "profile");
             var children = RequireArray(profile, "childProfiles", "profile");
             var mappings = RequireArray(profile, "mappings", "profile");
+            // mappingGroups was introduced after the JSON store. Treat it as optional for old
+            // profile files, but validate it fully whenever it is present.
+            var mappingGroups = profile["mappingGroups"] as JArray;
             var inputs = RequireArray(profile, "inputDeviceConfigurations", "profile");
             var outputs = RequireArray(profile, "outputDeviceConfigurations", "profile");
             RequireArray(profile, "autoActivateApplications", "profile");
@@ -433,25 +446,39 @@ namespace HidWizards.UCR.Core.Persistence
                 ValidateProfileJsonObject(childObject);
             }
 
-            foreach (var mappingToken in mappings)
+            foreach (var mappingToken in mappings) ValidateMappingJson(mappingToken, "mappings");
+
+            if (mappingGroups != null)
             {
-                var mapping = mappingToken as JObject;
-                if (mapping == null) throw new InvalidDataException("Profile JSON mappings contains a non-object value.");
-                RequireArray(mapping, "deviceBindings", "mapping");
-                var plugins = RequireArray(mapping, "plugins", "mapping");
-                foreach (var pluginToken in plugins)
+                foreach (var groupToken in mappingGroups)
                 {
-                    var wrapper = pluginToken as JObject;
-                    if (wrapper == null) throw new InvalidDataException("Profile JSON plugins contains a non-object value.");
-                    RequireValue(wrapper, "pluginType", "plugin");
-                    var data = RequireObject(wrapper, "data", "plugin");
-                    RequireArray(data, "outputs", "plugin data");
-                    RequireArray(data, "filters", "plugin data");
+                    var group = groupToken as JObject;
+                    if (group == null) throw new InvalidDataException("Profile JSON mappingGroups contains a non-object value.");
+                    RequireValue(group, "guid", "mapping group");
+                    var groupMappings = RequireArray(group, "mappings", "mapping group");
+                    foreach (var mappingToken in groupMappings) ValidateMappingJson(mappingToken, "mapping group");
                 }
             }
 
             ValidateDeviceConfigurationJson(inputs, "inputDeviceConfigurations");
             ValidateDeviceConfigurationJson(outputs, "outputDeviceConfigurations");
+        }
+
+        private static void ValidateMappingJson(JToken mappingToken, string collectionName)
+        {
+            var mapping = mappingToken as JObject;
+            if (mapping == null) throw new InvalidDataException("Profile JSON " + collectionName + " contains a non-object mapping value.");
+            RequireArray(mapping, "deviceBindings", "mapping");
+            var plugins = RequireArray(mapping, "plugins", "mapping");
+            foreach (var pluginToken in plugins)
+            {
+                var wrapper = pluginToken as JObject;
+                if (wrapper == null) throw new InvalidDataException("Profile JSON plugins contains a non-object value.");
+                RequireValue(wrapper, "pluginType", "plugin");
+                var data = RequireObject(wrapper, "data", "plugin");
+                RequireArray(data, "outputs", "plugin data");
+                RequireArray(data, "filters", "plugin data");
+            }
         }
 
         private static void ValidateDeviceConfigurationJson(IEnumerable<JToken> configurations, string collectionName)

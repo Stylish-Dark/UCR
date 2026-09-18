@@ -123,18 +123,20 @@ namespace HidWizards.UCR
 
             var builder = new StringBuilder();
             builder.AppendLine("Top-level profiles: " + (currentContext.Profiles?.Count ?? 0));
-            var active = currentContext.ActiveProfile;
-            if (active == null)
+            if (currentContext.ActiveProfiles.Count == 0)
             {
-                builder.Append("Active profile: none");
+                builder.Append("Active profiles: none");
                 return builder.ToString();
             }
 
-            builder.AppendLine("Active profile: " + active.ProfileBreadCrumbs());
-            builder.AppendLine("Mappings: " + (active.Mappings?.Count ?? 0));
-            builder.AppendLine("Input device configurations: " + (active.InputDeviceConfigurations?.Count ?? 0));
-            builder.Append("Output device configurations: " + (active.OutputDeviceConfigurations?.Count ?? 0));
-            return builder.ToString();
+            builder.AppendLine("Active profiles: " + string.Join(" + ", currentContext.ActiveProfiles.Select(profile => profile.Title)));
+            foreach (var active in currentContext.ActiveProfiles)
+            {
+                builder.AppendLine("- " + active.Title + ": mappings=" + active.GetRuntimeMappings().Count() +
+                                   "; input configs=" + (active.InputDeviceConfigurations?.Count ?? 0) +
+                                   "; output configs=" + (active.OutputDeviceConfigurations?.Count ?? 0));
+            }
+            return builder.ToString().TrimEnd();
         }
 
         private void RunStartupStage(string status, Action action)

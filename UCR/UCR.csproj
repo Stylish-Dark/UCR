@@ -129,6 +129,7 @@
     <Compile Include="ViewModels\ProfileViewModels\PluginToolboxViewModel.cs" />
     <Compile Include="ViewModels\ProfileViewModels\PluginViewModel.cs" />
     <Compile Include="ViewModels\ProfileViewModels\MappingViewModel.cs" />
+    <Compile Include="ViewModels\ProfileViewModels\MappingGroupViewModel.cs" />
     <Compile Include="ViewModels\ProfileViewModels\ProfileViewModel.cs" />
     <Compile Include="ViewModels\ProfileViewModels\SimplePluginViewModel.cs" />
     <Compile Include="Views\Controls\DeviceBindingControl.xaml.cs">

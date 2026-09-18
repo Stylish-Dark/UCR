@@ -139,9 +139,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public DeviceBindingViewModel(DeviceBinding deviceBinding)
         {
             DeviceBinding = deviceBinding;
-            deviceBinding.Profile.Context.SubscriptionsManager.PropertyChanged += SubscriptionsManagerOnPropertyChanged;
+            deviceBinding.Profile.Context.ActiveProfileChangedEvent += ContextOnActiveProfileChangedEvent;
             deviceBinding.Profile.Context.DeviceAliasesChangedEvent += ContextOnDeviceAliasesChanged;
-            BindingEnabled = !DeviceBinding.Profile.Context.SubscriptionsManager.ProfileActive;
+            BindingEnabled = !DeviceBinding.Profile.IsActive();
 
             LoadDeviceInputs();
         }
@@ -356,12 +356,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             BindModeProgress = bindingManager.BindModeProgress;
         }
 
-        private void SubscriptionsManagerOnPropertyChanged(object sender, PropertyChangedEventArgs propertyChangedEventArgs)
+        private void ContextOnActiveProfileChangedEvent(Profile profile)
         {
-            if (propertyChangedEventArgs.PropertyName.Equals("ProfileActive"))
-            {
-                BindingEnabled = !DeviceBinding.Profile.Context.SubscriptionsManager.ProfileActive;
-            }
+            if (_disposed || DeviceBinding?.Profile == null) return;
+            BindingEnabled = !DeviceBinding.Profile.IsActive();
         }
 
 
@@ -378,7 +376,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (context != null)
                 {
                     context.BindingManager.PropertyChanged -= BindingManagerOnPropertyChanged;
-                    context.SubscriptionsManager.PropertyChanged -= SubscriptionsManagerOnPropertyChanged;
+                    context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;
                     context.DeviceAliasesChangedEvent -= ContextOnDeviceAliasesChanged;
                 }
             }

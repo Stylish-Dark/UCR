@@ -1,52 +1,77 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace HidWizards.UCR.Core.Models.Subscription
 {
     public class SubscriptionState
     {
         public Guid StateGuid { get; }
-        public Profile ActiveProfile { get; }
+        public IReadOnlyList<Profile> ActiveProfiles { get; }
+        public Profile ActiveProfile => ActiveProfiles.LastOrDefault();
         public bool IsActive { get; set; }
 
         public List<DeviceConfigurationSubscription> OutputDeviceConfigurationSubscriptions { get; }
         public List<MappingSubscription> MappingSubscriptions { get; set; }
         public FilterState FilterState { get; set; }
 
-        public SubscriptionState(Profile profile)
+        public SubscriptionState(Profile profile) : this(profile == null ? new List<Profile>() : new List<Profile> { profile })
+        {
+        }
+
+        public SubscriptionState(IEnumerable<Profile> profiles)
         {
             StateGuid = Guid.NewGuid();
-            ActiveProfile = profile;
+            ActiveProfiles = (profiles ?? Enumerable.Empty<Profile>())
+                .Where(profile => profile != null)
+                .GroupBy(profile => profile.Guid)
+                .Select(group => group.First())
+                .ToList()
+                .AsReadOnly();
             OutputDeviceConfigurationSubscriptions = new List<DeviceConfigurationSubscription>();
             MappingSubscriptions = new List<MappingSubscription>();
             IsActive = false;
-
             FilterState = new FilterState();
         }
 
-        public void AddOutputDeviceConfiguration(DeviceConfiguration deviceConfiguration)
+        public DeviceConfigurationSubscription AddOutputDeviceConfiguration(
+            DeviceConfiguration deviceConfiguration, Guid runtimeScopeGuid)
         {
-            var deviceSubscription = new DeviceConfigurationSubscription(deviceConfiguration);
-            OutputDeviceConfigurationSubscriptions.Add(deviceSubscription);
+            if (deviceConfiguration == null) return null;
+
+            // Configuration GUIDs were historically copied verbatim by UCR's profile-copy code.
+            // They therefore cannot be treated as globally unique once several profiles run at once.
+            // Scope output subscriptions to their owning profile runtime instead.
+            var existing = OutputDeviceConfigurationSubscriptions.FirstOrDefault(subscription =>
+                subscription.RuntimeScopeGuid == runtimeScopeGuid &&
+                subscription.DeviceConfiguration.Guid == deviceConfiguration.Guid);
+            if (existing != null) return existing;
+
+            var created = new DeviceConfigurationSubscription(deviceConfiguration, runtimeScopeGuid);
+            OutputDeviceConfigurationSubscriptions.Add(created);
+            return created;
         }
-        
-        public void AddMappings(Profile profile, List<DeviceConfigurationSubscription> profileOutputDevices)
+
+        public void AddMappings(Profile profile, IEnumerable<Mapping> mappings, Guid runtimeScopeGuid,
+            List<DeviceConfigurationSubscription> profileOutputDevices)
         {
+            if (profile == null || mappings == null) return;
             var profileMappings = new List<MappingSubscription>();
 
-            foreach (var profileMapping in profile.Mappings)
+            foreach (var profileMapping in mappings.Where(mapping => mapping != null))
             {
-                profileMappings.Add(new MappingSubscription(profile, profileMapping, StateGuid, profileOutputDevices));
+                profileMappings.Add(new MappingSubscription(profile, profileMapping, StateGuid, runtimeScopeGuid, profileOutputDevices));
             }
 
-            OverrideParentMappings(profileMappings);
+            OverrideEarlierMappingsInScope(profileMappings, runtimeScopeGuid);
 
             MappingSubscriptions.AddRange(profileMappings);
-            MappingSubscriptions.AddRange(AddShadowMappings(profile, profileMappings, profileOutputDevices));
+            MappingSubscriptions.AddRange(AddShadowMappings(profile, profileMappings, runtimeScopeGuid, profileOutputDevices));
         }
 
-        private List<MappingSubscription> AddShadowMappings(Profile profile, List<MappingSubscription> profileMappings, List<DeviceConfigurationSubscription> profileOutputDevices)
+        private List<MappingSubscription> AddShadowMappings(Profile profile,
+            List<MappingSubscription> profileMappings, Guid runtimeScopeGuid,
+            List<DeviceConfigurationSubscription> profileOutputDevices)
         {
             var result = new List<MappingSubscription>();
 
@@ -54,33 +79,37 @@ namespace HidWizards.UCR.Core.Models.Subscription
             {
                 var shadowClones = mappingSubscription.Mapping.PossibleShadowClones;
                 if (shadowClones == 0) continue;
-                
-
-                result.AddRange(CloneMappingSubscription(profile, mappingSubscription, profileOutputDevices, shadowClones));
+                result.AddRange(CloneMappingSubscription(profile, mappingSubscription, runtimeScopeGuid,
+                    profileOutputDevices, shadowClones));
             }
 
             return result;
         }
 
-        private List<MappingSubscription> CloneMappingSubscription(Profile profile, MappingSubscription mappingSubscription, List<DeviceConfigurationSubscription> profileOutputDevices, int shadowClones)
+        private List<MappingSubscription> CloneMappingSubscription(Profile profile,
+            MappingSubscription mappingSubscription, Guid runtimeScopeGuid,
+            List<DeviceConfigurationSubscription> profileOutputDevices, int shadowClones)
         {
             var result = new List<MappingSubscription>();
 
             for (var i = 0; i < shadowClones; i++)
             {
-                result.Add(new MappingSubscription(profile, mappingSubscription.Mapping.CreateShadowClone(i), StateGuid, profileOutputDevices));
+                result.Add(new MappingSubscription(profile, mappingSubscription.Mapping.CreateShadowClone(i),
+                    StateGuid, runtimeScopeGuid, profileOutputDevices));
             }
 
             return result;
         }
 
-        private void OverrideParentMappings(List<MappingSubscription> profileMappingSubscriptions)
+        private void OverrideEarlierMappingsInScope(IEnumerable<MappingSubscription> newMappings, Guid runtimeScopeGuid)
         {
-            foreach (var profileMappingSubscription in profileMappingSubscriptions)
+            foreach (var profileMappingSubscription in newMappings)
             {
                 foreach (var subscription in MappingSubscriptions)
                 {
-                    if (profileMappingSubscription.Mapping.Title.Equals(subscription.Mapping.Title))
+                    if (subscription.RuntimeScopeGuid != runtimeScopeGuid) continue;
+                    if (string.Equals(profileMappingSubscription.Mapping.Title, subscription.Mapping.Title,
+                        StringComparison.CurrentCultureIgnoreCase))
                     {
                         subscription.Overriden = true;
                     }

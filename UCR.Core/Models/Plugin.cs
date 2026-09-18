@@ -161,8 +161,8 @@ namespace HidWizards.UCR.Core.Models
 
         private string GetFilterName(string filterName)
         {
-            if (string.IsNullOrWhiteSpace(filterName)) return null;
-            var filter = filterName.Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(filterName) || RuntimeMapping == null) return null;
+            var filter = RuntimeMapping.GetRuntimeFilterKey(filterName);
             return RuntimeMapping.IsShadowMapping
                 ? Filter.GetShadowName(filter, RuntimeMapping.ShadowDeviceNumber)
                 : filter;
@@ -391,7 +391,9 @@ namespace HidWizards.UCR.Core.Models
 
             foreach (var filter in Filters)
             {
-                RuntimeMapping.FilterState.FilterRuntimeDictionary.TryGetValue(filter.Name.ToLower(), out var filterValue);
+                var runtimeName = GetFilterName(filter.Name);
+                if (runtimeName == null) continue;
+                RuntimeMapping.FilterState.FilterRuntimeDictionary.TryGetValue(runtimeName, out var filterValue);
                 if (!(filterValue ^ filter.Negative)) return true;
             }
 

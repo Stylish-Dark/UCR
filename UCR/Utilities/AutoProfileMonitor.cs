@@ -25,7 +25,7 @@ namespace HidWizards.UCR.Utilities
         private readonly DispatcherTimer _timer;
         private readonly HashSet<Guid> _suppressedProfileGuids = new HashSet<Guid>();
         private readonly Dictionary<Guid, DateTime> _nextActivationAttemptUtc = new Dictionary<Guid, DateTime>();
-        private Guid? _ownedProfileGuid;
+        private readonly HashSet<Guid> _ownedProfileGuids = new HashSet<Guid>();
         private bool _autoOperationInProgress;
         private bool _disposed;
 
@@ -52,20 +52,21 @@ namespace HidWizards.UCR.Utilities
             ClearExpiredRuntimeState(profiles, runningApplications);
 
             var eligibleProfiles = profiles.Where(profile => IsEligible(profile, runningApplications)).ToList();
-            var activeProfile = _context.ActiveProfile;
-            var targetProfile = activeProfile != null
-                ? eligibleProfiles.FirstOrDefault(profile => profile.Guid == activeProfile.Guid)
-                : null;
-            if (targetProfile == null) targetProfile = eligibleProfiles.FirstOrDefault();
+            var eligibleGuids = new HashSet<Guid>(eligibleProfiles.Select(profile => profile.Guid));
 
-            if (targetProfile == null)
+            foreach (var ownedGuid in _ownedProfileGuids.ToList())
             {
-                StopOwnedProfileIfNecessary(activeProfile);
-                return;
+                if (eligibleGuids.Contains(ownedGuid)) continue;
+                var ownedProfile = profiles.FirstOrDefault(profile => profile.Guid == ownedGuid);
+                if (ownedProfile != null && ownedProfile.IsActive()) StopOwnedProfile(ownedProfile);
+                _ownedProfileGuids.Remove(ownedGuid);
             }
 
-            if (activeProfile != null && activeProfile.Guid == targetProfile.Guid) return;
-            ActivateAutomatically(targetProfile);
+            foreach (var profile in eligibleProfiles)
+            {
+                if (profile.IsActive()) continue;
+                ActivateAutomatically(profile);
+            }
         }
 
         private void ActivateAutomatically(Profile profile)
@@ -78,7 +79,7 @@ namespace HidWizards.UCR.Utilities
             {
                 if (_context.SubscriptionsManager.ActivateProfile(profile))
                 {
-                    _ownedProfileGuid = profile.Guid;
+                    _ownedProfileGuids.Add(profile.Guid);
                     _nextActivationAttemptUtc.Remove(profile.Guid);
                     Logger.Info("Auto-applied profile '" + profile.ProfileBreadCrumbs() + "'.");
                 }
@@ -99,20 +100,14 @@ namespace HidWizards.UCR.Utilities
             }
         }
 
-        private void StopOwnedProfileIfNecessary(Profile activeProfile)
+        private void StopOwnedProfile(Profile profile)
         {
-            if (!_ownedProfileGuid.HasValue) return;
-            if (activeProfile == null || activeProfile.Guid != _ownedProfileGuid.Value)
-            {
-                _ownedProfileGuid = null;
-                return;
-            }
-
-            var profileName = activeProfile.ProfileBreadCrumbs();
+            if (profile == null) return;
+            var profileName = profile.ProfileBreadCrumbs();
             _autoOperationInProgress = true;
             try
             {
-                var success = _context.SubscriptionsManager.DeactivateCurrentProfile();
+                var success = _context.SubscriptionsManager.DeactivateProfile(profile);
                 if (success) Logger.Info("Auto-stopped profile '" + profileName + "' because none of its application rules are running.");
                 else Logger.Warn("Auto-stop completed with unsubscribe errors for profile '" + profileName + "'.");
             }
@@ -122,19 +117,23 @@ namespace HidWizards.UCR.Utilities
             }
             finally
             {
-                _ownedProfileGuid = null;
+                _ownedProfileGuids.Remove(profile.Guid);
                 _autoOperationInProgress = false;
             }
         }
 
         private void OnActiveProfileChanged(Profile profile)
         {
-            if (_disposed || _autoOperationInProgress || !_ownedProfileGuid.HasValue) return;
-            if (profile == null || profile.Guid != _ownedProfileGuid.Value)
+            if (_disposed || _autoOperationInProgress || _ownedProfileGuids.Count == 0) return;
+
+            var manuallyStopped = _ownedProfileGuids
+                .Where(guid => !_context.ActiveProfiles.Any(active => active.Guid == guid))
+                .ToList();
+            foreach (var guid in manuallyStopped)
             {
-                _suppressedProfileGuids.Add(_ownedProfileGuid.Value);
-                Logger.Info("Manual profile change detected; suppressing the previous auto-profile until all matching applications exit.");
-                _ownedProfileGuid = null;
+                _suppressedProfileGuids.Add(guid);
+                _ownedProfileGuids.Remove(guid);
+                Logger.Info("Manual profile stop detected; suppressing that auto-profile until all matching applications exit.");
             }
         }
 

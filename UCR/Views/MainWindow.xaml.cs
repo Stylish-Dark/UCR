@@ -108,6 +108,7 @@ namespace HidWizards.UCR.Views
         // TODO Deprecated, replace with property notifications
         private void ReloadProfileTree()
         {
+            Context.ProfilesManager.MigrateLegacyChildrenToMappingGroups();
             var profileTree = ProfileItem.GetProfileTree(Context.Profiles);
             _dashboardViewModel.ReplaceProfileList(profileTree);
         }
@@ -169,9 +170,7 @@ namespace HidWizards.UCR.Views
             var targetItem = targetContainer?.DataContext as ProfileItem;
             if (!CanReorderProfile(sourceItem, targetItem) || targetContainer == null) return;
 
-            var siblings = sourceItem.Profile.ParentProfile == null
-                ? Context.Profiles
-                : sourceItem.Profile.ParentProfile.ChildProfiles;
+            var siblings = Context.Profiles;
 
             var sourceIndex = siblings.IndexOf(sourceItem.Profile);
             var targetIndex = siblings.IndexOf(targetItem.Profile);
@@ -193,19 +192,10 @@ namespace HidWizards.UCR.Views
             e.Handled = true;
         }
 
-        private void ProfileExpandCollapse_OnClick(object sender, RoutedEventArgs e)
-        {
-            var container = GetTreeViewItem(sender as DependencyObject);
-            if (container == null) return;
-            container.IsExpanded = !container.IsExpanded;
-            e.Handled = true;
-        }
-
         private static bool CanReorderProfile(ProfileItem sourceItem, ProfileItem targetItem)
         {
             if (sourceItem?.Profile == null || targetItem?.Profile == null) return false;
-            if (ReferenceEquals(sourceItem.Profile, targetItem.Profile)) return false;
-            return ReferenceEquals(sourceItem.Profile.ParentProfile, targetItem.Profile.ParentProfile);
+            return !ReferenceEquals(sourceItem.Profile, targetItem.Profile);
         }
 
         private static FrameworkElement GetTreeViewItemHeaderElement(TreeViewItem container)
@@ -255,7 +245,12 @@ namespace HidWizards.UCR.Views
 
         private void DeactivateProfile(object sender, RoutedEventArgs e)
         {
-            DeactivateCurrentProfile();
+            if (!GetSelectedItem(out var profileItem)) return;
+            if (!Context.SubscriptionsManager.DeactivateProfile(profileItem.Profile))
+            {
+                HidWizards.UCR.Utilities.DarkMessageBox.Show("The Profile could not be deactivated, see the log for more details",
+                    "Profile failed to deactivate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+            }
         }
 
         private void AddAutoActivateApplication_OnClick(object sender, RoutedEventArgs e)
@@ -292,7 +287,7 @@ namespace HidWizards.UCR.Views
 
         private void DeactivateCurrentProfile()
         {
-            if (Context.ActiveProfile == null) return;
+            if (Context.ActiveProfiles.Count == 0) return;
 
             if (!Context.SubscriptionsManager.DeactivateCurrentProfile())
             {
@@ -306,18 +301,6 @@ namespace HidWizards.UCR.Views
             var profile = Context.ProfilesManager.CreateProfile("New profile",
                 new List<DeviceConfiguration>(), new List<DeviceConfiguration>());
             Context.ProfilesManager.AddProfile(profile);
-
-            ReloadProfileTree();
-            OpenProfileWindow(profile);
-        }
-
-        private void AddChildProfile(object sender, RoutedEventArgs e)
-        {
-            if (!GetSelectedItem(out var profileItem)) return;
-
-            var profile = Context.ProfilesManager.CreateProfile("New profile",
-                new List<DeviceConfiguration>(), new List<DeviceConfiguration>());
-            Context.ProfilesManager.AddProfile(profile, profileItem.Profile);
 
             ReloadProfileTree();
             OpenProfileWindow(profile);
@@ -437,6 +420,14 @@ namespace HidWizards.UCR.Views
             var dialog = new BoolDialog("Remove profile","Are you sure you want to remove: " + profileItem.Profile.Title + "?");
             var result = (bool?)await DialogHost.Show(dialog, "RootDialog");
             if (result == null || !result.Value) return;
+
+            if (profileItem.Profile.IsActive() && !Context.SubscriptionsManager.DeactivateProfile(profileItem.Profile))
+            {
+                HidWizards.UCR.Utilities.DarkMessageBox.Show(this,
+                    "The profile could not be stopped cleanly. See the log for more details.",
+                    "Remove profile", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                return;
+            }
 
             profileItem.Profile.Remove();
             ReloadProfileTree();
@@ -625,37 +616,21 @@ namespace HidWizards.UCR.Views
 
         private void ImportProfile(object sender, RoutedEventArgs e)
         {
-            ImportProfilePackage(null);
-        }
-
-        private void ImportChildProfile(object sender, RoutedEventArgs e)
-        {
-            if (!GetSelectedItem(out var profileItem)) return;
-            ImportProfilePackage(profileItem.Profile);
-        }
-
-        private void ImportProfilePackage(Profile parentProfile)
-        {
             var dialog = new OpenFileDialog
             {
-                Title = parentProfile == null ? "Import UCR profile" : "Import UCR profile as child",
+                Title = "Import UCR profile",
                 Filter = "UCR profile (*.ucrprofile)|*.ucrprofile",
                 DefaultExt = ".ucrprofile",
                 CheckFileExists = true,
                 Multiselect = false
             };
             if (dialog.ShowDialog(this) != true) return;
-            ImportProfilePackageFromPath(dialog.FileName, parentProfile);
-        }
 
-        private void ImportProfilePackageFromPath(string fileName, Profile parentProfile)
-        {
             try
             {
-                Context.ProfilesManager.ImportProfile(fileName, parentProfile);
+                Context.ProfilesManager.ImportProfile(dialog.FileName);
                 ReloadProfileTree();
-                HidWizards.UCR.Utilities.DarkMessageBox.Show(this,
-                    parentProfile == null ? "Profile imported successfully." : "Child profile imported successfully.",
+                HidWizards.UCR.Utilities.DarkMessageBox.Show(this, "Profile imported successfully.",
                     "Import profile", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception exception)
@@ -774,14 +749,14 @@ namespace HidWizards.UCR.Views
         private void InitializeTrayIcon()
         {
             var contextMenu = new Forms.ContextMenuStrip();
-            _stopCurrentProfileMenuItem = new Forms.ToolStripMenuItem("Stop current profile");
+            _stopCurrentProfileMenuItem = new Forms.ToolStripMenuItem("Stop all profiles");
             var exitMenuItem = new Forms.ToolStripMenuItem("Exit UCR");
 
             _stopCurrentProfileMenuItem.Click += (sender, args) => Dispatcher.BeginInvoke((Action)DeactivateCurrentProfile);
             exitMenuItem.Click += (sender, args) => Dispatcher.BeginInvoke((Action)ExitFromTray);
             contextMenu.Opening += (sender, args) =>
             {
-                _stopCurrentProfileMenuItem.Enabled = Context.ActiveProfile != null;
+                _stopCurrentProfileMenuItem.Enabled = Context.ActiveProfiles.Count > 0;
             };
             contextMenu.Items.Add(_stopCurrentProfileMenuItem);
             contextMenu.Items.Add(exitMenuItem);

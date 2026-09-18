@@ -25,7 +25,9 @@ namespace HidWizards.UCR.Core
         public List<DeviceAlias> DeviceAliases { get; set; }
 
         /* Runtime */
-        [XmlIgnore] public Profile ActiveProfile { get; set; }
+        [XmlIgnore] public Profile ActiveProfile { get; internal set; }
+        [XmlIgnore] public IReadOnlyList<Profile> ActiveProfiles => _activeProfiles.AsReadOnly();
+        private readonly List<Profile> _activeProfiles = new List<Profile>();
         [XmlIgnore] public ProfilesManager ProfilesManager { get; set; }
         [XmlIgnore] public DevicesManager DevicesManager { get; set; }
         [XmlIgnore] public SubscriptionsManager SubscriptionsManager { get; set; }
@@ -136,6 +138,10 @@ namespace HidWizards.UCR.Core
             {
                 profile.PostLoad(this);
             }
+
+            // Child profiles are a legacy persistence concept now. Convert them immediately after
+            // loading so every runtime/UI consumer sees the flat profile + local mapping-group model.
+            ProfilesManager.MigrateLegacyChildrenToMappingGroups();
         }
 
         internal static XmlSerializer GetXmlSerializer(List<Type> additionalPluginTypes)
@@ -191,6 +197,20 @@ namespace HidWizards.UCR.Core
 
                 return (T)formatter.Deserialize(ms);
             }
+        }
+
+        internal void SetActiveProfiles(IEnumerable<Profile> profiles)
+        {
+            _activeProfiles.Clear();
+            if (profiles != null)
+            {
+                foreach (var profile in profiles.Where(profile => profile != null))
+                {
+                    if (_activeProfiles.Any(active => active.Guid == profile.Guid)) continue;
+                    _activeProfiles.Add(profile);
+                }
+            }
+            ActiveProfile = _activeProfiles.LastOrDefault();
         }
 
         public void OnActiveProfileChangedEvent(Profile profile)

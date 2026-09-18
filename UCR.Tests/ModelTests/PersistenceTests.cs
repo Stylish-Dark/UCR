@@ -115,10 +115,35 @@ namespace HidWizards.UCR.Tests.ModelTests
                 var loaded = Reload();
                 Assert.That(loaded.Profiles.Select(profile => profile.Title).ToArray(),
                     Is.EqualTo(new[] { "Root Profile", "Second Root" }));
-                Assert.That(loaded.Profiles[0].ChildProfiles.Count, Is.EqualTo(1));
-                Assert.That(loaded.Profiles[0], Is.EqualTo(loaded.Profiles[0].ChildProfiles[0].ParentProfile));
+                Assert.That(loaded.Profiles[0].ChildProfiles, Is.Empty);
+                Assert.That(loaded.Profiles[0].MappingGroups.Count, Is.EqualTo(1));
+                Assert.That(loaded.Profiles[0].MappingGroups[0].Title, Is.EqualTo("Child Profile"));
+                Assert.That(loaded.Profiles[0].MappingGroups[0].Enabled, Is.False);
                 loaded.SaveContext(null);
             }
+        }
+
+        [Test]
+        public void MappingGroupsRoundTripWithEnabledStateAndMappings()
+        {
+            var context = NewContext();
+            var profile = context.ProfilesManager.CreateProfile("Grouped", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            profile.AddMapping("Main");
+            var group = profile.AddMappingGroup("Player 2");
+            group.Enabled = true;
+            group.AddMapping("P2 Attack");
+
+            context.SaveContext(null);
+            var loaded = Reload();
+
+            var loadedProfile = loaded.Profiles.Single();
+            Assert.That(loadedProfile.MappingGroups.Count, Is.EqualTo(1));
+            Assert.That(loadedProfile.MappingGroups[0].Title, Is.EqualTo("Player 2"));
+            Assert.That(loadedProfile.MappingGroups[0].Enabled, Is.True);
+            Assert.That(loadedProfile.MappingGroups[0].Mappings.Select(mapping => mapping.Title),
+                Is.EqualTo(new[] { "P2 Attack" }));
+            Assert.That(loadedProfile.Mappings.Select(mapping => mapping.Title), Is.EqualTo(new[] { "Main" }));
         }
 
         [Test]

@@ -239,7 +239,6 @@
                             </TreeView.Style>
                             <TreeView.ItemContainerStyle>
                                 <Style TargetType="{x:Type TreeViewItem}" BasedOn="{StaticResource MaterialDesignTreeViewItem}">
-                                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
                                     <Setter Property="HorizontalAlignment" Value="Stretch"/>
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                                     <!-- MaterialDesign 2.5.1 applies its Padding inside Ripple. Remove it here so
@@ -275,21 +274,18 @@
                                 </GroupStyle>
                             </TreeView.GroupStyle>
                             <TreeView.ItemTemplate>
-                                <HierarchicalDataTemplate DataType="{x:Type dashboard:ProfileItem}" ItemsSource="{Binding Items}">
-                                    <!-- MaterialDesign 2.5.1 can arrange a TreeView header at its desired width even
-                                         when the selected-row chrome is much wider. Bind to the owning Ripple so the
-                                         profile row always receives the real header width instead of collapsing the
-                                         title to a few characters. -->
+                                <DataTemplate DataType="{x:Type dashboard:ProfileItem}">
+                                    <!-- Profiles are deliberately flat now. Mapping groups provide local organisation
+                                         inside a profile; simultaneous activation provides composition between profiles. -->
                                     <Grid Width="{Binding RelativeSource={RelativeSource AncestorType={x:Type materialDesign:Ripple}}, Path=ActualWidth}"
                                           HorizontalAlignment="Left" ToolTip="{Binding Title}">
-                                        <Grid Margin="{Binding TreeRowMargin}" MinHeight="38" HorizontalAlignment="Stretch">
+                                        <Grid Margin="8 2" MinHeight="38" HorizontalAlignment="Stretch">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <!-- Device badges consume only the width they need; the profile title owns the remainder. -->
                                             <ItemsControl Grid.Column="0" ItemsSource="{Binding InputVisuals}"
                                                           ItemTemplate="{StaticResource DeviceBadgeTemplate}"
                                                           HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -297,49 +293,8 @@
                                             </ItemsControl>
 
                                             <Grid Grid.Column="1" Margin="6 0">
-                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                            Margin="{Binding TitleHierarchyMargin}">
-                                                    <Grid Width="13" Height="22" Margin="0 0 3 0" VerticalAlignment="Center">
-                                                        <Grid.Style>
-                                                            <Style TargetType="Grid">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding IsChild}" Value="True">
-                                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </Grid.Style>
-                                                        <Border Width="1" Height="11" Background="#555555" HorizontalAlignment="Left" VerticalAlignment="Top"/>
-                                                        <Border Width="9" Height="1" Background="#555555" HorizontalAlignment="Left" VerticalAlignment="Center"/>
-                                                    </Grid>
-                                                    <Button Width="22" Height="22" Padding="0" Margin="0 0 2 0"
-                                                            Click="ProfileExpandCollapse_OnClick" ToolTip="Expand / collapse child profiles">
-                                                        <Button.Style>
-                                                            <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignCardButton}">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding HasChildren}" Value="True">
-                                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </Button.Style>
-                                                        <materialDesign:PackIcon Width="17" Height="17">
-                                                            <materialDesign:PackIcon.Style>
-                                                                <Style TargetType="materialDesign:PackIcon">
-                                                                    <Setter Property="Kind" Value="ChevronRight"/>
-                                                                    <Setter Property="Foreground" Value="#BDBDBD"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                                                            <Setter Property="Kind" Value="ChevronDown"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </materialDesign:PackIcon.Style>
-                                                        </materialDesign:PackIcon>
-                                                    </Button>
-                                                    <TextBlock Text="{Binding Title}" FontSize="15.5" FontWeight="Medium" MaxWidth="165"
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Title}" FontSize="15.5" FontWeight="Medium" MaxWidth="185"
                                                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                                     <Border Margin="6 0 0 0" Padding="5 1" CornerRadius="7" Background="#26382B" BorderBrush="#4B8B58" BorderThickness="1"
                                                             VerticalAlignment="Center" ToolTip="This profile is currently running">
@@ -376,7 +331,7 @@
                                             </ItemsControl>
                                         </Grid>
                                     </Grid>
-                                </HierarchicalDataTemplate>
+                                </DataTemplate>
                             </TreeView.ItemTemplate>
                         </TreeView>
                     </Grid>
@@ -423,6 +378,7 @@
                             </StackPanel>
                             <StackPanel Grid.Column="1" Grid.Row="0" HorizontalAlignment="Right" Orientation="Horizontal" Margin="4 4 8 0">
                                 <Button ToolTip="Activate profile"
+                                        IsEnabled="{Binding CanActivateProfile}"
                                         Style="{StaticResource MaterialDesignCardButton}"
                                         Foreground="#BDBDBD"
                                         Click="ActivateProfile">
@@ -433,12 +389,6 @@
                                         Foreground="#BDBDBD"
                                         Click="EditProfile">
                                     <materialDesign:PackIcon Kind="AccountEdit" Width="20" Height="20"/>
-                                </Button>
-                                <Button ToolTip="Add child profile"
-                                        Style="{StaticResource MaterialDesignCardButton}"
-                                        Foreground="#BDBDBD"
-                                        Click="AddChildProfile">
-                                    <materialDesign:PackIcon Kind="AccountPlus" Width="20" Height="20"/>
                                 </Button>
                                 <Button ToolTip="Copy profile"
                                         Style="{StaticResource MaterialDesignCardButton}"
@@ -451,12 +401,6 @@
                                         Foreground="#BDBDBD"
                                         Click="ExportProfile">
                                     <materialDesign:PackIcon Kind="FileExport" Width="20" Height="20"/>
-                                </Button>
-                                <Button ToolTip="Import profile as child"
-                                        Style="{StaticResource MaterialDesignCardButton}"
-                                        Foreground="#BDBDBD"
-                                        Click="ImportChildProfile">
-                                    <materialDesign:PackIcon Kind="FileImport" Width="20" Height="20"/>
                                 </Button>
                                 <Button ToolTip="Delete profile"
                                         Style="{StaticResource MaterialDesignCardButton}"

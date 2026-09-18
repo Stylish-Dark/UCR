@@ -26,6 +26,7 @@ namespace HidWizards.UCR.Core.Models
         internal int ShadowDeviceNumber { get; set; }
         internal int PossibleShadowClones => CountPossibleShadowClones();
         internal FilterState FilterState { get; set; }
+        internal Guid RuntimeScopeGuid { get; private set; }
 
         private int CountPossibleShadowClones()
         {
@@ -88,7 +89,7 @@ namespace HidWizards.UCR.Core.Models
             return result;
         }
 
-        internal void PrepareMapping(FilterState filterState)
+        internal void PrepareMapping(FilterState filterState, Guid runtimeScopeGuid)
         {
             InputCache = new List<short>();
             DeviceBindings.ForEach(_ => InputCache.Add(0));
@@ -102,6 +103,7 @@ namespace HidWizards.UCR.Core.Models
             }
 
             FilterState = filterState;
+            RuntimeScopeGuid = runtimeScopeGuid;
             Plugins.ForEach(p => p.RuntimeMapping = this);
         }
 
@@ -127,6 +129,17 @@ namespace HidWizards.UCR.Core.Models
             return null;
         }
         
+        internal string GetRuntimeFilterKey(string filterName)
+        {
+            return GetRuntimeFilterKey(RuntimeScopeGuid, filterName);
+        }
+
+        public static string GetRuntimeFilterKey(Guid runtimeScopeGuid, string filterName)
+        {
+            if (string.IsNullOrWhiteSpace(filterName)) return null;
+            return runtimeScopeGuid.ToString("N") + ":" + filterName.Trim().ToLowerInvariant();
+        }
+
         public void Update(short value)
         {
             foreach (var plugin in Plugins)
