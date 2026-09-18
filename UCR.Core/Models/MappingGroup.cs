@@ -30,6 +30,8 @@ namespace HidWizards.UCR.Core.Models
         }
 
         public List<Mapping> Mappings { get; set; }
+        public List<DeviceConfiguration> InputDeviceConfigurations { get; set; }
+        public List<DeviceConfiguration> OutputDeviceConfigurations { get; set; }
 
         [XmlIgnore]
         public Profile Profile { get; internal set; }
@@ -40,6 +42,8 @@ namespace HidWizards.UCR.Core.Models
             Title = "Group";
             _enabled = true;
             Mappings = new List<Mapping>();
+            InputDeviceConfigurations = new List<DeviceConfiguration>();
+            OutputDeviceConfigurations = new List<DeviceConfiguration>();
         }
 
         internal MappingGroup(Profile profile, string title) : this()
@@ -70,6 +74,12 @@ namespace HidWizards.UCR.Core.Models
             Profile = profile;
             if (Guid == Guid.Empty) Guid = Guid.NewGuid();
             if (Mappings == null) Mappings = new List<Mapping>();
+            if (InputDeviceConfigurations == null) InputDeviceConfigurations = new List<DeviceConfiguration>();
+            if (OutputDeviceConfigurations == null) OutputDeviceConfigurations = new List<DeviceConfiguration>();
+            foreach (var configuration in InputDeviceConfigurations.Concat(OutputDeviceConfigurations).Where(configuration => configuration != null))
+            {
+                if (configuration.Device != null) configuration.Device.Profile = profile;
+            }
             foreach (var mapping in Mappings.Where(mapping => mapping != null)) mapping.PostLoad(context, profile);
         }
     }
