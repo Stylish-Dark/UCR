@@ -231,6 +231,36 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void LegacyChildDevicesRemainScopedToTheMigratedLocalGroup()
+        {
+            var mainOutput = new DeviceConfiguration(new Device("P1 Pad", "Core_ViGEm", "p1", 0));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { mainOutput }, DeviceIoType.Output);
+
+            var playerTwoOutput = new DeviceConfiguration(new Device("P2 Pad", "Core_ViGEm", "p2", 1));
+            var child = _context.ProfilesManager.CreateProfile("Player 2", null,
+                new List<DeviceConfiguration> { playerTwoOutput });
+            var childMapping = child.AddMapping("P2 Attack");
+            var childPlugin = new ButtonToButton();
+            childMapping.AddPlugin(childPlugin);
+            childPlugin.Outputs.Single().DeviceConfigurationGuid = playerTwoOutput.Guid;
+            childPlugin.Outputs.Single().IsBound = true;
+            _profile.AddChildProfile(child);
+
+            _profile.PostLoad(_context);
+
+            var group = _profile.MappingGroups.Single();
+            Assert.That(_profile.OutputDeviceConfigurations.Select(configuration => configuration.Guid),
+                Is.EqualTo(new[] { mainOutput.Guid }),
+                "A legacy child's private output must not be merged into the parent profile's own device list.");
+            Assert.That(group.OutputDeviceConfigurations.Select(configuration => configuration.Guid),
+                Is.EqualTo(new[] { playerTwoOutput.Guid }));
+            Assert.That(_profile.GetDeviceConfiguration(DeviceIoType.Output, playerTwoOutput.Guid), Is.Not.Null,
+                "Group-local devices must still resolve for mappings inside that group.");
+            Assert.That(_profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output).Guid, Is.EqualTo(mainOutput.Guid),
+                "The Player 2 device must not become part of the parent's primary-device presentation.");
+        }
+
+        [Test]
         public void DashboardProfileListIsFlatAfterChildMigration()
         {
             var child = _context.ProfilesManager.CreateProfile("Player 2", null, null);
