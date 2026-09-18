@@ -402,8 +402,10 @@ namespace HidWizards.UCR.Core.Models
                     var previous = effectiveMappings.FirstOrDefault(mapping =>
                         string.Equals(mapping.Title, sourceMapping.Title, StringComparison.CurrentCultureIgnoreCase));
                     if (previous != null) effectiveMappings.Remove(previous);
+                    // MappingGroup.PostLoad below attaches each cloned mapping exactly once.
+                    // Calling Mapping.PostLoad here as well used to normalize plugin output bindings
+                    // twice and could strip them completely before the editor opened.
                     var clone = HidWizards.UCR.Core.Context.DeepXmlClone<Mapping>(sourceMapping);
-                    clone.PostLoad(Context, this);
                     effectiveMappings.Add(clone);
                 }
             }
