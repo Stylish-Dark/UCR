@@ -390,8 +390,6 @@ namespace HidWizards.UCR.Core.Models
         {
             if (descendant == null) return false;
             descendant.Context = Context;
-            MergeLegacyDeviceConfigurations(descendant.InputDeviceConfigurations, InputDeviceConfigurations);
-            MergeLegacyDeviceConfigurations(descendant.OutputDeviceConfigurations, OutputDeviceConfigurations);
 
             var path = new List<Profile>(inheritedPath) { descendant };
             var effectiveMappings = new List<Mapping>();
@@ -413,7 +411,11 @@ namespace HidWizards.UCR.Core.Models
             var group = new MappingGroup(this, GetUniqueMappingGroupTitle(relativeTitle))
             {
                 Enabled = false,
-                Mappings = effectiveMappings
+                Mappings = effectiveMappings,
+                // Preserve the child's private devices with the Player 2 / Extras section instead
+                // of making the parent profile suddenly look as though those devices were its own.
+                InputDeviceConfigurations = (descendant.InputDeviceConfigurations ?? new List<DeviceConfiguration>()).ToList(),
+                OutputDeviceConfigurations = (descendant.OutputDeviceConfigurations ?? new List<DeviceConfiguration>()).ToList()
             };
             group.PostLoad(Context, this);
             MappingGroups.Add(group);
@@ -425,15 +427,94 @@ namespace HidWizards.UCR.Core.Models
             return true;
         }
 
-        private void MergeLegacyDeviceConfigurations(IEnumerable<DeviceConfiguration> source, ICollection<DeviceConfiguration> target)
+        private bool RepairPreviouslyMergedGroupDevices()
         {
-            if (source == null || target == null) return;
-            foreach (var configuration in source.Where(configuration => configuration != null))
+            var changed = false;
+            changed |= RepairPreviouslyMergedGroupDevices(DeviceIoType.Input);
+            changed |= RepairPreviouslyMergedGroupDevices(DeviceIoType.Output);
+            return changed;
+        }
+
+        private bool RepairPreviouslyMergedGroupDevices(DeviceIoType deviceIoType)
+        {
+            if (MappingGroups == null || MappingGroups.Count == 0) return false;
+
+            var profileDevices = deviceIoType == DeviceIoType.Input
+                ? InputDeviceConfigurations
+                : OutputDeviceConfigurations;
+            if (profileDevices == null || profileDevices.Count == 0) return false;
+
+            var mainReferences = GetReferencedDeviceConfigurationGuids(Mappings, deviceIoType);
+            var referencesByGroup = new Dictionary<Guid, List<MappingGroup>>();
+            foreach (var group in MappingGroups.Where(group => group != null))
             {
-                if (target.Any(existing => existing.Guid == configuration.Guid)) continue;
-                if (configuration.Device != null) configuration.Device.Profile = this;
-                target.Add(configuration);
+                foreach (var guid in GetReferencedDeviceConfigurationGuids(group.Mappings, deviceIoType))
+                {
+                    List<MappingGroup> owners;
+                    if (!referencesByGroup.TryGetValue(guid, out owners))
+                    {
+                        owners = new List<MappingGroup>();
+                        referencesByGroup.Add(guid, owners);
+                    }
+                    if (!owners.Contains(group)) owners.Add(group);
+                }
             }
+
+            var changed = false;
+            foreach (var pair in referencesByGroup)
+            {
+                if (pair.Key == Guid.Empty || pair.Value.Count != 1 || mainReferences.Contains(pair.Key)) continue;
+                var configuration = profileDevices.FirstOrDefault(candidate => candidate != null && candidate.Guid == pair.Key);
+                if (configuration == null) continue;
+
+                var owner = pair.Value[0];
+                var target = deviceIoType == DeviceIoType.Input
+                    ? owner.InputDeviceConfigurations
+                    : owner.OutputDeviceConfigurations;
+                if (target == null)
+                {
+                    target = new List<DeviceConfiguration>();
+                    if (deviceIoType == DeviceIoType.Input) owner.InputDeviceConfigurations = target;
+                    else owner.OutputDeviceConfigurations = target;
+                }
+                if (target.Any(existing => existing != null && existing.Guid == configuration.Guid)) continue;
+
+                profileDevices.Remove(configuration);
+                target.Add(configuration);
+                if (configuration.Device != null) configuration.Device.Profile = this;
+                changed = true;
+                Logger.Info("Restored group-private " + deviceIoType + " device to mapping group '" + owner.Title + "'.");
+            }
+            return changed;
+        }
+
+        private static HashSet<Guid> GetReferencedDeviceConfigurationGuids(IEnumerable<Mapping> mappings, DeviceIoType deviceIoType)
+        {
+            var result = new HashSet<Guid>();
+            foreach (var mapping in mappings ?? Enumerable.Empty<Mapping>())
+            {
+                if (mapping == null) continue;
+                if (deviceIoType == DeviceIoType.Input)
+                {
+                    foreach (var binding in mapping.DeviceBindings ?? new List<DeviceBinding>())
+                    {
+                        if (binding != null && binding.DeviceConfigurationGuid != Guid.Empty)
+                            result.Add(binding.DeviceConfigurationGuid);
+                    }
+                    continue;
+                }
+
+                foreach (var plugin in mapping.Plugins ?? new List<Plugin>())
+                {
+                    if (plugin == null) continue;
+                    foreach (var binding in plugin.Outputs ?? new List<DeviceBinding>())
+                    {
+                        if (binding != null && binding.DeviceConfigurationGuid != Guid.Empty)
+                            result.Add(binding.DeviceConfigurationGuid);
+                    }
+                }
+            }
+            return result;
         }
 
         #endregion
@@ -448,19 +529,43 @@ namespace HidWizards.UCR.Core.Models
 
         public List<DeviceConfiguration> GetDeviceConfigurationList(DeviceIoType deviceIoType)
         {
+            var result = GetProfileDeviceConfigurationList(deviceIoType);
+            foreach (var group in MappingGroups ?? new List<MappingGroup>())
+            {
+                if (group == null) continue;
+                var devices = deviceIoType == DeviceIoType.Input
+                    ? group.InputDeviceConfigurations
+                    : group.OutputDeviceConfigurations;
+                foreach (var configuration in devices ?? new List<DeviceConfiguration>())
+                {
+                    if (configuration == null || result.Any(existing => existing.Guid == configuration.Guid)) continue;
+                    if (configuration.Device != null) configuration.Device.Profile = this;
+                    result.Add(configuration);
+                }
+            }
+            return result;
+        }
+
+        public List<DeviceConfiguration> GetProfileDeviceConfigurationList(DeviceIoType deviceIoType)
+        {
             var result = new List<DeviceConfiguration>();
-            if (ParentProfile != null) result.AddRange(ParentProfile.GetDeviceConfigurationList(deviceIoType));
+            if (ParentProfile != null) result.AddRange(ParentProfile.GetProfileDeviceConfigurationList(deviceIoType));
 
             var devices = deviceIoType == DeviceIoType.Input ? InputDeviceConfigurations : OutputDeviceConfigurations;
-            devices.ForEach(d => d.Device.Profile = this);
-            result.AddRange(devices);
-
+            foreach (var configuration in devices ?? new List<DeviceConfiguration>())
+            {
+                if (configuration == null || result.Any(existing => existing.Guid == configuration.Guid)) continue;
+                if (configuration.Device != null) configuration.Device.Profile = this;
+                result.Add(configuration);
+            }
             return result;
         }
 
         public DeviceConfiguration GetPrimaryDeviceConfiguration(DeviceIoType deviceIoType)
         {
-            var devices = GetDeviceConfigurationList(deviceIoType);
+            // Group-private devices are peripheral to the parent profile and must never silently
+            // become its primary dashboard/device-list identity.
+            var devices = GetProfileDeviceConfigurationList(deviceIoType);
             if (devices.Count == 0) return null;
 
             var primaryGuid = deviceIoType == DeviceIoType.Input
@@ -738,6 +843,11 @@ namespace HidWizards.UCR.Core.Models
             {
                 group.PostLoad(context, this);
             }
+
+            // Repair data saved by the first multi-profile build, which moved child-only devices
+            // into the parent profile. A device referenced only by one local group belongs with that
+            // group; shared/main devices remain at profile scope.
+            if (RepairPreviouslyMergedGroupDevices()) Context?.ContextChanged();
 
             // Top-level legacy trees are converted as part of attachment, before any dashboard or
             // runtime code can observe them. ParentProfile is retained only for old import paths.
