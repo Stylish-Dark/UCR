@@ -196,6 +196,41 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void LegacyChildMigrationKeepsPluginOutputBindingsAndProfileEditorCanOpen()
+        {
+            var child = _context.ProfilesManager.CreateProfile("Player 2", null, null);
+            var mapping = child.AddMapping("P2 Attack");
+            var plugin = new ButtonToButton();
+            mapping.AddPlugin(plugin);
+            Assert.That(plugin.Outputs.Count, Is.EqualTo(plugin.OutputCategories.Count));
+            _profile.AddChildProfile(child);
+
+            _profile.PostLoad(_context);
+
+            var migratedPlugin = _profile.MappingGroups.Single().Mappings.Single().Plugins.Single();
+            Assert.That(migratedPlugin.Outputs.Count, Is.EqualTo(migratedPlugin.OutputCategories.Count),
+                "Migrating a legacy child must not strip the plugin output binding that the editor expects.");
+
+            Assert.DoesNotThrow(() =>
+            {
+                var viewModel = new ProfileViewModel(_profile);
+                viewModel.Dispose();
+            });
+        }
+
+        [Test]
+        public void PluginPostLoadCanRunMoreThanOnceWithoutDestroyingOutputBindings()
+        {
+            var plugin = new ButtonToButton();
+            plugin.SetProfile(_profile);
+
+            plugin.PostLoad(_context, _profile);
+            plugin.PostLoad(_context, _profile);
+
+            Assert.That(plugin.Outputs.Count, Is.EqualTo(plugin.OutputCategories.Count));
+        }
+
+        [Test]
         public void DashboardProfileListIsFlatAfterChildMigration()
         {
             var child = _context.ProfilesManager.CreateProfile("Player 2", null, null);
