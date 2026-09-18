@@ -192,7 +192,8 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.That(_profile.MappingGroups[0].Title, Is.EqualTo("Player 2"));
             Assert.That(_profile.MappingGroups[0].Enabled, Is.False);
             Assert.That(_profile.MappingGroups[0].Mappings.Select(mapping => mapping.Title), Is.EquivalentTo(new[] { "P2 Attack" }));
-            Assert.That(_profile.OutputDeviceConfigurations.Any(configuration => configuration.Guid == secondOutput.Guid), Is.True);
+            Assert.That(_profile.OutputDeviceConfigurations.Any(configuration => configuration.Guid == secondOutput.Guid), Is.False);
+            Assert.That(_profile.MappingGroups[0].OutputDeviceConfigurations.Any(configuration => configuration.Guid == secondOutput.Guid), Is.True);
         }
 
         [Test]
