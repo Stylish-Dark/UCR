@@ -76,9 +76,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             pluginList.Sort();
             PluginToolbox = new PluginToolboxViewModel(profile, pluginList);
             InputDeviceControlViewModel = new ProfileDeviceListControlViewModel(profile,
-                profile.GetDeviceConfigurationList(DeviceIoType.Input), DeviceIoType.Input, RefreshDevicePresentation, ProfileDialogIdentifier);
+                profile.GetProfileDeviceConfigurationList(DeviceIoType.Input), DeviceIoType.Input, RefreshDevicePresentation, ProfileDialogIdentifier);
             OutputDeviceControlViewModel = new ProfileDeviceListControlViewModel(profile,
-                profile.GetDeviceConfigurationList(DeviceIoType.Output), DeviceIoType.Output, RefreshDevicePresentation, ProfileDialogIdentifier);
+                profile.GetProfileDeviceConfigurationList(DeviceIoType.Output), DeviceIoType.Output, RefreshDevicePresentation, ProfileDialogIdentifier);
         }
 
         public void RefreshDevicePresentation()
