@@ -316,10 +316,10 @@ namespace HidWizards.UCR.Core.Managers
             // A child profile is only meaningful together with its ancestors. Flatten the effective
             // device configuration set and effective mapping set into the exported root. Descendants
             // remain nested under that root and therefore inherit the same effective state after import.
-            clone.InputDeviceConfigurations = profile.GetDeviceConfigurationList(DeviceIoType.Input)
+            clone.InputDeviceConfigurations = profile.GetProfileDeviceConfigurationList(DeviceIoType.Input)
                 .Select(configuration => Clone(configuration, pluginTypes))
                 .ToList();
-            clone.OutputDeviceConfigurations = profile.GetDeviceConfigurationList(DeviceIoType.Output)
+            clone.OutputDeviceConfigurations = profile.GetProfileDeviceConfigurationList(DeviceIoType.Output)
                 .Select(configuration => Clone(configuration, pluginTypes))
                 .ToList();
             clone.Mappings = GetEffectiveMappings(profile)
