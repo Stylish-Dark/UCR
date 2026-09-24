@@ -59,6 +59,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public string ProfileDialogIdentifier => $"ProfileDialog-{Profile.Guid}";
         private bool _disposed;
+        private bool _lastKnownActiveState;
 
         public ProfileViewModel()
         {
@@ -68,6 +69,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ProfileViewModel(Profile profile)
         {
             Profile = profile;
+            _lastKnownActiveState = profile.IsActive();
             profile.Context.ActiveProfileChangedEvent += ContextOnActiveProfileChangedEvent;
             if (profile.PruneUndefinedFilterReferencesRecursive()) profile.Context.ContextChanged();
             PopulateMappingsList(profile);
@@ -95,6 +97,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void ContextOnActiveProfileChangedEvent(Profile profile)
         {
+            var isActive = Profile.IsActive();
+            if (isActive == _lastKnownActiveState) return;
+            _lastKnownActiveState = isActive;
+
             OnPropertyChanged(nameof(CanActivateProfile));
             OnPropertyChanged(nameof(CanDeactivateProfile));
             OnPropertyChanged(nameof(CanEditProfile));
@@ -114,7 +120,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             SelectedMappingSection = main;
             foreach (var profileMapping in profile.Mappings ?? new List<Mapping>())
             {
-                AddMapping(profileMapping, main);
+                AddMapping(profileMapping, main, false);
             }
 
             foreach (var group in profile.MappingGroups ?? new List<MappingGroup>())
@@ -122,8 +128,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (group == null) continue;
                 var section = new MappingGroupViewModel(this, group, false);
                 MappingSections.Add(section);
-                foreach (var mapping in group.Mappings ?? new List<Mapping>()) AddMapping(mapping, section);
+                foreach (var mapping in group.Mappings ?? new List<Mapping>()) AddMapping(mapping, section, false);
             }
+
+            // Build the flattened compatibility list once. Rebuilding it after every item turns
+            // profile opening into quadratic work on larger profiles.
+            RebuildFlatMappingsList();
+            RefreshMappingPositions();
         }
 
         public MappingViewModel AddMapping(string title)
@@ -167,7 +178,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return AddMapping(mapping, section);
         }
 
-        private MappingViewModel AddMapping(Mapping mapping, MappingGroupViewModel section)
+        private MappingViewModel AddMapping(Mapping mapping, MappingGroupViewModel section, bool refreshCollections = true)
         {
             if (mapping == null) return null;
             var mappingViewModel = new MappingViewModel(this, mapping);
@@ -178,9 +189,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             else
             {
                 section.Mappings.Add(mappingViewModel);
-                RebuildFlatMappingsList();
+                if (refreshCollections) RebuildFlatMappingsList();
             }
-            RefreshMappingPositions();
+            if (refreshCollections) RefreshMappingPositions();
             return mappingViewModel;
         }
 
@@ -230,7 +241,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (model == null) return null;
             var section = new MappingGroupViewModel(this, model, false);
             MappingSections.Add(section);
-            foreach (var mapping in model.Mappings ?? new List<Mapping>()) AddMapping(mapping, section);
+            foreach (var mapping in model.Mappings ?? new List<Mapping>()) AddMapping(mapping, section, false);
+            RebuildFlatMappingsList();
+            RefreshMappingPositions();
             SelectedMappingSection = section;
             OnPropertyChanged(nameof(MappingSections));
             return section;
