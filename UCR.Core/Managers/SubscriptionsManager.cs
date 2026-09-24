@@ -45,7 +45,7 @@ namespace HidWizards.UCR.Core.Managers
 
         public IReadOnlyList<Profile> GetActiveProfiles()
         {
-            return SubscriptionState?.ActiveProfiles ?? (IReadOnlyList<Profile>)new List<Profile>().AsReadOnly();
+            return SubscriptionState?.ActiveProfiles ?? _context.ActiveProfiles;
         }
 
         public bool IsProfileActive(Guid profileGuid)
@@ -78,8 +78,9 @@ namespace HidWizards.UCR.Core.Managers
         public bool DeactivateProfile(Profile profile)
         {
             if (profile == null) return true;
-            var targetProfiles = GetActiveProfiles().Where(active => active.Guid != profile.Guid).ToList();
-            if (targetProfiles.Count == GetActiveProfiles().Count) return true;
+            var activeProfiles = GetActiveProfiles();
+            var targetProfiles = activeProfiles.Where(active => active.Guid != profile.Guid).ToList();
+            if (targetProfiles.Count == activeProfiles.Count) return true;
             Logger.Info("Removing profile from active set: {" + profile.ProfileBreadCrumbs() + "}");
             return RebuildActiveProfiles(targetProfiles, false, profile);
         }
