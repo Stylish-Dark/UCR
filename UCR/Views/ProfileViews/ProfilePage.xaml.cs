@@ -501,7 +501,6 @@ namespace HidWizards.UCR.Views.ProfileViews
             var maximumTop = Math.Max(0.0, list.ActualHeight - _mappingDragSourceHeight);
             desiredTop = Math.Max(0.0, Math.Min(maximumTop, desiredTop));
 
-            sourceSlot.Translate.BeginAnimation(TranslateTransform.YProperty, null);
             sourceSlot.Translate.Y = desiredTop - sourceLayoutTop;
 
             var draggedCentre = desiredTop + (_mappingDragSourceHeight / 2.0);
@@ -523,7 +522,10 @@ namespace HidWizards.UCR.Views.ProfileViews
             }
 
             var count = _mappingDragMappings.Count;
-            _mappingDragTargetIndex = count == 0 ? -1 : Math.Max(0, Math.Min(count - 1, desiredIndex));
+            var targetIndex = count == 0 ? -1 : Math.Max(0, Math.Min(count - 1, desiredIndex));
+            if (targetIndex == _mappingDragTargetIndex) return;
+
+            _mappingDragTargetIndex = targetIndex;
             UpdateMappingNeighbourShifts();
         }
 
