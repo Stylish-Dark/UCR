@@ -333,7 +333,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             Plugins.Remove(pluginViewModel);
             RefreshHeaderState();
             RefreshCollapsedSummary();
-            ProfileViewModel.RefreshFilterNames();
             ProfileViewModel.RefreshFilterReferenceLabels();
             if (Plugins.Count == 0) DeviceBindings.Clear();
         }
