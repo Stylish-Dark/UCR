@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Management;
+using System.Threading.Tasks;
 using System.Windows.Threading;
 using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Models;
@@ -27,6 +28,7 @@ namespace HidWizards.UCR.Utilities
         private readonly Dictionary<Guid, DateTime> _nextActivationAttemptUtc = new Dictionary<Guid, DateTime>();
         private readonly HashSet<Guid> _ownedProfileGuids = new HashSet<Guid>();
         private bool _autoOperationInProgress;
+        private bool _evaluationInProgress;
         private bool _disposed;
 
         public AutoProfileMonitor(Context context)
@@ -37,18 +39,54 @@ namespace HidWizards.UCR.Utilities
             _timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = PollInterval };
             _timer.Tick += OnTimerTick;
             _timer.Start();
-            Evaluate();
+            OnTimerTick(this, EventArgs.Empty);
         }
 
-        private void OnTimerTick(object sender, EventArgs e) => Evaluate();
+        private async void OnTimerTick(object sender, EventArgs e)
+        {
+            if (_disposed || _autoOperationInProgress || _evaluationInProgress) return;
 
-        private void Evaluate()
+            _evaluationInProgress = true;
+            try
+            {
+                var profiles = EnumerateProfiles(_context.Profiles).ToList();
+                var enabledRules = profiles
+                    .Where(profile => profile != null && profile.AutoActivateEnabled)
+                    .SelectMany(GetRules)
+                    .Where(IsConfigured)
+                    .ToList();
+
+                // Do not enumerate every process on the machine when auto-apply is unused.
+                if (enabledRules.Count == 0)
+                {
+                    ApplyEvaluation(profiles, new List<RunningApplication>());
+                    return;
+                }
+
+                var includeCommandLines = enabledRules.Any(rule => !string.IsNullOrWhiteSpace(rule.Arguments));
+
+                // Process enumeration (especially Win32_Process/WMI for command lines) can block for
+                // noticeable periods. Keep that work off the WPF dispatcher, then resume here for the
+                // actual profile state changes and UI-facing events.
+                var runningApplications = await Task.Run(() => GetRunningApplications(includeCommandLines));
+                if (_disposed) return;
+
+                ApplyEvaluation(profiles, runningApplications);
+            }
+            catch (Exception exception)
+            {
+                Logger.Error("Auto-profile evaluation failed.", exception);
+            }
+            finally
+            {
+                _evaluationInProgress = false;
+            }
+        }
+
+        private void ApplyEvaluation(IList<Profile> profiles, IList<RunningApplication> runningApplications)
         {
             if (_disposed || _autoOperationInProgress) return;
 
-            var profiles = EnumerateProfiles(_context.Profiles).ToList();
-            var rules = profiles.SelectMany(GetRules).Where(IsConfigured).ToList();
-            var runningApplications = GetRunningApplications(rules.Any(rule => !string.IsNullOrWhiteSpace(rule.Arguments)));
             ClearExpiredRuntimeState(profiles, runningApplications);
 
             var eligibleProfiles = profiles.Where(profile => IsEligible(profile, runningApplications)).ToList();
@@ -246,17 +284,20 @@ namespace HidWizards.UCR.Utilities
         {
             var result = new List<RunningApplication>();
             using (var searcher = new ManagementObjectSearcher("SELECT Name, CommandLine FROM Win32_Process"))
+            using (var collection = searcher.Get())
             {
-                var collection = searcher.Get();
                 foreach (ManagementObject process in collection)
                 {
-                    var name = NormalizeExecutableName(process["Name"] as string);
-                    if (string.IsNullOrWhiteSpace(name)) continue;
-                    result.Add(new RunningApplication
+                    using (process)
                     {
-                        ExecutableName = name,
-                        CommandLine = process["CommandLine"] as string ?? string.Empty
-                    });
+                        var name = NormalizeExecutableName(process["Name"] as string);
+                        if (string.IsNullOrWhiteSpace(name)) continue;
+                        result.Add(new RunningApplication
+                        {
+                            ExecutableName = name,
+                            CommandLine = process["CommandLine"] as string ?? string.Empty
+                        });
+                    }
                 }
             }
             return result;
