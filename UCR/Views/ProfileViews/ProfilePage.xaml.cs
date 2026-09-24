@@ -32,6 +32,7 @@ namespace HidWizards.UCR.Views.ProfileViews
         private int _mappingDragOriginalIndex = -1;
         private readonly Dictionary<MappingViewModel, MappingDragSlot> _mappingDragSlots =
             new Dictionary<MappingViewModel, MappingDragSlot>();
+        private List<MappingViewModel> _mappingDragMappings = new List<MappingViewModel>();
         private ListViewItem _mappingDragContainer;
         private ListView _mappingDragListView;
         private double _mappingDragGrabOffsetY;
@@ -417,7 +418,8 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (sourceContainer == null || sourceContainer.ActualWidth <= 0 || sourceContainer.ActualHeight <= 0) return false;
 
             _mappingDragSlots.Clear();
-            foreach (var mapping in GetDragMappings())
+            _mappingDragMappings = list.Items.OfType<MappingViewModel>().ToList();
+            foreach (var mapping in _mappingDragMappings)
             {
                 var container = list.ItemContainerGenerator.ContainerFromItem(mapping) as ListViewItem;
                 if (container == null || container.ActualHeight <= 0)
@@ -504,7 +506,7 @@ namespace HidWizards.UCR.Views.ProfileViews
 
             var draggedCentre = desiredTop + (_mappingDragSourceHeight / 2.0);
             var desiredIndex = 0;
-            foreach (var mapping in GetDragMappings())
+            foreach (var mapping in _mappingDragMappings)
             {
                 if (ReferenceEquals(mapping, source)) continue;
 
@@ -520,7 +522,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                 break;
             }
 
-            var count = GetDragMappings().Count;
+            var count = _mappingDragMappings.Count;
             _mappingDragTargetIndex = count == 0 ? -1 : Math.Max(0, Math.Min(count - 1, desiredIndex));
             UpdateMappingNeighbourShifts();
         }
@@ -530,7 +532,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             var source = _mappingDragSource;
             if (source == null) return;
 
-            var mappings = GetDragMappings();
+            var mappings = _mappingDragMappings;
             var sourceIndex = _mappingDragOriginalIndex;
             var targetIndex = _mappingDragTargetIndex;
             if (sourceIndex < 0 || targetIndex < 0) return;
@@ -651,6 +653,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             }
 
             _mappingDragSlots.Clear();
+            _mappingDragMappings.Clear();
             _mappingDragContainer = null;
             _mappingDragTargetIndex = -1;
             _mappingDragSourceHeight = 0;
@@ -663,11 +666,6 @@ namespace HidWizards.UCR.Views.ProfileViews
             _mappingDragSource = null;
             _mappingDragOriginalIndex = -1;
             _mappingDragListView = null;
-        }
-
-        private List<MappingViewModel> GetDragMappings()
-        {
-            return _mappingDragListView?.Items.OfType<MappingViewModel>().ToList() ?? new List<MappingViewModel>();
         }
 
         private void AutoScrollMappingList()
