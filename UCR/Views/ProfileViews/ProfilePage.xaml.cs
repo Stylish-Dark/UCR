@@ -154,8 +154,8 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void DispatcherTimerOnTick(object sender, EventArgs e)
         {
-            if (!IsVisible) return;
-            DeviceBindingViewModels.ForEach(d => d.CurrentValueChanged());
+            if (!IsVisible || DeviceBindingViewModels == null) return;
+            foreach (var binding in DeviceBindingViewModels) binding.CurrentValueChanged();
         }
 
         #endregion
