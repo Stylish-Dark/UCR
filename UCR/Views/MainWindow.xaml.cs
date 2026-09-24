@@ -296,6 +296,11 @@ namespace HidWizards.UCR.Views
             }
         }
 
+        private void StopAllProfiles(object sender, RoutedEventArgs e)
+        {
+            DeactivateCurrentProfile();
+        }
+
         private void AddProfile(object sender, RoutedEventArgs e)
         {
             var profile = Context.ProfilesManager.CreateProfile("New profile",
