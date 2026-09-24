@@ -259,6 +259,30 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return MappingSections?.FirstOrDefault(section => section.Mappings.Contains(mappingViewModel));
         }
 
+        public MappingGroupViewModel GetMappingSection(MappingViewModel mappingViewModel)
+        {
+            return FindSection(mappingViewModel);
+        }
+
+        public bool MoveMappingToSection(MappingViewModel mappingViewModel, MappingGroupViewModel targetSection)
+        {
+            if (mappingViewModel == null || targetSection == null || Profile.IsActive()) return false;
+
+            var sourceSection = FindSection(mappingViewModel);
+            if (sourceSection == null) return false;
+            if (ReferenceEquals(sourceSection, targetSection)) return true;
+
+            var targetGroup = targetSection.IsMain ? null : targetSection.Model;
+            if (!Profile.MoveMapping(mappingViewModel.Mapping, targetGroup, targetSection.Mappings.Count)) return false;
+
+            sourceSection.Mappings.Remove(mappingViewModel);
+            targetSection.Mappings.Add(mappingViewModel);
+            SelectedMappingSection = targetSection;
+            RebuildFlatMappingsList();
+            RefreshMappingPositions();
+            return true;
+        }
+
         public bool CanMoveMapping(MappingViewModel mappingViewModel, int offset)
         {
             if (mappingViewModel == null || Profile.IsActive()) return false;
