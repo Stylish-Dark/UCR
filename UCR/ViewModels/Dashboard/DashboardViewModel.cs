@@ -20,6 +20,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public Visibility ProfileDetailsActive => SelectedProfileItem != null ? Visibility.Visible : Visibility.Hidden;
         public bool CanActivateProfile => SelectedProfileItem?.Profile != null;
         public bool CanDeactivateProfile => SelectedProfileItem?.Profile?.IsActive() == true;
+        public bool CanDeactivateAllProfiles => Context != null && Context.ActiveProfiles.Count > 0;
         public ProfileDeviceListControlViewModel InputDeviceControlViewModel { get; set; }
         public ProfileDeviceListControlViewModel OutputDeviceControlViewModel { get; set; }
 
@@ -184,6 +185,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             OnPropertyChanged(nameof(ActiveProfileBreadCrumbs));
             OnPropertyChanged(nameof(CanDeactivateProfile));
             OnPropertyChanged(nameof(CanActivateProfile));
+            OnPropertyChanged(nameof(CanDeactivateAllProfiles));
         }
 
         [NotifyPropertyChangedInvocator]
