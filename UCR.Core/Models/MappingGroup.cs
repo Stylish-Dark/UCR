@@ -25,7 +25,17 @@ namespace HidWizards.UCR.Core.Models
             {
                 if (_enabled == value) return;
                 _enabled = value;
-                Profile?.Context?.ContextChanged();
+                var context = Profile?.Context;
+                context?.ContextChanged();
+
+                // Mapping groups are runtime switches, not just editor metadata. If their profile is
+                // already running, rebuild the composite subscription state without refreshing devices
+                // so a dashboard toggle takes effect immediately and does not disturb unrelated devices.
+                if (Profile != null && context?.SubscriptionsManager != null &&
+                    context.SubscriptionsManager.IsProfileActive(Profile.Guid))
+                {
+                    context.SubscriptionsManager.RefreshActiveProfile(Profile);
+                }
             }
         }
 
