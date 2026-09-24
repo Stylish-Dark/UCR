@@ -40,6 +40,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<PluginRouteOption> VariantOptions { get; }
 
         private readonly Profile _profile;
+        private bool _lastKnownActiveState;
         private readonly List<PluginRouteOption> _routeOptions;
         private readonly HashSet<DeviceBindingCategory> _supportedInputCategories;
         private bool _disposed;
@@ -94,6 +95,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public PluginToolboxViewModel(Profile profile, List<Plugin> pluginList)
         {
             _profile = profile;
+            _lastKnownActiveState = profile?.IsActive() == true;
             _routeOptions = new List<PluginRouteOption>();
             _supportedInputCategories = GetSupportedInputCategories();
             InputOptions = new ObservableCollection<string>();
@@ -321,6 +323,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void ContextOnActiveProfileChangedEvent(Profile profile)
         {
+            var isActive = _profile?.IsActive() == true;
+            if (isActive == _lastKnownActiveState) return;
+            _lastKnownActiveState = isActive;
+
             OnPropertyChanged(nameof(IsEnabled));
             OnPropertyChanged(nameof(CanAddMapping));
         }
