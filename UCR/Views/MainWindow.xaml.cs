@@ -108,7 +108,6 @@ namespace HidWizards.UCR.Views
         // TODO Deprecated, replace with property notifications
         private void ReloadProfileTree()
         {
-            Context.ProfilesManager.MigrateLegacyChildrenToMappingGroups();
             var profileTree = ProfileItem.GetProfileTree(Context.Profiles);
             _dashboardViewModel.ReplaceProfileList(profileTree);
         }
