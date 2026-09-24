@@ -126,6 +126,9 @@
                             </materialDesign:PackIcon>
                         </Grid>
                     </Button>
+                    <Button IsEnabled="{Binding CanDeactivateAllProfiles}" ToolTip="Stop ALL profiles" Click="StopAllProfiles">
+                        <materialDesign:PackIcon Kind="Stop" Foreground="#FF8B8B"/>
+                    </Button>
                     <Separator />
                     <Button ToolTip="Import / Export" Click="ImportExport_OnClick">
                         <materialDesign:PackIcon Kind="FileExport"/>
@@ -364,6 +367,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
                             <Border Grid.Row="0" Grid.ColumnSpan="2" Height="3" VerticalAlignment="Top" Background="{DynamicResource PrimaryHueMidBrush}"/>
@@ -469,7 +473,34 @@
                                     </ScrollViewer>
                                 </Grid>
                             </Border>
-                            <Grid Grid.Row="3" Grid.ColumnSpan="2" Margin="0 0 0 4">
+                            <Border Grid.Row="3" Grid.ColumnSpan="2" Margin="8 0 8 6" Padding="8 7"
+                                    Background="#212121" CornerRadius="2" BorderBrush="#363636" BorderThickness="1">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0 0 0 5">
+                                        <materialDesign:PackIcon Kind="FolderOutline" Width="16" Height="16" Margin="0 0 6 0"
+                                                                 Foreground="{DynamicResource PrimaryHueLightBrush}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Mapping groups" FontSize="13.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding SelectedProfileItem.Profile.MappingGroups.Count, StringFormat={}  {0}}" FontSize="11.5"
+                                                   Opacity="0.45" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <ScrollViewer Grid.Row="1" MaxHeight="92" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                        <ItemsControl ItemsSource="{Binding SelectedProfileItem.Profile.MappingGroups}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox Margin="2 2" Foreground="White" Content="{Binding Title}"
+                                                              IsChecked="{Binding Enabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                              ToolTip="Toggle this mapping group. If the profile is running, the change applies immediately."/>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Grid>
+                            </Border>
+                            <Grid Grid.Row="4" Grid.ColumnSpan="2" Margin="0 0 0 4">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="*"/>
