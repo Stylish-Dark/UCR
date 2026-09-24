@@ -18,7 +18,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public event PropertyChangedEventHandler PropertyChanged;
         public string Title => "Universal Control Remapper";
         public Visibility ProfileDetailsActive => SelectedProfileItem != null ? Visibility.Visible : Visibility.Hidden;
-        public bool CanActivateProfile => SelectedProfileItem?.Profile != null;
+        public bool CanActivateProfile => SelectedProfileItem?.Profile != null && !SelectedProfileItem.Profile.IsActive();
         public bool CanDeactivateProfile => SelectedProfileItem?.Profile?.IsActive() == true;
         public bool CanDeactivateAllProfiles => Context != null && Context.ActiveProfiles.Count > 0;
         public ProfileDeviceListControlViewModel InputDeviceControlViewModel { get; set; }
@@ -30,17 +30,22 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             get => _selectedProfileItem;
             set
             {
+                if (ReferenceEquals(_selectedProfileItem, value)) return;
                 _selectedProfileItem = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(ProfileDetailsActive));
                 OnPropertyChanged(nameof(CanActivateProfile));
                 OnPropertyChanged(nameof(CanDeactivateProfile));
+
                 if (_selectedProfileItem == null)
                 {
                     DisposeDeviceLists();
                     OnPropertyChanged(nameof(InputDeviceControlViewModel));
                     OnPropertyChanged(nameof(OutputDeviceControlViewModel));
+                    return;
                 }
+
+                BuildDeviceLists();
             }
         }
 
@@ -79,7 +84,6 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             context.ProfilesManager.MigrateLegacyChildrenToMappingGroups();
             ProfileList = ProfileItem.GetProfileTree(context.Profiles);
             RebuildProfileView();
-            PropertyChanged += OnPropertyChanged;
             context.ActiveProfileChangedEvent += OnActiveProfileChangedEvent;
             context.DeviceAliasesChangedEvent += OnDeviceAliasesChangedEvent;
         }
@@ -125,16 +129,9 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             return null;
         }
 
-        private void OnPropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            if (nameof(SelectedProfileItem).Equals(e.PropertyName) && SelectedProfileItem != null)
-            {
-                BuildDeviceLists();
-            }
-        }
-
         private void BuildDeviceLists()
         {
+            if (SelectedProfileItem?.Profile == null) return;
             DisposeDeviceLists();
             InputDeviceControlViewModel = new ProfileDeviceListControlViewModel(SelectedProfileItem.Profile,
                 GetDeviceConfigurations(SelectedProfileItem.Profile, DeviceIoType.Input), DeviceIoType.Input, RefreshProfilePresentation);
@@ -154,9 +151,9 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             OutputDeviceControlViewModel = null;
         }
 
-        private List<DeviceConfiguration> GetDeviceConfigurations(Profile profile, DeviceIoType deviceIoType)
+        private static List<DeviceConfiguration> GetDeviceConfigurations(Profile profile, DeviceIoType deviceIoType)
         {
-            return SelectedProfileItem.Profile.GetDeviceConfigurationList(deviceIoType);
+            return profile?.GetDeviceConfigurationList(deviceIoType) ?? new List<DeviceConfiguration>();
         }
 
 
