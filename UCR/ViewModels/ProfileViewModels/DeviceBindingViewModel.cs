@@ -67,6 +67,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             get => _bindingEnabled;
             set
             {
+                if (_bindingEnabled == value) return;
                 _bindingEnabled = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(PreviewValue));
@@ -296,7 +297,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             CurrentValue = deviceBinding.CurrentValue;
 
-            if (propertyChangedEventArgs.PropertyName.Equals(nameof(DeviceBinding.IsInBindMode)))
+            if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.IsInBindMode), StringComparison.Ordinal))
             {
                 var bindingManager = deviceBinding.Profile?.Context?.BindingManager;
                 if (bindingManager != null)
@@ -310,8 +311,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(ShowButtonPreview));
             }
 
-            if (propertyChangedEventArgs.PropertyName.Equals(nameof(DeviceBinding.IsBound))
-                || propertyChangedEventArgs.PropertyName.Equals(nameof(DeviceBinding.IsInBindMode)))
+            if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.IsBound), StringComparison.Ordinal)
+                || string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.IsInBindMode), StringComparison.Ordinal))
             {
                 BindModeProgress = 0;
                 OnPropertyChanged(nameof(BindButtonText));
@@ -319,7 +320,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(ShowBindMode));
             }
 
-            if (propertyChangedEventArgs.PropertyName.Equals(nameof(DeviceBinding.IsBound)))
+            if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.IsBound), StringComparison.Ordinal))
             {
                 SetSelectDevice();
                 OnPropertyChanged(nameof(SelectedDevice));
@@ -328,7 +329,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(ShowInvertInput));
                 OnPropertyChanged(nameof(InvertInput));
             }
-            if (propertyChangedEventArgs.PropertyName.Equals(nameof(DeviceBinding.DeviceConfigurationGuid)))
+            if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.DeviceConfigurationGuid), StringComparison.Ordinal))
             {
                 OnPropertyChanged(nameof(BindButtonText));
                 OnPropertyChanged(nameof(ShowBlock));
@@ -336,11 +337,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(ShowInvertInput));
                 OnPropertyChanged(nameof(InvertInput));
             }
-            if (propertyChangedEventArgs.PropertyName.Equals(nameof(DeviceBinding.Block)))
+            if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.Block), StringComparison.Ordinal))
             {
                 OnPropertyChanged(nameof(Block));
             }
-            if (propertyChangedEventArgs.PropertyName.Equals(nameof(DeviceBinding.InvertInput)))
+            if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.InvertInput), StringComparison.Ordinal))
             {
                 OnPropertyChanged(nameof(InvertInput));
             }
