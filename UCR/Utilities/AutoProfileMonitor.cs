@@ -288,7 +288,7 @@ namespace HidWizards.UCR.Utilities
             {
                 foreach (ManagementObject process in collection)
                 {
-                    using (process)
+                    try
                     {
                         var name = NormalizeExecutableName(process["Name"] as string);
                         if (string.IsNullOrWhiteSpace(name)) continue;
@@ -297,6 +297,10 @@ namespace HidWizards.UCR.Utilities
                             ExecutableName = name,
                             CommandLine = process["CommandLine"] as string ?? string.Empty
                         });
+                    }
+                    finally
+                    {
+                        process.Dispose();
                     }
                 }
             }
