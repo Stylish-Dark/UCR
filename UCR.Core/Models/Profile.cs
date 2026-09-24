@@ -359,6 +359,35 @@ namespace HidWizards.UCR.Core.Models
             return true;
         }
 
+        public bool MoveMapping(Mapping mapping, MappingGroup targetGroup, int targetIndex = -1)
+        {
+            if (mapping == null) return false;
+
+            var source = Mappings.Contains(mapping)
+                ? Mappings
+                : GetMappingGroup(mapping)?.Mappings;
+            var target = targetGroup == null ? Mappings : targetGroup.Mappings;
+            if (source == null || target == null) return false;
+            if (targetGroup != null && (MappingGroups == null || !MappingGroups.Contains(targetGroup))) return false;
+
+            var sourceIndex = source.IndexOf(mapping);
+            if (sourceIndex < 0) return false;
+
+            if (ReferenceEquals(source, target))
+            {
+                if (target.Count <= 1) return true;
+                if (targetIndex < 0) targetIndex = target.Count - 1;
+                targetIndex = Math.Max(0, Math.Min(target.Count - 1, targetIndex));
+                return targetIndex == sourceIndex || MoveMapping(mapping, targetIndex);
+            }
+
+            source.RemoveAt(sourceIndex);
+            if (targetIndex < 0 || targetIndex > target.Count) targetIndex = target.Count;
+            target.Insert(targetIndex, mapping);
+            Context?.ContextChanged();
+            return true;
+        }
+
         private string GetUniqueMappingGroupTitle(string requested)
         {
             var baseTitle = string.IsNullOrWhiteSpace(requested) ? "Group" : requested.Trim();
