@@ -29,6 +29,41 @@ namespace HidWizards.UCR.Views.Controls
             (DataContext as MappingViewModel)?.MoveDown();
         }
 
+        private void MoveSection_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mappingViewModel = DataContext as MappingViewModel;
+            var button = sender as Button;
+            if (mappingViewModel == null || button == null || !mappingViewModel.ButtonsEnabled) return;
+
+            var profileViewModel = mappingViewModel.ProfileViewModel;
+            var currentSection = profileViewModel.GetMappingSection(mappingViewModel);
+            var menu = CreateDarkContextMenu(button);
+            menu.Placement = PlacementMode.Bottom;
+
+            foreach (var section in profileViewModel.MappingSections)
+            {
+                var capturedSection = section;
+                var item = new MenuItem
+                {
+                    Header = (ReferenceEquals(currentSection, capturedSection) ? "✓  " : string.Empty) + capturedSection.Title,
+                    IsEnabled = !ReferenceEquals(currentSection, capturedSection),
+                    Foreground = Brushes.White,
+                    Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 14, 6)
+                };
+                item.Click += (clickSender, clickArgs) =>
+                    profileViewModel.MoveMappingToSection(mappingViewModel, capturedSection);
+                menu.Items.Add(item);
+            }
+
+            menu.Closed += (closedSender, closedArgs) =>
+            {
+                if (ReferenceEquals(button.ContextMenu, menu)) button.ContextMenu = null;
+            };
+            button.ContextMenu = menu;
+            menu.IsOpen = true;
+        }
+
         private void Remove_OnClick(object sender, RoutedEventArgs e)
         {
             var mappingViewModel = DataContext as MappingViewModel;
