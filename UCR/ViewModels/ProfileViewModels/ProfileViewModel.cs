@@ -262,7 +262,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (ReferenceEquals(SelectedMappingSection, section))
                 SelectedMappingSection = MappingSections.FirstOrDefault(candidate => candidate.IsMain);
             RefreshMappingPositions();
-            RefreshFilterNames();
             RefreshFilterReferenceLabels();
             return true;
         }
@@ -468,7 +467,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 section?.Mappings.Remove(mappingViewModel);
                 MappingsList.Remove(mappingViewModel);
                 RefreshMappingPositions();
-                RefreshFilterNames();
                 RefreshFilterReferenceLabels();
             }
         }
