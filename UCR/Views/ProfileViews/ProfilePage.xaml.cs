@@ -91,11 +91,20 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void ProfileDevicesScrollViewer_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
+            ScrollViewerWithMouseWheel(sender as ScrollViewer, e);
+        }
+
+        private void MappingSectionsScrollViewer_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            ScrollViewerWithMouseWheel(sender as ScrollViewer, e);
+        }
+
+        private static void ScrollViewerWithMouseWheel(ScrollViewer viewer, MouseWheelEventArgs e)
+        {
             if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control) return;
-            var viewer = sender as ScrollViewer;
             if (viewer == null || viewer.ScrollableHeight <= 0) return;
 
-            var step = Math.Max(24.0, Math.Min(60.0, Math.Abs(e.Delta) / 2.5));
+            var step = Math.Max(24.0, Math.Min(72.0, Math.Abs(e.Delta) / 2.2));
             viewer.ScrollToVerticalOffset(viewer.VerticalOffset + (e.Delta < 0 ? step : -step));
             e.Handled = true;
         }
@@ -105,10 +114,10 @@ namespace HidWizards.UCR.Views.ProfileViews
         private void StartGuiTimer()
         {
             if (!Profile.IsActive() || DispatcherTimer != null) return;
-            // Preview bars are informational UI only. Keep their polling below input/render work and
-            // cap it at ~30 Hz instead of driving WPF at ~67 Hz.
+            // Preview bars are informational UI only. Keep them well below input/render work;
+            // 20 Hz is responsive enough for meters without making the editor fight the remapper.
             DispatcherTimer = new DispatcherTimer(DispatcherPriority.Background);
-            DispatcherTimer.Interval = TimeSpan.FromMilliseconds(33);
+            DispatcherTimer.Interval = TimeSpan.FromMilliseconds(50);
             DispatcherTimer.Tick += DispatcherTimerOnTick;
 
             DeviceBindingViewModels = new List<DeviceBindingViewModel>();
