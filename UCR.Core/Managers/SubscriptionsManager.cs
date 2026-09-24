@@ -67,6 +67,14 @@ namespace HidWizards.UCR.Core.Managers
             return RebuildActiveProfiles(targetProfiles, refreshDevices, profile);
         }
 
+        public bool RefreshActiveProfile(Profile profile)
+        {
+            if (profile == null || !IsProfileActive(profile.Guid)) return false;
+            Logger.Info("Refreshing active profile after runtime configuration change: {" +
+                        profile.ProfileBreadCrumbs() + "}");
+            return RebuildActiveProfiles(GetActiveProfiles().ToList(), false, profile);
+        }
+
         public bool DeactivateProfile(Profile profile)
         {
             if (profile == null) return true;
