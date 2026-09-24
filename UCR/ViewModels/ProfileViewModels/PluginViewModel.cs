@@ -40,7 +40,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private void PluginOnFilterDefinitionChanged(string oldName, string newName)
         {
             Logger.Info("Filter definition changed: '" + (oldName ?? "") + "' -> '" + (newName ?? "") + "' in mapping " + MappingViewModel.MappingTitle);
-            MappingViewModel.ProfileViewModel.RefreshFilterNames();
             MappingViewModel.ProfileViewModel.RefreshFilterReferenceLabels();
             MappingViewModel.RefreshCollapsedSummary();
         }
