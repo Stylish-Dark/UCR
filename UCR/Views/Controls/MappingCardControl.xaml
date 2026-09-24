@@ -277,6 +277,10 @@
                                 IsEnabled="{Binding ButtonsEnabled}" Click="AddPlugin_OnClick">
                             <materialDesign:PackIcon Kind="LibraryAdd" Width="17" Height="17"/>
                         </Button>
+                        <Button ToolTip="Move this mapping to Main or another group. Stop the active profile to edit." ToolTipService.ShowOnDisabled="True"
+                                Style="{StaticResource UcrMappingActionButton}" IsEnabled="{Binding ButtonsEnabled}" Click="MoveSection_OnClick">
+                            <TextBlock Text="↪" FontSize="17" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </Button>
                         <Button ToolTip="Remove mapping. Stop the active profile to edit." ToolTipService.ShowOnDisabled="True" Style="{StaticResource UcrMappingDeleteButton}"
                                 IsEnabled="{Binding ButtonsEnabled}" Click="Remove_OnClick">
                             <materialDesign:PackIcon Kind="Trash" Width="17" Height="17"/>
