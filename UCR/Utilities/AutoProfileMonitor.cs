@@ -71,6 +71,9 @@ namespace HidWizards.UCR.Utilities
                 var runningApplications = await Task.Run(() => GetRunningApplications(includeCommandLines));
                 if (_disposed) return;
 
+                // The dispatcher was free while the scan ran, so profiles/rules may have been edited
+                // or removed. Re-resolve the live profile set before applying any state changes.
+                profiles = EnumerateProfiles(_context.Profiles).ToList();
                 ApplyEvaluation(profiles, runningApplications);
             }
             catch (Exception exception)
