@@ -643,7 +643,8 @@
 
                     <ScrollViewer Grid.Row="2" x:Name="MappingSectionsScrollViewer"
                                   VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                                  CanContentScroll="False" Padding="0 1 0 4">
+                                  CanContentScroll="False" Padding="0 1 0 4"
+                                  PreviewMouseWheel="MappingSectionsScrollViewer_OnPreviewMouseWheel">
                         <ItemsControl x:Name="MappingSectionsItemsControl" ItemsSource="{Binding MappingSections}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
