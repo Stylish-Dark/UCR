@@ -145,6 +145,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+        private bool _lastKnownActiveState;
         private CancellationTokenSource _quickOutputDetectionCancellation;
         private DispatcherTimer _quickOutputDetectionTimer;
         private DateTime _quickOutputDetectionDeadlineUtc;
@@ -203,6 +204,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ProfileViewModel = profileViewModel;
             Mapping = mapping;
             IsExpanded = false;
+            _lastKnownActiveState = profileViewModel.Profile.IsActive();
             profileViewModel.Profile.Context.ActiveProfileChangedEvent += ContextOnActiveProfileChangedEvent;
             DeviceBindings = new ObservableCollection<DeviceBindingViewModel>();
             PopulateDeviceBindingsViewModels();
@@ -212,6 +214,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void ContextOnActiveProfileChangedEvent(Profile profile)
         {
+            var isActive = ProfileViewModel.Profile.IsActive();
+            if (isActive == _lastKnownActiveState) return;
+            _lastKnownActiveState = isActive;
+
             OnPropertyChanged(nameof(ButtonsEnabled));
             OnPropertyChanged(nameof(CanMoveUp));
             OnPropertyChanged(nameof(CanMoveDown));
