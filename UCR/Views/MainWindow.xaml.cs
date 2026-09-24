@@ -24,7 +24,6 @@ using HidWizards.UCR.Views.Dialogs;
 using MaterialDesignThemes.Wpf;
 using Microsoft.Win32;
 using Forms = System.Windows.Forms;
-using ProfileWindow = HidWizards.UCR.Views.ProfileViews.ProfileWindow;
 using ProfilePage = HidWizards.UCR.Views.ProfileViews.ProfilePage;
 
 namespace HidWizards.UCR.Views
@@ -35,8 +34,6 @@ namespace HidWizards.UCR.Views
         private Context Context { get; set; }
         private readonly DashboardViewModel _dashboardViewModel;
         private CloseState WindowCloseState { get; set; }
-        private Dictionary<Guid, ProfileWindow> ProfileWindows;
-        private readonly HashSet<Guid> _profileWindowsHiddenToTray = new HashSet<Guid>();
         private Point _profileDragStartPoint;
         private ProfileItem _draggedProfileItem;
         private Forms.NotifyIcon _trayIcon;
@@ -57,7 +54,6 @@ namespace HidWizards.UCR.Views
             _dashboardViewModel = new DashboardViewModel(context);
             DataContext = _dashboardViewModel;
             Context = context;
-            ProfileWindows = new Dictionary<Guid, ProfileWindow>();
             InitializeComponent();
             InitializeTrayIcon();
             _autoProfileMonitor = new AutoProfileMonitor(context);
@@ -362,37 +358,6 @@ namespace HidWizards.UCR.Views
                 RootDialog.Visibility = Visibility.Visible;
                 MainToolbarHost.Visibility = Visibility.Visible;
                 ReloadProfileTree();
-            }
-        }
-
-        private static void SurfaceProfileWindow(ProfileWindow window)
-        {
-            SurfaceAuxiliaryWindow(window);
-        }
-
-        private static void SurfaceAuxiliaryWindow(Window window)
-        {
-            if (window == null) return;
-            if (!window.IsVisible) window.Show();
-            if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
-            window.Topmost = true;
-            try
-            {
-                window.Activate();
-                window.Focus();
-            }
-            finally
-            {
-                window.Topmost = false;
-            }
-        }
-
-        private void OnProfileWindowClosed(object sender, EventArgs e)
-        {
-            if (sender is ProfileWindow window)
-            {
-                _profileWindowsHiddenToTray.Remove(window.ProfileGuid);
-                ProfileWindows.Remove(window.ProfileGuid);
             }
         }
 
@@ -704,7 +669,7 @@ namespace HidWizards.UCR.Views
                 var importedCount = Context.ProfilesManager.ImportProfileList(fileName, mode);
                 if (mode == ProfileListImportMode.Replace)
                 {
-                    CloseAllProfileWindows();
+                    CloseNavigationPage();
                     _dashboardViewModel.SelectedProfileItem = null;
                 }
                 ReloadProfileTree();
@@ -718,17 +683,10 @@ namespace HidWizards.UCR.Views
             }
         }
 
-        private void CloseAllProfileWindows(bool showDashboard = true)
-        {
-            CloseNavigationPage(showDashboard);
-            var windows = new List<ProfileWindow>(ProfileWindows.Values);
-            foreach (var profileWindow in windows) profileWindow.Close();
-        }
-
         internal void PrepareForShutdown()
         {
             _autoProfileMonitor?.Dispose();
-            CloseAllProfileWindows(false);
+            CloseNavigationPage(false);
             if (_trayIcon != null) _trayIcon.Visible = false;
         }
 
@@ -785,15 +743,6 @@ namespace HidWizards.UCR.Views
 
         private void HideToTray()
         {
-            _profileWindowsHiddenToTray.Clear();
-            foreach (var profileWindow in ProfileWindows.Values)
-            {
-                if (!profileWindow.IsVisible) continue;
-
-                _profileWindowsHiddenToTray.Add(profileWindow.ProfileGuid);
-                profileWindow.Hide();
-            }
-
             _trayIcon.Visible = true;
             Hide();
         }
@@ -802,29 +751,7 @@ namespace HidWizards.UCR.Views
         {
             Show();
             if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
-
-            ProfileWindow restoredProfile = null;
-            foreach (var profileGuid in _profileWindowsHiddenToTray)
-            {
-                if (ProfileWindows.TryGetValue(profileGuid, out var profileWindow))
-                {
-                    profileWindow.Show();
-                    restoredProfile = profileWindow;
-                }
-            }
-            _profileWindowsHiddenToTray.Clear();
-
-            if (restoredProfile != null)
-            {
-                SurfaceProfileWindow(restoredProfile);
-            }
-            else
-            {
-                var visibleProfile = ProfileWindows.Values.FirstOrDefault(window => window.IsVisible);
-                if (visibleProfile != null) SurfaceProfileWindow(visibleProfile);
-                else BringToForeground();
-            }
-
+            BringToForeground();
             _trayIcon.Visible = true;
         }
 
