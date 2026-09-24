@@ -26,8 +26,9 @@ namespace HidWizards.UCR.Core
 
         /* Runtime */
         [XmlIgnore] public Profile ActiveProfile { get; internal set; }
-        [XmlIgnore] public IReadOnlyList<Profile> ActiveProfiles => _activeProfiles.AsReadOnly();
+        [XmlIgnore] public IReadOnlyList<Profile> ActiveProfiles => _activeProfilesView ?? (_activeProfilesView = _activeProfiles.AsReadOnly());
         private readonly List<Profile> _activeProfiles = new List<Profile>();
+        private IReadOnlyList<Profile> _activeProfilesView;
         [XmlIgnore] public ProfilesManager ProfilesManager { get; set; }
         [XmlIgnore] public DevicesManager DevicesManager { get; set; }
         [XmlIgnore] public SubscriptionsManager SubscriptionsManager { get; set; }
