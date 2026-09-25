@@ -331,6 +331,9 @@ namespace HidWizards.UCR.Tests.ModelTests
             binding.SetDeviceConfigurationGuid(first.Guid, false);
             var viewModel = new DeviceBindingViewModel(binding);
 
+            Assert.That(viewModel.Devices, Is.Empty,
+                "Collapsed mappings should not build a device dropdown until its editor is shown.");
+            viewModel.EnsureDeviceListLoaded();
             Assert.That(viewModel.Devices.Count, Is.EqualTo(1));
 
             _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { second }, DeviceIoType.Input);
