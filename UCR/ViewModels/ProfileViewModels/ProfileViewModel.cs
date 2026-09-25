@@ -71,6 +71,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             Profile = profile;
             _lastKnownActiveState = profile.IsActive();
             profile.Context.ActiveProfileChangedEvent += ContextOnActiveProfileChangedEvent;
+            profile.Context.DeviceAliasesChangedEvent += ContextOnDeviceAliasesChanged;
             if (profile.PruneUndefinedFilterReferencesRecursive()) profile.Context.ContextChanged();
             PopulateMappingsList(profile);
             RefreshFilterNames();
@@ -81,6 +82,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 profile.GetDeviceConfigurationList(DeviceIoType.Input), DeviceIoType.Input, RefreshDevicePresentation, ProfileDialogIdentifier);
             OutputDeviceControlViewModel = new ProfileDeviceListControlViewModel(profile,
                 profile.GetDeviceConfigurationList(DeviceIoType.Output), DeviceIoType.Output, RefreshDevicePresentation, ProfileDialogIdentifier);
+        }
+
+        private void ContextOnDeviceAliasesChanged()
+        {
+            if (_disposed) return;
+            RefreshDevicePresentation();
         }
 
         public void RefreshDevicePresentation()
@@ -111,6 +118,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 foreach (var section in MappingSections) section.RefreshActiveState();
             }
+            if (MappingsList != null)
+            {
+                foreach (var mapping in MappingsList) mapping.RefreshActiveState();
+            }
+            PluginToolbox?.RefreshActiveState();
         }
 
         private void PopulateMappingsList(Profile profile)
@@ -481,6 +493,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (_disposed) return;
             _disposed = true;
             Profile.Context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;
+            Profile.Context.DeviceAliasesChangedEvent -= ContextOnDeviceAliasesChanged;
             PluginToolbox?.Dispose();
             InputDeviceControlViewModel?.Dispose();
             OutputDeviceControlViewModel?.Dispose();
