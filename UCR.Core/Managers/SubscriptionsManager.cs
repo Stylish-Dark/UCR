@@ -23,6 +23,7 @@ namespace HidWizards.UCR.Core.Managers
             get => _profileActive;
             set
             {
+                if (_profileActive == value) return;
                 _profileActive = value;
                 OnPropertyChanged();
             }
@@ -316,13 +317,20 @@ namespace HidWizards.UCR.Core.Managers
             var success = true;
             if (state.IsActive) return true;
 
+            // Most mappings in a profile point at the same one or two configured devices. Resolve a
+            // configured Device object once per rebuild instead of re-enumerating providers for every
+            // individual binding that happens to use it.
+            var inputResolutionCache = new Dictionary<Device, Device>(DeviceReferenceComparer.Instance);
+            var outputResolutionCache = new Dictionary<Device, Device>(DeviceReferenceComparer.Instance);
+
             foreach (var deviceConfigurationSubscription in state.OutputDeviceConfigurationSubscriptions)
             {
-                success &= SubscribeOutput(state, deviceConfigurationSubscription.DeviceSubscription);
+                success &= SubscribeOutput(state, deviceConfigurationSubscription.DeviceSubscription,
+                    outputResolutionCache);
 
                 foreach (var shadowDeviceSubscription in deviceConfigurationSubscription.ShadowDeviceSubscriptions)
                 {
-                    success &= SubscribeOutput(state, shadowDeviceSubscription);
+                    success &= SubscribeOutput(state, shadowDeviceSubscription, outputResolutionCache);
                 }
             }
 
@@ -334,7 +342,7 @@ namespace HidWizards.UCR.Core.Managers
 
                 foreach (var deviceBindingSubscription in mappingSubscription.DeviceBindingSubscriptions)
                 {
-                    success &= SubscribeDeviceBindingInput(state, deviceBindingSubscription);
+                    success &= SubscribeDeviceBindingInput(state, deviceBindingSubscription, inputResolutionCache);
                 }
             }
 
@@ -345,14 +353,16 @@ namespace HidWizards.UCR.Core.Managers
 
         #region Subscriber Actions
         
-        private bool SubscribeDeviceBindingInput(SubscriptionState state, InputSubscription deviceBindingSubscription)
+        private bool SubscribeDeviceBindingInput(SubscriptionState state, InputSubscription deviceBindingSubscription,
+            IDictionary<Device, Device> resolutionCache)
         {
             if (!deviceBindingSubscription.DeviceBinding.IsBound) return true;
             try
             {
-                var runtimeDevice = _context.DevicesManager.ResolveDevice(
-                    deviceBindingSubscription.DeviceSubscription.Device,
-                    DeviceIoType.Input);
+                var runtimeDevice = ResolveRuntimeDevice(
+                    deviceBindingSubscription.DeviceSubscription?.Device,
+                    DeviceIoType.Input,
+                    resolutionCache);
                 if (runtimeDevice == null)
                 {
                     Logger.Error($"Failed to resolve input device safely: {{{deviceBindingSubscription.DeviceSubscription.Device.LogName()}}}");
@@ -377,7 +387,8 @@ namespace HidWizards.UCR.Core.Managers
             return _context.IOController.UnsubscribeInput(GetInputSubscriptionRequest(state, deviceBindingSubscription));
         }
 
-        private bool SubscribeOutput(SubscriptionState state, DeviceSubscription deviceSubscription)
+        private bool SubscribeOutput(SubscriptionState state, DeviceSubscription deviceSubscription,
+            IDictionary<Device, Device> resolutionCache)
         {
             Logger.Debug($"Subscribing output device: {{{deviceSubscription.Device.LogName()}}}");
             if (string.IsNullOrEmpty(deviceSubscription.Device.ProviderName) || string.IsNullOrEmpty(deviceSubscription.Device.DeviceHandle))
@@ -386,7 +397,7 @@ namespace HidWizards.UCR.Core.Managers
                 return false;
             }
 
-            var runtimeDevice = _context.DevicesManager.ResolveDevice(deviceSubscription.Device, DeviceIoType.Output);
+            var runtimeDevice = ResolveRuntimeDevice(deviceSubscription.Device, DeviceIoType.Output, resolutionCache);
             if (runtimeDevice == null)
             {
                 Logger.Error($"Failed to resolve output device safely: {{{deviceSubscription.Device.LogName()}}}");
@@ -399,6 +410,20 @@ namespace HidWizards.UCR.Core.Managers
             if (!success) Logger.Error($"Failed to subscribe output device. Provider might be unavailable: {{{deviceSubscription.Device.LogName()}}}");
 
             return success;
+        }
+
+        private Device ResolveRuntimeDevice(Device configuredDevice, DeviceIoType type,
+            IDictionary<Device, Device> resolutionCache)
+        {
+            if (configuredDevice == null) return null;
+
+            Device resolvedDevice;
+            if (resolutionCache != null && resolutionCache.TryGetValue(configuredDevice, out resolvedDevice))
+                return resolvedDevice;
+
+            resolvedDevice = _context.DevicesManager.ResolveDevice(configuredDevice, type);
+            if (resolutionCache != null) resolutionCache[configuredDevice] = resolvedDevice;
+            return resolvedDevice;
         }
 
         private bool UnsubscribeOutput(SubscriptionState state, DeviceSubscription deviceSubscription)
@@ -484,6 +509,21 @@ namespace HidWizards.UCR.Core.Managers
             if (SubscriptionState != null)
             {
                 DeactivateCurrentProfile();
+            }
+        }
+
+        private sealed class DeviceReferenceComparer : IEqualityComparer<Device>
+        {
+            public static readonly DeviceReferenceComparer Instance = new DeviceReferenceComparer();
+
+            public bool Equals(Device x, Device y)
+            {
+                return ReferenceEquals(x, y);
+            }
+
+            public int GetHashCode(Device obj)
+            {
+                return obj == null ? 0 : RuntimeHelpers.GetHashCode(obj);
             }
         }
 
