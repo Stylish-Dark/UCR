@@ -322,6 +322,31 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void ProfileViewModelPropagatesActiveStateToNestedEditors()
+        {
+            var mapping = _profile.AddMapping("Nested state");
+            mapping.AddPlugin(new ButtonToButton());
+            var viewModel = new ProfileViewModel(_profile);
+            var mappingViewModel = viewModel.MappingsList
+                .Single(candidate => ReferenceEquals(candidate.Mapping, mapping));
+            var inputBinding = mappingViewModel.DeviceBindings.Single();
+            var pluginViewModel = mappingViewModel.Plugins.Single();
+
+            Assert.That(inputBinding.BindingEnabled, Is.True);
+            Assert.That(pluginViewModel.CanAddFilter, Is.True);
+
+            Assert.That(_context.SubscriptionsManager.ActivateProfile(_profile, false), Is.True);
+            Assert.That(inputBinding.BindingEnabled, Is.False);
+            Assert.That(pluginViewModel.CanAddFilter, Is.False);
+
+            Assert.That(_context.SubscriptionsManager.DeactivateProfile(_profile), Is.True);
+            Assert.That(inputBinding.BindingEnabled, Is.True);
+            Assert.That(pluginViewModel.CanAddFilter, Is.True);
+
+            viewModel.Dispose();
+        }
+
+        [Test]
         public void ProfileViewModelExplainsWhyEditingIsLockedWhileRunning()
         {
             var viewModel = new ProfileViewModel(_profile);
