@@ -248,6 +248,9 @@ namespace HidWizards.UCR.Tests.ModelTests
             group.PostLoad(_context, _profile);
 
             Assert.That(plugin.Outputs.Count, Is.EqualTo(1));
+            plugin.Initialize = true;
+            Assert.DoesNotThrow(() => plugin.OnActivate(),
+                "A repaired Button to Axis plugin must no longer crash when an enabled group activates.");
             Assert.DoesNotThrow(() =>
             {
                 var viewModel = new ProfileViewModel(_profile);
