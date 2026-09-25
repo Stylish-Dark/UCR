@@ -38,6 +38,9 @@ namespace HidWizards.UCR.Views.Controls
 
         private void UserControl_Loaded(object sender, RoutedEventArgs e)
         {
+            var viewModel = DataContext as DeviceBindingViewModel;
+            viewModel?.EnsureDeviceListLoaded();
+
             if (DeviceBinding == null) return; // TODO Error logging
             ReloadGui();
             HasLoaded = true;
