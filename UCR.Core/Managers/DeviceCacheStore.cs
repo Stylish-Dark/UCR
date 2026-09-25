@@ -167,15 +167,15 @@ namespace HidWizards.UCR.Core.Managers
             }
             catch (IOException exception)
             {
-                Logger.Error($"Failed to load Cache for Provider: {provider}. Path: {path}", exception);
+                Logger.Error(exception, $"Failed to load Cache for Provider: {provider}. Path: {path}");
             }
             catch (InvalidOperationException exception)
             {
-                Logger.Error($"Errors processing provider cache: {provider}. Path: {path}", exception);
+                Logger.Error(exception, $"Errors processing provider cache: {provider}. Path: {path}");
             }
             catch (JsonException exception)
             {
-                Logger.Error($"Invalid JSON in provider cache: {provider}. Path: {path}", exception);
+                Logger.Error(exception, $"Invalid JSON in provider cache: {provider}. Path: {path}");
             }
 
             try
@@ -184,7 +184,7 @@ namespace HidWizards.UCR.Core.Managers
             }
             catch (Exception exception)
             {
-                Logger.Error($"Failed to delete invalid cache file: {path}", exception);
+                Logger.Error(exception, $"Failed to delete invalid cache file: {path}");
             }
             return null;
         }
