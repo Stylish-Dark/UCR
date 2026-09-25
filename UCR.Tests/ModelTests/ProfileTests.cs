@@ -318,6 +318,30 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void PluginEditorViewModelsAreDeferredUntilRequested()
+        {
+            var producerMapping = _profile.AddMapping("Producer");
+            _profile.AddPlugin(producerMapping, new ButtonToFilter { FilterName = "Mode" });
+
+            var consumerMapping = _profile.AddMapping("Consumer");
+            var consumer = new ButtonToButton();
+            _profile.AddPlugin(consumerMapping, consumer);
+            consumer.AddFilter("Mode");
+
+            var profileViewModel = new ProfileViewModel(_profile);
+            var consumerViewModel = profileViewModel.MappingsList
+                .Single(mapping => ReferenceEquals(mapping.Mapping, consumerMapping));
+            var pluginViewModel = consumerViewModel.Plugins.Single();
+
+            Assert.That(pluginViewModel.Filters, Is.Empty,
+                "Collapsed mappings should not construct filter editor view-models.");
+            pluginViewModel.EnsureEditorInitialized();
+            Assert.That(pluginViewModel.Filters.Select(filter => filter.Name), Is.EqualTo(new[] { "Mode" }));
+
+            profileViewModel.Dispose();
+        }
+
+        [Test]
         public void BindingDeviceListCanRefreshAfterProfileDevicesChange()
         {
             var first = new DeviceConfiguration(new Device("Keyboard A", "Core_Interception", "kbd-a", 0));
