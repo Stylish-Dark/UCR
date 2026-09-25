@@ -225,9 +225,6 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Views\ProfileViews\ProfileWindow.xaml.cs">
-      <DependentUpon>ProfileWindow.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Views\ProfileViews\ProfilePage.xaml.cs">
       <DependentUpon>ProfilePage.xaml</DependentUpon>
     </Compile>
@@ -344,10 +341,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Views\ProfileViews\ProfileWindow.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
     <Page Include="Views\ProfileViews\ProfilePage.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -448,5 +441,5 @@
     <PostBuildEvent>if exist "$(SolutionDir)UCR.FileHandler\bin\$(ConfigurationName)\"  xcopy /Y /S /i "$(SolutionDir)UCR.FileHandler\bin\$(ConfigurationName)" "$(TargetDir)"
 </PostBuildEvent>
   </PropertyGroup>
-  <Import Project="..\packages\GitVersionTask.4.0.0\build\GitVersionTask.targets" Condition="Exists('..\packages\GitVersionTask.4.0.0\build\GitVersionTask.targets')" />
+  <Import Project="..\packages\GitVersionTask.4.0.0\build\GitVersionTask.targets" Condition="'$(SkipGitVersion)' != 'true' And Exists('..\packages\GitVersionTask.4.0.0\build\GitVersionTask.targets')" />
 </Project>

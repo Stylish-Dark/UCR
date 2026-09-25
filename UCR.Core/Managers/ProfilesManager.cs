@@ -743,31 +743,35 @@ namespace HidWizards.UCR.Core.Managers
         /// <returns>The most specific profile found in the chain, otherwise null</returns>
         public Profile FindProfile(List<string> search)
         {
+            if (search == null || search.Count == 0) return null;
             Logger.Debug($"Searching for profile: {{{string.Join(",", search)}}}");
+
             Profile foundProfile = null;
-            if (search?.Count == 0) return null;
-            var queue = new List<Profile>();
-            queue.AddRange(_profiles);
-            while (queue.Count > 0)
+            var searchIndex = 0;
+            var queue = new Queue<Profile>(_profiles.Where(profile => profile != null));
+
+            while (queue.Count > 0 && searchIndex < search.Count)
             {
-                var profile = queue[0];
-                queue.RemoveAt(0);
-                if (profile.Title.ToLower().Equals(search.First().ToLower()))
+                var profile = queue.Dequeue();
+                if (string.Equals(profile.Title, search[searchIndex], StringComparison.CurrentCultureIgnoreCase))
                 {
-                    if (search.Count == 1)
+                    foundProfile = profile;
+                    searchIndex++;
+                    if (searchIndex == search.Count)
                     {
                         Logger.Debug($"Found profile: {{{profile.ProfileBreadCrumbs()}}}");
                         return profile;
                     }
-                    foundProfile = profile;
-                    search.RemoveAt(0);
-                    Logger.Trace($"Found intermediate profile: {{{profile.ProfileBreadCrumbs()}}}. Remaining search: {{{string.Join(",", search)}}}");
+
+                    Logger.Trace($"Found intermediate profile: {{{profile.ProfileBreadCrumbs()}}}. Remaining search: {{{string.Join(",", search.Skip(searchIndex))}}}");
                     queue.Clear();
                 }
-                if (profile.ChildProfiles != null) queue.AddRange(profile.ChildProfiles);
 
+                if (profile.ChildProfiles == null) continue;
+                foreach (var child in profile.ChildProfiles.Where(child => child != null)) queue.Enqueue(child);
             }
-            if (foundProfile == null) Logger.Debug($"No profile found for {{{string.Join(",", search)}}}");
+
+            Logger.Debug($"No profile found for {{{string.Join(",", search)}}}");
             return foundProfile;
         }
     }

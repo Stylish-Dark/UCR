@@ -37,10 +37,10 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
-        public void ApplicationUsesSoftwareRenderingToAvoidCompetingForGpuTime()
+        public void ApplicationUsesDefaultRenderingSoWpfCanUseHardwareAcceleration()
         {
             EnsureApplicationResources();
-            Assert.That(RenderOptions.ProcessRenderMode, Is.EqualTo(System.Windows.Interop.RenderMode.SoftwareOnly));
+            Assert.That(RenderOptions.ProcessRenderMode, Is.EqualTo(System.Windows.Interop.RenderMode.Default));
         }
 
         [Test]

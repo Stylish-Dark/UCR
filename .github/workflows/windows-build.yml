@@ -67,7 +67,8 @@ jobs:
             "/m",
             "/p:Configuration=Release",
             "/p:SolutionDir=$env:GITHUB_WORKSPACE\",
-            "/p:VersionNumber=0.9.9.0"
+            "/p:VersionNumber=0.9.9.0",
+            "/p:SkipGitVersion=true"
           )
           $net452 = $common + "/p:TargetFrameworkRootPath=$env:NET452_ROOT\"
           $net461 = $common + "/p:TargetFrameworkRootPath=$env:NET461_ROOT\"

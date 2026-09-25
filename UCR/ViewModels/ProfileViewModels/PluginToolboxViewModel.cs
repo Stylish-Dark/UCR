@@ -40,7 +40,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<PluginRouteOption> VariantOptions { get; }
 
         private readonly Profile _profile;
-        private bool _lastKnownActiveState;
         private readonly List<PluginRouteOption> _routeOptions;
         private readonly HashSet<DeviceBindingCategory> _supportedInputCategories;
         private bool _disposed;
@@ -95,7 +94,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public PluginToolboxViewModel(Profile profile, List<Plugin> pluginList)
         {
             _profile = profile;
-            _lastKnownActiveState = profile?.IsActive() == true;
             _routeOptions = new List<PluginRouteOption>();
             _supportedInputCategories = GetSupportedInputCategories();
             InputOptions = new ObservableCollection<string>();
@@ -122,7 +120,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
 
             BuildInputOptions();
-            profile.Context.ActiveProfileChangedEvent += ContextOnActiveProfileChangedEvent;
         }
 
         public void RefreshDeviceCapabilities()
@@ -321,14 +318,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
-        private void ContextOnActiveProfileChangedEvent(Profile profile)
+        internal void RefreshActiveState()
         {
-            var isActive = _profile?.IsActive() == true;
-            if (isActive == _lastKnownActiveState) return;
-            _lastKnownActiveState = isActive;
+            if (_disposed) return;
 
             OnPropertyChanged(nameof(IsEnabled));
             OnPropertyChanged(nameof(CanAddMapping));
+            foreach (var group in PluginGroupList?.Values ?? Enumerable.Empty<PluginGroupViewModel>())
+            {
+                foreach (var plugin in group.Plugins) plugin.RefreshActiveState();
+            }
         }
 
 
@@ -336,8 +335,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (_disposed) return;
             _disposed = true;
-            if (_profile != null) _profile.Context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;
-
             foreach (var group in PluginGroupList?.Values ?? Enumerable.Empty<PluginGroupViewModel>())
             {
                 foreach (var plugin in group.Plugins) plugin.Dispose();

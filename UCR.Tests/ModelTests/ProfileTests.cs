@@ -49,6 +49,21 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
         
         [Test]
+        public void MappingOverrideLookupWalksPastAnEmptyImmediateParent()
+        {
+            _mapping.Rename("Shared");
+
+            var child = _context.ProfilesManager.CreateProfile("Child", null, null);
+            _profile.AddChildProfile(child);
+            var grandchild = _context.ProfilesManager.CreateProfile("Grandchild", null, null);
+            child.AddChildProfile(grandchild);
+            var grandchildMapping = grandchild.AddMapping("Shared");
+
+            Assert.That(child.Mappings, Is.Empty);
+            Assert.That(grandchildMapping.FullTitle, Is.EqualTo("Shared (Overrides Base Profile)"));
+        }
+
+        [Test]
         public void RemoveChildProfile()
         {
             Assert.That(_profile.ChildProfiles.Count, Is.EqualTo(0));
@@ -210,6 +225,21 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void FindProfileDoesNotMutateTheRequestedPath()
+        {
+            var child = _context.ProfilesManager.CreateProfile("Child", null, null);
+            _profile.AddChildProfile(child);
+            var target = _context.ProfilesManager.CreateProfile("Target", null, null);
+            child.AddChildProfile(target);
+            var path = new List<string> { "Child", "Target" };
+
+            var found = _context.ProfilesManager.FindProfile(path);
+
+            Assert.That(found, Is.SameAs(target));
+            Assert.That(path, Is.EqualTo(new[] { "Child", "Target" }));
+        }
+
+        [Test]
         public void RenameProfile()
         {
             var newName = "Renamed Profile";
@@ -281,6 +311,42 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void DashboardKeepsPlayAvailableForAnActiveProfileHotplugRebuild()
+        {
+            var dashboard = new DashboardViewModel(_context);
+            dashboard.SelectedProfileItem = dashboard.ProfileList.First();
+
+            Assert.That(_context.SubscriptionsManager.ActivateProfile(_profile, false), Is.True);
+            Assert.That(dashboard.CanActivateProfile, Is.True,
+                "Play must remain available so the active profile can rebuild subscriptions after device changes.");
+        }
+
+        [Test]
+        public void ProfileViewModelPropagatesActiveStateToNestedEditors()
+        {
+            var mapping = _profile.AddMapping("Nested state");
+            mapping.AddPlugin(new ButtonToButton());
+            var viewModel = new ProfileViewModel(_profile);
+            var mappingViewModel = viewModel.MappingsList
+                .Single(candidate => ReferenceEquals(candidate.Mapping, mapping));
+            var inputBinding = mappingViewModel.DeviceBindings.Single();
+            var pluginViewModel = mappingViewModel.Plugins.Single();
+
+            Assert.That(inputBinding.BindingEnabled, Is.True);
+            Assert.That(pluginViewModel.CanAddFilter, Is.True);
+
+            Assert.That(_context.SubscriptionsManager.ActivateProfile(_profile, false), Is.True);
+            Assert.That(inputBinding.BindingEnabled, Is.False);
+            Assert.That(pluginViewModel.CanAddFilter, Is.False);
+
+            Assert.That(_context.SubscriptionsManager.DeactivateProfile(_profile), Is.True);
+            Assert.That(inputBinding.BindingEnabled, Is.True);
+            Assert.That(pluginViewModel.CanAddFilter, Is.True);
+
+            viewModel.Dispose();
+        }
+
+        [Test]
         public void ProfileViewModelExplainsWhyEditingIsLockedWhileRunning()
         {
             var viewModel = new ProfileViewModel(_profile);
@@ -307,6 +373,30 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void PluginEditorViewModelsAreDeferredUntilRequested()
+        {
+            var producerMapping = _profile.AddMapping("Producer");
+            _profile.AddPlugin(producerMapping, new ButtonToFilter { FilterName = "Mode" });
+
+            var consumerMapping = _profile.AddMapping("Consumer");
+            var consumer = new ButtonToButton();
+            _profile.AddPlugin(consumerMapping, consumer);
+            consumer.AddFilter("Mode");
+
+            var profileViewModel = new ProfileViewModel(_profile);
+            var consumerViewModel = profileViewModel.MappingsList
+                .Single(mapping => ReferenceEquals(mapping.Mapping, consumerMapping));
+            var pluginViewModel = consumerViewModel.Plugins.Single();
+
+            Assert.That(pluginViewModel.Filters, Is.Empty,
+                "Collapsed mappings should not construct filter editor view-models.");
+            pluginViewModel.EnsureEditorInitialized();
+            Assert.That(pluginViewModel.Filters.Select(filter => filter.Name), Is.EqualTo(new[] { "Mode" }));
+
+            profileViewModel.Dispose();
+        }
+
+        [Test]
         public void BindingDeviceListCanRefreshAfterProfileDevicesChange()
         {
             var first = new DeviceConfiguration(new Device("Keyboard A", "Core_Interception", "kbd-a", 0));
@@ -320,6 +410,9 @@ namespace HidWizards.UCR.Tests.ModelTests
             binding.SetDeviceConfigurationGuid(first.Guid, false);
             var viewModel = new DeviceBindingViewModel(binding);
 
+            Assert.That(viewModel.Devices, Is.Empty,
+                "Collapsed mappings should not build a device dropdown until its editor is shown.");
+            viewModel.EnsureDeviceListLoaded();
             Assert.That(viewModel.Devices.Count, Is.EqualTo(1));
 
             _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { second }, DeviceIoType.Input);
@@ -330,6 +423,23 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.That(viewModel.Devices.All(item => item.Visual != null), Is.True,
                 "Every real device choice should carry its semantic visual shorthand.");
             viewModel.Dispose();
+        }
+
+        [Test]
+        public void DeviceBindingCurrentValueOnlyNotifiesWhenTheValueActuallyChanges()
+        {
+            var binding = new DeviceBinding(value => { }, _profile, DeviceIoType.Input);
+            var notifications = 0;
+            binding.PropertyChanged += (sender, args) =>
+            {
+                if (args.PropertyName == nameof(DeviceBinding.CurrentValue)) notifications++;
+            };
+
+            binding.CurrentValue = 123;
+            binding.CurrentValue = 123;
+            binding.CurrentValue = 456;
+
+            Assert.That(notifications, Is.EqualTo(2));
         }
 
         [Test]

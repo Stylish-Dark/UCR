@@ -36,6 +36,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool ShowButtonPreview => DeviceBinding.IsInBindMode || DeviceBinding.Profile.IsActive();
 
         private bool GuiInvalidated { get; set; }
+        internal event Action<DeviceBindingViewModel> UiValueInvalidated;
+        private bool _deviceListLoaded;
+        private bool _deviceListDirty;
         private bool _disposed;
 
         private double GetPreviewValue()
@@ -120,7 +123,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 if (_currentValue == value) return;
                 _currentValue = value;
+                if (GuiInvalidated) return;
                 GuiInvalidated = true;
+                UiValueInvalidated?.Invoke(this);
             }
         }
 
@@ -140,14 +145,21 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public DeviceBindingViewModel(DeviceBinding deviceBinding)
         {
             DeviceBinding = deviceBinding;
-            deviceBinding.Profile.Context.ActiveProfileChangedEvent += ContextOnActiveProfileChangedEvent;
-            deviceBinding.Profile.Context.DeviceAliasesChangedEvent += ContextOnDeviceAliasesChanged;
+            Devices = new ObservableCollection<ComboBoxItemViewModel>();
             BindingEnabled = !DeviceBinding.Profile.IsActive();
+        }
+
+        public void EnsureDeviceListLoaded()
+        {
+            if (_disposed || DeviceBinding?.Profile == null) return;
+            if (_deviceListLoaded && !_deviceListDirty) return;
 
             LoadDeviceInputs();
+            OnPropertyChanged(nameof(Devices));
+            OnPropertyChanged(nameof(SelectedDevice));
         }
         
-        public void LoadDeviceInputs()
+        private void LoadDeviceInputs()
         {
             var devicesManager = DeviceBinding.Profile.Context.DevicesManager;
             var deviceConfigurationList = DeviceBinding.Profile.GetDeviceConfigurationList(DeviceBinding.DeviceIoType)
@@ -171,12 +183,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     DeviceVisualCatalog.Describe(deviceConfiguration, DeviceBinding.Profile, DeviceBinding.DeviceIoType)));
             }
 
+            _deviceListLoaded = true;
+            _deviceListDirty = false;
             SetSelectDevice();
         }
 
         public void RefreshDeviceList()
         {
             if (_disposed || DeviceBinding == null || DeviceBinding.Profile == null) return;
+            if (!_deviceListLoaded)
+            {
+                _deviceListDirty = true;
+                // The collapsed mapping header still depends on this view-model's presentation.
+                // Signal a lightweight presentation change without paying to build the dropdown.
+                OnPropertyChanged(nameof(SelectedDevice));
+                OnPropertyChanged(nameof(BindButtonText));
+                return;
+            }
+
             LoadDeviceInputs();
             OnPropertyChanged(nameof(Devices));
             OnPropertyChanged(nameof(SelectedDevice));
@@ -185,13 +209,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(ShowInvertInput));
         }
 
-        private void ContextOnDeviceAliasesChanged()
-        {
-            RefreshDeviceList();
-        }
-
         private void SetSelectDevice()
         {
+            if (!_deviceListLoaded || Devices == null) return;
             ComboBoxItemViewModel selectedDevice = null;
 
             foreach (var comboBoxItem in Devices)
@@ -266,8 +286,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 DeviceBinding.SetDeviceConfigurationGuid(selectedDeviceConfiguration.Guid, true);
             }
 
-            SetSelectDevice();
-            OnPropertyChanged(nameof(SelectedDevice));
+            if (_deviceListLoaded)
+            {
+                SetSelectDevice();
+                OnPropertyChanged(nameof(SelectedDevice));
+            }
             OnPropertyChanged(nameof(BindButtonText));
             OnPropertyChanged(nameof(ShowBlock));
             OnPropertyChanged(nameof(Block));
@@ -280,6 +303,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                         "; compatibility=" + transfer.Compatibility +
                         "; preserved=" + DeviceBinding.IsBound);
             return transfer.Compatibility;
+        }
+
+        internal void RequestUiValueRefresh()
+        {
+            if (_disposed) return;
+            GuiInvalidated = true;
+            UiValueInvalidated?.Invoke(this);
         }
 
         public void CurrentValueChanged()
@@ -322,8 +352,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.IsBound), StringComparison.Ordinal))
             {
-                SetSelectDevice();
-                OnPropertyChanged(nameof(SelectedDevice));
+                if (_deviceListLoaded)
+                {
+                    SetSelectDevice();
+                    OnPropertyChanged(nameof(SelectedDevice));
+                }
                 OnPropertyChanged(nameof(ShowBlock));
                 OnPropertyChanged(nameof(Block));
                 OnPropertyChanged(nameof(ShowInvertInput));
@@ -357,7 +390,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             BindModeProgress = bindingManager.BindModeProgress;
         }
 
-        private void ContextOnActiveProfileChangedEvent(Profile profile)
+        internal void RefreshActiveState()
         {
             if (_disposed || DeviceBinding?.Profile == null) return;
             BindingEnabled = !DeviceBinding.Profile.IsActive();
@@ -377,8 +410,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (context != null)
                 {
                     context.BindingManager.PropertyChanged -= BindingManagerOnPropertyChanged;
-                    context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;
-                    context.DeviceAliasesChangedEvent -= ContextOnDeviceAliasesChanged;
                 }
             }
         }
