@@ -143,8 +143,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             DeviceBinding = deviceBinding;
             Devices = new ObservableCollection<ComboBoxItemViewModel>();
-            deviceBinding.Profile.Context.ActiveProfileChangedEvent += ContextOnActiveProfileChangedEvent;
-            deviceBinding.Profile.Context.DeviceAliasesChangedEvent += ContextOnDeviceAliasesChanged;
             BindingEnabled = !DeviceBinding.Profile.IsActive();
         }
 
@@ -206,11 +204,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(BindButtonText));
             OnPropertyChanged(nameof(ShowBlock));
             OnPropertyChanged(nameof(ShowInvertInput));
-        }
-
-        private void ContextOnDeviceAliasesChanged()
-        {
-            RefreshDeviceList();
         }
 
         private void SetSelectDevice()
@@ -387,7 +380,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             BindModeProgress = bindingManager.BindModeProgress;
         }
 
-        private void ContextOnActiveProfileChangedEvent(Profile profile)
+        internal void RefreshActiveState()
         {
             if (_disposed || DeviceBinding?.Profile == null) return;
             BindingEnabled = !DeviceBinding.Profile.IsActive();
@@ -407,8 +400,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (context != null)
                 {
                     context.BindingManager.PropertyChanged -= BindingManagerOnPropertyChanged;
-                    context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;
-                    context.DeviceAliasesChangedEvent -= ContextOnDeviceAliasesChanged;
                 }
             }
         }
