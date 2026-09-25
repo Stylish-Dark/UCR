@@ -281,6 +281,17 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void DashboardKeepsPlayAvailableForAnActiveProfileHotplugRebuild()
+        {
+            var dashboard = new DashboardViewModel(_context);
+            dashboard.SelectedProfileItem = dashboard.ProfileList.First();
+
+            Assert.That(_context.SubscriptionsManager.ActivateProfile(_profile, false), Is.True);
+            Assert.That(dashboard.CanActivateProfile, Is.True,
+                "Play must remain available so the active profile can rebuild subscriptions after device changes.");
+        }
+
+        [Test]
         public void ProfileViewModelExplainsWhyEditingIsLockedWhileRunning()
         {
             var viewModel = new ProfileViewModel(_profile);
