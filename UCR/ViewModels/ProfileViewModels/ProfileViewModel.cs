@@ -28,7 +28,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
     public class ProfileViewModel : INotifyPropertyChanged, IDisposable
     {
         public Profile Profile { get; }
-        public bool CanActivateProfile => Profile != null;
+        public bool CanActivateProfile => Profile != null && !Profile.IsActive();
         public bool CanDeactivateProfile => Profile.IsActive();
         public bool CanEditProfile => !Profile.IsActive();
         public bool IsProfileActive => Profile.IsActive();
@@ -86,10 +86,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public void RefreshDevicePresentation()
         {
             PluginToolbox?.RefreshDeviceCapabilities();
-            foreach (var binding in GetAllBindingViewModels().ToList()) binding?.RefreshDeviceList();
-            foreach (var mapping in MappingsList ?? new ObservableCollection<MappingViewModel>())
+            foreach (var binding in GetAllBindingViewModels()) binding?.RefreshDeviceList();
+            if (MappingsList != null)
             {
-                mapping.RefreshCollapsedSummary();
+                foreach (var mapping in MappingsList) mapping.RefreshCollapsedSummary();
             }
             OnPropertyChanged(nameof(InputDeviceControlViewModel));
             OnPropertyChanged(nameof(OutputDeviceControlViewModel));
@@ -107,7 +107,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(IsProfileActive));
             OnPropertyChanged(nameof(EditLockReason));
             OnPropertyChanged(nameof(CanPasteMappingGroup));
-            foreach (var section in MappingSections ?? new ObservableCollection<MappingGroupViewModel>()) section.RefreshActiveState();
+            if (MappingSections != null)
+            {
+                foreach (var section in MappingSections) section.RefreshActiveState();
+            }
         }
 
         private void PopulateMappingsList(Profile profile)
@@ -338,10 +341,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void RebuildFlatMappingsList()
         {
-            var ordered = (MappingSections ?? new ObservableCollection<MappingGroupViewModel>())
-                .SelectMany(section => section.Mappings).ToList();
-            MappingsList.Clear();
-            foreach (var mapping in ordered) MappingsList.Add(mapping);
+            var ordered = MappingSections == null
+                ? Enumerable.Empty<MappingViewModel>()
+                : MappingSections.SelectMany(section => section.Mappings);
+            MappingsList = new ObservableCollection<MappingViewModel>(ordered);
+            OnPropertyChanged(nameof(MappingsList));
         }
 
         private void RefreshMappingPositions()
@@ -480,7 +484,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             PluginToolbox?.Dispose();
             InputDeviceControlViewModel?.Dispose();
             OutputDeviceControlViewModel?.Dispose();
-            foreach (var mapping in MappingsList ?? new ObservableCollection<MappingViewModel>()) mapping.Dispose();
+            if (MappingsList != null)
+            {
+                foreach (var mapping in MappingsList) mapping.Dispose();
+            }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
