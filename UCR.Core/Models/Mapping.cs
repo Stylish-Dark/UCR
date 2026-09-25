@@ -53,7 +53,7 @@ namespace HidWizards.UCR.Core.Models
             get
             {
                 var mapping = GetOverridenMapping();
-                return mapping != null ? $"{Title} (Overrides {GetOverridenMapping().Profile.Title})" : Title;
+                return mapping != null ? $"{Title} (Overrides {mapping.Profile.Title})" : Title;
             }
         }
 
@@ -109,21 +109,19 @@ namespace HidWizards.UCR.Core.Models
 
         internal Mapping GetOverridenMapping()
         {
-            var list = new List<Mapping>();
-            var parentProfile = Profile.ParentProfile;
-            if (parentProfile != null) list.AddRange(parentProfile.Mappings);
-
-            while (list.Count > 0)
+            var parentProfile = Profile?.ParentProfile;
+            while (parentProfile != null)
             {
-                var mapping = list[0];
-                list.RemoveAt(0);
-                if (string.Compare(Title, mapping.Title, StringComparison.CurrentCultureIgnoreCase) == 0)
+                foreach (var mapping in parentProfile.Mappings ?? Enumerable.Empty<Mapping>())
                 {
-                    return mapping;
+                    if (mapping != null &&
+                        string.Equals(Title, mapping.Title, StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        return mapping;
+                    }
                 }
 
-                parentProfile = parentProfile?.ParentProfile;
-                if (parentProfile != null) list.AddRange(parentProfile.Mappings);
+                parentProfile = parentProfile.ParentProfile;
             }
 
             return null;
