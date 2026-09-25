@@ -59,17 +59,26 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool CanMoveDown => ButtonsEnabled && ProfileViewModel.CanMoveMapping(this, 1);
         public string MappingRoute => Mapping != null && Mapping.Plugins.Count > 0 ? Mapping.Plugins[0].PluginName : "No plugin";
         public string MappingRouteDisplay => FormatMappingRoute(MappingRoute);
-        public List<MappingHeaderToken> MappingRouteTokens => BuildMappingRouteTokens(MappingRouteDisplay);
-        public string MappingOutputTypeLabel => GetMappingOutputTypeLabel();
-        public string DefinedFilterName => GetDefinedFilterName();
-        public List<FilterReferenceBadge> ReferencedFilters => BuildReferencedFilters();
-        public bool HasFilterReferences => ReferencedFilters.Count > 0;
-        public string FilterIndicatorToolTip => BuildFilterIndicatorToolTip();
+        public List<MappingHeaderToken> MappingRouteTokens => _mappingRouteTokens;
+        public string MappingOutputTypeLabel => _mappingOutputTypeLabel;
+        public string DefinedFilterName => _definedFilterName;
+        public List<FilterReferenceBadge> ReferencedFilters => _referencedFilters;
+        public bool HasFilterReferences => _referencedFilters.Count > 0;
+        public string FilterIndicatorToolTip => _filterIndicatorToolTip;
         public bool HasFilters => Mapping != null && Mapping.Plugins != null &&
                                   Mapping.Plugins.Any(plugin => plugin.Filters != null && plugin.Filters.Count > 0);
-        public string CollapsedSummary => BuildCollapsedSummary();
-        public List<BindingVisualDescriptor> CollapsedInputVisuals => BuildCollapsedInputVisuals();
-        public List<BindingVisualDescriptor> CollapsedOutputVisuals => BuildCollapsedOutputVisuals();
+        public string CollapsedSummary => _collapsedSummary;
+        public List<BindingVisualDescriptor> CollapsedInputVisuals => _collapsedInputVisuals;
+        public List<BindingVisualDescriptor> CollapsedOutputVisuals => _collapsedOutputVisuals;
+
+        private List<MappingHeaderToken> _mappingRouteTokens = new List<MappingHeaderToken>();
+        private string _mappingOutputTypeLabel = "None";
+        private string _definedFilterName;
+        private List<FilterReferenceBadge> _referencedFilters = new List<FilterReferenceBadge>();
+        private string _filterIndicatorToolTip;
+        private string _collapsedSummary;
+        private List<BindingVisualDescriptor> _collapsedInputVisuals = new List<BindingVisualDescriptor>();
+        private List<BindingVisualDescriptor> _collapsedOutputVisuals = new List<BindingVisualDescriptor>();
 
         private bool _isFilterDefinitionHighlighted;
         public bool IsFilterDefinitionHighlighted
@@ -210,6 +219,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             PopulateDeviceBindingsViewModels();
             PopulatePlugins(mapping);
             SubscribeSummaryBindings();
+            RefreshHeaderState();
+            RefreshCollapsedSummary();
         }
 
         private void ContextOnActiveProfileChangedEvent(Profile profile)
@@ -231,12 +242,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public void RefreshCollapsedSummary()
         {
+            _collapsedSummary = BuildCollapsedSummary();
+            _collapsedInputVisuals = BuildCollapsedInputVisuals();
+            _collapsedOutputVisuals = BuildCollapsedOutputVisuals();
+
             OnPropertyChanged(nameof(CollapsedSummary));
             OnPropertyChanged(nameof(CollapsedInputVisuals));
             OnPropertyChanged(nameof(CollapsedOutputVisuals));
-            OnPropertyChanged(nameof(ReferencedFilters));
-            OnPropertyChanged(nameof(HasFilterReferences));
-            OnPropertyChanged(nameof(FilterIndicatorToolTip));
         }
 
         public void RefreshTitle()
@@ -348,15 +360,23 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public void RefreshFilterIndicator()
         {
+            RefreshFilterPresentationCache();
+            _mappingOutputTypeLabel = GetMappingOutputTypeLabel();
+
             OnPropertyChanged(nameof(HasFilters));
             OnPropertyChanged(nameof(ReferencedFilters));
             OnPropertyChanged(nameof(HasFilterReferences));
+            OnPropertyChanged(nameof(FilterIndicatorToolTip));
             OnPropertyChanged(nameof(DefinedFilterName));
             OnPropertyChanged(nameof(MappingOutputTypeLabel));
         }
 
         private void RefreshHeaderState()
         {
+            _mappingRouteTokens = BuildMappingRouteTokens(MappingRouteDisplay);
+            _mappingOutputTypeLabel = GetMappingOutputTypeLabel();
+            RefreshFilterPresentationCache();
+
             OnPropertyChanged(nameof(MappingRoute));
             OnPropertyChanged(nameof(MappingRouteDisplay));
             OnPropertyChanged(nameof(MappingRouteTokens));
@@ -364,7 +384,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(DefinedFilterName));
             OnPropertyChanged(nameof(ReferencedFilters));
             OnPropertyChanged(nameof(HasFilterReferences));
+            OnPropertyChanged(nameof(FilterIndicatorToolTip));
             OnPropertyChanged(nameof(HasFilters));
+        }
+
+        private void RefreshFilterPresentationCache()
+        {
+            _definedFilterName = GetDefinedFilterName();
+            _referencedFilters = BuildReferencedFilters();
+            _filterIndicatorToolTip = BuildFilterIndicatorToolTip(_referencedFilters);
         }
 
         private static string FormatMappingRoute(string route)
@@ -862,9 +890,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return null;
         }
 
-        private string BuildFilterIndicatorToolTip()
+        private static string BuildFilterIndicatorToolTip(IList<FilterReferenceBadge> filters)
         {
-            var filters = ReferencedFilters;
             if (filters.Count == 0) return null;
             if (filters.Count == 1) return "Filter: " + filters[0].Name;
             return "Filters: " + string.Join(", ", filters.Select(filter => filter.Name));
