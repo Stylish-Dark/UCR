@@ -225,6 +225,21 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void FindProfileDoesNotMutateTheRequestedPath()
+        {
+            var child = _context.ProfilesManager.CreateProfile("Child", null, null);
+            _profile.AddChildProfile(child);
+            var target = _context.ProfilesManager.CreateProfile("Target", null, null);
+            child.AddChildProfile(target);
+            var path = new List<string> { "Child", "Target" };
+
+            var found = _context.ProfilesManager.FindProfile(path);
+
+            Assert.That(found, Is.SameAs(target));
+            Assert.That(path, Is.EqualTo(new[] { "Child", "Target" }));
+        }
+
+        [Test]
         public void RenameProfile()
         {
             var newName = "Renamed Profile";
