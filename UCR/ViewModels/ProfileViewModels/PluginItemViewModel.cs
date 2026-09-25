@@ -19,16 +19,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public Plugin Plugin { get; }
 
         private readonly Profile _profile;
-        private bool _disposed;
 
         public PluginItemViewModel(Profile profile, Plugin plugin)
         {
             Plugin = plugin;
             _profile = profile;
-            profile.Context.ActiveProfileChangedEvent += ContextOnActiveProfileChangedEvent;
         }
 
-        private void ContextOnActiveProfileChangedEvent(Profile profile)
+        internal void RefreshActiveState()
         {
             OnPropertyChanged(nameof(IsEnabled));
         }
@@ -36,9 +34,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public void Dispose()
         {
-            if (_disposed) return;
-            _disposed = true;
-            _profile.Context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
