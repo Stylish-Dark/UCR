@@ -211,6 +211,54 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void LegacyGroupMigrationDoesNotStripPluginOutputsOnRepeatedPostLoad()
+        {
+            var child = _context.ProfilesManager.CreateProfile("Player 2", null, null);
+            var mapping = child.AddMapping("P2 Axis");
+            var plugin = new ButtonToAxis();
+            mapping.AddPlugin(plugin);
+            plugin.Outputs.Single().IsBound = true;
+            plugin.Outputs.Single().DeviceConfigurationGuid = Guid.NewGuid();
+            plugin.Outputs.Single().KeyType = 7;
+            plugin.Outputs.Single().KeyValue = 8;
+            plugin.Outputs.Single().KeySubValue = 9;
+            _profile.AddChildProfile(child);
+
+            _profile.PostLoad(_context);
+
+            var migratedPlugin = _profile.MappingGroups.Single().Mappings.Single().Plugins.Single();
+            Assert.That(migratedPlugin.Outputs.Count, Is.EqualTo(1));
+            Assert.That(migratedPlugin.Outputs.Single().IsBound, Is.True);
+            Assert.That(migratedPlugin.Outputs.Single().KeyType, Is.EqualTo(7));
+
+            // PostLoad must be safe to repeat; this used to halve a one-output plugin to zero.
+            _profile.MappingGroups.Single().PostLoad(_context, _profile);
+            Assert.That(migratedPlugin.Outputs.Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void DamagedGroupedPluginWithMissingOutputsRepairsBeforeEditorConstruction()
+        {
+            var group = _profile.AddMappingGroup("Extras");
+            var mapping = group.AddMapping("Axis");
+            var plugin = new ButtonToAxis();
+            mapping.AddPlugin(plugin);
+            plugin.Outputs.Clear();
+
+            group.PostLoad(_context, _profile);
+
+            Assert.That(plugin.Outputs.Count, Is.EqualTo(1));
+            plugin.Initialize = true;
+            Assert.DoesNotThrow(() => plugin.OnActivate(),
+                "A repaired Button to Axis plugin must no longer crash when an enabled group activates.");
+            Assert.DoesNotThrow(() =>
+            {
+                var viewModel = new ProfileViewModel(_profile);
+                viewModel.Dispose();
+            });
+        }
+
+        [Test]
         public void DashboardProfileListIsFlatAfterChildMigration()
         {
             var child = _context.ProfilesManager.CreateProfile("Player 2", null, null);

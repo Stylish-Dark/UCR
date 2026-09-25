@@ -1,12 +1,16 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
+using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.ViewModels.Controls;
 using HidWizards.UCR.ViewModels.Dashboard;
+using HidWizards.UCR.ViewModels.ProfileViewModels;
 using HidWizards.UCR.Views.Controls;
 using HidWizards.UCR.Views.Dialogs;
 using NUnit.Framework;
@@ -41,6 +45,43 @@ namespace HidWizards.UCR.Tests.UiTests
         {
             EnsureApplicationResources();
             Assert.That(RenderOptions.ProcessRenderMode, Is.EqualTo(System.Windows.Interop.RenderMode.Default));
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void MappingCollapseKeepsBodyVisibleWhileTheCloseAnimationRuns()
+        {
+            EnsureApplicationResources();
+
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Animation", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            profile.AddMapping("Mapping");
+
+            var profileViewModel = new ProfileViewModel(profile);
+            var card = new MappingCardControl { DataContext = profileViewModel.MappingsList.Single() };
+            card.Measure(new Size(900, 600));
+            card.Arrange(new Rect(0, 0, 900, 600));
+            card.UpdateLayout();
+
+            var expander = card.FindName("MappingExpander") as Expander;
+            var body = card.FindName("ExpandedBodyHost") as ContentControl;
+            Assert.That(expander, Is.Not.Null);
+            Assert.That(body, Is.Not.Null);
+
+            expander.IsExpanded = true;
+            card.UpdateLayout();
+            Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible));
+            Assert.That(body.ContentTemplate, Is.Not.Null);
+            PumpDispatcherFor(TimeSpan.FromMilliseconds(220));
+            Assert.That(body.ActualHeight, Is.GreaterThan(0));
+
+            expander.IsExpanded = false;
+
+            Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible),
+                "Collapse should animate the body to zero height before hiding it, not snap shut immediately.");
+
+            profileViewModel.Dispose();
         }
 
         [Test]
@@ -119,6 +160,22 @@ namespace HidWizards.UCR.Tests.UiTests
                 .ToList();
             Assert.That(badgeTexts, Is.EquivalentTo(new[] { "P1", "X1" }),
                 "Every add-device row should materialize the semantic device-family badge, not a controller silhouette.");
+        }
+
+        private static void PumpDispatcherFor(TimeSpan duration)
+        {
+            var frame = new DispatcherFrame();
+            var timer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = duration
+            };
+            timer.Tick += (sender, args) =>
+            {
+                timer.Stop();
+                frame.Continue = false;
+            };
+            timer.Start();
+            Dispatcher.PushFrame(frame);
         }
 
         private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject

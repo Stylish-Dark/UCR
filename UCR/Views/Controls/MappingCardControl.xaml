@@ -145,10 +145,14 @@
                 </Style.Triggers>
             </Style>
         </Border.Style>
-        <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}"
-                  HorizontalContentAlignment="Stretch"
-                  Background="#242424"
-                  Style="{StaticResource MaterialDesignExpander}">
+        <StackPanel>
+            <Expander x:Name="MappingExpander"
+                      IsExpanded="{Binding IsExpanded, Mode=TwoWay}"
+                      HorizontalContentAlignment="Stretch"
+                      Background="#242424"
+                      Style="{StaticResource MaterialDesignExpander}"
+                      Expanded="MappingExpander_OnExpanded"
+                      Collapsed="MappingExpander_OnCollapsed">
             <Expander.Header>
                 <Grid x:Name="HeaderGrid" MinHeight="64" ToolTip="Right-drag this card while collapsed to reorder it">
                     <Grid.ColumnDefinitions>
@@ -309,23 +313,18 @@
                     </StackPanel>
                 </Grid>
             </Expander.Header>
+            </Expander>
 
-            <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch">
-                <ContentControl.Style>
-                    <Style TargetType="{x:Type ContentControl}">
-                        <!-- Mapping cards start collapsed. Do not construct the expensive binding/plugin
-                             editor visual tree until the user actually expands this card. -->
-                        <Setter Property="Visibility" Value="Collapsed"/>
-                        <Setter Property="ContentTemplate" Value="{x:Null}"/>
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                <Setter Property="Visibility" Value="Visible"/>
-                                <Setter Property="ContentTemplate" Value="{StaticResource ExpandedMappingBodyTemplate}"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </ContentControl.Style>
-            </ContentControl>
-        </Expander>
+            <!-- Keep the body outside the Expander template so collapse can animate instead of the
+                 template hiding the content instantly. The heavy editor visual tree is still lazy. -->
+            <ContentControl x:Name="ExpandedBodyHost"
+                            Content="{Binding}"
+                            ContentTemplate="{x:Null}"
+                            HorizontalContentAlignment="Stretch"
+                            Visibility="Collapsed"
+                            Height="0"
+                            Opacity="0"
+                            ClipToBounds="True"/>
+        </StackPanel>
     </Border>
 </UserControl>

@@ -432,7 +432,6 @@ namespace HidWizards.UCR.Core.Models
                         string.Equals(mapping.Title, sourceMapping.Title, StringComparison.CurrentCultureIgnoreCase));
                     if (previous != null) effectiveMappings.Remove(previous);
                     var clone = HidWizards.UCR.Core.Context.DeepXmlClone<Mapping>(sourceMapping);
-                    clone.PostLoad(Context, this);
                     effectiveMappings.Add(clone);
                 }
             }

@@ -246,28 +246,55 @@ namespace HidWizards.UCR.Core.Models
         public void PostLoad(Context context, Profile parentProfile)
         {
             SetProfile(parentProfile);
-            ZipDeviceBindingList(Outputs);
-            Outputs.ForEach(o => o.DeviceIoType = DeviceIoType.Output);
-
+            NormalizeOutputBindings(parentProfile);
         }
 
-        private static void ZipDeviceBindingList(IList<DeviceBinding> deviceBindings)
+        private void NormalizeOutputBindings(Profile parentProfile)
         {
-            if (deviceBindings.Count == 0) return;
-            var split = deviceBindings.Count / 2;
-            for (var i = 0; i < split; i++)
+            var expectedCount = OutputCategories.Count;
+            if (expectedCount == 0)
             {
-                deviceBindings[i].IsBound = deviceBindings[i + split].IsBound;
-                deviceBindings[i].DeviceConfigurationGuid = deviceBindings[i + split].DeviceConfigurationGuid;
-                deviceBindings[i].KeyType = deviceBindings[i + split].KeyType;
-                deviceBindings[i].KeyValue = deviceBindings[i + split].KeyValue;
-                deviceBindings[i].KeySubValue = deviceBindings[i + split].KeySubValue;
+                Outputs.Clear();
+                return;
             }
 
-            for (var i = deviceBindings.Count - 1; i >= split; i--)
+            // XmlSerializer populates this getter-only list on top of the bindings created by the
+            // plugin constructor. Historically UCR therefore had [defaults][persisted] here and
+            // "zipped" the second half into the first. Make that repair idempotent: PostLoad may be
+            // called more than once, and old broken group migrations can have persisted zero or only
+            // some of the expected outputs.
+            if (Outputs.Count > expectedCount)
             {
-                deviceBindings.Remove(deviceBindings[i]);
+                var persistedCount = Math.Min(expectedCount, Outputs.Count - expectedCount);
+                for (var index = 0; index < persistedCount; index++)
+                {
+                    CopyBindingState(Outputs[expectedCount + index], Outputs[index]);
+                }
+
+                for (var index = Outputs.Count - 1; index >= expectedCount; index--)
+                    Outputs.RemoveAt(index);
             }
+
+            while (Outputs.Count < expectedCount)
+                Outputs.Add(new DeviceBinding(null, parentProfile, DeviceIoType.Output));
+
+            foreach (var output in Outputs)
+            {
+                output.Profile = parentProfile;
+                output.DeviceIoType = DeviceIoType.Output;
+            }
+        }
+
+        private static void CopyBindingState(DeviceBinding source, DeviceBinding target)
+        {
+            if (source == null || target == null) return;
+            target.IsBound = source.IsBound;
+            target.DeviceConfigurationGuid = source.DeviceConfigurationGuid;
+            target.KeyType = source.KeyType;
+            target.KeyValue = source.KeyValue;
+            target.KeySubValue = source.KeySubValue;
+            target.Block = source.Block;
+            target.InvertInput = source.InvertInput;
         }
 
         #endregion

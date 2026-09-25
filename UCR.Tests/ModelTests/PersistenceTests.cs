@@ -147,6 +147,30 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void GroupedPluginWithPersistedEmptyOutputsRepairsOnReload()
+        {
+            var context = NewContext();
+            var pluginTypes = new List<Type> { typeof(ButtonToAxis) };
+            var profile = context.ProfilesManager.CreateProfile("Grouped", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var group = profile.AddMappingGroup("Player 2");
+            var mapping = group.AddMapping("Axis");
+            var plugin = new ButtonToAxis { Initialize = true };
+            mapping.AddPlugin(plugin);
+
+            // Reproduce the damaged state created by the old double-PostLoad group migration.
+            plugin.Outputs.Clear();
+            context.SaveContext(pluginTypes);
+
+            var loaded = Reload(pluginTypes);
+            var loadedPlugin = (ButtonToAxis)loaded.Profiles.Single()
+                .MappingGroups.Single().Mappings.Single().Plugins.Single();
+
+            Assert.That(loadedPlugin.Outputs.Count, Is.EqualTo(1));
+            Assert.DoesNotThrow(() => loadedPlugin.OnActivate());
+        }
+
+        [Test]
         public void MappingContextRoundTripsPluginsBindingsAndBlockState()
         {
             var context = NewContext();
