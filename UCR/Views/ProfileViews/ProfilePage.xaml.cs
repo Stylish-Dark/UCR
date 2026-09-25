@@ -82,7 +82,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             e.CanExecute = Context.IsNotSaved;
         }
 
-        private void ProfileWindow_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        private void ProfilePage_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
             if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control) return;
             var scale = AppearanceManager.AdjustUiScale(e.Delta);
@@ -579,7 +579,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             transform.BeginAnimation(TranslateTransform.YProperty, animation, HandoffBehavior.SnapshotAndReplace);
         }
 
-        private void ProfileWindow_OnPreviewKeyDown(object sender, KeyEventArgs e)
+        private void ProfilePage_OnPreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (!_mappingDragActive || e.Key != Key.Escape) return;
             EndMappingDrag(false);
