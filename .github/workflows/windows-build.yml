@@ -22,14 +22,21 @@ jobs:
 
       - name: Restore packages
         shell: pwsh
-        run: nuget restore UCR.sln -NonInteractive
+        run: |
+          nuget restore UCR\packages.config -PackagesDirectory packages -NonInteractive
+          nuget restore UCR.Core\packages.config -PackagesDirectory packages -NonInteractive
+          nuget restore UCR.Tests\packages.config -PackagesDirectory packages -NonInteractive
+          nuget restore UCR.FileHandler\packages.config -PackagesDirectory packages -NonInteractive
 
-      - name: Install .NET Framework 4.5.2 reference assemblies
+      - name: Install .NET Framework reference assemblies
         shell: pwsh
         run: |
           nuget install Microsoft.NETFramework.ReferenceAssemblies.net452 -Version 1.0.3 -OutputDirectory .ci-reference -NonInteractive
-          $root = (Resolve-Path ".ci-reference\Microsoft.NETFramework.ReferenceAssemblies.net452.1.0.3\build\.NETFramework").Path
-          "NET452_ROOT=$root" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          nuget install Microsoft.NETFramework.ReferenceAssemblies.net461 -Version 1.0.3 -OutputDirectory .ci-reference -NonInteractive
+          $net452 = (Resolve-Path ".ci-reference\Microsoft.NETFramework.ReferenceAssemblies.net452.1.0.3\build\.NETFramework").Path
+          $net461 = (Resolve-Path ".ci-reference\Microsoft.NETFramework.ReferenceAssemblies.net461.1.0.3\build\.NETFramework").Path
+          "NET452_ROOT=$net452" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "NET461_ROOT=$net461" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Build release
         shell: pwsh
@@ -37,19 +44,21 @@ jobs:
           $common = @(
             "/m",
             "/p:Configuration=Release",
-            "/p:TargetFrameworkRootPath=$env:NET452_ROOT\",
             "/p:SolutionDir=$env:GITHUB_WORKSPACE\",
             "/p:VersionNumber=0.9.9.0"
           )
-          msbuild UCR.Core\UCR.Core.csproj @common
+          $net452 = $common + "/p:TargetFrameworkRootPath=$env:NET452_ROOT\"
+          $net461 = $common + "/p:TargetFrameworkRootPath=$env:NET461_ROOT\"
+
+          msbuild UCR.Core\UCR.Core.csproj @net452
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          msbuild UCR.Plugins\UCR.Plugins.csproj @common
+          msbuild UCR.Plugins\UCR.Plugins.csproj @net452
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          msbuild UCR.FileHandler\UCR.FileHandler.csproj @common
+          msbuild UCR.FileHandler\UCR.FileHandler.csproj @net461
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          msbuild UCR\UCR.csproj @common
+          msbuild UCR\UCR.csproj @net452
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          msbuild UCR.Tests\UCR.Tests.csproj @common
+          msbuild UCR.Tests\UCR.Tests.csproj @net452
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run tests
