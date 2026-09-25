@@ -17,6 +17,16 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Restore pinned IOWrapper source
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "submodules\IOWrapper\IOWrapper.sln")) {
+            New-Item -ItemType Directory -Force -Path "submodules" | Out-Null
+            git clone https://github.com/evilC/IOWrapper.git "submodules\IOWrapper"
+          }
+          git -C "submodules\IOWrapper" fetch --all --tags --prune
+          git -C "submodules\IOWrapper" checkout --force 4ef0a847fb479cfbe561656097639d3cef5240b7
+
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v2
 
