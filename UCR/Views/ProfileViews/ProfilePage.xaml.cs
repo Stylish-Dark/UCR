@@ -138,6 +138,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             {
                 binding.UiValueInvalidated -= DeviceBindingOnUiValueInvalidated;
                 binding.UiValueInvalidated += DeviceBindingOnUiValueInvalidated;
+                binding.RequestUiValueRefresh();
             }
 
             DispatcherTimer.Start();
