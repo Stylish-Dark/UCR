@@ -154,7 +154,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
-        private bool _lastKnownActiveState;
         private CancellationTokenSource _quickOutputDetectionCancellation;
         private DispatcherTimer _quickOutputDetectionTimer;
         private DateTime _quickOutputDetectionDeadlineUtc;
@@ -213,8 +212,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ProfileViewModel = profileViewModel;
             Mapping = mapping;
             IsExpanded = false;
-            _lastKnownActiveState = profileViewModel.Profile.IsActive();
-            profileViewModel.Profile.Context.ActiveProfileChangedEvent += ContextOnActiveProfileChangedEvent;
             DeviceBindings = new ObservableCollection<DeviceBindingViewModel>();
             PopulateDeviceBindingsViewModels();
             PopulatePlugins(mapping);
@@ -223,15 +220,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             RefreshCollapsedSummary();
         }
 
-        private void ContextOnActiveProfileChangedEvent(Profile profile)
+        internal void RefreshActiveState()
         {
-            var isActive = ProfileViewModel.Profile.IsActive();
-            if (isActive == _lastKnownActiveState) return;
-            _lastKnownActiveState = isActive;
+            if (_disposed) return;
 
             OnPropertyChanged(nameof(ButtonsEnabled));
             OnPropertyChanged(nameof(CanMoveUp));
             OnPropertyChanged(nameof(CanMoveDown));
+            foreach (var binding in DeviceBindings) binding.RefreshActiveState();
+            foreach (var plugin in Plugins) plugin.RefreshActiveState();
         }
 
         public void RefreshPositionState()
@@ -984,7 +981,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             StopQuickInputDetection();
             _quickOutputDetectionCancellation?.Cancel();
             StopQuickOutputCountdown();
-            ProfileViewModel.Profile.Context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;
 
             foreach (var binding in DeviceBindings ?? new ObservableCollection<DeviceBindingViewModel>())
             {
