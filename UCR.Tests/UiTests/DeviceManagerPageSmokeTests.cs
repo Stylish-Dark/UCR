@@ -4,6 +4,7 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.ViewModels.Controls;
@@ -71,6 +72,8 @@ namespace HidWizards.UCR.Tests.UiTests
             card.UpdateLayout();
             Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible));
             Assert.That(body.ContentTemplate, Is.Not.Null);
+            PumpDispatcherFor(TimeSpan.FromMilliseconds(220));
+            Assert.That(body.ActualHeight, Is.GreaterThan(0));
 
             expander.IsExpanded = false;
 
@@ -156,6 +159,22 @@ namespace HidWizards.UCR.Tests.UiTests
                 .ToList();
             Assert.That(badgeTexts, Is.EquivalentTo(new[] { "P1", "X1" }),
                 "Every add-device row should materialize the semantic device-family badge, not a controller silhouette.");
+        }
+
+        private static void PumpDispatcherFor(TimeSpan duration)
+        {
+            var frame = new DispatcherFrame();
+            var timer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = duration
+            };
+            timer.Tick += (sender, args) =>
+            {
+                timer.Stop();
+                frame.Continue = false;
+            };
+            timer.Start();
+            Dispatcher.PushFrame(frame);
         }
 
         private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject
