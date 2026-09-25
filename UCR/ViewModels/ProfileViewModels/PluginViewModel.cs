@@ -20,7 +20,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool CanRemove => !MappingViewModel.ProfileViewModel.Profile.IsActive() && MappingViewModel.Plugins.Count > 1;
         public bool CanAddFilter => !MappingViewModel.ProfileViewModel.Profile.IsActive();
         public ObservableCollection<FilterViewModel> Filters { get; set; }
-        private bool _lastKnownActiveState;
         private bool _editorInitialized;
         private bool _disposed;
 
@@ -28,8 +27,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             MappingViewModel = mappingViewModel;
             Plugin = plugin;
-            _lastKnownActiveState = mappingViewModel.ProfileViewModel.Profile.IsActive();
-            mappingViewModel.ProfileViewModel.Profile.Context.ActiveProfileChangedEvent += ContextOnActiveProfileChangedEvent;
             mappingViewModel.Plugins.CollectionChanged += Plugins_CollectionChanged;
             Plugin.FilterDefinitionChanged += PluginOnFilterDefinitionChanged;
             PluginPropertyGroups = new ObservableCollection<PluginPropertyGroupViewModel>();
@@ -94,14 +91,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(CanRemove));
         }
 
-        private void ContextOnActiveProfileChangedEvent(Profile profile)
+        internal void RefreshActiveState()
         {
-            var isActive = MappingViewModel.ProfileViewModel.Profile.IsActive();
-            if (isActive == _lastKnownActiveState) return;
-            _lastKnownActiveState = isActive;
-
+            if (_disposed) return;
             OnPropertyChanged(nameof(CanRemove));
             OnPropertyChanged(nameof(CanAddFilter));
+            foreach (var binding in DeviceBindings) binding.RefreshActiveState();
         }
 
         public void Remove()
@@ -145,8 +140,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (_disposed) return;
             _disposed = true;
 
-            var context = MappingViewModel.ProfileViewModel.Profile.Context;
-            context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;
             MappingViewModel.Plugins.CollectionChanged -= Plugins_CollectionChanged;
             Plugin.FilterDefinitionChanged -= PluginOnFilterDefinitionChanged;
 
