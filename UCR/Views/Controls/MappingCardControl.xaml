@@ -105,6 +105,27 @@
                 </Grid>
             </Grid>
         </DataTemplate>
+        <DataTemplate x:Key="ExpandedMappingBodyTemplate">
+            <Border Margin="8 0 8 8" Padding="4 6 4 4" Background="#202020"
+                    BorderBrush="#303030" BorderThickness="1 1 1 0" CornerRadius="3">
+                <StackPanel>
+                    <ItemsControl ItemsSource="{Binding DeviceBindings}" HorizontalContentAlignment="Stretch">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <local:DeviceBindingControl DataContext="{Binding}" DeviceBinding="{Binding DeviceBinding}"
+                                                            Label="{Binding DeviceBindingName}" Category="{Binding DeviceBindingCategory}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <ItemsControl ItemsSource="{Binding Plugins}" VerticalAlignment="Stretch">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate><plugin:PluginControl Margin="0 4 0 0"/></DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
     </UserControl.Resources>
 
     <Border Margin="4 5" Background="#242424" CornerRadius="5" SnapsToDevicePixels="True">
@@ -289,25 +310,22 @@
                 </Grid>
             </Expander.Header>
 
-            <Border Margin="8 0 8 8" Padding="4 6 4 4" Background="#202020"
-                    BorderBrush="#303030" BorderThickness="1 1 1 0" CornerRadius="3">
-                <StackPanel>
-                    <ItemsControl ItemsSource="{Binding DeviceBindings}" HorizontalContentAlignment="Stretch">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <local:DeviceBindingControl DataContext="{Binding}" DeviceBinding="{Binding DeviceBinding}"
-                                                            Label="{Binding DeviceBindingName}" Category="{Binding DeviceBindingCategory}"/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <ItemsControl ItemsSource="{Binding Plugins}" VerticalAlignment="Stretch">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate><plugin:PluginControl Margin="0 4 0 0"/></DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-            </Border>
+            <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch">
+                <ContentControl.Style>
+                    <Style TargetType="{x:Type ContentControl}">
+                        <!-- Mapping cards start collapsed. Do not construct the expensive binding/plugin
+                             editor visual tree until the user actually expands this card. -->
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Setter Property="ContentTemplate" Value="{x:Null}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Setter Property="ContentTemplate" Value="{StaticResource ExpandedMappingBodyTemplate}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ContentControl.Style>
+            </ContentControl>
         </Expander>
     </Border>
 </UserControl>
