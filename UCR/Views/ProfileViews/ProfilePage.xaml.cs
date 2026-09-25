@@ -536,20 +536,33 @@ namespace HidWizards.UCR.Views.ProfileViews
 
             var draggedCentre = desiredTop + (_mappingDragSourceHeight / 2.0);
             var desiredIndex = 0;
-            foreach (var mapping in _mappingDragMappings)
+
+            // A dragged card can be taller than the first card. At the absolute top their centres
+            // can therefore still compare as "below" the first midpoint, making slot zero impossible.
+            // Treat matching/crossing the first card's top edge as an explicit first-position target.
+            var firstOther = _mappingDragMappings.FirstOrDefault(mapping => !ReferenceEquals(mapping, source));
+            MappingDragSlot firstOtherSlot;
+            var isAtFirstSlot = firstOther != null &&
+                                _mappingDragSlots.TryGetValue(firstOther, out firstOtherSlot) &&
+                                desiredTop <= firstOtherSlot.Top + 1.0;
+
+            if (!isAtFirstSlot)
             {
-                if (ReferenceEquals(mapping, source)) continue;
-
-                MappingDragSlot slot;
-                if (!_mappingDragSlots.TryGetValue(mapping, out slot)) continue;
-
-                var midpoint = slot.Top + (slot.Height / 2.0);
-                if (draggedCentre >= midpoint)
+                foreach (var mapping in _mappingDragMappings)
                 {
-                    desiredIndex++;
-                    continue;
+                    if (ReferenceEquals(mapping, source)) continue;
+
+                    MappingDragSlot slot;
+                    if (!_mappingDragSlots.TryGetValue(mapping, out slot)) continue;
+
+                    var midpoint = slot.Top + (slot.Height / 2.0);
+                    if (draggedCentre > midpoint)
+                    {
+                        desiredIndex++;
+                        continue;
+                    }
+                    break;
                 }
-                break;
             }
 
             var count = _mappingDragMappings.Count;
