@@ -305,6 +305,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return transfer.Compatibility;
         }
 
+        internal void RequestUiValueRefresh()
+        {
+            if (_disposed) return;
+            GuiInvalidated = true;
+            UiValueInvalidated?.Invoke(this);
+        }
+
         public void CurrentValueChanged()
         {
             if (!GuiInvalidated) return;
