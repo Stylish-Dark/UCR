@@ -49,6 +49,21 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
         
         [Test]
+        public void MappingOverrideLookupWalksPastAnEmptyImmediateParent()
+        {
+            _mapping.Rename("Shared");
+
+            var child = _context.ProfilesManager.CreateProfile("Child", null, null);
+            _profile.AddChildProfile(child);
+            var grandchild = _context.ProfilesManager.CreateProfile("Grandchild", null, null);
+            child.AddChildProfile(grandchild);
+            var grandchildMapping = grandchild.AddMapping("Shared");
+
+            Assert.That(child.Mappings, Is.Empty);
+            Assert.That(grandchildMapping.FullTitle, Is.EqualTo("Shared (Overrides Base Profile)"));
+        }
+
+        [Test]
         public void RemoveChildProfile()
         {
             Assert.That(_profile.ChildProfiles.Count, Is.EqualTo(0));
