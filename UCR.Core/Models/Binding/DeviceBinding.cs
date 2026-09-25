@@ -27,6 +27,7 @@ namespace HidWizards.UCR.Core.Models.Binding
             get => _isBound;
             set
             {
+                if (_isBound == value) return;
                 _isBound = value;
                 OnPropertyChanged();
             }
@@ -65,6 +66,7 @@ namespace HidWizards.UCR.Core.Models.Binding
             get => _isInBindMode;
             private set
             {
+                if (_isInBindMode == value) return;
                 _isInBindMode = value;
                 OnPropertyChanged();
             }
@@ -95,6 +97,7 @@ namespace HidWizards.UCR.Core.Models.Binding
             get => _currentValue;
             set
             {
+                if (_currentValue == value) return;
                 _currentValue = value;
                 OnPropertyChanged();
             }
@@ -166,6 +169,7 @@ namespace HidWizards.UCR.Core.Models.Binding
 
         public void SetInvertInput(bool invert)
         {
+            if (InvertInput == invert) return;
             InvertInput = invert;
             Profile.Context.ContextChanged();
             OnPropertyChanged(nameof(InvertInput));
@@ -198,26 +202,29 @@ namespace HidWizards.UCR.Core.Models.Binding
             int keyType, int keyValue, int keySubValue)
         {
             // Never destructively traverse the provider/cache binding menu. These lists are shared by
-            // the UI and device cache; removing nodes here can corrupt later rebind menus.
-            var searchList = deviceBindingNodes == null
-                ? new List<DeviceBindingNode>()
-                : new List<DeviceBindingNode>(deviceBindingNodes);
+            // the UI and device cache. A queue also avoids List.RemoveAt(0), which turns a broad menu
+            // traversal into quadratic copying work.
+            var searchQueue = deviceBindingNodes == null
+                ? new Queue<DeviceBindingNode>()
+                : new Queue<DeviceBindingNode>(deviceBindingNodes);
 
-            while (searchList.Count > 0)
+            while (searchQueue.Count > 0)
             {
-                var node = searchList[0];
-                searchList.RemoveAt(0);
+                var node = searchQueue.Dequeue();
+                if (node == null) continue;
 
                 if (node.IsBinding)
                 {
                     var info = node.DeviceBindingInfo;
-                    if (info.KeyType == keyType && info.KeyValue == keyValue && info.KeySubValue == keySubValue)
+                    if (info != null && info.KeyType == keyType && info.KeyValue == keyValue &&
+                        info.KeySubValue == keySubValue)
                     {
                         return info.Blockable;
                     }
                 }
 
-                if (node.ChildrenNodes != null) searchList.AddRange(node.ChildrenNodes);
+                if (node.ChildrenNodes == null) continue;
+                foreach (var child in node.ChildrenNodes) searchQueue.Enqueue(child);
             }
 
             return false;
