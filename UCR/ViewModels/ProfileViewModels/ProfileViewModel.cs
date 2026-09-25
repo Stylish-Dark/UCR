@@ -28,7 +28,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
     public class ProfileViewModel : INotifyPropertyChanged, IDisposable
     {
         public Profile Profile { get; }
-        public bool CanActivateProfile => Profile != null && !Profile.IsActive();
+        public bool CanActivateProfile => Profile != null;
         public bool CanDeactivateProfile => Profile.IsActive();
         public bool CanEditProfile => !Profile.IsActive();
         public bool IsProfileActive => Profile.IsActive();
