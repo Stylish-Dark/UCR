@@ -36,6 +36,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool ShowButtonPreview => DeviceBinding.IsInBindMode || DeviceBinding.Profile.IsActive();
 
         private bool GuiInvalidated { get; set; }
+        internal event Action<DeviceBindingViewModel> UiValueInvalidated;
         private bool _deviceListLoaded;
         private bool _deviceListDirty;
         private bool _disposed;
@@ -122,7 +123,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 if (_currentValue == value) return;
                 _currentValue = value;
+                if (GuiInvalidated) return;
                 GuiInvalidated = true;
+                UiValueInvalidated?.Invoke(this);
             }
         }
 
