@@ -313,7 +313,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             var section = ProfileViewModel.AddMappingGroup(dialog.Value.Trim());
             if (section == null) return;
             Logger.Info("Mapping group added: " + section.Title + " in profile " + Profile.Title);
-            Dispatcher.BeginInvoke((Action)(() => ScrollSectionIntoView(section)), DispatcherPriority.Background);
+            _ = Dispatcher.BeginInvoke((Action)(() => ScrollSectionIntoView(section)), DispatcherPriority.Background);
         }
 
         private void ToggleMappingGroupSection_OnClick(object sender, RoutedEventArgs e)
