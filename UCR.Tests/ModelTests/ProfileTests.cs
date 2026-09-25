@@ -333,6 +333,23 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void DeviceBindingCurrentValueOnlyNotifiesWhenTheValueActuallyChanges()
+        {
+            var binding = new DeviceBinding(value => { }, _profile, DeviceIoType.Input);
+            var notifications = 0;
+            binding.PropertyChanged += (sender, args) =>
+            {
+                if (args.PropertyName == nameof(DeviceBinding.CurrentValue)) notifications++;
+            };
+
+            binding.CurrentValue = 123;
+            binding.CurrentValue = 123;
+            binding.CurrentValue = 456;
+
+            Assert.That(notifications, Is.EqualTo(2));
+        }
+
+        [Test]
         public void GuiInvalidationIsConsumedAfterOneRefresh()
         {
             var binding = new DeviceBinding(value => { }, _profile, DeviceIoType.Input)
