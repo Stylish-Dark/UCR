@@ -27,6 +27,8 @@ namespace HidWizards.UCR.Views.ProfileViews
         private ProfileViewModel ProfileViewModel { get; }
         private DispatcherTimer DispatcherTimer { get; set; }
         private List<DeviceBindingViewModel> DeviceBindingViewModels { get; set; }
+        private readonly object _dirtyBindingsLock = new object();
+        private readonly HashSet<DeviceBindingViewModel> _dirtyBindings = new HashSet<DeviceBindingViewModel>();
         private Point? _mappingDragStart;
         private MappingViewModel _mappingDragSource;
         private int _mappingDragOriginalIndex = -1;
@@ -131,6 +133,13 @@ namespace HidWizards.UCR.Views.ProfileViews
                 }
             }
 
+            lock (_dirtyBindingsLock) _dirtyBindings.Clear();
+            foreach (var binding in DeviceBindingViewModels)
+            {
+                binding.UiValueInvalidated -= DeviceBindingOnUiValueInvalidated;
+                binding.UiValueInvalidated += DeviceBindingOnUiValueInvalidated;
+            }
+
             DispatcherTimer.Start();
         }
 
@@ -142,8 +151,14 @@ namespace HidWizards.UCR.Views.ProfileViews
                 DispatcherTimer.Tick -= DispatcherTimerOnTick;
                 DispatcherTimer = null;
             }
-            DeviceBindingViewModels?.Clear();
+            if (DeviceBindingViewModels != null)
+            {
+                foreach (var binding in DeviceBindingViewModels)
+                    binding.UiValueInvalidated -= DeviceBindingOnUiValueInvalidated;
+                DeviceBindingViewModels.Clear();
+            }
             DeviceBindingViewModels = null;
+            lock (_dirtyBindingsLock) _dirtyBindings.Clear();
         }
 
         private void ContextOnActiveProfileChangedEvent(Profile profile)
@@ -152,10 +167,25 @@ namespace HidWizards.UCR.Views.ProfileViews
             else StopGuiTimer();
         }
 
+        private void DeviceBindingOnUiValueInvalidated(DeviceBindingViewModel binding)
+        {
+            if (binding == null) return;
+            lock (_dirtyBindingsLock) _dirtyBindings.Add(binding);
+        }
+
         private void DispatcherTimerOnTick(object sender, EventArgs e)
         {
             if (!IsVisible || DeviceBindingViewModels == null) return;
-            foreach (var binding in DeviceBindingViewModels) binding.CurrentValueChanged();
+
+            DeviceBindingViewModel[] dirty;
+            lock (_dirtyBindingsLock)
+            {
+                if (_dirtyBindings.Count == 0) return;
+                dirty = _dirtyBindings.ToArray();
+                _dirtyBindings.Clear();
+            }
+
+            foreach (var binding in dirty) binding.CurrentValueChanged();
         }
 
         #endregion
