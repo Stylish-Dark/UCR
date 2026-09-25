@@ -592,6 +592,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private DeviceConfiguration ResolveQuickOutputConfiguration(DeviceBindingViewModel bindingViewModel)
         {
             if (bindingViewModel?.DeviceBinding == null) return null;
+            bindingViewModel.EnsureDeviceListLoaded();
             var binding = bindingViewModel.DeviceBinding;
             var configurationGuid = binding.DeviceConfigurationGuid;
             if (configurationGuid == Guid.Empty && bindingViewModel.SelectedDevice != null)
