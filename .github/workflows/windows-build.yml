@@ -36,6 +36,7 @@ jobs:
       - name: Restore packages
         shell: pwsh
         run: |
+          nuget restore submodules\IOWrapper\IOWrapper.sln -NonInteractive
           nuget restore UCR\packages.config -PackagesDirectory packages -NonInteractive
           nuget restore UCR.Core\packages.config -PackagesDirectory packages -NonInteractive
           nuget restore UCR.Tests\packages.config -PackagesDirectory packages -NonInteractive
