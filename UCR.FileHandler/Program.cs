@@ -14,7 +14,7 @@ namespace UCR.FileHandler
             {
                 directory = args[0];
             }
-            catch (IndexOutOfRangeException e)
+            catch (IndexOutOfRangeException)
             {
                 directory = Directory.GetCurrentDirectory();
             }
