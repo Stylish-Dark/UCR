@@ -669,10 +669,13 @@ namespace HidWizards.UCR.Views
                 var importedCount = Context.ProfilesManager.ImportProfileList(fileName, mode);
                 if (mode == ProfileListImportMode.Replace)
                 {
-                    CloseNavigationPage();
                     _dashboardViewModel.SelectedProfileItem = null;
+                    CloseNavigationPage(true);
                 }
-                ReloadProfileTree();
+                else
+                {
+                    ReloadProfileTree();
+                }
                 HidWizards.UCR.Utilities.DarkMessageBox.Show(this,
                     $"Imported {importedCount} top-level profile{(importedCount == 1 ? string.Empty : "s")} successfully.",
                     "Import profiles", MessageBoxButton.OK, MessageBoxImage.Information);
