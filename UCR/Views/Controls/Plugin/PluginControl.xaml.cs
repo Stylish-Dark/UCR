@@ -11,6 +11,13 @@ namespace HidWizards.UCR.Views.Controls.Plugin
         public PluginControl()
         {
             InitializeComponent();
+            Loaded += PluginControl_OnLoaded;
+        }
+
+        private void PluginControl_OnLoaded(object sender, RoutedEventArgs e)
+        {
+            var viewModel = DataContext as PluginViewModel;
+            viewModel?.EnsureEditorInitialized();
         }
 
         private void RemovePlugin_OnClick(object sender, RoutedEventArgs e)
