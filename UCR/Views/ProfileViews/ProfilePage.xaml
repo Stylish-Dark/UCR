@@ -17,8 +17,8 @@
              Background="{DynamicResource MaterialDesignPaper}"
              FontFamily="{DynamicResource MaterialDesignFont}"
              UseLayoutRounding="True"
-             PreviewKeyDown="ProfileWindow_OnPreviewKeyDown"
-             PreviewMouseWheel="ProfileWindow_OnPreviewMouseWheel">
+             PreviewKeyDown="ProfilePage_OnPreviewKeyDown"
+             PreviewMouseWheel="ProfilePage_OnPreviewMouseWheel">
     <UserControl.Resources>
         <ResourceDictionary>
             <BooleanToVisibilityConverter x:Key="MappingSectionVisibilityConverter"/>
