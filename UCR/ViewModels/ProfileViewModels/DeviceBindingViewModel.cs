@@ -193,6 +193,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!_deviceListLoaded)
             {
                 _deviceListDirty = true;
+                // The collapsed mapping header still depends on this view-model's presentation.
+                // Signal a lightweight presentation change without paying to build the dropdown.
+                OnPropertyChanged(nameof(SelectedDevice));
+                OnPropertyChanged(nameof(BindButtonText));
                 return;
             }
 
