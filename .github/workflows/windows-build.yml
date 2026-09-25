@@ -1,0 +1,67 @@
+name: Windows build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: windows-2022
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Set up NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Restore packages
+        shell: pwsh
+        run: nuget restore UCR.sln -NonInteractive
+
+      - name: Install .NET Framework 4.5.2 reference assemblies
+        shell: pwsh
+        run: |
+          nuget install Microsoft.NETFramework.ReferenceAssemblies.net452 -Version 1.0.3 -OutputDirectory .ci-reference -NonInteractive
+          $root = (Resolve-Path ".ci-reference\Microsoft.NETFramework.ReferenceAssemblies.net452.1.0.3\build\.NETFramework").Path
+          "NET452_ROOT=$root" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build release
+        shell: pwsh
+        run: |
+          $common = @(
+            "/m",
+            "/p:Configuration=Release",
+            "/p:TargetFrameworkRootPath=$env:NET452_ROOT\",
+            "/p:SolutionDir=$env:GITHUB_WORKSPACE\",
+            "/p:VersionNumber=0.9.9.0"
+          )
+          msbuild UCR.Core\UCR.Core.csproj @common
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          msbuild UCR.Plugins\UCR.Plugins.csproj @common
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          msbuild UCR.FileHandler\UCR.FileHandler.csproj @common
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          msbuild UCR\UCR.csproj @common
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          msbuild UCR.Tests\UCR.Tests.csproj @common
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run tests
+        shell: pwsh
+        run: |
+          & ".\packages\NUnit.ConsoleRunner.3.9.0\tools\nunit3-console.exe" ".\UCR.Tests\bin\Release\UCR.Tests.dll" --noresult
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload release build
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: UCR-Release
+          path: UCR/bin/Release/**
+          if-no-files-found: error
