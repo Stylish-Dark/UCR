@@ -71,6 +71,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             Profile = profile;
             _lastKnownActiveState = profile.IsActive();
             profile.Context.ActiveProfileChangedEvent += ContextOnActiveProfileChangedEvent;
+            profile.Context.DeviceAliasesChangedEvent += ContextOnDeviceAliasesChanged;
             if (profile.PruneUndefinedFilterReferencesRecursive()) profile.Context.ContextChanged();
             PopulateMappingsList(profile);
             RefreshFilterNames();
@@ -83,13 +84,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 profile.GetDeviceConfigurationList(DeviceIoType.Output), DeviceIoType.Output, RefreshDevicePresentation, ProfileDialogIdentifier);
         }
 
+        private void ContextOnDeviceAliasesChanged()
+        {
+            if (_disposed) return;
+            RefreshDevicePresentation();
+        }
+
         public void RefreshDevicePresentation()
         {
             PluginToolbox?.RefreshDeviceCapabilities();
-            foreach (var binding in GetAllBindingViewModels().ToList()) binding?.RefreshDeviceList();
-            foreach (var mapping in MappingsList ?? new ObservableCollection<MappingViewModel>())
+            foreach (var binding in GetAllBindingViewModels()) binding?.RefreshDeviceList();
+            if (MappingsList != null)
             {
-                mapping.RefreshCollapsedSummary();
+                foreach (var mapping in MappingsList) mapping.RefreshCollapsedSummary();
             }
             OnPropertyChanged(nameof(InputDeviceControlViewModel));
             OnPropertyChanged(nameof(OutputDeviceControlViewModel));
@@ -107,7 +114,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(IsProfileActive));
             OnPropertyChanged(nameof(EditLockReason));
             OnPropertyChanged(nameof(CanPasteMappingGroup));
-            foreach (var section in MappingSections ?? new ObservableCollection<MappingGroupViewModel>()) section.RefreshActiveState();
+            if (MappingSections != null)
+            {
+                foreach (var section in MappingSections) section.RefreshActiveState();
+            }
+            if (MappingsList != null)
+            {
+                foreach (var mapping in MappingsList) mapping.RefreshActiveState();
+            }
+            PluginToolbox?.RefreshActiveState();
         }
 
         private void PopulateMappingsList(Profile profile)
@@ -338,10 +353,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void RebuildFlatMappingsList()
         {
-            var ordered = (MappingSections ?? new ObservableCollection<MappingGroupViewModel>())
-                .SelectMany(section => section.Mappings).ToList();
-            MappingsList.Clear();
-            foreach (var mapping in ordered) MappingsList.Add(mapping);
+            var ordered = MappingSections == null
+                ? Enumerable.Empty<MappingViewModel>()
+                : MappingSections.SelectMany(section => section.Mappings);
+            MappingsList = new ObservableCollection<MappingViewModel>(ordered);
+            OnPropertyChanged(nameof(MappingsList));
         }
 
         private void RefreshMappingPositions()
@@ -477,10 +493,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (_disposed) return;
             _disposed = true;
             Profile.Context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;
+            Profile.Context.DeviceAliasesChangedEvent -= ContextOnDeviceAliasesChanged;
             PluginToolbox?.Dispose();
             InputDeviceControlViewModel?.Dispose();
             OutputDeviceControlViewModel?.Dispose();
-            foreach (var mapping in MappingsList ?? new ObservableCollection<MappingViewModel>()) mapping.Dispose();
+            if (MappingsList != null)
+            {
+                foreach (var mapping in MappingsList) mapping.Dispose();
+            }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
