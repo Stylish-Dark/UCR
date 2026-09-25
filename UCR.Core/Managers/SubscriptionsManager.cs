@@ -356,20 +356,27 @@ namespace HidWizards.UCR.Core.Managers
         private bool SubscribeDeviceBindingInput(SubscriptionState state, InputSubscription deviceBindingSubscription,
             IDictionary<Device, Device> resolutionCache)
         {
+            if (deviceBindingSubscription?.DeviceBinding == null) return false;
             if (!deviceBindingSubscription.DeviceBinding.IsBound) return true;
+
+            var deviceSubscription = deviceBindingSubscription.DeviceSubscription;
+            var configuredDevice = deviceSubscription?.Device;
+            if (configuredDevice == null)
+            {
+                Logger.Error("Failed to subscribe input because its configured device is unavailable.");
+                return false;
+            }
+
             try
             {
-                var runtimeDevice = ResolveRuntimeDevice(
-                    deviceBindingSubscription.DeviceSubscription?.Device,
-                    DeviceIoType.Input,
-                    resolutionCache);
+                var runtimeDevice = ResolveRuntimeDevice(configuredDevice, DeviceIoType.Input, resolutionCache);
                 if (runtimeDevice == null)
                 {
-                    Logger.Error($"Failed to resolve input device safely: {{{deviceBindingSubscription.DeviceSubscription.Device.LogName()}}}");
+                    Logger.Error($"Failed to resolve input device safely: {{{configuredDevice.LogName()}}}");
                     return false;
                 }
 
-                deviceBindingSubscription.DeviceSubscription.ResolvedDevice = runtimeDevice;
+                deviceSubscription.ResolvedDevice = runtimeDevice;
                 return _context.IOController.SubscribeInput(GetInputSubscriptionRequest(state,
                     deviceBindingSubscription));
             }
@@ -382,32 +389,40 @@ namespace HidWizards.UCR.Core.Managers
 
         private bool UnsubscribeDeviceBindingInput(SubscriptionState state, InputSubscription deviceBindingSubscription)
         {
-            if (!deviceBindingSubscription.DeviceBinding.IsBound) return true;
-            if (deviceBindingSubscription.DeviceSubscription.ResolvedDevice == null) return true;
+            if (deviceBindingSubscription?.DeviceBinding == null || !deviceBindingSubscription.DeviceBinding.IsBound)
+                return true;
+            if (deviceBindingSubscription.DeviceSubscription?.ResolvedDevice == null) return true;
             return _context.IOController.UnsubscribeInput(GetInputSubscriptionRequest(state, deviceBindingSubscription));
         }
 
         private bool SubscribeOutput(SubscriptionState state, DeviceSubscription deviceSubscription,
             IDictionary<Device, Device> resolutionCache)
         {
-            Logger.Debug($"Subscribing output device: {{{deviceSubscription.Device.LogName()}}}");
-            if (string.IsNullOrEmpty(deviceSubscription.Device.ProviderName) || string.IsNullOrEmpty(deviceSubscription.Device.DeviceHandle))
+            var configuredDevice = deviceSubscription?.Device;
+            if (configuredDevice == null)
             {
-                Logger.Error($"Failed to subscribe output device. Providername or devicehandle missing from: {{{deviceSubscription.Device.LogName()}}}");
+                Logger.Error("Failed to subscribe output because its configured device is unavailable.");
                 return false;
             }
 
-            var runtimeDevice = ResolveRuntimeDevice(deviceSubscription.Device, DeviceIoType.Output, resolutionCache);
+            Logger.Debug($"Subscribing output device: {{{configuredDevice.LogName()}}}");
+            if (string.IsNullOrEmpty(configuredDevice.ProviderName) || string.IsNullOrEmpty(configuredDevice.DeviceHandle))
+            {
+                Logger.Error($"Failed to subscribe output device. Providername or devicehandle missing from: {{{configuredDevice.LogName()}}}");
+                return false;
+            }
+
+            var runtimeDevice = ResolveRuntimeDevice(configuredDevice, DeviceIoType.Output, resolutionCache);
             if (runtimeDevice == null)
             {
-                Logger.Error($"Failed to resolve output device safely: {{{deviceSubscription.Device.LogName()}}}");
+                Logger.Error($"Failed to resolve output device safely: {{{configuredDevice.LogName()}}}");
                 return false;
             }
 
             deviceSubscription.ResolvedDevice = runtimeDevice;
             var success = _context.IOController.SubscribeOutput(GetOutputSubscriptionRequest(state.StateGuid, deviceSubscription));
 
-            if (!success) Logger.Error($"Failed to subscribe output device. Provider might be unavailable: {{{deviceSubscription.Device.LogName()}}}");
+            if (!success) Logger.Error($"Failed to subscribe output device. Provider might be unavailable: {{{configuredDevice.LogName()}}}");
 
             return success;
         }
