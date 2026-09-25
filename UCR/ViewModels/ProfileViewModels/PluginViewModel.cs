@@ -21,6 +21,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool CanAddFilter => !MappingViewModel.ProfileViewModel.Profile.IsActive();
         public ObservableCollection<FilterViewModel> Filters { get; set; }
         private bool _lastKnownActiveState;
+        private bool _editorInitialized;
         private bool _disposed;
 
         public PluginViewModel(MappingViewModel mappingViewModel, Plugin plugin)
@@ -31,7 +32,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             mappingViewModel.ProfileViewModel.Profile.Context.ActiveProfileChangedEvent += ContextOnActiveProfileChangedEvent;
             mappingViewModel.Plugins.CollectionChanged += Plugins_CollectionChanged;
             Plugin.FilterDefinitionChanged += PluginOnFilterDefinitionChanged;
+            PluginPropertyGroups = new ObservableCollection<PluginPropertyGroupViewModel>();
+            Filters = new ObservableCollection<FilterViewModel>();
             PopulateDeviceBindingsViewModels();
+        }
+
+        public void EnsureEditorInitialized()
+        {
+            if (_editorInitialized || _disposed) return;
+            _editorInitialized = true;
             PopulatePluginProperties();
             PopulateFilterViewModels();
         }
@@ -46,7 +55,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void PopulateFilterViewModels()
         {
-            Filters = new ObservableCollection<FilterViewModel>();
             foreach (var filter in Plugin.Filters)
             {
                 Filters.Add(new FilterViewModel(this, filter));
@@ -55,6 +63,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public void ReloadFiltersFromModel()
         {
+            if (!_editorInitialized) return;
+
             // Keep existing view-model instances where possible so renaming a definition does not
             // accumulate duplicate ActiveProfileChanged / FilterState subscriptions.
             for (var index = Filters.Count - 1; index >= 0; index--)
@@ -121,7 +131,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void PopulatePluginProperties()
         {
-            PluginPropertyGroups = new ObservableCollection<PluginPropertyGroupViewModel>();
             foreach (var pluginPropertyGroup in Plugin.PluginPropertyGroups)
             {
                 if (pluginPropertyGroup.PluginProperties.Count == 0 || pluginPropertyGroup.GroupType.Equals(PluginPropertyGroup.GroupTypes.Output)) continue;
@@ -155,6 +164,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public async void AddFilter()
         {
+            EnsureEditorInitialized();
             var existingOnPlugin = Filters.Select(existingFilter => existingFilter.Name).ToList();
             var availableNames = MappingViewModel.ProfileViewModel.Profile.GetFilters()
                 .Where(name => !existingOnPlugin.Any(existing =>
@@ -188,6 +198,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public void RemoveFilter(FilterViewModel filterViewModel)
         {
+            if (filterViewModel == null) return;
+            EnsureEditorInitialized();
             if (Plugin.RemoveFilter(filterViewModel.Filter))
             {
                 Logger.Info("Filter reference removed: '" + filterViewModel.Name + "' from mapping " + MappingViewModel.MappingTitle);
