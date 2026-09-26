@@ -27,6 +27,41 @@ jobs:
           git -C "submodules\IOWrapper" fetch --all --tags --prune
           git -C "submodules\IOWrapper" checkout --force 4ef0a847fb479cfbe561656097639d3cef5240b7
 
+      - name: Preserve IOWrapper input callback order
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\build\ProviderPatches\Apply-IOWrapperInputOrdering.ps1 -IOWrapperRoot .\submodules\IOWrapper
+
+      - name: Harden Core Interception hotplug handling
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\build\ProviderPatches\Apply-CoreInterceptionHotplugSafety.ps1 -IOWrapperRoot .\submodules\IOWrapper
+
+      - name: Enable Core Interception blocking
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $settings = Join-Path $PWD 'submodules\IOWrapper\Source\Core Providers\Core_Interception\Settings.xml'
+          if (-not (Test-Path -LiteralPath $settings -PathType Leaf)) {
+            throw "Core Interception settings file is missing: $settings"
+          }
+
+          [xml]$xml = Get-Content -LiteralPath $settings -Raw
+          $blockingSettings = @($xml.SelectNodes('/Settings/Setting[Name="BlockingEnabled"]/Value'))
+          if ($blockingSettings.Count -ne 1) {
+            throw "Expected exactly one BlockingEnabled setting, found $($blockingSettings.Count)."
+          }
+          $blockingSettings[0].InnerText = 'true'
+          $xml.Save($settings)
+
+          [xml]$verified = Get-Content -LiteralPath $settings -Raw
+          $verifiedSettings = @($verified.SelectNodes('/Settings/Setting[Name="BlockingEnabled"]/Value'))
+          if ($verifiedSettings.Count -ne 1 -or $verifiedSettings[0].InnerText.Trim() -ne 'true') {
+            throw 'Failed to enable Core Interception blocking.'
+          }
+
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v2
 
@@ -94,6 +129,13 @@ jobs:
           if (-not [System.Convert]::ToBoolean($blocking)) {
             throw "Release artifact has Core_Interception blocking disabled."
           }
+
+      - name: Smoke-test final IOWrapper provider composition
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & "$env:SystemRoot\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File ".\build\verify-provider-composition.ps1" -RuntimePath ".\UCR\bin\Release"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run tests
         shell: pwsh
