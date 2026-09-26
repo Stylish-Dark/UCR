@@ -11,6 +11,7 @@ using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.ViewModels.Controls;
 using HidWizards.UCR.ViewModels.Dashboard;
 using HidWizards.UCR.ViewModels.ProfileViewModels;
+using HidWizards.UCR.ViewModels.Presentation;
 using HidWizards.UCR.Views.Controls;
 using HidWizards.UCR.Views.Dialogs;
 using NUnit.Framework;
@@ -121,15 +122,15 @@ namespace HidWizards.UCR.Tests.UiTests
             Assert.That(aliasBox.Padding.Left, Is.GreaterThanOrEqualTo(8));
             Assert.That(ScrollViewer.GetVerticalScrollBarVisibility(list), Is.EqualTo(ScrollBarVisibility.Auto));
 
-            var semanticBadge = FindVisualChildren<TextBlock>(row)
-                .FirstOrDefault(candidate => candidate.Text == "X1");
-            Assert.That(semanticBadge, Is.Not.Null,
-                "Every device-manager row should expose its semantic device badge.");
+            var deviceGlyph = FindVisualChildren<DeviceGlyphControl>(row).FirstOrDefault();
+            Assert.That(deviceGlyph, Is.Not.Null,
+                "Every device-manager row should expose its monoline device glyph.");
+            Assert.That(deviceGlyph.Kind, Is.EqualTo(DeviceVisualKind.Xbox360));
 
             var colourButton = FindVisualChildren<Button>(row)
-                .FirstOrDefault(candidate => (candidate.ToolTip as string)?.StartsWith("Badge text colour") == true);
+                .FirstOrDefault(candidate => (candidate.ToolTip as string)?.StartsWith("Device glyph colour") == true);
             Assert.That(colourButton, Is.Not.Null,
-                "The real device row failed before its compact badge-text-colour button was created.");
+                "The real device row failed before its glyph-colour button was created.");
             Assert.That(colourButton.ActualHeight, Is.GreaterThan(0));
         }
 
@@ -137,7 +138,7 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
-        public void AddDevicePickerMaterializesSemanticDeviceBadges()
+        public void AddDevicePickerMaterializesMonolineControllerGlyphs()
         {
             EnsureApplicationResources();
 
@@ -154,12 +155,14 @@ namespace HidWizards.UCR.Tests.UiTests
             picker.Arrange(new Rect(0, 0, 360, 500));
             picker.UpdateLayout();
 
-            var badgeTexts = FindVisualChildren<TextBlock>(picker)
-                .Select(candidate => candidate.Text)
-                .Where(candidate => candidate == "P1" || candidate == "X1")
+            var glyphKinds = FindVisualChildren<DeviceGlyphControl>(picker)
+                .Select(candidate => candidate.Kind)
                 .ToList();
-            Assert.That(badgeTexts, Is.EquivalentTo(new[] { "P1", "X1" }),
-                "Every add-device row should materialize the semantic device-family badge, not a controller silhouette.");
+            Assert.That(glyphKinds, Is.EquivalentTo(new[]
+            {
+                DeviceVisualKind.PlayStation4,
+                DeviceVisualKind.Xbox360
+            }), "Every add-device row should materialize the matching monoline controller glyph.");
         }
 
         private static void PumpDispatcherFor(TimeSpan duration)

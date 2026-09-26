@@ -14,8 +14,26 @@ namespace HidWizards.UCR.ViewModels.Presentation
         Unavailable,
         Keyboard,
         Mouse,
-        Xbox,
-        PlayStation,
+        Gamepad,
+
+        PlayStation1,
+        PlayStation2,
+        PlayStation3,
+        PlayStation4,
+        PlayStation5,
+
+        XboxOriginal,
+        Xbox360,
+        XboxOne,
+        XboxSeries,
+
+        Nintendo64,
+        GameCube,
+        WiiRemote,
+        WiiClassic,
+        SwitchPro,
+        SwitchJoyCon,
+
         VJoy,
         ArcadeStick,
         DirectInput
@@ -118,52 +136,95 @@ namespace HidWizards.UCR.ViewModels.Presentation
             if (provider.Equals("Core_ViGEm", StringComparison.OrdinalIgnoreCase))
             {
                 if (handle.Equals("ds4", StringComparison.OrdinalIgnoreCase))
-                {
-                    return WithConfiguredPresentation(Build(DeviceVisualKind.PlayStation, PlayStationBrush, title, device.DeviceNumber + 1, ioType == DeviceIoType.Output), device, devicesManager);
-                }
+                    return WithConfiguredPresentation(Build(DeviceVisualKind.PlayStation4, PlayStationBrush, title,
+                        device.DeviceNumber + 1, ioType == DeviceIoType.Output), device, devicesManager);
+
                 if (handle.Equals("xb360", StringComparison.OrdinalIgnoreCase))
-                {
-                    return WithConfiguredPresentation(Build(DeviceVisualKind.Xbox, XboxBrush, title, device.DeviceNumber + 1, ioType == DeviceIoType.Output), device, devicesManager);
-                }
-            }
-
-            if (provider.Equals("SharpDX_XInput", StringComparison.OrdinalIgnoreCase) ||
-                searchable.Contains("xinput") || searchable.Contains("xbox") || searchable.Contains("vid_045e"))
-            {
-                return WithConfiguredPresentation(Build(DeviceVisualKind.Xbox, XboxBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
-            }
-
-            if (searchable.Contains("dualshock") || searchable.Contains("dualsense") ||
-                searchable.Contains("playstation") || searchable.Contains("vid_054c"))
-            {
-                return WithConfiguredPresentation(Build(DeviceVisualKind.PlayStation, PlayStationBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+                    return WithConfiguredPresentation(Build(DeviceVisualKind.Xbox360, XboxBrush, title,
+                        device.DeviceNumber + 1, ioType == DeviceIoType.Output), device, devicesManager);
             }
 
             if (searchable.Contains("vjoy"))
-            {
-                return WithConfiguredPresentation(Build(DeviceVisualKind.VJoy, VJoyBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
-            }
-
-            if (searchable.Contains("arcade") || searchable.Contains("fightstick") || searchable.Contains("fight stick"))
-            {
-                return WithConfiguredPresentation(Build(DeviceVisualKind.ArcadeStick, ArcadeBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
-            }
+                return WithConfiguredPresentation(Build(DeviceVisualKind.VJoy, VJoyBrush, title,
+                    device.DeviceNumber + 1, true), device, devicesManager);
 
             if (provider.Equals("Core_Interception", StringComparison.OrdinalIgnoreCase))
             {
-                if (searchable.Contains("mouse")) return WithConfiguredPresentation(Build(DeviceVisualKind.Mouse, NeutralBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
-                return WithConfiguredPresentation(Build(DeviceVisualKind.Keyboard, NeutralBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+                if (searchable.Contains("mouse"))
+                    return WithConfiguredPresentation(Build(DeviceVisualKind.Mouse, NeutralBrush, title,
+                        device.DeviceNumber + 1, true), device, devicesManager);
+
+                return WithConfiguredPresentation(Build(DeviceVisualKind.Keyboard, NeutralBrush, title,
+                    device.DeviceNumber + 1, true), device, devicesManager);
             }
 
-            if (searchable.Contains("keyboard")) return WithConfiguredPresentation(Build(DeviceVisualKind.Keyboard, NeutralBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
-            if (searchable.Contains("mouse")) return WithConfiguredPresentation(Build(DeviceVisualKind.Mouse, NeutralBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+            if (searchable.Contains("keyboard"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.Keyboard, NeutralBrush, title,
+                    device.DeviceNumber + 1, true), device, devicesManager);
+            if (searchable.Contains("mouse"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.Mouse, NeutralBrush, title,
+                    device.DeviceNumber + 1, true), device, devicesManager);
+
+            if (ContainsAny(searchable, "dualsense", "ps5", "playstation 5", "cfizct"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.PlayStation5, PlayStationBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+            if (ContainsAny(searchable, "dualshock 4", "ds4", "ps4", "playstation 4", "cuh-zct") ||
+                searchable.Contains("wireless controller") && searchable.Contains("vid_054c"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.PlayStation4, PlayStationBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+            if (ContainsAny(searchable, "dualshock 3", "sixaxis", "ps3", "playstation(r)3", "playstation 3"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.PlayStation3, PlayStationBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+            if (ContainsAny(searchable, "dualshock 2", "ps2", "playstation 2"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.PlayStation2, PlayStationBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+            if (ContainsAny(searchable, "ps1", "psx controller", "playstation controller"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.PlayStation1, PlayStationBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+            if (searchable.Contains("vid_054c"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.PlayStation4, PlayStationBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+
+            if (ContainsAny(searchable, "xbox series", "series x", "series s", "1914"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.XboxSeries, XboxBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+            if (ContainsAny(searchable, "xbox one", "xbox wireless", "1708", "1697", "1537"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.XboxOne, XboxBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+            if (ContainsAny(searchable, "xbox 360", "xbox360", "x360"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.Xbox360, XboxBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+            if (ContainsAny(searchable, "xbox duke", "duke controller", "controller s", "original xbox"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.XboxOriginal, XboxBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+            if (provider.Equals("SharpDX_XInput", StringComparison.OrdinalIgnoreCase) ||
+                searchable.Contains("xinput") || searchable.Contains("xbox") || searchable.Contains("vid_045e"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.Xbox360, XboxBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+
+            if (ContainsAny(searchable, "joy-con", "joycon"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.SwitchJoyCon, DirectInputBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+            if ((searchable.Contains("switch") || searchable.Contains("nintendo")) && searchable.Contains("pro controller"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.SwitchPro, DirectInputBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+            if (ContainsAny(searchable, "wii remote", "wiimote"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.WiiRemote, DirectInputBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+            if (ContainsAny(searchable, "wii classic", "classic controller"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.WiiClassic, DirectInputBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+            if (ContainsAny(searchable, "gamecube", "game cube"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.GameCube, DirectInputBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+            if (ContainsAny(searchable, "nintendo 64", "n64"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.Nintendo64, DirectInputBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+
+            if (ContainsAny(searchable, "arcade", "fightstick", "fight stick"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.ArcadeStick, ArcadeBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+
+            if (ContainsAny(searchable, "gamepad", "controller", "joypad"))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.Gamepad, DirectInputBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
 
             if (provider.Equals("SharpDX_DirectInput", StringComparison.OrdinalIgnoreCase) || searchable.Contains("directinput"))
-            {
-                return WithConfiguredPresentation(Build(DeviceVisualKind.DirectInput, DirectInputBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
-            }
+                return WithConfiguredPresentation(Build(DeviceVisualKind.DirectInput, DirectInputBrush, title,
+                    device.DeviceNumber + 1, true), device, devicesManager);
 
-            return WithConfiguredPresentation(Build(DeviceVisualKind.Unknown, DirectInputBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
+            return WithConfiguredPresentation(Build(DeviceVisualKind.Unknown, DirectInputBrush, title,
+                device.DeviceNumber + 1, true), device, devicesManager);
+        }
+
+        private static bool ContainsAny(string value, params string[] fragments)
+        {
+            foreach (var fragment in fragments)
+            {
+                if (value.IndexOf(fragment, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            }
+            return false;
         }
 
         private static DeviceVisualDescriptor WithConfiguredPresentation(
@@ -315,7 +376,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 return;
             }
 
-            if (kind == DeviceVisualKind.Xbox || kind == DeviceVisualKind.PlayStation)
+            if (IsXbox(kind) || IsPlayStation(kind))
             {
                 PopulateKnownControllerControl(result, binding, category, leaf, kind);
                 return;
@@ -367,13 +428,13 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
             var button = KnownButtonLabelFromName(lower, deviceKind) ?? KnownButtonLabel(binding.KeyValue, deviceKind);
             result.ControlLabel = button;
-            if (deviceKind == DeviceVisualKind.Xbox && binding.KeyValue >= 0 && binding.KeyValue <= 3)
+            if (IsXbox(deviceKind) && binding.KeyValue >= 0 && binding.KeyValue <= 3)
             {
                 result.ControlKind = ControlVisualKind.XboxFaceButton;
                 result.ControlBrush = XboxFaceBrush(button);
                 return;
             }
-            if (deviceKind == DeviceVisualKind.PlayStation && binding.KeyValue >= 0 && binding.KeyValue <= 3)
+            if (IsPlayStation(deviceKind) && binding.KeyValue >= 0 && binding.KeyValue <= 3)
             {
                 result.ControlKind = ControlVisualKind.PlayStationFaceButton;
                 result.ControlBrush = PlayStationFaceBrush(button);
@@ -384,7 +445,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
             {
                 result.ControlKind = ControlVisualKind.ShoulderButton;
             }
-            else if ((deviceKind == DeviceVisualKind.PlayStation && (binding.KeyValue == 10 || binding.KeyValue == 11)) ||
+            else if ((IsPlayStation(deviceKind) && (binding.KeyValue == 10 || binding.KeyValue == 11)) ||
                      lower.Contains("trigger"))
             {
                 result.ControlKind = ControlVisualKind.Trigger;
@@ -400,7 +461,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
         {
             if (string.IsNullOrWhiteSpace(lower)) return null;
 
-            if (kind == DeviceVisualKind.PlayStation)
+            if (IsPlayStation(kind))
             {
                 if (lower.Contains("cross")) return "×";
                 if (lower.Contains("circle")) return "○";
@@ -440,14 +501,14 @@ namespace HidWizards.UCR.ViewModels.Presentation
             if ((lower.Contains("left") && lower.Contains("y")) || lower.Contains("ly")) return "LY";
             if ((lower.Contains("right") && lower.Contains("x")) || lower.Contains("rx")) return "RX";
             if ((lower.Contains("right") && lower.Contains("y")) || lower.Contains("ry")) return "RY";
-            if (lower.Contains("left trigger") || lower.Contains("l2")) return kind == DeviceVisualKind.PlayStation ? "L2" : "LT";
-            if (lower.Contains("right trigger") || lower.Contains("r2")) return kind == DeviceVisualKind.PlayStation ? "R2" : "RT";
+            if (lower.Contains("left trigger") || lower.Contains("l2")) return IsPlayStation(kind) ? "L2" : "LT";
+            if (lower.Contains("right trigger") || lower.Contains("r2")) return IsPlayStation(kind) ? "R2" : "RT";
             return null;
         }
 
         private static string KnownButtonLabel(int keyValue, DeviceVisualKind kind)
         {
-            if (kind == DeviceVisualKind.PlayStation)
+            if (IsPlayStation(kind))
             {
                 switch (keyValue)
                 {
@@ -493,8 +554,8 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 case 1: return "LY";
                 case 2: return "RX";
                 case 3: return "RY";
-                case 4: return kind == DeviceVisualKind.PlayStation ? "L2" : "LT";
-                case 5: return kind == DeviceVisualKind.PlayStation ? "R2" : "RT";
+                case 4: return IsPlayStation(kind) ? "L2" : "LT";
+                case 5: return IsPlayStation(kind) ? "R2" : "RT";
                 default: return "A" + (keyValue + 1);
             }
         }
@@ -638,11 +699,27 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
         private static bool UsesProfileOrdinal(DeviceVisualKind kind)
         {
-            return kind == DeviceVisualKind.Keyboard ||
-                   kind == DeviceVisualKind.Mouse ||
-                   kind == DeviceVisualKind.ArcadeStick ||
-                   kind == DeviceVisualKind.DirectInput ||
-                   kind == DeviceVisualKind.Unknown;
+            return !IsXbox(kind) &&
+                   !IsPlayStation(kind) &&
+                   kind != DeviceVisualKind.VJoy &&
+                   kind != DeviceVisualKind.Unavailable;
+        }
+
+        private static bool IsXbox(DeviceVisualKind kind)
+        {
+            return kind == DeviceVisualKind.XboxOriginal ||
+                   kind == DeviceVisualKind.Xbox360 ||
+                   kind == DeviceVisualKind.XboxOne ||
+                   kind == DeviceVisualKind.XboxSeries;
+        }
+
+        private static bool IsPlayStation(DeviceVisualKind kind)
+        {
+            return kind == DeviceVisualKind.PlayStation1 ||
+                   kind == DeviceVisualKind.PlayStation2 ||
+                   kind == DeviceVisualKind.PlayStation3 ||
+                   kind == DeviceVisualKind.PlayStation4 ||
+                   kind == DeviceVisualKind.PlayStation5;
         }
 
         private static int GetProfileOrdinal(DeviceConfiguration target, Profile profile, DeviceIoType ioType, DeviceVisualKind kind)
@@ -678,16 +755,16 @@ namespace HidWizards.UCR.ViewModels.Presentation
         private static string BuildBadgeText(DeviceVisualKind kind, int slotNumber)
         {
             var prefix = "U";
-            switch (kind)
-            {
-                case DeviceVisualKind.Keyboard: prefix = "K"; break;
-                case DeviceVisualKind.Mouse: prefix = "M"; break;
-                case DeviceVisualKind.Xbox: prefix = "X"; break;
-                case DeviceVisualKind.PlayStation: prefix = "P"; break;
-                case DeviceVisualKind.VJoy: prefix = "V"; break;
-                case DeviceVisualKind.ArcadeStick: prefix = "A"; break;
-                case DeviceVisualKind.DirectInput: prefix = "D"; break;
-            }
+            if (kind == DeviceVisualKind.Keyboard) prefix = "K";
+            else if (kind == DeviceVisualKind.Mouse) prefix = "M";
+            else if (IsXbox(kind)) prefix = "X";
+            else if (IsPlayStation(kind)) prefix = "P";
+            else if (kind == DeviceVisualKind.VJoy) prefix = "V";
+            else if (kind == DeviceVisualKind.ArcadeStick) prefix = "A";
+            else if (kind == DeviceVisualKind.DirectInput || kind == DeviceVisualKind.Gamepad) prefix = "D";
+            else if (kind == DeviceVisualKind.Nintendo64 || kind == DeviceVisualKind.GameCube ||
+                     kind == DeviceVisualKind.WiiRemote || kind == DeviceVisualKind.WiiClassic ||
+                     kind == DeviceVisualKind.SwitchPro || kind == DeviceVisualKind.SwitchJoyCon) prefix = "N";
             return prefix + Math.Max(1, slotNumber);
         }
 
