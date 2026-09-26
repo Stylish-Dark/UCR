@@ -145,6 +145,7 @@
       <DependentUpon>MappingCardControl.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\Controls\ControlGlyphControl.cs" />
+    <Compile Include="Views\Controls\DeviceGlyphControl.cs" />
     <Compile Include="Views\Controls\Plugin\PluginControl.xaml.cs">
       <DependentUpon>PluginControl.xaml</DependentUpon>
     </Compile>
