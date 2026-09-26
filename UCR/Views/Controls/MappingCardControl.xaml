@@ -67,12 +67,12 @@
                     </Grid.RowDefinitions>
 
                     <!-- Only non-primary/explicitly-requested device identity is shown, above the control. -->
-                    <Border Grid.Row="0" Margin="0 0 0 2" Padding="4 1" MinWidth="25" CornerRadius="3"
-                            HorizontalAlignment="Center" Background="#191919"
-                            BorderBrush="{Binding Device.OutlineBrush}" BorderThickness="1"
-                            ToolTip="{Binding Device.ToolTip}">
-                        <Border.Style>
-                            <Style TargetType="Border">
+                    <local:DeviceGlyphControl Grid.Row="0" Width="38" Height="23" Margin="0 0 0 2"
+                                              HorizontalAlignment="Center" Kind="{Binding Device.Kind}"
+                                              GlyphBrush="{Binding Device.GlyphBrush}" DetailBrush="#242424"
+                                              ToolTip="{Binding Device.ToolTip}">
+                        <local:DeviceGlyphControl.Style>
+                            <Style TargetType="{x:Type local:DeviceGlyphControl}">
                                 <Setter Property="Visibility" Value="Collapsed"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding ShowDeviceBadge}" Value="True">
@@ -80,10 +80,8 @@
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </Border.Style>
-                        <TextBlock Text="{Binding Device.BadgeText}" Foreground="{Binding Device.BadgeTextBrush}"
-                                   FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center"/>
-                    </Border>
+                        </local:DeviceGlyphControl.Style>
+                    </local:DeviceGlyphControl>
 
                     <local:ControlGlyphControl Grid.Row="1" Kind="{Binding ControlKind}"
                                                AccentBrush="{Binding ControlBrush}"
