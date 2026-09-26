@@ -469,9 +469,9 @@
                                                             <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueLightBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueLightBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
                                                         </Ellipse>
                                                     </Button>
-                                                    <Border Grid.Column="1" Width="32" Height="21" CornerRadius="4" BorderThickness="1" BorderBrush="{Binding Visual.OutlineBrush}" Background="#191919">
-                                                        <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.BadgeTextBrush}" FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                    </Border>
+                                                    <controls:DeviceGlyphControl Grid.Column="1" Width="36" Height="22"
+                                                                                 Kind="{Binding Visual.Kind}" GlyphBrush="{Binding Visual.GlyphBrush}"
+                                                                                 DetailBrush="#191919" ToolTip="{Binding Visual.ToolTip}"/>
                                                     <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                                 </Grid>
                                             </DataTemplate>
@@ -525,9 +525,9 @@
                                                                 <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueLightBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueLightBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
                                                             </Ellipse>
                                                         </Button>
-                                                        <Border Grid.Column="1" Width="32" Height="21" CornerRadius="4" BorderThickness="1" BorderBrush="{Binding Visual.OutlineBrush}" Background="#191919">
-                                                            <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.BadgeTextBrush}" FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                        </Border>
+                                                        <controls:DeviceGlyphControl Grid.Column="1" Width="36" Height="22"
+                                                                                     Kind="{Binding Visual.Kind}" GlyphBrush="{Binding Visual.GlyphBrush}"
+                                                                                     DetailBrush="#191919" ToolTip="{Binding Visual.ToolTip}"/>
                                                         <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                                     </Grid>
                                                 </DataTemplate>
