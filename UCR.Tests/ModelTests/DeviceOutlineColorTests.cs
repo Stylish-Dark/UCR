@@ -67,7 +67,7 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
-        public void ConfiguredColourChangesBadgeTextOnlyAndKeepsSemanticOutline()
+        public void ConfiguredColourChangesDeviceGlyphAndKeepsSemanticOutline()
         {
             var context = new HidWizards.UCR.Core.Context();
             var profile = new Profile(context);
@@ -90,8 +90,9 @@ namespace HidWizards.UCR.Tests.ModelTests
                 "Semantic device accent must remain controller-family aligned.");
             Assert.That(visual.OutlineBrush, Is.SameAs(DeviceVisualCatalog.XboxBrush),
                 "Badge outline must remain controller-family aligned.");
-            Assert.That(visual.BadgeTextBrush.ToString(), Is.EqualTo("#FFE53935"),
-                "The per-device colour choice now customizes badge text only.");
+            Assert.That(visual.BadgeTextBrush.ToString(), Is.EqualTo("#FFE53935"));
+            Assert.That(visual.GlyphBrush.ToString(), Is.EqualTo("#FFE53935"),
+                "The per-device colour choice should tint the vector glyph.");
         }
 
         [Test]
@@ -101,14 +102,14 @@ namespace HidWizards.UCR.Tests.ModelTests
             var xbox = new Device("X360 Controller", "Core_ViGEm", "xb360", 0);
 
             Assert.That(new DeviceViewModel(playStation, DeviceIoType.Output).Visual.Kind,
-                Is.EqualTo(DeviceVisualKind.PlayStation));
+                Is.EqualTo(DeviceVisualKind.PlayStation4));
             Assert.That(new DeviceViewModel(xbox, DeviceIoType.Output).Visual.Kind,
-                Is.EqualTo(DeviceVisualKind.Xbox));
+                Is.EqualTo(DeviceVisualKind.Xbox360));
         }
 
 
         [Test]
-        public void AddDevicePickerUsesStoredBadgeTextColourWithoutChangingSemanticOutline()
+        public void AddDevicePickerUsesStoredGlyphColourWithoutChangingSemanticOutline()
         {
             var context = new HidWizards.UCR.Core.Context();
             var keyboard = new Device("Kayla's KB", "Core_Interception", @"Keyboard\HID\VID_046D&PID_C534", 0);
@@ -121,10 +122,11 @@ namespace HidWizards.UCR.Tests.ModelTests
 
             Assert.That(item.Visual.OutlineBrush, Is.SameAs(DeviceVisualCatalog.NeutralBrush));
             Assert.That(item.Visual.BadgeTextBrush.ToString(), Is.EqualTo("#FFFF4081"));
+            Assert.That(item.Visual.GlyphBrush.ToString(), Is.EqualTo("#FFFF4081"));
         }
 
         [Test]
-        public void DeviceManagerOffersTenBadgeTextSwatchesWithSemanticDefault()
+        public void DeviceManagerOffersTenGlyphColourSwatchesWithSlotDefault()
         {
             var xbox = new Device("ViGEm Xbox 360 Controller 1", "Core_ViGEm", "xb360", 0);
             var item = new DeviceManagerItemViewModel(xbox, DeviceIoType.Output, true, null, false,
@@ -132,7 +134,7 @@ namespace HidWizards.UCR.Tests.ModelTests
 
             Assert.That(item.AvailableTextColors.Length, Is.EqualTo(10));
             Assert.That(item.AvailableTextColors[0].Value, Is.EqualTo(DeviceOutlineColor.Default));
-            Assert.That(item.AvailableTextColors[0].Brush, Is.SameAs(DeviceVisualCatalog.XboxBrush));
+            Assert.That(item.AvailableTextColors[0].Brush.ToString(), Is.EqualTo("#FF4DA3FF"));
             foreach (var choice in item.AvailableTextColors)
             {
                 Assert.That(choice.Brush, Is.Not.Null);
@@ -140,13 +142,13 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
-        public void DeviceManagerCurrentTextBrushTracksSelectedTextColour()
+        public void DeviceManagerCurrentColourTracksSelectedGlyphColour()
         {
             var xbox = new Device("ViGEm Xbox 360 Controller 1", "Core_ViGEm", "xb360", 0);
             var item = new DeviceManagerItemViewModel(xbox, DeviceIoType.Output, true, null, false,
                 "xbox", DeviceOutlineColor.Default);
 
-            Assert.That(item.CurrentTextBrush, Is.SameAs(DeviceVisualCatalog.XboxBrush));
+            Assert.That(item.CurrentTextBrush.ToString(), Is.EqualTo("#FF4DA3FF"));
 
             item.TextColor = DeviceOutlineColor.Red;
 
