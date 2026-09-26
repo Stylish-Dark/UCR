@@ -463,13 +463,13 @@
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
                                                 <Grid Margin="1 2">
-                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="44"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                                     <Button Grid.Column="0" Width="20" Height="20" Padding="4" Background="Transparent" BorderThickness="0" ToolTip="{Binding PrimaryToolTip}" Click="PrimaryInputDevice_OnClick">
                                                         <Ellipse Width="8" Height="8" Stroke="#929292" StrokeThickness="1.4">
                                                             <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueLightBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueLightBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
                                                         </Ellipse>
                                                     </Button>
-                                                    <controls:DeviceGlyphControl Grid.Column="1" Width="32" Height="20"
+                                                    <controls:DeviceGlyphControl Grid.Column="1" Width="40" Height="26"
                                                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                                  Kind="{Binding Visual.Kind}" Stroke="{Binding Visual.BadgeTextBrush}"
                                                                                  GlyphStrokeThickness="3.0" GlowOpacity="0.12"
@@ -521,13 +521,13 @@
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <Grid Margin="1 2">
-                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="44"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                                         <Button Grid.Column="0" Width="20" Height="20" Padding="4" Background="Transparent" BorderThickness="0" ToolTip="{Binding PrimaryToolTip}" Click="PrimaryOutputDevice_OnClick">
                                                             <Ellipse Width="8" Height="8" Stroke="#929292" StrokeThickness="1.4">
                                                                 <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueLightBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueLightBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
                                                             </Ellipse>
                                                         </Button>
-                                                        <controls:DeviceGlyphControl Grid.Column="1" Width="32" Height="20"
+                                                        <controls:DeviceGlyphControl Grid.Column="1" Width="40" Height="26"
                                                                                      HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                                      Kind="{Binding Visual.Kind}" Stroke="{Binding Visual.BadgeTextBrush}"
                                                                                      GlyphStrokeThickness="3.0" GlowOpacity="0.12"
