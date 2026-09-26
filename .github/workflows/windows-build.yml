@@ -84,6 +84,17 @@ jobs:
           msbuild UCR.Tests\UCR.Tests.csproj @net452
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Verify Interception blocking configuration
+        shell: pwsh
+        run: |
+          [xml]$settings = Get-Content "UCR\bin\Release\Providers\Core_Interception\Settings.xml"
+          $blocking = $settings.Settings.Setting |
+            Where-Object { $_.Name -eq "BlockingEnabled" } |
+            Select-Object -ExpandProperty Value -First 1
+          if (-not [System.Convert]::ToBoolean($blocking)) {
+            throw "Release artifact has Core_Interception blocking disabled."
+          }
+
       - name: Run tests
         shell: pwsh
         run: |
