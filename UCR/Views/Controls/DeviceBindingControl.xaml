@@ -5,6 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:plugin="clr-namespace:HidWizards.UCR.Views.Controls.Plugin"
+             xmlns:local="clr-namespace:HidWizards.UCR.Views.Controls"
              d:DesignHeight="160" d:DesignWidth="900"
              UseLayoutRounding="True"
              mc:Ignorable="d">
@@ -94,11 +95,13 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" MinWidth="31" Height="20" Margin="0 0 7 0" Padding="4 1"
-                                VerticalAlignment="Center" CornerRadius="4" Background="#1B1B1B"
-                                BorderBrush="{Binding Visual.OutlineBrush}" BorderThickness="1" ToolTip="{Binding Visual.ToolTip}">
-                            <Border.Style>
-                                <Style TargetType="Border">
+                        <local:DeviceGlyphControl Grid.Column="0" Width="34" Height="21" Margin="0 0 7 0"
+                                                  VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                  Kind="{Binding Visual.Kind}" Stroke="{Binding Visual.BadgeTextBrush}"
+                                                  GlyphStrokeThickness="3.0" GlowOpacity="0.12"
+                                                  ToolTip="{Binding Visual.ToolTip}">
+                            <local:DeviceGlyphControl.Style>
+                                <Style TargetType="{x:Type local:DeviceGlyphControl}">
                                     <Setter Property="Visibility" Value="Visible"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding Visual}" Value="{x:Null}">
@@ -106,10 +109,8 @@
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </Border.Style>
-                            <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.BadgeTextBrush}"
-                                       FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
+                            </local:DeviceGlyphControl.Style>
+                        </local:DeviceGlyphControl>
                         <TextBlock Grid.Column="1" Text="{Binding Title}" VerticalAlignment="Center"
                                    TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}"/>
                     </Grid>
