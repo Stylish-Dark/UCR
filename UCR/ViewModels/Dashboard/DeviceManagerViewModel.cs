@@ -27,7 +27,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             Value = value;
             Brush = brush;
             ToolTip = value == DeviceOutlineColor.Default
-                ? "Default — device type colour"
+                ? "Default — player/device slot colour"
                 : value.ToString();
         }
     }
@@ -35,7 +35,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
     public class DeviceManagerItemViewModel : INotifyPropertyChanged
     {
         public DeviceOutlineColorChoice[] AvailableTextColors { get; private set; }
-        // Compatibility alias for older code paths; the persisted setting now controls badge text.
+        // Compatibility alias for older code paths; the persisted setting now controls the device glyph.
         public DeviceOutlineColorChoice[] AvailableOutlineColors => AvailableTextColors;
 
         public Device Device { get; }
@@ -49,6 +49,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             {
                 var visual = DeviceVisualCatalog.Describe(Device, ValidationType);
                 visual.BadgeTextBrush = CurrentTextBrush;
+                visual.GlyphBrush = CurrentTextBrush;
                 return visual;
             }
         }
@@ -111,7 +112,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         }
 
         // OutlineColor is the historical persistence name. Keep it as a compatibility alias while
-        // presenting the setting to users as badge text colour.
+        // presenting the setting to users as device glyph colour.
         public DeviceOutlineColor OutlineColor
         {
             get => TextColor;
@@ -148,7 +149,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         private static DeviceOutlineColorChoice[] BuildOutlineColorChoices(Device device, DeviceIoType type)
         {
-            var semanticDefault = DeviceVisualCatalog.Describe(device, type).AccentBrush ?? Brushes.Gray;
+            var semanticDefault = DeviceVisualCatalog.Describe(device, type).GlyphBrush ?? Brushes.Gray;
             return DeviceOutlineColors.Options
                 .Select(value => new DeviceOutlineColorChoice(
                     value,
