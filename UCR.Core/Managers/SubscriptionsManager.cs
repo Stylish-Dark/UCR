@@ -225,6 +225,7 @@ namespace HidWizards.UCR.Core.Managers
                 foreach (var pluginSubscription in mappingSubscription.PluginSubscriptions)
                 {
                     pluginSubscription.Plugin.OnDeactivate();
+                    pluginSubscription.DetachOutputs();
                 }
             }
 

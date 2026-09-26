@@ -213,6 +213,61 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void RebuildingPluginSubscriptionClearsStaleOutputSinkWhenOutputNoLongerResolves()
+        {
+            var output = new DeviceConfiguration(new Device("vJoy", "Core_vJoyInterfaceWrap", "0", 0));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { output }, DeviceIoType.Output);
+
+            var mapping = _profile.AddMapping("Keyboard to vJoy");
+            var plugin = new ButtonToButton();
+            mapping.AddPlugin(plugin);
+            plugin.Outputs.Single().DeviceConfigurationGuid = output.Guid;
+            plugin.Outputs.Single().IsBound = true;
+
+            var outputConfiguration = new DeviceConfigurationSubscription(output, _profile.Guid);
+            var first = new PluginSubscription(mapping, plugin, Guid.NewGuid(),
+                new List<DeviceConfigurationSubscription> { outputConfiguration });
+            Assert.That(first.OutputSubscriptions.Count, Is.EqualTo(1));
+            Assert.That(plugin.Outputs.Single().OutputSink, Is.Not.Null);
+
+            var rebuilt = new PluginSubscription(mapping, plugin, Guid.NewGuid(),
+                new List<DeviceConfigurationSubscription>());
+
+            Assert.That(rebuilt.OutputSubscriptions, Is.Empty);
+            Assert.That(plugin.Outputs.Single().OutputSink, Is.Null,
+                "A rebuilt mapping must not keep writing into the previous vJoy subscription.");
+        }
+
+        [Test]
+        public void DetachingOldOutputSubscriptionDoesNotClearNewReplacementSink()
+        {
+            var output = new DeviceConfiguration(new Device("vJoy", "Core_vJoyInterfaceWrap", "0", 0));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { output }, DeviceIoType.Output);
+
+            var mapping = _profile.AddMapping("Keyboard to vJoy");
+            var plugin = new ButtonToButton();
+            mapping.AddPlugin(plugin);
+            plugin.Outputs.Single().DeviceConfigurationGuid = output.Guid;
+            plugin.Outputs.Single().IsBound = true;
+
+            var outputConfiguration = new DeviceConfigurationSubscription(output, _profile.Guid);
+            var first = new PluginSubscription(mapping, plugin, Guid.NewGuid(),
+                new List<DeviceConfigurationSubscription> { outputConfiguration });
+            var firstSink = plugin.Outputs.Single().OutputSink;
+            var replacement = new PluginSubscription(mapping, plugin, Guid.NewGuid(),
+                new List<DeviceConfigurationSubscription> { outputConfiguration });
+            var replacementSink = plugin.Outputs.Single().OutputSink;
+
+            Assert.That(firstSink, Is.Not.SameAs(replacementSink));
+            first.DetachOutputs();
+            Assert.That(plugin.Outputs.Single().OutputSink, Is.SameAs(replacementSink),
+                "Disposing stale runtime state must not disconnect the new vJoy sink.");
+
+            replacement.DetachOutputs();
+            Assert.That(plugin.Outputs.Single().OutputSink, Is.Null);
+        }
+
+        [Test]
         public void SameNamedFiltersAreScopedPerActiveProfile()
         {
             var second = _context.ProfilesManager.CreateProfile("Second", null, null);
