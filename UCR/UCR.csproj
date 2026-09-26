@@ -146,6 +146,11 @@
     </Compile>
     <Compile Include="Views\Controls\ControlGlyphControl.cs" />
     <Compile Include="Views\Controls\DeviceGlyphControl.cs" />
+    <Compile Include="Views\Controls\DeviceGlyphVectors.cs" />
+    <Compile Include="Views\Controls\DeviceGlyphVectors.PlayStation.cs" />
+    <Compile Include="Views\Controls\DeviceGlyphVectors.Xbox.cs" />
+    <Compile Include="Views\Controls\DeviceGlyphVectors.Nintendo.cs" />
+    <Compile Include="Views\Controls\DeviceGlyphVectors.VJoy.cs" />
     <Compile Include="Views\Controls\Plugin\PluginControl.xaml.cs">
       <DependentUpon>PluginControl.xaml</DependentUpon>
     </Compile>
