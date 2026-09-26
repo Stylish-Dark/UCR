@@ -128,6 +128,9 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 descriptor.SlotNumber = ordinal;
                 descriptor.ShowSlotIndicator = true;
                 descriptor.BadgeText = BuildBadgeText(descriptor.Kind, ordinal);
+                descriptor.GlyphBrush = SlotBrush(ordinal);
+                descriptor.BadgeTextBrush = descriptor.GlyphBrush;
+                ApplyConfiguredBadgeTextColor(descriptor, configuration.Device, profile.Context?.DevicesManager);
             }
 
             return descriptor;
@@ -188,7 +191,8 @@ namespace HidWizards.UCR.ViewModels.Presentation
             // Sony generations. Keep specific generations ahead of the generic VID match.
             if (ContainsAny(searchable, "dualsense", "ps5", "playstation 5", "cfizct"))
                 return WithConfiguredPresentation(Build(DeviceVisualKind.PlayStation5, PlayStationBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
-            if (ContainsAny(searchable, "dualshock 4", "ds4", "ps4", "playstation 4", "cuh-zct", "wireless controller"))
+            if (ContainsAny(searchable, "dualshock 4", "ds4", "ps4", "playstation 4", "cuh-zct") ||
+                searchable.Contains("wireless controller") && searchable.Contains("vid_054c"))
                 return WithConfiguredPresentation(Build(DeviceVisualKind.PlayStation4, PlayStationBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
             if (ContainsAny(searchable, "dualshock 3", "sixaxis", "ps3", "playstation(r)3", "playstation 3"))
                 return WithConfiguredPresentation(Build(DeviceVisualKind.PlayStation3, PlayStationBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
@@ -288,9 +292,9 @@ namespace HidWizards.UCR.ViewModels.Presentation
             var manager = devicesManager ?? device.Profile?.Context?.DevicesManager;
             if (manager == null) return;
 
-            // Device family owns the badge outline and semantic accent permanently. The persisted
-            // colour choice (historically named OutlineColor in the XML model) now customizes only
-            // the badge text, preserving existing user settings without changing the file format.
+            // The persisted colour choice (historically named OutlineColor in the XML model)
+            // now customizes the device glyph as well as the legacy badge text, preserving the
+            // existing settings format while the UI moves away from coloured boxes.
             var choice = manager.GetDeviceOutlineColor(device);
             if (choice == DeviceOutlineColor.Default) return;
 
@@ -427,7 +431,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 return;
             }
 
-            if (kind == DeviceVisualKind.Xbox || kind == DeviceVisualKind.PlayStation)
+            if (IsXbox(kind) || IsPlayStation(kind))
             {
                 PopulateKnownControllerControl(result, binding, category, leaf, kind);
                 return;
@@ -479,13 +483,13 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
             var button = KnownButtonLabelFromName(lower, deviceKind) ?? KnownButtonLabel(binding.KeyValue, deviceKind);
             result.ControlLabel = button;
-            if (deviceKind == DeviceVisualKind.Xbox && binding.KeyValue >= 0 && binding.KeyValue <= 3)
+            if (IsXbox(deviceKind) && binding.KeyValue >= 0 && binding.KeyValue <= 3)
             {
                 result.ControlKind = ControlVisualKind.XboxFaceButton;
                 result.ControlBrush = XboxFaceBrush(button);
                 return;
             }
-            if (deviceKind == DeviceVisualKind.PlayStation && binding.KeyValue >= 0 && binding.KeyValue <= 3)
+            if (IsPlayStation(deviceKind) && binding.KeyValue >= 0 && binding.KeyValue <= 3)
             {
                 result.ControlKind = ControlVisualKind.PlayStationFaceButton;
                 result.ControlBrush = PlayStationFaceBrush(button);
@@ -496,7 +500,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
             {
                 result.ControlKind = ControlVisualKind.ShoulderButton;
             }
-            else if ((deviceKind == DeviceVisualKind.PlayStation && (binding.KeyValue == 10 || binding.KeyValue == 11)) ||
+            else if ((IsPlayStation(deviceKind) && (binding.KeyValue == 10 || binding.KeyValue == 11)) ||
                      lower.Contains("trigger"))
             {
                 result.ControlKind = ControlVisualKind.Trigger;
@@ -512,7 +516,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
         {
             if (string.IsNullOrWhiteSpace(lower)) return null;
 
-            if (kind == DeviceVisualKind.PlayStation)
+            if (IsPlayStation(kind))
             {
                 if (lower.Contains("cross")) return "×";
                 if (lower.Contains("circle")) return "○";
@@ -552,14 +556,14 @@ namespace HidWizards.UCR.ViewModels.Presentation
             if ((lower.Contains("left") && lower.Contains("y")) || lower.Contains("ly")) return "LY";
             if ((lower.Contains("right") && lower.Contains("x")) || lower.Contains("rx")) return "RX";
             if ((lower.Contains("right") && lower.Contains("y")) || lower.Contains("ry")) return "RY";
-            if (lower.Contains("left trigger") || lower.Contains("l2")) return kind == DeviceVisualKind.PlayStation ? "L2" : "LT";
-            if (lower.Contains("right trigger") || lower.Contains("r2")) return kind == DeviceVisualKind.PlayStation ? "R2" : "RT";
+            if (lower.Contains("left trigger") || lower.Contains("l2")) return IsPlayStation(kind) ? "L2" : "LT";
+            if (lower.Contains("right trigger") || lower.Contains("r2")) return IsPlayStation(kind) ? "R2" : "RT";
             return null;
         }
 
         private static string KnownButtonLabel(int keyValue, DeviceVisualKind kind)
         {
-            if (kind == DeviceVisualKind.PlayStation)
+            if (IsPlayStation(kind))
             {
                 switch (keyValue)
                 {
@@ -605,8 +609,8 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 case 1: return "LY";
                 case 2: return "RX";
                 case 3: return "RY";
-                case 4: return kind == DeviceVisualKind.PlayStation ? "L2" : "LT";
-                case 5: return kind == DeviceVisualKind.PlayStation ? "R2" : "RT";
+                case 4: return IsPlayStation(kind) ? "L2" : "LT";
+                case 5: return IsPlayStation(kind) ? "R2" : "RT";
                 default: return "A" + (keyValue + 1);
             }
         }
@@ -766,11 +770,11 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
         private static bool IsPlayStation(DeviceVisualKind kind)
         {
-            return kind == DeviceVisualKind.PlayStation1 ||
-                   kind == DeviceVisualKind.PlayStation2 ||
-                   kind == DeviceVisualKind.PlayStation3 ||
-                   kind == DeviceVisualKind.PlayStation4 ||
-                   kind == DeviceVisualKind.PlayStation5;
+            return IsPlayStation(kind)1 ||
+                   IsPlayStation(kind)2 ||
+                   IsPlayStation(kind)3 ||
+                   IsPlayStation(kind)4 ||
+                   IsPlayStation(kind)5;
         }
 
         private static int GetProfileOrdinal(DeviceConfiguration target, Profile profile, DeviceIoType ioType, DeviceVisualKind kind)
