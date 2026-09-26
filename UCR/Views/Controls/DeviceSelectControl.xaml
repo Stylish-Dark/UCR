@@ -23,7 +23,7 @@
                                 <local:DeviceGlyphControl Grid.Column="0" Width="42" Height="27" Margin="0 0 8 0"
                                                           VerticalAlignment="Center" HorizontalAlignment="Center"
                                                           Kind="{Binding Visual.Kind}" Stroke="{Binding Visual.BadgeTextBrush}"
-                                                          GlyphStrokeThickness="3.0" GlowOpacity="0.14"
+                                                          GlyphStrokeThickness="2.2" GlowOpacity="0"
                                                           ToolTip="{Binding Visual.ToolTip}"/>
                                 <StackPanel Grid.Column="1" Margin="0 12">
                                     <TextBlock Text="{Binding Title}" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
