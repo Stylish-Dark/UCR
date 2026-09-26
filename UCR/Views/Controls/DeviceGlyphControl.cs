@@ -183,7 +183,9 @@ namespace HidWizards.UCR.Views.Controls
         {
             var h = size * 0.5;
             var a = size * 0.18;
-            DrawPath(dc, pen, "dpad_" + size,
+            var key = string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                "dpad_{0}_{1}_{2}", cx, cy, size);
+            DrawPath(dc, pen, key,
                 string.Format(System.Globalization.CultureInfo.InvariantCulture,
                     "M{0},{1} L{2},{1} L{2},{3} L{4},{3} L{4},{5} L{2},{5} L{2},{6} L{0},{6} L{0},{5} L{7},{5} L{7},{3} L{0},{3} Z",
                     cx - a, cy - h, cx + a, cy - a, cx + h, cy + a, cy + h, cx - h));
@@ -200,8 +202,6 @@ namespace HidWizards.UCR.Views.Controls
         private static void PlayStationFaceButtons(DrawingContext dc, Pen pen, double cx, double cy, double offset)
         {
             // Triangle
-            DrawPath(dc, pen, "ps_triangle",
-                "M0,-3.8 L3.8,3.2 L-3.8,3.2 Z");
             dc.PushTransform(new TranslateTransform(cx, cy - offset));
             dc.DrawGeometry(null, pen, Path("ps_triangle", "M0,-3.8 L3.8,3.2 L-3.8,3.2 Z"));
             dc.Pop();
