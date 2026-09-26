@@ -83,15 +83,20 @@ namespace HidWizards.UCR.Views.Controls
             dc.PushTransform(new ScaleTransform(scale, scale));
 
             var stroke = Stroke ?? Brushes.LightGray;
-            var thickness = Math.Max(1.5, GlyphStrokeThickness);
 
-            var glow = CreateGlowBrush(stroke, GlowOpacity);
-            if (glow != null)
+            Geometry approvedGeometry;
+            if (DeviceGlyphVectors.TryGet(Kind, out approvedGeometry))
             {
-                DrawGlyph(dc, CreatePen(glow, thickness + 2.5));
+                // These shapes are the approved monoline artwork itself, represented as vector
+                // stroke silhouettes. Rendering the geometry directly keeps the icon clean at
+                // small sizes and scales perfectly with UI/DPI zoom.
+                dc.DrawGeometry(stroke, null, approvedGeometry);
             }
-
-            DrawGlyph(dc, CreatePen(stroke, thickness));
+            else
+            {
+                var thickness = Math.Max(1.5, GlyphStrokeThickness);
+                DrawGlyph(dc, CreatePen(stroke, thickness));
+            }
 
             dc.Pop();
             dc.Pop();
