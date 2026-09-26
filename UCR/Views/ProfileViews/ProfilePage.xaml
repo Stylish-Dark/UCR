@@ -472,7 +472,7 @@
                                                     <controls:DeviceGlyphControl Grid.Column="1" Width="40" Height="26"
                                                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                                  Kind="{Binding Visual.Kind}" Stroke="{Binding Visual.BadgeTextBrush}"
-                                                                                 GlyphStrokeThickness="3.0" GlowOpacity="0.12"
+                                                                                 GlyphStrokeThickness="2.2" GlowOpacity="0"
                                                                                  ToolTip="{Binding Visual.ToolTip}"/>
                                                     <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                                 </Grid>
@@ -530,7 +530,7 @@
                                                         <controls:DeviceGlyphControl Grid.Column="1" Width="40" Height="26"
                                                                                      HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                                      Kind="{Binding Visual.Kind}" Stroke="{Binding Visual.BadgeTextBrush}"
-                                                                                     GlyphStrokeThickness="3.0" GlowOpacity="0.12"
+                                                                                     GlyphStrokeThickness="2.2" GlowOpacity="0"
                                                                                      ToolTip="{Binding Visual.ToolTip}"/>
                                                         <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                                     </Grid>
