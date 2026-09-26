@@ -770,11 +770,11 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
         private static bool IsPlayStation(DeviceVisualKind kind)
         {
-            return IsPlayStation(kind)1 ||
-                   IsPlayStation(kind)2 ||
-                   IsPlayStation(kind)3 ||
-                   IsPlayStation(kind)4 ||
-                   IsPlayStation(kind)5;
+            return kind == DeviceVisualKind.PlayStation1 ||
+                   kind == DeviceVisualKind.PlayStation2 ||
+                   kind == DeviceVisualKind.PlayStation3 ||
+                   kind == DeviceVisualKind.PlayStation4 ||
+                   kind == DeviceVisualKind.PlayStation5;
         }
 
         private static int GetProfileOrdinal(DeviceConfiguration target, Profile profile, DeviceIoType ioType, DeviceVisualKind kind)
