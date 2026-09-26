@@ -11,6 +11,7 @@ using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.ViewModels.Controls;
 using HidWizards.UCR.ViewModels.Dashboard;
 using HidWizards.UCR.ViewModels.ProfileViewModels;
+using HidWizards.UCR.ViewModels.Presentation;
 using HidWizards.UCR.Views.Controls;
 using HidWizards.UCR.Views.Dialogs;
 using NUnit.Framework;
