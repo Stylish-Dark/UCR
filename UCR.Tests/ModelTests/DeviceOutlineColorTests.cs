@@ -101,9 +101,9 @@ namespace HidWizards.UCR.Tests.ModelTests
             var xbox = new Device("X360 Controller", "Core_ViGEm", "xb360", 0);
 
             Assert.That(new DeviceViewModel(playStation, DeviceIoType.Output).Visual.Kind,
-                Is.EqualTo(DeviceVisualKind.PlayStation));
+                Is.EqualTo(DeviceVisualKind.PlayStation4));
             Assert.That(new DeviceViewModel(xbox, DeviceIoType.Output).Visual.Kind,
-                Is.EqualTo(DeviceVisualKind.Xbox));
+                Is.EqualTo(DeviceVisualKind.Xbox360));
         }
 
 
