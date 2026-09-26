@@ -83,15 +83,21 @@ namespace HidWizards.UCR.Views.Controls
             dc.PushTransform(new ScaleTransform(scale, scale));
 
             var stroke = Stroke ?? Brushes.LightGray;
-            var thickness = Math.Max(1.5, GlyphStrokeThickness);
 
-            var glow = CreateGlowBrush(stroke, GlowOpacity);
-            if (glow != null)
+            Geometry approvedGeometry;
+            if (DeviceGlyphVectors.TryGet(Kind, out approvedGeometry))
             {
-                DrawGlyph(dc, CreatePen(glow, thickness + 2.5));
+                // The approved outer silhouette comes directly from the chosen monoline artwork.
+                // Keep the interior intentionally sparse at tiny UI sizes: silhouette first,
+                // only the controls needed to identify the controller family.
+                dc.DrawGeometry(stroke, null, approvedGeometry);
+                DrawApprovedDetails(dc, CreatePen(stroke, Math.Max(1.8, GlyphStrokeThickness)));
             }
-
-            DrawGlyph(dc, CreatePen(stroke, thickness));
+            else
+            {
+                var thickness = Math.Max(1.8, GlyphStrokeThickness);
+                DrawGlyph(dc, CreatePen(stroke, thickness));
+            }
 
             dc.Pop();
             dc.Pop();
@@ -118,6 +124,121 @@ namespace HidWizards.UCR.Views.Controls
             };
             if (pen.CanFreeze) pen.Freeze();
             return pen;
+        }
+
+        private void DrawApprovedDetails(DrawingContext dc, Pen pen)
+        {
+            switch (Kind)
+            {
+                case DeviceVisualKind.PlayStation1:
+                    DPad(dc, pen, 27, 28, 10);
+                    FaceButtons(dc, pen, 74, 28, 2.3, 6.0);
+                    Line(dc, pen, 45, 30, 48, 30);
+                    Line(dc, pen, 52, 30, 55, 30);
+                    break;
+
+                case DeviceVisualKind.PlayStation2:
+                case DeviceVisualKind.PlayStation3:
+                    DPad(dc, pen, 27, 28, 10);
+                    FaceButtons(dc, pen, 74, 28, 2.3, 6.0);
+                    Circle(dc, pen, 42, 40, 4.4);
+                    Circle(dc, pen, 58, 40, 4.4);
+                    Line(dc, pen, 46, 29, 49, 29);
+                    Line(dc, pen, 51, 29, 54, 29);
+                    break;
+
+                case DeviceVisualKind.PlayStation4:
+                    DPad(dc, pen, 27, 27, 10);
+                    FaceButtons(dc, pen, 74, 27, 2.3, 5.8);
+                    Circle(dc, pen, 42, 39, 4.3);
+                    Circle(dc, pen, 58, 39, 4.3);
+                    dc.DrawRoundedRectangle(null, pen, new Rect(41, 14, 18, 9), 1.6, 1.6);
+                    break;
+
+                case DeviceVisualKind.PlayStation5:
+                    DPad(dc, pen, 27, 27, 10);
+                    FaceButtons(dc, pen, 74, 27, 2.3, 5.8);
+                    Circle(dc, pen, 42, 38, 4.3);
+                    Circle(dc, pen, 58, 38, 4.3);
+                    dc.DrawRoundedRectangle(null, pen, new Rect(40, 13, 20, 10), 1.8, 1.8);
+                    break;
+
+                case DeviceVisualKind.XboxOriginal:
+                    Circle(dc, pen, 28, 25, 5.3);
+                    DPad(dc, pen, 38, 40, 8.5);
+                    Circle(dc, pen, 59, 39, 4.5);
+                    FaceButtons(dc, pen, 75, 26, 2.2, 5.4);
+                    Circle(dc, pen, 50, 21, 3.0);
+                    break;
+
+                case DeviceVisualKind.Xbox360:
+                    Circle(dc, pen, 28, 25, 4.8);
+                    DPad(dc, pen, 37, 40, 8.2);
+                    Circle(dc, pen, 60, 39, 4.5);
+                    FaceButtons(dc, pen, 74, 26, 2.2, 5.5);
+                    Circle(dc, pen, 50, 20, 2.8);
+                    break;
+
+                case DeviceVisualKind.XboxOne:
+                case DeviceVisualKind.XboxSeries:
+                    Circle(dc, pen, 29, 25, 4.8);
+                    DPad(dc, pen, 37, 40, 8.2);
+                    Circle(dc, pen, 60, 39, 4.5);
+                    FaceButtons(dc, pen, 74, 26, 2.2, 5.5);
+                    Circle(dc, pen, 50, 20, 2.5);
+                    break;
+
+                case DeviceVisualKind.Nintendo64:
+                    DPad(dc, pen, 26, 28, 8.8);
+                    Circle(dc, pen, 50, 34, 4.2);
+                    Circle(dc, pen, 74, 27, 2.5);
+                    Circle(dc, pen, 81, 23, 1.7);
+                    Circle(dc, pen, 81, 31, 1.7);
+                    break;
+
+                case DeviceVisualKind.GameCube:
+                    Circle(dc, pen, 27, 25, 5.3);
+                    DPad(dc, pen, 31, 43, 6.8);
+                    Circle(dc, pen, 60, 42, 3.5);
+                    Circle(dc, pen, 73, 29, 5.0);
+                    Circle(dc, pen, 82, 24, 2.4);
+                    break;
+
+                case DeviceVisualKind.WiiRemote:
+                    DPad(dc, pen, 50, 15, 7.5);
+                    Circle(dc, pen, 50, 29, 3.0);
+                    Circle(dc, pen, 50, 46, 1.2);
+                    Circle(dc, pen, 50, 53, 1.2);
+                    break;
+
+                case DeviceVisualKind.WiiClassic:
+                    DPad(dc, pen, 25, 30, 8.8);
+                    Circle(dc, pen, 42, 42, 4.0);
+                    Circle(dc, pen, 58, 42, 4.0);
+                    FaceButtons(dc, pen, 75, 29, 2.1, 5.2);
+                    break;
+
+                case DeviceVisualKind.SwitchPro:
+                    Circle(dc, pen, 29, 25, 4.6);
+                    DPad(dc, pen, 37, 40, 7.8);
+                    Circle(dc, pen, 60, 39, 4.4);
+                    FaceButtons(dc, pen, 74, 26, 2.1, 5.3);
+                    break;
+
+                case DeviceVisualKind.SwitchJoyCon:
+                    Circle(dc, pen, 35, 20, 4.0);
+                    FaceButtons(dc, pen, 65, 21, 1.9, 4.3);
+                    FaceButtons(dc, pen, 35, 42, 1.7, 4.0);
+                    Circle(dc, pen, 65, 43, 4.0);
+                    break;
+
+                case DeviceVisualKind.VJoy:
+                    DPad(dc, pen, 28, 29, 8.8);
+                    Circle(dc, pen, 42, 41, 4.0);
+                    Circle(dc, pen, 58, 41, 4.0);
+                    FaceButtons(dc, pen, 74, 28, 2.1, 5.2);
+                    break;
+            }
         }
 
         private void DrawGlyph(DrawingContext dc, Pen pen)

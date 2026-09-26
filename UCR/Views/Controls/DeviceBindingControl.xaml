@@ -98,7 +98,7 @@
                         <local:DeviceGlyphControl Grid.Column="0" Width="34" Height="21" Margin="0 0 7 0"
                                                   VerticalAlignment="Center" HorizontalAlignment="Center"
                                                   Kind="{Binding Visual.Kind}" Stroke="{Binding Visual.BadgeTextBrush}"
-                                                  GlyphStrokeThickness="3.0" GlowOpacity="0.12"
+                                                  GlyphStrokeThickness="2.2" GlowOpacity="0"
                                                   ToolTip="{Binding Visual.ToolTip}">
                             <local:DeviceGlyphControl.Style>
                                 <Style TargetType="{x:Type local:DeviceGlyphControl}">
