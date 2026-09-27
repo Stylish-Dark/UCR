@@ -154,16 +154,16 @@ namespace HidWizards.UCR.Views.Controls
                         "pack://application:,,,/UCR;component/Assets/DeviceGlyphs/" + assetName,
                         UriKind.Absolute);
 
-                    var bitmap = new BitmapImage();
-                    bitmap.BeginInit();
-                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                    bitmap.CreateOptions = BitmapCreateOptions.PreservePixelFormat;
-                    bitmap.UriSource = uri;
-                    bitmap.EndInit();
-                    if (bitmap.CanFreeze) bitmap.Freeze();
+                    var decoded = new BitmapImage();
+                    decoded.BeginInit();
+                    decoded.CacheOption = BitmapCacheOption.OnLoad;
+                    decoded.CreateOptions = BitmapCreateOptions.PreservePixelFormat;
+                    decoded.UriSource = uri;
+                    decoded.EndInit();
+                    if (decoded.CanFreeze) decoded.Freeze();
 
-                    SourceCache[assetName] = bitmap;
-                    return bitmap;
+                    SourceCache[assetName] = decoded;
+                    return decoded;
                 }
                 catch
                 {

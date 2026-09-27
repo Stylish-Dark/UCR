@@ -146,6 +146,11 @@
     </Compile>
     <Compile Include="Views\Controls\ControlGlyphControl.cs" />
     <Compile Include="Views\Controls\DeviceGlyphControl.cs" />
+    <Resource Include="Assets\DeviceGlyphs\xbox360.png" />
+    <Resource Include="Assets\DeviceGlyphs\dualshock4.png" />
+    <Resource Include="Assets\DeviceGlyphs\keyboard.png" />
+    <Resource Include="Assets\DeviceGlyphs\vjoy.png" />
+    <Resource Include="Assets\DeviceGlyphs\device-generic.png" />
     <Compile Include="Views\Controls\Plugin\PluginControl.xaml.cs">
       <DependentUpon>PluginControl.xaml</DependentUpon>
     </Compile>
@@ -394,11 +399,6 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Assets\DeviceGlyphs\xbox360.png" />
-    <Resource Include="Assets\DeviceGlyphs\dualshock4.png" />
-    <Resource Include="Assets\DeviceGlyphs\vjoy.png" />
-    <Resource Include="Assets\DeviceGlyphs\keyboard.png" />
-    <Resource Include="Assets\DeviceGlyphs\device-generic.png" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="UCR.ico" />
