@@ -91,7 +91,10 @@ namespace HidWizards.UCR.Views.Controls
                 // Keep the interior intentionally sparse at tiny UI sizes: silhouette first,
                 // only the controls needed to identify the controller family.
                 dc.DrawGeometry(stroke, null, approvedGeometry);
-                DrawApprovedDetails(dc, CreatePen(stroke, Math.Max(1.8, GlyphStrokeThickness)));
+                if (!DeviceGlyphVectors.IsPremium(Kind))
+                {
+                    DrawApprovedDetails(dc, CreatePen(stroke, Math.Max(1.8, GlyphStrokeThickness)));
+                }
             }
             else
             {
