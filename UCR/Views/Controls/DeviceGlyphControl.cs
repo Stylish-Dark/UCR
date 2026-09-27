@@ -103,35 +103,48 @@ namespace HidWizards.UCR.Views.Controls
         {
             switch (kind)
             {
-                case DeviceVisualKind.Xbox360:
-                    return "xbox360.png";
-
+                case DeviceVisualKind.PlayStation1:
+                    return "ps1.png";
+                case DeviceVisualKind.PlayStation2:
+                    return "ps2.png";
+                case DeviceVisualKind.PlayStation3:
+                    return "ps3.png";
                 case DeviceVisualKind.PlayStation4:
                     return "dualshock4.png";
+                case DeviceVisualKind.PlayStation5:
+                    return "dualsense.png";
+
+                case DeviceVisualKind.XboxOriginal:
+                    return "xbox-original.png";
+                case DeviceVisualKind.Xbox360:
+                    return "xbox360.png";
+                case DeviceVisualKind.XboxOne:
+                    return "xboxone.png";
+                case DeviceVisualKind.XboxSeries:
+                    return "xboxseries.png";
+
+                case DeviceVisualKind.Nintendo64:
+                    return "n64.png";
+                case DeviceVisualKind.GameCube:
+                    return "gamecube.png";
+                case DeviceVisualKind.WiiRemote:
+                    return "wiiremote.png";
+                case DeviceVisualKind.WiiClassic:
+                    return "wiiclassic.png";
+                case DeviceVisualKind.SwitchPro:
+                    return "switchpro.png";
+                case DeviceVisualKind.SwitchJoyCon:
+                    return "joycon.png";
 
                 case DeviceVisualKind.Keyboard:
                     return "keyboard.png";
-
                 case DeviceVisualKind.VJoy:
                     return "vjoy.png";
 
-                // These are deliberately neutral until each family gets its own finished raster artwork.
-                // Showing a generic device is better than showing the wrong controller.
+                // Device kinds not represented in the supplied controller artwork retain
+                // the neutral generic peripheral glyph instead of showing a wrong family.
                 case DeviceVisualKind.Mouse:
                 case DeviceVisualKind.Gamepad:
-                case DeviceVisualKind.PlayStation1:
-                case DeviceVisualKind.PlayStation2:
-                case DeviceVisualKind.PlayStation3:
-                case DeviceVisualKind.PlayStation5:
-                case DeviceVisualKind.XboxOriginal:
-                case DeviceVisualKind.XboxOne:
-                case DeviceVisualKind.XboxSeries:
-                case DeviceVisualKind.Nintendo64:
-                case DeviceVisualKind.GameCube:
-                case DeviceVisualKind.WiiRemote:
-                case DeviceVisualKind.WiiClassic:
-                case DeviceVisualKind.SwitchPro:
-                case DeviceVisualKind.SwitchJoyCon:
                 case DeviceVisualKind.ArcadeStick:
                 case DeviceVisualKind.DirectInput:
                 case DeviceVisualKind.Unavailable:

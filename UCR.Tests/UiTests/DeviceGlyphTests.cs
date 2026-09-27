@@ -52,8 +52,21 @@ namespace HidWizards.UCR.Tests.UiTests
             Assert.That(xbox.Kind, Is.EqualTo(DeviceVisualKind.Xbox360));
         }
 
-        [TestCase(DeviceVisualKind.Xbox360)]
+        [TestCase(DeviceVisualKind.PlayStation1)]
+        [TestCase(DeviceVisualKind.PlayStation2)]
+        [TestCase(DeviceVisualKind.PlayStation3)]
         [TestCase(DeviceVisualKind.PlayStation4)]
+        [TestCase(DeviceVisualKind.PlayStation5)]
+        [TestCase(DeviceVisualKind.XboxOriginal)]
+        [TestCase(DeviceVisualKind.Xbox360)]
+        [TestCase(DeviceVisualKind.XboxOne)]
+        [TestCase(DeviceVisualKind.XboxSeries)]
+        [TestCase(DeviceVisualKind.Nintendo64)]
+        [TestCase(DeviceVisualKind.GameCube)]
+        [TestCase(DeviceVisualKind.WiiRemote)]
+        [TestCase(DeviceVisualKind.WiiClassic)]
+        [TestCase(DeviceVisualKind.SwitchPro)]
+        [TestCase(DeviceVisualKind.SwitchJoyCon)]
         [TestCase(DeviceVisualKind.Keyboard)]
         [TestCase(DeviceVisualKind.VJoy)]
         [TestCase(DeviceVisualKind.Unknown)]

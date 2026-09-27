@@ -146,8 +146,21 @@
     </Compile>
     <Compile Include="Views\Controls\ControlGlyphControl.cs" />
     <Compile Include="Views\Controls\DeviceGlyphControl.cs" />
-    <Resource Include="Assets\DeviceGlyphs\xbox360.png" />
+    <Resource Include="Assets\DeviceGlyphs\ps1.png" />
+    <Resource Include="Assets\DeviceGlyphs\ps2.png" />
+    <Resource Include="Assets\DeviceGlyphs\ps3.png" />
     <Resource Include="Assets\DeviceGlyphs\dualshock4.png" />
+    <Resource Include="Assets\DeviceGlyphs\dualsense.png" />
+    <Resource Include="Assets\DeviceGlyphs\xbox-original.png" />
+    <Resource Include="Assets\DeviceGlyphs\xbox360.png" />
+    <Resource Include="Assets\DeviceGlyphs\xboxone.png" />
+    <Resource Include="Assets\DeviceGlyphs\xboxseries.png" />
+    <Resource Include="Assets\DeviceGlyphs\n64.png" />
+    <Resource Include="Assets\DeviceGlyphs\gamecube.png" />
+    <Resource Include="Assets\DeviceGlyphs\wiiremote.png" />
+    <Resource Include="Assets\DeviceGlyphs\wiiclassic.png" />
+    <Resource Include="Assets\DeviceGlyphs\switchpro.png" />
+    <Resource Include="Assets\DeviceGlyphs\joycon.png" />
     <Resource Include="Assets\DeviceGlyphs\keyboard.png" />
     <Resource Include="Assets\DeviceGlyphs\vjoy.png" />
     <Resource Include="Assets\DeviceGlyphs\device-generic.png" />
