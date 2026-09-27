@@ -12,7 +12,8 @@ namespace HidWizards.UCR.Views.Controls
         {
             if (Cache.TryGetValue(kind, out geometry)) return true;
 
-            var data = ResolvePlayStation(kind) ??
+            var data = ResolvePremium(kind) ??
+                       ResolvePlayStation(kind) ??
                        ResolveXbox(kind) ??
                        ResolveNintendo(kind) ??
                        ResolveVJoy(kind);
