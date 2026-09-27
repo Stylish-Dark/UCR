@@ -138,7 +138,7 @@ namespace HidWizards.UCR.Views.Controls
                 case DeviceVisualKind.Unavailable:
                 case DeviceVisualKind.Unknown:
                 default:
-                    return "device-generic.png";
+                    return "../DeviceGlyphs2/device-generic.b64";
             }
         }
 
