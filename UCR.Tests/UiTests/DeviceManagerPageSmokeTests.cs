@@ -42,6 +42,35 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void EmbeddedDeviceSymbolFontResolvesAllPrivateUseGlyphs()
+        {
+            EnsureApplicationResources();
+
+            var family = Application.Current.FindResource("DeviceSymbolsFont") as FontFamily;
+            Assert.That(family, Is.Not.Null, "The embedded device-symbol font resource did not resolve.");
+
+            GlyphTypeface glyphTypeface = null;
+            foreach (var typeface in family.GetTypefaces())
+            {
+                GlyphTypeface candidate;
+                if (typeface.TryGetGlyphTypeface(out candidate))
+                {
+                    glyphTypeface = candidate;
+                    break;
+                }
+            }
+
+            Assert.That(glyphTypeface, Is.Not.Null, "WPF could not load the embedded Device Symbols typeface.");
+
+            for (var codePoint = 0xE001; codePoint <= 0xE005; codePoint++)
+            {
+                Assert.That(glyphTypeface.CharacterToGlyphMap.ContainsKey(codePoint), Is.True,
+                    "Embedded Device Symbols font is missing U+" + codePoint.ToString("X4") + ".");
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void ApplicationUsesDefaultRenderingSoWpfCanUseHardwareAcceleration()
         {
             EnsureApplicationResources();
