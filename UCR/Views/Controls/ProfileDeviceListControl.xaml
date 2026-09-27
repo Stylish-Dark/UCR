@@ -50,10 +50,9 @@
                             </Ellipse.Style>
                         </Ellipse>
                     </Button>
-                    <local:DeviceGlyphControl Grid.Column="1" Width="40" Height="26" Margin="0 0 6 0"
+                    <local:DevicePictogramControl Width="46" Height="28" Margin="0 0 6 0"
                                               VerticalAlignment="Center" HorizontalAlignment="Center"
-                                              Kind="{Binding Visual.Kind}" Stroke="{Binding Visual.BadgeTextBrush}"
-                                              GlyphStrokeThickness="2.2" GlowOpacity="0"
+                                              Kind="{Binding Visual.Kind}" Fill="{Binding Visual.BadgeTextBrush}"
                                               ToolTip="{Binding Visual.ToolTip}"/>
                     <StackPanel Grid.Column="2" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>

@@ -35,13 +35,11 @@
     <Window.Resources>
         <ResourceDictionary>
             <converter:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
-            <DataTemplate x:Key="DeviceBadgeTemplate">
-                <Border MinWidth="31" Height="22" Padding="5 1" CornerRadius="4"
-                        Background="#1B1B1B" BorderBrush="{Binding OutlineBrush}" BorderThickness="1"
-                        ToolTip="{Binding ToolTip}">
-                    <TextBlock Text="{Binding BadgeText}" Foreground="{Binding BadgeTextBrush}"
-                               FontSize="11.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Border>
+            <DataTemplate x:Key="DevicePictogramTemplate">
+                <controls:DevicePictogramControl Width="48" Height="30"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                 Kind="{Binding Kind}" Fill="{Binding BadgeTextBrush}"
+                                                 ToolTip="{Binding ToolTip}"/>
             </DataTemplate>
             <DataTemplate x:Key="DeviceTemplate" DataType="{x:Type dashboard:DeviceItem}">
                 <StackPanel Margin="4">
@@ -261,7 +259,7 @@
                                                             <Border Margin="4 2" Padding="7 5" Background="#1F1F1F" CornerRadius="4"
                                                                     ToolTip="{Binding Name.Visual.ToolTip}">
                                                                 <StackPanel Orientation="Horizontal">
-                                                                    <ContentControl Content="{Binding Name.Visual}" ContentTemplate="{StaticResource DeviceBadgeTemplate}"
+                                                                    <ContentControl Content="{Binding Name.Visual}" ContentTemplate="{StaticResource DevicePictogramTemplate}"
                                                                                     Margin="0 0 7 0" VerticalAlignment="Center"/>
                                                                     <TextBlock Text="{Binding Name.Name}" FontSize="13.5" FontWeight="SemiBold"
                                                                                Opacity="0.76" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
@@ -290,7 +288,7 @@
                                             </Grid.ColumnDefinitions>
 
                                             <ItemsControl Grid.Column="0" ItemsSource="{Binding InputVisuals}"
-                                                          ItemTemplate="{StaticResource DeviceBadgeTemplate}"
+                                                          ItemTemplate="{StaticResource DevicePictogramTemplate}"
                                                           HorizontalAlignment="Center" VerticalAlignment="Center">
                                                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                             </ItemsControl>
@@ -328,7 +326,7 @@
                                             </Grid>
 
                                             <ItemsControl Grid.Column="2" ItemsSource="{Binding OutputVisuals}"
-                                                          ItemTemplate="{StaticResource DeviceBadgeTemplate}"
+                                                          ItemTemplate="{StaticResource DevicePictogramTemplate}"
                                                           HorizontalAlignment="Center" VerticalAlignment="Center">
                                                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                             </ItemsControl>
