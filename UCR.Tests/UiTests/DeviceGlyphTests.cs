@@ -54,7 +54,7 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
-        public void EveryGlyphRendersAsVectorAtSmallAndLargeSizes()
+        public void EveryGlyphRendersFromRasterAtSmallAndLargeSizes()
         {
             foreach (var kind in Enum.GetValues(typeof(DeviceVisualKind)).Cast<DeviceVisualKind>())
             {
@@ -81,7 +81,7 @@ namespace HidWizards.UCR.Tests.UiTests
 
             var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
             Assert.DoesNotThrow(() => bitmap.Render(glyph),
-                "Vector glyph failed to render for " + kind + " at " + width + "x" + height + ".");
+                "Raster glyph failed to render for " + kind + " at " + width + "x" + height + ".");
         }
     }
 }

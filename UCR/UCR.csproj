@@ -146,13 +146,6 @@
     </Compile>
     <Compile Include="Views\Controls\ControlGlyphControl.cs" />
     <Compile Include="Views\Controls\DeviceGlyphControl.cs" />
-    <Compile Include="Views\Controls\PremiumDeviceGlyphRenderer.cs" />
-    <Compile Include="Views\Controls\DeviceGlyphVectors.cs" />
-    <Compile Include="Views\Controls\DeviceGlyphVectors.Premium.cs" />
-    <Compile Include="Views\Controls\DeviceGlyphVectors.PlayStation.cs" />
-    <Compile Include="Views\Controls\DeviceGlyphVectors.Xbox.cs" />
-    <Compile Include="Views\Controls\DeviceGlyphVectors.Nintendo.cs" />
-    <Compile Include="Views\Controls\DeviceGlyphVectors.VJoy.cs" />
     <Compile Include="Views\Controls\Plugin\PluginControl.xaml.cs">
       <DependentUpon>PluginControl.xaml</DependentUpon>
     </Compile>
@@ -399,6 +392,13 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\DeviceGlyphs\xbox360.png" />
+    <Resource Include="Assets\DeviceGlyphs\dualshock4.png" />
+    <Resource Include="Assets\DeviceGlyphs\vjoy.png" />
+    <Resource Include="Assets\DeviceGlyphs\keyboard.png" />
+    <Resource Include="Assets\DeviceGlyphs\device-generic.png" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="UCR.ico" />
