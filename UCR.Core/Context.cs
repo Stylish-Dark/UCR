@@ -110,6 +110,31 @@ namespace HidWizards.UCR.Core
             IsNotSaved = true;
         }
 
+        internal bool HasUnsavedPersistentChanges(List<Type> pluginTypes = null)
+        {
+            if (!IsNotSaved) return false;
+
+            try
+            {
+                if (Store.MatchesPersistedConfiguration(this, pluginTypes))
+                {
+                    // Some UI/runtime paths conservatively call ContextChanged even when the
+                    // serialized configuration is unchanged. Do not turn that into a fake save prompt.
+                    IsNotSaved = false;
+                    Logger.Trace("Dirty flag cleared because persisted configuration is unchanged.");
+                    return false;
+                }
+            }
+            catch (Exception exception)
+            {
+                // If comparison itself fails, keep the conservative dirty result rather than risk
+                // silently dropping a genuine user edit.
+                Logger.Warn(exception, "Unable to verify whether the dirty configuration differs from disk.");
+            }
+
+            return true;
+        }
+
         #region Persistence
         
         public bool SaveContext(List<Type> pluginTypes = null)

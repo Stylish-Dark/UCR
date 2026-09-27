@@ -68,6 +68,36 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void DirtyFlagWithoutPersistentChangeDoesNotCountAsUnsavedConfiguration()
+        {
+            var context = NewContext();
+            var profile = context.ProfilesManager.CreateProfile("Stable", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            context.SaveContext();
+
+            context.ContextChanged();
+
+            Assert.That(context.IsNotSaved, Is.True, "Fixture should begin with the conservative dirty bit set.");
+            Assert.That(context.HasUnsavedPersistentChanges(), Is.False,
+                "An unchanged serialized configuration must not produce a close-time save prompt.");
+            Assert.That(context.IsNotSaved, Is.False);
+        }
+
+        [Test]
+        public void PersistentMutationStillCountsAsUnsavedConfiguration()
+        {
+            var context = NewContext();
+            var profile = context.ProfilesManager.CreateProfile("Before", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            context.SaveContext();
+
+            profile.Rename("After");
+
+            Assert.That(context.HasUnsavedPersistentChanges(), Is.True,
+                "A real profile mutation must still produce the save prompt.");
+        }
+
+        [Test]
         public void BlankContext()
         {
             var context = NewContext();

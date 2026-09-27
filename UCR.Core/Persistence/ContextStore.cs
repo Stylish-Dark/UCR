@@ -82,6 +82,48 @@ namespace HidWizards.UCR.Core.Persistence
             return new Context(this);
         }
 
+        internal bool MatchesPersistedConfiguration(Context context, List<Type> additionalPluginTypes)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+            if (!File.Exists(StatePath) || !File.Exists(DevicesPath)) return false;
+
+            var pluginTypes = GetPluginTypes(additionalPluginTypes);
+            var serializer = new UcrJsonSerializer(pluginTypes);
+            var profileIds = ValidateProfileIds(context.Profiles);
+
+            var currentState = JToken.Parse(serializer.Serialize(new StateFile
+            {
+                SchemaVersion = SchemaVersion,
+                ProfileOrder = profileIds
+            }));
+            var persistedState = JToken.Parse(File.ReadAllText(StatePath, Encoding.UTF8));
+            if (!JToken.DeepEquals(currentState, persistedState)) return false;
+
+            var currentDevices = JToken.Parse(serializer.Serialize(new DevicesFile
+            {
+                SchemaVersion = SchemaVersion,
+                DeviceAliases = CleanDeviceAliases(context.DeviceAliases)
+            }));
+            var persistedDevices = JToken.Parse(File.ReadAllText(DevicesPath, Encoding.UTF8));
+            if (!JToken.DeepEquals(currentDevices, persistedDevices)) return false;
+
+            foreach (var profile in context.Profiles)
+            {
+                var path = GetProfilePath(profile.Guid);
+                if (!File.Exists(path)) return false;
+
+                var currentProfile = JToken.Parse(serializer.Serialize(new ProfileFile
+                {
+                    SchemaVersion = SchemaVersion,
+                    Profile = profile
+                }));
+                var persistedProfile = JToken.Parse(File.ReadAllText(path, Encoding.UTF8));
+                if (!JToken.DeepEquals(currentProfile, persistedProfile)) return false;
+            }
+
+            return true;
+        }
+
         public bool Save(Context context, List<Type> additionalPluginTypes)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));

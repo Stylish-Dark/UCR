@@ -835,7 +835,7 @@ namespace HidWizards.UCR.Views
             WindowCloseState = CloseState.Closing;
             var saveBeforeShutdown = false;
 
-            if (Context.IsNotSaved)
+            if (Context.HasUnsavedPersistentChanges())
             {
                 if (WindowState.Equals(WindowState.Minimized))
                 {
