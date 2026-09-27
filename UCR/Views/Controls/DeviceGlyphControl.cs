@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -105,16 +104,16 @@ namespace HidWizards.UCR.Views.Controls
             switch (kind)
             {
                 case DeviceVisualKind.Xbox360:
-                    return "../DeviceGlyphs2/xbox360.b64";
+                    return "xbox360.png";
 
                 case DeviceVisualKind.PlayStation4:
-                    return "../DeviceGlyphs2/dualshock4.b64";
+                    return "dualshock4.png";
 
                 case DeviceVisualKind.Keyboard:
-                    return "../DeviceGlyphs2/keyboard.b64";
+                    return "keyboard.png";
 
                 case DeviceVisualKind.VJoy:
-                    return "../DeviceGlyphs2/vjoy.b64";
+                    return "vjoy.png";
 
                 // These are deliberately neutral until each family gets its own finished raster artwork.
                 // Showing a generic device is better than showing the wrong controller.
@@ -138,7 +137,7 @@ namespace HidWizards.UCR.Views.Controls
                 case DeviceVisualKind.Unavailable:
                 case DeviceVisualKind.Unknown:
                 default:
-                    return "../DeviceGlyphs2/device-generic.b64";
+                    return "device-generic.png";
             }
         }
 
@@ -151,59 +150,20 @@ namespace HidWizards.UCR.Views.Controls
 
                 try
                 {
-                    BitmapSource bitmap;
+                    var uri = new Uri(
+                        "pack://application:,,,/UCR;component/Assets/DeviceGlyphs/" + assetName,
+                        UriKind.Absolute);
 
-                    if (assetName.EndsWith(".b64", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var resourcePath = assetName.StartsWith("../", StringComparison.Ordinal)
-                            ? "Assets/" + assetName.Substring(3)
-                            : "Assets/DeviceGlyphs2/" + assetName;
+                    var decoded = new BitmapImage();
+                    decoded.BeginInit();
+                    decoded.CacheOption = BitmapCacheOption.OnLoad;
+                    decoded.CreateOptions = BitmapCreateOptions.PreservePixelFormat;
+                    decoded.UriSource = uri;
+                    decoded.EndInit();
+                    if (decoded.CanFreeze) decoded.Freeze();
 
-                        var uri = new Uri(
-                            "pack://application:,,,/UCR;component/" + resourcePath,
-                            UriKind.Absolute);
-
-                        var resource = Application.GetResourceStream(uri);
-                        if (resource == null || resource.Stream == null) return null;
-
-                        string encoded;
-                        using (resource.Stream)
-                        using (var reader = new StreamReader(resource.Stream))
-                        {
-                            encoded = reader.ReadToEnd().Trim();
-                        }
-
-                        var bytes = Convert.FromBase64String(encoded);
-                        using (var stream = new MemoryStream(bytes, false))
-                        {
-                            var decoded = new BitmapImage();
-                            decoded.BeginInit();
-                            decoded.CacheOption = BitmapCacheOption.OnLoad;
-                            decoded.CreateOptions = BitmapCreateOptions.PreservePixelFormat;
-                            decoded.StreamSource = stream;
-                            decoded.EndInit();
-                            if (decoded.CanFreeze) decoded.Freeze();
-                            bitmap = decoded;
-                        }
-                    }
-                    else
-                    {
-                        var uri = new Uri(
-                            "pack://application:,,,/UCR;component/Assets/DeviceGlyphs/" + assetName,
-                            UriKind.Absolute);
-
-                        var decoded = new BitmapImage();
-                        decoded.BeginInit();
-                        decoded.CacheOption = BitmapCacheOption.OnLoad;
-                        decoded.CreateOptions = BitmapCreateOptions.PreservePixelFormat;
-                        decoded.UriSource = uri;
-                        decoded.EndInit();
-                        if (decoded.CanFreeze) decoded.Freeze();
-                        bitmap = decoded;
-                    }
-
-                    SourceCache[assetName] = bitmap;
-                    return bitmap;
+                    SourceCache[assetName] = decoded;
+                    return decoded;
                 }
                 catch
                 {
