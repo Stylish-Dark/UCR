@@ -84,22 +84,22 @@ namespace HidWizards.UCR.Views.Controls
 
             var stroke = Stroke ?? Brushes.LightGray;
 
-            Geometry approvedGeometry;
-            if (DeviceGlyphVectors.TryGet(Kind, out approvedGeometry))
+            if (!PremiumDeviceGlyphRenderer.TryDraw(dc, Kind, stroke, GlyphStrokeThickness))
             {
-                // The approved outer silhouette comes directly from the chosen monoline artwork.
-                // Keep the interior intentionally sparse at tiny UI sizes: silhouette first,
-                // only the controls needed to identify the controller family.
-                dc.DrawGeometry(stroke, null, approvedGeometry);
-                if (!DeviceGlyphVectors.IsPremium(Kind))
+                Geometry approvedGeometry;
+                if (DeviceGlyphVectors.TryGet(Kind, out approvedGeometry))
                 {
-                    DrawApprovedDetails(dc, CreatePen(stroke, Math.Max(1.8, GlyphStrokeThickness)));
+                    dc.DrawGeometry(stroke, null, approvedGeometry);
+                    if (!DeviceGlyphVectors.IsPremium(Kind))
+                    {
+                        DrawApprovedDetails(dc, CreatePen(stroke, Math.Max(1.8, GlyphStrokeThickness)));
+                    }
                 }
-            }
-            else
-            {
-                var thickness = Math.Max(1.8, GlyphStrokeThickness);
-                DrawGlyph(dc, CreatePen(stroke, thickness));
+                else
+                {
+                    var thickness = Math.Max(1.8, GlyphStrokeThickness);
+                    DrawGlyph(dc, CreatePen(stroke, thickness));
+                }
             }
 
             dc.Pop();
