@@ -29,6 +29,7 @@
                 <Grid Margin="4 3">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="24"/>
+                        <ColumnDefinition Width="50"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Button Grid.Column="0" Width="22" Height="22" Margin="0 0 2 0"
@@ -49,7 +50,9 @@
                             </Ellipse.Style>
                         </Ellipse>
                     </Button>
-<StackPanel Grid.Column="1" VerticalAlignment="Center">
+<ContentControl Grid.Column="1" Content="{Binding Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
+                                    Width="48" Height="30" Margin="0 0 6 0" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
                         <TextBlock Margin="0 1 0 0" Text="{Binding ProviderName}" FontSize="12.5" Opacity="0.50" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>

@@ -35,6 +35,21 @@
     <Window.Resources>
         <ResourceDictionary>
             <converter:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+            <DataTemplate x:Key="DeviceSymbolTemplate">
+                <TextBlock Text="{Binding SymbolText}" Foreground="{Binding BadgeTextBrush}"
+                           FontSize="29" Width="50" Height="31" ToolTip="{Binding ToolTip}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource DeviceSymbolText}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasSymbol}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </DataTemplate>
 <DataTemplate x:Key="DeviceTemplate" DataType="{x:Type dashboard:DeviceItem}">
                 <StackPanel Margin="4">
                     <TextBlock Margin="4" Text="{Binding Title}" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
@@ -253,7 +268,9 @@
                                                             <Border Margin="4 2" Padding="7 5" Background="#1F1F1F" CornerRadius="4"
                                                                     ToolTip="{Binding Name.Visual.ToolTip}">
                                                                 <StackPanel Orientation="Horizontal">
-<TextBlock Text="{Binding Name.Name}" FontSize="13.5" FontWeight="SemiBold"
+                                                                    <ContentControl Content="{Binding Name.Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
+                                                                                    Margin="0 0 7 0" VerticalAlignment="Center"/>
+                                                                    <TextBlock Text="{Binding Name.Name}" FontSize="13.5" FontWeight="SemiBold"
                                                                                Opacity="0.76" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                                                 </StackPanel>
                                                             </Border>
@@ -268,16 +285,22 @@
                             </TreeView.GroupStyle>
                             <TreeView.ItemTemplate>
                                 <DataTemplate DataType="{x:Type dashboard:ProfileItem}">
-                                    <!-- Profiles are deliberately flat now. Mapping groups provide local organisation
-                                         inside a profile; simultaneous activation provides composition between profiles. -->
                                     <Grid Width="{Binding RelativeSource={RelativeSource AncestorType={x:Type materialDesign:Ripple}}, Path=ActualWidth}"
                                           HorizontalAlignment="Left" ToolTip="{Binding Title}">
                                         <Grid Margin="8 2" MinHeight="38" HorizontalAlignment="Stretch">
                                             <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <Grid Grid.Column="0" Margin="6 0">
+                                            <ItemsControl Grid.Column="0" ItemsSource="{Binding InputVisuals}"
+                                                          ItemTemplate="{StaticResource DeviceSymbolTemplate}"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                            </ItemsControl>
+
+                                            <Grid Grid.Column="1" Margin="6 0">
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding Title}" FontSize="15.5" FontWeight="Medium" MaxWidth="185"
                                                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
@@ -308,7 +331,13 @@
                                                     </Ellipse.Style>
                                                 </Ellipse>
                                             </Grid>
-</Grid>
+
+                                            <ItemsControl Grid.Column="2" ItemsSource="{Binding OutputVisuals}"
+                                                          ItemTemplate="{StaticResource DeviceSymbolTemplate}"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                            </ItemsControl>
+                                        </Grid>
                                     </Grid>
                                 </DataTemplate>
                             </TreeView.ItemTemplate>

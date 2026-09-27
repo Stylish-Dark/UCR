@@ -67,6 +67,8 @@ namespace HidWizards.UCR.ViewModels.Presentation
         public int SlotNumber { get; set; }
         public bool ShowSlotIndicator { get; set; }
         public string BadgeText { get; set; }
+        public string SymbolText { get; set; }
+        public bool HasSymbol => !string.IsNullOrEmpty(SymbolText);
     }
 
     public sealed class BindingVisualDescriptor
@@ -748,8 +750,33 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 ToolTip = string.IsNullOrWhiteSpace(tooltip) ? "Device" : tooltip,
                 SlotNumber = normalizedSlot,
                 ShowSlotIndicator = showSlot,
-                BadgeText = BuildBadgeText(kind, normalizedSlot)
+                BadgeText = BuildBadgeText(kind, normalizedSlot),
+                SymbolText = BuildSymbolText(kind)
             };
+        }
+
+        private static string BuildSymbolText(DeviceVisualKind kind)
+        {
+            if (kind == DeviceVisualKind.Keyboard) return "\uE001";
+            if (IsXbox(kind)) return "\uE002";
+            if (IsPlayStation(kind)) return "\uE003";
+            if (kind == DeviceVisualKind.ArcadeStick) return "\uE005";
+
+            if (kind == DeviceVisualKind.Gamepad ||
+                kind == DeviceVisualKind.DirectInput ||
+                kind == DeviceVisualKind.VJoy ||
+                kind == DeviceVisualKind.Nintendo64 ||
+                kind == DeviceVisualKind.GameCube ||
+                kind == DeviceVisualKind.WiiRemote ||
+                kind == DeviceVisualKind.WiiClassic ||
+                kind == DeviceVisualKind.SwitchPro ||
+                kind == DeviceVisualKind.SwitchJoyCon ||
+                kind == DeviceVisualKind.Unknown)
+            {
+                return "\uE004";
+            }
+
+            return string.Empty;
         }
 
         private static string BuildBadgeText(DeviceVisualKind kind, int slotNumber)

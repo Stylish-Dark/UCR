@@ -15,6 +15,31 @@
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Accent/MaterialDesignColor.Blue.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <system:Double x:Key="UcrUiScale">1.0</system:Double>
+            <FontFamily x:Key="DeviceSymbolsFont">/UCR;component/Assets/Fonts/#Device Symbols v7</FontFamily>
+            <Style x:Key="DeviceSymbolText" TargetType="{x:Type TextBlock}">
+                <Setter Property="FontFamily" Value="{StaticResource DeviceSymbolsFont}"/>
+                <Setter Property="FontWeight" Value="Normal"/>
+                <Setter Property="TextAlignment" Value="Center"/>
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="UseLayoutRounding" Value="True"/>
+                <Setter Property="SnapsToDevicePixels" Value="True"/>
+            </Style>
+            <DataTemplate x:Key="DeviceSymbolTemplate">
+                <TextBlock Text="{Binding SymbolText}" Foreground="{Binding BadgeTextBrush}"
+                           FontSize="29" Width="48" Height="30" ToolTip="{Binding ToolTip}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource DeviceSymbolText}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasSymbol}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </DataTemplate>
 
             <!-- Custom UCR palette -->
             <SolidColorBrush x:Key="MaterialDesignBackground" Color="#212121"/>

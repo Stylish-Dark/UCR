@@ -32,6 +32,18 @@ namespace HidWizards.UCR.Tests.UiTests
             Assert.That(visual.Kind, Is.EqualTo(expected));
         }
 
+        [TestCase("Laptop Keyboard", "Core_Interception", "kbd", DeviceIoType.Input, "\uE001")]
+        [TestCase("Xbox 360 Controller", "Core_ViGEm", "xb360", DeviceIoType.Output, "\uE002")]
+        [TestCase("DualShock 4 Controller", "Core_ViGEm", "ds4", DeviceIoType.Output, "\uE003")]
+        [TestCase("Generic USB Gamepad", "SharpDX_DirectInput", "hid", DeviceIoType.Input, "\uE004")]
+        [TestCase("Arcade Stick", "SharpDX_DirectInput", "hid", DeviceIoType.Input, "\uE005")]
+        public void CatalogMapsDeviceFamiliesToIconFontCharacters(
+            string title, string provider, string handle, DeviceIoType ioType, string expected)
+        {
+            var visual = DeviceVisualCatalog.Describe(new Device(title, provider, handle, 0), ioType);
+            Assert.That(visual.SymbolText, Is.EqualTo(expected));
+        }
+
         [Test]
         public void ViGEmOutputsUseTheControllerTheyActuallyEmulate()
         {

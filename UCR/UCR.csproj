@@ -396,6 +396,7 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="UCR.ico" />
+    <Resource Include="Assets\Fonts\DeviceSymbols-v7.ttf" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\icon.png" />
