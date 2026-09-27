@@ -72,16 +72,30 @@ namespace HidWizards.UCR.Views.Controls
                 throw new InvalidOperationException("Device Symbols v7 does not contain U+" + codePoint.ToString("X4") + ".");
 
             var emSize = Math.Max(1.0, GlyphSize);
-            var outline = typeface.GetGlyphOutline(glyphIndex, emSize, emSize);
-            if (outline == null || outline.Bounds.IsEmpty) return;
+            var advance = typeface.AdvanceWidths[glyphIndex] * emSize;
+            var baseline = typeface.Baseline * emSize;
+            var origin = new Point(
+                Math.Max(0, (ActualWidth - advance) * 0.5),
+                Math.Max(baseline, (ActualHeight - emSize) * 0.5 + baseline));
 
-            var bounds = outline.Bounds;
-            var dx = (ActualWidth - bounds.Width) * 0.5 - bounds.Left;
-            var dy = (ActualHeight - bounds.Height) * 0.5 - bounds.Top;
+#pragma warning disable 618
+            var glyphRun = new GlyphRun(
+                typeface,
+                0,
+                false,
+                emSize,
+                new[] { glyphIndex },
+                origin,
+                new[] { advance },
+                null,
+                new[] { SymbolText[0] },
+                null,
+                null,
+                null,
+                null);
+#pragma warning restore 618
 
-            drawingContext.PushTransform(new TranslateTransform(dx, dy));
-            drawingContext.DrawGeometry(Foreground ?? Brushes.White, null, outline);
-            drawingContext.Pop();
+            drawingContext.DrawGlyphRun(Foreground ?? Brushes.White, glyphRun);
         }
 
         private static GlyphTypeface GetTypeface()
