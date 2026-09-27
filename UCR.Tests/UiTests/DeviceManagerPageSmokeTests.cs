@@ -122,9 +122,9 @@ namespace HidWizards.UCR.Tests.UiTests
             Assert.That(aliasBox.Padding.Left, Is.GreaterThanOrEqualTo(8));
             Assert.That(ScrollViewer.GetVerticalScrollBarVisibility(list), Is.EqualTo(ScrollBarVisibility.Auto));
 
-            var deviceGlyph = FindVisualChildren<DeviceGlyphControl>(row).FirstOrDefault();
+            var deviceGlyph = FindVisualChildren<DevicePictogramControl>(row).FirstOrDefault();
             Assert.That(deviceGlyph, Is.Not.Null,
-                "Every device-manager row should expose its monoline device glyph.");
+                "Every device-manager row should expose its compact vector device pictogram.");
             Assert.That(deviceGlyph.Kind, Is.EqualTo(DeviceVisualKind.Xbox360));
 
             var colourButton = FindVisualChildren<Button>(row)
