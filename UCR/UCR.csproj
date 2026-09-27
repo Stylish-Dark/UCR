@@ -401,6 +401,13 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <Resource Include="Assets\DeviceGlyphs\xbox360.png" />
+    <Resource Include="Assets\DeviceGlyphs\dualshock4.png" />
+    <Resource Include="Assets\DeviceGlyphs\vjoy.png" />
+    <Resource Include="Assets\DeviceGlyphs\keyboard.png" />
+    <Resource Include="Assets\DeviceGlyphs\device-generic.png" />
+  </ItemGroup>
+  <ItemGroup>
     <Resource Include="UCR.ico" />
   </ItemGroup>
   <ItemGroup>
