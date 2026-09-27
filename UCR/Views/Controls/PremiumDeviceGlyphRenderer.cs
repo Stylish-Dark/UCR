@@ -248,14 +248,7 @@ namespace HidWizards.UCR.Views.Controls
         {
             var half = size * 0.5;
             var arm = size * 0.18;
-            var data = string.Format(System.Globalization.CultureInfo.InvariantCulture,
-                "M{0},{1} L{2},{1} L{2},{3} L{4},{3} L{4},{5} L{2},{5} L{2},{6} L{0},{6} L{0},{5} L{7},{5} L{7},{3} L{0},{3} Z",
-                cx - arm, cy - half,
-                cx + arm, cy - arm,
-                cx + half, cy + arm,
-                cy + half, cx - half);
-
-            // The generic formatter above is easy to misread; use an explicit StreamGeometry instead.
+            // Explicit StreamGeometry keeps the tiny d-pad symmetrical and predictable.
             var g = new StreamGeometry();
             using (var ctx = g.Open())
             {
