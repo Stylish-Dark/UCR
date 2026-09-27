@@ -394,15 +394,11 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Assets\DeviceGlyphs\xbox360.png" />
-    <Resource Include="Assets\DeviceGlyphs\dualshock4.png" />
-    <Resource Include="Assets\DeviceGlyphs\vjoy.png" />
-    <Resource Include="Assets\DeviceGlyphs\keyboard.png" />
     <Resource Include="Assets\DeviceGlyphs2\xbox360.b64" />
     <Resource Include="Assets\DeviceGlyphs2\dualshock4.b64" />
     <Resource Include="Assets\DeviceGlyphs2\vjoy.b64" />
     <Resource Include="Assets\DeviceGlyphs2\keyboard.b64" />
-    <Resource Include="Assets\DeviceGlyphs\device-generic.png" />
+    <Resource Include="Assets\DeviceGlyphs2\device-generic.b64" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="UCR.ico" />
