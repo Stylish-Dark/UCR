@@ -2,14 +2,12 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
-using System.Windows.Media;
 using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Utilities;
@@ -23,46 +21,6 @@ namespace HidWizards.UCR
     /// </summary>
     public partial class App : Application, IDisposable
     {
-        public static FontFamily InitializeDeviceSymbolFont(Application application)
-        {
-            if (application == null) throw new ArgumentNullException(nameof(application));
-
-            var assemblyDirectory = Path.GetDirectoryName(typeof(App).Assembly.Location);
-            var fontDirectory = Path.Combine(assemblyDirectory, "Assets", "Fonts");
-            var fontPath = Path.Combine(fontDirectory, "DeviceSymbols-v7.ttf");
-
-            if (!File.Exists(fontPath))
-                throw new FileNotFoundException("DeviceSymbols-v7.ttf was not deployed with UCR.", fontPath);
-
-            // WPF resolves private fonts reliably when given an absolute directory URI plus
-            // the internal family name. This avoids the XAML-relative URI fallback that rendered tofu boxes.
-            var baseUri = new Uri(fontDirectory.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, UriKind.Absolute);
-            var family = new FontFamily(baseUri, "./#Device Symbols v7");
-
-            GlyphTypeface glyphTypeface = null;
-            foreach (var typeface in family.GetTypefaces())
-            {
-                GlyphTypeface candidate;
-                if (typeface.TryGetGlyphTypeface(out candidate))
-                {
-                    glyphTypeface = candidate;
-                    break;
-                }
-            }
-
-            if (glyphTypeface == null)
-                throw new InvalidOperationException("WPF could not resolve Device Symbols v7 from " + fontPath + ".");
-
-            for (var codePoint = 0xE001; codePoint <= 0xE005; codePoint++)
-            {
-                if (!glyphTypeface.CharacterToGlyphMap.ContainsKey(codePoint))
-                    throw new InvalidOperationException("Device Symbols v7 is missing U+" + codePoint.ToString("X4") + ".");
-            }
-
-            application.Resources["DeviceSymbolsFont"] = family;
-            return family;
-        }
-
         private Context context;
         private HidGuardianClient _hidGuardianClient;
         private SingleGlobalInstance mutex;
@@ -83,7 +41,6 @@ namespace HidWizards.UCR
         {
             base.OnStartup(e);
             RuntimePathManager.NormalizeWorkingDirectory();
-            InitializeDeviceSymbolFont(this);
             Logger.InitializeSession();
             AppearanceManager.ApplySavedAccent();
             AppearanceManager.ApplySavedUiScale();

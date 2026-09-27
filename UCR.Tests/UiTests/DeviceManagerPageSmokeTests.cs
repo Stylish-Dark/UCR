@@ -42,40 +42,42 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
-        public void RuntimeDeviceSymbolFontResolvesAndRendersPrivateUseGlyphs()
+        public void DeviceSymbolControlRendersEveryFontGlyphWithoutFallbackBoxes()
         {
             EnsureApplicationResources();
 
-            var family = App.InitializeDeviceSymbolFont(Application.Current);
-            Assert.That(family, Is.Not.Null);
-
-            var text = new TextBlock
+            foreach (var codePoint in Enumerable.Range(0xE001, 5))
             {
-                Style = (Style)Application.Current.FindResource("DeviceSymbolText"),
-                Text = "\uE001\uE002\uE003\uE004\uE005"
-            };
-
-            Assert.That(text.FontFamily, Is.SameAs(family),
-                "The symbol TextBlock must use the exact runtime-loaded private font family.");
-
-            GlyphTypeface glyphTypeface = null;
-            foreach (var typeface in text.FontFamily.GetTypefaces())
-            {
-                GlyphTypeface candidate;
-                if (typeface.TryGetGlyphTypeface(out candidate))
+                const int width = 64;
+                const int height = 42;
+                var control = new DeviceSymbolControl
                 {
-                    glyphTypeface = candidate;
-                    break;
+                    SymbolText = char.ConvertFromUtf32(codePoint),
+                    Foreground = Brushes.White,
+                    GlyphSize = 32,
+                    Width = width,
+                    Height = height
+                };
+
+                control.Measure(new Size(width, height));
+                control.Arrange(new Rect(0, 0, width, height));
+                control.UpdateLayout();
+
+                var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+                bitmap.Render(control);
+
+                var stride = width * 4;
+                var pixels = new byte[stride * height];
+                bitmap.CopyPixels(pixels, stride, 0);
+
+                var paintedPixels = 0;
+                for (var index = 3; index < pixels.Length; index += 4)
+                {
+                    if (pixels[index] > 0) paintedPixels++;
                 }
-            }
 
-            Assert.That(glyphTypeface, Is.Not.Null,
-                "The FontFamily assigned to device-symbol TextBlocks did not resolve to a typeface.");
-
-            for (var codePoint = 0xE001; codePoint <= 0xE005; codePoint++)
-            {
-                Assert.That(glyphTypeface.CharacterToGlyphMap.ContainsKey(codePoint), Is.True,
-                    "Device symbol TextBlock is missing U+" + codePoint.ToString("X4") + ".");
+                Assert.That(paintedPixels, Is.GreaterThan(20),
+                    "Device symbol U+" + codePoint.ToString("X4") + " did not render from the deployed font.");
             }
         }
 

@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:converter="clr-namespace:HidWizards.UCR.Utilities.Converter"
+             xmlns:controls="clr-namespace:HidWizards.UCR.Views.Controls"
              xmlns:system="clr-namespace:System;assembly=mscorlib"
              ShutdownMode="OnMainWindowClose"
              Exit="App_OnExit">
@@ -14,21 +15,14 @@
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Primary/MaterialDesignColor.Blue.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Accent/MaterialDesignColor.Blue.xaml" />
             </ResourceDictionary.MergedDictionaries>
-            <system:Double x:Key="UcrUiScale">1.0</system:Double>
-<Style x:Key="DeviceSymbolText" TargetType="{x:Type TextBlock}">
-                <Setter Property="FontFamily" Value="{DynamicResource DeviceSymbolsFont}"/>
-                <Setter Property="FontWeight" Value="Normal"/>
-                <Setter Property="TextAlignment" Value="Center"/>
-                <Setter Property="HorizontalAlignment" Value="Center"/>
-                <Setter Property="VerticalAlignment" Value="Center"/>
-                <Setter Property="UseLayoutRounding" Value="True"/>
-                <Setter Property="SnapsToDevicePixels" Value="True"/>
-            </Style>
-            <DataTemplate x:Key="DeviceSymbolTemplate">
-                <TextBlock Text="{Binding SymbolText}" Foreground="{Binding BadgeTextBrush}"
-                           FontSize="29" Width="48" Height="30" ToolTip="{Binding ToolTip}">
-                    <TextBlock.Style>
-                        <Style TargetType="TextBlock" BasedOn="{StaticResource DeviceSymbolText}">
+            <system:Double x:Key="UcrUiScale">1.0</system:Double>            <DataTemplate x:Key="DeviceSymbolTemplate">
+                <controls:DeviceSymbolControl SymbolText="{Binding SymbolText}"
+                                              Foreground="{Binding BadgeTextBrush}"
+                                              GlyphSize="29"
+                                              Width="48" Height="30"
+                                              ToolTip="{Binding ToolTip}">
+                    <controls:DeviceSymbolControl.Style>
+                        <Style TargetType="{x:Type controls:DeviceSymbolControl}">
                             <Setter Property="Visibility" Value="Visible"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding HasSymbol}" Value="False">
@@ -36,11 +30,10 @@
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
-                    </TextBlock.Style>
-                </TextBlock>
+                    </controls:DeviceSymbolControl.Style>
+                </controls:DeviceSymbolControl>
             </DataTemplate>
-
-            <!-- Custom UCR palette -->
+<!-- Custom UCR palette -->
             <SolidColorBrush x:Key="MaterialDesignBackground" Color="#212121"/>
             <SolidColorBrush x:Key="MaterialDesignPaper" Color="#212121"/>
             <SolidColorBrush x:Key="MaterialDesignCardBackground" Color="#212121"/>

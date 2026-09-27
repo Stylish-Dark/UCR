@@ -67,12 +67,13 @@
                     </Grid.RowDefinitions>
 
                     <!-- Only non-primary/explicitly-requested device identity is shown, above the control. -->
-                    <TextBlock Grid.Row="0" Text="{Binding Device.SymbolText}"
-                               Foreground="{Binding Device.BadgeTextBrush}"
-                               FontSize="20" Width="34" Height="21" Margin="0 0 0 2"
-                               ToolTip="{Binding Device.ToolTip}">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource DeviceSymbolText}">
+                    <local:DeviceSymbolControl Grid.Row="0"
+                                               SymbolText="{Binding Device.SymbolText}"
+                                               Foreground="{Binding Device.BadgeTextBrush}"
+                                               GlyphSize="20" Width="34" Height="21" Margin="0 0 0 2"
+                                               ToolTip="{Binding Device.ToolTip}">
+                        <local:DeviceSymbolControl.Style>
+                            <Style TargetType="{x:Type local:DeviceSymbolControl}">
                                 <Setter Property="Visibility" Value="Collapsed"/>
                                 <Style.Triggers>
                                     <MultiDataTrigger>
@@ -84,8 +85,8 @@
                                     </MultiDataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+                        </local:DeviceSymbolControl.Style>
+                    </local:DeviceSymbolControl>
 
                     <local:ControlGlyphControl Grid.Row="1" Kind="{Binding ControlKind}"
                                                AccentBrush="{Binding ControlBrush}"
