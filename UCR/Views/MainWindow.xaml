@@ -35,14 +35,7 @@
     <Window.Resources>
         <ResourceDictionary>
             <converter:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
-            <DataTemplate x:Key="DevicePictogramTemplate">
-                <controls:DeviceGlyphControl Width="50" Height="30"
-                                             HorizontalAlignment="Center" VerticalAlignment="Center"
-                                             Kind="{Binding Kind}" Stroke="{Binding BadgeTextBrush}"
-                                             GlyphStrokeThickness="2.2" GlowOpacity="0"
-                                             ToolTip="{Binding ToolTip}"/>
-            </DataTemplate>
-            <DataTemplate x:Key="DeviceTemplate" DataType="{x:Type dashboard:DeviceItem}">
+<DataTemplate x:Key="DeviceTemplate" DataType="{x:Type dashboard:DeviceItem}">
                 <StackPanel Margin="4">
                     <TextBlock Margin="4" Text="{Binding Title}" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
                     <TextBlock Margin="4" Text="{Binding ProviderName}" Style="{StaticResource MaterialDesignCaptionTextBlock}" />
@@ -260,9 +253,7 @@
                                                             <Border Margin="4 2" Padding="7 5" Background="#1F1F1F" CornerRadius="4"
                                                                     ToolTip="{Binding Name.Visual.ToolTip}">
                                                                 <StackPanel Orientation="Horizontal">
-                                                                    <ContentControl Content="{Binding Name.Visual}" ContentTemplate="{StaticResource DevicePictogramTemplate}"
-                                                                                    Margin="0 0 7 0" VerticalAlignment="Center"/>
-                                                                    <TextBlock Text="{Binding Name.Name}" FontSize="13.5" FontWeight="SemiBold"
+<TextBlock Text="{Binding Name.Name}" FontSize="13.5" FontWeight="SemiBold"
                                                                                Opacity="0.76" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                                                 </StackPanel>
                                                             </Border>
@@ -283,18 +274,10 @@
                                           HorizontalAlignment="Left" ToolTip="{Binding Title}">
                                         <Grid Margin="8 2" MinHeight="38" HorizontalAlignment="Stretch">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <ItemsControl Grid.Column="0" ItemsSource="{Binding InputVisuals}"
-                                                          ItemTemplate="{StaticResource DevicePictogramTemplate}"
-                                                          HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                                            </ItemsControl>
-
-                                            <Grid Grid.Column="1" Margin="6 0">
+                                            <Grid Grid.Column="0" Margin="6 0">
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding Title}" FontSize="15.5" FontWeight="Medium" MaxWidth="185"
                                                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
@@ -325,13 +308,7 @@
                                                     </Ellipse.Style>
                                                 </Ellipse>
                                             </Grid>
-
-                                            <ItemsControl Grid.Column="2" ItemsSource="{Binding OutputVisuals}"
-                                                          ItemTemplate="{StaticResource DevicePictogramTemplate}"
-                                                          HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                                            </ItemsControl>
-                                        </Grid>
+</Grid>
                                     </Grid>
                                 </DataTemplate>
                             </TreeView.ItemTemplate>

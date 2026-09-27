@@ -16,7 +16,6 @@ namespace HidWizards.UCR.ViewModels.Dashboard
     {
         public string IdentityKey { get; set; }
         public string Name { get; set; }
-        public DeviceVisualDescriptor Visual { get; set; }
 
         public override bool Equals(object obj)
         {
@@ -41,16 +40,12 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public ProfileItem()
         {
             Items = new ObservableCollection<ProfileItem>();
-            InputVisuals = new ObservableCollection<DeviceVisualDescriptor>();
-            OutputVisuals = new ObservableCollection<DeviceVisualDescriptor>();
         }
 
         public string Title { get; set; }
         public Guid Id { get; set; }
         public Profile Profile { get; set; }
         public ObservableCollection<ProfileItem> Items { get; set; }
-        public ObservableCollection<DeviceVisualDescriptor> InputVisuals { get; set; }
-        public ObservableCollection<DeviceVisualDescriptor> OutputVisuals { get; set; }
         public int AdditionalInputCount { get; set; }
         public int AdditionalOutputCount { get; set; }
         public bool HasAdditionalInputs => AdditionalInputCount > 0;
@@ -58,7 +53,6 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public string AdditionalInputLabel => AdditionalInputCount > 0 ? "+" + AdditionalInputCount : string.Empty;
         public string AdditionalOutputLabel => AdditionalOutputCount > 0 ? "+" + AdditionalOutputCount : string.Empty;
         public string InputGroupName { get; set; }
-        public DeviceVisualDescriptor InputGroupVisual { get; set; }
         public ProfileInputGroupKey InputGroup { get; set; }
         public int Depth { get; private set; }
         public bool IsChild => Depth > 0;
@@ -95,8 +89,6 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         public void RefreshPresentation()
         {
-            InputVisuals.Clear();
-            OutputVisuals.Clear();
             PopulatePresentation(this, Profile);
         }
 
@@ -152,26 +144,12 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             var outputs = profile.GetDeviceConfigurationList(DeviceIoType.Output)
                 .Where(configuration => configuration != null)
                 .ToList();
-
-            // The profile browser is intentionally a strict three-column summary:
-            // primary input | profile name | primary output. Additional devices belong in
-            // the profile's device lists, not in the row summary.
-            if (primaryInput != null)
-            {
-                item.InputVisuals.Add(DeviceVisualCatalog.Describe(primaryInput, profile, DeviceIoType.Input));
-            }
-            if (primaryOutput != null)
-            {
-                item.OutputVisuals.Add(DeviceVisualCatalog.Describe(primaryOutput, profile, DeviceIoType.Output));
-            }
-
             item.AdditionalInputCount = Math.Max(0, inputs.Count - (primaryInput != null ? 1 : 0));
             item.AdditionalOutputCount = Math.Max(0, outputs.Count - (primaryOutput != null ? 1 : 0));
 
             if (inputs.Count == 0)
             {
                 item.InputGroupName = "No input device";
-                item.InputGroupVisual = DeviceVisualCatalog.Describe((Device)null, DeviceIoType.Input);
             }
             else if (inputs.Count == 1)
             {
@@ -181,19 +159,16 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                                       ?? inputs[0].Device?.DisplayTitle
                                       ?? inputs[0].Device?.Title
                                       ?? "Input device";
-                item.InputGroupVisual = DeviceVisualCatalog.Describe(inputs[0], profile, DeviceIoType.Input);
             }
             else
             {
                 item.InputGroupName = "Multiple input devices";
-                item.InputGroupVisual = DeviceVisualCatalog.Describe(inputs[0], profile, DeviceIoType.Input);
             }
 
             item.InputGroup = new ProfileInputGroupKey
             {
                 IdentityKey = BuildInputGroupIdentity(inputs),
-                Name = item.InputGroupName,
-                Visual = item.InputGroupVisual
+                Name = item.InputGroupName
             };
         }
 

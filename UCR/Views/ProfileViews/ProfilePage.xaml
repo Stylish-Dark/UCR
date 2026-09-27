@@ -409,7 +409,7 @@
                                                 <TextBlock Text="{Binding KindText}" FontSize="9.5" FontWeight="SemiBold"
                                                            Foreground="{StaticResource MappingTypeFilterBrush}" Opacity="0.9"/>
                                             </StackPanel>
-                                            <TextBlock Grid.Column="2" Text="{Binding ReferenceText}" FontSize="11" Opacity="0.62"
+                                            <TextBlock Grid.Column="1" Text="{Binding ReferenceText}" FontSize="11" Opacity="0.62"
                                                        Margin="8 0 2 0" VerticalAlignment="Center"/>
                                         </Grid>
                                     </DataTemplate>
@@ -463,18 +463,13 @@
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
                                                 <Grid Margin="1 2">
-                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="44"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                                     <Button Grid.Column="0" Width="20" Height="20" Padding="4" Background="Transparent" BorderThickness="0" ToolTip="{Binding PrimaryToolTip}" Click="PrimaryInputDevice_OnClick">
                                                         <Ellipse Width="8" Height="8" Stroke="#929292" StrokeThickness="1.4">
                                                             <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueLightBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueLightBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
                                                         </Ellipse>
                                                     </Button>
-                                                    <controls:DeviceGlyphControl Width="48" Height="30"
-                                              VerticalAlignment="Center" HorizontalAlignment="Center"
-                                              Kind="{Binding Visual.Kind}" Stroke="{Binding Visual.BadgeTextBrush}"
-                                              GlyphStrokeThickness="2.2" GlowOpacity="0"
-                                              ToolTip="{Binding Visual.ToolTip}"/>
-                                                    <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+<TextBlock Grid.Column="1" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                                 </Grid>
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
@@ -521,18 +516,13 @@
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <Grid Margin="1 2">
-                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="44"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                        <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                                         <Button Grid.Column="0" Width="20" Height="20" Padding="4" Background="Transparent" BorderThickness="0" ToolTip="{Binding PrimaryToolTip}" Click="PrimaryOutputDevice_OnClick">
                                                             <Ellipse Width="8" Height="8" Stroke="#929292" StrokeThickness="1.4">
                                                                 <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueLightBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueLightBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
                                                             </Ellipse>
                                                         </Button>
-                                                        <controls:DeviceGlyphControl Width="48" Height="30"
-                                              VerticalAlignment="Center" HorizontalAlignment="Center"
-                                              Kind="{Binding Visual.Kind}" Stroke="{Binding Visual.BadgeTextBrush}"
-                                              GlyphStrokeThickness="2.2" GlowOpacity="0"
-                                              ToolTip="{Binding Visual.ToolTip}"/>
-                                                        <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+<TextBlock Grid.Column="1" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                                     </Grid>
                                                 </DataTemplate>
                                             </ListBox.ItemTemplate>

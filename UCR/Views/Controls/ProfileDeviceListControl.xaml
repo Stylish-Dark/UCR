@@ -29,7 +29,6 @@
                 <Grid Margin="4 3">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="24"/>
-                        <ColumnDefinition Width="44"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Button Grid.Column="0" Width="22" Height="22" Margin="0 0 2 0"
@@ -50,12 +49,7 @@
                             </Ellipse.Style>
                         </Ellipse>
                     </Button>
-                    <local:DeviceGlyphControl Width="48" Height="30" Margin="0 0 6 0"
-                                              VerticalAlignment="Center" HorizontalAlignment="Center"
-                                              Kind="{Binding Visual.Kind}" Stroke="{Binding Visual.BadgeTextBrush}"
-                                              GlyphStrokeThickness="2.2" GlowOpacity="0"
-                                              ToolTip="{Binding Visual.ToolTip}"/>
-                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+<StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
                         <TextBlock Margin="0 1 0 0" Text="{Binding ProviderName}" FontSize="12.5" Opacity="0.50" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>

@@ -92,26 +92,9 @@
                 <DataTemplate>
                     <Grid MinWidth="110">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <local:DeviceGlyphControl Grid.Column="0" Width="34" Height="21" Margin="0 0 7 0"
-                                                  VerticalAlignment="Center" HorizontalAlignment="Center"
-                                                  Kind="{Binding Visual.Kind}" Stroke="{Binding Visual.BadgeTextBrush}"
-                                                  GlyphStrokeThickness="2.2" GlowOpacity="0"
-                                                  ToolTip="{Binding Visual.ToolTip}">
-                            <local:DeviceGlyphControl.Style>
-                                <Style TargetType="{x:Type local:DeviceGlyphControl}">
-                                    <Setter Property="Visibility" Value="Visible"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Visual}" Value="{x:Null}">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </local:DeviceGlyphControl.Style>
-                        </local:DeviceGlyphControl>
-                        <TextBlock Grid.Column="1" Text="{Binding Title}" VerticalAlignment="Center"
+<TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"
                                    TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}"/>
                     </Grid>
                 </DataTemplate>

@@ -121,48 +121,11 @@ namespace HidWizards.UCR.Tests.UiTests
                 "Friendly names should be slightly emphasized.");
             Assert.That(aliasBox.Padding.Left, Is.GreaterThanOrEqualTo(8));
             Assert.That(ScrollViewer.GetVerticalScrollBarVisibility(list), Is.EqualTo(ScrollBarVisibility.Auto));
-
-            var deviceGlyph = FindVisualChildren<DeviceGlyphControl>(row).FirstOrDefault();
-            Assert.That(deviceGlyph, Is.Not.Null,
-                "Every device-manager row should expose its raster device glyph.");
-            Assert.That(deviceGlyph.Kind, Is.EqualTo(DeviceVisualKind.Xbox360));
-
-            var colourButton = FindVisualChildren<Button>(row)
-                .FirstOrDefault(candidate => (candidate.ToolTip as string)?.StartsWith("Device glyph colour") == true);
+var colourButton = FindVisualChildren<Button>(row)
+                .FirstOrDefault(candidate => (candidate.ToolTip as string)?.StartsWith("Device accent colour") == true);
             Assert.That(colourButton, Is.Not.Null,
-                "The real device row failed before its glyph-colour button was created.");
+                "The real device row failed before its accent-colour button was created.");
             Assert.That(colourButton.ActualHeight, Is.GreaterThan(0));
-        }
-
-
-
-        [Test]
-        [Apartment(ApartmentState.STA)]
-        public void AddDevicePickerMaterializesMonolineControllerGlyphs()
-        {
-            EnsureApplicationResources();
-
-            var devices = new List<Device>
-            {
-                new Device("PS4 DualShock", "Core_ViGEm", "ds4", 0),
-                new Device("X360 Controller", "Core_ViGEm", "xb360", 0)
-            };
-            var picker = new DeviceSelectControl
-            {
-                DataContext = new DeviceSelectControlViewModel("Add output devices", devices, DeviceIoType.Output)
-            };
-            picker.Measure(new Size(360, 500));
-            picker.Arrange(new Rect(0, 0, 360, 500));
-            picker.UpdateLayout();
-
-            var glyphKinds = FindVisualChildren<DeviceGlyphControl>(picker)
-                .Select(candidate => candidate.Kind)
-                .ToList();
-            Assert.That(glyphKinds, Is.EquivalentTo(new[]
-            {
-                DeviceVisualKind.PlayStation4,
-                DeviceVisualKind.Xbox360
-            }), "Every add-device row should materialize the matching monoline controller glyph.");
         }
 
         private static void PumpDispatcherFor(TimeSpan duration)
