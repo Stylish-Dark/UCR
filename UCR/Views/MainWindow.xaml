@@ -36,10 +36,11 @@
         <ResourceDictionary>
             <converter:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
             <DataTemplate x:Key="DevicePictogramTemplate">
-                <controls:DevicePictogramControl Width="48" Height="30"
-                                                 HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                 Kind="{Binding Kind}" Fill="{Binding BadgeTextBrush}"
-                                                 ToolTip="{Binding ToolTip}"/>
+                <controls:DeviceGlyphControl Width="50" Height="30"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center"
+                                             Kind="{Binding Kind}" Stroke="{Binding BadgeTextBrush}"
+                                             GlyphStrokeThickness="2.2" GlowOpacity="0"
+                                             ToolTip="{Binding ToolTip}"/>
             </DataTemplate>
             <DataTemplate x:Key="DeviceTemplate" DataType="{x:Type dashboard:DeviceItem}">
                 <StackPanel Margin="4">

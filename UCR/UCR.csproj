@@ -146,7 +146,6 @@
     </Compile>
     <Compile Include="Views\Controls\ControlGlyphControl.cs" />
     <Compile Include="Views\Controls\DeviceGlyphControl.cs" />
-    <Compile Include="Views\Controls\DevicePictogramControl.cs" />
     <Resource Include="Assets\DeviceGlyphs\ps1.png" />
     <Resource Include="Assets\DeviceGlyphs\ps2.png" />
     <Resource Include="Assets\DeviceGlyphs\ps3.png" />

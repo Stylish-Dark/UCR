@@ -139,9 +139,10 @@
                                 <ColumnDefinition Width="140"/>
                             </Grid.ColumnDefinitions>
 
-                            <controls:DevicePictogramControl Width="46" Height="28" Margin="0 0 8 0"
+                            <controls:DeviceGlyphControl Width="48" Height="30" Margin="0 0 8 0"
                                               VerticalAlignment="Center" HorizontalAlignment="Center"
-                                              Kind="{Binding Visual.Kind}" Fill="{Binding Visual.BadgeTextBrush}"
+                                              Kind="{Binding Visual.Kind}" Stroke="{Binding Visual.BadgeTextBrush}"
+                                              GlyphStrokeThickness="2.2" GlowOpacity="0"
                                               ToolTip="{Binding Visual.ToolTip}"/>
 
                             <StackPanel Grid.Column="1" Margin="0 0 12 0">

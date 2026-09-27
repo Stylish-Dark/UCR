@@ -469,9 +469,10 @@
                                                             <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueLightBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueLightBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
                                                         </Ellipse>
                                                     </Button>
-                                                    <controls:DevicePictogramControl Width="46" Height="28"
+                                                    <controls:DeviceGlyphControl Width="48" Height="30"
                                               VerticalAlignment="Center" HorizontalAlignment="Center"
-                                              Kind="{Binding Visual.Kind}" Fill="{Binding Visual.BadgeTextBrush}"
+                                              Kind="{Binding Visual.Kind}" Stroke="{Binding Visual.BadgeTextBrush}"
+                                              GlyphStrokeThickness="2.2" GlowOpacity="0"
                                               ToolTip="{Binding Visual.ToolTip}"/>
                                                     <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                                 </Grid>
@@ -526,9 +527,10 @@
                                                                 <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueLightBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueLightBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
                                                             </Ellipse>
                                                         </Button>
-                                                        <controls:DevicePictogramControl Width="46" Height="28"
+                                                        <controls:DeviceGlyphControl Width="48" Height="30"
                                               VerticalAlignment="Center" HorizontalAlignment="Center"
-                                              Kind="{Binding Visual.Kind}" Fill="{Binding Visual.BadgeTextBrush}"
+                                              Kind="{Binding Visual.Kind}" Stroke="{Binding Visual.BadgeTextBrush}"
+                                              GlyphStrokeThickness="2.2" GlowOpacity="0"
                                               ToolTip="{Binding Visual.ToolTip}"/>
                                                         <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                                     </Grid>

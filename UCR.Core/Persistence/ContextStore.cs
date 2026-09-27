@@ -64,7 +64,7 @@ namespace HidWizards.UCR.Core.Persistence
 
             if (File.Exists(StatePath) || GetBackupFiles(StatePath).Any())
             {
-                return LoadLive(serializer);
+                return LoadLive(serializer, additionalPluginTypes);
             }
 
             if (HasNewStoreConfigurationEvidence())
@@ -144,7 +144,7 @@ namespace HidWizards.UCR.Core.Persistence
             return Directory.Exists(profileBackups) && Directory.GetFiles(profileBackups, "*.json", SearchOption.AllDirectories).Length > 0;
         }
 
-        private Context LoadLive(UcrJsonSerializer serializer)
+        private Context LoadLive(UcrJsonSerializer serializer, List<Type> additionalPluginTypes)
         {
             var state = ReadWithBackup(StatePath, serializer.Deserialize<StateFile>, ValidateStateFile);
             var profiles = new List<Profile>();
@@ -170,6 +170,16 @@ namespace HidWizards.UCR.Core.Persistence
             context.DeviceAliases.Clear();
             context.DeviceAliases.AddRange(devices.DeviceAliases ?? new List<DeviceAlias>());
             context.PostLoad();
+
+            // PostLoad may perform one-time migrations/repairs. Those are application maintenance,
+            // not a user edit. Persist them immediately so an untouched launch remains clean and
+            // never shows a false "Configuration has changed" prompt on exit.
+            if (context.IsNotSaved)
+            {
+                Logger.Info("Persisting automatic post-load configuration migration.");
+                context.SaveContext(additionalPluginTypes);
+            }
+
             return context;
         }
 
@@ -196,7 +206,7 @@ namespace HidWizards.UCR.Core.Persistence
                 Save(migrated, additionalPluginTypes);
 
                 // Do not call this migration complete until the new live store can actually be read back.
-                var verified = LoadLive(serializer);
+                var verified = LoadLive(serializer, additionalPluginTypes);
                 ValidateMigrationRoundTrip(migrated, verified, serializer);
 
                 MigrateLegacyCacheBestEffort();

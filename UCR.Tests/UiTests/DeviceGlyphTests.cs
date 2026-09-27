@@ -107,45 +107,6 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
-        public void EveryCompactDevicePictogramRendersAtProfileRowSize()
-        {
-            foreach (var kind in Enum.GetValues(typeof(DeviceVisualKind)).Cast<DeviceVisualKind>())
-            {
-                const int width = 48;
-                const int height = 30;
-
-                var pictogram = new DevicePictogramControl
-                {
-                    Kind = kind,
-                    Fill = Brushes.DeepSkyBlue,
-                    Width = width,
-                    Height = height
-                };
-
-                pictogram.Measure(new Size(width, height));
-                pictogram.Arrange(new Rect(0, 0, width, height));
-                pictogram.UpdateLayout();
-
-                var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
-                bitmap.Render(pictogram);
-
-                var stride = width * 4;
-                var pixels = new byte[stride * height];
-                bitmap.CopyPixels(pixels, stride, 0);
-
-                var paintedPixels = 0;
-                for (var index = 3; index < pixels.Length; index += 4)
-                {
-                    if (pixels[index] > 0) paintedPixels++;
-                }
-
-                Assert.That(paintedPixels, Is.GreaterThan(30),
-                    "Compact pictogram did not render meaningful artwork for " + kind + ".");
-            }
-        }
-
-        [Test]
-        [Apartment(ApartmentState.STA)]
         public void EveryGlyphRendersFromRasterAtSmallAndLargeSizes()
         {
             foreach (var kind in Enum.GetValues(typeof(DeviceVisualKind)).Cast<DeviceVisualKind>())
