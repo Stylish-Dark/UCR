@@ -146,6 +146,7 @@
     </Compile>
     <Compile Include="Views\Controls\ControlGlyphControl.cs" />
     <Compile Include="Views\Controls\DeviceGlyphControl.cs" />
+    <Compile Include="Views\Controls\PremiumDeviceGlyphRenderer.cs" />
     <Compile Include="Views\Controls\DeviceGlyphVectors.cs" />
     <Compile Include="Views\Controls\DeviceGlyphVectors.Premium.cs" />
     <Compile Include="Views\Controls\DeviceGlyphVectors.PlayStation.cs" />
