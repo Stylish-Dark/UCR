@@ -52,6 +52,45 @@ namespace HidWizards.UCR.Tests.UiTests
             Assert.That(xbox.Kind, Is.EqualTo(DeviceVisualKind.Xbox360));
         }
 
+        [TestCase(DeviceVisualKind.Xbox360)]
+        [TestCase(DeviceVisualKind.PlayStation4)]
+        [TestCase(DeviceVisualKind.Keyboard)]
+        [TestCase(DeviceVisualKind.VJoy)]
+        [Apartment(ApartmentState.STA)]
+        public void PremiumRasterGlyphsActuallyPaintPixels(DeviceVisualKind kind)
+        {
+            const int width = 84;
+            const int height = 52;
+
+            var glyph = new DeviceGlyphControl
+            {
+                Kind = kind,
+                Stroke = Brushes.White,
+                Width = width,
+                Height = height
+            };
+
+            glyph.Measure(new Size(width, height));
+            glyph.Arrange(new Rect(0, 0, width, height));
+            glyph.UpdateLayout();
+
+            var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(glyph);
+
+            var stride = width * 4;
+            var pixels = new byte[stride * height];
+            bitmap.CopyPixels(pixels, stride, 0);
+
+            var paintedPixels = 0;
+            for (var i = 3; i < pixels.Length; i += 4)
+            {
+                if (pixels[i] > 0) paintedPixels++;
+            }
+
+            Assert.That(paintedPixels, Is.GreaterThan(40),
+                "The premium raster resource for " + kind + " did not render meaningful artwork.");
+        }
+
         [Test]
         [Apartment(ApartmentState.STA)]
         public void EveryGlyphRendersFromRasterAtSmallAndLargeSizes()
