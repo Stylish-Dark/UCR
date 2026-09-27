@@ -56,6 +56,7 @@ namespace HidWizards.UCR.Tests.UiTests
         [TestCase(DeviceVisualKind.PlayStation4)]
         [TestCase(DeviceVisualKind.Keyboard)]
         [TestCase(DeviceVisualKind.VJoy)]
+        [TestCase(DeviceVisualKind.Unknown)]
         [Apartment(ApartmentState.STA)]
         public void PremiumRasterGlyphsActuallyPaintPixels(DeviceVisualKind kind)
         {
@@ -88,7 +89,7 @@ namespace HidWizards.UCR.Tests.UiTests
             }
 
             Assert.That(paintedPixels, Is.GreaterThan(40),
-                "The premium raster resource for " + kind + " did not render meaningful artwork.");
+                "The raster resource for " + kind + " did not render meaningful artwork.");
         }
 
         [Test]
