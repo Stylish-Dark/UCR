@@ -42,30 +42,20 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
-        public void EmbeddedDeviceSymbolFontResolvesAllPrivateUseGlyphs()
+        public void DeployedDeviceSymbolFontLoadsAndContainsAllPrivateUseGlyphs()
         {
-            EnsureApplicationResources();
+            var assemblyDirectory = System.IO.Path.GetDirectoryName(typeof(App).Assembly.Location);
+            var fontPath = System.IO.Path.Combine(assemblyDirectory, "Assets", "Fonts", "DeviceSymbols-v7.ttf");
 
-            var family = Application.Current.FindResource("DeviceSymbolsFont") as FontFamily;
-            Assert.That(family, Is.Not.Null, "The embedded device-symbol font resource did not resolve.");
+            Assert.That(System.IO.File.Exists(fontPath), Is.True,
+                "DeviceSymbols-v7.ttf was not deployed beside UCR.");
 
-            GlyphTypeface glyphTypeface = null;
-            foreach (var typeface in family.GetTypefaces())
-            {
-                GlyphTypeface candidate;
-                if (typeface.TryGetGlyphTypeface(out candidate))
-                {
-                    glyphTypeface = candidate;
-                    break;
-                }
-            }
-
-            Assert.That(glyphTypeface, Is.Not.Null, "WPF could not load the embedded Device Symbols typeface.");
+            var glyphTypeface = new GlyphTypeface(new Uri(fontPath, UriKind.Absolute));
 
             for (var codePoint = 0xE001; codePoint <= 0xE005; codePoint++)
             {
                 Assert.That(glyphTypeface.CharacterToGlyphMap.ContainsKey(codePoint), Is.True,
-                    "Embedded Device Symbols font is missing U+" + codePoint.ToString("X4") + ".");
+                    "Deployed Device Symbols font is missing U+" + codePoint.ToString("X4") + ".");
             }
         }
 
