@@ -42,20 +42,40 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
-        public void DeployedDeviceSymbolFontLoadsAndContainsAllPrivateUseGlyphs()
+        public void RuntimeDeviceSymbolFontResolvesAndRendersPrivateUseGlyphs()
         {
-            var assemblyDirectory = System.IO.Path.GetDirectoryName(typeof(App).Assembly.Location);
-            var fontPath = System.IO.Path.Combine(assemblyDirectory, "Assets", "Fonts", "DeviceSymbols-v7.ttf");
+            EnsureApplicationResources();
 
-            Assert.That(System.IO.File.Exists(fontPath), Is.True,
-                "DeviceSymbols-v7.ttf was not deployed beside UCR.");
+            var family = App.InitializeDeviceSymbolFont(Application.Current);
+            Assert.That(family, Is.Not.Null);
 
-            var glyphTypeface = new GlyphTypeface(new Uri(fontPath, UriKind.Absolute));
+            var text = new TextBlock
+            {
+                Style = (Style)Application.Current.FindResource("DeviceSymbolText"),
+                Text = "\uE001\uE002\uE003\uE004\uE005"
+            };
+
+            Assert.That(text.FontFamily, Is.SameAs(family),
+                "The symbol TextBlock must use the exact runtime-loaded private font family.");
+
+            GlyphTypeface glyphTypeface = null;
+            foreach (var typeface in text.FontFamily.GetTypefaces())
+            {
+                GlyphTypeface candidate;
+                if (typeface.TryGetGlyphTypeface(out candidate))
+                {
+                    glyphTypeface = candidate;
+                    break;
+                }
+            }
+
+            Assert.That(glyphTypeface, Is.Not.Null,
+                "The FontFamily assigned to device-symbol TextBlocks did not resolve to a typeface.");
 
             for (var codePoint = 0xE001; codePoint <= 0xE005; codePoint++)
             {
                 Assert.That(glyphTypeface.CharacterToGlyphMap.ContainsKey(codePoint), Is.True,
-                    "Deployed Device Symbols font is missing U+" + codePoint.ToString("X4") + ".");
+                    "Device symbol TextBlock is missing U+" + codePoint.ToString("X4") + ".");
             }
         }
 

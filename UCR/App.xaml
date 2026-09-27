@@ -15,9 +15,8 @@
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Accent/MaterialDesignColor.Blue.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <system:Double x:Key="UcrUiScale">1.0</system:Double>
-            <FontFamily x:Key="DeviceSymbolsFont">./Assets/Fonts/#Device Symbols v7</FontFamily>
-            <Style x:Key="DeviceSymbolText" TargetType="{x:Type TextBlock}">
-                <Setter Property="FontFamily" Value="{StaticResource DeviceSymbolsFont}"/>
+<Style x:Key="DeviceSymbolText" TargetType="{x:Type TextBlock}">
+                <Setter Property="FontFamily" Value="{DynamicResource DeviceSymbolsFont}"/>
                 <Setter Property="FontWeight" Value="Normal"/>
                 <Setter Property="TextAlignment" Value="Center"/>
                 <Setter Property="HorizontalAlignment" Value="Center"/>
