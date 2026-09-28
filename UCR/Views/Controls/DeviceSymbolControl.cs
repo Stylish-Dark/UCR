@@ -1,20 +1,25 @@
 using System;
-using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Media;
 
 namespace HidWizards.UCR.Views.Controls
 {
     /// <summary>
-    /// Renders one glyph directly from DeviceSymbols-v7.ttf.
-    /// This deliberately bypasses WPF FontFamily fallback, which can turn private-use glyphs
-    /// into empty boxes even when the TTF itself is present and valid.
+    /// Renders one glyph directly from the bundled DeviceSymbols-v7 font.
+    /// The font is embedded inside UCR.exe, copied to a private local cache, then loaded as a GlyphTypeface.
+    /// This avoids WPF font-family fallback, missing sidecar files, and Windows blocking downloaded font files.
     /// </summary>
     public sealed class DeviceSymbolControl : FrameworkElement
     {
+        private const string FontResourceName = "HidWizards.UCR.Assets.Fonts.DeviceSymbols-v7.ttf";
+        private const string FontFileName = "DeviceSymbols-v7.ttf";
+
         private static readonly object TypefaceLock = new object();
         private static GlyphTypeface _typeface;
+        private static bool _fontLoadFailed;
 
         public static readonly DependencyProperty SymbolTextProperty = DependencyProperty.Register(
             nameof(SymbolText), typeof(string), typeof(DeviceSymbolControl),
@@ -65,63 +70,148 @@ namespace HidWizards.UCR.Views.Controls
 
             if (string.IsNullOrEmpty(SymbolText) || ActualWidth <= 0 || ActualHeight <= 0) return;
 
-            var typeface = GetTypeface();
-            var codePoint = char.ConvertToUtf32(SymbolText, 0);
-            ushort glyphIndex;
-            if (!typeface.CharacterToGlyphMap.TryGetValue(codePoint, out glyphIndex))
-                throw new InvalidOperationException("Device Symbols v7 does not contain U+" + codePoint.ToString("X4") + ".");
+            try
+            {
+                var typeface = GetTypeface();
+                if (typeface == null) return;
 
-            var emSize = Math.Max(1.0, GlyphSize);
-            var advance = typeface.AdvanceWidths[glyphIndex] * emSize;
-            var baseline = typeface.Baseline * emSize;
-            var origin = new Point(
-                Math.Max(0, (ActualWidth - advance) * 0.5),
-                Math.Max(baseline, (ActualHeight - emSize) * 0.5 + baseline));
+                var codePoint = char.ConvertToUtf32(SymbolText, 0);
+                ushort glyphIndex;
+                if (!typeface.CharacterToGlyphMap.TryGetValue(codePoint, out glyphIndex)) return;
+
+                var emSize = Math.Max(1.0, GlyphSize);
+                var advance = typeface.AdvanceWidths[glyphIndex] * emSize;
+                var baseline = typeface.Baseline * emSize;
+                var origin = new Point(
+                    Math.Max(0, (ActualWidth - advance) * 0.5),
+                    Math.Max(baseline, (ActualHeight - emSize) * 0.5 + baseline));
 
 #pragma warning disable 618
-            var glyphRun = new GlyphRun(
-                typeface,
-                0,
-                false,
-                emSize,
-                new[] { glyphIndex },
-                origin,
-                new[] { advance },
-                null,
-                new[] { SymbolText[0] },
-                null,
-                null,
-                null,
-                null);
+                var glyphRun = new GlyphRun(
+                    typeface,
+                    0,
+                    false,
+                    emSize,
+                    new[] { glyphIndex },
+                    origin,
+                    new[] { advance },
+                    null,
+                    new[] { SymbolText[0] },
+                    null,
+                    null,
+                    null,
+                    null);
 #pragma warning restore 618
 
-            drawingContext.DrawGlyphRun(Foreground ?? Brushes.White, glyphRun);
+                drawingContext.DrawGlyphRun(Foreground ?? Brushes.White, glyphRun);
+            }
+            catch (Exception exception)
+            {
+                // A decorative device icon must never be able to take UCR down.
+                _fontLoadFailed = true;
+                Debug.WriteLine("Device symbol rendering disabled: " + exception);
+            }
         }
 
         private static GlyphTypeface GetTypeface()
         {
             if (_typeface != null) return _typeface;
+            if (_fontLoadFailed) return null;
 
             lock (TypefaceLock)
             {
                 if (_typeface != null) return _typeface;
+                if (_fontLoadFailed) return null;
 
-                var assemblyDirectory = Path.GetDirectoryName(typeof(DeviceSymbolControl).Assembly.Location);
-                var fontPath = Path.Combine(assemblyDirectory, "Assets", "Fonts", "DeviceSymbols-v7.ttf");
-
-                if (!File.Exists(fontPath))
-                    throw new FileNotFoundException("DeviceSymbols-v7.ttf was not deployed with UCR.", fontPath);
-
-                var typeface = new GlyphTypeface(new Uri(fontPath, UriKind.Absolute));
-                for (var codePoint = 0xE001; codePoint <= 0xE005; codePoint++)
+                try
                 {
-                    if (!typeface.CharacterToGlyphMap.ContainsKey(codePoint))
-                        throw new InvalidOperationException("Device Symbols v7 is missing U+" + codePoint.ToString("X4") + ".");
+                    var fontPath = MaterializeEmbeddedFont();
+                    var typeface = new GlyphTypeface(new Uri(fontPath, UriKind.Absolute));
+
+                    for (var codePoint = 0xE001; codePoint <= 0xE005; codePoint++)
+                    {
+                        if (!typeface.CharacterToGlyphMap.ContainsKey(codePoint))
+                            throw new InvalidOperationException("Bundled Device Symbols font is missing U+" + codePoint.ToString("X4") + ".");
+                    }
+
+                    _typeface = typeface;
+                    return _typeface;
+                }
+                catch (Exception exception)
+                {
+                    _fontLoadFailed = true;
+                    Debug.WriteLine("Unable to load bundled device-symbol font: " + exception);
+                    return null;
+                }
+            }
+        }
+
+        private static string MaterializeEmbeddedFont()
+        {
+            var assembly = typeof(DeviceSymbolControl).Assembly;
+            using (var stream = assembly.GetManifestResourceStream(FontResourceName))
+            {
+                if (stream == null)
+                    throw new InvalidOperationException("Embedded font resource was not found: " + FontResourceName);
+
+                byte[] bytes;
+                using (var memory = new MemoryStream())
+                {
+                    stream.CopyTo(memory);
+                    bytes = memory.ToArray();
                 }
 
-                _typeface = typeface;
-                return _typeface;
+                if (bytes.Length < 1024)
+                    throw new InvalidOperationException("Embedded device-symbol font is unexpectedly small.");
+
+                var cacheDirectory = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "UCR",
+                    "FontCache");
+
+                Directory.CreateDirectory(cacheDirectory);
+                var fontPath = Path.Combine(cacheDirectory, FontFileName);
+
+                var needsWrite = true;
+                if (File.Exists(fontPath))
+                {
+                    try
+                    {
+                        var existing = File.ReadAllBytes(fontPath);
+                        needsWrite = !ByteArraysEqual(existing, bytes);
+                    }
+                    catch
+                    {
+                        needsWrite = true;
+                    }
+                }
+
+                if (needsWrite)
+                {
+                    var temporaryPath = fontPath + ".new";
+                    File.WriteAllBytes(temporaryPath, bytes);
+
+                    if (File.Exists(fontPath))
+                        File.Delete(fontPath);
+
+                    File.Move(temporaryPath, fontPath);
+                }
+
+                return fontPath;
             }
+        }
+
+        private static bool ByteArraysEqual(byte[] left, byte[] right)
+        {
+            if (ReferenceEquals(left, right)) return true;
+            if (left == null || right == null || left.Length != right.Length) return false;
+
+            for (var index = 0; index < left.Length; index++)
+            {
+                if (left[index] != right[index]) return false;
+            }
+
+            return true;
         }
     }
 }

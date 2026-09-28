@@ -397,9 +397,9 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="UCR.ico" />
-    <Content Include="Assets\Fonts\DeviceSymbols-v7.ttf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <EmbeddedResource Include="Assets\Fonts\DeviceSymbols-v7.ttf">
+      <LogicalName>HidWizards.UCR.Assets.Fonts.DeviceSymbols-v7.ttf</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\icon.png" />

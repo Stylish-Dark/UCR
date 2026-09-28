@@ -43,9 +43,16 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
-        public void DeviceSymbolControlRendersEveryFontGlyphWithoutFallbackBoxes()
+        public void DeviceSymbolControlRendersEveryEmbeddedFontGlyphWithoutFallbackBoxes()
         {
             EnsureApplicationResources();
+
+            using (var stream = typeof(DeviceSymbolControl).Assembly
+                .GetManifestResourceStream("HidWizards.UCR.Assets.Fonts.DeviceSymbols-v7.ttf"))
+            {
+                Assert.That(stream, Is.Not.Null, "DeviceSymbols-v7.ttf is not embedded in UCR.exe.");
+                Assert.That(stream.Length, Is.GreaterThan(1024));
+            }
 
             foreach (var codePoint in Enumerable.Range(0xE001, 5))
             {
@@ -78,7 +85,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 }
 
                 Assert.That(paintedPixels, Is.GreaterThan(20),
-                    "Device symbol U+" + codePoint.ToString("X4") + " did not render from the deployed font.");
+                    "Embedded device symbol U+" + codePoint.ToString("X4") + " did not render.");
             }
         }
 
