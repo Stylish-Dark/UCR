@@ -15,7 +15,16 @@
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Primary/MaterialDesignColor.Blue.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Accent/MaterialDesignColor.Blue.xaml" />
             </ResourceDictionary.MergedDictionaries>
-            <system:Double x:Key="UcrUiScale">1.0</system:Double>            <DataTemplate x:Key="DeviceSymbolTemplate">
+            <system:Double x:Key="UcrUiScale">1.0</system:Double>
+            <!-- Compatibility shim for older compiled templates. Current device icons use DeviceSymbolControl. -->
+            <Style x:Key="DeviceSymbolText" TargetType="{x:Type TextBlock}">
+                <Setter Property="FontWeight" Value="Normal"/>
+                <Setter Property="TextAlignment" Value="Center"/>
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="UseLayoutRounding" Value="True"/>
+                <Setter Property="SnapsToDevicePixels" Value="True"/>
+            </Style>            <DataTemplate x:Key="DeviceSymbolTemplate">
                 <controls:DeviceSymbolControl SymbolText="{Binding SymbolText}"
                                               Foreground="{Binding BadgeTextBrush}"
                                               GlyphSize="29"

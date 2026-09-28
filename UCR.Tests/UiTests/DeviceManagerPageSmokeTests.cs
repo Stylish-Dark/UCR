@@ -91,6 +91,17 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void LegacyDeviceSymbolTextResourceRemainsResolvable()
+        {
+            EnsureApplicationResources();
+
+            var resource = Application.Current.TryFindResource("DeviceSymbolText");
+            Assert.That(resource, Is.InstanceOf<Style>(),
+                "DeviceSymbolText compatibility resource must remain available so stale compiled templates cannot crash startup.");
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void ApplicationUsesDefaultRenderingSoWpfCanUseHardwareAcceleration()
         {
             EnsureApplicationResources();
