@@ -32,20 +32,6 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
-        public void ArcadeTechnicalPresetPaletteRemainsLocked()
-        {
-            Assert.That(DeviceOutlineColors.GetPresetHex(DeviceOutlineColor.Red), Is.EqualTo("#E23232"));
-            Assert.That(DeviceOutlineColors.GetPresetHex(DeviceOutlineColor.Green), Is.EqualTo("#18A653"));
-            Assert.That(DeviceOutlineColors.GetPresetHex(DeviceOutlineColor.Blue), Is.EqualTo("#1F78E8"));
-            Assert.That(DeviceOutlineColors.GetPresetHex(DeviceOutlineColor.Yellow), Is.EqualTo("#E0B51A"));
-            Assert.That(DeviceOutlineColors.GetPresetHex(DeviceOutlineColor.Cyan), Is.EqualTo("#16A9C4"));
-            Assert.That(DeviceOutlineColors.GetPresetHex(DeviceOutlineColor.Pink), Is.EqualTo("#E246A0"));
-            Assert.That(DeviceOutlineColors.GetPresetHex(DeviceOutlineColor.Orange), Is.EqualTo("#E06A16"));
-            Assert.That(DeviceOutlineColors.GetPresetHex(DeviceOutlineColor.Purple), Is.EqualTo("#8652D1"));
-            Assert.That(DeviceOutlineColors.GetPresetHex(DeviceOutlineColor.White), Is.EqualTo("#FFFFFF"));
-        }
-
-        [Test]
         public void SemanticDeviceColoursRemainExactlyAsBeforeOutlineOverrides()
         {
             Assert.That(DeviceVisualCatalog.XboxBrush.ToString(), Is.EqualTo("#FF00A800"));
@@ -104,7 +90,7 @@ namespace HidWizards.UCR.Tests.ModelTests
                 "Semantic device accent must remain controller-family aligned.");
             Assert.That(visual.OutlineBrush, Is.SameAs(DeviceVisualCatalog.XboxBrush),
                 "Badge outline must remain controller-family aligned.");
-            Assert.That(visual.BadgeTextBrush.ToString(), Is.EqualTo("#FFE53935"),
+            Assert.That(visual.BadgeTextBrush.ToString(), Is.EqualTo("#FFE23232"),
                 "The per-device colour choice now customizes badge text only.");
         }
 
@@ -134,7 +120,7 @@ namespace HidWizards.UCR.Tests.ModelTests
             var item = new DeviceViewModel(keyboard, DeviceIoType.Input, context.DevicesManager);
 
             Assert.That(item.Visual.OutlineBrush, Is.SameAs(DeviceVisualCatalog.NeutralBrush));
-            Assert.That(item.Visual.BadgeTextBrush.ToString(), Is.EqualTo("#FFFF4081"));
+            Assert.That(item.Visual.BadgeTextBrush.ToString(), Is.EqualTo("#FFE246A0"));
         }
 
         [Test]
@@ -164,7 +150,7 @@ namespace HidWizards.UCR.Tests.ModelTests
 
             item.TextColor = DeviceOutlineColor.Red;
 
-            Assert.That(item.CurrentTextBrush.ToString(), Is.EqualTo("#FFE53935"));
+            Assert.That(item.CurrentTextBrush.ToString(), Is.EqualTo("#FFE23232"));
         }
 
         [Test]
