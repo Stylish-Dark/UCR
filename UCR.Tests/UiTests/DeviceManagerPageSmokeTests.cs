@@ -90,6 +90,16 @@ namespace HidWizards.UCR.Tests.UiTests
         }
 
         [Test]
+        public void MainWindowDeviceSymbolTemplateUsesDirectGlyphRenderer()
+        {
+            var xaml = System.IO.File.ReadAllText(
+                System.IO.Path.Combine(TestContext.CurrentContext.TestDirectory, "..", "..", "..", "..", "UCR", "Views", "MainWindow.xaml"));
+
+            StringAssert.Contains("<controls:DeviceSymbolControl", xaml);
+            StringAssert.DoesNotContain("BasedOn=\"{StaticResource DeviceSymbolText}\"", xaml);
+        }
+
+        [Test]
         [Apartment(ApartmentState.STA)]
         public void LegacyDeviceSymbolTextResourceRemainsResolvable()
         {

@@ -36,10 +36,13 @@
         <ResourceDictionary>
             <converter:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
             <DataTemplate x:Key="DeviceSymbolTemplate">
-                <TextBlock Text="{Binding SymbolText}" Foreground="{Binding BadgeTextBrush}"
-                           FontSize="29" Width="50" Height="31" ToolTip="{Binding ToolTip}">
-                    <TextBlock.Style>
-                        <Style TargetType="TextBlock" BasedOn="{StaticResource DeviceSymbolText}">
+                <controls:DeviceSymbolControl SymbolText="{Binding SymbolText}"
+                                              Foreground="{Binding BadgeTextBrush}"
+                                              GlyphSize="29"
+                                              Width="50" Height="31"
+                                              ToolTip="{Binding ToolTip}">
+                    <controls:DeviceSymbolControl.Style>
+                        <Style TargetType="{x:Type controls:DeviceSymbolControl}">
                             <Setter Property="Visibility" Value="Visible"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding HasSymbol}" Value="False">
@@ -47,8 +50,8 @@
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
-                    </TextBlock.Style>
-                </TextBlock>
+                    </controls:DeviceSymbolControl.Style>
+                </controls:DeviceSymbolControl>
             </DataTemplate>
 <DataTemplate x:Key="DeviceTemplate" DataType="{x:Type dashboard:DeviceItem}">
                 <StackPanel Margin="4">
