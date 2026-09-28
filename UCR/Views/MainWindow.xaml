@@ -292,9 +292,9 @@
                                           HorizontalAlignment="Left" ToolTip="{Binding Title}">
                                         <Grid Margin="8 2" MinHeight="38" HorizontalAlignment="Stretch">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto" MinWidth="50"/>
                                                 <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto" MinWidth="50"/>
                                             </Grid.ColumnDefinitions>
 
                                             <ItemsControl Grid.Column="0" ItemsSource="{Binding InputVisuals}"
