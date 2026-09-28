@@ -32,6 +32,20 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void ArcadeTechnicalPresetPaletteRemainsLocked()
+        {
+            Assert.That(DeviceOutlineColors.GetPresetHex(DeviceOutlineColor.Red), Is.EqualTo("#E23232"));
+            Assert.That(DeviceOutlineColors.GetPresetHex(DeviceOutlineColor.Green), Is.EqualTo("#18A653"));
+            Assert.That(DeviceOutlineColors.GetPresetHex(DeviceOutlineColor.Blue), Is.EqualTo("#1F78E8"));
+            Assert.That(DeviceOutlineColors.GetPresetHex(DeviceOutlineColor.Yellow), Is.EqualTo("#E0B51A"));
+            Assert.That(DeviceOutlineColors.GetPresetHex(DeviceOutlineColor.Cyan), Is.EqualTo("#16A9C4"));
+            Assert.That(DeviceOutlineColors.GetPresetHex(DeviceOutlineColor.Pink), Is.EqualTo("#E246A0"));
+            Assert.That(DeviceOutlineColors.GetPresetHex(DeviceOutlineColor.Orange), Is.EqualTo("#E06A16"));
+            Assert.That(DeviceOutlineColors.GetPresetHex(DeviceOutlineColor.Purple), Is.EqualTo("#8652D1"));
+            Assert.That(DeviceOutlineColors.GetPresetHex(DeviceOutlineColor.White), Is.EqualTo("#FFFFFF"));
+        }
+
+        [Test]
         public void SemanticDeviceColoursRemainExactlyAsBeforeOutlineOverrides()
         {
             Assert.That(DeviceVisualCatalog.XboxBrush.ToString(), Is.EqualTo("#FF00A800"));
