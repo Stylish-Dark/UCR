@@ -177,11 +177,18 @@ namespace HidWizards.UCR.Core.Models.Binding
 
         public void SetKeyTypeValue(int type, int value, int subValue)
         {
+            var bindingChanged = KeyType != type || KeyValue != value || KeySubValue != subValue;
+            var wasBound = IsBound;
+
             KeyType = type;
             KeyValue = value;
             KeySubValue = subValue;
             IsBound = true;
             Profile.Context.ContextChanged();
+
+            // Rebinding an already-bound control leaves IsBound=true, so its setter emits no
+            // notification. The UI uses that notification to rebuild the binding label/glyph.
+            if (wasBound && bindingChanged) OnPropertyChanged(nameof(IsBound));
         }
         
         public string BoundName()
