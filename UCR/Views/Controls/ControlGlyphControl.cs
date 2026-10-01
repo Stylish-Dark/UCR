@@ -126,13 +126,54 @@ namespace HidWizards.UCR.Views.Controls
                 DrawCenteredText(dc, label, Brushes.White,
                     new Rect(center.X - radius, center.Y - radius, radius * 2, radius * 2),
                     FontFor(label, radius * 1.12), FontWeights.Bold);
+                return;
             }
-            else
+
+            // PlayStation face buttons use a common outer ring, but draw the symbol geometry
+            // directly so Cross/Square/Triangle do not depend on font glyph proportions.
+            dc.DrawEllipse(null, Pen(accent, 1.9), center, radius, radius);
+            var symbolPen = Pen(accent, 1.75);
+
+            switch (label)
             {
-                dc.DrawEllipse(null, Pen(accent, 1.9), center, radius, radius);
-                DrawCenteredText(dc, label, accent,
-                    new Rect(center.X - radius, center.Y - radius, radius * 2, radius * 2),
-                    FontFor(label, radius * 1.15), FontWeights.Bold);
+                case "×":
+                {
+                    var d = radius * 0.43;
+                    dc.DrawLine(symbolPen, new Point(center.X - d, center.Y - d),
+                        new Point(center.X + d, center.Y + d));
+                    dc.DrawLine(symbolPen, new Point(center.X + d, center.Y - d),
+                        new Point(center.X - d, center.Y + d));
+                    return;
+                }
+                case "□":
+                {
+                    var half = radius * 0.43;
+                    dc.DrawRectangle(null, symbolPen,
+                        new Rect(center.X - half, center.Y - half, half * 2, half * 2));
+                    return;
+                }
+                case "△":
+                {
+                    var top = new Point(center.X, center.Y - radius * 0.50);
+                    var left = new Point(center.X - radius * 0.49, center.Y + radius * 0.40);
+                    var right = new Point(center.X + radius * 0.49, center.Y + radius * 0.40);
+                    var triangle = new StreamGeometry();
+                    using (var ctx = triangle.Open())
+                    {
+                        ctx.BeginFigure(top, false, true);
+                        ctx.LineTo(right, true, false);
+                        ctx.LineTo(left, true, false);
+                    }
+                    triangle.Freeze();
+                    dc.DrawGeometry(null, symbolPen, triangle);
+                    return;
+                }
+                default:
+                    // Circle already reads cleanly with the existing glyph.
+                    DrawCenteredText(dc, label, accent,
+                        new Rect(center.X - radius, center.Y - radius, radius * 2, radius * 2),
+                        FontFor(label, radius * 1.15), FontWeights.Bold);
+                    return;
             }
         }
 
@@ -185,6 +226,19 @@ namespace HidWizards.UCR.Views.Controls
 
         private static void DrawGenericButton(DrawingContext dc, Rect b, Brush accent, string label)
         {
+            if (label == "OP" || label == "SH")
+            {
+                var rect = new Rect(
+                    b.Left + b.Width * 0.13,
+                    b.Top + b.Height * 0.22,
+                    b.Width * 0.74,
+                    b.Height * 0.56);
+                dc.DrawRoundedRectangle(null, Pen(accent, 1.45), rect, 3.5, 3.5);
+                DrawCenteredText(dc, label, accent, rect,
+                    Math.Max(8, b.Height * 0.36), FontWeights.SemiBold);
+                return;
+            }
+
             var radius = Math.Min(b.Width, b.Height) * 0.35;
             var center = new Point(b.Left + b.Width / 2.0, b.Top + b.Height / 2.0);
             dc.DrawEllipse(null, Pen(accent, 1.55), center, radius, radius);
