@@ -213,7 +213,7 @@ namespace HidWizards.UCR.Views.Controls
             mappingViewModel.Rename();
         }
 
-        private void QuickBindInput_OnMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        private void QuickBindInput_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             var mappingViewModel = DataContext as MappingViewModel;
             var descriptor = FindBindingDescriptor(e.OriginalSource as DependencyObject);
@@ -232,7 +232,7 @@ namespace HidWizards.UCR.Views.Controls
             }
         }
 
-        private async void QuickBindOutput_OnMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        private async void QuickBindOutput_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             var mappingViewModel = DataContext as MappingViewModel;
             var descriptor = FindBindingDescriptor(e.OriginalSource as DependencyObject);
