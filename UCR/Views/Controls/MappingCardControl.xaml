@@ -170,7 +170,7 @@
                     <Border Grid.Column="0" Margin="0 4 0 4" CornerRadius="2"
                             Background="{Binding MappingOutputTypeLabel, Converter={StaticResource MappingTypeBrushConverter}}"/>
 
-                    <StackPanel Grid.Column="1" Margin="10 6 8 6" VerticalAlignment="Center"
+                    <StackPanel Grid.Column="1" Margin="10 6 8 6" VerticalAlignment="Center">
                         <TextBlock Text="{Binding MappingTitle}" FontSize="15.5" FontWeight="SemiBold"
                                    Foreground="#FFFFFF" TextTrimming="CharacterEllipsis" ToolTip="{Binding MappingTitle}"/>
                         <ItemsControl ItemsSource="{Binding MappingRouteTokens}" Margin="0 2 0 0" Opacity="0.78">
