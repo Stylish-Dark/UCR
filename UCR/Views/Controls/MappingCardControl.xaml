@@ -171,8 +171,6 @@
                             Background="{Binding MappingOutputTypeLabel, Converter={StaticResource MappingTypeBrushConverter}}"/>
 
                     <StackPanel Grid.Column="1" Margin="10 6 8 6" VerticalAlignment="Center"
-                                Cursor="Hand" ToolTip="Right-click to rename mapping"
-                                PreviewMouseRightButtonUp="RenameHeader_OnMouseRightButtonUp">
                         <TextBlock Text="{Binding MappingTitle}" FontSize="15.5" FontWeight="SemiBold"
                                    Foreground="#FFFFFF" TextTrimming="CharacterEllipsis" ToolTip="{Binding MappingTitle}"/>
                         <ItemsControl ItemsSource="{Binding MappingRouteTokens}" Margin="0 2 0 0" Opacity="0.78">
@@ -207,8 +205,8 @@
                                 <ItemsControl ItemsSource="{Binding CollapsedInputVisuals}"
                                               ItemTemplate="{StaticResource MappingBindingVisualTemplate}" HorizontalAlignment="Right"
                                               ClipToBounds="False" Cursor="Hand"
-                                              ToolTip="Right-click to detect and bind this input"
-                                              PreviewMouseRightButtonUp="QuickBindInput_OnMouseRightButtonUp">
+                                              ToolTip="Click a glyph to detect and bind this input"
+                                              PreviewMouseLeftButtonUp="QuickBindInput_OnMouseLeftButtonUp">
                                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                 </ItemsControl>
                             </Viewbox>
@@ -221,8 +219,8 @@
                                 <ItemsControl ItemsSource="{Binding CollapsedOutputVisuals}"
                                               ItemTemplate="{StaticResource MappingBindingVisualTemplate}" HorizontalAlignment="Left"
                                               ClipToBounds="False" Cursor="Hand"
-                                              ToolTip="Right-click to bind this output control"
-                                              PreviewMouseRightButtonUp="QuickBindOutput_OnMouseRightButtonUp">
+                                              ToolTip="Click a glyph to bind this output control"
+                                              PreviewMouseLeftButtonUp="QuickBindOutput_OnMouseLeftButtonUp">
                                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                 </ItemsControl>
                             </Viewbox>
