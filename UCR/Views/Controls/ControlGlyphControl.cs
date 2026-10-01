@@ -179,14 +179,58 @@ namespace HidWizards.UCR.Views.Controls
 
         private static void DrawDPad(DrawingContext dc, Rect b, Brush accent, string label)
         {
-            var cx = b.Left + b.Width * 0.42;
-            var cy = b.Top + b.Height * 0.5;
-            var r = Math.Min(b.Width, b.Height) * 0.28;
-            var pen = Pen(accent, 1.55);
-            dc.DrawLine(pen, new Point(cx - r, cy), new Point(cx + r, cy));
-            dc.DrawLine(pen, new Point(cx, cy - r), new Point(cx, cy + r));
-            var labelRect = new Rect(b.Left + b.Width * 0.62, b.Top, b.Width * 0.38, b.Height);
-            DrawCenteredText(dc, label, accent, labelRect, FontFor(label, b.Height * 0.52), FontWeights.Bold);
+            var size = Math.Min(b.Width, b.Height) * 0.78;
+            var cx = b.Left + b.Width / 2.0;
+            var cy = b.Top + b.Height / 2.0;
+            var extent = size / 2.0;
+            var halfArm = size * 0.17;
+
+            var cross = new StreamGeometry();
+            using (var ctx = cross.Open())
+            {
+                ctx.BeginFigure(new Point(cx - halfArm, cy - extent), true, true);
+                ctx.LineTo(new Point(cx + halfArm, cy - extent), true, false);
+                ctx.LineTo(new Point(cx + halfArm, cy - halfArm), true, false);
+                ctx.LineTo(new Point(cx + extent, cy - halfArm), true, false);
+                ctx.LineTo(new Point(cx + extent, cy + halfArm), true, false);
+                ctx.LineTo(new Point(cx + halfArm, cy + halfArm), true, false);
+                ctx.LineTo(new Point(cx + halfArm, cy + extent), true, false);
+                ctx.LineTo(new Point(cx - halfArm, cy + extent), true, false);
+                ctx.LineTo(new Point(cx - halfArm, cy + halfArm), true, false);
+                ctx.LineTo(new Point(cx - extent, cy + halfArm), true, false);
+                ctx.LineTo(new Point(cx - extent, cy - halfArm), true, false);
+                ctx.LineTo(new Point(cx - halfArm, cy - halfArm), true, false);
+            }
+            cross.Freeze();
+
+            var neutralFill = new SolidColorBrush(Color.FromRgb(43, 43, 43));
+            var neutralStroke = new SolidColorBrush(Color.FromRgb(105, 105, 105));
+            neutralFill.Freeze();
+            neutralStroke.Freeze();
+
+            dc.DrawGeometry(neutralFill, null, cross);
+
+            var direction = (label ?? string.Empty).Trim();
+            Rect active = Rect.Empty;
+
+            if (direction == "↑" || direction.Equals("UP", StringComparison.OrdinalIgnoreCase))
+                active = new Rect(cx - halfArm, cy - extent, halfArm * 2, extent - halfArm);
+            else if (direction == "→" || direction.Equals("RIGHT", StringComparison.OrdinalIgnoreCase))
+                active = new Rect(cx + halfArm, cy - halfArm, extent - halfArm, halfArm * 2);
+            else if (direction == "↓" || direction.Equals("DOWN", StringComparison.OrdinalIgnoreCase))
+                active = new Rect(cx - halfArm, cy + halfArm, halfArm * 2, extent - halfArm);
+            else if (direction == "←" || direction.Equals("LEFT", StringComparison.OrdinalIgnoreCase))
+                active = new Rect(cx - extent, cy - halfArm, extent - halfArm, halfArm * 2);
+
+            if (!active.IsEmpty)
+                dc.DrawRectangle(accent, null, active);
+
+            dc.DrawGeometry(null, Pen(neutralStroke, 1.2), cross);
+
+            // Keep the centre visually connected while leaving the selected arm unmistakable.
+            dc.DrawRectangle(neutralFill, null,
+                new Rect(cx - halfArm + 0.6, cy - halfArm + 0.6,
+                    Math.Max(1, (halfArm * 2) - 1.2), Math.Max(1, (halfArm * 2) - 1.2)));
         }
 
         private static void DrawPill(DrawingContext dc, Rect b, Brush accent, string label, bool stronger)
