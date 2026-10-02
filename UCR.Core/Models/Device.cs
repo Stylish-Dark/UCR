@@ -62,15 +62,15 @@ namespace HidWizards.UCR.Core.Models
         {
             switch (color)
             {
-                case DeviceOutlineColor.Red: return "#E23232";
-                case DeviceOutlineColor.Green: return "#18A653";
-                case DeviceOutlineColor.Blue: return "#1F78E8";
-                case DeviceOutlineColor.Yellow: return "#E0B51A";
-                case DeviceOutlineColor.Cyan: return "#16A9C4";
-                case DeviceOutlineColor.Pink: return "#E246A0";
-                case DeviceOutlineColor.Orange: return "#E06A16";
-                case DeviceOutlineColor.Purple: return "#8652D1";
-                case DeviceOutlineColor.White: return "#FFFFFF";
+                case DeviceOutlineColor.Red: return "#C04040";
+                case DeviceOutlineColor.Green: return "#40A040";
+                case DeviceOutlineColor.Blue: return "#4060C0";
+                case DeviceOutlineColor.Yellow: return "#C0A040";
+                case DeviceOutlineColor.Cyan: return "#40A0A0";
+                case DeviceOutlineColor.Pink: return "#C06080";
+                case DeviceOutlineColor.Orange: return "#C08040";
+                case DeviceOutlineColor.Purple: return "#8060A0";
+                case DeviceOutlineColor.White: return "#E0E0E0";
                 default: return null;
             }
         }
