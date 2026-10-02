@@ -32,6 +32,20 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void PresetColourChannelsAreAlwaysMultiplesOf32()
+        {
+            foreach (var color in DeviceOutlineColors.Options)
+            {
+                if (color == DeviceOutlineColor.Default) continue;
+                var hex = DeviceOutlineColors.GetPresetHex(color);
+                Assert.That(hex, Is.Not.Null);
+                Assert.That(Convert.ToInt32(hex.Substring(1, 2), 16) % 32, Is.EqualTo(0), color + " red channel");
+                Assert.That(Convert.ToInt32(hex.Substring(3, 2), 16) % 32, Is.EqualTo(0), color + " green channel");
+                Assert.That(Convert.ToInt32(hex.Substring(5, 2), 16) % 32, Is.EqualTo(0), color + " blue channel");
+            }
+        }
+
+        [Test]
         public void SemanticDeviceColoursRemainExactlyAsBeforeOutlineOverrides()
         {
             Assert.That(DeviceVisualCatalog.XboxBrush.ToString(), Is.EqualTo("#FF00A800"));
@@ -90,7 +104,7 @@ namespace HidWizards.UCR.Tests.ModelTests
                 "Semantic device accent must remain controller-family aligned.");
             Assert.That(visual.OutlineBrush, Is.SameAs(DeviceVisualCatalog.XboxBrush),
                 "Badge outline must remain controller-family aligned.");
-            Assert.That(visual.BadgeTextBrush.ToString(), Is.EqualTo("#FFE23232"),
+            Assert.That(visual.BadgeTextBrush.ToString(), Is.EqualTo("#FFC04040"),
                 "The per-device colour choice now customizes badge text only.");
         }
 
@@ -120,7 +134,7 @@ namespace HidWizards.UCR.Tests.ModelTests
             var item = new DeviceViewModel(keyboard, DeviceIoType.Input, context.DevicesManager);
 
             Assert.That(item.Visual.OutlineBrush, Is.SameAs(DeviceVisualCatalog.NeutralBrush));
-            Assert.That(item.Visual.BadgeTextBrush.ToString(), Is.EqualTo("#FFE246A0"));
+            Assert.That(item.Visual.BadgeTextBrush.ToString(), Is.EqualTo("#FFC06080"));
         }
 
         [Test]
@@ -150,7 +164,7 @@ namespace HidWizards.UCR.Tests.ModelTests
 
             item.TextColor = DeviceOutlineColor.Red;
 
-            Assert.That(item.CurrentTextBrush.ToString(), Is.EqualTo("#FFE23232"));
+            Assert.That(item.CurrentTextBrush.ToString(), Is.EqualTo("#FFC04040"));
         }
 
         [Test]
