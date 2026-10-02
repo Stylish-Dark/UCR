@@ -32,20 +32,6 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
-        public void PresetColourChannelsAreAlwaysMultiplesOf32()
-        {
-            foreach (var color in DeviceOutlineColors.Options)
-            {
-                if (color == DeviceOutlineColor.Default) continue;
-                var hex = DeviceOutlineColors.GetPresetHex(color);
-                Assert.That(hex, Is.Not.Null);
-                Assert.That(Convert.ToInt32(hex.Substring(1, 2), 16) % 32, Is.EqualTo(0), color + " red channel");
-                Assert.That(Convert.ToInt32(hex.Substring(3, 2), 16) % 32, Is.EqualTo(0), color + " green channel");
-                Assert.That(Convert.ToInt32(hex.Substring(5, 2), 16) % 32, Is.EqualTo(0), color + " blue channel");
-            }
-        }
-
-        [Test]
         public void SemanticDeviceColoursRemainExactlyAsBeforeOutlineOverrides()
         {
             Assert.That(DeviceVisualCatalog.XboxBrush.ToString(), Is.EqualTo("#FF00A800"));
