@@ -471,10 +471,17 @@ namespace HidWizards.UCR.Core.Managers
                 throw new InvalidOperationException("Finish the current binding operation before detecting an input.");
             }
 
+            // Detect Device is also the recovery path for newly hot-plugged hardware. Refresh the
+            // providers before taking the raw endpoint snapshot; otherwise a keyboard plugged in after
+            // UCR started can be absent from Core_Interception's current device list and will never have
+            // detection mode armed for it.
+            RefreshDeviceList();
+
             // Detection must listen to raw provider endpoints. User-facing enumeration deliberately
             // collapses Core_Interception slot churn, but the detector needs the exact endpoint that
             // produced input so it can distinguish churn from a genuinely second identical device.
             var devices = GetRawAvailableDeviceList(DeviceIoType.Input, false);
+            Logger.Debug("Input-device detection armed after live refresh for " + devices.Count + " raw input endpoint(s).");
             if (devices.Count == 0) return Task.FromResult<DetectedInputControl>(null);
 
             TaskCompletionSource<DetectedInputControl> completion;
