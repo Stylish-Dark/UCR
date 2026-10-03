@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Xml.Serialization;
 using HidWizards.IOWrapper.DataTransferObjects;
 using HidWizards.UCR.Core.Models.Binding;
@@ -44,6 +45,8 @@ namespace HidWizards.UCR.Core.Models
 
     public static class DeviceOutlineColors
     {
+        public const string IniFileName = "DeviceColors.ini";
+
         public static readonly DeviceOutlineColor[] Options =
         {
             DeviceOutlineColor.Default,
@@ -58,21 +61,89 @@ namespace HidWizards.UCR.Core.Models
             DeviceOutlineColor.White
         };
 
+        private static readonly Dictionary<DeviceOutlineColor, string> DefaultPresetHex =
+            new Dictionary<DeviceOutlineColor, string>
+            {
+                { DeviceOutlineColor.Red, "#C04040" },
+                { DeviceOutlineColor.Green, "#40A040" },
+                { DeviceOutlineColor.Blue, "#4060C0" },
+                { DeviceOutlineColor.Yellow, "#C0A040" },
+                { DeviceOutlineColor.Cyan, "#40A0A0" },
+                { DeviceOutlineColor.Pink, "#C06080" },
+                { DeviceOutlineColor.Orange, "#C08040" },
+                { DeviceOutlineColor.Purple, "#8060A0" },
+                { DeviceOutlineColor.White, "#E0E0E0" }
+            };
+
+        private static readonly Dictionary<DeviceOutlineColor, string> PresetHex =
+            new Dictionary<DeviceOutlineColor, string>(DefaultPresetHex);
+
+        public static void LoadFromIni()
+        {
+            foreach (var pair in DefaultPresetHex)
+            {
+                PresetHex[pair.Key] = pair.Value;
+            }
+
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, IniFileName);
+            if (!File.Exists(path))
+            {
+                WriteDefaultIni(path);
+                return;
+            }
+
+            try
+            {
+                var inDeviceColorsSection = false;
+                foreach (var rawLine in File.ReadAllLines(path))
+                {
+                    var line = rawLine.Trim();
+                    if (line.Length == 0 || line.StartsWith(";") || line.StartsWith("#")) continue;
+
+                    if (line.StartsWith("[") && line.EndsWith("]"))
+                    {
+                        inDeviceColorsSection = string.Equals(
+                            line.Substring(1, line.Length - 2).Trim(),
+                            "DeviceColors",
+                            StringComparison.OrdinalIgnoreCase);
+                        continue;
+                    }
+
+                    if (!inDeviceColorsSection) continue;
+
+                    var separator = line.IndexOf('=');
+                    if (separator <= 0) continue;
+
+                    var name = line.Substring(0, separator).Trim();
+                    var rgb = line.Substring(separator + 1).Trim();
+
+                    DeviceOutlineColor color;
+                    if (!Enum.TryParse(name, true, out color) ||
+                        color == DeviceOutlineColor.Default ||
+                        !DefaultPresetHex.ContainsKey(color))
+                    {
+                        continue;
+                    }
+
+                    string hex;
+                    if (TryParseRgb(rgb, out hex))
+                    {
+                        PresetHex[color] = hex;
+                    }
+                }
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+        }
+
         public static string GetPresetHex(DeviceOutlineColor color)
         {
-            switch (color)
-            {
-                case DeviceOutlineColor.Red: return "#C04040";
-                case DeviceOutlineColor.Green: return "#40A040";
-                case DeviceOutlineColor.Blue: return "#4060C0";
-                case DeviceOutlineColor.Yellow: return "#C0A040";
-                case DeviceOutlineColor.Cyan: return "#40A0A0";
-                case DeviceOutlineColor.Pink: return "#C06080";
-                case DeviceOutlineColor.Orange: return "#C08040";
-                case DeviceOutlineColor.Purple: return "#8060A0";
-                case DeviceOutlineColor.White: return "#E0E0E0";
-                default: return null;
-            }
+            string value;
+            return PresetHex.TryGetValue(color, out value) ? value : null;
         }
 
         public static string NormalizeHex(string value)
@@ -87,6 +158,56 @@ namespace HidWizards.UCR.Core.Models
                 if (!isHex) return null;
             }
             return text.ToUpperInvariant();
+        }
+
+        private static bool TryParseRgb(string value, out string hex)
+        {
+            hex = null;
+            var parts = value.Split(',');
+            if (parts.Length != 3) return false;
+
+            byte red;
+            byte green;
+            byte blue;
+            if (!byte.TryParse(parts[0].Trim(), out red) ||
+                !byte.TryParse(parts[1].Trim(), out green) ||
+                !byte.TryParse(parts[2].Trim(), out blue))
+            {
+                return false;
+            }
+
+            if (red % 32 != 0 || green % 32 != 0 || blue % 32 != 0) return false;
+
+            hex = string.Format("#{0:X2}{1:X2}{2:X2}", red, green, blue);
+            return true;
+        }
+
+        private static void WriteDefaultIni(string path)
+        {
+            try
+            {
+                File.WriteAllLines(path, new[]
+                {
+                    "; UCR device colour palette",
+                    "; RGB channel values must be multiples of 32. Edit this file, then restart UCR.",
+                    "[DeviceColors]",
+                    "Red=192,64,64",
+                    "Green=64,160,64",
+                    "Blue=64,96,192",
+                    "Yellow=192,160,64",
+                    "Cyan=64,160,160",
+                    "Pink=192,96,128",
+                    "Orange=192,128,64",
+                    "Purple=128,96,160",
+                    "White=224,224,224"
+                });
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
         }
     }
 

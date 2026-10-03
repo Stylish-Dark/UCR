@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using HidWizards.UCR.Core;
+using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Utilities;
 using HidWizards.UCR.Views;
@@ -41,6 +42,7 @@ namespace HidWizards.UCR
         {
             base.OnStartup(e);
             RuntimePathManager.NormalizeWorkingDirectory();
+            DeviceOutlineColors.LoadFromIni();
             Logger.InitializeSession();
             AppearanceManager.ApplySavedAccent();
             AppearanceManager.ApplySavedUiScale();
