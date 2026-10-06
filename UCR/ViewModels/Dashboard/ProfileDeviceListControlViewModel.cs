@@ -350,6 +350,8 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
             configuration.ChangeConfigurationName(result.DeviceConfigurationName);
             configuration.ChangeShadowDevices(result.GetSelectedShadowDevices());
+            if (_deviceIoType == DeviceIoType.Input)
+                configuration.ChangeBlockUnmappedInputs(result.BlockUnmappedInputs);
 
             SelectedDeviceConfiguration.TitleChanged();
             OnPropertyChanged(nameof(Devices));

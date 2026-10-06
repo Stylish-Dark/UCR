@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Xml.Serialization;
 using HidWizards.UCR.Core.Models.Binding;
@@ -16,10 +17,15 @@ namespace HidWizards.UCR.Core.Models
         public List<DeviceBinding> DeviceBindings { get; set; }
         public List<Plugin> Plugins { get; set; }
 
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool UseInputExpression { get; set; }
+
         /* Runtime */
         private Profile Profile { get; set; }
         private List<short> InputCache { get; set; }
         private List<CallbackMultiplexer> Multiplexer { get; set; }
+        private short? _lastInputExpressionValue;
         
 
         internal bool IsShadowMapping { get; set; }
@@ -102,6 +108,7 @@ namespace HidWizards.UCR.Core.Models
                 DeviceBindings[i].CurrentValue = 0;
             }
 
+            _lastInputExpressionValue = null;
             FilterState = filterState;
             RuntimeScopeGuid = runtimeScopeGuid;
             Plugins.ForEach(p => p.RuntimeMapping = this);
@@ -140,12 +147,110 @@ namespace HidWizards.UCR.Core.Models
 
         public void Update(short value)
         {
+            short[] pluginValues;
+            if (UseInputExpression)
+            {
+                var expressionValue = EvaluateInputExpression(InputCache);
+                if (_lastInputExpressionValue.HasValue && _lastInputExpressionValue.Value == expressionValue) return;
+                _lastInputExpressionValue = expressionValue;
+                pluginValues = new[] { expressionValue };
+            }
+            else
+            {
+                pluginValues = InputCache.ToArray();
+            }
+
             foreach (var plugin in Plugins)
             {
                 if (plugin.IsFiltered()) continue;
-                
-                plugin.Update(InputCache.ToArray());
+                plugin.Update(pluginValues);
             }
+        }
+
+        internal short EvaluateInputExpression(IList<short> values)
+        {
+            if (!UseInputExpression || values == null || DeviceBindings == null || DeviceBindings.Count == 0)
+                return 0;
+
+            var count = Math.Min(values.Count, DeviceBindings.Count);
+            if (count == 0) return 0;
+
+            foreach (var group in Enumerable.Range(0, count)
+                .GroupBy(index => Math.Max(0, DeviceBindings[index].InputExpressionGroup)))
+            {
+                var groupTrue = true;
+                foreach (var index in group)
+                {
+                    var termTrue = values[index] != 0;
+                    if (DeviceBindings[index].InputExpressionNegated) termTrue = !termTrue;
+                    if (termTrue) continue;
+                    groupTrue = false;
+                    break;
+                }
+
+                if (groupTrue) return 1;
+            }
+
+            return 0;
+        }
+
+        public bool SupportsNativeInputExpression()
+        {
+            if (Plugins == null || Plugins.Count == 0) return false;
+            var categories = Plugins[0].InputCategories;
+            return categories != null && categories.Count == 1 &&
+                   categories[0].Category == DeviceBindingCategory.Momentary;
+        }
+
+        public DeviceBinding AddExpressionInput(bool startNewOrGroup)
+        {
+            if (!SupportsNativeInputExpression()) return null;
+
+            if (!UseInputExpression)
+            {
+                if (DeviceBindings == null || DeviceBindings.Count != 1) return null;
+                UseInputExpression = true;
+                DeviceBindings[0].InputExpressionGroup = 0;
+                DeviceBindings[0].InputExpressionNegated = false;
+            }
+
+            var group = 0;
+            if (DeviceBindings.Count > 0)
+            {
+                var lastGroup = DeviceBindings.Max(item => Math.Max(0, item.InputExpressionGroup));
+                group = startNewOrGroup ? lastGroup + 1 : lastGroup;
+            }
+
+            var binding = new DeviceBinding(Update, Profile, DeviceIoType.Input)
+            {
+                DeviceBindingCategory = DeviceBindingCategory.Momentary,
+                InputExpressionGroup = group,
+                InputExpressionNegated = false
+            };
+
+            var template = DeviceBindings.LastOrDefault();
+            if (template != null) binding.DeviceConfigurationGuid = template.DeviceConfigurationGuid;
+
+            DeviceBindings.Add(binding);
+            Profile?.Context?.ContextChanged();
+            return binding;
+        }
+
+        public bool RemoveExpressionInput(DeviceBinding binding)
+        {
+            if (!UseInputExpression || binding == null || DeviceBindings == null || DeviceBindings.Count <= 1)
+                return false;
+            if (!DeviceBindings.Remove(binding)) return false;
+
+            var groups = DeviceBindings.Select(item => Math.Max(0, item.InputExpressionGroup))
+                .Distinct().OrderBy(group => group).ToList();
+            var remap = groups.Select((group, index) => new { group, index })
+                .ToDictionary(item => item.group, item => item.index);
+            foreach (var item in DeviceBindings)
+                item.SetInputExpressionGroup(remap[Math.Max(0, item.InputExpressionGroup)]);
+
+            Profile?.Context?.ContextChanged();
+            return true;
         }
 
         #region Plugin
@@ -185,6 +290,7 @@ namespace HidWizards.UCR.Core.Models
             if (Plugins.Count == 0)
             {
                 DeviceBindings = new List<DeviceBinding>();
+                UseInputExpression = false;
             }
             Profile.PruneUndefinedFilterReferencesRecursive();
             Profile.Context.ContextChanged();

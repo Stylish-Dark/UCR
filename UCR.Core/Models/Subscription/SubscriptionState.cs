@@ -13,6 +13,7 @@ namespace HidWizards.UCR.Core.Models.Subscription
 
         public List<DeviceConfigurationSubscription> OutputDeviceConfigurationSubscriptions { get; }
         public List<MappingSubscription> MappingSubscriptions { get; set; }
+        public List<InputSubscription> SafetyInputSubscriptions { get; }
         public FilterState FilterState { get; set; }
 
         public SubscriptionState(Profile profile) : this(profile == null ? new List<Profile>() : new List<Profile> { profile })
@@ -30,6 +31,7 @@ namespace HidWizards.UCR.Core.Models.Subscription
                 .AsReadOnly();
             OutputDeviceConfigurationSubscriptions = new List<DeviceConfigurationSubscription>();
             MappingSubscriptions = new List<MappingSubscription>();
+            SafetyInputSubscriptions = new List<InputSubscription>();
             IsActive = false;
             FilterState = new FilterState();
         }

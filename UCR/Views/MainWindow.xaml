@@ -136,7 +136,7 @@
                             </materialDesign:PackIcon>
                         </Grid>
                     </Button>
-                    <Button IsEnabled="{Binding CanDeactivateAllProfiles}" ToolTip="Stop ALL profiles" Click="StopAllProfiles">
+                    <Button IsEnabled="{Binding CanDeactivateAllProfiles}" ToolTip="Stop ALL profiles&#x0a;Emergency shortcut: hold Esc on any keyboard for 3 seconds" Click="StopAllProfiles">
                         <materialDesign:PackIcon Kind="Stop" Foreground="#FF8B8B"/>
                     </Button>
                     <Separator />

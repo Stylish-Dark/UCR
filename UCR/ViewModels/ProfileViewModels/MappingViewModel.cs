@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Threading;
 using System.Text.RegularExpressions;
 using HidWizards.UCR.Core.Annotations;
@@ -55,6 +56,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<PluginViewModel> Plugins { get; set; }
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public bool ButtonsEnabled => !ProfileViewModel.Profile.IsActive();
+        public bool SupportsNativeInputExpression => Mapping?.SupportsNativeInputExpression() == true;
+        public bool UsesInputExpression => Mapping?.UseInputExpression == true;
+        public string InputLogicSummary => BuildInputLogicSummary();
         public bool CanMoveUp => ButtonsEnabled && ProfileViewModel.CanMoveMapping(this, -1);
         public bool CanMoveDown => ButtonsEnabled && ProfileViewModel.CanMoveMapping(this, 1);
         public string MappingRoute => Mapping != null && Mapping.Plugins.Count > 0 ? Mapping.Plugins[0].PluginName : "No plugin";
@@ -246,6 +250,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(CollapsedSummary));
             OnPropertyChanged(nameof(CollapsedInputVisuals));
             OnPropertyChanged(nameof(CollapsedOutputVisuals));
+            OnPropertyChanged(nameof(InputLogicSummary));
         }
 
         public void RefreshTitle()
@@ -282,6 +287,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return;
             }
 
+            RefreshInputExpressionPresentation();
             RefreshCollapsedSummary();
         }
 
@@ -324,14 +330,103 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (Mapping.Plugins.Count == 0) return;
 
             var plugin = Mapping.Plugins[0];
-            for (var i = 0; i < plugin.InputCategories.Count; i++)
+            if (Mapping.UseInputExpression)
             {
-                DeviceBindings.Add(new DeviceBindingViewModel(Mapping.DeviceBindings[i])
+                for (var i = 0; i < Mapping.DeviceBindings.Count; i++)
                 {
-                    DeviceBindingName = plugin.InputCategories[i].Name,
-                    DeviceBindingCategory = plugin.InputCategories[i].Category
-                });
+                    DeviceBindings.Add(new DeviceBindingViewModel(Mapping.DeviceBindings[i])
+                    {
+                        DeviceBindingName = "Input " + (i + 1),
+                        DeviceBindingCategory = DeviceBindingCategory.Momentary
+                    });
+                }
             }
+            else
+            {
+                for (var i = 0; i < plugin.InputCategories.Count && i < Mapping.DeviceBindings.Count; i++)
+                {
+                    DeviceBindings.Add(new DeviceBindingViewModel(Mapping.DeviceBindings[i])
+                    {
+                        DeviceBindingName = plugin.InputCategories[i].Name,
+                        DeviceBindingCategory = plugin.InputCategories[i].Category
+                    });
+                }
+            }
+
+            RefreshInputExpressionPresentation();
+        }
+
+        public void AddAndInput()
+        {
+            AddExpressionInput(false);
+        }
+
+        public void AddOrInput()
+        {
+            AddExpressionInput(true);
+        }
+
+        private void AddExpressionInput(bool startNewOrGroup)
+        {
+            if (!ButtonsEnabled) return;
+            var binding = Mapping.AddExpressionInput(startNewOrGroup);
+            if (binding == null) return;
+
+            var viewModel = new DeviceBindingViewModel(binding)
+            {
+                DeviceBindingName = "Input " + (DeviceBindings.Count + 1),
+                DeviceBindingCategory = DeviceBindingCategory.Momentary
+            };
+            DeviceBindings.Add(viewModel);
+            SubscribeSummaryBinding(viewModel);
+            RefreshInputExpressionPresentation();
+            RefreshCollapsedSummary();
+        }
+
+        public void RemoveExpressionInput(DeviceBindingViewModel bindingViewModel)
+        {
+            if (!ButtonsEnabled || bindingViewModel?.DeviceBinding == null) return;
+            if (!Mapping.RemoveExpressionInput(bindingViewModel.DeviceBinding)) return;
+
+            bindingViewModel.Dispose();
+            DeviceBindings.Remove(bindingViewModel);
+            RefreshInputExpressionPresentation();
+            RefreshCollapsedSummary();
+        }
+
+        private void RefreshInputExpressionPresentation()
+        {
+            var visible = UsesInputExpression ? Visibility.Visible : Visibility.Collapsed;
+            var canRemove = UsesInputExpression && DeviceBindings.Count > 1;
+            for (var i = 0; i < DeviceBindings.Count; i++)
+            {
+                DeviceBindings[i].DeviceBindingName = UsesInputExpression
+                    ? "Input " + (i + 1)
+                    : (Mapping.Plugins.Count > 0 && i < Mapping.Plugins[0].InputCategories.Count
+                        ? Mapping.Plugins[0].InputCategories[i].Name
+                        : "Input " + (i + 1));
+                DeviceBindings[i].InputExpressionControlsVisibility = visible;
+                DeviceBindings[i].CanRemoveExpressionInput = canRemove;
+            }
+            OnPropertyChanged(nameof(SupportsNativeInputExpression));
+            OnPropertyChanged(nameof(UsesInputExpression));
+            OnPropertyChanged(nameof(InputLogicSummary));
+        }
+
+        private string BuildInputLogicSummary()
+        {
+            if (!UsesInputExpression) return "Single input";
+            if (Mapping?.DeviceBindings == null || Mapping.DeviceBindings.Count == 0) return "No inputs";
+
+            return string.Join("  OR  ", Mapping.DeviceBindings.Select((binding, index) => new
+                {
+                    Binding = binding,
+                    Index = index
+                })
+                .GroupBy(item => Math.Max(0, item.Binding.InputExpressionGroup))
+                .OrderBy(group => group.Key)
+                .Select(group => string.Join(" + ", group.Select(item =>
+                    (item.Binding.InputExpressionNegated ? "NOT " : string.Empty) + "Input " + (item.Index + 1)))));
         }
 
         public void RemovePlugin(PluginViewModel pluginViewModel)

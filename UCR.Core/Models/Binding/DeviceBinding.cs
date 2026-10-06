@@ -49,6 +49,14 @@ namespace HidWizards.UCR.Core.Models.Binding
         [DefaultValue(false)]
         public bool InvertInput { get; set; }
 
+        // Native logical-input metadata. Inputs in the same group are ANDed; groups are ORed.
+        [XmlAttribute]
+        [DefaultValue(0)]
+        public int InputExpressionGroup { get; set; }
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool InputExpressionNegated { get; set; }
+
         /* Runtime */
         [XmlIgnore]
         public Guid Guid { get; }
@@ -173,6 +181,23 @@ namespace HidWizards.UCR.Core.Models.Binding
             InvertInput = invert;
             Profile.Context.ContextChanged();
             OnPropertyChanged(nameof(InvertInput));
+        }
+
+        public void SetInputExpressionGroup(int group)
+        {
+            group = Math.Max(0, group);
+            if (InputExpressionGroup == group) return;
+            InputExpressionGroup = group;
+            Profile?.Context?.ContextChanged();
+            OnPropertyChanged(nameof(InputExpressionGroup));
+        }
+
+        public void SetInputExpressionNegated(bool negated)
+        {
+            if (InputExpressionNegated == negated) return;
+            InputExpressionNegated = negated;
+            Profile?.Context?.ContextChanged();
+            OnPropertyChanged(nameof(InputExpressionNegated));
         }
 
         public void SetKeyTypeValue(int type, int value, int subValue)

@@ -16,7 +16,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 {
     public class DeviceBindingViewModel : INotifyPropertyChanged, IDisposable
     {
-        public string DeviceBindingName { get; set; }
+        private string _deviceBindingName;
+        public string DeviceBindingName
+        {
+            get => _deviceBindingName;
+            set
+            {
+                if (_deviceBindingName == value) return;
+                _deviceBindingName = value;
+                OnPropertyChanged();
+            }
+        }
         public string IoTypeName => DeviceBinding.DeviceIoType.Equals(DeviceIoType.Input) ? "Input" : "Output";
         public DeviceBindingCategory DeviceBindingCategory { get; set; }
         public ObservableCollection<ComboBoxItemViewModel> Devices { get; set; }
@@ -88,6 +98,38 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             get => DeviceBinding.InvertInput;
             set => DeviceBinding.SetInvertInput(value);
+        }
+
+        public bool InputExpressionNegated
+        {
+            get => DeviceBinding.InputExpressionNegated;
+            set => DeviceBinding.SetInputExpressionNegated(value);
+        }
+
+        public string InputExpressionGroupLabel => "Group " + (DeviceBinding.InputExpressionGroup + 1);
+
+        private Visibility _inputExpressionControlsVisibility = Visibility.Collapsed;
+        public Visibility InputExpressionControlsVisibility
+        {
+            get => _inputExpressionControlsVisibility;
+            set
+            {
+                if (_inputExpressionControlsVisibility == value) return;
+                _inputExpressionControlsVisibility = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private bool _canRemoveExpressionInput;
+        public bool CanRemoveExpressionInput
+        {
+            get => _canRemoveExpressionInput;
+            set
+            {
+                if (_canRemoveExpressionInput == value) return;
+                _canRemoveExpressionInput = value;
+                OnPropertyChanged();
+            }
         }
 
         public string BindButtonText
@@ -377,6 +419,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.InvertInput), StringComparison.Ordinal))
             {
                 OnPropertyChanged(nameof(InvertInput));
+            }
+            if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.InputExpressionNegated), StringComparison.Ordinal))
+            {
+                OnPropertyChanged(nameof(InputExpressionNegated));
+            }
+            if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.InputExpressionGroup), StringComparison.Ordinal))
+            {
+                OnPropertyChanged(nameof(InputExpressionGroupLabel));
             }
         }
         

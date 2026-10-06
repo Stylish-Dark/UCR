@@ -369,6 +369,22 @@ namespace HidWizards.UCR.Views.Controls
             return null;
         }
 
+        private void AddAndInput_OnClick(object sender, RoutedEventArgs e)
+        {
+            (DataContext as MappingViewModel)?.AddAndInput();
+        }
+
+        private void AddOrInput_OnClick(object sender, RoutedEventArgs e)
+        {
+            (DataContext as MappingViewModel)?.AddOrInput();
+        }
+
+        private void RemoveExpressionInput_OnClick(object sender, RoutedEventArgs e)
+        {
+            var binding = (sender as FrameworkElement)?.DataContext as DeviceBindingViewModel;
+            (DataContext as MappingViewModel)?.RemoveExpressionInput(binding);
+        }
+
         private void AddPlugin_OnClick(object sender, RoutedEventArgs e)
         {
             var mappingViewModel = DataContext as MappingViewModel;

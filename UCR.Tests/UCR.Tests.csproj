@@ -87,6 +87,7 @@
     <Compile Include="UiTests\DeviceManagerPageSmokeTests.cs" />
     <Compile Include="UiTests\DeviceVisualCatalogTests.cs" />
     <Compile Include="ModelTests\SubscriptionTest.cs" />
+    <Compile Include="ModelTests\MappingInputExpressionTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

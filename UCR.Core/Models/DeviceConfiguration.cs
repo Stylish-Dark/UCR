@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Xml.Serialization;
 
@@ -12,6 +13,9 @@ namespace HidWizards.UCR.Core.Models
         public Device Device { get; set; }
         [XmlAttribute]
         public string ConfigurationName { get; set; }
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool BlockUnmappedInputs { get; set; }
         public List<Device> ShadowDevices { get; set; }
 
         [XmlIgnore] 
@@ -45,6 +49,13 @@ namespace HidWizards.UCR.Core.Models
         {
             Device.Profile.Context.ContextChanged();
             ShadowDevices = shadowDevices;
+        }
+
+        public void ChangeBlockUnmappedInputs(bool blockUnmappedInputs)
+        {
+            if (BlockUnmappedInputs == blockUnmappedInputs) return;
+            BlockUnmappedInputs = blockUnmappedInputs;
+            Device?.Profile?.Context?.ContextChanged();
         }
 
         public List<Device> getAvailableShadowDevices(DeviceIoType deviceIoType)

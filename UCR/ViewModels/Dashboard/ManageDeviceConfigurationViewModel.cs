@@ -23,6 +23,8 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             : "UCR cannot safely persist an individual name for this device because its provider does not expose a unique identity for it right now.";
 
         public string DeviceConfigurationName { get; set; }
+        public bool IsInputDevice => _deviceIoType == DeviceIoType.Input;
+        public bool BlockUnmappedInputs { get; set; }
 
         public DeviceAddRemoveControlViewModel ShadowDevices { get; set; }
         public ManageDeviceConfigurationViewModel ViewModel { get; set; }
@@ -44,6 +46,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             _deviceConfiguration = deviceConfiguration;
             _deviceIoType = deviceIoType;
             DeviceConfigurationName = _deviceConfiguration.ConfigurationName;
+            BlockUnmappedInputs = _deviceIoType == DeviceIoType.Input && _deviceConfiguration.BlockUnmappedInputs;
 
             var devicesManager = _deviceConfiguration.Device.Profile.Context.DevicesManager;
             DeviceAlias = devicesManager.GetDeviceAlias(_deviceConfiguration.Device);

@@ -115,11 +115,59 @@
                     <ItemsControl ItemsSource="{Binding DeviceBindings}" HorizontalContentAlignment="Stretch">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <local:DeviceBindingControl DataContext="{Binding}" DeviceBinding="{Binding DeviceBinding}"
-                                                            Label="{Binding DeviceBindingName}" Category="{Binding DeviceBindingCategory}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <local:DeviceBindingControl Grid.Column="0" DataContext="{Binding}" DeviceBinding="{Binding DeviceBinding}"
+                                                                Label="{Binding DeviceBindingName}" Category="{Binding DeviceBindingCategory}"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding InputExpressionGroupLabel}"
+                                               Visibility="{Binding InputExpressionControlsVisibility}"
+                                               VerticalAlignment="Center" Margin="8 0 5 0" Opacity="0.62" FontSize="11"/>
+                                    <CheckBox Grid.Column="2" Content="NOT" IsChecked="{Binding InputExpressionNegated, Mode=TwoWay}"
+                                              Visibility="{Binding InputExpressionControlsVisibility}"
+                                              VerticalAlignment="Center" Margin="5 0"/>
+                                    <Button Grid.Column="3" Content="×" ToolTip="Remove this logical input"
+                                            Visibility="{Binding InputExpressionControlsVisibility}"
+                                            IsEnabled="{Binding CanRemoveExpressionInput}"
+                                            Click="RemoveExpressionInput_OnClick" MinWidth="28" Margin="4 0 0 0"
+                                            Style="{StaticResource MaterialDesignFlatButton}"/>
+                                </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <Border Margin="4 4 4 8" Padding="8 6" Background="#1B1B1B" BorderBrush="#343434" BorderThickness="1" CornerRadius="3">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SupportsNativeInputExpression}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding InputLogicSummary}" VerticalAlignment="Center"
+                                       Foreground="#BDBDBD" FontSize="11.5" TextTrimming="CharacterEllipsis"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8 0 0 0">
+                                <Button Content="+ AND input" Click="AddAndInput_OnClick" IsEnabled="{Binding ButtonsEnabled}"
+                                        Style="{StaticResource MaterialDesignFlatButton}" Margin="0 0 4 0"
+                                        ToolTip="Add another input that must be held with the current final group"/>
+                                <Button Content="+ OR input" Click="AddOrInput_OnClick" IsEnabled="{Binding ButtonsEnabled}"
+                                        Style="{StaticResource MaterialDesignFlatButton}"
+                                        ToolTip="Start another alternative input group"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
                     <ItemsControl ItemsSource="{Binding Plugins}" VerticalAlignment="Stretch">
                         <ItemsControl.ItemTemplate>

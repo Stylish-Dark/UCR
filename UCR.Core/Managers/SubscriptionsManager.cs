@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using HidWizards.IOWrapper.DataTransferObjects;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Models;
@@ -31,6 +32,11 @@ namespace HidWizards.UCR.Core.Managers
 
         internal SubscriptionState SubscriptionState { get; set; }
         private readonly Context _context;
+        private const int EmergencyStopHoldMilliseconds = 3000;
+        private readonly object _emergencyStopLock = new object();
+        private readonly Dictionary<string, Timer> _emergencyStopTimers = new Dictionary<string, Timer>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _emergencyStopDeviceKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private int _emergencyStopInProgress;
 
         public SubscriptionsManager(Context context)
         {
@@ -88,6 +94,7 @@ namespace HidWizards.UCR.Core.Managers
 
         public bool DeactivateCurrentProfile()
         {
+            CancelEmergencyStopTimers();
             if (SubscriptionState == null)
             {
                 _context.SetActiveProfiles(Enumerable.Empty<Profile>());
@@ -212,6 +219,15 @@ namespace HidWizards.UCR.Core.Managers
         {
             if (state == null) return true;
             var success = true;
+            CancelEmergencyStopTimers();
+
+            // Safety subscriptions include the global Esc rescue key and generated blockers for
+            // Block Unmapped Inputs. Remove these first so normal input is restored immediately.
+            foreach (var safetySubscription in state.SafetyInputSubscriptions.ToList())
+            {
+                success &= UnsubscribeDeviceBindingInput(state, safetySubscription);
+            }
+            state.SafetyInputSubscriptions.Clear();
 
             foreach (var mappingSubscription in state.MappingSubscriptions)
             {
@@ -335,6 +351,10 @@ namespace HidWizards.UCR.Core.Managers
                 }
             }
 
+            // Install the hardwired rescue listener before any profile input subscription can start
+            // suppressing keys. It is deliberately outside the mapping engine.
+            success &= SubscribeEmergencyStopInputs(state, inputResolutionCache);
+
             foreach (var mappingSubscription in state.MappingSubscriptions)
             {
                 if (mappingSubscription.Overriden) continue;
@@ -347,8 +367,255 @@ namespace HidWizards.UCR.Core.Managers
                 }
             }
 
+            success &= SubscribeUnmappedInputBlockers(state, inputResolutionCache);
+
             state.IsActive = true;
             return success;
+        }
+
+        private bool SubscribeEmergencyStopInputs(SubscriptionState state,
+            IDictionary<Device, Device> resolutionCache)
+        {
+            var success = true;
+            List<Device> devices;
+            try
+            {
+                devices = _context.DevicesManager.GetAvailableDeviceList(DeviceIoType.Input, false);
+            }
+            catch (Exception exception)
+            {
+                Logger.Error(exception, "Unable to enumerate keyboards for the emergency stop");
+                return false;
+            }
+
+            foreach (var configuredDevice in devices.Where(device => device != null && !device.IsCache))
+            {
+                var runtimeDevice = ResolveRuntimeDevice(configuredDevice, DeviceIoType.Input, resolutionCache);
+                if (runtimeDevice == null) continue;
+
+                var escape = FindEscapeBinding(runtimeDevice);
+                if (escape == null) continue;
+
+                var deviceKey = GetRuntimeDeviceKey(runtimeDevice);
+                var binding = CreateSafetyBinding(state.ActiveProfile, escape, false,
+                    value => HandleEmergencyEscape(deviceKey, value));
+                var subscription = new InputSubscription(binding, state.ActiveProfile, state.StateGuid, runtimeDevice);
+                subscription.DeviceSubscription.ResolvedDevice = runtimeDevice;
+                state.SafetyInputSubscriptions.Add(subscription);
+                var subscribed = SubscribeDeviceBindingInput(state, subscription, resolutionCache);
+                success &= subscribed;
+                if (subscribed)
+                {
+                    lock (_emergencyStopLock) _emergencyStopDeviceKeys.Add(deviceKey);
+                }
+            }
+
+            return success;
+        }
+
+        private bool SubscribeUnmappedInputBlockers(SubscriptionState state,
+            IDictionary<Device, Device> resolutionCache)
+        {
+            var success = true;
+            var mappedByDevice = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var mappingSubscription in state.MappingSubscriptions)
+            {
+                if (mappingSubscription.Overriden) continue;
+                foreach (var inputSubscription in mappingSubscription.DeviceBindingSubscriptions)
+                {
+                    var runtimeDevice = inputSubscription.DeviceSubscription?.ResolvedDevice;
+                    var binding = inputSubscription.DeviceBinding;
+                    if (runtimeDevice == null || binding == null || !binding.IsBound) continue;
+
+                    var deviceKey = GetRuntimeDeviceKey(runtimeDevice);
+                    HashSet<string> mapped;
+                    if (!mappedByDevice.TryGetValue(deviceKey, out mapped))
+                    {
+                        mapped = new HashSet<string>(StringComparer.Ordinal);
+                        mappedByDevice[deviceKey] = mapped;
+                    }
+                    mapped.Add(GetBindingKey(binding.KeyType, binding.KeyValue, binding.KeySubValue));
+                }
+            }
+
+            var processedDevices = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var profile in state.ActiveProfiles)
+            {
+                foreach (var configuration in profile.GetDeviceConfigurationList(DeviceIoType.Input)
+                    .Where(item => item != null && item.BlockUnmappedInputs && item.Device != null))
+                {
+                    var runtimeDevice = ResolveRuntimeDevice(configuration.Device, DeviceIoType.Input, resolutionCache);
+                    if (runtimeDevice == null)
+                    {
+                        Logger.Error("Block Unmapped Inputs could not resolve device: {" + configuration.Device.LogName() + "}");
+                        success = false;
+                        continue;
+                    }
+
+                    var deviceKey = GetRuntimeDeviceKey(runtimeDevice);
+                    if (!processedDevices.Add(deviceKey)) continue;
+
+                    // A keyboard may only enter Block Unmapped mode after its hardwired Esc listener
+                    // is confirmed live. Failure is deliberately fail-open.
+                    if (FindEscapeBinding(runtimeDevice) != null)
+                    {
+                        lock (_emergencyStopLock)
+                        {
+                            if (!_emergencyStopDeviceKeys.Contains(deviceKey))
+                            {
+                                Logger.Error("Refusing Block Unmapped Inputs because the emergency Esc listener is unavailable for: {" +
+                                             runtimeDevice.LogName() + "}");
+                                success = false;
+                                continue;
+                            }
+                        }
+                    }
+
+                    HashSet<string> mapped;
+                    if (!mappedByDevice.TryGetValue(deviceKey, out mapped))
+                        mapped = new HashSet<string>(StringComparer.Ordinal);
+
+                    foreach (var node in FlattenBindingNodes(
+                        _context.DevicesManager.GetDeviceBindingMenu(runtimeDevice, DeviceIoType.Input, false)))
+                    {
+                        var info = node?.DeviceBindingInfo;
+                        if (info == null || !info.Blockable) continue;
+                        if (mapped.Contains(GetBindingKey(info.KeyType, info.KeyValue, info.KeySubValue))) continue;
+
+                        var binding = CreateSafetyBinding(profile, info, true, value => { });
+                        var subscription = new InputSubscription(binding, profile, state.StateGuid, runtimeDevice);
+                        subscription.DeviceSubscription.ResolvedDevice = runtimeDevice;
+                        state.SafetyInputSubscriptions.Add(subscription);
+                        success &= SubscribeDeviceBindingInput(state, subscription, resolutionCache);
+                    }
+                }
+            }
+
+            return success;
+        }
+
+        private DeviceBindingInfo FindEscapeBinding(Device runtimeDevice)
+        {
+            var nodes = FlattenBindingNodes(
+                _context.DevicesManager.GetDeviceBindingMenu(runtimeDevice, DeviceIoType.Input, false)).ToList();
+
+            var named = nodes.FirstOrDefault(node =>
+                node?.DeviceBindingInfo != null &&
+                (string.Equals(node.Title, "Esc", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(node.Title, "Escape", StringComparison.OrdinalIgnoreCase)));
+            if (named != null) return named.DeviceBindingInfo;
+
+            // Interception exposes keyboard scan code 1 as button index 0. Keep this fallback
+            // deliberately keyboard-specific; mouse button zero must never become a rescue key.
+            if (string.Equals(runtimeDevice.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(runtimeDevice.Title) &&
+                runtimeDevice.Title.IndexOf("keyboard", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return nodes.Select(node => node?.DeviceBindingInfo)
+                    .FirstOrDefault(info => info != null &&
+                                            info.DeviceBindingCategory == DeviceBindingCategory.Momentary &&
+                                            info.KeyValue == 0 && info.KeySubValue == 0);
+            }
+
+            return null;
+        }
+
+        private static DeviceBinding CreateSafetyBinding(Profile profile, DeviceBindingInfo info, bool block,
+            Action<short> callback)
+        {
+            return new DeviceBinding(callback ?? (value => { }), profile, DeviceIoType.Input)
+            {
+                IsBound = true,
+                DeviceBindingCategory = info.DeviceBindingCategory,
+                KeyType = info.KeyType,
+                KeyValue = info.KeyValue,
+                KeySubValue = info.KeySubValue,
+                Block = block
+            };
+        }
+
+        private void HandleEmergencyEscape(string deviceKey, short value)
+        {
+            if (string.IsNullOrWhiteSpace(deviceKey)) return;
+
+            lock (_emergencyStopLock)
+            {
+                Timer existing;
+                if (value != 0)
+                {
+                    if (_emergencyStopTimers.TryGetValue(deviceKey, out existing)) return;
+                    _emergencyStopTimers[deviceKey] = new Timer(
+                        ignored => TriggerEmergencyStop(deviceKey), null,
+                        EmergencyStopHoldMilliseconds, Timeout.Infinite);
+                    return;
+                }
+
+                if (!_emergencyStopTimers.TryGetValue(deviceKey, out existing)) return;
+                _emergencyStopTimers.Remove(deviceKey);
+                existing.Dispose();
+            }
+        }
+
+        private void TriggerEmergencyStop(string deviceKey)
+        {
+            lock (_emergencyStopLock)
+            {
+                Timer timer;
+                if (_emergencyStopTimers.TryGetValue(deviceKey, out timer))
+                {
+                    _emergencyStopTimers.Remove(deviceKey);
+                    timer.Dispose();
+                }
+            }
+
+            if (Interlocked.Exchange(ref _emergencyStopInProgress, 1) != 0) return;
+            try
+            {
+                Logger.Warn("Emergency stop triggered: Esc held for three seconds.");
+                DeactivateCurrentProfile();
+            }
+            catch (Exception exception)
+            {
+                Logger.Error(exception, "Emergency stop failed while stopping active profiles");
+            }
+            finally
+            {
+                Interlocked.Exchange(ref _emergencyStopInProgress, 0);
+            }
+        }
+
+        private void CancelEmergencyStopTimers()
+        {
+            lock (_emergencyStopLock)
+            {
+                foreach (var timer in _emergencyStopTimers.Values) timer.Dispose();
+                _emergencyStopTimers.Clear();
+                _emergencyStopDeviceKeys.Clear();
+            }
+        }
+
+        private static IEnumerable<DeviceBindingNode> FlattenBindingNodes(IEnumerable<DeviceBindingNode> nodes)
+        {
+            if (nodes == null) yield break;
+            foreach (var node in nodes)
+            {
+                if (node == null) continue;
+                if (node.IsBinding) yield return node;
+                foreach (var child in FlattenBindingNodes(node.ChildrenNodes)) yield return child;
+            }
+        }
+
+        private static string GetBindingKey(int keyType, int keyValue, int keySubValue)
+        {
+            return keyType + ":" + keyValue + ":" + keySubValue;
+        }
+
+        private static string GetRuntimeDeviceKey(Device device)
+        {
+            if (device == null) return string.Empty;
+            return (device.ProviderName ?? string.Empty) + "\u001f" +
+                   (device.DeviceHandle ?? string.Empty) + "\u001f" + device.DeviceNumber;
         }
 
 
@@ -468,7 +735,7 @@ namespace HidWizards.UCR.Core.Managers
                 SubscriptionDescriptor = GetSubscriptionDescriptor(deviceBindingSubscription.DeviceBindingSubscriptionGuid, state.StateGuid),
                 BindingDescriptor = GetBindingDescriptor(deviceBindingSubscription.DeviceBinding),
                 Callback = deviceBindingSubscription.DeviceBinding.Callback,
-                Block = deviceBindingSubscription.DeviceBinding.Block
+                Block = deviceBindingSubscription.DeviceBinding.Block || deviceBindingSubscription.ForceBlock
             };
         }
 
