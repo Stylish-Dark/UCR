@@ -17,6 +17,7 @@
         Title="Universal Control Remapper" 
         Height="600" MinHeight="400" Width="800" MinWidth="600"
         Closing="MainWindow_OnClosing"
+        KeyboardNavigation.TabNavigation="Cycle"
         PreviewKeyDown="MainWindow_OnPreviewKeyDown"
         PreviewMouseWheel="MainWindow_OnPreviewMouseWheel"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
@@ -325,7 +326,7 @@
                                                                 </Style.Triggers>
                                                             </Style>
                                                         </Border.Style>
-                                                        <TextBlock Text="ACTIVE" FontSize="8.5" FontWeight="Bold" Foreground="#8FD69C"/>
+                                                        <TextBlock Text="ACTIVE" FontSize="8.5" FontWeight="Bold" Foreground="#FFFFFF"/>
                                                     </Border>
                                                 </StackPanel>
                                                 <Ellipse Width="7" Height="7" Margin="0 0 4 0" HorizontalAlignment="Right"

@@ -633,9 +633,52 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void ProfilePage_OnPreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (!_mappingDragActive || e.Key != Key.Escape) return;
-            EndMappingDrag(false);
+            if (_mappingDragActive && e.Key == Key.Escape)
+            {
+                EndMappingDrag(false);
+                e.Handled = true;
+                return;
+            }
+
+            if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt && e.Key == Key.Left)
+            {
+                BackRequested?.Invoke(this, EventArgs.Empty);
+                e.Handled = true;
+                return;
+            }
+
+            if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) ==
+                (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.Enter)
+            {
+                ActivateProfileAlongside(this, new RoutedEventArgs());
+                e.Handled = true;
+                return;
+            }
+
+            if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control && e.Key == Key.Enter)
+            {
+                ActivateProfile(this, new RoutedEventArgs());
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key != Key.F6) return;
+
+            if (BackButton.IsKeyboardFocusWithin)
+                FocusFirst(ProfileDevicesPanel);
+            else if (ProfileDevicesPanel.IsKeyboardFocusWithin)
+                FocusFirst(MappingSectionsScrollViewer);
+            else
+                BackButton.Focus();
+
             e.Handled = true;
+        }
+
+        private static void FocusFirst(FrameworkElement element)
+        {
+            if (element == null) return;
+            element.Focus();
+            element.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
         }
 
         private void MappingListView_OnLostMouseCapture(object sender, MouseEventArgs e)

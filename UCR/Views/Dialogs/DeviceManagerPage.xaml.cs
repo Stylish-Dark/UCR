@@ -52,7 +52,10 @@ namespace HidWizards.UCR.Views.Dialogs
 
         private void DeviceManagerWindow_OnPreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key != Key.Escape) return;
+            var back = e.Key == Key.Escape ||
+                       ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt && e.Key == Key.Left);
+            if (!back) return;
+            if (!TryApply()) return;
             BackRequested?.Invoke(this, EventArgs.Empty);
             e.Handled = true;
         }

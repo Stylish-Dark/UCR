@@ -61,9 +61,69 @@ namespace HidWizards.UCR.Views
 
         private void MainWindow_OnPreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (!AppearancePopup.IsOpen || e.Key != Key.Escape) return;
-            AppearancePopup.IsOpen = false;
-            e.Handled = true;
+            if (AppearancePopup.IsOpen && e.Key == Key.Escape)
+            {
+                AppearancePopup.IsOpen = false;
+                e.Handled = true;
+                return;
+            }
+
+            if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt && e.Key == Key.Left &&
+                _navigationPage != null)
+            {
+                CloseNavigationPage(true);
+                e.Handled = true;
+                return;
+            }
+
+            if (RootDialog.Visibility == Visibility.Visible &&
+                (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control && e.Key == Key.Enter)
+            {
+                ActivateSelectedProfile(false);
+                e.Handled = true;
+                return;
+            }
+
+            if (RootDialog.Visibility == Visibility.Visible &&
+                (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) ==
+                (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.Enter)
+            {
+                ActivateSelectedProfile(true);
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key == Key.F6)
+            {
+                if (_navigationPage != null)
+                {
+                    FocusFirst(NavigationHost);
+                }
+                else if (ProfileTree.IsKeyboardFocusWithin)
+                {
+                    FocusFirst(MainToolbarHost);
+                }
+                else
+                {
+                    ProfileTree.Focus();
+                }
+                e.Handled = true;
+                return;
+            }
+
+            if (_navigationPage == null && e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None &&
+                ProfileTree.IsKeyboardFocusWithin && _dashboardViewModel.SelectedProfileItem?.Profile != null)
+            {
+                OpenProfileWindow(_dashboardViewModel.SelectedProfileItem.Profile);
+                e.Handled = true;
+            }
+        }
+
+        private static void FocusFirst(FrameworkElement element)
+        {
+            if (element == null) return;
+            element.Focus();
+            element.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
         }
 
         private void MainWindow_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
@@ -230,20 +290,27 @@ namespace HidWizards.UCR.Views
 
         private void ActivateProfile(object sender, RoutedEventArgs e)
         {
-            if (!GetSelectedItem(out var profileItem)) return;
-            if (!Context.SubscriptionsManager.ActivateProfile(profileItem.Profile))
-            {
-                HidWizards.UCR.Utilities.DarkMessageBox.Show("The Profile could not be activated, see the log for more details", "Profile failed to activate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
-            }
+            ActivateSelectedProfile(false);
         }
 
         private void ActivateProfileAlongside(object sender, RoutedEventArgs e)
         {
+            ActivateSelectedProfile(true);
+        }
+
+        private void ActivateSelectedProfile(bool alongside)
+        {
             if (!GetSelectedItem(out var profileItem)) return;
-            if (!Context.SubscriptionsManager.ActivateProfileAlongside(profileItem.Profile))
-            {
-                HidWizards.UCR.Utilities.DarkMessageBox.Show("The additional Profile could not be activated. The profiles that were already running have been restored.", "Profile failed to activate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
-            }
+            var success = alongside
+                ? Context.SubscriptionsManager.ActivateProfileAlongside(profileItem.Profile)
+                : Context.SubscriptionsManager.ActivateProfile(profileItem.Profile);
+            if (success) return;
+
+            HidWizards.UCR.Utilities.DarkMessageBox.Show(
+                alongside
+                    ? "The additional Profile could not be activated. The profiles that were already running have been restored."
+                    : "The Profile could not be activated. See the log for more details.",
+                "Profile failed to activate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
         }
 
         private void DeactivateProfile(object sender, RoutedEventArgs e)
@@ -346,6 +413,7 @@ namespace HidWizards.UCR.Views
             NavigationHost.Visibility = Visibility.Visible;
             RootDialog.Visibility = Visibility.Collapsed;
             MainToolbarHost.Visibility = Visibility.Collapsed;
+            Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => FocusFirst(page)));
         }
 
         private void NavigationPage_OnBackRequested(object sender, EventArgs e)
@@ -366,6 +434,7 @@ namespace HidWizards.UCR.Views
                 RootDialog.Visibility = Visibility.Visible;
                 MainToolbarHost.Visibility = Visibility.Visible;
                 ReloadProfileTree();
+                Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => ProfileTree.Focus()));
             }
         }
 

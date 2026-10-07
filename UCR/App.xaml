@@ -25,22 +25,36 @@
                 <Setter Property="UseLayoutRounding" Value="True"/>
                 <Setter Property="SnapsToDevicePixels" Value="True"/>
             </Style>            <DataTemplate x:Key="DeviceSymbolTemplate">
-                <controls:DeviceSymbolControl SymbolText="{Binding SymbolText}"
-                                              Foreground="{Binding BadgeTextBrush}"
-                                              GlyphSize="29"
-                                              Width="48" Height="30"
-                                              ToolTip="{Binding ToolTip}">
-                    <controls:DeviceSymbolControl.Style>
-                        <Style TargetType="{x:Type controls:DeviceSymbolControl}">
-                            <Setter Property="Visibility" Value="Visible"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding HasSymbol}" Value="False">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </controls:DeviceSymbolControl.Style>
-                </controls:DeviceSymbolControl>
+                <Grid Width="48" Height="30" ToolTip="{Binding ToolTip}">
+                    <controls:DeviceSymbolControl SymbolText="{Binding SymbolText}"
+                                                  Foreground="{Binding BadgeTextBrush}"
+                                                  GlyphSize="29"
+                                                  Width="48" Height="30">
+                        <controls:DeviceSymbolControl.Style>
+                            <Style TargetType="{x:Type controls:DeviceSymbolControl}">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasSymbol}" Value="False">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </controls:DeviceSymbolControl.Style>
+                    </controls:DeviceSymbolControl>
+                    <materialDesign:PackIcon Kind="AlertCircleOutline" Width="20" Height="20"
+                                             Foreground="#D0D0D0" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <materialDesign:PackIcon.Style>
+                            <Style TargetType="{x:Type materialDesign:PackIcon}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasSymbol}" Value="False">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </materialDesign:PackIcon.Style>
+                    </materialDesign:PackIcon>
+                </Grid>
             </DataTemplate>
 <!-- Custom UCR palette -->
             <SolidColorBrush x:Key="MaterialDesignBackground" Color="#212121"/>
@@ -78,6 +92,52 @@
                 <Setter Property="Background" Value="{DynamicResource UcrDialogBackgroundBrush}"/>
                 <Setter Property="TextElement.Foreground" Value="{DynamicResource UcrDialogForegroundBrush}"/>
                 <Setter Property="FontSize" Value="14"/>
+                <Setter Property="KeyboardNavigation.TabNavigation" Value="Cycle"/>
+                <Setter Property="KeyboardNavigation.DirectionalNavigation" Value="Contained"/>
+                <Setter Property="FocusManager.IsFocusScope" Value="True"/>
+            </Style>
+
+            <!-- Accent colour belongs to selected surfaces, not ordinary text. -->
+            <Style x:Key="UcrDialogFlatButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                <Setter Property="Foreground" Value="#FFFFFF"/>
+            </Style>
+            <Style x:Key="UcrDialogRaisedButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                <Setter Property="Foreground" Value="#FFFFFF"/>
+            </Style>
+            <Style TargetType="{x:Type Hyperlink}">
+                <Setter Property="Foreground" Value="#FFFFFF"/>
+            </Style>
+
+            <Style x:Key="UcrNavigationBackButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="Background" Value="#282828"/>
+                <Setter Property="BorderBrush" Value="#3D3D3D"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Width" Value="38"/>
+                <Setter Property="Height" Value="38"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Foreground" Value="#FFFFFF"/>
+                        <Setter Property="Background" Value="#343434"/>
+                        <Setter Property="BorderBrush" Value="#555555"/>
+                    </Trigger>
+                    <Trigger Property="IsKeyboardFocused" Value="True">
+                        <Setter Property="BorderBrush" Value="#FFFFFF"/>
+                        <Setter Property="BorderThickness" Value="2"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="{x:Static SystemParameters.FocusVisualStyleKey}">
+                <Setter Property="Control.Template">
+                    <Setter.Value>
+                        <ControlTemplate>
+                            <Border Margin="-2" BorderBrush="#FFFFFF" BorderThickness="1"
+                                    CornerRadius="2" SnapsToDevicePixels="True"/>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
 
             <!-- Device badge-text picker visuals are created only after the user clicks a row's colour button.

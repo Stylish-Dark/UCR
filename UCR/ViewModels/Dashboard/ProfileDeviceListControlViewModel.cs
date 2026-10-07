@@ -105,6 +105,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             _presentationChanged = presentationChanged;
             _dialogIdentifier = string.IsNullOrWhiteSpace(dialogIdentifier) ? "RootDialog" : dialogIdentifier;
             _profile.Context.DeviceAliasesChangedEvent += ContextOnDeviceAliasesChanged;
+            _profile.Context.ActiveProfileChangedEvent += ContextOnActiveProfileChanged;
             Devices = new ObservableCollection<DeviceItem>();
 
             var primary = _profile.GetPrimaryDeviceConfiguration(_deviceIoType);
@@ -122,6 +123,14 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             if (Devices == null) return;
             foreach (var device in Devices) device.TitleChanged();
             OnPropertyChanged(nameof(Devices));
+        }
+
+        private void ContextOnActiveProfileChanged(Profile profile)
+        {
+            if (Devices == null) return;
+            foreach (var device in Devices) device.ActiveStateChanged();
+            OnPropertyChanged(nameof(IsRemoveEnabled));
+            OnPropertyChanged(nameof(IsConfigurationEnabled));
         }
 
         private bool CanRemoveDevice()
@@ -371,7 +380,11 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 _detectionCancellation.Dispose();
                 _detectionCancellation = null;
             }
-            if (_profile != null) _profile.Context.DeviceAliasesChangedEvent -= ContextOnDeviceAliasesChanged;
+            if (_profile != null)
+            {
+                _profile.Context.DeviceAliasesChangedEvent -= ContextOnDeviceAliasesChanged;
+                _profile.Context.ActiveProfileChangedEvent -= ContextOnActiveProfileChanged;
+            }
         }
 
         private bool CanManageDeviceConfiguration()

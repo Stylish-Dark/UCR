@@ -58,6 +58,7 @@
                         <TextBlock Margin="0 1 0 0" Text="{Binding ProviderName}" FontSize="12.5" Opacity="0.50" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                     <CheckBox Grid.Column="3" IsChecked="{Binding BlockUnmappedInputs, Mode=TwoWay}"
+                              IsEnabled="{Binding CanEditConfiguration}"
                               VerticalAlignment="Center" Margin="8 0 4 0" ToolTip="Per-device default for profile-wide unmapped-input blocking">
                         <materialDesign:PackIcon Kind="ShieldOutline" Width="17" Height="17" Foreground="#FFFFFF"/>
                         <CheckBox.Style>

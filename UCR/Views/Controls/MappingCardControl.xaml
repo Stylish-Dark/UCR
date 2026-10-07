@@ -292,7 +292,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding Text}" FontSize="13.5" FontWeight="Medium"
-                                               Foreground="{Binding TypeLabel, Converter={StaticResource MappingTypeBrushConverter}}"/>
+                                               Foreground="#FFFFFF"/>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -353,7 +353,7 @@
                                 </Border.Style>
                                 <StackPanel>
                                     <TextBlock Text="{Binding QuickInputDetectionStatus}" FontSize="11" FontWeight="Bold"
-                                               Foreground="{DynamicResource PrimaryHueLightBrush}" HorizontalAlignment="Center"/>
+                                               Foreground="#FFFFFF" HorizontalAlignment="Center"/>
                                     <ProgressBar Height="3" Margin="0 3 0 0" Minimum="0" Maximum="100"
                                                  Value="{Binding QuickInputDetectionProgress, Mode=OneWay}"
                                                  Foreground="{DynamicResource PrimaryHueLightBrush}" Background="#303030"/>
@@ -374,7 +374,7 @@
                                 </Border.Style>
                                 <StackPanel>
                                     <TextBlock Text="{Binding QuickOutputDetectionStatus}" FontSize="11" FontWeight="Bold"
-                                               Foreground="{DynamicResource PrimaryHueLightBrush}" HorizontalAlignment="Center"/>
+                                               Foreground="#FFFFFF" HorizontalAlignment="Center"/>
                                     <ProgressBar Height="3" Margin="0 3 0 0" Minimum="0" Maximum="100"
                                                  Value="{Binding QuickOutputDetectionProgress, Mode=OneWay}"
                                                  Foreground="{DynamicResource PrimaryHueLightBrush}" Background="#303030"/>

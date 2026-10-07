@@ -20,14 +20,14 @@
         <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Grid.Row="2"
                     Margin="0 12 0 0">
             <Button IsDefault="True" 
-                    Style="{DynamicResource MaterialDesignFlatButton}"
+                    Style="{StaticResource UcrDialogFlatButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" 
                     Content="ACCEPT">
                 <Button.CommandParameter>
                     <system:Boolean>True</system:Boolean>
                 </Button.CommandParameter>
             </Button>
-            <Button IsCancel="True" Margin="8 0 0 0" Style="{DynamicResource MaterialDesignFlatButton}"
+            <Button IsCancel="True" Margin="8 0 0 0" Style="{StaticResource UcrDialogFlatButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
                     Content="CANCEL">
                 <Button.CommandParameter>

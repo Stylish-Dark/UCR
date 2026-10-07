@@ -33,7 +33,7 @@
                         </Style>
                     </StackPanel.Style>
                     <Button Content="{Binding DetectionButtonText}" Click="DetectDevice_OnClick"
-                            HorizontalAlignment="Left" Style="{StaticResource MaterialDesignFlatButton}"/>
+                            HorizontalAlignment="Left" Style="{StaticResource UcrDialogFlatButton}"/>
                     <TextBlock Text="{Binding DetectionStatus}" Margin="0 6 0 0" Foreground="#D0D0D0"
                                TextWrapping="Wrap" FontSize="13"/>
                 </StackPanel>
@@ -42,9 +42,9 @@
                             Margin="8">
                 <Button IsDefault="True" 
                             Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" 
-                            Content="ADD" CommandParameter="{Binding ViewModel}">
+                            Content="ADD" CommandParameter="{Binding ViewModel}" Style="{StaticResource UcrDialogRaisedButton}">
                 </Button>
-                    <Button IsCancel="True" Margin="8 0 0 0" Style="{DynamicResource MaterialDesignFlatButton}"
+                    <Button IsCancel="True" Margin="8 0 0 0" Style="{StaticResource UcrDialogFlatButton}"
                             Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
                             Content="CANCEL">
                         <Button.CommandParameter>

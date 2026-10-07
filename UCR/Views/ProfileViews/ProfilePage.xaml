@@ -17,6 +17,7 @@
              Background="{DynamicResource MaterialDesignPaper}"
              FontFamily="{DynamicResource MaterialDesignFont}"
              UseLayoutRounding="True"
+             KeyboardNavigation.TabNavigation="Cycle"
              PreviewKeyDown="ProfilePage_OnPreviewKeyDown"
              PreviewMouseWheel="ProfilePage_OnPreviewMouseWheel">
     <UserControl.Resources>
@@ -186,7 +187,7 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <Button x:Name="BackButton" Grid.Column="0" Margin="5 2 8 2" Padding="0" Width="38" Height="38"
-                    Click="Back_OnClick" Style="{StaticResource UcrProfileActionButton}" ToolTip="Back to profiles">
+                    Click="Back_OnClick" Style="{StaticResource UcrNavigationBackButton}" ToolTip="Back to profiles (Alt+Left)">
                 <materialDesign:PackIcon Kind="ArrowLeft" Width="23" Height="23"/>
             </Button>
             <TextBlock x:Name="PageTitle" Grid.Column="1" Margin="4 0 12 0" FontSize="17" FontWeight="SemiBold"
@@ -296,7 +297,7 @@
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding}" FontWeight="SemiBold"
-                                                       Foreground="{Binding Converter={StaticResource MappingTypeBrushConverter}}"/>
+                                                       Foreground="#FFFFFF"/>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
@@ -311,7 +312,7 @@
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding OutputLabel}" FontWeight="SemiBold"
-                                                       Foreground="{Binding OutputLabel, Converter={StaticResource MappingTypeBrushConverter}}"/>
+                                                       Foreground="#FFFFFF"/>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
@@ -410,7 +411,7 @@
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
                                                 <TextBlock Text="{Binding KindText}" FontSize="9.5" FontWeight="SemiBold"
-                                                           Foreground="{StaticResource MappingTypeFilterBrush}" Opacity="0.9"/>
+                                                           Foreground="#FFFFFF" Opacity="0.9"/>
                                             </StackPanel>
                                             <TextBlock Grid.Column="1" Text="{Binding ReferenceText}" FontSize="11" Opacity="0.62"
                                                        Margin="8 0 2 0" VerticalAlignment="Center"/>
@@ -483,6 +484,7 @@
                                                                     Width="44" Height="28" VerticalAlignment="Center"/>
                                                     <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                                     <CheckBox Grid.Column="3" IsChecked="{Binding BlockUnmappedInputs, Mode=TwoWay}"
+                                                              IsEnabled="{Binding CanEditConfiguration}"
                                                               VerticalAlignment="Center" Margin="6 0 2 0"
                                                               ToolTip="Per-device default for Block all unmapped inputs">
                                                         <materialDesign:PackIcon Kind="ShieldOutline" Width="15" Height="15" Foreground="#FFFFFF"/>
@@ -503,7 +505,7 @@
                                             </Style>
                                         </StackPanel.Style>
                                         <TextBlock Text="{Binding InputDeviceControlViewModel.DetectionStatus}" FontSize="10.5"
-                                                   Foreground="{DynamicResource PrimaryHueLightBrush}" TextTrimming="CharacterEllipsis"/>
+                                                   Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"/>
                                         <ProgressBar Height="2" Margin="0 2 0 0" Minimum="0" Maximum="100"
                                                      Value="{Binding InputDeviceControlViewModel.DetectionProgress, Mode=OneWay}"
                                                      Foreground="{DynamicResource PrimaryHueLightBrush}"/>
@@ -602,7 +604,7 @@
                                         </Style.Triggers>
                                     </Style>
                                 </Border.Style>
-                                <TextBlock Text="ACTIVE" FontSize="9" FontWeight="Bold" Foreground="#8FD69C"/>
+                                <TextBlock Text="ACTIVE" FontSize="9" FontWeight="Bold" Foreground="#FFFFFF"/>
                             </Border>
                         </StackPanel>
 

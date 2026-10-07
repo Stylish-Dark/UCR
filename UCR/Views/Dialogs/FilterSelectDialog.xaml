@@ -26,14 +26,14 @@
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 18 0 0">
             <Button Content="ADD"
                     IsDefault="True"
-                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    Style="{StaticResource UcrDialogRaisedButton}"
                     IsEnabled="{Binding HasSelection}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
                     CommandParameter="{Binding ViewModel}"/>
             <Button Content="CANCEL"
                     IsCancel="True"
                     Margin="8 0 0 0"
-                    Style="{StaticResource MaterialDesignFlatButton}"
+                    Style="{StaticResource UcrDialogFlatButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"/>
         </StackPanel>
     </Grid>

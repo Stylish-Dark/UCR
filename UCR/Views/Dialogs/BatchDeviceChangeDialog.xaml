@@ -4,7 +4,44 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:controls="clr-namespace:HidWizards.UCR.Views.Controls"
-             MinWidth="460">
+             MinWidth="650">
+    <UserControl.Resources>
+        <DataTemplate x:Key="ReplacementDeviceTemplate">
+            <Grid MinHeight="46" Margin="3 2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="54"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <ContentControl Grid.Column="0" Content="{Binding Visual}"
+                                ContentTemplate="{StaticResource DeviceSymbolTemplate}"
+                                Width="48" Height="30" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="5 0 0 0">
+                    <TextBlock Text="{Binding Title}" Foreground="#FFFFFF" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding AvailabilityText}" Foreground="#FFFFFF" FontSize="12"
+                               Opacity="0.64" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+
+        <Style x:Key="ReplacementCombo" TargetType="{x:Type ComboBox}">
+            <Setter Property="Height" Value="58"/>
+            <Setter Property="MinHeight" Value="58"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Background" Value="#242424"/>
+            <Setter Property="BorderBrush" Value="#777777"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="ItemTemplate" Value="{StaticResource ReplacementDeviceTemplate}"/>
+            <Style.Triggers>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter Property="BorderBrush" Value="#FFFFFF"/>
+                    <Setter Property="BorderThickness" Value="2"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -14,8 +51,9 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="Replace device" Style="{StaticResource MaterialDesignTitleTextBlock}" FontSize="20"/>
-        <TextBlock Grid.Row="1" Margin="0 7 0 16" Opacity="0.72" TextWrapping="Wrap"
+        <TextBlock Grid.Row="0" Text="Replace device" Foreground="#FFFFFF"
+                   Style="{StaticResource MaterialDesignTitleTextBlock}" FontSize="20"/>
+        <TextBlock Grid.Row="1" Margin="0 7 0 16" Foreground="#FFFFFF" Opacity="0.72" TextWrapping="Wrap"
                    Text="Replace one device throughout this profile. Compatible bindings are translated; definitely incompatible bindings are cleared rather than silently mis-mapped."/>
 
         <Grid Grid.Row="2">
@@ -24,58 +62,51 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
+
             <StackPanel Grid.Column="0">
-                <TextBlock Text="Current device" FontWeight="SemiBold" Margin="0 0 0 5"/>
-                <ComboBox ItemsSource="{Binding SourceDevices}" SelectedItem="{Binding SelectedSource, Mode=TwoWay}" MinWidth="210">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <Grid Margin="1 2">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="42"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                <Border Width="34" Height="22" Padding="4 1" CornerRadius="4" Background="#1B1B1B"
-                                        BorderBrush="{Binding Visual.OutlineBrush}" BorderThickness="1" VerticalAlignment="Center" ToolTip="{Binding Visual.ToolTip}">
-                                    <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.BadgeTextBrush}" FontSize="11.5"
-                                               FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{Binding AvailabilityText}" FontSize="12" Opacity="0.62"/>
-                                </StackPanel>
-                            </Grid>
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
+                <TextBlock Text="Current device" Foreground="#FFFFFF" FontWeight="SemiBold" Margin="0 0 0 5"/>
+                <Border Background="#1A1A1A" BorderBrush="#666666" BorderThickness="1.5" CornerRadius="4" Padding="1">
+                    <ComboBox ItemsSource="{Binding SourceDevices}" SelectedItem="{Binding SelectedSource, Mode=TwoWay}"
+                              MinWidth="270" Style="{StaticResource ReplacementCombo}"/>
+                </Border>
             </StackPanel>
-            <TextBlock Grid.Column="1" Text="→" FontSize="22" Margin="20 24" VerticalAlignment="Center" Opacity="0.62"/>
+
+            <TextBlock Grid.Column="1" Text="→" Foreground="#FFFFFF" FontSize="22"
+                       Margin="20 24" VerticalAlignment="Center" Opacity="0.72"/>
+
             <StackPanel Grid.Column="2">
-                <TextBlock Text="Replacement" FontWeight="SemiBold" Margin="0 0 0 5"/>
-                <ComboBox ItemsSource="{Binding TargetDevices}" SelectedItem="{Binding SelectedTarget, Mode=TwoWay}" MinWidth="210">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <Grid Margin="1 2">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="42"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                <Border Width="34" Height="22" Padding="4 1" CornerRadius="4" Background="#1B1B1B"
-                                        BorderBrush="{Binding Visual.OutlineBrush}" BorderThickness="1" VerticalAlignment="Center" ToolTip="{Binding Visual.ToolTip}">
-                                    <TextBlock Text="{Binding Visual.BadgeText}" Foreground="{Binding Visual.BadgeTextBrush}" FontSize="11.5"
-                                               FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{Binding AvailabilityText}" FontSize="12" Opacity="0.62"/>
-                                </StackPanel>
-                            </Grid>
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
+                <TextBlock Text="Replacement" Foreground="#FFFFFF" FontWeight="SemiBold" Margin="0 0 0 5"/>
+                <Border Background="#1A1A1A" BorderBrush="#666666" BorderThickness="1.5" CornerRadius="4" Padding="1">
+                    <Grid>
+                        <ComboBox ItemsSource="{Binding TargetDevices}" SelectedItem="{Binding SelectedTarget, Mode=TwoWay}"
+                                  MinWidth="270" Style="{StaticResource ReplacementCombo}"/>
+                        <TextBlock Text="Select replacement…" Foreground="#FFFFFF" Opacity="0.58"
+                                   Margin="14 0 36 0" VerticalAlignment="Center" IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedTarget}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+                </Border>
             </StackPanel>
         </Grid>
 
-        <TextBlock Grid.Row="3" Margin="0 12 0 0" Opacity="0.62" TextWrapping="Wrap"
+        <TextBlock Grid.Row="3" Margin="0 12 0 0" Foreground="#FFFFFF" Opacity="0.62" TextWrapping="Wrap"
                    Text="Only the selected input/output side is changed. Other device bindings in the profile are untouched."/>
 
         <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 18 0 0">
-            <Button Content="REPLACE" IsDefault="True" IsEnabled="{Binding CanApply}" Style="{StaticResource MaterialDesignRaisedButton}"
+            <Button Content="REPLACE" IsDefault="True" IsEnabled="{Binding CanApply}"
+                    Style="{StaticResource UcrDialogRaisedButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" CommandParameter="{Binding ViewModel}"/>
-            <Button Content="CANCEL" IsCancel="True" Margin="8 0 0 0" Style="{StaticResource MaterialDesignFlatButton}"
+            <Button Content="CANCEL" IsCancel="True" Margin="8 0 0 0"
+                    Style="{StaticResource UcrDialogFlatButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"/>
         </StackPanel>
     </Grid>

@@ -25,7 +25,7 @@
             Join us on our <Hyperlink RequestNavigate="Hyperlink_RequestNavigate" NavigateUri="https://discord.gg/9s9whQ4">Discord channel</Hyperlink>
         </TextBlock>
         <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Grid.Row="2">
-            <Button IsCancel="True" Margin="8 4 0 0" Style="{DynamicResource MaterialDesignFlatButton}"
+            <Button IsCancel="True" Margin="8 4 0 0" Style="{StaticResource UcrDialogFlatButton}"
                     Command="{x:Static wpf:DialogHost.CloseDialogCommand}"
                     Content="CLOSE">
                 <Button.CommandParameter>

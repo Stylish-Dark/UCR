@@ -56,7 +56,7 @@
             </ScrollViewer>
         </Border>
         <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Grid.Row="3">
-            <Button IsCancel="True" Margin="8 4 0 0" Style="{DynamicResource MaterialDesignFlatButton}"
+            <Button IsCancel="True" Margin="8 4 0 0" Style="{StaticResource UcrDialogFlatButton}"
                     Command="{x:Static wpf:DialogHost.CloseDialogCommand}"
                     Content="CLOSE">
                 <Button.CommandParameter>

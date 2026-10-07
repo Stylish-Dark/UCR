@@ -12,6 +12,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public string ProviderName => DeviceConfiguration.Device.ProviderName;
         public DeviceVisualDescriptor Visual => DeviceVisualCatalog.Describe(DeviceConfiguration, Profile, DeviceIoType);
         public bool IsInput => DeviceIoType == DeviceIoType.Input;
+        public bool CanEditConfiguration => Profile?.IsActive() != true;
         public bool BlockUnmappedInputs
         {
             get => IsInput && DeviceConfiguration?.BlockUnmappedInputs == true;
@@ -48,6 +49,11 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         {
             OnPropertyChanged(nameof(IsPrimary));
             OnPropertyChanged(nameof(PrimaryToolTip));
+        }
+
+        public void ActiveStateChanged()
+        {
+            OnPropertyChanged(nameof(CanEditConfiguration));
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

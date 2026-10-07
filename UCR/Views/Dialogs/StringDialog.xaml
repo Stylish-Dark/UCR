@@ -45,7 +45,7 @@
                     </Style>
                 </Button.Style>
             </Button>
-            <Button IsCancel="True" Margin="8 0 0 0" Style="{DynamicResource MaterialDesignFlatButton}"
+            <Button IsCancel="True" Margin="8 0 0 0" Style="{StaticResource UcrDialogFlatButton}"
                     Command="{x:Static wpf:DialogHost.CloseDialogCommand}"
                     Content="CANCEL">
                 <Button.CommandParameter>

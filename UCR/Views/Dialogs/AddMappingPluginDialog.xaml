@@ -36,9 +36,9 @@
                 <Button IsDefault="True" 
                             Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" 
                             Content="ADD" CommandParameter="{Binding ViewModel}"
-                            IsEnabled="{Binding InputValid}">
+                            IsEnabled="{Binding InputValid}" Style="{StaticResource UcrDialogRaisedButton}">
                 </Button>
-                    <Button IsCancel="True" Margin="8 0 0 0" Style="{DynamicResource MaterialDesignFlatButton}"
+                    <Button IsCancel="True" Margin="8 0 0 0" Style="{StaticResource UcrDialogFlatButton}"
                             Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
                             Content="CANCEL">
                         <Button.CommandParameter>

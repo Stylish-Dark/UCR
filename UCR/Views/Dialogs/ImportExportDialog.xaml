@@ -16,11 +16,11 @@
         <TextBlock Grid.Row="0" Text="Import / Export" Style="{StaticResource MaterialDesignTitleTextBlock}"/>
         <TextBlock Grid.Row="1" Text="What do you want to do?" Margin="0 8 0 14" Opacity="0.72"/>
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="IMPORT" MinWidth="110" Style="{StaticResource MaterialDesignRaisedButton}"
+            <Button Content="IMPORT" MinWidth="110" Style="{StaticResource UcrDialogRaisedButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" CommandParameter="Import"/>
-            <Button Content="EXPORT" MinWidth="110" Margin="8 0 0 0" Style="{StaticResource MaterialDesignRaisedButton}"
+            <Button Content="EXPORT" MinWidth="110" Margin="8 0 0 0" Style="{StaticResource UcrDialogRaisedButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" CommandParameter="Export"/>
-            <Button Content="CANCEL" IsCancel="True" Margin="8 0 0 0" Style="{StaticResource MaterialDesignFlatButton}"
+            <Button Content="CANCEL" IsCancel="True" Margin="8 0 0 0" Style="{StaticResource UcrDialogFlatButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"/>
         </StackPanel>
     </Grid>
