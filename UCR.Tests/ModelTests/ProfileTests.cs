@@ -359,23 +359,23 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
-        public void BlockAllUnmappedInputsIsProfileScopedWhileDeviceDefaultsStayIndependent()
+        public void UnmappedInputBlockingUsesProfileOverrideWithoutMutatingDeviceDefault()
         {
-            var firstDevice = new DeviceConfiguration(new Device("Keyboard A", "Core_Interception", "kbd-a", 0));
-            var secondDevice = new DeviceConfiguration(new Device("Keyboard B", "Core_Interception", "kbd-b", 1));
-            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { firstDevice, secondDevice }, DeviceIoType.Input);
+            var device = new DeviceConfiguration(new Device("Keyboard A", "Core_Interception", "kbd-a", 0));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { device }, DeviceIoType.Input);
 
-            firstDevice.ChangeBlockUnmappedInputs(true);
-            secondDevice.ChangeBlockUnmappedInputs(false);
-            _profile.BlockAllUnmappedInputs = true;
+            device.ChangeBlockUnmappedInputs(true);
+            Assert.That(_profile.IsBlockUnmappedInputsEnabled(device), Is.True,
+                "A profile with no override should inherit the device default.");
 
-            var other = _context.ProfilesManager.CreateProfile("Other", null, null);
-            _context.ProfilesManager.AddProfile(other);
+            _profile.SetBlockUnmappedInputsForProfile(device, false);
+            Assert.That(_profile.IsBlockUnmappedInputsEnabled(device), Is.False);
+            Assert.That(device.BlockUnmappedInputs, Is.True,
+                "Changing this profile must not alter the device default.");
 
-            Assert.That(_profile.BlockAllUnmappedInputs, Is.True);
-            Assert.That(other.BlockAllUnmappedInputs, Is.False);
-            Assert.That(firstDevice.BlockUnmappedInputs, Is.True);
-            Assert.That(secondDevice.BlockUnmappedInputs, Is.False);
+            _profile.SetBlockUnmappedInputsForProfile(device, true);
+            Assert.That(_profile.IsBlockUnmappedInputsEnabled(device), Is.True);
+            Assert.That(device.BlockUnmappedInputs, Is.True);
         }
 
         [Test]

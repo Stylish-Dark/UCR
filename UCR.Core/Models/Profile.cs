@@ -748,6 +748,7 @@ namespace HidWizards.UCR.Core.Models
             if (MappingGroups == null) MappingGroups = new List<MappingGroup>();
             if (InputDeviceConfigurations == null) InputDeviceConfigurations = new List<DeviceConfiguration>();
             if (OutputDeviceConfigurations == null) OutputDeviceConfigurations = new List<DeviceConfiguration>();
+            if (InputBlockingOverrides == null) InputBlockingOverrides = new List<ProfileInputBlockingOverride>();
 
             if (AutoActivateApplications == null) AutoActivateApplications = new ObservableCollection<ProfileApplicationRule>();
             foreach (var rule in AutoActivateApplications) rule?.Attach(this);

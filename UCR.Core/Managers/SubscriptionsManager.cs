@@ -499,10 +499,10 @@ namespace HidWizards.UCR.Core.Managers
             var processedDevices = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var profile in state.ActiveProfiles)
             {
-                if (profile == null || !profile.BlockAllUnmappedInputs) continue;
+                if (profile == null) continue;
 
                 foreach (var configuration in profile.GetDeviceConfigurationList(DeviceIoType.Input)
-                    .Where(item => item != null && item.BlockUnmappedInputs && item.Device != null))
+                    .Where(item => item != null && item.Device != null && profile.IsBlockUnmappedInputsEnabled(item)))
                 {
                     var runtimeDevice = ResolveRuntimeDevice(configuration.Device, DeviceIoType.Input, resolutionCache);
                     if (runtimeDevice == null)

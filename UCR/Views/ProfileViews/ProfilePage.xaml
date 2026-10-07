@@ -50,7 +50,7 @@
                 </Setter>
             </Style>
             <Style x:Key="ToolboxChoiceItem" TargetType="{x:Type ListBoxItem}">
-                <Setter Property="Margin" Value="0 0 5 5"/>
+                <Setter Property="Margin" Value="0 0 3 5"/>
                 <Setter Property="Padding" Value="0"/>
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="BorderThickness" Value="0"/>
@@ -58,7 +58,7 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="{x:Type ListBoxItem}">
-                            <Border x:Name="ChoiceBorder" Padding="8 4" CornerRadius="4" Background="#1B1B1B"
+                            <Border x:Name="ChoiceBorder" Padding="7 4" CornerRadius="4" Background="#1B1B1B"
                                     BorderBrush="#3A3A3A" BorderThickness="1">
                                 <ContentPresenter/>
                             </Border>
@@ -444,14 +444,7 @@
                                 <StackPanel VerticalAlignment="Top">
                                     <Grid Margin="8 7 8 2">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                        <StackPanel>
-                                            <TextBlock Text="INPUT" FontSize="10.5" FontWeight="SemiBold" Opacity="0.68" VerticalAlignment="Center"/>
-                                            <CheckBox Content="Block all unmapped inputs"
-                                                      IsChecked="{Binding BlockAllUnmappedInputs, Mode=TwoWay}"
-                                                      IsEnabled="{Binding CanEditProfile}"
-                                                      Foreground="#FFFFFF" Margin="0 5 0 0"
-                                                      ToolTip="Profile master switch. Only input devices whose per-device Block default is enabled are suppressed."/>
-                                        </StackPanel>
+                                        <TextBlock Text="INPUT" FontSize="10.5" FontWeight="SemiBold" Opacity="0.68" VerticalAlignment="Center"/>
                                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
                                             <Button ToolTip="Detect and add input device" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="DetectProfileInputDevice_OnClick">
                                                 <materialDesign:PackIcon Kind="Radar" Width="15" Height="15"/>
@@ -486,7 +479,7 @@
                                                     <CheckBox Grid.Column="3" IsChecked="{Binding BlockUnmappedInputs, Mode=TwoWay}"
                                                               IsEnabled="{Binding CanEditConfiguration}"
                                                               VerticalAlignment="Center" Margin="6 0 2 0"
-                                                              ToolTip="Per-device default for Block all unmapped inputs">
+                                                              ToolTip="Block all unmapped inputs from this device in this profile">
                                                         <materialDesign:PackIcon Kind="ShieldOutline" Width="15" Height="15" Foreground="#FFFFFF"/>
                                                     </CheckBox>
                                                 </Grid>

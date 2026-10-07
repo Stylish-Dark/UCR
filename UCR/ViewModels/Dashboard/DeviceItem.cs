@@ -15,11 +15,11 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public bool CanEditConfiguration => Profile?.IsActive() != true;
         public bool BlockUnmappedInputs
         {
-            get => IsInput && DeviceConfiguration?.BlockUnmappedInputs == true;
+            get => IsInput && Profile?.IsBlockUnmappedInputsEnabled(DeviceConfiguration) == true;
             set
             {
-                if (!IsInput || DeviceConfiguration == null || DeviceConfiguration.BlockUnmappedInputs == value) return;
-                DeviceConfiguration.ChangeBlockUnmappedInputs(value);
+                if (!IsInput || DeviceConfiguration == null || Profile == null || BlockUnmappedInputs == value) return;
+                Profile.SetBlockUnmappedInputsForProfile(DeviceConfiguration, value);
                 OnPropertyChanged();
             }
         }
