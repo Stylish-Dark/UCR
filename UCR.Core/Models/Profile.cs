@@ -14,6 +14,15 @@ using NLog;
 
 namespace HidWizards.UCR.Core.Models
 {
+    public class ProfileInputBlockingOverride
+    {
+        [XmlAttribute]
+        public Guid DeviceConfigurationGuid { get; set; }
+
+        [XmlAttribute]
+        public bool Enabled { get; set; }
+    }
+
     public class Profile : INotifyPropertyChanged
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
@@ -30,6 +39,10 @@ namespace HidWizards.UCR.Core.Models
 
         public List<DeviceConfiguration> InputDeviceConfigurations { get; set; }
         public List<DeviceConfiguration> OutputDeviceConfigurations { get; set; }
+
+        // Profile-local overrides. DeviceConfiguration.BlockUnmappedInputs remains the device default;
+        // editing this profile never mutates that default.
+        public List<ProfileInputBlockingOverride> InputBlockingOverrides { get; set; }
 
         private bool _autoActivateEnabled;
         private string _autoActivateExecutable;
@@ -490,6 +503,40 @@ namespace HidWizards.UCR.Core.Models
         {
             var deviceList = GetDeviceConfigurationList(deviceIoType);
             return deviceList.FirstOrDefault(configuration => configuration.Guid == deviceConfigurationGuid);
+        }
+
+        public bool IsBlockUnmappedInputsEnabled(DeviceConfiguration configuration)
+        {
+            if (configuration == null) return false;
+            if (InputBlockingOverrides == null) InputBlockingOverrides = new List<ProfileInputBlockingOverride>();
+
+            var profileOverride = InputBlockingOverrides.LastOrDefault(item =>
+                item != null && item.DeviceConfigurationGuid == configuration.Guid);
+            return profileOverride != null ? profileOverride.Enabled : configuration.BlockUnmappedInputs;
+        }
+
+        public void SetBlockUnmappedInputsForProfile(DeviceConfiguration configuration, bool enabled)
+        {
+            if (configuration == null) return;
+            if (InputBlockingOverrides == null) InputBlockingOverrides = new List<ProfileInputBlockingOverride>();
+
+            var existing = InputBlockingOverrides.FirstOrDefault(item =>
+                item != null && item.DeviceConfigurationGuid == configuration.Guid);
+            if (existing != null)
+            {
+                if (existing.Enabled == enabled) return;
+                existing.Enabled = enabled;
+            }
+            else
+            {
+                InputBlockingOverrides.Add(new ProfileInputBlockingOverride
+                {
+                    DeviceConfigurationGuid = configuration.Guid,
+                    Enabled = enabled
+                });
+            }
+
+            Context?.ContextChanged();
         }
 
         public List<DeviceConfiguration> GetDeviceConfigurationList(DeviceIoType deviceIoType)
