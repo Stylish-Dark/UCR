@@ -79,7 +79,7 @@
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="Device configuration" FontSize="18" FontWeight="SemiBold" Foreground="#FFFFFF"/>
-                        <TextBlock Text="{Binding ProviderDeviceName}" FontSize="12.5" Foreground="#AFAFAF"
+                        <TextBlock Text="{Binding ProviderDeviceName}" FontSize="12.5" Foreground="#FFFFFF"
                                    TextTrimming="CharacterEllipsis" Margin="0 2 0 0"/>
                     </StackPanel>
                 </Grid>
@@ -100,7 +100,7 @@
                             <TextBox Text="{Binding DeviceAlias, UpdateSourceTrigger=PropertyChanged}"
                                      IsEnabled="{Binding CanEditDeviceAlias}"
                                      Style="{StaticResource DeviceConfigField}"/>
-                            <TextBlock Text="{Binding DeviceAliasHelp}" TextWrapping="Wrap" Foreground="#A8A8A8"
+                            <TextBlock Text="{Binding DeviceAliasHelp}" TextWrapping="Wrap" Foreground="#FFFFFF"
                                        FontSize="11.5" Margin="0 7 0 0"/>
 
                             <Border Height="1" Background="#383838" Margin="0 18"/>
@@ -110,7 +110,7 @@
                             <TextBox Text="{Binding DeviceConfigurationName, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{StaticResource DeviceConfigField}"/>
                             <TextBlock Text="Optional label used only for this device configuration in the current profile."
-                                       TextWrapping="Wrap" Foreground="#A8A8A8" FontSize="11.5" Margin="0 7 0 0"/>
+                                       TextWrapping="Wrap" Foreground="#FFFFFF" FontSize="11.5" Margin="0 7 0 0"/>
 
                             <StackPanel Margin="0 16 0 0">
                                 <StackPanel.Style>
@@ -125,9 +125,9 @@
                                 </StackPanel.Style>
                                 <CheckBox Content="Block unmapped inputs on this device by default"
                                           IsChecked="{Binding BlockUnmappedInputs, Mode=TwoWay}"
-                                          Foreground="#ECECEC" FontWeight="SemiBold"/>
+                                          Foreground="#FFFFFF" FontWeight="SemiBold"/>
                                 <TextBlock Text="This device participates only when the profile-wide Block all unmapped inputs switch is enabled."
-                                           TextWrapping="Wrap" Foreground="#A8A8A8" FontSize="11.5" Margin="24 5 0 0"/>
+                                           TextWrapping="Wrap" Foreground="#FFFFFF" FontSize="11.5" Margin="24 5 0 0"/>
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>

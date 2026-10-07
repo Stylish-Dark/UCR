@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Plugins.Remapper;
@@ -38,7 +39,8 @@ namespace HidWizards.UCR.Tests.ModelTests
         public void ConditionApiKeepsAndTermsOnOneRowAndCreatesSeparateOrRows()
         {
             var mapping = new Mapping();
-            mapping.AddPlugin(new ButtonToButton());
+            mapping.Plugins.Add(new ButtonToButton());
+            mapping.DeviceBindings.Add(new DeviceBinding());
 
             var secondAndTerm = mapping.AddExpressionInputToGroup(0);
             var secondCondition = mapping.AddExpressionCondition();
@@ -56,7 +58,8 @@ namespace HidWizards.UCR.Tests.ModelTests
         public void RemovingAConditionCompactsRemainingGroupNumbers()
         {
             var mapping = new Mapping();
-            mapping.AddPlugin(new ButtonToButton());
+            mapping.Plugins.Add(new ButtonToButton());
+            mapping.DeviceBindings.Add(new DeviceBinding());
             mapping.AddExpressionCondition();
             mapping.AddExpressionCondition();
 
