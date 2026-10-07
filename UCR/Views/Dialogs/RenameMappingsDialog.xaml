@@ -87,7 +87,7 @@
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 16 0 0">
             <Button Content="SAVE NAMES" IsDefault="True" Style="{StaticResource UcrDialogRaisedButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" CommandParameter="{Binding ViewModel}"/>
-            <Button Content="CANCEL" IsCancel="True" Margin="8 0 0 0" Style="{StaticResource UcrDialogFlatButton}"
+            <Button Content="CANCEL" IsCancel="True" Margin="8 0 0 0" Style="{StaticResource UcrDialogRaisedButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"/>
         </StackPanel>
     </Grid>

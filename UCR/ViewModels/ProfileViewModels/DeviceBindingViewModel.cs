@@ -34,9 +34,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public Visibility ShowPreview => DeviceBinding.IsInBindMode ? Visibility.Hidden : Visibility.Visible;
         public Visibility ShowBindMode => ShowPreview.Equals(Visibility.Visible) ? Visibility.Hidden : Visibility.Visible;
         public Visibility ShowPropertyList => PluginPropertyGroup == null ? Visibility.Collapsed : Visibility.Visible;
-        public Visibility ShowBlock => DeviceBinding.DeviceIoType == DeviceIoType.Input && (DeviceBinding.Block || DeviceBinding.IsBlockable())
+        public Visibility ShowBlock => DeviceBinding.DeviceIoType == DeviceIoType.Input
             ? Visibility.Visible
             : Visibility.Collapsed;
+        public bool CanBlock => BindingEnabled && DeviceBinding.IsBound && DeviceBinding.IsBlockable();
         public Visibility ShowInvertInput => DeviceBinding.DeviceIoType == DeviceIoType.Input &&
                                              DeviceBindingCategory == DeviceBindingCategory.Range
             ? Visibility.Visible
@@ -85,6 +86,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(PreviewValue));
                 OnPropertyChanged(nameof(ShowButtonPreview));
+                OnPropertyChanged(nameof(CanBlock));
             }
         }
 
@@ -248,6 +250,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(SelectedDevice));
             OnPropertyChanged(nameof(BindButtonText));
             OnPropertyChanged(nameof(ShowBlock));
+            OnPropertyChanged(nameof(CanBlock));
             OnPropertyChanged(nameof(ShowInvertInput));
         }
 
@@ -335,6 +338,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             OnPropertyChanged(nameof(BindButtonText));
             OnPropertyChanged(nameof(ShowBlock));
+            OnPropertyChanged(nameof(CanBlock));
             OnPropertyChanged(nameof(Block));
             OnPropertyChanged(nameof(ShowInvertInput));
             OnPropertyChanged(nameof(InvertInput));
@@ -400,6 +404,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     OnPropertyChanged(nameof(SelectedDevice));
                 }
                 OnPropertyChanged(nameof(ShowBlock));
+            OnPropertyChanged(nameof(CanBlock));
                 OnPropertyChanged(nameof(Block));
                 OnPropertyChanged(nameof(ShowInvertInput));
                 OnPropertyChanged(nameof(InvertInput));
@@ -408,6 +413,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 OnPropertyChanged(nameof(BindButtonText));
                 OnPropertyChanged(nameof(ShowBlock));
+            OnPropertyChanged(nameof(CanBlock));
                 OnPropertyChanged(nameof(Block));
                 OnPropertyChanged(nameof(ShowInvertInput));
                 OnPropertyChanged(nameof(InvertInput));

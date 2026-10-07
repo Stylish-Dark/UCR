@@ -99,16 +99,17 @@
 
             <!-- Accent colour belongs to selected surfaces, not ordinary text. -->
             <Style x:Key="UcrDialogFlatButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
-                <Setter Property="Foreground" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                <Setter Property="Foreground" Value="#FFFFFF"/>
                 <Style.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{DynamicResource PrimaryHueLightBrush}"/></Trigger>
-                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Foreground" Value="{DynamicResource PrimaryHueLightBrush}"/></Trigger>
-                    <Trigger Property="IsPressed" Value="True"><Setter Property="Foreground" Value="{DynamicResource PrimaryHueLightBrush}"/></Trigger>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
+                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
+                    <Trigger Property="IsPressed" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
                 </Style.Triggers>
             </Style>
             <Style x:Key="UcrDialogRaisedButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
                 <Setter Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
-                <Setter Property="Foreground" Value="{DynamicResource PrimaryHueMidForegroundBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                <Setter Property="Foreground" Value="#FFFFFF"/>
             </Style>
             <Style TargetType="{x:Type Hyperlink}">
                 <Setter Property="Foreground" Value="#FFFFFF"/>

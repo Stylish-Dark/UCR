@@ -37,8 +37,8 @@
     </UserControl.Resources>
     <Grid MinHeight="40">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="188"/>
-            <ColumnDefinition Width="154"/>
+            <ColumnDefinition Width="158"/>
+            <ColumnDefinition Width="132"/>
             <ColumnDefinition Width="34"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
@@ -50,7 +50,7 @@
                   SelectionChanged="DeviceSelectionBox_OnSelectionChanged" ToolTip="Input device">
             <ComboBox.ItemTemplate>
                 <DataTemplate>
-                    <Grid MinWidth="162">
+                    <Grid MinWidth="132">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                         <ContentControl Grid.Column="0" Content="{Binding Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
                                         Width="34" Height="22" Margin="0 0 6 0" VerticalAlignment="Center"/>
@@ -90,9 +90,9 @@
         </Button>
 
         <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="9 0 1 0" VerticalAlignment="Center"
-                    Visibility="{Binding ShowBlock}">
+>
             <TextBlock Text="Block" Foreground="#FFFFFF" VerticalAlignment="Center" Margin="0 0 6 0"/>
-            <ToggleButton IsChecked="{Binding Block, Mode=TwoWay}" IsEnabled="{Binding BindingEnabled}"
+            <ToggleButton IsChecked="{Binding Block, Mode=TwoWay}" IsEnabled="{Binding CanBlock}"
                           Style="{StaticResource CompactSwitch}" ToolTip="Block this physical input from reaching Windows/applications"/>
         </StackPanel>
     </Grid>
