@@ -132,7 +132,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <!-- One row is one input condition. Terms within the row are ANDed; rows are ORed. -->
+                    <!-- One horizontal line = one input condition. Terms on the line are ANDed; lines are ORed. -->
                     <StackPanel Margin="4 2 4 8">
                         <StackPanel.Style>
                             <Style TargetType="StackPanel">
@@ -148,88 +148,83 @@
                         <ItemsControl ItemsSource="{Binding InputConditions}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid Margin="0 2">
+                                    <Grid MinHeight="52" Margin="0">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="34"/>
+                                            <ColumnDefinition Width="30"/>
                                             <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="OR" Visibility="{Binding OrLabelVisibility}"
-                                                   Foreground="#FFFFFF" FontWeight="Bold" FontSize="11"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.72"/>
-                                        <Border Grid.Column="1" MinHeight="52" Padding="5" Background="#1B1B1B"
-                                                BorderBrush="#5A5A5A" BorderThickness="1.5" CornerRadius="4"
-                                                KeyboardNavigation.TabNavigation="Local">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto"
-                                                              VerticalScrollBarVisibility="Disabled" PanningMode="HorizontalOnly">
-                                                    <ItemsControl ItemsSource="{Binding Inputs}">
-                                                        <ItemsControl.ItemsPanel>
-                                                            <ItemsPanelTemplate>
-                                                                <StackPanel Orientation="Horizontal"/>
-                                                            </ItemsPanelTemplate>
-                                                        </ItemsControl.ItemsPanel>
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate>
-                                                                <Border Margin="0 0 6 0" Padding="4" CornerRadius="4"
-                                                                        Background="#252525" BorderBrush="#484848" BorderThickness="1">
-                                                                    <StackPanel Orientation="Horizontal">
-                                                                        <local:CompactInputBindingControl DataContext="{Binding}"
-                                                                                                          DeviceBinding="{Binding DeviceBinding}"
-                                                                                                          Width="322"/>
-                                                                        <ToggleButton Content="NOT" Width="46" Height="36" Margin="5 0 0 0"
-                                                                                      IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
-                                                                                      Click="InputNegated_OnClick"
-                                                                                      Foreground="#FFFFFF" Background="#2B2B2B"
-                                                                                      BorderBrush="#555555" BorderThickness="1"
-                                                                                      ToolTip="Negate this input term"/>
-                                                                        <Button Content="×" Width="30" Height="36" Margin="2 0 0 0"
-                                                                                Click="RemoveExpressionInput_OnClick"
-                                                                                Foreground="#FFFFFF"
-                                                                                ToolTip="Remove this input from the condition"
-                                                                                Style="{StaticResource MaterialDesignFlatButton}"/>
-                                                                    </StackPanel>
-                                                                </Border>
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-                                                </ScrollViewer>
 
-                                                <Button Grid.Column="1" Content="[+]" MinWidth="42" Height="38" Margin="5 0 0 0"
-                                                        IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
-                                                        Click="AddInputToCondition_OnClick" Foreground="#FFFFFF"
-                                                        ToolTip="Add another input to this condition (AND)"
-                                                        Style="{StaticResource MaterialDesignFlatButton}"/>
-                                                <Button Grid.Column="2" Content="×" Width="30" Height="38" Margin="2 0 0 0"
-                                                        IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
-                                                        Click="RemoveCondition_OnClick"
-                                                        ToolTip="Remove this entire OR condition">
-                                                    <Button.Style>
-                                                        <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                            <Setter Property="Foreground" Value="#FFFFFF"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding CanRemoveCondition}" Value="False">
-                                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Button.Style>
-                                                </Button>
-                                            </Grid>
+                                        <TextBlock Grid.Column="0" Text="OR" Visibility="{Binding OrLabelVisibility}"
+                                                   Foreground="#FFFFFF" FontWeight="SemiBold" FontSize="11"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.68"/>
+
+                                        <Border Grid.Column="1" BorderBrush="#454545" BorderThickness="0 0 0 1"
+                                                Padding="4 5 0 5">
+                                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                                                          PanningMode="HorizontalOnly">
+                                                <ItemsControl ItemsSource="{Binding Inputs}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <local:CompactInputBindingControl DataContext="{Binding}"
+                                                                                                  DeviceBinding="{Binding DeviceBinding}"
+                                                                                                  Width="454"/>
+                                                                <CheckBox Content="NOT" IsChecked="{Binding InputExpressionNegated, Mode=TwoWay}"
+                                                                          IsEnabled="{Binding BindingEnabled}"
+                                                                          VerticalAlignment="Center" Foreground="#FFFFFF"
+                                                                          Margin="8 0 5 0"
+                                                                          ToolTip="Require this input NOT to be pressed"/>
+                                                                <Button Content="×" Width="28" Height="30" Margin="0 0 6 0"
+                                                                        Click="RemoveExpressionInput_OnClick"
+                                                                        IsEnabled="{Binding BindingEnabled}"
+                                                                        Foreground="#FFFFFF"
+                                                                        ToolTip="Remove this input from the condition"
+                                                                        Style="{StaticResource MaterialDesignFlatButton}"/>
+                                                                <Border Width="1" Height="28" Background="#414141" Margin="0 0 8 0"/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </ScrollViewer>
                                         </Border>
+
+                                        <Button Grid.Column="2" Content="[+]" MinWidth="44" Height="34" Margin="6 0 2 0"
+                                                IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
+                                                Click="AddInputToCondition_OnClick"
+                                                Foreground="{DynamicResource PrimaryHueLightBrush}"
+                                                ToolTip="Add another input to this condition (AND)"
+                                                Style="{StaticResource MaterialDesignFlatButton}"/>
+
+                                        <Button Grid.Column="3" Width="30" Height="34" Margin="0 0 2 0"
+                                                IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
+                                                Click="RemoveCondition_OnClick" ToolTip="Remove this entire OR condition">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding CanRemoveCondition}" Value="False">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                            <materialDesign:PackIcon Kind="DeleteOutline" Width="17" Height="17"/>
+                                        </Button>
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
-                        <Button Content="+ OR condition" HorizontalAlignment="Left" Margin="34 5 0 0"
+                        <Button Content="+ OR condition" HorizontalAlignment="Left" Margin="30 5 0 0"
                                 Click="AddCondition_OnClick" IsEnabled="{Binding ButtonsEnabled}"
-                                Foreground="#FFFFFF" Style="{StaticResource MaterialDesignFlatButton}"
+                                Foreground="{DynamicResource PrimaryHueLightBrush}"
+                                Style="{StaticResource MaterialDesignFlatButton}"
                                 ToolTip="Add an alternative input condition"/>
                     </StackPanel>
 

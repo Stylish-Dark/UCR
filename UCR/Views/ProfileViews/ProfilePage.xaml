@@ -64,8 +64,8 @@
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsSelected" Value="True">
-                                    <Setter TargetName="ChoiceBorder" Property="Background" Value="#303030"/>
-                                    <Setter TargetName="ChoiceBorder" Property="BorderBrush" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                    <Setter TargetName="ChoiceBorder" Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                    <Setter TargetName="ChoiceBorder" Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
                                 </Trigger>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter TargetName="ChoiceBorder" Property="Background" Value="#2B2B2B"/>

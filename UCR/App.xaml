@@ -99,20 +99,16 @@
 
             <!-- Accent colour belongs to selected surfaces, not ordinary text. -->
             <Style x:Key="UcrDialogFlatButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
-                <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryHueLightBrush}"/>
                 <Style.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
-                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
-                    <Trigger Property="IsPressed" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{DynamicResource PrimaryHueLightBrush}"/></Trigger>
+                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Foreground" Value="{DynamicResource PrimaryHueLightBrush}"/></Trigger>
+                    <Trigger Property="IsPressed" Value="True"><Setter Property="Foreground" Value="{DynamicResource PrimaryHueLightBrush}"/></Trigger>
                 </Style.Triggers>
             </Style>
             <Style x:Key="UcrDialogRaisedButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
-                <Setter Property="Foreground" Value="#FFFFFF"/>
-                <Style.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
-                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
-                    <Trigger Property="IsPressed" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
-                </Style.Triggers>
+                <Setter Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryHueMidForegroundBrush}"/>
             </Style>
             <Style TargetType="{x:Type Hyperlink}">
                 <Setter Property="Foreground" Value="#FFFFFF"/>
@@ -120,21 +116,19 @@
 
             <Style x:Key="UcrNavigationBackButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
                 <Setter Property="Foreground" Value="#FFFFFF"/>
-                <Setter Property="Background" Value="#282828"/>
-                <Setter Property="BorderBrush" Value="#3D3D3D"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="Padding" Value="0"/>
-                <Setter Property="Width" Value="38"/>
-                <Setter Property="Height" Value="38"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="3"/>
+                <Setter Property="Width" Value="34"/>
+                <Setter Property="Height" Value="30"/>
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
                         <Setter Property="Foreground" Value="#FFFFFF"/>
-                        <Setter Property="Background" Value="#343434"/>
-                        <Setter Property="BorderBrush" Value="#555555"/>
+                        <Setter Property="Background" Value="#303030"/>
                     </Trigger>
                     <Trigger Property="IsKeyboardFocused" Value="True">
-                        <Setter Property="BorderBrush" Value="#FFFFFF"/>
-                        <Setter Property="BorderThickness" Value="2"/>
+                        <Setter Property="Foreground" Value="#FFFFFF"/>
+                        <Setter Property="Background" Value="#303030"/>
                     </Trigger>
                 </Style.Triggers>
             </Style>
