@@ -69,7 +69,7 @@
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="95"/>
-            <ColumnDefinition Width="210"/>
+            <ColumnDefinition Width="150"/>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
@@ -81,7 +81,7 @@
 
         <ComboBox Grid.Row="0" Grid.Column="1"
                   Margin="0 0 8 0"
-                  MinWidth="195"
+                  MinWidth="135"
                   x:Name="DeviceSelectionBox"
                   ItemsSource="{Binding Devices}"
                   SelectedItem="{Binding SelectedDevice}"
@@ -90,7 +90,7 @@
                   SelectionChanged="DeviceNumberBox_OnSelected">
             <ComboBox.ItemTemplate>
                 <DataTemplate>
-                    <Grid MinWidth="170">
+                    <Grid MinWidth="110">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="38"/>
                             <ColumnDefinition Width="*"/>

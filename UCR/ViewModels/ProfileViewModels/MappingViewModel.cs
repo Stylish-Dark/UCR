@@ -454,15 +454,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void RefreshInputExpressionPresentation()
         {
+            var visible = UsesInputExpression ? Visibility.Visible : Visibility.Collapsed;
             var canRemove = UsesInputExpression && DeviceBindings.Count > 1;
             for (var i = 0; i < DeviceBindings.Count; i++)
             {
-                DeviceBindings[i].DeviceBindingName = SupportsNativeInputExpression
-                    ? "Input"
+                DeviceBindings[i].DeviceBindingName = UsesInputExpression
+                    ? "Input " + (i + 1)
                     : (Mapping.Plugins.Count > 0 && i < Mapping.Plugins[0].InputCategories.Count
                         ? Mapping.Plugins[0].InputCategories[i].Name
                         : "Input " + (i + 1));
-                DeviceBindings[i].InputExpressionControlsVisibility = Visibility.Collapsed;
+                DeviceBindings[i].InputExpressionControlsVisibility = visible;
                 DeviceBindings[i].CanRemoveExpressionInput = canRemove;
             }
 
