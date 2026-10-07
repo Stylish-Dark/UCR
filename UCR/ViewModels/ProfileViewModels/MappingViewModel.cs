@@ -48,6 +48,21 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public BindingVisualDescriptor Visual { get; set; }
     }
 
+    public sealed class InputConditionViewModel
+    {
+        public int GroupIndex { get; }
+        public ObservableCollection<DeviceBindingViewModel> Inputs { get; }
+        public Visibility OrLabelVisibility => GroupIndex > 0 ? Visibility.Visible : Visibility.Collapsed;
+        public bool CanRemoveCondition { get; }
+
+        public InputConditionViewModel(int groupIndex, IEnumerable<DeviceBindingViewModel> inputs, bool canRemoveCondition)
+        {
+            GroupIndex = groupIndex;
+            Inputs = new ObservableCollection<DeviceBindingViewModel>(inputs ?? Enumerable.Empty<DeviceBindingViewModel>());
+            CanRemoveCondition = canRemoveCondition;
+        }
+    }
+
     public class MappingViewModel : INotifyPropertyChanged, IDisposable
     {
         public string MappingTitle => Mapping.FullTitle;
@@ -55,6 +70,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public Mapping Mapping { get; set; }
         public ObservableCollection<PluginViewModel> Plugins { get; set; }
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
+        public ObservableCollection<InputConditionViewModel> InputConditions { get; private set; }
         public bool ButtonsEnabled => !ProfileViewModel.Profile.IsActive();
         public bool SupportsNativeInputExpression => Mapping?.SupportsNativeInputExpression() == true;
         public bool UsesInputExpression => Mapping?.UseInputExpression == true;
@@ -217,6 +233,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             Mapping = mapping;
             IsExpanded = false;
             DeviceBindings = new ObservableCollection<DeviceBindingViewModel>();
+            InputConditions = new ObservableCollection<InputConditionViewModel>();
             PopulateDeviceBindingsViewModels();
             PopulatePlugins(mapping);
             SubscribeSummaryBindings();
@@ -358,23 +375,37 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public void AddAndInput()
         {
-            AddExpressionInput(false);
+            var condition = InputConditions?.LastOrDefault();
+            AddInputToCondition(condition);
         }
 
         public void AddOrInput()
         {
-            AddExpressionInput(true);
+            AddCondition();
         }
 
-        private void AddExpressionInput(bool startNewOrGroup)
+        public void AddInputToCondition(InputConditionViewModel condition)
         {
-            if (!ButtonsEnabled) return;
-            var binding = Mapping.AddExpressionInput(startNewOrGroup);
+            if (!ButtonsEnabled || !SupportsNativeInputExpression) return;
+            var group = condition?.GroupIndex ?? 0;
+            var binding = Mapping.AddExpressionInputToGroup(group);
+            AddExpressionBindingViewModel(binding);
+        }
+
+        public void AddCondition()
+        {
+            if (!ButtonsEnabled || !SupportsNativeInputExpression) return;
+            var binding = Mapping.AddExpressionCondition();
+            AddExpressionBindingViewModel(binding);
+        }
+
+        private void AddExpressionBindingViewModel(DeviceBinding binding)
+        {
             if (binding == null) return;
 
             var viewModel = new DeviceBindingViewModel(binding)
             {
-                DeviceBindingName = "Input " + (DeviceBindings.Count + 1),
+                DeviceBindingName = "Input",
                 DeviceBindingCategory = DeviceBindingCategory.Momentary
             };
             DeviceBindings.Add(viewModel);
@@ -394,23 +425,72 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             RefreshCollapsedSummary();
         }
 
+        public void RemoveCondition(InputConditionViewModel condition)
+        {
+            if (!ButtonsEnabled || condition == null || !condition.CanRemoveCondition) return;
+            var removed = condition.Inputs.ToList();
+            if (!Mapping.RemoveExpressionGroup(condition.GroupIndex)) return;
+
+            foreach (var binding in removed)
+            {
+                binding.Dispose();
+                DeviceBindings.Remove(binding);
+            }
+            RefreshInputExpressionPresentation();
+            RefreshCollapsedSummary();
+        }
+
+        public void SetInputNegated(DeviceBindingViewModel bindingViewModel, bool negated)
+        {
+            if (!ButtonsEnabled || bindingViewModel?.DeviceBinding == null) return;
+            if (!Mapping.SetExpressionNegated(bindingViewModel.DeviceBinding, negated)) return;
+            RefreshInputExpressionPresentation();
+            RefreshCollapsedSummary();
+        }
+
         private void RefreshInputExpressionPresentation()
         {
-            var visible = UsesInputExpression ? Visibility.Visible : Visibility.Collapsed;
             var canRemove = UsesInputExpression && DeviceBindings.Count > 1;
             for (var i = 0; i < DeviceBindings.Count; i++)
             {
-                DeviceBindings[i].DeviceBindingName = UsesInputExpression
-                    ? "Input " + (i + 1)
+                DeviceBindings[i].DeviceBindingName = SupportsNativeInputExpression
+                    ? "Input"
                     : (Mapping.Plugins.Count > 0 && i < Mapping.Plugins[0].InputCategories.Count
                         ? Mapping.Plugins[0].InputCategories[i].Name
                         : "Input " + (i + 1));
-                DeviceBindings[i].InputExpressionControlsVisibility = visible;
+                DeviceBindings[i].InputExpressionControlsVisibility = Visibility.Collapsed;
                 DeviceBindings[i].CanRemoveExpressionInput = canRemove;
             }
+
+            RebuildInputConditions();
             OnPropertyChanged(nameof(SupportsNativeInputExpression));
             OnPropertyChanged(nameof(UsesInputExpression));
             OnPropertyChanged(nameof(InputLogicSummary));
+            OnPropertyChanged(nameof(InputConditions));
+        }
+
+        private void RebuildInputConditions()
+        {
+            if (InputConditions == null) InputConditions = new ObservableCollection<InputConditionViewModel>();
+            InputConditions.Clear();
+            if (!SupportsNativeInputExpression || DeviceBindings == null || DeviceBindings.Count == 0) return;
+
+            if (!UsesInputExpression)
+            {
+                InputConditions.Add(new InputConditionViewModel(0, DeviceBindings.Take(1), false));
+                return;
+            }
+
+            var groups = DeviceBindings
+                .Where(binding => binding?.DeviceBinding != null)
+                .GroupBy(binding => Math.Max(0, binding.DeviceBinding.InputExpressionGroup))
+                .OrderBy(group => group.Key)
+                .ToList();
+            var canRemoveCondition = groups.Count > 1;
+            foreach (var group in groups)
+            {
+                InputConditions.Add(new InputConditionViewModel(group.Key, group, canRemoveCondition));
+            }
         }
 
         private string BuildInputLogicSummary()

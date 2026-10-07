@@ -379,10 +379,35 @@ namespace HidWizards.UCR.Views.Controls
             (DataContext as MappingViewModel)?.AddOrInput();
         }
 
+        private void AddInputToCondition_OnClick(object sender, RoutedEventArgs e)
+        {
+            var condition = (sender as FrameworkElement)?.DataContext as InputConditionViewModel;
+            (DataContext as MappingViewModel)?.AddInputToCondition(condition);
+        }
+
+        private void AddCondition_OnClick(object sender, RoutedEventArgs e)
+        {
+            (DataContext as MappingViewModel)?.AddCondition();
+        }
+
         private void RemoveExpressionInput_OnClick(object sender, RoutedEventArgs e)
         {
             var binding = (sender as FrameworkElement)?.DataContext as DeviceBindingViewModel;
             (DataContext as MappingViewModel)?.RemoveExpressionInput(binding);
+        }
+
+        private void RemoveCondition_OnClick(object sender, RoutedEventArgs e)
+        {
+            var condition = (sender as FrameworkElement)?.DataContext as InputConditionViewModel;
+            (DataContext as MappingViewModel)?.RemoveCondition(condition);
+        }
+
+        private void InputNegated_OnClick(object sender, RoutedEventArgs e)
+        {
+            var toggle = sender as ToggleButton;
+            var binding = toggle?.DataContext as DeviceBindingViewModel;
+            if (toggle == null || binding == null) return;
+            (DataContext as MappingViewModel)?.SetInputNegated(binding, toggle.IsChecked == true);
         }
 
         private void AddPlugin_OnClick(object sender, RoutedEventArgs e)

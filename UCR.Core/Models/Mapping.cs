@@ -202,24 +202,35 @@ namespace HidWizards.UCR.Core.Models
                    categories[0].Category == DeviceBindingCategory.Momentary;
         }
 
+        public bool EnableInputExpression()
+        {
+            if (!SupportsNativeInputExpression()) return false;
+            if (UseInputExpression) return true;
+            if (DeviceBindings == null || DeviceBindings.Count != 1) return false;
+
+            UseInputExpression = true;
+            DeviceBindings[0].InputExpressionGroup = 0;
+            DeviceBindings[0].InputExpressionNegated = false;
+            Profile?.Context?.ContextChanged();
+            return true;
+        }
+
         public DeviceBinding AddExpressionInput(bool startNewOrGroup)
         {
-            if (!SupportsNativeInputExpression()) return null;
-
-            if (!UseInputExpression)
-            {
-                if (DeviceBindings == null || DeviceBindings.Count != 1) return null;
-                UseInputExpression = true;
-                DeviceBindings[0].InputExpressionGroup = 0;
-                DeviceBindings[0].InputExpressionNegated = false;
-            }
-
+            if (!EnableInputExpression()) return null;
             var group = 0;
             if (DeviceBindings.Count > 0)
             {
                 var lastGroup = DeviceBindings.Max(item => Math.Max(0, item.InputExpressionGroup));
                 group = startNewOrGroup ? lastGroup + 1 : lastGroup;
             }
+            return AddExpressionInputToGroup(group);
+        }
+
+        public DeviceBinding AddExpressionInputToGroup(int group)
+        {
+            if (!EnableInputExpression()) return null;
+            group = Math.Max(0, group);
 
             var binding = new DeviceBinding(Update, Profile, DeviceIoType.Input)
             {
@@ -228,7 +239,8 @@ namespace HidWizards.UCR.Core.Models
                 InputExpressionNegated = false
             };
 
-            var template = DeviceBindings.LastOrDefault();
+            var template = DeviceBindings.LastOrDefault(item => Math.Max(0, item.InputExpressionGroup) == group)
+                           ?? DeviceBindings.LastOrDefault();
             if (template != null) binding.DeviceConfigurationGuid = template.DeviceConfigurationGuid;
 
             DeviceBindings.Add(binding);
@@ -236,21 +248,52 @@ namespace HidWizards.UCR.Core.Models
             return binding;
         }
 
+        public DeviceBinding AddExpressionCondition()
+        {
+            if (!EnableInputExpression()) return null;
+            var nextGroup = DeviceBindings.Count == 0
+                ? 0
+                : DeviceBindings.Max(item => Math.Max(0, item.InputExpressionGroup)) + 1;
+            return AddExpressionInputToGroup(nextGroup);
+        }
+
+        public bool SetExpressionNegated(DeviceBinding binding, bool negated)
+        {
+            if (binding == null || !DeviceBindings.Contains(binding) || !EnableInputExpression()) return false;
+            binding.SetInputExpressionNegated(negated);
+            return true;
+        }
+
         public bool RemoveExpressionInput(DeviceBinding binding)
         {
             if (!UseInputExpression || binding == null || DeviceBindings == null || DeviceBindings.Count <= 1)
                 return false;
             if (!DeviceBindings.Remove(binding)) return false;
+            NormalizeExpressionGroups();
+            Profile?.Context?.ContextChanged();
+            return true;
+        }
 
+        public bool RemoveExpressionGroup(int group)
+        {
+            if (!UseInputExpression || DeviceBindings == null) return false;
+            var members = DeviceBindings.Where(item => Math.Max(0, item.InputExpressionGroup) == Math.Max(0, group)).ToList();
+            if (members.Count == 0 || members.Count == DeviceBindings.Count) return false;
+
+            foreach (var member in members) DeviceBindings.Remove(member);
+            NormalizeExpressionGroups();
+            Profile?.Context?.ContextChanged();
+            return true;
+        }
+
+        private void NormalizeExpressionGroups()
+        {
             var groups = DeviceBindings.Select(item => Math.Max(0, item.InputExpressionGroup))
                 .Distinct().OrderBy(group => group).ToList();
             var remap = groups.Select((group, index) => new { group, index })
                 .ToDictionary(item => item.group, item => item.index);
             foreach (var item in DeviceBindings)
                 item.SetInputExpressionGroup(remap[Math.Max(0, item.InputExpressionGroup)]);
-
-            Profile?.Context?.ContextChanged();
-            return true;
         }
 
         #region Plugin

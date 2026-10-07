@@ -135,6 +135,9 @@
     <Compile Include="Views\Controls\DeviceBindingControl.xaml.cs">
       <DependentUpon>DeviceBindingControl.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Views\Controls\CompactInputBindingControl.xaml.cs">
+      <DependentUpon>CompactInputBindingControl.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Views\Controls\DeviceAddRemoveControl.xaml.cs">
       <DependentUpon>DeviceAddRemoveControl.xaml</DependentUpon>
     </Compile>
@@ -239,6 +242,10 @@
       <SubType>Designer</SubType>
     </DesignData>
     <Page Include="Views\Controls\DeviceBindingControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\Controls\CompactInputBindingControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
