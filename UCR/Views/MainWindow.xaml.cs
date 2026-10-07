@@ -68,14 +68,6 @@ namespace HidWizards.UCR.Views
                 return;
             }
 
-            if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt && e.Key == Key.Left &&
-                _navigationPage != null)
-            {
-                CloseNavigationPage(true);
-                e.Handled = true;
-                return;
-            }
-
             if (RootDialog.Visibility == Visibility.Visible &&
                 (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) ==
                 (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.Enter)

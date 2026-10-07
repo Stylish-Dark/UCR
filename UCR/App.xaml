@@ -100,9 +100,19 @@
             <!-- Accent colour belongs to selected surfaces, not ordinary text. -->
             <Style x:Key="UcrDialogFlatButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
                 <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
+                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
+                    <Trigger Property="IsPressed" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
+                </Style.Triggers>
             </Style>
             <Style x:Key="UcrDialogRaisedButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
                 <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
+                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
+                    <Trigger Property="IsPressed" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
+                </Style.Triggers>
             </Style>
             <Style TargetType="{x:Type Hyperlink}">
                 <Setter Property="Foreground" Value="#FFFFFF"/>
