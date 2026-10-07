@@ -112,37 +112,30 @@
             <Border Margin="8 0 8 8" Padding="4 6 4 4" Background="#202020"
                     BorderBrush="#303030" BorderThickness="1 1 1 0" CornerRadius="3">
                 <StackPanel>
+                    <!-- Non-boolean plugins retain the full legacy editor. -->
                     <ItemsControl ItemsSource="{Binding DeviceBindings}" HorizontalContentAlignment="Stretch">
+                        <ItemsControl.Style>
+                            <Style TargetType="ItemsControl">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SupportsNativeInputExpression}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ItemsControl.Style>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <local:DeviceBindingControl Grid.Column="0" DataContext="{Binding}" DeviceBinding="{Binding DeviceBinding}"
-                                                                Label="{Binding DeviceBindingName}" Category="{Binding DeviceBindingCategory}"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding InputExpressionGroupLabel}"
-                                               Visibility="{Binding InputExpressionControlsVisibility}"
-                                               VerticalAlignment="Center" Margin="8 0 5 0" Opacity="0.62" FontSize="11"/>
-                                    <CheckBox Grid.Column="2" Content="NOT" IsChecked="{Binding InputExpressionNegated, Mode=TwoWay}"
-                                              Visibility="{Binding InputExpressionControlsVisibility}"
-                                              VerticalAlignment="Center" Margin="5 0"/>
-                                    <Button Grid.Column="3" Content="×" ToolTip="Remove this logical input"
-                                            Visibility="{Binding InputExpressionControlsVisibility}"
-                                            IsEnabled="{Binding CanRemoveExpressionInput}"
-                                            Click="RemoveExpressionInput_OnClick" MinWidth="28" Margin="4 0 0 0"
-                                            Style="{StaticResource MaterialDesignFlatButton}"/>
-                                </Grid>
+                                <local:DeviceBindingControl DataContext="{Binding}" DeviceBinding="{Binding DeviceBinding}"
+                                                            Label="{Binding DeviceBindingName}" Category="{Binding DeviceBindingCategory}"/>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <Border Margin="4 4 4 8" Padding="8 6" Background="#1B1B1B" BorderBrush="#343434" BorderThickness="1" CornerRadius="3">
-                        <Border.Style>
-                            <Style TargetType="Border">
+                    <!-- One bordered row = one boolean condition. Inputs in the row are ANDed; rows are ORed. -->
+                    <StackPanel Margin="4 2 4 8">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
                                 <Setter Property="Visibility" Value="Collapsed"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding SupportsNativeInputExpression}" Value="True">
@@ -150,24 +143,83 @@
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </Border.Style>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="{Binding InputLogicSummary}" VerticalAlignment="Center"
-                                       Foreground="#BDBDBD" FontSize="11.5" TextTrimming="CharacterEllipsis"/>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8 0 0 0">
-                                <Button Content="+ AND input" Click="AddAndInput_OnClick" IsEnabled="{Binding ButtonsEnabled}"
-                                        Style="{StaticResource MaterialDesignFlatButton}" Margin="0 0 4 0"
-                                        ToolTip="Add another input that must be held with the current final group"/>
-                                <Button Content="+ OR input" Click="AddOrInput_OnClick" IsEnabled="{Binding ButtonsEnabled}"
-                                        Style="{StaticResource MaterialDesignFlatButton}"
-                                        ToolTip="Start another alternative input group"/>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
+                        </StackPanel.Style>
+
+                        <ItemsControl ItemsSource="{Binding InputConditions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0 4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="34"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0" Text="OR" Visibility="{Binding OrLabelVisibility}"
+                                                   Foreground="#FFFFFF" FontSize="12" FontWeight="SemiBold"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Opacity="0.72"/>
+
+                                        <Border Grid.Column="1" MinHeight="66" Padding="10 8"
+                                                Background="#1E1E1E" BorderBrush="#555555"
+                                                BorderThickness="1.5" CornerRadius="5">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Keep the preferred clean row. Horizontal overflow is still possible,
+                                                     but the ugly accent scrollbar is not shown. -->
+                                                <ScrollViewer Grid.Column="0"
+                                                              HorizontalScrollBarVisibility="Hidden"
+                                                              VerticalScrollBarVisibility="Disabled"
+                                                              PanningMode="HorizontalOnly"
+                                                              Background="Transparent">
+                                                    <ItemsControl ItemsSource="{Binding Inputs}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <StackPanel Orientation="Horizontal"/>
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Border Width="705" MinHeight="50"
+                                                                        Margin="0 0 10 0" Padding="9 6"
+                                                                        Background="#232323"
+                                                                        BorderBrush="#4B4B4B"
+                                                                        BorderThickness="1.5"
+                                                                        CornerRadius="5">
+                                                                    <local:CompactInputBindingControl
+                                                                        DataContext="{Binding}"
+                                                                        DeviceBinding="{Binding DeviceBinding}"/>
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </ScrollViewer>
+
+                                                <Button Grid.Column="1" Content="[+]"
+                                                        MinWidth="54" Height="42" Margin="10 0 2 0"
+                                                        IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
+                                                        Click="AddInputToCondition_OnClick"
+                                                        Foreground="#FFFFFF"
+                                                        ToolTip="Add another input to this condition (AND)"
+                                                        Style="{StaticResource MaterialDesignFlatButton}"/>
+                                            </Grid>
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Button Content="+ OR condition"
+                                HorizontalAlignment="Left" Margin="34 4 0 0"
+                                Click="AddCondition_OnClick"
+                                IsEnabled="{Binding ButtonsEnabled}"
+                                Foreground="#FFFFFF"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                ToolTip="Add an alternative input condition"/>
+                    </StackPanel>
 
                     <ItemsControl ItemsSource="{Binding Plugins}" VerticalAlignment="Stretch">
                         <ItemsControl.ItemTemplate>
@@ -228,7 +280,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding Text}" FontSize="13.5" FontWeight="Medium"
-                                               Foreground="{Binding TypeLabel, Converter={StaticResource MappingTypeBrushConverter}}"/>
+                                               Foreground="#FFFFFF"/>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -289,7 +341,7 @@
                                 </Border.Style>
                                 <StackPanel>
                                     <TextBlock Text="{Binding QuickInputDetectionStatus}" FontSize="11" FontWeight="Bold"
-                                               Foreground="{DynamicResource PrimaryHueLightBrush}" HorizontalAlignment="Center"/>
+                                               Foreground="#FFFFFF" HorizontalAlignment="Center"/>
                                     <ProgressBar Height="3" Margin="0 3 0 0" Minimum="0" Maximum="100"
                                                  Value="{Binding QuickInputDetectionProgress, Mode=OneWay}"
                                                  Foreground="{DynamicResource PrimaryHueLightBrush}" Background="#303030"/>
@@ -310,7 +362,7 @@
                                 </Border.Style>
                                 <StackPanel>
                                     <TextBlock Text="{Binding QuickOutputDetectionStatus}" FontSize="11" FontWeight="Bold"
-                                               Foreground="{DynamicResource PrimaryHueLightBrush}" HorizontalAlignment="Center"/>
+                                               Foreground="#FFFFFF" HorizontalAlignment="Center"/>
                                     <ProgressBar Height="3" Margin="0 3 0 0" Minimum="0" Maximum="100"
                                                  Value="{Binding QuickOutputDetectionProgress, Mode=OneWay}"
                                                  Foreground="{DynamicResource PrimaryHueLightBrush}" Background="#303030"/>

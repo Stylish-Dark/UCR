@@ -5,9 +5,9 @@
              UseLayoutRounding="True"
              KeyboardNavigation.TabNavigation="Local">
     <UserControl.Resources>
-        <Style x:Key="CompactSwitch" TargetType="{x:Type ToggleButton}">
-            <Setter Property="Width" Value="36"/>
-            <Setter Property="Height" Value="18"/>
+        <Style x:Key="CompactBlockSwitch" TargetType="{x:Type ToggleButton}">
+            <Setter Property="Width" Value="38"/>
+            <Setter Property="Height" Value="20"/>
             <Setter Property="Background" Value="#515151"/>
             <Setter Property="BorderBrush" Value="#737373"/>
             <Setter Property="BorderThickness" Value="1"/>
@@ -15,9 +15,10 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type ToggleButton}">
                         <Grid Width="{TemplateBinding Width}" Height="{TemplateBinding Height}">
-                            <Border x:Name="Track" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="9"/>
-                            <Ellipse x:Name="Thumb" Width="12" Height="12" Margin="3 0 0 0"
+                            <Border x:Name="Track" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10"/>
+                            <Ellipse x:Name="Thumb" Width="14" Height="14" Margin="3 0 0 0"
                                      HorizontalAlignment="Left" VerticalAlignment="Center" Fill="#F2F2F2"/>
                         </Grid>
                         <ControlTemplate.Triggers>
@@ -28,6 +29,9 @@
                                 <Setter TargetName="Thumb" Property="Margin" Value="0 0 3 0"/>
                                 <Setter TargetName="Thumb" Property="Fill" Value="#FFFFFF"/>
                             </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Track" Property="BorderBrush" Value="#A0A0A0"/>
+                            </Trigger>
                             <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.38"/></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -35,65 +39,74 @@
             </Setter>
         </Style>
     </UserControl.Resources>
-    <Grid MinHeight="40">
+
+    <Grid MinHeight="48">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="158"/>
-            <ColumnDefinition Width="132"/>
-            <ColumnDefinition Width="34"/>
-            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="215"/>
+            <ColumnDefinition Width="255"/>
+            <ColumnDefinition Width="58"/>
+            <ColumnDefinition Width="82"/>
         </Grid.ColumnDefinitions>
 
         <ComboBox Grid.Column="0" x:Name="DeviceSelectionBox"
-                  Margin="0 0 5 0" MinHeight="36" Padding="5 2"
+                  Margin="0 0 8 0" MinHeight="40" Padding="5 2"
                   ItemsSource="{Binding Devices}" SelectedItem="{Binding SelectedDevice}"
                   IsEnabled="{Binding BindingEnabled}"
-                  SelectionChanged="DeviceSelectionBox_OnSelectionChanged" ToolTip="Input device">
+                  SelectionChanged="DeviceSelectionBox_OnSelectionChanged"
+                  ToolTip="Input device">
             <ComboBox.ItemTemplate>
                 <DataTemplate>
-                    <Grid MinWidth="132">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="38"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                        <ContentControl Grid.Column="0" Content="{Binding Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
-                                        Width="34" Height="22" Margin="0 0 6 0" VerticalAlignment="Center"/>
+                    <Grid MinWidth="185">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="40"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <ContentControl Grid.Column="0" Content="{Binding Visual}"
+                                        ContentTemplate="{StaticResource DeviceSymbolTemplate}"
+                                        Width="35" Height="23" Margin="0 0 7 0" VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="#FFFFFF"
-                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}"/>
+                                   FontSize="14" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}"/>
                     </Grid>
                 </DataTemplate>
             </ComboBox.ItemTemplate>
         </ComboBox>
 
         <Grid Grid.Column="1">
-            <Button x:Name="BindButton" MinHeight="36" MinWidth="120" Content="{Binding BindButtonText}"
-                    IsEnabled="{Binding BindingEnabled}" Click="BindButton_OnClick"
-                    Style="{StaticResource MaterialDesignRaisedButton}" Foreground="#FFFFFF"
-                    materialDesign:TransitionAssist.DisableTransitions="True"
+            <Button x:Name="BindButton" MinHeight="40"
+                    Content="{Binding BindButtonText}" IsEnabled="{Binding BindingEnabled}"
+                    Click="BindButton_OnClick" Style="{StaticResource MaterialDesignRaisedButton}"
+                    Foreground="#FFFFFF" materialDesign:TransitionAssist.DisableTransitions="True"
                     ToolTip="Press Enter or click, then press the input control to bind."/>
             <ProgressBar Height="3" Margin="8 0 8 2" VerticalAlignment="Bottom"
-                         Minimum="0" Maximum="100" Value="{Binding PreviewValue, Mode=OneWay}" IsHitTestVisible="False">
+                         Minimum="0" Maximum="100" Value="{Binding PreviewValue, Mode=OneWay}"
+                         IsHitTestVisible="False">
                 <ProgressBar.Style>
                     <Style TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
                         <Setter Property="Visibility" Value="Visible"/>
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding ShowButtonPreview}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger>
+                            <DataTrigger Binding="{Binding ShowButtonPreview}" Value="False">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
                         </Style.Triggers>
                     </Style>
                 </ProgressBar.Style>
             </ProgressBar>
         </Grid>
 
-        <Button Grid.Column="2" x:Name="MenuButton" Width="32" MinHeight="36" Padding="0"
+        <Button Grid.Column="2" x:Name="MenuButton" Width="52" MinHeight="40" Padding="0"
                 IsEnabled="{Binding BindingEnabled}" Click="MenuButton_OnClick"
-                Style="{StaticResource MaterialDesignRaisedButton}" Foreground="#FFFFFF" ToolTip="Binding options">
-            <materialDesign:PackIcon Kind="DotsVertical" Width="18" Height="18"/>
+                Style="{StaticResource MaterialDesignRaisedButton}" Foreground="#FFFFFF"
+                ToolTip="Binding options">
+            <materialDesign:PackIcon Kind="DotsVertical" Width="20" Height="20"/>
             <Button.ContextMenu>
-                <ContextMenu x:Name="Ddl" Style="{StaticResource MaterialDesignContextMenu}" Foreground="#FFFFFF" Background="#242424"/>
+                <ContextMenu x:Name="Ddl" Style="{StaticResource MaterialDesignContextMenu}"
+                             Foreground="#FFFFFF" Background="#242424"/>
             </Button.ContextMenu>
         </Button>
 
-        <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="9 0 1 0" VerticalAlignment="Center"
->
-            <TextBlock Text="Block" Foreground="#FFFFFF" VerticalAlignment="Center" Margin="0 0 6 0"/>
+        <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Center"
+                    VerticalAlignment="Center" ToolTip="Block this physical input from reaching Windows/applications">
+            <TextBlock Text="Block" Foreground="#FFFFFF" FontSize="13" VerticalAlignment="Center" Margin="0 0 7 0"/>
             <ToggleButton IsChecked="{Binding Block, Mode=TwoWay}" IsEnabled="{Binding CanBlock}"
-                          Style="{StaticResource CompactSwitch}" ToolTip="Block this physical input from reaching Windows/applications"/>
+                          Style="{StaticResource CompactBlockSwitch}"/>
         </StackPanel>
     </Grid>
 </UserControl>
