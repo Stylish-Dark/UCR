@@ -11,6 +11,17 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public string Title => DeviceConfiguration.GetFullTitleForProfile(Profile);
         public string ProviderName => DeviceConfiguration.Device.ProviderName;
         public DeviceVisualDescriptor Visual => DeviceVisualCatalog.Describe(DeviceConfiguration, Profile, DeviceIoType);
+        public bool IsInput => DeviceIoType == DeviceIoType.Input;
+        public bool BlockUnmappedInputs
+        {
+            get => IsInput && DeviceConfiguration?.BlockUnmappedInputs == true;
+            set
+            {
+                if (!IsInput || DeviceConfiguration == null || DeviceConfiguration.BlockUnmappedInputs == value) return;
+                DeviceConfiguration.ChangeBlockUnmappedInputs(value);
+                OnPropertyChanged();
+            }
+        }
         public bool IsPrimary => Profile?.GetPrimaryDeviceConfiguration(DeviceIoType)?.Guid == DeviceConfiguration.Guid;
         public string PrimaryToolTip => IsPrimary
             ? $"Primary {DeviceIoType.ToString().ToLowerInvariant()} device"

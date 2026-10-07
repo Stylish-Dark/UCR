@@ -105,8 +105,14 @@
                     <Button ToolTip="Save" Command="Save">
                         <materialDesign:PackIcon Kind="ContentSave"/>
                     </Button>
-                    <Button IsEnabled="{Binding CanActivateProfile}" ToolTip="Activate profile" Click="ActivateProfile">
+                    <Button IsEnabled="{Binding CanActivateProfile}" ToolTip="Run only this profile (stops other active profiles first)&#x0a;Ctrl+Enter" Click="ActivateProfile">
                         <materialDesign:PackIcon Kind="Play"/>
+                    </Button>
+                    <Button IsEnabled="{Binding CanActivateProfile}" ToolTip="Run this profile alongside currently active profiles&#x0a;Ctrl+Shift+Enter" Click="ActivateProfileAlongside">
+                        <Grid Width="24" Height="24">
+                            <materialDesign:PackIcon Kind="Play" Width="17" Height="17" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                            <TextBlock Text="+" FontSize="14" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Top" Foreground="#FFFFFF"/>
+                        </Grid>
                     </Button>
                     <Button IsEnabled="{Binding CanDeactivateProfile}" ToolTip="Stop active profile" Click="DeactivateProfile">
                         <Grid Width="24" Height="24">

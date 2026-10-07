@@ -233,8 +233,16 @@ namespace HidWizards.UCR.Views
             if (!GetSelectedItem(out var profileItem)) return;
             if (!Context.SubscriptionsManager.ActivateProfile(profileItem.Profile))
             {
-                // TODO Move to dialog
                 HidWizards.UCR.Utilities.DarkMessageBox.Show("The Profile could not be activated, see the log for more details", "Profile failed to activate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+            }
+        }
+
+        private void ActivateProfileAlongside(object sender, RoutedEventArgs e)
+        {
+            if (!GetSelectedItem(out var profileItem)) return;
+            if (!Context.SubscriptionsManager.ActivateProfileAlongside(profileItem.Profile))
+            {
+                HidWizards.UCR.Utilities.DarkMessageBox.Show("The additional Profile could not be activated. The profiles that were already running have been restored.", "Profile failed to activate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
             }
         }
 

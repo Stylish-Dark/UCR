@@ -32,6 +32,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool CanDeactivateProfile => Profile.IsActive();
         public bool CanEditProfile => !Profile.IsActive();
         public bool IsProfileActive => Profile.IsActive();
+        public bool BlockAllUnmappedInputs
+        {
+            get => Profile?.BlockAllUnmappedInputs == true;
+            set
+            {
+                if (Profile == null || Profile.BlockAllUnmappedInputs == value) return;
+                Profile.BlockAllUnmappedInputs = value;
+                OnPropertyChanged();
+            }
+        }
         public string EditLockReason => IsProfileActive ? "Profile is running — stop it to edit mappings." : null;
         public ObservableCollection<MappingViewModel> MappingsList { get; set; }
         public ObservableCollection<MappingGroupViewModel> MappingSections { get; private set; }

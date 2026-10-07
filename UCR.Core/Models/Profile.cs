@@ -81,6 +81,21 @@ namespace HidWizards.UCR.Core.Models
         [XmlAttribute]
         public Guid PrimaryOutputDeviceConfigurationGuid { get; set; }
 
+        private bool _blockAllUnmappedInputs;
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool BlockAllUnmappedInputs
+        {
+            get => _blockAllUnmappedInputs;
+            set
+            {
+                if (_blockAllUnmappedInputs == value) return;
+                _blockAllUnmappedInputs = value;
+                OnPropertyChanged();
+                Context?.ContextChanged();
+            }
+        }
+
 
         /* Runtime */
         [XmlIgnore]
@@ -170,6 +185,11 @@ namespace HidWizards.UCR.Core.Models
         public bool ActivateProfile()
         {
             return Context.SubscriptionsManager.ActivateProfile(this);
+        }
+
+        public bool ActivateProfileAlongside()
+        {
+            return Context.SubscriptionsManager.ActivateProfileAlongside(this);
         }
 
         public bool Deactivate()

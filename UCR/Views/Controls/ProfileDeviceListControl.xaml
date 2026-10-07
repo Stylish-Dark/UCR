@@ -31,6 +31,7 @@
                         <ColumnDefinition Width="24"/>
                         <ColumnDefinition Width="50"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <Button Grid.Column="0" Width="22" Height="22" Margin="0 0 2 0"
                             Style="{StaticResource PrimaryDeviceButtonStyle}"
@@ -56,6 +57,20 @@
                         <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
                         <TextBlock Margin="0 1 0 0" Text="{Binding ProviderName}" FontSize="12.5" Opacity="0.50" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
+                    <CheckBox Grid.Column="3" IsChecked="{Binding BlockUnmappedInputs, Mode=TwoWay}"
+                              VerticalAlignment="Center" Margin="8 0 4 0" ToolTip="Per-device default for profile-wide unmapped-input blocking">
+                        <materialDesign:PackIcon Kind="ShieldOutline" Width="17" Height="17" Foreground="#FFFFFF"/>
+                        <CheckBox.Style>
+                            <Style TargetType="CheckBox">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsInput}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </CheckBox.Style>
+                    </CheckBox>
                 </Grid>
             </DataTemplate>
             <Style x:Key="EmptyDeviceTrigger" TargetType="{x:Type ListView}" BasedOn="{StaticResource MaterialDesignListView}">

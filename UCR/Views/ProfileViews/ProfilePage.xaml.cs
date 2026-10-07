@@ -201,6 +201,14 @@ namespace HidWizards.UCR.Views.ProfileViews
             }
         }
 
+        private void ActivateProfileAlongside(object sender, RoutedEventArgs e)
+        {
+            if (!Profile.ActivateProfileAlongside())
+            {
+                HidWizards.UCR.Utilities.DarkMessageBox.Show("The additional Profile could not be activated. The profiles that were already running have been restored.", "Profile failed to activate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+            }
+        }
+
         private void DeactivateProfile(object sender, RoutedEventArgs e)
         {
             Profile.Deactivate();

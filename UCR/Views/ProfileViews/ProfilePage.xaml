@@ -206,11 +206,14 @@
                     <Button ToolTip="Save" Command="Save">
                         <materialDesign:PackIcon Kind="ContentSave"/>
                     </Button>
-                    <Button IsEnabled="{Binding CanActivateProfile}" ToolTip="Activate profile" Click="ActivateProfile">
-                        <StackPanel>
-                            <materialDesign:PackIcon Kind="Play"/>
-                            <materialDesign:PackIcon Kind="Replay" Visibility="Collapsed"/>
-                        </StackPanel>
+                    <Button IsEnabled="{Binding CanActivateProfile}" ToolTip="Run only this profile (stops other active profiles first)&#x0a;Ctrl+Enter" Click="ActivateProfile">
+                        <materialDesign:PackIcon Kind="Play"/>
+                    </Button>
+                    <Button IsEnabled="{Binding CanActivateProfile}" ToolTip="Run this profile alongside currently active profiles&#x0a;Ctrl+Shift+Enter" Click="ActivateProfileAlongside">
+                        <Grid Width="24" Height="24">
+                            <materialDesign:PackIcon Kind="Play" Width="17" Height="17" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                            <TextBlock Text="+" FontSize="14" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Top" Foreground="#FFFFFF"/>
+                        </Grid>
                     </Button>
                     <Button IsEnabled="{Binding CanDeactivateProfile}" ToolTip="Stop active profile" Click="DeactivateProfile">
                         <Grid Width="24" Height="24">
@@ -440,8 +443,15 @@
                                 <StackPanel VerticalAlignment="Top">
                                     <Grid Margin="8 7 8 2">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                        <TextBlock Text="INPUT" FontSize="10.5" FontWeight="SemiBold" Opacity="0.68" VerticalAlignment="Center"/>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <StackPanel>
+                                            <TextBlock Text="INPUT" FontSize="10.5" FontWeight="SemiBold" Opacity="0.68" VerticalAlignment="Center"/>
+                                            <CheckBox Content="Block all unmapped inputs"
+                                                      IsChecked="{Binding BlockAllUnmappedInputs, Mode=TwoWay}"
+                                                      IsEnabled="{Binding CanEditProfile}"
+                                                      Foreground="#FFFFFF" Margin="0 5 0 0"
+                                                      ToolTip="Profile master switch. Only input devices whose per-device Block default is enabled are suppressed."/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
                                             <Button ToolTip="Detect and add input device" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="DetectProfileInputDevice_OnClick">
                                                 <materialDesign:PackIcon Kind="Radar" Width="15" Height="15"/>
                                             </Button>
@@ -463,7 +473,7 @@
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
                                                 <Grid Margin="1 2">
-                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="48"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="48"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                                     <Button Grid.Column="0" Width="20" Height="20" Padding="4" Background="Transparent" BorderThickness="0" ToolTip="{Binding PrimaryToolTip}" Click="PrimaryInputDevice_OnClick">
                                                         <Ellipse Width="8" Height="8" Stroke="#929292" StrokeThickness="1.4">
                                                             <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueLightBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueLightBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
@@ -472,6 +482,11 @@
 <ContentControl Grid.Column="1" Content="{Binding Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
                                                                     Width="44" Height="28" VerticalAlignment="Center"/>
                                                     <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                    <CheckBox Grid.Column="3" IsChecked="{Binding BlockUnmappedInputs, Mode=TwoWay}"
+                                                              VerticalAlignment="Center" Margin="6 0 2 0"
+                                                              ToolTip="Per-device default for Block all unmapped inputs">
+                                                        <materialDesign:PackIcon Kind="ShieldOutline" Width="15" Height="15" Foreground="#FFFFFF"/>
+                                                    </CheckBox>
                                                 </Grid>
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>

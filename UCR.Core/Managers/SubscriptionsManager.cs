@@ -64,12 +64,24 @@ namespace HidWizards.UCR.Core.Managers
         public bool ActivateProfile(Profile profile, bool refreshDevices = true)
         {
             if (profile == null) return false;
+            var activeProfiles = GetActiveProfiles();
+            var alreadyExclusive = activeProfiles.Count == 1 && activeProfiles[0].Guid == profile.Guid;
+            if (alreadyExclusive && !refreshDevices) return true;
+
+            Logger.Info((alreadyExclusive ? "Rebuilding active profile after device refresh: {" : "Activating profile exclusively: {") +
+                        profile.ProfileBreadCrumbs() + "}");
+            return RebuildActiveProfiles(new List<Profile> { profile }, refreshDevices, profile);
+        }
+
+        public bool ActivateProfileAlongside(Profile profile, bool refreshDevices = true)
+        {
+            if (profile == null) return false;
             var targetProfiles = GetActiveProfiles().ToList();
             var alreadyActive = targetProfiles.Any(active => active.Guid == profile.Guid);
             if (!alreadyActive) targetProfiles.Add(profile);
             else if (!refreshDevices) return true;
 
-            Logger.Info((alreadyActive ? "Rebuilding active profile after device refresh: {" : "Adding profile to active set: {") +
+            Logger.Info((alreadyActive ? "Rebuilding multi-profile runtime: {" : "Explicitly adding profile alongside active set: {") +
                         profile.ProfileBreadCrumbs() + "}");
             return RebuildActiveProfiles(targetProfiles, refreshDevices, profile);
         }
@@ -113,20 +125,9 @@ namespace HidWizards.UCR.Core.Managers
 
         private bool RebuildActiveProfiles(IList<Profile> targetProfiles, bool refreshDevices, Profile changedProfile)
         {
-            targetProfiles = (targetProfiles ?? new List<Profile>())
-                .Where(profile => profile != null)
-                .GroupBy(profile => profile.Guid)
-                .Select(group => group.First())
-                .ToList();
-
-            var unsubscribeSuccess = true;
-            if (SubscriptionState != null && SubscriptionState.IsActive)
-            {
-                unsubscribeSuccess = DeactivateProfile(SubscriptionState);
-                if (!unsubscribeSuccess)
-                    Logger.Warn("One or more subscriptions could not be removed while rebuilding the active profile set.");
-            }
-            SubscriptionState = null;
+            targetProfiles = NormalizeProfiles(targetProfiles);
+            var previousProfiles = NormalizeProfiles(GetActiveProfiles().ToList());
+            var previousState = SubscriptionState;
 
             if (refreshDevices)
             {
@@ -136,6 +137,14 @@ namespace HidWizards.UCR.Core.Managers
 
             if (targetProfiles.Count == 0)
             {
+                var unsubscribeSuccess = true;
+                if (previousState != null && previousState.IsActive)
+                {
+                    unsubscribeSuccess = DeactivateProfile(previousState);
+                    if (!unsubscribeSuccess)
+                        Logger.Warn("One or more subscriptions could not be removed while stopping the active profile set.");
+                }
+                SubscriptionState = null;
                 _context.SetActiveProfiles(Enumerable.Empty<Profile>());
                 ProfileActive = false;
                 _context.OnActiveProfileChangedEvent(changedProfile);
@@ -149,40 +158,88 @@ namespace HidWizards.UCR.Core.Managers
                 _context.ContextChanged();
             }
 
-            var state = new SubscriptionState(targetProfiles);
-            foreach (var profile in targetProfiles)
+            // Build and validate the candidate state before disturbing the currently running set.
+            // This catches missing mappings/filter failures without dropping a working profile.
+            var candidate = BuildSubscriptionState(targetProfiles);
+            if (candidate == null)
+            {
+                Logger.Error("Unable to build candidate active profile state; existing profiles remain running.");
+                return false;
+            }
+
+            var unsubscribeSuccess = true;
+            if (previousState != null && previousState.IsActive)
+            {
+                unsubscribeSuccess = DeactivateProfile(previousState);
+                if (!unsubscribeSuccess)
+                    Logger.Warn("One or more subscriptions could not be removed while switching active profiles.");
+            }
+            SubscriptionState = null;
+
+            if (!ActivateSubscriptionState(candidate))
+            {
+                Logger.Error("Failed to activate candidate profile set; restoring the previous active profiles.");
+                if (candidate.IsActive) DeactivateProfile(candidate);
+                SubscriptionState = null;
+
+                if (previousProfiles.Count > 0 && RestorePreviousProfiles(previousProfiles, changedProfile))
+                {
+                    Logger.Warn("Previous active profile set restored after activation failure.");
+                }
+                else
+                {
+                    ClearFailedState(null, changedProfile);
+                }
+                return false;
+            }
+
+            FinalizeNewState(targetProfiles, candidate, changedProfile);
+            // The candidate is live. Teardown warnings from the old state are forensic only and must
+            // not make the UI claim this successful switch failed.
+            return true;
+        }
+
+        private static List<Profile> NormalizeProfiles(IEnumerable<Profile> profiles)
+        {
+            return (profiles ?? Enumerable.Empty<Profile>())
+                .Where(profile => profile != null)
+                .GroupBy(profile => profile.Guid)
+                .Select(group => group.First())
+                .ToList();
+        }
+
+        private SubscriptionState BuildSubscriptionState(IList<Profile> profiles)
+        {
+            var state = new SubscriptionState(profiles);
+            foreach (var profile in profiles)
             {
                 var populatedLayers = new HashSet<Guid>();
                 var profileOutputDevices = new List<DeviceConfigurationSubscription>();
                 if (!PopulateSubscriptionStateForProfile(state, profile, profile.Guid, populatedLayers, profileOutputDevices))
                 {
                     Logger.Error("Failed to populate SubscriptionState for profile: " + profile.ProfileBreadCrumbs());
-                    ClearFailedState(state, changedProfile);
-                    return false;
+                    return null;
                 }
             }
+
             Logger.Debug("Successfully populated composite subscription state");
+            if (ConfigureFiltersForState(state)) return state;
 
-            if (!ConfigureFiltersForState(state))
+            Logger.Error("Failed to configure filters for composite subscription state");
+            return null;
+        }
+
+        private bool RestorePreviousProfiles(IList<Profile> previousProfiles, Profile changedProfile)
+        {
+            var rollback = BuildSubscriptionState(previousProfiles);
+            if (rollback == null) return false;
+            if (!ActivateSubscriptionState(rollback))
             {
-                Logger.Error("Failed to configure filters for composite subscription state");
-                ClearFailedState(state, changedProfile);
+                if (rollback.IsActive) DeactivateProfile(rollback);
                 return false;
             }
 
-            if (!ActivateSubscriptionState(state))
-            {
-                Logger.Error("Failed to activate composite subscription state");
-                DeactivateProfile(state);
-                ClearFailedState(state, changedProfile);
-                return false;
-            }
-
-            FinalizeNewState(targetProfiles, state, changedProfile);
-            // The new composite state is live at this point. A stale provider may have reported an
-            // unsubscribe problem while tearing down the old state, but that must not make the UI
-            // claim this successful activation/deactivation failed. The warning above preserves the
-            // forensic signal without lying about the current runtime state.
+            FinalizeNewState(previousProfiles, rollback, changedProfile);
             return true;
         }
 
@@ -442,6 +499,8 @@ namespace HidWizards.UCR.Core.Managers
             var processedDevices = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var profile in state.ActiveProfiles)
             {
+                if (profile == null || !profile.BlockAllUnmappedInputs) continue;
+
                 foreach (var configuration in profile.GetDeviceConfigurationList(DeviceIoType.Input)
                     .Where(item => item != null && item.BlockUnmappedInputs && item.Device != null))
                 {
