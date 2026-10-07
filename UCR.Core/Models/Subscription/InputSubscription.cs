@@ -10,7 +10,6 @@ namespace HidWizards.UCR.Core.Models.Subscription
         public Guid SubscriptionStateGuid { get; set; }
         public Guid DeviceBindingSubscriptionGuid { get; set; }
         public bool IsOverwritten { get; set; }
-        public bool ForceBlock { get; }
         public DeviceSubscription DeviceSubscription { get; }
 
         public InputSubscription(Mapping mapping, DeviceBinding deviceBinding, Profile profile, Guid subscriptionStateGuid)
@@ -20,7 +19,6 @@ namespace HidWizards.UCR.Core.Models.Subscription
             SubscriptionStateGuid = subscriptionStateGuid;
             DeviceBindingSubscriptionGuid = Guid.NewGuid();
             IsOverwritten = false;
-            ForceBlock = mapping != null && mapping.UseInputExpression;
 
             var deviceConfiguration = GetDeviceConfiguration();
             if (deviceConfiguration == null) return;
@@ -39,7 +37,6 @@ namespace HidWizards.UCR.Core.Models.Subscription
             SubscriptionStateGuid = subscriptionStateGuid;
             DeviceBindingSubscriptionGuid = Guid.NewGuid();
             IsOverwritten = false;
-            ForceBlock = false;
             if (device != null) DeviceSubscription = new DeviceSubscription(device);
         }
 
