@@ -14,15 +14,6 @@ using NLog;
 
 namespace HidWizards.UCR.Core.Models
 {
-    public class ProfileInputBlockingOverride
-    {
-        [XmlAttribute]
-        public Guid DeviceConfigurationGuid { get; set; }
-
-        [XmlAttribute]
-        public bool Enabled { get; set; }
-    }
-
     public class Profile : INotifyPropertyChanged
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
@@ -40,9 +31,9 @@ namespace HidWizards.UCR.Core.Models
         public List<DeviceConfiguration> InputDeviceConfigurations { get; set; }
         public List<DeviceConfiguration> OutputDeviceConfigurations { get; set; }
 
-        // Profile-local overrides. DeviceConfiguration.BlockUnmappedInputs remains the device default;
-        // editing this profile never mutates that default.
-        public List<ProfileInputBlockingOverride> InputBlockingOverrides { get; set; }
+        // Profile-local overrides. These contain only deviations from the device default.
+        public List<Guid> BlockUnmappedInputEnabledOverrides { get; set; }
+        public List<Guid> BlockUnmappedInputDisabledOverrides { get; set; }
 
         private bool _autoActivateEnabled;
         private string _autoActivateExecutable;
@@ -137,6 +128,8 @@ namespace HidWizards.UCR.Core.Models
             MappingGroups = new List<MappingGroup>();
             InputDeviceConfigurations = new List<DeviceConfiguration>();
             OutputDeviceConfigurations = new List<DeviceConfiguration>();
+            BlockUnmappedInputEnabledOverrides = new List<Guid>();
+            BlockUnmappedInputDisabledOverrides = new List<Guid>();
             AutoActivateApplications = new ObservableCollection<ProfileApplicationRule>();
         }
 
@@ -508,32 +501,27 @@ namespace HidWizards.UCR.Core.Models
         public bool IsBlockUnmappedInputsEnabled(DeviceConfiguration configuration)
         {
             if (configuration == null) return false;
-            if (InputBlockingOverrides == null) InputBlockingOverrides = new List<ProfileInputBlockingOverride>();
+            if (BlockUnmappedInputEnabledOverrides == null) BlockUnmappedInputEnabledOverrides = new List<Guid>();
+            if (BlockUnmappedInputDisabledOverrides == null) BlockUnmappedInputDisabledOverrides = new List<Guid>();
 
-            var profileOverride = InputBlockingOverrides.LastOrDefault(item =>
-                item != null && item.DeviceConfigurationGuid == configuration.Guid);
-            return profileOverride != null ? profileOverride.Enabled : configuration.BlockUnmappedInputs;
+            if (BlockUnmappedInputDisabledOverrides.Contains(configuration.Guid)) return false;
+            if (BlockUnmappedInputEnabledOverrides.Contains(configuration.Guid)) return true;
+            return configuration.BlockUnmappedInputs;
         }
 
         public void SetBlockUnmappedInputsForProfile(DeviceConfiguration configuration, bool enabled)
         {
             if (configuration == null) return;
-            if (InputBlockingOverrides == null) InputBlockingOverrides = new List<ProfileInputBlockingOverride>();
+            if (BlockUnmappedInputEnabledOverrides == null) BlockUnmappedInputEnabledOverrides = new List<Guid>();
+            if (BlockUnmappedInputDisabledOverrides == null) BlockUnmappedInputDisabledOverrides = new List<Guid>();
 
-            var existing = InputBlockingOverrides.FirstOrDefault(item =>
-                item != null && item.DeviceConfigurationGuid == configuration.Guid);
-            if (existing != null)
+            BlockUnmappedInputEnabledOverrides.Remove(configuration.Guid);
+            BlockUnmappedInputDisabledOverrides.Remove(configuration.Guid);
+
+            if (enabled != configuration.BlockUnmappedInputs)
             {
-                if (existing.Enabled == enabled) return;
-                existing.Enabled = enabled;
-            }
-            else
-            {
-                InputBlockingOverrides.Add(new ProfileInputBlockingOverride
-                {
-                    DeviceConfigurationGuid = configuration.Guid,
-                    Enabled = enabled
-                });
+                if (enabled) BlockUnmappedInputEnabledOverrides.Add(configuration.Guid);
+                else BlockUnmappedInputDisabledOverrides.Add(configuration.Guid);
             }
 
             Context?.ContextChanged();
@@ -795,7 +783,8 @@ namespace HidWizards.UCR.Core.Models
             if (MappingGroups == null) MappingGroups = new List<MappingGroup>();
             if (InputDeviceConfigurations == null) InputDeviceConfigurations = new List<DeviceConfiguration>();
             if (OutputDeviceConfigurations == null) OutputDeviceConfigurations = new List<DeviceConfiguration>();
-            if (InputBlockingOverrides == null) InputBlockingOverrides = new List<ProfileInputBlockingOverride>();
+            if (BlockUnmappedInputEnabledOverrides == null) BlockUnmappedInputEnabledOverrides = new List<Guid>();
+            if (BlockUnmappedInputDisabledOverrides == null) BlockUnmappedInputDisabledOverrides = new List<Guid>();
 
             if (AutoActivateApplications == null) AutoActivateApplications = new ObservableCollection<ProfileApplicationRule>();
             foreach (var rule in AutoActivateApplications) rule?.Attach(this);
