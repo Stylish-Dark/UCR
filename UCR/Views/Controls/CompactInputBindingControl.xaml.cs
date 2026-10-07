@@ -90,20 +90,6 @@ namespace HidWizards.UCR.Views.Controls
 
             if (Ddl.Items.Count > 0) Ddl.Items.Add(new Separator());
 
-            var notItem = new MenuItem
-            {
-                Header = "Negate input (NOT)",
-                IsCheckable = true,
-                IsChecked = DeviceBinding?.InputExpressionNegated == true,
-                Foreground = System.Windows.Media.Brushes.White
-            };
-            notItem.Click += (clickSender, clickArgs) =>
-            {
-                if (DeviceBinding == null) return;
-                DeviceBinding.SetInputExpressionNegated(notItem.IsChecked);
-            };
-            Ddl.Items.Add(notItem);
-
             var blockItem = new MenuItem
             {
                 Header = "Block original input",
