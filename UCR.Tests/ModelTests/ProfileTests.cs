@@ -379,6 +379,21 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void ProfileLocalBlockingOverridesSurviveXmlClone()
+        {
+            var device = new DeviceConfiguration(new Device("Keyboard A", "Core_Interception", "kbd-a", 0));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { device }, DeviceIoType.Input);
+            device.ChangeBlockUnmappedInputs(true);
+            _profile.SetBlockUnmappedInputsForProfile(device, false);
+
+            var clone = Context.DeepXmlClone(_profile);
+            var clonedDevice = clone.GetDeviceConfigurationList(DeviceIoType.Input).Single();
+
+            Assert.That(clonedDevice.BlockUnmappedInputs, Is.True);
+            Assert.That(clone.IsBlockUnmappedInputsEnabled(clonedDevice), Is.False);
+        }
+
+        [Test]
         public void DashboardKeepsPlayAvailableForAnActiveProfileHotplugRebuild()
         {
             var dashboard = new DashboardViewModel(_context);
