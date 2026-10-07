@@ -408,7 +408,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 DeviceBindingName = "Input",
                 DeviceBindingCategory = DeviceBindingCategory.Momentary
             };
-            DeviceBindings.Add(viewModel);
+            var modelIndex = Mapping.DeviceBindings.IndexOf(binding);
+            if (modelIndex >= 0 && modelIndex <= DeviceBindings.Count)
+                DeviceBindings.Insert(modelIndex, viewModel);
+            else
+                DeviceBindings.Add(viewModel);
             SubscribeSummaryBinding(viewModel);
             RefreshInputExpressionPresentation();
             RefreshCollapsedSummary();

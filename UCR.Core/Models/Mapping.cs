@@ -243,7 +243,13 @@ namespace HidWizards.UCR.Core.Models
                            ?? DeviceBindings.LastOrDefault();
             if (template != null) binding.DeviceConfigurationGuid = template.DeviceConfigurationGuid;
 
-            DeviceBindings.Add(binding);
+            var insertAfter = DeviceBindings.FindLastIndex(item =>
+                Math.Max(0, item.InputExpressionGroup) == group);
+            if (insertAfter >= 0 && insertAfter < DeviceBindings.Count - 1)
+                DeviceBindings.Insert(insertAfter + 1, binding);
+            else
+                DeviceBindings.Add(binding);
+
             Profile?.Context?.ContextChanged();
             return binding;
         }

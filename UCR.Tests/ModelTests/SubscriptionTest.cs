@@ -119,6 +119,36 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void FailedAlongsideActivationRestoresTheProfilesThatWereAlreadyRunning()
+        {
+            var second = _context.ProfilesManager.CreateProfile("Broken secondary", null, null);
+            _context.ProfilesManager.AddProfile(second);
+
+            var missingInput = new DeviceConfiguration(
+                new Device("Missing keyboard", "Core_Interception", "missing-keyboard", 99));
+            second.AddDeviceConfigurations(new List<DeviceConfiguration> { missingInput }, DeviceIoType.Input);
+
+            var mapping = second.AddMapping("Cannot resolve");
+            mapping.AddPlugin(new ButtonToButton());
+            var input = mapping.DeviceBindings.Single();
+            input.DeviceConfigurationGuid = missingInput.Guid;
+            input.IsBound = true;
+            input.KeyType = 1;
+            input.KeyValue = 1;
+            input.KeySubValue = 0;
+
+            Assert.IsTrue(_context.SubscriptionsManager.ActivateProfile(_profile, false));
+            Assert.IsFalse(_context.SubscriptionsManager.ActivateProfileAlongside(second, false));
+
+            var restored = getSubscriptionState();
+            Assert.That(restored, Is.Not.Null);
+            Assert.That(restored.IsActive, Is.True);
+            Assert.That(restored.ActiveProfiles.Select(profile => profile.Guid), Is.EqualTo(new[] { _profile.Guid }));
+            Assert.That(_profile.IsActive(), Is.True);
+            Assert.That(second.IsActive(), Is.False);
+        }
+
+        [Test]
         public void MultipleProfilesShareOneCompositeRuntimeUntilIndividuallyStopped()
         {
             var second = _context.ProfilesManager.CreateProfile("Second", null, null);
