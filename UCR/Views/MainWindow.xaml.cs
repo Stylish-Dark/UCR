@@ -77,18 +77,18 @@ namespace HidWizards.UCR.Views
             }
 
             if (RootDialog.Visibility == Visibility.Visible &&
-                (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control && e.Key == Key.Enter)
+                (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) ==
+                (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.Enter)
             {
-                ActivateSelectedProfile(false);
+                ActivateSelectedProfile(true);
                 e.Handled = true;
                 return;
             }
 
             if (RootDialog.Visibility == Visibility.Visible &&
-                (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) ==
-                (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.Enter)
+                Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Enter)
             {
-                ActivateSelectedProfile(true);
+                ActivateSelectedProfile(false);
                 e.Handled = true;
                 return;
             }

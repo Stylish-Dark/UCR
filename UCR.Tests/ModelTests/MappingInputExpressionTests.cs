@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
+using HidWizards.UCR.Plugins.Remapper;
 using NUnit.Framework;
 
 namespace HidWizards.UCR.Tests.ModelTests
@@ -31,6 +32,37 @@ namespace HidWizards.UCR.Tests.ModelTests
                 "A pressed negated term must make its AND group false.");
             Assert.AreEqual(0, mapping.EvaluateInputExpression(new short[] { 0, 0, 0, 0 }),
                 "No OR group is satisfied when all positive terms are up.");
+        }
+
+        [Test]
+        public void ConditionApiKeepsAndTermsOnOneRowAndCreatesSeparateOrRows()
+        {
+            var mapping = new Mapping();
+            mapping.AddPlugin(new ButtonToButton());
+
+            var secondAndTerm = mapping.AddExpressionInputToGroup(0);
+            var secondCondition = mapping.AddExpressionCondition();
+            var thirdAndTerm = mapping.AddExpressionInputToGroup(secondCondition.InputExpressionGroup);
+
+            Assert.That(mapping.UseInputExpression, Is.True);
+            Assert.That(mapping.DeviceBindings.Count, Is.EqualTo(4));
+            Assert.That(mapping.DeviceBindings.Count(binding => binding.InputExpressionGroup == 0), Is.EqualTo(2));
+            Assert.That(mapping.DeviceBindings.Count(binding => binding.InputExpressionGroup == 1), Is.EqualTo(2));
+            Assert.That(secondAndTerm.InputExpressionGroup, Is.EqualTo(0));
+            Assert.That(thirdAndTerm.InputExpressionGroup, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void RemovingAConditionCompactsRemainingGroupNumbers()
+        {
+            var mapping = new Mapping();
+            mapping.AddPlugin(new ButtonToButton());
+            mapping.AddExpressionCondition();
+            mapping.AddExpressionCondition();
+
+            Assert.That(mapping.RemoveExpressionGroup(1), Is.True);
+            Assert.That(mapping.DeviceBindings.Select(binding => binding.InputExpressionGroup).Distinct(),
+                Is.EqualTo(new[] { 0, 1 }));
         }
 
         [Test]

@@ -104,6 +104,21 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void StandardPlayIsExclusiveAndDoesNotAccumulateProfiles()
+        {
+            var second = _context.ProfilesManager.CreateProfile("Second", null, null);
+            _context.ProfilesManager.AddProfile(second);
+
+            Assert.IsTrue(_context.SubscriptionsManager.ActivateProfile(_profile, false));
+            Assert.IsTrue(_context.SubscriptionsManager.ActivateProfile(second, false));
+
+            var state = getSubscriptionState();
+            Assert.That(state.ActiveProfiles.Select(profile => profile.Guid), Is.EqualTo(new[] { second.Guid }));
+            Assert.That(_profile.IsActive(), Is.False);
+            Assert.That(second.IsActive(), Is.True);
+        }
+
+        [Test]
         public void MultipleProfilesShareOneCompositeRuntimeUntilIndividuallyStopped()
         {
             var second = _context.ProfilesManager.CreateProfile("Second", null, null);
@@ -112,7 +127,7 @@ namespace HidWizards.UCR.Tests.ModelTests
             second.AddMapping("Second mapping");
 
             Assert.IsTrue(_context.SubscriptionsManager.ActivateProfile(_profile, false));
-            Assert.IsTrue(_context.SubscriptionsManager.ActivateProfile(second, false));
+            Assert.IsTrue(_context.SubscriptionsManager.ActivateProfileAlongside(second, false));
 
             var combined = getSubscriptionState();
             Assert.That(combined.ActiveProfiles.Select(profile => profile.Guid),
@@ -137,7 +152,7 @@ namespace HidWizards.UCR.Tests.ModelTests
             second.AddMapping("Second mapping");
 
             Assert.IsTrue(_context.SubscriptionsManager.ActivateProfile(_profile, false));
-            Assert.IsTrue(_context.SubscriptionsManager.ActivateProfile(second, false));
+            Assert.IsTrue(_context.SubscriptionsManager.ActivateProfileAlongside(second, false));
 
             _profile.Remove();
 
@@ -279,7 +294,7 @@ namespace HidWizards.UCR.Tests.ModelTests
             second.AddMapping("Second filter").AddPlugin(secondFilter);
 
             Assert.IsTrue(_context.SubscriptionsManager.ActivateProfile(_profile, false));
-            Assert.IsTrue(_context.SubscriptionsManager.ActivateProfile(second, false));
+            Assert.IsTrue(_context.SubscriptionsManager.ActivateProfileAlongside(second, false));
             var state = getSubscriptionState();
 
             Assert.That(state.FilterState.FilterRuntimeDictionary.Keys.Count(key => key.EndsWith(":mode")), Is.EqualTo(2));
@@ -299,7 +314,7 @@ namespace HidWizards.UCR.Tests.ModelTests
             second.AddMapping("Shared name");
 
             Assert.IsTrue(_context.SubscriptionsManager.ActivateProfile(_profile, false));
-            Assert.IsTrue(_context.SubscriptionsManager.ActivateProfile(second, false));
+            Assert.IsTrue(_context.SubscriptionsManager.ActivateProfileAlongside(second, false));
 
             var subscriptions = getSubscriptionState().MappingSubscriptions
                 .Where(subscription => subscription.Mapping.Title == "Shared name").ToList();

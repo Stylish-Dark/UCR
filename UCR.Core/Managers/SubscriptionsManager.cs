@@ -137,18 +137,18 @@ namespace HidWizards.UCR.Core.Managers
 
             if (targetProfiles.Count == 0)
             {
-                var unsubscribeSuccess = true;
+                var stopSuccess = true;
                 if (previousState != null && previousState.IsActive)
                 {
-                    unsubscribeSuccess = DeactivateProfile(previousState);
-                    if (!unsubscribeSuccess)
+                    stopSuccess = DeactivateProfile(previousState);
+                    if (!stopSuccess)
                         Logger.Warn("One or more subscriptions could not be removed while stopping the active profile set.");
                 }
                 SubscriptionState = null;
                 _context.SetActiveProfiles(Enumerable.Empty<Profile>());
                 ProfileActive = false;
                 _context.OnActiveProfileChangedEvent(changedProfile);
-                return unsubscribeSuccess;
+                return stopSuccess;
             }
 
             foreach (var profile in targetProfiles)

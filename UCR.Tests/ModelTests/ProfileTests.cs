@@ -351,11 +351,31 @@ namespace HidWizards.UCR.Tests.ModelTests
             var list = ProfileItem.GetProfileTree(_context.Profiles);
 
             Assert.That(_context.SubscriptionsManager.ActivateProfile(_profile, false), Is.True);
-            Assert.That(_context.SubscriptionsManager.ActivateProfile(second, false), Is.True);
+            Assert.That(_context.SubscriptionsManager.ActivateProfileAlongside(second, false), Is.True);
             ProfileItem.SetActiveProfiles(list);
 
             Assert.That(list.Count, Is.EqualTo(2));
             Assert.That(list.All(item => item.IsActive), Is.True);
+        }
+
+        [Test]
+        public void BlockAllUnmappedInputsIsProfileScopedWhileDeviceDefaultsStayIndependent()
+        {
+            var firstDevice = new DeviceConfiguration(new Device("Keyboard A", "Core_Interception", "kbd-a", 0));
+            var secondDevice = new DeviceConfiguration(new Device("Keyboard B", "Core_Interception", "kbd-b", 1));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { firstDevice, secondDevice }, DeviceIoType.Input);
+
+            firstDevice.ChangeBlockUnmappedInputs(true);
+            secondDevice.ChangeBlockUnmappedInputs(false);
+            _profile.BlockAllUnmappedInputs = true;
+
+            var other = _context.ProfilesManager.CreateProfile("Other", null, null);
+            _context.ProfilesManager.AddProfile(other);
+
+            Assert.That(_profile.BlockAllUnmappedInputs, Is.True);
+            Assert.That(other.BlockAllUnmappedInputs, Is.False);
+            Assert.That(firstDevice.BlockUnmappedInputs, Is.True);
+            Assert.That(secondDevice.BlockUnmappedInputs, Is.False);
         }
 
         [Test]
