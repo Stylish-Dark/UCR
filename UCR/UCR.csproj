@@ -232,6 +232,7 @@
     <Compile Include="Views\ProfileViews\ProfilePage.xaml.cs">
       <DependentUpon>ProfilePage.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Views\ProfileViews\ProfilePage.BatchMappings.cs" />
     <DesignData Include="SampleData\ProfileViewModelSampleData.xaml">
       <SubType>Designer</SubType>
     </DesignData>
