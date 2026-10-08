@@ -266,49 +266,46 @@
                                 ToolTip="Add an alternative input condition"/>
                     </StackPanel>
 
-                    <!-- Compact outputs share a single lane, mirroring the input terms. -->
+                    <!-- Outputs follow inputs: compact bindings, inline remove and add. -->
                     <StackPanel Margin="5 7 5 5">
-                        <DockPanel Margin="0 0 0 6" LastChildFill="False">
-                            <TextBlock DockPanel.Dock="Left" Text="Outputs" FontSize="14"
-                                       FontWeight="SemiBold" VerticalAlignment="Center"
-                                       Foreground="#FFFFFF" Margin="0 0 12 0"/>
-                            <Button DockPanel.Dock="Left" Content="+" Width="42" Height="36"
+                        <TextBlock Text="Outputs" FontSize="14" FontWeight="SemiBold"
+                                   Foreground="#FFFFFF" Margin="0 0 0 6"/>
+                        <WrapPanel Orientation="Horizontal">
+                            <ItemsControl ItemsSource="{Binding Plugins}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Margin="0 0 6 6">
+                                            <ItemsControl ItemsSource="{Binding DeviceBindings}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Padding="4" Margin="0 0 3 0" CornerRadius="4"
+                                                                Background="#252525" BorderBrush="#484848" BorderThickness="1">
+                                                            <local:CompactInputBindingControl DataContext="{Binding}"
+                                                                                              DeviceBinding="{Binding DeviceBinding}" Width="368"/>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <Button Width="32" Height="36" Margin="0 3 0 0"
+                                                    Content="×" FontSize="22" Foreground="#FFFFFF"
+                                                    Background="#303030" Click="RemoveOutput_OnClick"
+                                                    IsEnabled="{Binding CanRemove}" ToolTip="Remove this output"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Content="+" Width="42" Height="36" Margin="3 3 0 6"
                                     Background="{DynamicResource PrimaryHueMidBrush}"
                                     Foreground="#FFFFFF" Style="{StaticResource MaterialDesignRaisedButton}"
                                     IsEnabled="{Binding ButtonsEnabled}" Click="AddPlugin_OnClick"
                                     ToolTip="Add another output binding"/>
-                        </DockPanel>
-                        <ItemsControl ItemsSource="{Binding Plugins}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate><StackPanel Orientation="Vertical"/></ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <DockPanel LastChildFill="True" Margin="0 0 0 6">
-                                        <Button DockPanel.Dock="Right" Width="32" Height="36" Margin="5 0 0 0"
-                                                Content="×" FontSize="22" Foreground="#FFFFFF"
-                                                Background="#303030" Click="RemoveOutput_OnClick"
-                                                IsEnabled="{Binding CanRemove}"
-                                                ToolTip="Remove this output"/>
-                                        <ItemsControl ItemsSource="{Binding DeviceBindings}">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Border Margin="0 0 6 0" Padding="4" CornerRadius="4"
-                                                            Background="#252525" BorderBrush="#484848" BorderThickness="1">
-                                                        <local:CompactInputBindingControl DataContext="{Binding}"
-                                                                                          DeviceBinding="{Binding DeviceBinding}"
-                                                                                          Width="368"/>
-                                                    </Border>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </DockPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        </WrapPanel>
                     </StackPanel>
                 </StackPanel>
             </Border>
