@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Utilities;
 using HidWizards.UCR.ViewModels.Presentation;
@@ -36,7 +37,9 @@ namespace HidWizards.UCR.Views.Controls
 
         private void MappingExpander_OnCollapsed(object sender, RoutedEventArgs e)
         {
-            HideExpandedBody();
+            // Keep the editor visible until its fade finishes. Do not animate
+            // Height: height animations trigger expensive re-layout of all mappings.
+            HideExpandedBody(true);
         }
 
         // Expanding height inside a non-virtualized mappings list remeasures every
@@ -46,6 +49,8 @@ namespace HidWizards.UCR.Views.Controls
         {
             if (ExpandedBodyHost == null) return;
 
+            // Interrupt any closing fade if the user immediately reopens the card.
+            ExpandedBodyHost.BeginAnimation(OpacityProperty, null);
             if (ExpandedBodyHost.ContentTemplate == null)
                 ExpandedBodyHost.ContentTemplate = FindResource("ExpandedMappingBodyTemplate") as DataTemplate;
 
@@ -54,9 +59,28 @@ namespace HidWizards.UCR.Views.Controls
             ExpandedBodyHost.Visibility = Visibility.Visible;
         }
 
-        private void HideExpandedBody()
+        private void HideExpandedBody(bool animate = false)
         {
             if (ExpandedBodyHost == null) return;
+
+            ExpandedBodyHost.BeginAnimation(OpacityProperty, null);
+            if (animate && ExpandedBodyHost.Visibility == Visibility.Visible)
+            {
+                // A compositor-only fade keeps the panel visible while closing,
+                // without repeatedly measuring the entire non-virtualized list.
+                var fade = new DoubleAnimation(ExpandedBodyHost.Opacity, 0,
+                    TimeSpan.FromMilliseconds(125))
+                {
+                    FillBehavior = FillBehavior.Stop
+                };
+                fade.Completed += (animationSender, args) =>
+                {
+                    if (MappingExpander?.IsExpanded != true)
+                        HideExpandedBody();
+                };
+                ExpandedBodyHost.BeginAnimation(OpacityProperty, fade);
+                return;
+            }
 
             ExpandedBodyHost.Visibility = Visibility.Collapsed;
             ExpandedBodyHost.Height = 0;
