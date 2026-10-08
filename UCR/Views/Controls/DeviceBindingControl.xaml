@@ -95,8 +95,13 @@
                             <ColumnDefinition Width="38"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <ContentControl Grid.Column="0" Content="{Binding Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
-                                        Width="34" Height="22" Margin="0 0 7 0" VerticalAlignment="Center"/>
+                        <!-- The shared device symbol is 50x31 and clips inside this smaller selector. -->
+                        <local:DeviceSymbolControl Grid.Column="0"
+                                                   SymbolText="{Binding Visual.SymbolText}"
+                                                   Foreground="{Binding Visual.BadgeTextBrush}"
+                                                   GlyphSize="22" Width="34" Height="22"
+                                                   Margin="0 0 7 0" VerticalAlignment="Center"
+                                                   ToolTip="{Binding Visual.ToolTip}"/>
 <TextBlock Grid.Column="1" Text="{Binding Title}" VerticalAlignment="Center"
                                    TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}"/>
                     </Grid>
