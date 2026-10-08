@@ -384,7 +384,8 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 return;
             }
 
-            if (lower.Contains("dpad") || lower.Contains("pov"))
+            if (lower.Contains("dpad") || lower.Contains("pov") ||
+                lower == "up" || lower == "down" || lower == "left" || lower == "right")
             {
                 result.ControlKind = ControlVisualKind.DPad;
                 result.ControlLabel = DirectionLabel(leaf, binding.KeyValue);

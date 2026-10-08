@@ -38,6 +38,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ? Visibility.Visible
             : Visibility.Collapsed;
         public bool CanBlock => BindingEnabled && DeviceBinding.IsBound && DeviceBinding.IsBlockable();
+        public string BlockAvailability => CanBlock
+            ? "Prevent the original device input from reaching the application"
+            : "This input provider or control does not support blocking";
         public Visibility ShowInvertInput => DeviceBinding.DeviceIoType == DeviceIoType.Input &&
                                              DeviceBindingCategory == DeviceBindingCategory.Range
             ? Visibility.Visible

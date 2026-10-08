@@ -78,35 +78,13 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void TryNavigateBack()
         {
-            if (_profileSnapshot == null || Context.PersistentXmlEquivalent(Profile, _profileSnapshot))
-            {
-                BackRequested?.Invoke(this, EventArgs.Empty);
-                return;
-            }
-
-            var result = HidWizards.UCR.Utilities.DarkMessageBox.Show(
-                "Save changes to '" + Profile.Title + "' before returning to profiles?",
-                "Save profile changes",
-                MessageBoxButton.YesNoCancel,
-                MessageBoxImage.Question);
-
-            if (result == MessageBoxResult.Cancel) return;
-
-            if (result == MessageBoxResult.Yes)
+            // Persist only when the profile's actual serialized state changed.
+            // Never prompt on ordinary navigation or revert unseen work.
+            if (_profileSnapshot != null && !Context.PersistentXmlEquivalent(Profile, _profileSnapshot))
             {
                 Context.SaveContext();
                 _profileSnapshot = Context.DeepXmlClone(Profile);
             }
-            else
-            {
-                var restore = Context.DeepXmlClone(_profileSnapshot);
-                Profile.RestorePersistentState(restore);
-
-                // If these profile edits were the only dirty state, this comparison clears the
-                // global dirty flag so closing UCR later does not ask to save discarded work.
-                Context.HasUnsavedPersistentChanges();
-            }
-
             BackRequested?.Invoke(this, EventArgs.Empty);
         }
 

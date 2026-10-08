@@ -607,7 +607,7 @@
                         <Button Grid.Column="1" Margin="6 0 2 0" Padding="9 2" Height="30"
                                 ToolTip="Add a local mapping group such as Player 2 or Extras. Stop the running profile to edit."
                                 ToolTipService.ShowOnDisabled="True" IsEnabled="{Binding CanEditProfile}"
-                                Style="{StaticResource UcrProfileActionButton}" Click="AddMappingGroup_OnClick">
+                                Background="{DynamicResource PrimaryHueMidBrush}" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignRaisedButton}" Click="AddMappingGroup_OnClick">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="FolderPlus" Width="15" Height="15" Margin="0 0 6 0" VerticalAlignment="Center"/>
                                 <TextBlock Text="Add group" VerticalAlignment="Center"/>
@@ -625,7 +625,7 @@
                         <Button Grid.Column="3" Margin="6 0 2 0" Padding="9 2" Height="30"
                                 ToolTip="Press inputs in sequence to create one mapping for each control."
                                 ToolTipService.ShowOnDisabled="True" IsEnabled="{Binding CanEditProfile}"
-                                Style="{StaticResource UcrProfileActionButton}" Click="BatchCapture_OnClick">
+                                Background="{DynamicResource PrimaryHueMidBrush}" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignRaisedButton}" Click="BatchCapture_OnClick">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Plus" Width="15" Height="15" Margin="0 0 6 0" VerticalAlignment="Center"/>
                                 <TextBlock Text="Capture" VerticalAlignment="Center"/>
@@ -635,7 +635,7 @@
                         <Button Grid.Column="4" Margin="6 0 2 0" Padding="9 2" Height="30"
                                 ToolTip="Assign outputs to captured mappings in the same order."
                                 ToolTipService.ShowOnDisabled="True" IsEnabled="{Binding CanEditProfile}"
-                                Style="{StaticResource UcrProfileActionButton}" Click="BatchAssign_OnClick">
+                                Background="{DynamicResource PrimaryHueMidBrush}" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignRaisedButton}" Click="BatchAssign_OnClick">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="ContentCopy" Width="15" Height="15" Margin="0 0 6 0" VerticalAlignment="Center"/>
                                 <TextBlock Text="Assign" VerticalAlignment="Center"/>
@@ -644,7 +644,7 @@
 
                         <Button Grid.Column="5" Margin="6 0 2 0" Padding="9 2" Height="30"
                                 ToolTip="Rename mappings in one pass. Stop the running profile to edit." ToolTipService.ShowOnDisabled="True" IsEnabled="{Binding CanEditProfile}"
-                                Style="{StaticResource UcrProfileActionButton}" Click="RenameMappings_OnClick">
+                                Background="{DynamicResource PrimaryHueMidBrush}" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignRaisedButton}" Click="RenameMappings_OnClick">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Edit" Width="15" Height="15" Margin="0 0 6 0" VerticalAlignment="Center"/>
                                 <TextBlock Text="Rename mappings" VerticalAlignment="Center"/>
@@ -653,7 +653,7 @@
 
                         <Button Grid.Column="6" Margin="6 0 2 0" Padding="9 2" Height="30"
                                 ToolTip="Replace one device throughout this profile. Stop the running profile to edit." ToolTipService.ShowOnDisabled="True" IsEnabled="{Binding CanEditProfile}"
-                                Style="{StaticResource UcrProfileActionButton}" Click="BatchDevices_OnClick">
+                                Background="{DynamicResource PrimaryHueMidBrush}" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignRaisedButton}" Click="BatchDevices_OnClick">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="↔" FontSize="16" Margin="0 0 6 0" VerticalAlignment="Center" Opacity="0.82"/>
                                 <TextBlock Text="Replace device" VerticalAlignment="Center"/>

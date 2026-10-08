@@ -944,29 +944,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private List<BindingVisualDescriptor> BuildCollapsedOutputVisuals()
         {
             var result = new List<BindingVisualDescriptor>();
-            // The card summary represents the mapping's primary route, which is the first
-            // plugin (the same plugin used by MappingRoute). Additional plugins remain visible
-            // when expanded and through filter/reference indicators, but must not replace the
-            // primary output shown in the collapsed header.
-            var primaryPlugin = Plugins.FirstOrDefault();
-            if (primaryPlugin != null)
+            // Present every output route, in the same order as the expanded output rows.
+            // Avoid the old primary-plugin-only summary that concealed extra outputs.
+            foreach (var plugin in Plugins)
             {
-                foreach (var binding in primaryPlugin.DeviceBindings.Take(3))
-                {
+                foreach (var binding in plugin.DeviceBindings)
                     result.Add(DescribeCollapsedBinding(binding));
-                }
 
-                if (result.Count == 0)
+                if (plugin.DeviceBindings.Count == 0)
                 {
-                    var filterName = primaryPlugin.Plugin.GetDefinedFilterName();
-                    if (!string.IsNullOrWhiteSpace(filterName)) result.Add(DeviceVisualCatalog.Filter(filterName));
+                    var filterName = plugin.Plugin.GetDefinedFilterName();
+                    if (!string.IsNullOrWhiteSpace(filterName))
+                        result.Add(DeviceVisualCatalog.Filter(filterName));
                 }
             }
 
             if (result.Count == 0)
-            {
-                result.Add(DeviceVisualCatalog.DescribeBinding(null, DeviceBindingCategory.Momentary, ProfileViewModel.Profile));
-            }
+                result.Add(DeviceVisualCatalog.DescribeBinding(null,
+                    DeviceBindingCategory.Momentary, ProfileViewModel.Profile));
             return result;
         }
 

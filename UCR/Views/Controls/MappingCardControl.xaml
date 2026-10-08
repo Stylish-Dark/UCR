@@ -181,6 +181,11 @@
                                                                         <local:CompactInputBindingControl DataContext="{Binding}"
                                                                                                           DeviceBinding="{Binding DeviceBinding}"
                                                                                                           Width="370"/>
+                                                                        <ToggleButton Content="Block" Width="62" Height="36" Margin="5 0 0 0"
+                                                                                      IsChecked="{Binding Block, Mode=TwoWay}"
+                                                                                      IsEnabled="{Binding CanBlock}"
+                                                                                      Foreground="#FFFFFF" Background="{DynamicResource PrimaryHueMidBrush}"
+                                                                                      ToolTip="{Binding BlockAvailability}"/>
                                                                         <ToggleButton Content="NOT" Width="46" Height="36" Margin="5 0 0 0"
                                                                                       IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
                                                                                       Click="InputNegated_OnClick"
@@ -225,7 +230,7 @@
                                                     </ItemsControl>
                                                 </ScrollViewer>
 
-                                                <Button Grid.Column="1" Content="+" Width="42" Height="38" Margin="5 0 0 0"
+                                                <Button Grid.Column="1" Content="Add input" Width="82" Height="38" Margin="5 0 0 0"
                                                         IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
                                                         Click="AddInputToCondition_OnClick"
                                                         Foreground="#FFFFFF"
@@ -266,6 +271,12 @@
                             <DataTemplate><plugin:PluginControl Margin="0 4 0 0"/></DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <Button Content="Add output" Width="116" Height="31" HorizontalAlignment="Left"
+                            Margin="5 7 0 5" Foreground="#FFFFFF"
+                            Background="{DynamicResource PrimaryHueMidBrush}"
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            IsEnabled="{Binding ButtonsEnabled}" Click="AddPlugin_OnClick"
+                            ToolTip="Add another independent output to this mapping"/>
                 </StackPanel>
             </Border>
         </DataTemplate>
@@ -438,10 +449,6 @@
                         <Button ToolTip="Rename mapping. Stop the active profile to edit." ToolTipService.ShowOnDisabled="True" Style="{StaticResource UcrMappingActionButton}"
                                 IsEnabled="{Binding ButtonsEnabled}" Click="Rename_OnClick">
                             <materialDesign:PackIcon Kind="Edit" Width="17" Height="17"/>
-                        </Button>
-                        <Button ToolTip="Add another output to this mapping. Stop the active profile to edit." ToolTipService.ShowOnDisabled="True" Style="{StaticResource UcrMappingActionButton}"
-                                IsEnabled="{Binding ButtonsEnabled}" Click="AddPlugin_OnClick">
-                            <materialDesign:PackIcon Kind="LibraryAdd" Width="17" Height="17"/>
                         </Button>
                         <Button ToolTip="Move this mapping to Main or another group. Stop the active profile to edit." ToolTipService.ShowOnDisabled="True"
                                 Style="{StaticResource UcrMappingActionButton}" IsEnabled="{Binding ButtonsEnabled}" Click="MoveSection_OnClick">
