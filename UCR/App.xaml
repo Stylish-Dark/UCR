@@ -25,6 +25,8 @@
                 <Setter Property="UseLayoutRounding" Value="True"/>
                 <Setter Property="SnapsToDevicePixels" Value="True"/>
             </Style>            <DataTemplate x:Key="DeviceSymbolTemplate">
+                <!-- Scale the complete 48x30 design canvas when the host is smaller. -->
+                <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
                 <Grid Width="48" Height="30" ToolTip="{Binding ToolTip}">
                     <controls:DeviceSymbolControl SymbolText="{Binding SymbolText}"
                                                   Foreground="{Binding BadgeTextBrush}"
@@ -55,6 +57,7 @@
                         </materialDesign:PackIcon.Style>
                     </materialDesign:PackIcon>
                 </Grid>
+                </Viewbox>
             </DataTemplate>
 <!-- Custom UCR palette -->
             <SolidColorBrush x:Key="MaterialDesignBackground" Color="#212121"/>
