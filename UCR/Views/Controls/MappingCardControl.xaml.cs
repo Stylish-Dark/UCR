@@ -5,7 +5,6 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Utilities;
 using HidWizards.UCR.ViewModels.Presentation;
@@ -25,126 +24,43 @@ namespace HidWizards.UCR.Views.Controls
         {
             var mapping = DataContext as MappingViewModel;
             if (mapping?.IsExpanded == true)
-            {
-                ShowExpandedBody(false);
-            }
+                ShowExpandedBody();
             else
-            {
-                CollapseExpandedBody(false);
-            }
+                HideExpandedBody();
         }
 
         private void MappingExpander_OnExpanded(object sender, RoutedEventArgs e)
         {
-            ShowExpandedBody(true);
+            ShowExpandedBody();
         }
 
         private void MappingExpander_OnCollapsed(object sender, RoutedEventArgs e)
         {
-            CollapseExpandedBody(true);
+            HideExpandedBody();
         }
 
-        private void ShowExpandedBody(bool animate)
+        // Expanding height inside a non-virtualized mappings list remeasures every
+        // card on every animation frame. Apply the state change once instead.
+        // Keep the heavy editor template lazy, so collapsed cards stay inexpensive.
+        private void ShowExpandedBody()
         {
             if (ExpandedBodyHost == null) return;
 
-            ExpandedBodyHost.BeginAnimation(HeightProperty, null);
-            ExpandedBodyHost.BeginAnimation(OpacityProperty, null);
             if (ExpandedBodyHost.ContentTemplate == null)
                 ExpandedBodyHost.ContentTemplate = FindResource("ExpandedMappingBodyTemplate") as DataTemplate;
 
-            ExpandedBodyHost.Visibility = Visibility.Visible;
-            ExpandedBodyHost.Opacity = animate ? 0 : 1;
             ExpandedBodyHost.Height = double.NaN;
-
-            if (!animate) return;
-
-            // Measure synchronously before WPF paints this frame, then animate from zero to the real
-            // editor height. Once complete, return to Auto so validation rows can grow naturally.
-            var width = Math.Max(1.0, ActualWidth);
-            ExpandedBodyHost.Measure(new Size(width, double.PositiveInfinity));
-            var targetHeight = Math.Max(0.0, ExpandedBodyHost.DesiredSize.Height);
-            if (targetHeight <= 0.5)
-            {
-                ExpandedBodyHost.Height = double.NaN;
-                ExpandedBodyHost.Opacity = 1;
-                return;
-            }
-
-            ExpandedBodyHost.Height = 0;
-            var duration = TimeSpan.FromMilliseconds(145);
-            var heightAnimation = new DoubleAnimation(0, targetHeight, duration)
-            {
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
-                FillBehavior = FillBehavior.Stop
-            };
-            heightAnimation.Completed += (completedSender, completedArgs) =>
-            {
-                if (MappingExpander?.IsExpanded != true) return;
-                ExpandedBodyHost.BeginAnimation(HeightProperty, null);
-                ExpandedBodyHost.Height = double.NaN;
-                ExpandedBodyHost.Opacity = 1;
-            };
-
-            ExpandedBodyHost.BeginAnimation(HeightProperty, heightAnimation, HandoffBehavior.SnapshotAndReplace);
-            ExpandedBodyHost.BeginAnimation(OpacityProperty,
-                new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(105))
-                {
-                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-                },
-                HandoffBehavior.SnapshotAndReplace);
+            ExpandedBodyHost.Opacity = 1;
+            ExpandedBodyHost.Visibility = Visibility.Visible;
         }
 
-        private void CollapseExpandedBody(bool animate)
+        private void HideExpandedBody()
         {
             if (ExpandedBodyHost == null) return;
 
-            ExpandedBodyHost.BeginAnimation(HeightProperty, null);
-            ExpandedBodyHost.BeginAnimation(OpacityProperty, null);
-
-            if (!animate || ExpandedBodyHost.Visibility != Visibility.Visible)
-            {
-                FinishCollapsedBody();
-                return;
-            }
-
-            var startHeight = Math.Max(0.0, ExpandedBodyHost.ActualHeight);
-            if (startHeight <= 0.5)
-            {
-                FinishCollapsedBody();
-                return;
-            }
-
-            ExpandedBodyHost.Height = startHeight;
-            var duration = TimeSpan.FromMilliseconds(125);
-            var heightAnimation = new DoubleAnimation(startHeight, 0, duration)
-            {
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn },
-                FillBehavior = FillBehavior.Stop
-            };
-            heightAnimation.Completed += (completedSender, completedArgs) =>
-            {
-                if (MappingExpander?.IsExpanded == true) return;
-                FinishCollapsedBody();
-            };
-
-            ExpandedBodyHost.BeginAnimation(HeightProperty, heightAnimation, HandoffBehavior.SnapshotAndReplace);
-            ExpandedBodyHost.BeginAnimation(OpacityProperty,
-                new DoubleAnimation(ExpandedBodyHost.Opacity, 0, TimeSpan.FromMilliseconds(95))
-                {
-                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
-                },
-                HandoffBehavior.SnapshotAndReplace);
-        }
-
-        private void FinishCollapsedBody()
-        {
-            if (ExpandedBodyHost == null) return;
-            ExpandedBodyHost.BeginAnimation(HeightProperty, null);
-            ExpandedBodyHost.BeginAnimation(OpacityProperty, null);
+            ExpandedBodyHost.Visibility = Visibility.Collapsed;
             ExpandedBodyHost.Height = 0;
             ExpandedBodyHost.Opacity = 0;
-            ExpandedBodyHost.Visibility = Visibility.Collapsed;
             ExpandedBodyHost.ContentTemplate = null;
         }
 

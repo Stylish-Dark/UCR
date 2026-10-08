@@ -413,8 +413,8 @@
                                                 <TextBlock Text="{Binding KindText}" FontSize="9.5" FontWeight="SemiBold"
                                                            Foreground="#FFFFFF" Opacity="0.9"/>
                                             </StackPanel>
-                                            <TextBlock Grid.Column="1" Text="{Binding ReferenceText}" FontSize="11" Opacity="0.62"
-                                                       Margin="8 0 2 0" VerticalAlignment="Center"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding ReferenceText}" FontSize="11" Opacity="0.62"
+                                                       Margin="6 0 2 0" VerticalAlignment="Center" HorizontalAlignment="Right"/>
                                         </Grid>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
