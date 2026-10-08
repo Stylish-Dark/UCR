@@ -37,12 +37,13 @@
         <ResourceDictionary>
             <converter:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
             <DataTemplate x:Key="DeviceSymbolTemplate">
-                <!-- The symbol's design canvas is 50x31, but device pickers can be
-                     as small as 31x21. Scale the ENTIRE outline rather than allowing
-                     ContentPresenter to crop the right/bottom of a fixed-size glyph. -->
-                <Viewbox Stretch="Uniform" StretchDirection="DownOnly" ToolTip="{Binding ToolTip}">
-                    <Viewbox.Style>
-                        <Style TargetType="{x:Type Viewbox}">
+                <controls:DeviceSymbolControl SymbolText="{Binding SymbolText}"
+                                              Foreground="{Binding BadgeTextBrush}"
+                                              GlyphSize="29"
+                                              Width="50" Height="31"
+                                              ToolTip="{Binding ToolTip}">
+                    <controls:DeviceSymbolControl.Style>
+                        <Style TargetType="{x:Type controls:DeviceSymbolControl}">
                             <Setter Property="Visibility" Value="Visible"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding HasSymbol}" Value="False">
@@ -50,11 +51,8 @@
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
-                    </Viewbox.Style>
-                    <controls:DeviceSymbolControl SymbolText="{Binding SymbolText}"
-                                                  Foreground="{Binding BadgeTextBrush}"
-                                                  GlyphSize="29" Width="50" Height="31"/>
-                </Viewbox>
+                    </controls:DeviceSymbolControl.Style>
+                </controls:DeviceSymbolControl>
             </DataTemplate>
 <DataTemplate x:Key="DeviceTemplate" DataType="{x:Type dashboard:DeviceItem}">
                 <StackPanel Margin="4">
