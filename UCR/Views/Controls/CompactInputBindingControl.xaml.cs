@@ -149,7 +149,7 @@ namespace HidWizards.UCR.Views.Controls
         {
             var selected = DeviceSelectionBox?.SelectedItem as ComboBoxItemViewModel;
             if (selected == null || DeviceBinding?.Profile == null) return null;
-            return DeviceBinding.Profile.GetDeviceConfiguration(DeviceIoType.Input, selected.Value);
+            return DeviceBinding.Profile.GetDeviceConfiguration(DeviceBinding.DeviceIoType, selected.Value);
         }
     }
 }

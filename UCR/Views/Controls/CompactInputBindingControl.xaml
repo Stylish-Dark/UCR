@@ -54,7 +54,7 @@
                   SelectedItem="{Binding SelectedDevice}"
                   IsEnabled="{Binding BindingEnabled}"
                   SelectionChanged="DeviceSelectionBox_OnSelectionChanged"
-                  ToolTip="Input device">
+                  ToolTip="Binding device">
             <ComboBox.ItemTemplate>
                 <DataTemplate>
                     <Grid MinWidth="112">
@@ -117,7 +117,17 @@
                       HorizontalAlignment="Center" VerticalAlignment="Center"
                       IsChecked="{Binding Block, Mode=TwoWay}"
                       IsEnabled="{Binding CanBlock}"
-                      Style="{StaticResource CompactBlockSwitch}"
-                      ToolTip="Block this physical input"/>
+                      ToolTip="Block this physical input">
+            <ToggleButton.Style>
+                <Style TargetType="{x:Type ToggleButton}" BasedOn="{StaticResource CompactBlockSwitch}">
+                    <Setter Property="Visibility" Value="Visible"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding ShowBlock}" Value="Collapsed">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ToggleButton.Style>
+        </ToggleButton>
     </Grid>
 </UserControl>

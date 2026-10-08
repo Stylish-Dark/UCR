@@ -392,5 +392,11 @@ namespace HidWizards.UCR.Views.Controls
             button.ContextMenu = menu;
             menu.IsOpen = true;
         }
+        private void RemoveOutput_OnClick(object sender, RoutedEventArgs e)
+        {
+            var plugin = (sender as FrameworkElement)?.DataContext as PluginViewModel;
+            if (plugin?.CanRemove == true) plugin.Remove();
+        }
+
     }
 }
