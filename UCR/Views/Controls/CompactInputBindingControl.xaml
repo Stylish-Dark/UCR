@@ -58,12 +58,12 @@
                 <DataTemplate>
                     <Grid MinWidth="112">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="34"/>
+                            <ColumnDefinition Width="50"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <ContentControl Grid.Column="0" Content="{Binding Visual}"
                                         ContentTemplate="{StaticResource DeviceSymbolTemplate}"
-                                        Width="31" Height="21" Margin="0 0 5 0" VerticalAlignment="Center"/>
+                                        Width="50" Height="31" Margin="0 0 5 0" VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="#FFFFFF"
                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                    ToolTip="{Binding Title}"/>
