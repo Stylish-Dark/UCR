@@ -881,7 +881,7 @@ namespace HidWizards.UCR.Views
             base.OnClosed(e);
         }
 
-        private async void MainWindow_OnClosing(object sender, CancelEventArgs e)
+        private void MainWindow_OnClosing(object sender, CancelEventArgs e)
         {
             if (!_exitRequested)
             {
@@ -893,57 +893,15 @@ namespace HidWizards.UCR.Views
             if (CloseState.ForceClose.Equals(WindowCloseState)) return;
             if (CloseState.Closing.Equals(WindowCloseState))
             {
-                if (WindowState.Equals(WindowState.Minimized)) WindowState = WindowState.Normal;
-
                 e.Cancel = true;
-                SystemSounds.Exclamation.Play();
                 return;
             }
 
             e.Cancel = true;
             WindowCloseState = CloseState.Closing;
-            var saveBeforeShutdown = false;
-
-            if (Context.HasUnsavedPersistentChanges())
-            {
-                if (WindowState.Equals(WindowState.Minimized))
-                {
-                    WindowState = WindowState.Normal;
-                    SystemSounds.Exclamation.Play();
-                    RootDialog.Focus();
-                }
-
-                if (RootDialog.IsOpen)
-                {
-                    DialogHost.CloseDialogCommand.Execute(null, RootDialog);
-                }
-
-                var dialog = new DecisionDialog("Configuration has changed", "Do you want to save before closing?");
-                var result = (MessageBoxResult?)await DialogHost.Show(dialog, "RootDialog");
-                if (result == null)
-                {
-                    WindowCloseState = CloseState.None;
-                    _exitRequested = false;
-                    return;
-                }
-
-                switch (result)
-                {
-                    case MessageBoxResult.None:
-                    case MessageBoxResult.Cancel:
-                        WindowCloseState = CloseState.None;
-                        _exitRequested = false;
-                        return;
-                    case MessageBoxResult.OK:
-                    case MessageBoxResult.Yes:
-                        saveBeforeShutdown = true;
-                        break;
-                    case MessageBoxResult.No:
-                        break;
-                }
-            }
-
-            BeginFinalShutdown(saveBeforeShutdown);
+            // Closing must not ask the user to decide what to do with configuration changes.
+            // Save changes automatically during the normal shutdown sequence.
+            BeginFinalShutdown(true);
         }
 
         private void BeginFinalShutdown(bool saveContext)
