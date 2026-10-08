@@ -775,6 +775,48 @@ namespace HidWizards.UCR.Core.Models
 
         #endregion
 
+        public void RestorePersistentState(Profile snapshot)
+        {
+            if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
+
+            Title = snapshot.Title;
+            Guid = snapshot.Guid;
+            ChildProfiles = snapshot.ChildProfiles ?? new List<Profile>();
+            Mappings = snapshot.Mappings ?? new List<Mapping>();
+            MappingGroups = snapshot.MappingGroups ?? new List<MappingGroup>();
+            InputDeviceConfigurations = snapshot.InputDeviceConfigurations ?? new List<DeviceConfiguration>();
+            OutputDeviceConfigurations = snapshot.OutputDeviceConfigurations ?? new List<DeviceConfiguration>();
+            BlockUnmappedInputEnabledOverrides = snapshot.BlockUnmappedInputEnabledOverrides ?? new List<Guid>();
+            BlockUnmappedInputDisabledOverrides = snapshot.BlockUnmappedInputDisabledOverrides ?? new List<Guid>();
+            PrimaryInputDeviceConfigurationGuid = snapshot.PrimaryInputDeviceConfigurationGuid;
+            PrimaryOutputDeviceConfigurationGuid = snapshot.PrimaryOutputDeviceConfigurationGuid;
+
+            _autoActivateEnabled = snapshot._autoActivateEnabled;
+            _autoActivateExecutable = snapshot._autoActivateExecutable;
+
+            if (_autoActivateApplications != null)
+                _autoActivateApplications.CollectionChanged -= AutoActivateApplicationsOnCollectionChanged;
+            _autoActivateApplications = snapshot.AutoActivateApplications ??
+                                        new ObservableCollection<ProfileApplicationRule>();
+            _autoActivateApplications.CollectionChanged += AutoActivateApplicationsOnCollectionChanged;
+
+            _blockAllUnmappedInputs = snapshot._blockAllUnmappedInputs;
+
+            PostLoad(Context, ParentProfile);
+
+            OnPropertyChanged(nameof(Title));
+            OnPropertyChanged(nameof(Mappings));
+            OnPropertyChanged(nameof(MappingGroups));
+            OnPropertyChanged(nameof(InputDeviceConfigurations));
+            OnPropertyChanged(nameof(OutputDeviceConfigurations));
+            OnPropertyChanged(nameof(AutoActivateApplications));
+            OnPropertyChanged(nameof(AutoActivateEnabled));
+            OnPropertyChanged(nameof(AutoActivateExecutable));
+            OnPropertyChanged(nameof(PrimaryInputDeviceConfigurationGuid));
+            OnPropertyChanged(nameof(PrimaryOutputDeviceConfigurationGuid));
+            OnPropertyChanged(nameof(BlockAllUnmappedInputs));
+        }
+
         internal void PostLoad(Context context, Profile parentProfile = null)
         {
             ParentProfile = parentProfile;

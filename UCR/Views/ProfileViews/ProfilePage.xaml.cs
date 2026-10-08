@@ -42,6 +42,7 @@ namespace HidWizards.UCR.Views.ProfileViews
         private int _mappingDragTargetIndex = -1;
         private bool _mappingDragActive;
         private bool _mappingDragEnding;
+        private Profile _profileSnapshot;
 
         public ProfilePage(Context context, Profile profile)
         {
@@ -51,6 +52,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             InitializeComponent();
             PageTitle.Text = "Mappings — " + profile.Title;
             DataContext = ProfileViewModel;
+            _profileSnapshot = Context.DeepXmlClone(Profile);
             context.ActiveProfileChangedEvent += ContextOnActiveProfileChangedEvent;
             StartGuiTimer();
         }
@@ -71,12 +73,47 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void Back_OnClick(object sender, RoutedEventArgs e)
         {
+            TryNavigateBack();
+        }
+
+        private void TryNavigateBack()
+        {
+            if (_profileSnapshot == null || Context.PersistentXmlEquivalent(Profile, _profileSnapshot))
+            {
+                BackRequested?.Invoke(this, EventArgs.Empty);
+                return;
+            }
+
+            var result = HidWizards.UCR.Utilities.DarkMessageBox.Show(
+                "Save changes to '" + Profile.Title + "' before returning to profiles?",
+                "Save profile changes",
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Cancel) return;
+
+            if (result == MessageBoxResult.Yes)
+            {
+                Context.SaveContext();
+                _profileSnapshot = Context.DeepXmlClone(Profile);
+            }
+            else
+            {
+                var restore = Context.DeepXmlClone(_profileSnapshot);
+                Profile.RestorePersistentState(restore);
+
+                // If these profile edits were the only dirty state, this comparison clears the
+                // global dirty flag so closing UCR later does not ask to save discarded work.
+                Context.HasUnsavedPersistentChanges();
+            }
+
             BackRequested?.Invoke(this, EventArgs.Empty);
         }
 
         private void Save_OnExecuted(object sender, ExecutedRoutedEventArgs e)
         {
             Context.SaveContext();
+            _profileSnapshot = Context.DeepXmlClone(Profile);
         }
 
         private void Save_OnCanExecute(object sender, CanExecuteRoutedEventArgs e)
@@ -642,7 +679,7 @@ namespace HidWizards.UCR.Views.ProfileViews
 
             if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt && e.Key == Key.Left)
             {
-                BackRequested?.Invoke(this, EventArgs.Empty);
+                TryNavigateBack();
                 e.Handled = true;
                 return;
             }

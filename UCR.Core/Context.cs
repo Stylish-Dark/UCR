@@ -229,6 +229,36 @@ namespace HidWizards.UCR.Core
             }
         }
 
+        public static bool PersistentXmlEquivalent<T>(T left, T right)
+        {
+            if (ReferenceEquals(left, right)) return true;
+            if (ReferenceEquals(left, null) || ReferenceEquals(right, null)) return false;
+
+            var pluginTypes = new HashSet<Type>(GetClonePluginTypes(left));
+            foreach (var type in GetClonePluginTypes(right)) pluginTypes.Add(type);
+            var formatter = GetXmlSerializer(pluginTypes.ToList(), typeof(T));
+
+            byte[] leftBytes;
+            byte[] rightBytes;
+            using (var leftStream = new MemoryStream())
+            {
+                formatter.Serialize(leftStream, left);
+                leftBytes = leftStream.ToArray();
+            }
+            using (var rightStream = new MemoryStream())
+            {
+                formatter.Serialize(rightStream, right);
+                rightBytes = rightStream.ToArray();
+            }
+
+            if (leftBytes.Length != rightBytes.Length) return false;
+            for (var i = 0; i < leftBytes.Length; i++)
+            {
+                if (leftBytes[i] != rightBytes[i]) return false;
+            }
+            return true;
+        }
+
         private static List<Type> GetClonePluginTypes(object value)
         {
             var result = new HashSet<Type>();

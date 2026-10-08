@@ -379,6 +379,20 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void ProfileSnapshotDetectsAndRestoresUnsavedEdits()
+        {
+            var snapshot = Context.DeepXmlClone(_profile);
+            Assert.That(Context.PersistentXmlEquivalent(_profile, snapshot), Is.True);
+
+            _profile.Rename("Temporary edit");
+            Assert.That(Context.PersistentXmlEquivalent(_profile, snapshot), Is.False);
+
+            _profile.RestorePersistentState(Context.DeepXmlClone(snapshot));
+            Assert.That(_profile.Title, Is.EqualTo(snapshot.Title));
+            Assert.That(Context.PersistentXmlEquivalent(_profile, snapshot), Is.True);
+        }
+
+        [Test]
         public void ProfileLocalBlockingOverridesSurviveXmlClone()
         {
             var device = new DeviceConfiguration(new Device("Keyboard A", "Core_Interception", "kbd-a", 0));

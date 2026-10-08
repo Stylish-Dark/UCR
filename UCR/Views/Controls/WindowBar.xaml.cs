@@ -15,6 +15,46 @@ namespace HidWizards.UCR.Views.Controls
         public WindowBar()
         {
             InitializeComponent();
+            Loaded += WindowBar_OnLoaded;
+            Unloaded += WindowBar_OnUnloaded;
+        }
+
+        private void WindowBar_OnLoaded(object sender, RoutedEventArgs e)
+        {
+            var window = Window;
+            if (window == null) return;
+            window.StateChanged -= Window_OnStateChanged;
+            window.StateChanged += Window_OnStateChanged;
+            ApplyWindowChromeForState();
+        }
+
+        private void WindowBar_OnUnloaded(object sender, RoutedEventArgs e)
+        {
+            var window = Window;
+            if (window != null) window.StateChanged -= Window_OnStateChanged;
+        }
+
+        private void Window_OnStateChanged(object sender, EventArgs e)
+        {
+            ApplyWindowChromeForState();
+        }
+
+        private void ApplyWindowChromeForState()
+        {
+            var window = Window;
+            if (window == null) return;
+
+            var chrome = System.Windows.Shell.WindowChrome.GetWindowChrome(window);
+            if (window.WindowState == WindowState.Maximized)
+            {
+                window.BorderThickness = new Thickness(0);
+                if (chrome != null) chrome.ResizeBorderThickness = new Thickness(0);
+            }
+            else
+            {
+                window.BorderThickness = new Thickness(1);
+                if (chrome != null) chrome.ResizeBorderThickness = SystemParameters.WindowResizeBorderThickness;
+            }
         }
 
         private void Close_OnClick(object sender, RoutedEventArgs e)
@@ -50,16 +90,10 @@ namespace HidWizards.UCR.Views.Controls
 
         private void ResizeWindow()
         {
-            if (Window.WindowState == WindowState.Maximized)
-            {
-                Window.BorderThickness = new Thickness(1.0);
-                Window.WindowState = WindowState.Normal;
-            }
-            else
-            {
-                Window.BorderThickness = new Thickness(8.0);
-                Window.WindowState = WindowState.Maximized;
-            }
+            Window.WindowState = Window.WindowState == WindowState.Maximized
+                ? WindowState.Normal
+                : WindowState.Maximized;
+            ApplyWindowChromeForState();
         }
         
         private void Minimize_OnClick(object sender, RoutedEventArgs e)

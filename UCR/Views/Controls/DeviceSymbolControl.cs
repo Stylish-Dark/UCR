@@ -80,30 +80,31 @@ namespace HidWizards.UCR.Views.Controls
                 if (!typeface.CharacterToGlyphMap.TryGetValue(codePoint, out glyphIndex)) return;
 
                 var emSize = Math.Max(1.0, GlyphSize);
-                var advance = typeface.AdvanceWidths[glyphIndex] * emSize;
-                var baseline = typeface.Baseline * emSize;
-                var origin = new Point(
-                    Math.Max(0, (ActualWidth - advance) * 0.5),
-                    Math.Max(baseline, (ActualHeight - emSize) * 0.5 + baseline));
+                var outline = typeface.GetGlyphOutline(glyphIndex, emSize, emSize);
+                if (outline == null) return;
 
-#pragma warning disable 618
-                var glyphRun = new GlyphRun(
-                    typeface,
-                    0,
-                    false,
-                    emSize,
-                    new[] { glyphIndex },
-                    origin,
-                    new[] { advance },
-                    null,
-                    new[] { SymbolText[0] },
-                    null,
-                    null,
-                    null,
-                    null);
-#pragma warning restore 618
+                var bounds = outline.Bounds;
+                if (bounds.IsEmpty || bounds.Width <= 0 || bounds.Height <= 0) return;
 
-                drawingContext.DrawGlyphRun(Foreground ?? Brushes.White, glyphRun);
+                const double padding = 1.5;
+                var availableWidth = Math.Max(1.0, ActualWidth - padding * 2.0);
+                var availableHeight = Math.Max(1.0, ActualHeight - padding * 2.0);
+                var scale = Math.Min(1.0,
+                    Math.Min(availableWidth / bounds.Width, availableHeight / bounds.Height));
+
+                var scaledWidth = bounds.Width * scale;
+                var scaledHeight = bounds.Height * scale;
+                var translateX = (ActualWidth - scaledWidth) * 0.5 - bounds.X * scale;
+                var translateY = (ActualHeight - scaledHeight) * 0.5 - bounds.Y * scale;
+
+                var transform = new TransformGroup();
+                if (Math.Abs(scale - 1.0) > 0.0001)
+                    transform.Children.Add(new ScaleTransform(scale, scale));
+                transform.Children.Add(new TranslateTransform(translateX, translateY));
+
+                var rendered = outline.CloneCurrentValue();
+                rendered.Transform = transform;
+                drawingContext.DrawGeometry(Foreground ?? Brushes.White, null, rendered);
             }
             catch (Exception exception)
             {
