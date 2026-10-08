@@ -181,11 +181,6 @@
                                                                         <local:CompactInputBindingControl DataContext="{Binding}"
                                                                                                           DeviceBinding="{Binding DeviceBinding}"
                                                                                                           Width="370"/>
-                                                                        <ToggleButton Content="Block" Width="62" Height="36" Margin="5 0 0 0"
-                                                                                      IsChecked="{Binding Block, Mode=TwoWay}"
-                                                                                      IsEnabled="{Binding CanBlock}"
-                                                                                      Foreground="#FFFFFF" Background="{DynamicResource PrimaryHueMidBrush}"
-                                                                                      ToolTip="{Binding BlockAvailability}"/>
                                                                         <ToggleButton Content="NOT" Width="46" Height="36" Margin="5 0 0 0"
                                                                                       IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
                                                                                       Click="InputNegated_OnClick"
