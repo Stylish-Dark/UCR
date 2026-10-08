@@ -477,12 +477,20 @@
 <ContentControl Grid.Column="1" Content="{Binding Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
                                                                     Width="44" Height="28" VerticalAlignment="Center"/>
                                                     <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                                                    <CheckBox Grid.Column="3" IsChecked="{Binding BlockUnmappedInputs, Mode=TwoWay}"
+                                                    <StackPanel Grid.Column="3" Orientation="Horizontal">
+                                                        <CheckBox IsChecked="{Binding ExclusiveMode, Mode=TwoWay}"
+                                                                  IsEnabled="{Binding CanUseExclusiveMode}" Margin="4 0 3 0"
+                                                                  VerticalAlignment="Center"
+                                                                  ToolTip="Exclusive Mode: hide this physical HID controller from games while its profile runs (requires HidHide)">
+                                                            <materialDesign:PackIcon Kind="EyeOff" Width="15" Height="15" Foreground="{DynamicResource PrimaryHueLightBrush}"/>
+                                                        </CheckBox>
+                                                        <CheckBox IsChecked="{Binding BlockUnmappedInputs, Mode=TwoWay}"
                                                               IsEnabled="{Binding CanEditConfiguration}"
                                                               VerticalAlignment="Center" Margin="6 0 2 0"
                                                               ToolTip="Block all unmapped inputs from this device in this profile">
                                                         <materialDesign:PackIcon Kind="ShieldOutline" Width="15" Height="15" Foreground="#FFFFFF"/>
                                                     </CheckBox>
+                                                    </StackPanel>
                                                 </Grid>
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>

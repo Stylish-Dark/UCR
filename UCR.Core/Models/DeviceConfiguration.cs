@@ -16,6 +16,9 @@ namespace HidWizards.UCR.Core.Models
         [XmlAttribute]
         [DefaultValue(false)]
         public bool BlockUnmappedInputs { get; set; }
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool ExclusiveMode { get; set; }
         public List<Device> ShadowDevices { get; set; }
 
         [XmlIgnore] 

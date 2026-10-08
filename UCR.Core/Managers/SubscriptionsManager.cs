@@ -32,6 +32,7 @@ namespace HidWizards.UCR.Core.Managers
 
         internal SubscriptionState SubscriptionState { get; set; }
         private readonly Context _context;
+        private readonly ExclusiveDeviceModeManager _exclusiveMode;
         private const int EmergencyStopHoldMilliseconds = 3000;
         private readonly object _emergencyStopLock = new object();
         private readonly Dictionary<string, Timer> _emergencyStopTimers = new Dictionary<string, Timer>(StringComparer.OrdinalIgnoreCase);
@@ -41,6 +42,7 @@ namespace HidWizards.UCR.Core.Managers
         public SubscriptionsManager(Context context)
         {
             _context = context;
+            _exclusiveMode = new ExclusiveDeviceModeManager();
         }
 
         #region ManagerApi
@@ -111,7 +113,7 @@ namespace HidWizards.UCR.Core.Managers
             {
                 _context.SetActiveProfiles(Enumerable.Empty<Profile>());
                 ProfileActive = false;
-                return true;
+                return _exclusiveMode.Apply(Enumerable.Empty<Profile>());
             }
 
             var state = SubscriptionState;
@@ -120,7 +122,7 @@ namespace HidWizards.UCR.Core.Managers
             _context.SetActiveProfiles(Enumerable.Empty<Profile>());
             ProfileActive = false;
             _context.OnActiveProfileChangedEvent(null);
-            return success;
+            return _exclusiveMode.Apply(Enumerable.Empty<Profile>()) && success;
         }
 
         private bool RebuildActiveProfiles(IList<Profile> targetProfiles, bool refreshDevices, Profile changedProfile)
@@ -147,8 +149,10 @@ namespace HidWizards.UCR.Core.Managers
                 SubscriptionState = null;
                 _context.SetActiveProfiles(Enumerable.Empty<Profile>());
                 ProfileActive = false;
+                var released = _exclusiveMode.Apply(Enumerable.Empty<Profile>());
+                if (!released) Logger.Error("Exclusive Device Mode cleanup failed on profile stop.");
                 _context.OnActiveProfileChangedEvent(changedProfile);
-                return stopSuccess;
+                return stopSuccess && released;
             }
 
             foreach (var profile in targetProfiles)
@@ -193,6 +197,18 @@ namespace HidWizards.UCR.Core.Managers
                 return false;
             }
 
+            // Hide the physical controller only after its input subscriptions exist.
+            // If HidHide is unavailable, do not claim the requested exclusive profile started.
+            if (!_exclusiveMode.Apply(targetProfiles))
+            {
+                Logger.Error("Unable to apply Exclusive Device Mode; restoring the previous profile.");
+                DeactivateProfile(candidate);
+                SubscriptionState = null;
+                if (previousProfiles.Count > 0 && RestorePreviousProfiles(previousProfiles, changedProfile))
+                    return false;
+                ClearFailedState(null, changedProfile);
+                return false;
+            }
             FinalizeNewState(targetProfiles, candidate, changedProfile);
             // The candidate is live. Teardown warnings from the old state are forensic only and must
             // not make the UI claim this successful switch failed.
@@ -239,6 +255,8 @@ namespace HidWizards.UCR.Core.Managers
                 return false;
             }
 
+            if (!_exclusiveMode.Apply(previousProfiles))
+                Logger.Error("Unable to restore Exclusive Device Mode for previous profiles.");
             FinalizeNewState(previousProfiles, rollback, changedProfile);
             return true;
         }
@@ -852,6 +870,7 @@ namespace HidWizards.UCR.Core.Managers
             {
                 DeactivateCurrentProfile();
             }
+            _exclusiveMode.Dispose();
         }
 
         private sealed class DeviceReferenceComparer : IEqualityComparer<Device>

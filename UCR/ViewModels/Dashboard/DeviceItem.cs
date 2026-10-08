@@ -23,6 +23,26 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 OnPropertyChanged();
             }
         }
+        public bool CanUseExclusiveMode =>
+            IsInput && DeviceConfiguration?.Device != null &&
+            !DeviceConfiguration.Device.IsCache &&
+            !string.IsNullOrWhiteSpace(DeviceConfiguration.Device.HidPath) &&
+            DeviceConfiguration.Device.HidPath.IndexOf("HID", System.StringComparison.OrdinalIgnoreCase) >= 0 &&
+            DeviceConfiguration.Device.HidPath.IndexOf("VID_", System.StringComparison.OrdinalIgnoreCase) >= 0 &&
+            !DeviceConfiguration.Device.ProviderName.StartsWith("Core_Interception",
+                System.StringComparison.OrdinalIgnoreCase);
+        public bool ExclusiveMode
+        {
+            get => IsInput && DeviceConfiguration?.ExclusiveMode == true;
+            set
+            {
+                if (!CanUseExclusiveMode || !CanEditConfiguration || DeviceConfiguration == null ||
+                    DeviceConfiguration.ExclusiveMode == value) return;
+                DeviceConfiguration.ExclusiveMode = value;
+                Profile?.Context?.ContextChanged();
+                OnPropertyChanged();
+            }
+        }
         public bool IsPrimary => Profile?.GetPrimaryDeviceConfiguration(DeviceIoType)?.Guid == DeviceConfiguration.Guid;
         public string PrimaryToolTip => IsPrimary
             ? $"Primary {DeviceIoType.ToString().ToLowerInvariant()} device"

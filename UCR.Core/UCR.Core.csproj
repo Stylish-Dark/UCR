@@ -77,6 +77,7 @@
     <Compile Include="Managers\DeviceIdentity.cs" />
     <Compile Include="Managers\DeviceCacheStore.cs" />
     <Compile Include="Managers\SubscriptionsManager.cs" />
+    <Compile Include="Managers\ExclusiveDeviceModeManager.cs" />
     <Compile Include="Models\Binding\DeviceBindingInfo.cs" />
     <Compile Include="Models\Binding\DeviceBindingNode.cs" />
     <Compile Include="Managers\DevicesManager.cs" />
