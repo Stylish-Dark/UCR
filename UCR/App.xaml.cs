@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -51,6 +53,8 @@ namespace HidWizards.UCR
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
 
             mutex = new SingleGlobalInstance();
+            if (!mutex.HasHandle && TryReplaceDifferentVersion())
+                Logger.Info("Previous UCR build exited; starting this version.");
             if (mutex.HasHandle)
             {
                 Logger.Info("Launching UCR");
@@ -101,12 +105,119 @@ namespace HidWizards.UCR
             }
         }
 
+        private bool TryReplaceDifferentVersion()
+        {
+            var ourVersion = Assembly.GetExecutingAssembly().GetName().Version;
+            var others = GetProcesses().Where(p => p.Id != Process.GetCurrentProcess().Id).ToArray();
+            if (others.Length == 0) return mutex.TryAcquire(1000);
+            foreach (var process in others)
+            {
+                try
+                {
+                    var fileVersion = FileVersionInfo.GetVersionInfo(process.MainModule.FileName).FileVersion;
+                    Version existingVersion;
+                    if (!Version.TryParse(fileVersion, out existingVersion) || existingVersion == ourVersion)
+                        return false;
+                }
+                catch (Exception exception)
+                {
+                    Logger.Warn(exception, "Could not verify previous UCR version; leaving it running.");
+                    return false;
+                }
+            }
+
+            foreach (var process in others)
+            {
+                try
+                {
+                    Logger.Info("Requesting shutdown of UCR " + process.Id + " before version replacement.");
+                    // Future versions understand this message and perform their normal save/cleanup.
+                    SendUpgradeMessage(process.Id);
+                    if (!process.WaitForExit(7000))
+                    {
+                        foreach (var handle in GetTopLevelWindowHandles(process.Id))
+                            PostMessage(handle, 0x0010, IntPtr.Zero, IntPtr.Zero);
+                    }
+                    if (!process.WaitForExit(4000))
+                    {
+                        Logger.Warn("Previous UCR build did not release its mutex; stopping it.");
+                        process.Kill();
+                        process.WaitForExit(5000);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Logger.Error("Cannot replace earlier UCR process.", exception);
+                    return false;
+                }
+            }
+            return mutex.TryAcquire(5000);
+        }
+
+        private void SendUpgradeMessage(int processId)
+        {
+            var command = "UCR_INTERNAL_VERSION_REPLACE";
+            var data = new NativeMethods.COPYDATASTRUCT
+            {
+                dwData = new IntPtr(2),
+                cbData = command.Length + 1,
+                lpData = Marshal.StringToHGlobalAnsi(command)
+            };
+            IntPtr memory = IntPtr.Zero;
+            try
+            {
+                memory = Marshal.AllocCoTaskMem(Marshal.SizeOf(data));
+                Marshal.StructureToPtr(data, memory, false);
+                foreach (var handle in GetTopLevelWindowHandles(processId))
+                    NativeMethods.SendMessage(handle, NativeMethods.WM_COPYDATA, IntPtr.Zero, memory);
+            }
+            finally
+            {
+                if (memory != IntPtr.Zero) Marshal.FreeCoTaskMem(memory);
+                if (data.lpData != IntPtr.Zero) Marshal.FreeHGlobal(data.lpData);
+            }
+        }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+
+        private void CreatePortableVersionBackup()
+        {
+            if (context == null) return;
+            var version = "v" + Assembly.GetExecutingAssembly().GetName().Version;
+            var backupRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "UCR", "VersionBackups");
+            var marker = Path.Combine(backupRoot, "last-version.txt");
+            if (File.Exists(marker) && string.Equals(File.ReadAllText(marker).Trim(), version, StringComparison.Ordinal))
+                return;
+            var directory = Path.Combine(backupRoot, version);
+            Directory.CreateDirectory(directory);
+            var archive = Path.Combine(directory, "AllProfiles.ucrprofiles");
+            if (!File.Exists(archive))
+            {
+                var pending = archive + ".pending";
+                context.ProfilesManager.ExportProfileList(pending);
+                File.Move(pending, archive);
+            }
+            foreach (var profile in context.Profiles)
+            {
+                var file = Path.Combine(directory, profile.Guid.ToString("D") + ".ucrprofile");
+                if (!File.Exists(file)) context.ProfilesManager.ExportProfile(profile, file);
+            }
+            var tempMarker = marker + ".tmp";
+            File.WriteAllText(tempMarker, version);
+            if (File.Exists(marker)) File.Replace(tempMarker, marker, null);
+            else File.Move(tempMarker, marker);
+            Logger.Info("Importable version backup created: " + directory);
+        }
+
         private void InitializeUcr()
         {
             RunStartupStage("Loading interface resources...", () => new ResourceLoader().Load());
             RunStartupStage("Initializing device providers and loading profiles...", () =>
             {
                 context = Context.Load();
+                CreatePortableVersionBackup();
                 Logger.SetDiagnosticContextProvider(BuildDiagnosticContextSnapshot);
             });
         }

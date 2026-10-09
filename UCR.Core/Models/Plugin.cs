@@ -254,6 +254,8 @@ namespace HidWizards.UCR.Core.Models
             var expectedCount = OutputCategories.Count;
             if (expectedCount == 0)
             {
+                if (Outputs.Any(binding => binding != null && binding.IsBound))
+                    throw new InvalidOperationException("Refusing to discard saved plugin output bindings: no output definitions were discovered.");
                 Outputs.Clear();
                 return;
             }
@@ -268,11 +270,19 @@ namespace HidWizards.UCR.Core.Models
                 var persistedCount = Math.Min(expectedCount, Outputs.Count - expectedCount);
                 for (var index = 0; index < persistedCount; index++)
                 {
-                    CopyBindingState(Outputs[expectedCount + index], Outputs[index]);
+                    // On deserialization, a constructor-created default is followed by the
+                    // saved output. Never allow an unbound appended entry to overwrite an
+                    // already bound output.
+                    if (!Outputs[index].IsBound || Outputs[expectedCount + index].IsBound)
+                        CopyBindingState(Outputs[expectedCount + index], Outputs[index]);
                 }
 
                 for (var index = Outputs.Count - 1; index >= expectedCount; index--)
+                {
+                    if (Outputs[index].IsBound && !Outputs[index - expectedCount < expectedCount && index - expectedCount >= 0 ? index - expectedCount : 0].IsBound)
+                        throw new InvalidOperationException("Refusing to truncate a populated output during profile loading.");
                     Outputs.RemoveAt(index);
+                }
             }
 
             while (Outputs.Count < expectedCount)

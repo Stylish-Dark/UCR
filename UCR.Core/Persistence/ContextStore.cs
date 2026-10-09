@@ -144,7 +144,9 @@ namespace HidWizards.UCR.Core.Persistence
                     Profile = profile
                 };
                 var path = GetProfilePath(profile.Guid);
-                AtomicWrite(path, serializer.Serialize(record), json =>
+                var serializedProfile = serializer.Serialize(record);
+                GuardAgainstLostOutputs(path, serializedProfile);
+                AtomicWrite(path, serializedProfile, json =>
                 {
                     ValidateProfileJsonShape(json);
                     ValidateProfileFile(serializer.Deserialize<ProfileFile>(json), profile.Guid);
@@ -170,6 +172,33 @@ namespace HidWizards.UCR.Core.Persistence
 
             CleanupOrphanProfiles(profileIds);
             return true;
+        }
+
+        private static void GuardAgainstLostOutputs(string path, string replacement)
+        {
+            if (!File.Exists(path)) return;
+            // A normal deletion or one cleared binding is allowed. A large unexplained
+            // drop of bound outputs with mappings still present is likely deserialization
+            // damage and must not silently overwrite the recoverable JSON.
+            JObject previous;
+            JObject current;
+            try
+            {
+                previous = JObject.Parse(File.ReadAllText(path, Encoding.UTF8));
+                current = JObject.Parse(replacement);
+            }
+            catch (JsonException) { return; }
+
+            Func<JObject, int> boundOutputs = json => json.Descendants().OfType<JObject>()
+                .Where(obj => obj["outputs"] is JArray)
+                .SelectMany(obj => (JArray)obj["outputs"])
+                .Count(item => item["isBound"]?.Value<bool>() == true);
+            var oldBound = boundOutputs(previous);
+            var newBound = boundOutputs(current);
+            var oldMappings = previous.Descendants().OfType<JObject>().Count(obj => obj["deviceBindings"] is JArray && obj["plugins"] is JArray);
+            var newMappings = current.Descendants().OfType<JObject>().Count(obj => obj["deviceBindings"] is JArray && obj["plugins"] is JArray);
+            if (oldBound >= 3 && newBound * 2 < oldBound && newMappings >= oldMappings)
+                throw new InvalidDataException("UCR refused to overwrite a profile because most of its saved output bindings disappeared. Restore from VersionBackups or Backups.");
         }
 
         private bool HasNewStoreConfigurationEvidence()

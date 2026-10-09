@@ -769,6 +769,12 @@ namespace HidWizards.UCR.Views
             }
         }
 
+        public void RequestVersionReplacement()
+        {
+            _exitRequested = true;
+            Close();
+        }
+
         internal void PrepareForShutdown()
         {
             _autoProfileMonitor?.Dispose();
@@ -951,6 +957,12 @@ namespace HidWizards.UCR.Views
             
             var data = (NativeMethods.COPYDATASTRUCT)Marshal.PtrToStructure(lParam, typeof(NativeMethods.COPYDATASTRUCT));
             var argsString = Marshal.PtrToStringAnsi(data.lpData);
+            if (string.Equals(argsString, "UCR_INTERNAL_VERSION_REPLACE", StringComparison.Ordinal))
+            {
+                Dispatcher.BeginInvoke((Action)RequestVersionReplacement);
+                handled = true;
+                return new IntPtr(1);
+            }
             if (!string.IsNullOrEmpty(argsString)) Context.ParseCommandLineArguments(argsString.Split(';'));
             RestoreFromTray();
             return IntPtr.Zero;
