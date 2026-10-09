@@ -74,12 +74,28 @@ namespace HidWizards.UCR.Views
             // ProfileEditorHost exists. Wait until the whole visual tree has loaded.
             Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
             {
-                if (ProfileTree.SelectedItem == null && ProfileTree.Items.Count > 0)
+                try
                 {
-                    var first = ProfileTree.ItemContainerGenerator.ContainerFromIndex(0) as TreeViewItem;
-                    if (first != null) first.IsSelected = true;
+                    if (ProfileTree.SelectedItem == null && ProfileTree.Items.Count > 0)
+                    {
+                        var first = ProfileTree.ItemContainerGenerator.ContainerFromIndex(0) as TreeViewItem;
+                        if (first != null) first.IsSelected = true;
+                    }
+                    var selected = ProfileTree.SelectedItem as ProfileItem;
+                    if (selected != null && !ReferenceEquals(_dashboardViewModel.SelectedProfileItem, selected))
+                        _dashboardViewModel.SelectedProfileItem = selected;
+                    OpenSelectedProfileEditor();
                 }
-                OpenSelectedProfileEditor();
+                catch (Exception exception)
+                {
+                    Logger.Error("Could not initialise the selected workspace profile.", exception);
+                    ProfileEditorHost.Content = new TextBlock
+                    {
+                        Text = "The selected profile could not be loaded. Check UCR's crash log or choose another profile.",
+                        TextWrapping = TextWrapping.Wrap,
+                        Margin = new Thickness(20)
+                    };
+                }
             }));
         }
 
@@ -1106,10 +1122,25 @@ namespace HidWizards.UCR.Views
 
         private void ProfileTree_OnSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
-            var treeView = sender as TreeView;
-            _dashboardViewModel.SelectedProfileItem = treeView?.SelectedItem as ProfileItem;
-            if (_workspaceReady && _navigationPage == null)
-                OpenSelectedProfileEditor();
+            // XAML can raise selection events before ProfileEditorHost is constructed.
+            if (!_workspaceReady) return;
+            try
+            {
+                var treeView = sender as TreeView;
+                _dashboardViewModel.SelectedProfileItem = treeView?.SelectedItem as ProfileItem;
+                if (_navigationPage == null) OpenSelectedProfileEditor();
+            }
+            catch (Exception exception)
+            {
+                Logger.Error("Could not load selected workspace profile.", exception);
+                if (ProfileEditorHost != null)
+                    ProfileEditorHost.Content = new TextBlock
+                    {
+                        Text = "Unable to load this profile. See UCR's crash log for details.",
+                        TextWrapping = TextWrapping.Wrap,
+                        Margin = new Thickness(20)
+                    };
+            }
         }
     }
 }
