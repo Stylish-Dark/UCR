@@ -24,6 +24,7 @@ namespace HidWizards.UCR.Core.Managers
         private readonly string _journal = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "UCR", "HidHideExclusiveSession.txt");
+        private readonly object _sync = new object();
         private bool _addedApplication;
         private bool _enabledCloak;
         private bool _recoveryFailed;
@@ -40,6 +41,11 @@ namespace HidWizards.UCR.Core.Managers
         }
 
         public bool Apply(IEnumerable<Profile> profiles)
+        {
+            lock (_sync) return ApplyCore(profiles);
+        }
+
+        private bool ApplyCore(IEnumerable<Profile> profiles)
         {
             try
             {
@@ -148,10 +154,13 @@ namespace HidWizards.UCR.Core.Managers
 
         public void Dispose()
         {
-            if (_disposed) return;
-            _disposed = true;
-            if (!Apply(Enumerable.Empty<Profile>()))
-                Logger.Error("HidHide cleanup failed; recovery journal retained for next launch.");
+            lock (_sync)
+            {
+                if (_disposed) return;
+                _disposed = true;
+                if (!ApplyCore(Enumerable.Empty<Profile>()))
+                    Logger.Error("HidHide cleanup failed; recovery journal retained for next launch.");
+            }
         }
 
         private static HashSet<string> ResolveDevicePaths(string cli, IEnumerable<string> requested)
