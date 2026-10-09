@@ -206,6 +206,10 @@ namespace HidWizards.UCR.Core.Managers
                 SubscriptionState = null;
                 if (previousProfiles.Count > 0 && RestorePreviousProfiles(previousProfiles, changedProfile))
                     return false;
+                // A failed HidHide write may have partially hidden a controller.
+                // Recover our ownership journal before leaving UCR inactive.
+                if (!_exclusiveMode.Apply(Enumerable.Empty<Profile>()))
+                    Logger.Error("Exclusive Device Mode cleanup failed after activation rollback.");
                 ClearFailedState(null, changedProfile);
                 return false;
             }
