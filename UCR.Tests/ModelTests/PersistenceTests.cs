@@ -590,6 +590,55 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.Throws<InvalidDataException>(() => Reload(pluginTypes));
         }
 
+        [Test]
+        public void BoundOutputValuesRemainIntactAcrossRepeatedJsonLoadsAndSaves()
+        {
+            var types = new List<Type> { typeof(ButtonToButton) };
+            var context = NewContext();
+            var profile = context.ProfilesManager.CreateProfile("Keyboard outputs", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var mapping = profile.AddMapping("Tab to Enter");
+            profile.AddPlugin(mapping, new ButtonToButton());
+            var output = mapping.Plugins.Single().Outputs.Single();
+            SetDeviceBindingValues(output, 28);
+            output.IsBound = true;
+            context.SaveContext(types);
+
+            for (var i = 0; i < 3; i++)
+            {
+                var reloaded = Reload(types);
+                var savedOutput = reloaded.Profiles.Single().Mappings.Single()
+                    .Plugins.Single().Outputs.Single();
+                Assert.That(savedOutput.IsBound, Is.True);
+                Assert.That(savedOutput.KeyType, Is.EqualTo(28));
+                Assert.That(savedOutput.KeyValue, Is.EqualTo(28));
+                Assert.That(savedOutput.KeySubValue, Is.EqualTo(28));
+                reloaded.SaveContext(types);
+            }
+        }
+
+        [Test]
+        public void NativeJsonProfileBackupCanBeImportedAsSeparateProfile()
+        {
+            var types = new List<Type> { typeof(ButtonToButton) };
+            var context = NewContext();
+            var profile = context.ProfilesManager.CreateProfile("Keyboard outputs", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var mapping = profile.AddMapping("Tab to Enter");
+            profile.AddPlugin(mapping, new ButtonToButton());
+            var output = mapping.Plugins.Single().Outputs.Single();
+            SetDeviceBindingValues(output, 28);
+            output.IsBound = true;
+            context.SaveContext(types);
+
+            var jsonPath = Path.Combine(_store.ProfilesRoot, profile.Guid.ToString("D") + ".json");
+            var imported = context.ProfilesManager.ImportProfile(jsonPath, null, types);
+            Assert.That(imported.Guid, Is.Not.EqualTo(profile.Guid));
+            var importedOutput = imported.Mappings.Single().Plugins.Single().Outputs.Single();
+            Assert.That(importedOutput.IsBound, Is.True);
+            Assert.That(importedOutput.KeyValue, Is.EqualTo(28));
+        }
+
         private void WriteLegacyContext(string title, List<Type> pluginTypes)
         {
             var legacy = new LegacyContextImportPackage();
