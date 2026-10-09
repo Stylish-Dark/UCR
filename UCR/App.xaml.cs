@@ -45,17 +45,31 @@ namespace HidWizards.UCR
         {
             base.OnStartup(e);
             RuntimePathManager.NormalizeWorkingDirectory();
-            DeviceOutlineColors.LoadFromIni();
             Logger.InitializeSession();
-            AppearanceManager.ApplySavedAccent();
-            AppearanceManager.ApplySavedUiScale();
             AppDomain.CurrentDomain.UnhandledException += AppDomain_CurrentDomain_UnhandledException;
             DispatcherUnhandledException += App_DispatcherUnhandledException;
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
 
+            // User-customisable appearance files and preferences must not make UCR unlaunchable.
+            try { DeviceOutlineColors.LoadFromIni(); }
+            catch (Exception exception) { Logger.Warn("Could not load device outline colours; using defaults.", exception); }
+            try { AppearanceManager.ApplySavedAccent(); AppearanceManager.ApplySavedUiScale(); }
+            catch (Exception exception) { Logger.Warn("Could not restore appearance preferences; using defaults.", exception); }
+
             mutex = new SingleGlobalInstance();
-            if (!mutex.HasHandle && TryReplaceDifferentVersion())
-                Logger.Info("Previous UCR build exited; starting this version.");
+            if (!mutex.HasHandle)
+            {
+                try
+                {
+                    if (TryReplaceDifferentVersion())
+                        Logger.Info("Previous UCR build exited; starting this version.");
+                }
+                catch (Exception exception)
+                {
+                    // Another instance can deny process/version inspection. Do not crash this instance.
+                    Logger.Error("Could not inspect or replace the previous UCR instance.", exception);
+                }
+            }
             if (mutex.HasHandle)
             {
                 Logger.Info("Launching UCR");
@@ -272,9 +286,13 @@ namespace HidWizards.UCR
             RunStartupStage("Loading interface resources...", () => new ResourceLoader().Load());
             RunStartupStage("Initializing device providers and loading profiles...", () =>
             {
-                PreserveOriginalProfileFilesForVersion();
+                // Backups are important, but locked Documents folders, invalid profile titles or
+                // interrupted earlier backups must not prevent the editor from opening.
+                try { PreserveOriginalProfileFilesForVersion(); }
+                catch (Exception exception) { Logger.Error("Pre-load backup failed; original JSON files were not modified by the backup.", exception); }
                 context = Context.Load();
-                CreatePortableVersionBackup();
+                try { CreatePortableVersionBackup(); }
+                catch (Exception exception) { Logger.Error("Portable version backup failed; UCR will continue to open.", exception); }
                 Logger.SetDiagnosticContextProvider(BuildDiagnosticContextSnapshot);
             });
         }
