@@ -253,7 +253,7 @@
             <Grid Margin="10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" MinWidth="320"/>
-                    <ColumnDefinition Width="250"/>
+                    <ColumnDefinition Width="420" MinWidth="360"/>
                 </Grid.ColumnDefinitions>
 
                 <Grid x:Name="SidebarGrid" Grid.Column="1" Margin="10 0 0 0">
