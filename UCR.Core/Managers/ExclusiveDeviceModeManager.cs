@@ -3,15 +3,19 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using HidWizards.UCR.Core.Models;
+using Newtonsoft.Json.Linq;
 using NLog;
 
 namespace HidWizards.UCR.Core.Managers
 {
     /// <summary>
-    /// Scoped HidHide integration. Never wipes another application's whitelist or hidden devices.
-    /// The on-disk ownership journal allows cleanup after an abnormal UCR termination on next launch.
-    /// HidHideCLI is required; UCR does not install drivers.
+    /// Scoped controller isolation using the installed HidHide driver.
+    /// UCR only removes entries it added, verifies every configuration change,
+    /// and journals pending changes so a crash cannot silently strand a device.
+    /// Driver configuration alone cannot prove that an already-open device stack
+    /// has been rebuilt; reconnecting the controller may still be required.
     /// </summary>
     internal sealed class ExclusiveDeviceModeManager : IDisposable
     {
@@ -22,91 +26,118 @@ namespace HidWizards.UCR.Core.Managers
             "UCR", "HidHideExclusiveSession.txt");
         private bool _addedApplication;
         private bool _enabledCloak;
+        private bool _recoveryFailed;
         private bool _disposed;
 
         public ExclusiveDeviceModeManager()
         {
             try { RecoverStaleSession(); }
-            catch (Exception exception) { Logger.Error(exception, "Could not recover previous HidHide session"); }
+            catch (Exception exception)
+            {
+                _recoveryFailed = true;
+                Logger.Error(exception, "Could not recover previous HidHide session; exclusive mode is unavailable until recovery succeeds.");
+            }
         }
 
         public bool Apply(IEnumerable<Profile> profiles)
         {
-            var desired = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var profile in profiles ?? Enumerable.Empty<Profile>())
-            {
-                foreach (var config in profile.GetDeviceConfigurationList(DeviceIoType.Input))
-                {
-                    if (config?.ExclusiveMode != true) continue;
-                    var device = config.Device;
-                    if (device == null || device.IsCache ||
-                        device.ProviderName.StartsWith("Core_Interception", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Logger.Error("Exclusive mode requires a live physical HID controller, not an Interception keyboard.");
-                        return false;
-                    }
-                    var instance = NormalizeInstancePath(device.HidPath);
-                    if (instance == null)
-                    {
-                        Logger.Error("Exclusive mode has no usable HID instance path for " + device.DisplayTitle);
-                        return false;
-                    }
-                    desired.Add(instance);
-                }
-            }
-
-            // Never hide a whole device on behalf of a transient, unconfigured profile.
-            if (desired.Count == 0 && _owned.Count == 0 && !_addedApplication && !_enabledCloak)
-                return true;
-            var toRelease = _owned.Where(path => !desired.Contains(path)).ToList();
-            var toAcquire = desired.Where(path => !_owned.Contains(path)).ToList();
-            if (toAcquire.Count == 0 && toRelease.Count == 0 && !_addedApplication && !_enabledCloak && desired.Count == 0) return true;
             try
             {
+                // Never overwrite an unrecovered ownership journal. Doing so could
+                // permanently strand a previously hidden controller.
+                if (_recoveryFailed)
+                {
+                    RecoverStaleSession();
+                    _owned.Clear();
+                    _addedApplication = false;
+                    _enabledCloak = false;
+                    _recoveryFailed = false;
+                }
+
+                var requested = new List<string>();
+                foreach (var profile in profiles ?? Enumerable.Empty<Profile>())
+                {
+                    if (profile == null) continue;
+                    foreach (var config in profile.GetDeviceConfigurationList(DeviceIoType.Input))
+                    {
+                        if (config?.ExclusiveMode != true) continue;
+                        var device = config.Device;
+                        if (device == null || device.IsCache ||
+                            device.ProviderName.StartsWith("Core_Interception", StringComparison.OrdinalIgnoreCase))
+                            throw new InvalidOperationException("Exclusive mode requires a live physical HID controller.");
+
+                        var instance = NormalizeInstancePath(device.HidPath);
+                        if (instance == null || !instance.StartsWith(@"HID\", StringComparison.OrdinalIgnoreCase))
+                            throw new InvalidOperationException("Exclusive mode cannot identify the HID instance for " + device.DisplayTitle);
+                        requested.Add(instance);
+                    }
+                }
+
+                if (requested.Count == 0 && _owned.Count == 0 && !_addedApplication && !_enabledCloak)
+                    return true;
+
                 var cli = FindCli();
-                var snapshot = Invoke(cli, "--cloak-state --inv-state --dev-list --app-list");
-                if (snapshot.IndexOf("--inv-on", StringComparison.OrdinalIgnoreCase) >= 0)
-                    throw new InvalidOperationException("HidHide inverse application mode is enabled. Disable it in HidHide first.");
+                var desired = requested.Count == 0
+                    ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                    : ResolveDevicePaths(cli, requested);
+                var before = ReadSnapshot(cli);
+                if (before.Inverse)
+                    throw new InvalidOperationException("HidHide inverse application mode is enabled. Disable it before using Exclusive Mode.");
 
-                var currentlyHidden = ReadLines(snapshot, "--dev-hide");
-                var newlyOwned = toAcquire.Where(p => !currentlyHidden.Contains(p)).ToList();
                 var app = Process.GetCurrentProcess().MainModule.FileName;
-                var allowed = ReadLines(snapshot, "--app-reg");
-                var addApp = desired.Count > 0 && !_addedApplication && !allowed.Contains(app);
-                var cloakOn = snapshot.IndexOf("--cloak-on", StringComparison.OrdinalIgnoreCase) >= 0;
-                var enableCloak = desired.Count > 0 && !_enabledCloak && !cloakOn;
+                var newlyOwned = desired.Where(p => !before.Hidden.Contains(p)).ToList();
+                var toRelease = _owned.Where(p => !desired.Contains(p) && before.Hidden.Contains(p)).ToList();
+                var addApp = desired.Count > 0 && !before.Allowed.Contains(app);
+                var enableCloak = desired.Count > 0 && !before.CloakOn;
+                var removeApp = desired.Count == 0 && _addedApplication && before.Allowed.Contains(app);
 
-                // Journal first, then apply: if UCR crashes during a CLI call,
-                // the next launch can undo only UCR-owned registrations.
-                var nextOwned = new HashSet<string>(_owned, StringComparer.OrdinalIgnoreCase);
-                foreach (var p in toRelease) nextOwned.Remove(p);
-                foreach (var p in newlyOwned) nextOwned.Add(p);
-                var nextAddedApp = _addedApplication || addApp;
-                var nextEnabledCloak = _enabledCloak || enableCloak;
-                WriteJournal(nextOwned, nextAddedApp, nextEnabledCloak, app);
+                // The global cloak must remain enabled if any unrelated hidden
+                // devices exist, even if UCR was the application that enabled it.
+                var disableCloak = desired.Count == 0 && _enabledCloak && before.CloakOn &&
+                    !before.Hidden.Except(_owned, StringComparer.OrdinalIgnoreCase).Any();
+
+                // Journal the UNION of old and new ownership BEFORE writing to the
+                // driver. If the process crashes while releasing old entries, they
+                // must still be recorded for the next launch to clean up.
+                var pendingOwned = _owned.Union(newlyOwned, StringComparer.OrdinalIgnoreCase).ToList();
+                WriteJournal(pendingOwned, _addedApplication || addApp,
+                    _enabledCloak || enableCloak, app);
 
                 var commands = new List<string>();
                 if (addApp) commands.Add("--app-reg " + Quote(app));
                 foreach (var p in newlyOwned) commands.Add("--dev-hide " + Quote(p));
                 foreach (var p in toRelease) commands.Add("--dev-unhide " + Quote(p));
                 if (enableCloak) commands.Add("--cloak-on");
-                if (desired.Count == 0)
-                {
-                    if (_addedApplication) commands.Add("--app-unreg " + Quote(app));
-                    if (_enabledCloak) commands.Add("--cloak-off");
-                }
+                if (removeApp) commands.Add("--app-unreg " + Quote(app));
+                if (disableCloak) commands.Add("--cloak-off");
+                if (commands.Count > 0) Invoke(cli, string.Join(" ", commands));
 
-                if (commands.Count != 0) Invoke(cli, string.Join(" ", commands));
+                // A successful CLI exit does not mean its requested configuration
+                // is present. Read it back before accepting profile activation.
+                var after = ReadSnapshot(cli);
+                if (after.Inverse || desired.Any(p => !after.Hidden.Contains(p)) ||
+                    toRelease.Any(p => after.Hidden.Contains(p)) ||
+                    (desired.Count > 0 && (!after.CloakOn || !after.Allowed.Contains(app))) ||
+                    (removeApp && after.Allowed.Contains(app)) ||
+                    (disableCloak && after.CloakOn))
+                    throw new InvalidOperationException("HidHide did not retain the requested isolation configuration.");
+
                 _owned.Clear();
-                foreach (var p in nextOwned) _owned.Add(p);
-                _addedApplication = desired.Count > 0 && nextAddedApp;
-                _enabledCloak = desired.Count > 0 && nextEnabledCloak;
+                foreach (var p in pendingOwned.Where(desired.Contains)) _owned.Add(p);
+                _addedApplication = desired.Count > 0 && (_addedApplication || addApp);
+                _enabledCloak = desired.Count > 0 && (_enabledCloak || enableCloak);
                 WriteJournal(_owned, _addedApplication, _enabledCloak, app);
+
+                if (newlyOwned.Count > 0)
+                    Logger.Info("HidHide rules were verified. A controller already connected before the filter attached may need to be reconnected.");
                 return true;
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                Logger.Error(ex, "Exclusive Device Mode could not change HidHide state.");
+                Logger.Error(exception, "Exclusive Device Mode failed. Profile activation must not be reported as successful.");
+                // Retain the journal for recovery. Do not try to guess which
+                // partial CLI writes succeeded after a failed invocation.
+                if (File.Exists(_journal)) _recoveryFailed = true;
                 return false;
             }
         }
@@ -115,22 +146,130 @@ namespace HidWizards.UCR.Core.Managers
         {
             if (_disposed) return;
             _disposed = true;
-            Apply(Enumerable.Empty<Profile>());
+            if (!Apply(Enumerable.Empty<Profile>()))
+                Logger.Error("HidHide cleanup failed; recovery journal retained for next launch.");
+        }
+
+        private static HashSet<string> ResolveDevicePaths(string cli, IEnumerable<string> requested)
+        {
+            // HidHide's inventory correlates HID children with their XUSB and USB
+            // container paths. Hiding only the HID child leaves many XInput pads
+            // visible to games. Never guess a USB parent from a VID/PID alone.
+            var gaming = ReadInventory(cli, "--dev-gaming");
+            JArray all = null;
+            var desired = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var hidPath in requested.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var device = FindDevice(gaming, hidPath);
+                if (device == null)
+                {
+                    if (all == null) all = ReadInventory(cli, "--dev-all");
+                    device = FindDevice(all, hidPath);
+                }
+                if (device == null)
+                    throw new InvalidOperationException("HidHide cannot identify the connected controller: " + hidPath);
+
+                desired.Add(hidPath);
+                var xusbRaw = (string)device["xusbDeviceInstancePath"];
+                var isXinput = !string.IsNullOrWhiteSpace(xusbRaw) ||
+                    hidPath.IndexOf("&IG_", StringComparison.OrdinalIgnoreCase) >= 0;
+                if (!isXinput) continue;
+
+                var parent = NormalizeInstancePath((string)device["baseContainerDeviceInstancePath"]);
+                var xusb = NormalizeInstancePath(xusbRaw);
+                var functionCount = (int?)device["baseContainerDeviceCount"] ?? 1;
+
+                // A composite USB parent may also carry a keyboard or other HID
+                // function. Refuse to hide it indiscriminately.
+                if (parent == null || !parent.StartsWith(@"USB\", StringComparison.OrdinalIgnoreCase) ||
+                    functionCount > 1 || (!string.IsNullOrWhiteSpace(xusbRaw) && xusb == null))
+                    throw new InvalidOperationException(
+                        "Cannot safely isolate the XInput controller's USB container: " + hidPath);
+
+                desired.Add(parent);
+                if (xusb != null) desired.Add(xusb);
+            }
+            return desired;
+        }
+
+        private static JArray ReadInventory(string cli, string command)
+        {
+            return JArray.Parse(Invoke(cli, command));
+        }
+
+        private static JObject FindDevice(JArray inventory, string path)
+        {
+            foreach (var container in inventory.OfType<JObject>())
+            {
+                var devices = container["devices"] as JArray;
+                if (devices == null) continue;
+                foreach (var device in devices.OfType<JObject>())
+                {
+                    var instance = NormalizeInstancePath((string)device["deviceInstancePath"]);
+                    var link = NormalizeInstancePath((string)device["symbolicLink"]);
+                    if (string.Equals(path, instance, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(path, link, StringComparison.OrdinalIgnoreCase))
+                        return device;
+                }
+            }
+            return null;
+        }
+
+        private sealed class Snapshot
+        {
+            public HashSet<string> Hidden;
+            public HashSet<string> Allowed;
+            public bool CloakOn;
+            public bool Inverse;
+        }
+
+        private static Snapshot ReadSnapshot(string cli)
+        {
+            var text = Invoke(cli, "--cloak-state --inv-state --dev-list --app-list");
+            var lines = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(line => line.Trim()).ToArray();
+            if (!lines.Contains("--cloak-on") && !lines.Contains("--cloak-off"))
+                throw new InvalidOperationException("HidHide did not report its cloak state.");
+            if (!lines.Contains("--inv-on") && !lines.Contains("--inv-off"))
+                throw new InvalidOperationException("HidHide did not report its application-list mode.");
+            return new Snapshot
+            {
+                Hidden = ReadLines(text, "--dev-hide"),
+                Allowed = ReadLines(text, "--app-reg"),
+                CloakOn = lines.Contains("--cloak-on"),
+                Inverse = lines.Contains("--inv-on")
+            };
         }
 
         private void RecoverStaleSession()
         {
             if (!File.Exists(_journal)) return;
             var lines = File.ReadAllLines(_journal);
-            var paths = lines.Where(x => x.StartsWith("device=", StringComparison.OrdinalIgnoreCase))
-                .Select(x => x.Substring(7)).ToList();
-            var app = lines.FirstOrDefault(x => x.StartsWith("app=", StringComparison.OrdinalIgnoreCase));
+            var paths = new HashSet<string>(lines.Where(x => x.StartsWith("device=", StringComparison.OrdinalIgnoreCase))
+                .Select(x => x.Substring(7)), StringComparer.OrdinalIgnoreCase);
+            var appLine = lines.FirstOrDefault(x => x.StartsWith("app=", StringComparison.OrdinalIgnoreCase));
+            var app = appLine == null ? null : appLine.Substring(4);
             var addedApp = lines.Contains("app-owned=true");
             var cloakOwned = lines.Contains("cloak-owned=true");
-            var commands = paths.Select(p => "--dev-unhide " + Quote(p)).ToList();
-            if (addedApp && app != null) commands.Add("--app-unreg " + Quote(app.Substring(4)));
-            if (cloakOwned) commands.Add("--cloak-off");
-            if (commands.Count > 0) Invoke(FindCli(), string.Join(" ", commands));
+            var cli = FindCli();
+            var before = ReadSnapshot(cli);
+            if (before.Inverse)
+                throw new InvalidOperationException("Cannot safely recover HidHide while inverse mode is enabled.");
+
+            var commands = paths.Where(before.Hidden.Contains).Select(p => "--dev-unhide " + Quote(p)).ToList();
+            if (addedApp && !string.IsNullOrWhiteSpace(app) && before.Allowed.Contains(app))
+                commands.Add("--app-unreg " + Quote(app));
+            var disableCloak = cloakOwned && before.CloakOn &&
+                !before.Hidden.Except(paths, StringComparer.OrdinalIgnoreCase).Any();
+            if (disableCloak) commands.Add("--cloak-off");
+            if (commands.Count > 0) Invoke(cli, string.Join(" ", commands));
+
+            var after = ReadSnapshot(cli);
+            if (paths.Any(after.Hidden.Contains) ||
+                (addedApp && !string.IsNullOrWhiteSpace(app) && after.Allowed.Contains(app)) ||
+                (disableCloak && after.CloakOn))
+                throw new InvalidOperationException("HidHide recovery could not verify cleanup.");
+
             File.Delete(_journal);
         }
 
@@ -138,29 +277,40 @@ namespace HidWizards.UCR.Core.Managers
         {
             var directory = Path.GetDirectoryName(_journal);
             Directory.CreateDirectory(directory);
-            var contents = new List<string> { "app=" + app, "app-owned=" + appOwned.ToString().ToLowerInvariant(),
-                "cloak-owned=" + cloakOwned.ToString().ToLowerInvariant() };
-            contents.AddRange(paths.Select(p => "device=" + p));
-            if (contents.Count == 3 && !appOwned && !cloakOwned)
+            var ownedPaths = paths.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            if (ownedPaths.Count == 0 && !appOwned && !cloakOwned)
             {
                 if (File.Exists(_journal)) File.Delete(_journal);
                 return;
             }
-            File.WriteAllLines(_journal, contents);
+
+            var contents = new List<string> { "app=" + app,
+                "app-owned=" + appOwned.ToString().ToLowerInvariant(),
+                "cloak-owned=" + cloakOwned.ToString().ToLowerInvariant() };
+            contents.AddRange(ownedPaths.Select(p => "device=" + p));
+            var temp = _journal + ".tmp";
+            File.WriteAllLines(temp, contents);
+            if (File.Exists(_journal)) File.Replace(temp, _journal, null);
+            else File.Move(temp, _journal);
         }
 
         private static string NormalizeInstancePath(string path)
         {
             if (string.IsNullOrWhiteSpace(path)) return null;
             var value = path.Trim();
-            if (value.StartsWith(@"\\?\", StringComparison.Ordinal))
+            if (value.StartsWith(@"\\?\", StringComparison.Ordinal) ||
+                value.StartsWith(@"\\.\", StringComparison.Ordinal))
                 value = value.Substring(4);
             var classMarker = value.IndexOf("#{", StringComparison.Ordinal);
             if (classMarker >= 0) value = value.Substring(0, classMarker);
             value = value.Replace('#', '\\');
-            if (!value.StartsWith(@"HID\", StringComparison.OrdinalIgnoreCase) ||
-                value.IndexOf("VID_", StringComparison.OrdinalIgnoreCase) < 0 ||
-                value.IndexOf('"') >= 0) return null;
+            if (value.IndexOf('"') >= 0 || value.IndexOf('\r') >= 0 || value.IndexOf('\n') >= 0)
+                return null;
+            if (!(value.StartsWith(@"HID\", StringComparison.OrdinalIgnoreCase) ||
+                  value.StartsWith(@"USB\", StringComparison.OrdinalIgnoreCase) ||
+                  value.StartsWith(@"XUSB\", StringComparison.OrdinalIgnoreCase)) ||
+                value.IndexOf("VID_", StringComparison.OrdinalIgnoreCase) < 0)
+                return null;
             return value;
         }
 
@@ -177,21 +327,28 @@ namespace HidWizards.UCR.Core.Managers
             return result;
         }
 
-        private static string Quote(string s)
+        private static string Quote(string value)
         {
-            if (s == null || s.Contains("\"")) throw new ArgumentException("Invalid HidHide argument");
-            return "\"" + s + "\"";
+            if (value == null || value.IndexOf('"') >= 0 ||
+                value.IndexOf('\r') >= 0 || value.IndexOf('\n') >= 0)
+                throw new ArgumentException("Invalid HidHide argument.");
+            return "\"" + value + "\"";
         }
 
         private static string FindCli()
         {
             foreach (var basePath in new[] { Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-                       Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86) })
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86) })
             {
-                var candidate = Path.Combine(basePath, "Nefarius Software Solutions", "HidHide", "HidHideCLI.exe");
-                if (File.Exists(candidate)) return candidate;
+                foreach (var relative in new[] {
+                    Path.Combine("Nefarius Software Solutions", "HidHide", "HidHideCLI.exe"),
+                    Path.Combine("Nefarius Software Solutions", "HidHide", "x64", "HidHideCLI.exe") })
+                {
+                    var candidate = Path.Combine(basePath, relative);
+                    if (File.Exists(candidate)) return candidate;
+                }
             }
-            throw new FileNotFoundException("HidHideCLI.exe not found. Install HidHide before using Exclusive Mode.");
+            throw new FileNotFoundException("HidHide is not installed. Exclusive Mode requires its driver and command-line client.");
         }
 
         private static string Invoke(string executable, string arguments)
@@ -200,20 +357,25 @@ namespace HidWizards.UCR.Core.Managers
             {
                 process.StartInfo = new ProcessStartInfo(executable, arguments)
                 {
-                    UseShellExecute = false, CreateNoWindow = true,
-                    RedirectStandardOutput = true, RedirectStandardError = true
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
                 };
                 process.Start();
-                var stdout = process.StandardOutput.ReadToEnd();
-                var stderr = process.StandardError.ReadToEnd();
+                // Drain both pipes concurrently to avoid deadlocking on verbose
+                // inventory output or an error from the HidHide driver.
+                Task<string> stdout = process.StandardOutput.ReadToEndAsync();
+                Task<string> stderr = process.StandardError.ReadToEndAsync();
                 if (!process.WaitForExit(10000))
                 {
                     try { process.Kill(); } catch { }
                     throw new TimeoutException("HidHideCLI did not respond within ten seconds.");
                 }
+                Task.WaitAll(stdout, stderr);
                 if (process.ExitCode != 0)
-                    throw new InvalidOperationException("HidHideCLI failed (" + process.ExitCode + "): " + stderr);
-                return stdout;
+                    throw new InvalidOperationException("HidHideCLI failed (" + process.ExitCode + "): " + stderr.Result);
+                return stdout.Result;
             }
         }
     }
