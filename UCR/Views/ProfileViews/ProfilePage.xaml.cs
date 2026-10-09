@@ -23,7 +23,7 @@ namespace HidWizards.UCR.Views.ProfileViews
     {
         public Guid ProfileGuid => Profile.Guid;
         private Context Context { get; }
-        private Profile Profile { get; }
+        internal Profile Profile { get; }
         private ProfileViewModel ProfileViewModel { get; }
         private DispatcherTimer DispatcherTimer { get; set; }
         private List<DeviceBindingViewModel> DeviceBindingViewModels { get; set; }
