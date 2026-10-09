@@ -43,6 +43,7 @@ namespace HidWizards.UCR.Views
         private IDisposable _navigationPage;
         private ProfilePage _embeddedProfilePage;
         private Profile _embeddedProfile;
+        private bool _workspaceReady;
         private readonly Dictionary<Guid, ProfilePage> _profileCache = new Dictionary<Guid, ProfilePage>();
         private readonly LinkedList<Guid> _profileRecency = new LinkedList<Guid>();
         private const int ProfileCacheLimit = 6;
@@ -62,6 +63,24 @@ namespace HidWizards.UCR.Views
             InitializeComponent();
             InitializeTrayIcon();
             _autoProfileMonitor = new AutoProfileMonitor(context);
+            Loaded += MainWindow_OnWorkspaceLoaded;
+        }
+
+        private void MainWindow_OnWorkspaceLoaded(object sender, RoutedEventArgs e)
+        {
+            if (_workspaceReady) return;
+            _workspaceReady = true;
+            // Selecting a profile while InitializeComponent builds the TreeView can happen before
+            // ProfileEditorHost exists. Wait until the whole visual tree has loaded.
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+            {
+                if (ProfileTree.SelectedItem == null && ProfileTree.Items.Count > 0)
+                {
+                    var first = ProfileTree.ItemContainerGenerator.ContainerFromIndex(0) as TreeViewItem;
+                    if (first != null) first.IsSelected = true;
+                }
+                OpenSelectedProfileEditor();
+            }));
         }
 
         private void MainWindow_OnPreviewKeyDown(object sender, KeyEventArgs e)
@@ -437,6 +456,7 @@ namespace HidWizards.UCR.Views
             }
             _profileRecency.Remove(profile.Guid);
             _profileRecency.AddLast(profile.Guid);
+            page.UseEmbeddedLayout();
             _embeddedProfilePage = page;
             _embeddedProfile = profile;
             ProfileEditorHost.Content = page;
@@ -1059,18 +1079,36 @@ namespace HidWizards.UCR.Views
 
         private void OpenSelectedProfileEditor()
         {
+            if (!_workspaceReady || ProfileEditorHost == null) return;
             var selectedProfile = _dashboardViewModel.SelectedProfileItem?.Profile;
             if (selectedProfile == null)
+            {
                 ReleaseEmbeddedProfile();
-            else
+                return;
+            }
+            try
+            {
                 OpenProfileWindow(selectedProfile);
+            }
+            catch (Exception exception)
+            {
+                // A single damaged profile or editor binding must not crash the whole application.
+                Logger.Error("Could not open profile editor: " + selectedProfile.Title, exception);
+                ReleaseEmbeddedProfile();
+                ProfileEditorHost.Content = new TextBlock
+                {
+                    Text = "Unable to open this profile's editor. See UCR's crash log for details. Select another profile to continue.",
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(20)
+                };
+            }
         }
 
         private void ProfileTree_OnSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
             var treeView = sender as TreeView;
             _dashboardViewModel.SelectedProfileItem = treeView?.SelectedItem as ProfileItem;
-            if (_navigationPage == null)
+            if (_workspaceReady && _navigationPage == null)
                 OpenSelectedProfileEditor();
         }
     }
