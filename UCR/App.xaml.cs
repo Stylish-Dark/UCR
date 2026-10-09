@@ -27,6 +27,7 @@ namespace HidWizards.UCR
         private Context context;
         private HidGuardianClient _hidGuardianClient;
         private SingleGlobalInstance mutex;
+        private bool _forwardToSameVersion = true;
         private Thread _splashThread;
         private SplashWindow _splashWindow;
         private ManualResetEventSlim _splashReady;
@@ -100,7 +101,10 @@ namespace HidWizards.UCR
             }
             else
             {
-                SendArgs(string.Join(";", e.Args));
+                if (_forwardToSameVersion)
+                    SendArgs(string.Join(";", e.Args));
+                else
+                    Logger.Warn("A newer UCR build is already running. The older build will not replace it.");
                 Current.Shutdown();
             }
         }
@@ -116,8 +120,13 @@ namespace HidWizards.UCR
                 {
                     var fileVersion = FileVersionInfo.GetVersionInfo(process.MainModule.FileName).FileVersion;
                     Version existingVersion;
-                    if (!Version.TryParse(fileVersion, out existingVersion) || existingVersion == ourVersion)
+                    if (!Version.TryParse(fileVersion, out existingVersion))
                         return false;
+                    if (existingVersion >= ourVersion)
+                    {
+                        _forwardToSameVersion = existingVersion == ourVersion;
+                        return false;
+                    }
                 }
                 catch (Exception exception)
                 {
@@ -189,6 +198,38 @@ namespace HidWizards.UCR
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
 
+        private void PreserveOriginalProfileFilesForVersion()
+        {
+            // Make a byte-for-byte safety snapshot before JSON deserialization, migrations,
+            // device loading or the first new-version save can modify the data.
+            var version = "v" + Assembly.GetExecutingAssembly().GetName().Version;
+            var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "UCR");
+            var backupRoot = Path.Combine(root, "VersionBackups");
+            var marker = Path.Combine(backupRoot, "last-version.txt");
+            if (File.Exists(marker) && string.Equals(File.ReadAllText(marker).Trim(), version, StringComparison.Ordinal))
+                return;
+
+            var snapshots = Path.Combine(backupRoot, version, "OriginalJson");
+            Directory.CreateDirectory(snapshots);
+            var profiles = Path.Combine(root, "Profiles");
+            if (Directory.Exists(profiles))
+            {
+                foreach (var source in Directory.GetFiles(profiles, "*.json"))
+                {
+                    var destination = Path.Combine(snapshots, Path.GetFileName(source));
+                    if (!File.Exists(destination)) File.Copy(source, destination);
+                }
+            }
+            foreach (var name in new[] { "state.json", "devices.json" })
+            {
+                var source = Path.Combine(root, name);
+                var destination = Path.Combine(snapshots, name);
+                if (File.Exists(source) && !File.Exists(destination))
+                    File.Copy(source, destination);
+            }
+            Logger.Info("Preserved original pre-load profile JSON under " + snapshots);
+        }
+
         private void CreatePortableVersionBackup()
         {
             if (context == null) return;
@@ -209,7 +250,10 @@ namespace HidWizards.UCR
             }
             foreach (var profile in context.Profiles)
             {
-                var file = Path.Combine(directory, profile.Guid.ToString("D") + ".ucrprofile");
+                var safeName = new string((profile.Title ?? "Profile")
+                    .Select(ch => Path.GetInvalidFileNameChars().Contains(ch) ? '_' : ch).ToArray());
+                if (safeName.Length > 55) safeName = safeName.Substring(0, 55);
+                var file = Path.Combine(directory, safeName + " - " + profile.Guid.ToString("D") + ".ucrprofile");
                 if (File.Exists(file)) continue;
                 var pendingProfile = file + ".pending";
                 context.ProfilesManager.ExportProfile(profile, pendingProfile);
@@ -227,6 +271,7 @@ namespace HidWizards.UCR
             RunStartupStage("Loading interface resources...", () => new ResourceLoader().Load());
             RunStartupStage("Initializing device providers and loading profiles...", () =>
             {
+                PreserveOriginalProfileFilesForVersion();
                 context = Context.Load();
                 CreatePortableVersionBackup();
                 Logger.SetDiagnosticContextProvider(BuildDiagnosticContextSnapshot);
