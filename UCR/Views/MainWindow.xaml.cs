@@ -42,6 +42,7 @@ namespace HidWizards.UCR.Views
         private bool _exitRequested;
         private IDisposable _navigationPage;
         private ProfilePage _embeddedProfilePage;
+        private Profile _embeddedProfile;
 
         enum CloseState
         {
@@ -390,12 +391,13 @@ namespace HidWizards.UCR.Views
         private void OpenProfileWindow(Profile profile)
         {
             if (profile == null) return;
-            if (_embeddedProfilePage != null && ReferenceEquals(_embeddedProfilePage.Profile, profile)) return;
+            if (_embeddedProfilePage != null && ReferenceEquals(_embeddedProfile, profile)) return;
 
             ReleaseEmbeddedProfile();
             var page = new ProfilePage(Context, profile);
             page.UseEmbeddedLayout();
             _embeddedProfilePage = page;
+            _embeddedProfile = profile;
             ProfileEditorHost.Content = page;
         }
 
@@ -405,6 +407,7 @@ namespace HidWizards.UCR.Views
             ProfileEditorHost.Content = null;
             _embeddedProfilePage.Dispose();
             _embeddedProfilePage = null;
+            _embeddedProfile = null;
         }
 
         private void ShowNavigationPage(UserControl page)
