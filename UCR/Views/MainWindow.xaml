@@ -39,8 +39,8 @@
             <DataTemplate x:Key="DeviceSymbolTemplate">
                 <controls:DeviceSymbolControl SymbolText="{Binding SymbolText}"
                                               Foreground="{Binding BadgeTextBrush}"
-                                              GlyphSize="29"
-                                              Width="50" Height="31"
+                                              GlyphSize="25"
+                                              Width="34" Height="31"
                                               ToolTip="{Binding ToolTip}">
                     <controls:DeviceSymbolControl.Style>
                         <Style TargetType="{x:Type controls:DeviceSymbolControl}">
@@ -183,7 +183,7 @@
         <materialDesign:DialogHost x:Name="RootDialog" Grid.Row="2" Identifier="RootDialog">
             <Grid Margin="8">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="270" MinWidth="210"/>
+                    <ColumnDefinition Width="370" MinWidth="290"/>
                     <ColumnDefinition Width="5"/>
                     <ColumnDefinition Width="*" MinWidth="240"/>
                 </Grid.ColumnDefinitions>
@@ -299,9 +299,9 @@
                                           HorizontalAlignment="Left" ToolTip="{Binding Title}">
                                         <Grid Margin="8 2" MinHeight="38" HorizontalAlignment="Stretch">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" MinWidth="50"/>
+                                                <ColumnDefinition Width="Auto" MinWidth="34"/>
                                                 <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto" MinWidth="50"/>
+                                                <ColumnDefinition Width="Auto" MinWidth="34"/>
                                             </Grid.ColumnDefinitions>
 
                                             <ItemsControl Grid.Column="0" ItemsSource="{Binding InputVisuals}"
@@ -310,9 +310,9 @@
                                                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                             </ItemsControl>
 
-                                            <Grid Grid.Column="1" Margin="6 0">
-                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Title}" FontSize="15.5" FontWeight="Medium" MaxWidth="185"
+                                            <Grid Grid.Column="1" Margin="3 0">
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Medium"
                                                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                                     <Border Margin="6 0 0 0" Padding="5 1" CornerRadius="7" Background="#26382B" BorderBrush="#4B8B58" BorderThickness="1"
                                                             VerticalAlignment="Center" ToolTip="This profile is currently running">
@@ -367,7 +367,36 @@
                     </GridSplitter.Template>
                 </GridSplitter>
 
-                <TabControl Grid.Column="2" Margin="8 0 0 0" SelectedIndex="0">
+                <TabControl Grid.Column="2" Margin="8 0 0 0" SelectedIndex="0"
+                            BorderThickness="0" Background="Transparent" Padding="0">
+                    <TabControl.Resources>
+                        <Style TargetType="{x:Type TabItem}">
+                            <Setter Property="Foreground" Value="#B4B4B4"/>
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="{x:Type TabItem}">
+                                        <Border x:Name="TabSurface" Background="{TemplateBinding Background}"
+                                                BorderBrush="Transparent" BorderThickness="0 0 0 2"
+                                                Margin="0 0 8 0" Padding="14 9 14 8" Cursor="Hand">
+                                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                                <Setter TargetName="TabSurface" Property="Background" Value="#292929"/>
+                                                <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="TabSurface" Property="Background" Value="#303030"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </TabControl.Resources>
                     <TabItem Header="Mappings">
                         <ContentControl x:Name="ProfileEditorHost"
                                         HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
