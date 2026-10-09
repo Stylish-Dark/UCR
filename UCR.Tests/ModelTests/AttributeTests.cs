@@ -38,7 +38,7 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
-        public void ReleaseMetadataIdentifiesV099z()
+        public void ReleaseMetadataIdentifiesV0910()
         {
             var assembly = typeof(HidWizards.UCR.App).Assembly;
             var informational = assembly.GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false)
@@ -46,10 +46,10 @@ namespace HidWizards.UCR.Tests.ModelTests
                 .Single();
             var versionInfo = FileVersionInfo.GetVersionInfo(assembly.Location);
 
-            Assert.That(assembly.GetName().Version, Is.EqualTo(new Version(0, 9, 9, 0)));
-            Assert.That(versionInfo.FileVersion, Is.EqualTo("0.9.9.0"));
-            Assert.That(informational.InformationalVersion, Is.EqualTo("v0.9.9z"));
-            Assert.That(versionInfo.ProductVersion, Is.EqualTo("v0.9.9z"));
+            Assert.That(assembly.GetName().Version, Is.EqualTo(new Version(0, 9, 10, 0)));
+            Assert.That(versionInfo.FileVersion, Is.EqualTo("0.9.10.0"));
+            Assert.That(informational.InformationalVersion, Is.EqualTo("v0.9.10"));
+            Assert.That(versionInfo.ProductVersion, Is.EqualTo("v0.9.10"));
         }
     }
 }

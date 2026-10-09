@@ -503,7 +503,7 @@ namespace HidWizards.UCR.Views
             var dialog = new OpenFileDialog
             {
                 Title = "Import UCR profile, profile list, or legacy context",
-                Filter = "UCR import files (*.ucrprofile;*.ucrprofiles;context.xml)|*.ucrprofile;*.ucrprofiles;context.xml|UCR profile (*.ucrprofile)|*.ucrprofile|UCR profile list (*.ucrprofiles)|*.ucrprofiles|Legacy UCR context (context.xml)|context.xml",
+                Filter = "UCR imports (*.ucrprofile;*.ucrprofiles;*.json;context.xml)|*.ucrprofile;*.ucrprofiles;*.json;context.xml|UCR profile (*.ucrprofile)|*.ucrprofile|JSON profile backup (*.json)|*.json|Profile list (*.ucrprofiles)|*.ucrprofiles|Legacy context (context.xml)|context.xml",
                 CheckFileExists = true,
                 Multiselect = false
             };
@@ -648,7 +648,7 @@ namespace HidWizards.UCR.Views
             var dialog = new SaveFileDialog
             {
                 Title = "Export UCR profile",
-                Filter = "UCR profile (*.ucrprofile)|*.ucrprofile",
+                Filter = "UCR profile or JSON backup (*.ucrprofile;*.json)|*.ucrprofile;*.json|UCR profile (*.ucrprofile)|*.ucrprofile|JSON backup (*.json)|*.json",
                 DefaultExt = ".ucrprofile",
                 AddExtension = true,
                 FileName = SanitizeFileName(profileItem.Profile.Title) + ".ucrprofile"

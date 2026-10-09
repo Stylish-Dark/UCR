@@ -169,7 +169,11 @@ namespace HidWizards.UCR
                 memory = Marshal.AllocCoTaskMem(Marshal.SizeOf(data));
                 Marshal.StructureToPtr(data, memory, false);
                 foreach (var handle in GetTopLevelWindowHandles(processId))
-                    NativeMethods.SendMessage(handle, NativeMethods.WM_COPYDATA, IntPtr.Zero, memory);
+                {
+                    IntPtr unused;
+                    SendMessageTimeout(handle, (uint)NativeMethods.WM_COPYDATA, IntPtr.Zero,
+                        memory, 0x0002, 1500, out unused);
+                }
             }
             finally
             {
@@ -177,6 +181,10 @@ namespace HidWizards.UCR
                 if (data.lpData != IntPtr.Zero) Marshal.FreeHGlobal(data.lpData);
             }
         }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SendMessageTimeout(IntPtr window, uint message, IntPtr wParam,
+            IntPtr lParam, uint flags, uint timeout, out IntPtr result);
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
@@ -202,7 +210,10 @@ namespace HidWizards.UCR
             foreach (var profile in context.Profiles)
             {
                 var file = Path.Combine(directory, profile.Guid.ToString("D") + ".ucrprofile");
-                if (!File.Exists(file)) context.ProfilesManager.ExportProfile(profile, file);
+                if (File.Exists(file)) continue;
+                var pendingProfile = file + ".pending";
+                context.ProfilesManager.ExportProfile(profile, pendingProfile);
+                File.Move(pendingProfile, file);
             }
             var tempMarker = marker + ".tmp";
             File.WriteAllText(tempMarker, version);
