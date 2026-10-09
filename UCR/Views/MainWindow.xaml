@@ -367,7 +367,13 @@
                     </GridSplitter.Template>
                 </GridSplitter>
 
-                <Grid x:Name="ProfileSummaryPanel" Grid.Column="2" Margin="8 0 0 0" Visibility="Collapsed">
+                <TabControl Grid.Column="2" Margin="8 0 0 0" SelectedIndex="0">
+                    <TabItem Header="Mappings">
+                        <ContentControl x:Name="ProfileEditorHost"
+                                        HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+                    </TabItem>
+                    <TabItem Header="Profile options">
+                <Grid x:Name="ProfileSummaryPanel" Visibility="{Binding ProfileDetailsActive}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
@@ -526,8 +532,8 @@
                         </Grid>
                     </materialDesign:Card>
                 </Grid>
-                <ContentControl x:Name="ProfileEditorHost" Grid.Column="2" Margin="8 0 0 0"
-                                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+                    </TabItem>
+                </TabControl>
             </Grid>
         </materialDesign:DialogHost>
         <ContentControl x:Name="NavigationHost" Grid.Row="2" Visibility="Collapsed" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
