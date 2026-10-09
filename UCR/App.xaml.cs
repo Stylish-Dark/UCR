@@ -121,7 +121,7 @@ namespace HidWizards.UCR
                 }
                 catch (Exception exception)
                 {
-                    Logger.Warn(exception, "Could not verify previous UCR version; leaving it running.");
+                    Logger.Warn("Could not verify previous UCR version; leaving it running.", exception);
                     return false;
                 }
             }
