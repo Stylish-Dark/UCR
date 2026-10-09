@@ -111,7 +111,8 @@ namespace HidWizards.UCR
 
         private bool TryReplaceDifferentVersion()
         {
-            var ourVersion = Assembly.GetExecutingAssembly().GetName().Version;
+            var ourVersion = new Version(FileVersionInfo.GetVersionInfo(
+                Assembly.GetExecutingAssembly().Location).FileVersion);
             var others = GetProcesses().Where(p => p.Id != Process.GetCurrentProcess().Id).ToArray();
             if (others.Length == 0) return mutex.TryAcquire(1000);
             foreach (var process in others)
@@ -122,9 +123,9 @@ namespace HidWizards.UCR
                     Version existingVersion;
                     if (!Version.TryParse(fileVersion, out existingVersion))
                         return false;
-                    if (existingVersion >= ourVersion)
+                    if (existingVersion == ourVersion)
                     {
-                        _forwardToSameVersion = existingVersion == ourVersion;
+                        _forwardToSameVersion = true;
                         return false;
                     }
                 }
@@ -202,7 +203,7 @@ namespace HidWizards.UCR
         {
             // Make a byte-for-byte safety snapshot before JSON deserialization, migrations,
             // device loading or the first new-version save can modify the data.
-            var version = "v" + Assembly.GetExecutingAssembly().GetName().Version;
+            var version = "v" + FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion;
             var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "UCR");
             var backupRoot = Path.Combine(root, "VersionBackups");
             var marker = Path.Combine(backupRoot, "last-version.txt");
@@ -233,7 +234,7 @@ namespace HidWizards.UCR
         private void CreatePortableVersionBackup()
         {
             if (context == null) return;
-            var version = "v" + Assembly.GetExecutingAssembly().GetName().Version;
+            var version = "v" + FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion;
             var backupRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                 "UCR", "VersionBackups");
             var marker = Path.Combine(backupRoot, "last-version.txt");

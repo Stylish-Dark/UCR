@@ -36,6 +36,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<MappingViewModel> MappingsList { get; set; }
         public ObservableCollection<MappingGroupViewModel> MappingSections { get; private set; }
         private MappingGroupViewModel _selectedMappingSection;
+        private MappingViewModel _selectedMapping;
+        public MappingViewModel SelectedMapping
+        {
+            get => _selectedMapping;
+            set
+            {
+                if (ReferenceEquals(_selectedMapping, value)) return;
+                _selectedMapping = value;
+                OnPropertyChanged();
+            }
+        }
         private static MappingGroup _copiedMappingGroup;
         private static Profile _copiedMappingGroupSourceProfile;
 
@@ -150,6 +161,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             // profile opening into quadratic work on larger profiles.
             RebuildFlatMappingsList();
             RefreshMappingPositions();
+            SelectedMapping = MappingsList.FirstOrDefault();
         }
 
         public MappingViewModel AddMapping(string title)
@@ -206,7 +218,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 section.Mappings.Add(mappingViewModel);
                 if (refreshCollections) RebuildFlatMappingsList();
             }
-            if (refreshCollections) RefreshMappingPositions();
+            if (refreshCollections)
+            {
+                RefreshMappingPositions();
+                SelectedMapping = mappingViewModel;
+            }
             return mappingViewModel;
         }
 
@@ -479,6 +495,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (Profile.RemoveMapping(mappingViewModel.Mapping))
             {
                 var section = FindSection(mappingViewModel);
+                if (ReferenceEquals(SelectedMapping, mappingViewModel))
+                    SelectedMapping = MappingsList.FirstOrDefault(other => !ReferenceEquals(other, mappingViewModel));
                 mappingViewModel.Dispose();
                 section?.Mappings.Remove(mappingViewModel);
                 MappingsList.Remove(mappingViewModel);

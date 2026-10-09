@@ -15,6 +15,15 @@ namespace HidWizards.UCR.Views.Controls
 {
     public partial class MappingCardControl : UserControl
     {
+        public static readonly DependencyProperty InspectorModeProperty = DependencyProperty.Register(
+            nameof(InspectorMode), typeof(bool), typeof(MappingCardControl),
+            new PropertyMetadata(false));
+
+        public bool InspectorMode
+        {
+            get => (bool)GetValue(InspectorModeProperty);
+            set => SetValue(InspectorModeProperty, value);
+        }
         public MappingCardControl()
         {
             InitializeComponent();
@@ -23,6 +32,13 @@ namespace HidWizards.UCR.Views.Controls
 
         private void MappingCardControl_OnLoaded(object sender, RoutedEventArgs e)
         {
+            if (InspectorMode)
+            {
+                MappingExpander.Visibility = Visibility.Collapsed;
+                ShowExpandedBody();
+                return;
+            }
+
             var mapping = DataContext as MappingViewModel;
             if (mapping?.IsExpanded == true)
                 ShowExpandedBody();

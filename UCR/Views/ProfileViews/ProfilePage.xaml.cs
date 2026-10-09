@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -907,6 +908,62 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (definingMapping != null) ScrollMappingIntoView(definingMapping);
         }
 
+        public void ShowWorkspaceInspector()
+        {
+            if (_disposed) return;
+            SelectedMappingInspector.Visibility = Visibility.Visible;
+            SidebarGrid.Visibility = Visibility.Collapsed;
+        }
+
+        public void ShowWorkspaceToolbox(string section)
+        {
+            if (_disposed) return;
+            SelectedMappingInspector.Visibility = Visibility.Collapsed;
+            SidebarGrid.Visibility = Visibility.Visible;
+            // The existing toolbox remains available on demand. Keeping it out of the
+            // mapping inspector leaves the editor uncluttered without dropping features.
+        }
+
+        private void WorkspaceAddMapping_OnClick(object sender, RoutedEventArgs e)
+        {
+            ShowWorkspaceToolbox("Add mapping");
+        }
+
+        private void WorkspaceMore_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            if (button?.ContextMenu == null) return;
+            button.ContextMenu.PlacementTarget = button;
+            button.ContextMenu.IsOpen = true;
+        }
+
+        private void WorkspaceSearch_OnTextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (ProfileViewModel?.MappingSections == null) return;
+            var query = WorkspaceMappingSearch?.Text?.Trim();
+            foreach (var section in ProfileViewModel.MappingSections)
+            {
+                var view = CollectionViewSource.GetDefaultView(section.Mappings);
+                if (view == null) continue;
+                if (string.IsNullOrEmpty(query))
+                    view.Filter = null;
+                else
+                    view.Filter = item =>
+                    {
+                        var mapping = item as MappingViewModel;
+                        return mapping?.MappingTitle?.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
+                    };
+            }
+        }
+
+        private void MappingListView_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var selected = (sender as ListView)?.SelectedItem as MappingViewModel;
+            if (selected == null) return;
+            ProfileViewModel.SelectedMapping = selected;
+            ShowWorkspaceInspector();
+        }
+
         private void AddMapping_OnClick(object sender, RoutedEventArgs e)
         {
             var selectedRoute = ProfileViewModel.PluginToolbox.SelectedRoute;
@@ -915,7 +972,9 @@ namespace HidWizards.UCR.Views.ProfileViews
             var mappingViewModel = ProfileViewModel.AddMappingToSelectedSection(ProfileViewModel.GetNextMappingTitle());
             if (mappingViewModel == null) return;
             mappingViewModel.AddPlugin(selectedRoute.PluginItem.Plugin);
-            mappingViewModel.IsExpanded = true;
+            mappingViewModel.IsExpanded = false;
+            ProfileViewModel.SelectedMapping = mappingViewModel;
+            ShowWorkspaceInspector();
             Dispatcher.BeginInvoke((Action)(() => ScrollMappingIntoView(mappingViewModel)), DispatcherPriority.Background);
         }
     }

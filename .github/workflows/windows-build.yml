@@ -95,6 +95,21 @@ jobs:
           New-Item -ItemType Directory -Force -Path "dependencies" | Out-Null
           Copy-Item "submodules\IOWrapper\Artifacts\*" "dependencies" -Recurse -Force
 
+      - name: Stamp unique UCR build version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $revision = ([int]$env:GITHUB_RUN_NUMBER * 2) + 1
+          if ($revision -gt 65535) { throw 'UCR build revision exceeds the assembly version range.' }
+          $file = '.\\UCR\\Properties\\AssemblyInfo.cs'
+          $source = [System.IO.File]::ReadAllText($file)
+          $source = [regex]::Replace($source, 'AssemblyFileVersion\("[^"]+"\)',
+            ('AssemblyFileVersion("0.9.11.' + $revision + '")'))
+          $source = [regex]::Replace($source, 'AssemblyInformationalVersion\("[^"]+"\)',
+            ('AssemblyInformationalVersion("v0.9.11.' + $revision + '")'))
+          [System.IO.File]::WriteAllText($file, $source, [System.Text.UTF8Encoding]::new($false))
+          Write-Host "UCR build identity: 0.9.11.$revision"
+
       - name: Build release
         shell: pwsh
         run: |

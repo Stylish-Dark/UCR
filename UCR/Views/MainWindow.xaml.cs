@@ -391,6 +391,29 @@ namespace HidWizards.UCR.Views
             OpenProfileWindow(profileItem.Profile);
         }
 
+        private void WorkspaceMappings_OnClick(object sender, RoutedEventArgs e)
+        {
+            WorkspaceTabs.SelectedIndex = 0;
+            _embeddedProfilePage?.ShowWorkspaceInspector();
+        }
+
+        private void WorkspaceDevices_OnClick(object sender, RoutedEventArgs e)
+        {
+            WorkspaceTabs.SelectedIndex = 0;
+            _embeddedProfilePage?.ShowWorkspaceToolbox("Devices");
+        }
+
+        private void WorkspaceFilters_OnClick(object sender, RoutedEventArgs e)
+        {
+            WorkspaceTabs.SelectedIndex = 0;
+            _embeddedProfilePage?.ShowWorkspaceToolbox("Filters");
+        }
+
+        private void WorkspaceOptions_OnClick(object sender, RoutedEventArgs e)
+        {
+            WorkspaceTabs.SelectedIndex = 1;
+        }
+
         private void OpenProfileWindow(Profile profile)
         {
             if (profile == null) return;
