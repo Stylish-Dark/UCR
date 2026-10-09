@@ -81,7 +81,8 @@ namespace HidWizards.UCR.Views
                         var first = ProfileTree.ItemContainerGenerator.ContainerFromIndex(0) as TreeViewItem;
                         if (first != null) first.IsSelected = true;
                     }
-                    var selected = ProfileTree.SelectedItem as ProfileItem;
+                    var selected = ProfileTree.SelectedItem as ProfileItem ??
+                        _dashboardViewModel.ProfileList?.FirstOrDefault(item => item.Profile != null);
                     if (selected != null && !ReferenceEquals(_dashboardViewModel.SelectedProfileItem, selected))
                         _dashboardViewModel.SelectedProfileItem = selected;
                     OpenSelectedProfileEditor();
