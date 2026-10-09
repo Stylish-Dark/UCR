@@ -158,6 +158,47 @@ jobs:
           & ".\packages\NUnit.ConsoleRunner.3.9.0\tools\nunit3-console.exe" ".\UCR.Tests\bin\Release\UCR.Tests.dll" --noresult
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Diagnose actual cold startup
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runtime = (Resolve-Path '.\\UCR\\bin\\Release').Path
+          $executable = Join-Path $runtime 'UCR.exe'
+          if (-not (Test-Path -LiteralPath $executable)) { throw "UCR.exe not found: $executable" }
+          $process = Start-Process -FilePath $executable -WorkingDirectory $runtime -PassThru
+          $logDirectory = Join-Path $runtime 'logs'
+          $startupCompleted = $false
+          try {
+            for ($second = 0; $second -lt 45; $second++) {
+              Start-Sleep -Seconds 1
+              $process.Refresh()
+              $log = Join-Path $logDirectory 'UCR-latest.log'
+              if ((Test-Path -LiteralPath $log) -and
+                  (Select-String -LiteralPath $log -Pattern 'UCR startup completed in' -Quiet)) {
+                $startupCompleted = $true
+                break
+              }
+              if ($process.HasExited) { break }
+            }
+            Write-Host "Startup marker seen: $startupCompleted"
+            Write-Host "Process exited: $($process.HasExited)"
+            if ($process.HasExited) { Write-Host "Exit code: $($process.ExitCode)" }
+            foreach ($name in @('UCR-latest.log', 'UCR-errors.log', 'LAST-CRASH.txt')) {
+              $file = Join-Path $logDirectory $name
+              if (Test-Path -LiteralPath $file) {
+                Write-Host "=== $name ==="
+                Get-Content -LiteralPath $file -Tail 90
+              }
+            }
+            if (-not $startupCompleted) {
+              throw 'UCR did not reach its successful startup marker in a clean Windows runtime.'
+            }
+          } finally {
+            $process.Refresh()
+            if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
+          }
+
       - name: Upload release build
         if: success()
         uses: actions/upload-artifact@v4
