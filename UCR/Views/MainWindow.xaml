@@ -36,6 +36,26 @@
     <Window.Resources>
         <ResourceDictionary>
             <converter:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+            <!-- This style is also used by ProfilePage, but MainWindow cannot resolve
+                 resources scoped to that child view during InitializeComponent. -->
+            <Style x:Key="UcrProfileActionButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                <Setter Property="Foreground" Value="#DEDEDE"/>
+                <Setter Property="Background" Value="#282828"/>
+                <Setter Property="BorderBrush" Value="#3D3D3D"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Opacity" Value="0.94"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Foreground" Value="#FFFFFF"/>
+                        <Setter Property="Background" Value="#343434"/>
+                        <Setter Property="BorderBrush" Value="#555555"/>
+                        <Setter Property="Opacity" Value="1"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.48"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
             <DataTemplate x:Key="DeviceSymbolTemplate">
                 <controls:DeviceSymbolControl SymbolText="{Binding SymbolText}"
                                               Foreground="{Binding BadgeTextBrush}"
