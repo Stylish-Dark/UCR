@@ -89,6 +89,10 @@ namespace HidWizards.UCR.Core.Managers
                 var toRelease = _owned.Where(p => !desired.Contains(p) && before.Hidden.Contains(p)).ToList();
                 var addApp = desired.Count > 0 && !before.Allowed.Contains(app);
                 var enableCloak = desired.Count > 0 && !before.CloakOn;
+                if (enableCloak && before.Hidden.Except(desired, StringComparer.OrdinalIgnoreCase).Any())
+                    throw new InvalidOperationException(
+                        "HidHide already contains unrelated hidden devices while its global cloak is disabled. " +
+                        "Enable cloaking deliberately in HidHide before starting this profile.");
                 var removeApp = desired.Count == 0 && _addedApplication && before.Allowed.Contains(app);
 
                 // The global cloak must remain enabled if any unrelated hidden
@@ -169,27 +173,37 @@ namespace HidWizards.UCR.Core.Managers
                 if (device == null)
                     throw new InvalidOperationException("HidHide cannot identify the connected controller: " + hidPath);
 
-                desired.Add(hidPath);
-                var xusbRaw = (string)device["xusbDeviceInstancePath"];
-                var isXinput = !string.IsNullOrWhiteSpace(xusbRaw) ||
-                    hidPath.IndexOf("&IG_", StringComparison.OrdinalIgnoreCase) >= 0;
-                if (!isXinput) continue;
-
-                var parent = NormalizeInstancePath((string)device["baseContainerDeviceInstancePath"]);
-                var xusb = NormalizeInstancePath(xusbRaw);
-                var functionCount = (int?)device["baseContainerDeviceCount"] ?? 1;
-
-                // A composite USB parent may also carry a keyboard or other HID
-                // function. Refuse to hide it indiscriminately.
-                if (parent == null || !parent.StartsWith(@"USB\", StringComparison.OrdinalIgnoreCase) ||
-                    functionCount > 1 || (!string.IsNullOrWhiteSpace(xusbRaw) && xusb == null))
-                    throw new InvalidOperationException(
-                        "Cannot safely isolate the XInput controller's USB container: " + hidPath);
-
-                desired.Add(parent);
-                if (xusb != null) desired.Add(xusb);
+                foreach (var instance in ResolveControllerPaths(
+                    hidPath,
+                    (string)device["baseContainerDeviceInstancePath"],
+                    (string)device["xusbDeviceInstancePath"],
+                    (int?)device["baseContainerDeviceCount"] ?? 1))
+                    desired.Add(instance);
             }
             return desired;
+        }
+
+        private static HashSet<string> ResolveControllerPaths(
+            string hidPath, string parentRaw, string xusbRaw, int functionCount)
+        {
+            var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { hidPath };
+            var isXinput = !string.IsNullOrWhiteSpace(xusbRaw) ||
+                hidPath.IndexOf("&IG_", StringComparison.OrdinalIgnoreCase) >= 0;
+            if (!isXinput) return paths;
+
+            var parent = NormalizeInstancePath(parentRaw);
+            var xusb = NormalizeInstancePath(xusbRaw);
+
+            // A composite USB parent may also carry a keyboard or another
+            // unrelated function. Never hide such a parent automatically.
+            if (parent == null || !parent.StartsWith(@"USB\", StringComparison.OrdinalIgnoreCase) ||
+                functionCount > 1 || (!string.IsNullOrWhiteSpace(xusbRaw) && xusb == null))
+                throw new InvalidOperationException(
+                    "Cannot safely isolate the XInput controller's USB container: " + hidPath);
+
+            paths.Add(parent);
+            if (xusb != null) paths.Add(xusb);
+            return paths;
         }
 
         private static JArray ReadInventory(string cli, string command)
