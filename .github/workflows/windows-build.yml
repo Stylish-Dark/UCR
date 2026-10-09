@@ -158,9 +158,8 @@ jobs:
           & ".\packages\NUnit.ConsoleRunner.3.9.0\tools\nunit3-console.exe" ".\UCR.Tests\bin\Release\UCR.Tests.dll" --noresult
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Diagnose actual cold startup
+      - name: Smoke-test actual UCR.exe cold startup
         shell: pwsh
-        continue-on-error: true
         run: |
           $ErrorActionPreference = 'Stop'
           $runtime = (Resolve-Path '.\\UCR\\bin\\Release').Path
