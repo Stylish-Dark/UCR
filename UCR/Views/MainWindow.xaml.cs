@@ -41,6 +41,7 @@ namespace HidWizards.UCR.Views
         private readonly AutoProfileMonitor _autoProfileMonitor;
         private bool _exitRequested;
         private IDisposable _navigationPage;
+        private ProfilePage _embeddedProfilePage;
 
         enum CloseState
         {
@@ -389,12 +390,21 @@ namespace HidWizards.UCR.Views
         private void OpenProfileWindow(Profile profile)
         {
             if (profile == null) return;
-            Dispatcher.BeginInvoke((Action)(() =>
-            {
-                var page = new ProfilePage(Context, profile);
-                page.BackRequested += NavigationPage_OnBackRequested;
-                ShowNavigationPage(page);
-            }));
+            if (_embeddedProfilePage != null && ReferenceEquals(_embeddedProfilePage.Profile, profile)) return;
+
+            ReleaseEmbeddedProfile();
+            var page = new ProfilePage(Context, profile);
+            page.UseEmbeddedLayout();
+            _embeddedProfilePage = page;
+            ProfileEditorHost.Content = page;
+        }
+
+        private void ReleaseEmbeddedProfile()
+        {
+            if (_embeddedProfilePage == null) return;
+            ProfileEditorHost.Content = null;
+            _embeddedProfilePage.Dispose();
+            _embeddedProfilePage = null;
         }
 
         private void ShowNavigationPage(UserControl page)
@@ -426,6 +436,7 @@ namespace HidWizards.UCR.Views
                 RootDialog.Visibility = Visibility.Visible;
                 MainToolbarHost.Visibility = Visibility.Visible;
                 ReloadProfileTree();
+                OpenSelectedProfileEditor();
                 Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => ProfileTree.Focus()));
             }
         }
@@ -759,6 +770,7 @@ namespace HidWizards.UCR.Views
         {
             _autoProfileMonitor?.Dispose();
             CloseNavigationPage(false);
+            ReleaseEmbeddedProfile();
             if (_trayIcon != null) _trayIcon.Visible = false;
         }
 
@@ -971,10 +983,21 @@ namespace HidWizards.UCR.Views
             await DialogHost.Show(dialog, "RootDialog");
         }
 
+        private void OpenSelectedProfileEditor()
+        {
+            var selectedProfile = _dashboardViewModel.SelectedProfileItem?.Profile;
+            if (selectedProfile == null)
+                ReleaseEmbeddedProfile();
+            else
+                OpenProfileWindow(selectedProfile);
+        }
+
         private void ProfileTree_OnSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
             var treeView = sender as TreeView;
             _dashboardViewModel.SelectedProfileItem = treeView?.SelectedItem as ProfileItem;
+            if (_navigationPage == null)
+                OpenSelectedProfileEditor();
         }
     }
 }

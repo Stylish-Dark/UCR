@@ -182,7 +182,7 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
-        <Grid Grid.Row="0" Height="42" Background="#202020">
+        <Grid x:Name="ProfilePageHeader" Grid.Row="0" Height="42" Background="#202020">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
@@ -194,7 +194,7 @@
             <TextBlock x:Name="PageTitle" Grid.Column="1" Margin="4 0 12 0" FontSize="17" FontWeight="SemiBold"
                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
         </Grid>
-        <Grid Grid.Row="1">
+        <Grid x:Name="ProfilePageToolbar" Grid.Row="1">
             <Border Background="Transparent"
                     BorderBrush="{DynamicResource MaterialDesignShadowBrush}"
                     BorderThickness="0 0 0 1"
@@ -252,11 +252,11 @@
         <materialDesign:DialogHost x:Name="RootDialog" Grid.Row="2" Identifier="{Binding ProfileDialogIdentifier}">
             <Grid Margin="10">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="270"/>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*" MinWidth="320"/>
+                    <ColumnDefinition Width="250"/>
                 </Grid.ColumnDefinitions>
 
-                <Grid x:Name="SidebarGrid" Grid.Column="0" Margin="0 0 10 0">
+                <Grid x:Name="SidebarGrid" Grid.Column="1" Margin="10 0 0 0">
                     <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -557,7 +557,7 @@
                     </Border>
                 </Grid>
                 </Grid>
-                <Grid Grid.Column="1">
+                <Grid Grid.Column="0">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>

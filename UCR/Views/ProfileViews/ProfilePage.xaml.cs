@@ -57,6 +57,12 @@ namespace HidWizards.UCR.Views.ProfileViews
             StartGuiTimer();
         }
 
+        public void UseEmbeddedLayout()
+        {
+            ProfilePageHeader.Visibility = Visibility.Collapsed;
+            ProfilePageToolbar.Visibility = Visibility.Collapsed;
+        }
+
         public event EventHandler BackRequested;
         private bool _disposed;
 
