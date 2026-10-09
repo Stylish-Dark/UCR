@@ -918,10 +918,13 @@ namespace HidWizards.UCR.Views.ProfileViews
         public void ShowWorkspaceToolbox(string section)
         {
             if (_disposed) return;
+            // Dedicated workspace navigation shows only the relevant classic controls.
+            // The mapping inspector is restored whenever a row is selected.
+            MappingToolboxPanel.Visibility = section == "Add mapping" ? Visibility.Visible : Visibility.Collapsed;
+            MappingFiltersPanel.Visibility = section == "Filters" ? Visibility.Visible : Visibility.Collapsed;
+            ProfileDevicesPanel.Visibility = section == "Devices" ? Visibility.Visible : Visibility.Collapsed;
             SelectedMappingInspector.Visibility = Visibility.Collapsed;
             SidebarGrid.Visibility = Visibility.Visible;
-            // The existing toolbox remains available on demand. Keeping it out of the
-            // mapping inspector leaves the editor uncluttered without dropping features.
         }
 
         private void WorkspaceAddMapping_OnClick(object sender, RoutedEventArgs e)
