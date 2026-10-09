@@ -40,15 +40,18 @@
             </Setter>
         </Style>
     </UserControl.Resources>
-    <Grid MinHeight="42">
+    <Grid MinHeight="78">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="138"/>
-            <ColumnDefinition Width="150"/>
+            <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="34"/>
-            <ColumnDefinition Width="46"/>
+            <ColumnDefinition Width="44"/>
         </Grid.ColumnDefinitions>
 
-        <ComboBox Grid.Column="0" x:Name="DeviceSelectionBox"
+        <ComboBox Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" x:Name="DeviceSelectionBox"
                   Margin="0 0 5 0" MinHeight="36" Padding="5 2"
                   ItemsSource="{Binding Devices}"
                   SelectedItem="{Binding SelectedDevice}"
@@ -77,7 +80,7 @@
             </ComboBox.ItemTemplate>
         </ComboBox>
 
-        <Grid Grid.Column="1">
+        <Grid Grid.Row="1" Grid.Column="0" Margin="0 4 0 0">
             <Button x:Name="BindButton" MinHeight="36" MinWidth="120"
                     Content="{Binding BindButtonText}"
                     IsEnabled="{Binding BindingEnabled}"
@@ -85,7 +88,7 @@
                     Style="{StaticResource MaterialDesignRaisedButton}"
                     Foreground="#FFFFFF"
                     materialDesign:TransitionAssist.DisableTransitions="True"
-                    ToolTip="Press Enter or click, then press the input control to bind."/>
+                    ToolTip="Input: listen for a press. Output: choose a control from the graphical picker."/>
             <ProgressBar Height="3" Margin="8 0 8 2" VerticalAlignment="Bottom"
                          Minimum="0" Maximum="100" Value="{Binding PreviewValue, Mode=OneWay}"
                          IsHitTestVisible="False">
@@ -102,7 +105,7 @@
             </ProgressBar>
         </Grid>
 
-        <Button Grid.Column="2" x:Name="MenuButton" Width="32" MinHeight="36" Padding="0"
+        <Button Grid.Row="1" Grid.Column="1" x:Name="MenuButton" Margin="2 4 0 0" Width="32" MinHeight="36" Padding="0"
                 IsEnabled="{Binding BindingEnabled}" Click="MenuButton_OnClick"
                 Style="{StaticResource MaterialDesignRaisedButton}" Foreground="#FFFFFF"
                 ToolTip="Binding options">
@@ -113,7 +116,7 @@
             </Button.ContextMenu>
         </Button>
 
-        <ToggleButton Grid.Column="3"
+        <ToggleButton Grid.Row="0" Grid.Column="2"
                       HorizontalAlignment="Center" VerticalAlignment="Center"
                       IsChecked="{Binding Block, Mode=TwoWay}"
                       IsEnabled="{Binding CanBlock}"

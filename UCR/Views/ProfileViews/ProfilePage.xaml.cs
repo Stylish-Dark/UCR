@@ -44,7 +44,7 @@ namespace HidWizards.UCR.Views.ProfileViews
         private bool _mappingDragEnding;
         private Profile _profileSnapshot;
 
-        public ProfilePage(Context context, Profile profile)
+        public ProfilePage(Context context, Profile profile, bool embedded = false)
         {
             Context = context;
             Profile = profile;
@@ -52,9 +52,19 @@ namespace HidWizards.UCR.Views.ProfileViews
             InitializeComponent();
             PageTitle.Text = "Mappings — " + profile.Title;
             DataContext = ProfileViewModel;
-            _profileSnapshot = Context.DeepXmlClone(Profile);
+            _profileSnapshot = embedded ? null : Context.DeepXmlClone(Profile);
             context.ActiveProfileChangedEvent += ContextOnActiveProfileChangedEvent;
             StartGuiTimer();
+        }
+
+        public void ResumeEmbeddedVisuals()
+        {
+            if (!_disposed) StartGuiTimer();
+        }
+
+        public void SuspendEmbeddedVisuals()
+        {
+            StopGuiTimer();
         }
 
         public void UseEmbeddedLayout()

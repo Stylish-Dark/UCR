@@ -43,6 +43,9 @@ namespace HidWizards.UCR.Views
         private IDisposable _navigationPage;
         private ProfilePage _embeddedProfilePage;
         private Profile _embeddedProfile;
+        private readonly Dictionary<Guid, ProfilePage> _profileCache = new Dictionary<Guid, ProfilePage>();
+        private readonly LinkedList<Guid> _profileRecency = new LinkedList<Guid>();
+        private const int ProfileCacheLimit = 6;
 
         enum CloseState
         {
@@ -394,20 +397,53 @@ namespace HidWizards.UCR.Views
             if (_embeddedProfilePage != null && ReferenceEquals(_embeddedProfile, profile)) return;
 
             ReleaseEmbeddedProfile();
-            var page = new ProfilePage(Context, profile);
-            page.UseEmbeddedLayout();
+            ProfilePage page;
+            if (_profileCache.TryGetValue(profile.Guid, out page) && !ReferenceEquals(page.Profile, profile))
+            {
+                _profileCache.Remove(profile.Guid);
+                _profileRecency.Remove(profile.Guid);
+                page.Dispose();
+                page = null;
+            }
+            if (page == null)
+            {
+                // Embedded pages have no Back/Discard action; avoid a costly XML snapshot
+                // of every mapping every time another profile is selected.
+                page = new ProfilePage(Context, profile, true);
+                _profileCache[profile.Guid] = page;
+            }
+            _profileRecency.Remove(profile.Guid);
+            _profileRecency.AddLast(profile.Guid);
             _embeddedProfilePage = page;
             _embeddedProfile = profile;
             ProfileEditorHost.Content = page;
+            page.ResumeEmbeddedVisuals();
+
+            while (_profileRecency.Count > ProfileCacheLimit)
+            {
+                var oldest = _profileRecency.First.Value;
+                _profileRecency.RemoveFirst();
+                var discarded = _profileCache[oldest];
+                _profileCache.Remove(oldest);
+                discarded.Dispose();
+            }
         }
 
         private void ReleaseEmbeddedProfile()
         {
             if (_embeddedProfilePage == null) return;
+            _embeddedProfilePage.SuspendEmbeddedVisuals();
             ProfileEditorHost.Content = null;
-            _embeddedProfilePage.Dispose();
             _embeddedProfilePage = null;
             _embeddedProfile = null;
+        }
+
+        private void ClearEmbeddedProfileCache()
+        {
+            ReleaseEmbeddedProfile();
+            foreach (var page in _profileCache.Values) page.Dispose();
+            _profileCache.Clear();
+            _profileRecency.Clear();
         }
 
         private void ShowNavigationPage(UserControl page)
@@ -779,7 +815,7 @@ namespace HidWizards.UCR.Views
         {
             _autoProfileMonitor?.Dispose();
             CloseNavigationPage(false);
-            ReleaseEmbeddedProfile();
+            ClearEmbeddedProfileCache();
             if (_trayIcon != null) _trayIcon.Visible = false;
         }
 
