@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using HidWizards.UCR.ViewModels.Presentation;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Core.Utilities;
@@ -127,10 +129,43 @@ namespace HidWizards.UCR.Views.Controls
             {
                 var info = node.DeviceBindingInfo;
                 if (info == null || info.DeviceBindingCategory != DeviceBindingCategory.Momentary) return null;
+                // The compact editor must offer the same visual shorthand used by
+                // the mapping route; plain text menus lost the controller glyphs.
+                var candidate = new DeviceBinding
+                {
+                    Profile = DeviceBinding.Profile,
+                    DeviceIoType = DeviceBinding.DeviceIoType,
+                    DeviceConfigurationGuid = configurationGuid,
+                    DeviceBindingCategory = info.DeviceBindingCategory,
+                    IsBound = true,
+                    KeyType = info.KeyType,
+                    KeyValue = info.KeyValue,
+                    KeySubValue = info.KeySubValue
+                };
+                var visual = DeviceVisualCatalog.DescribeBinding(
+                    candidate, info.DeviceBindingCategory, DeviceBinding.Profile);
+                var label = new StackPanel { Orientation = Orientation.Horizontal };
+                label.Children.Add(new ControlGlyphControl
+                {
+                    Width = 46,
+                    Height = 28,
+                    Margin = new Thickness(0, 0, 10, 0),
+                    Kind = visual.ControlKind,
+                    AccentBrush = visual.ControlBrush ?? Brushes.Gray,
+                    Label = visual.ControlLabel
+                });
+                label.Children.Add(new TextBlock
+                {
+                    Text = node.Title,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = Brushes.White
+                });
+                item.Header = label;
+                item.ToolTip = visual.ToolTip;
                 item.Click += (sender, args) =>
                 {
                     DeviceBinding.SetDeviceConfigurationGuid(configurationGuid);
-                    DeviceBinding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
+                    DeviceBinding.DeviceBindingCategory = info.DeviceBindingCategory;
                     DeviceBinding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
                 };
                 return item;
