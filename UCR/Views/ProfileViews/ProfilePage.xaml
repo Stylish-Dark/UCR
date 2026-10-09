@@ -279,7 +279,7 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <Border Grid.Row="0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
+                    <Border x:Name="MappingToolboxPanel" Grid.Row="0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
                         <Expander IsExpanded="True" HorizontalContentAlignment="Stretch" Background="#202020">
                             <Expander.Header>
                                 <Border Background="#242424" BorderBrush="{DynamicResource PrimaryHueMidBrush}" BorderThickness="3 0 0 0" Padding="10 8">
@@ -377,7 +377,7 @@
                         </Expander>
                     </Border>
 
-                    <Border Grid.Row="1" Margin="0 8 0 0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
+                    <Border x:Name="MappingFiltersPanel" Grid.Row="1" Margin="0 8 0 0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
                         <Expander IsExpanded="True" HorizontalContentAlignment="Stretch" Background="#202020">
                             <Expander.Header>
                                 <Border Background="#242424" BorderBrush="{StaticResource MappingTypeFilterBrush}" BorderThickness="3 0 0 0" Padding="10 8">
