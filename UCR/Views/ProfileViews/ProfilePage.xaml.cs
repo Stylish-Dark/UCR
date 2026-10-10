@@ -927,6 +927,13 @@ namespace HidWizards.UCR.Views.ProfileViews
             SidebarGrid.Visibility = Visibility.Visible;
         }
 
+        private void DeleteSelectedMapping_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mapping = ProfileViewModel.SelectedMapping;
+            if (mapping?.ButtonsEnabled != true) return;
+            mapping.Remove();
+        }
+
         private void WorkspaceAddMapping_OnClick(object sender, RoutedEventArgs e)
         {
             ShowWorkspaceToolbox("Add mapping");
