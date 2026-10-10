@@ -313,7 +313,8 @@
                                                                     <ContentControl Content="{Binding Name.Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
                                                                                     Margin="0 0 7 0" VerticalAlignment="Center"/>
                                                                     <TextBlock Text="{Binding Name.Name}" FontSize="13.5" FontWeight="SemiBold"
-                                                                               Opacity="0.76" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                                               Opacity="0.76" VerticalAlignment="Center" TextWrapping="Wrap"
+                                                                               TextTrimming="None"/>
                                                                 </StackPanel>
                                                             </Border>
                                                             <ItemsPresenter/>
@@ -349,7 +350,8 @@
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Grid.Column="0" Text="{Binding Title}" FontSize="15.5" FontWeight="Medium"
-                                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                               VerticalAlignment="Center" TextWrapping="Wrap"
+                                                               TextTrimming="None" ToolTip="{Binding Title}"/>
                                                     <Border Grid.Column="1" Margin="6 0 0 0" Padding="5 1" CornerRadius="7" Background="#26382B" BorderBrush="#4B8B58" BorderThickness="1"
                                                             VerticalAlignment="Center" ToolTip="This profile is currently running">
                                                         <Border.Style>
