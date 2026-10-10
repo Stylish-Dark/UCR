@@ -1081,7 +1081,8 @@ namespace HidWizards.UCR.Views
             // configuration differs from the last explicit save.
             if (Context.HasUnsavedPersistentChanges())
             {
-                var answer = DarkMessageBox.ShowSaveChanges(this);
+                var answer = DarkMessageBox.Show(this, "Save changes?",
+                    "Universal Control Remapper", MessageBoxButton.YesNoCancel, MessageBoxImage.None);
                 if (answer == MessageBoxResult.Cancel || answer == MessageBoxResult.None) return;
                 if (answer == MessageBoxResult.Yes)
                 {
