@@ -871,13 +871,10 @@
                             <TextBlock Grid.Column="0" Text="{Binding SelectedMapping.MappingTitle, TargetNullValue='Select a mapping'}"
                                        FontSize="21" FontWeight="SemiBold" Foreground="White" Margin="0 4 8 0"
                                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                            <Button Grid.Column="1" Width="34" Height="34" Margin="4 0 0 0"
+                            <Button Grid.Column="1" Margin="4 0 0 0"
                                     Click="DeleteSelectedMapping_OnClick" IsEnabled="{Binding CanEditProfile}"
-                                    ToolTip="Delete selected mapping" Style="{StaticResource UcrProfileActionButton}">
-                                <Path Data="M 3,3 L 17,17 M 17,3 L 3,17" Width="20" Height="20"
-                                      Stroke="#F06464" StrokeThickness="2.8" StrokeStartLineCap="Round"
-                                      StrokeEndLineCap="Round" Stretch="Uniform"/>
-                            </Button>
+                                    ToolTip="Delete selected mapping" ToolTipService.ShowOnDisabled="True"
+                                    Style="{StaticResource UcrDeleteCrossButton}"/>
                         </Grid>
                     </StackPanel>
                 </Border>
