@@ -513,15 +513,11 @@ namespace HidWizards.UCR
                 {
                     RunShutdownStage("Closing profile windows...", 10, ucrWindow.PrepareForShutdown);
                 }
-                if (saveContext)
-                {
-                    RunShutdownStage("Saving configuration...", 15, () => context?.SaveContext());
-                }
-                else
-                {
-                    UpdateShutdownProgress(15);
-                }
-                RunShutdownStage("Saving device state...", 35, () => context?.DevicesManager.UpdateDeviceCache());
+                // All configuration saving is performed by the user's Save command or
+                // by a confirmed Yes response in MainWindow's close dialog. Never
+                // perform a second implicit write during the shutdown sequence.
+                UpdateShutdownProgress(15);
+                UpdateShutdownProgress(35);
                 RunShutdownStage("Stopping input and output services...", 70, () =>
                 {
                     context?.Dispose();
@@ -670,18 +666,7 @@ namespace HidWizards.UCR
         private void App_OnExit(object sender, ExitEventArgs e)
         {
             if (!_shutdownCleanupComplete)
-            {
-                try
-                {
-                    context?.DevicesManager.UpdateDeviceCache();
-                }
-                catch (Exception exception)
-                {
-                    Logger.Error("Updating device cache during application exit failed", exception);
-                }
-
                 Dispose();
-            }
 
             CloseShutdownSplash();
             Logger.Flush();
