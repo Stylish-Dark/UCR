@@ -98,6 +98,43 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void EditHistoryProvidesTenUndoRedoStepsWithoutSavingChanges()
+        {
+            var context = NewContext();
+            context.SaveContext();
+            var savedManifest = File.ReadAllText(_store.StatePath);
+            context.InitializeEditHistory();
+            Assert.That(context.CanUndo, Is.False);
+
+            for (var index = 0; index < 12; index++)
+            {
+                var profile = context.ProfilesManager.CreateProfile("History " + index, null, null);
+                context.ProfilesManager.AddProfile(profile);
+            }
+
+            Assert.That(context.Profiles.Count, Is.EqualTo(12));
+            Assert.That(File.ReadAllText(_store.StatePath), Is.EqualTo(savedManifest),
+                "Edits must remain only in memory until Save.");
+            Assert.That(context.IsNotSaved, Is.True);
+
+            for (var step = 0; step < 10; step++)
+                Assert.That(context.Undo(), Is.True, "Undo step " + step);
+            Assert.That(context.CanUndo, Is.False, "History must be capped at ten edits.");
+            Assert.That(context.Profiles.Count, Is.EqualTo(2));
+            Assert.That(File.ReadAllText(_store.StatePath), Is.EqualTo(savedManifest));
+
+            for (var step = 0; step < 10; step++)
+                Assert.That(context.Redo(), Is.True, "Redo step " + step);
+            Assert.That(context.CanRedo, Is.False);
+            Assert.That(context.Profiles.Count, Is.EqualTo(12));
+
+            context.SaveContext();
+            Assert.That(context.IsNotSaved, Is.False);
+            Assert.That(File.ReadAllText(_store.StatePath), Is.Not.EqualTo(savedManifest));
+            context.Dispose();
+        }
+
+        [Test]
         public void BlankContext()
         {
             var context = NewContext();
