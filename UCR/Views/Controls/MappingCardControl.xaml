@@ -113,6 +113,15 @@
                     BorderBrush="#303030" BorderThickness="0 1 0 0" CornerRadius="0">
                 <StackPanel>
                     <StackPanel Margin="0 0 0 12">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding InspectorSection, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="Outputs">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
                         <StackPanel Orientation="Horizontal" Margin="8 0 0 10">
                             <materialDesign:PackIcon Kind="ArrowCollapseLeft" Width="16" Height="16"
                                                      Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
@@ -197,8 +206,10 @@
                                                                         Foreground="White" Background="#343434"
                                                                         BorderBrush="#555555" BorderThickness="1"
                                                                         ToolTipService.ShowOnDisabled="True">
-                                                                    <materialDesign:PackIcon Kind="Close" Width="19" Height="19"
-                                                                                             Foreground="#FFFFFF"/>
+                                                                    <Path Data="M 3,3 L 17,17 M 17,3 L 3,17" Width="20" Height="20"
+                                                                          Stroke="#F06464" StrokeThickness="2.8"
+                                                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                                          Stretch="Uniform"/>
                                                                 </Button>
                                                             </StackPanel>
                                                         </StackPanel>
@@ -238,8 +249,30 @@
                     </StackPanel>
 
                     </StackPanel>
-                    <Border Background="#3A3A3A" Height="1" Margin="3 10 3 15"/>
+                    <Border Background="#3A3A3A" Height="1" Margin="3 10 3 15">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding InspectorSection, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="Inputs">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding InspectorSection, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="Outputs">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
                     <StackPanel Margin="0 0 0 6">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding InspectorSection, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="Inputs">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
                         <StackPanel Orientation="Horizontal" Margin="8 0 0 10">
                             <materialDesign:PackIcon Kind="ArrowCollapseRight" Width="16" Height="16"
                                                      Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
@@ -287,9 +320,10 @@
                                                     IsEnabled="{Binding CanRemove}" ToolTip="Remove this output"
                                                     Background="#383838" BorderBrush="#5C5C5C"
                                                     Foreground="#FFFFFF" BorderThickness="1">
-                                                <materialDesign:PackIcon Kind="Close" Width="19" Height="19"
-                                                                         Foreground="#FFFFFF"
-                                                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                <Path Data="M 3,3 L 17,17 M 17,3 L 3,17" Width="20" Height="20"
+                                                      Stroke="#F06464" StrokeThickness="2.8"
+                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                      Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             </Button>
                                         </StackPanel>
                                     </Border>
