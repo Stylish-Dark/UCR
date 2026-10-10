@@ -147,6 +147,25 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+        // Compact workspace rows already identify the device. Provider group labels
+        // such as "Keys,Backspace" and "Buttons,Back" are redundant here.
+        public string CompactBindButtonText
+        {
+            get
+            {
+                var label = BindButtonText;
+                if (string.IsNullOrWhiteSpace(label)) return label;
+                foreach (var group in new[] { "Keys", "Buttons" })
+                {
+                    if (!label.StartsWith(group, StringComparison.OrdinalIgnoreCase)) continue;
+                    var suffix = label.Substring(group.Length);
+                    if (suffix.Length > 1 && (suffix[0] == ',' || suffix[0] == ':'))
+                        return suffix.Substring(1).Trim();
+                }
+                return label;
+            }
+        }
+
         private DeviceBinding _deviceBinding;
         public DeviceBinding DeviceBinding
         {
@@ -245,6 +264,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 // Signal a lightweight presentation change without paying to build the dropdown.
                 OnPropertyChanged(nameof(SelectedDevice));
                 OnPropertyChanged(nameof(BindButtonText));
+                OnPropertyChanged(nameof(CompactBindButtonText));
                 return;
             }
 
@@ -252,6 +272,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(Devices));
             OnPropertyChanged(nameof(SelectedDevice));
             OnPropertyChanged(nameof(BindButtonText));
+                OnPropertyChanged(nameof(CompactBindButtonText));
             OnPropertyChanged(nameof(ShowBlock));
             OnPropertyChanged(nameof(CanBlock));
             OnPropertyChanged(nameof(ShowInvertInput));
@@ -340,6 +361,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(SelectedDevice));
             }
             OnPropertyChanged(nameof(BindButtonText));
+                OnPropertyChanged(nameof(CompactBindButtonText));
             OnPropertyChanged(nameof(ShowBlock));
             OnPropertyChanged(nameof(CanBlock));
             OnPropertyChanged(nameof(Block));
@@ -395,6 +417,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 BindModeProgress = 0;
                 OnPropertyChanged(nameof(BindButtonText));
+                OnPropertyChanged(nameof(CompactBindButtonText));
                 OnPropertyChanged(nameof(ShowPreview));
                 OnPropertyChanged(nameof(ShowBindMode));
             }
@@ -415,6 +438,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.DeviceConfigurationGuid), StringComparison.Ordinal))
             {
                 OnPropertyChanged(nameof(BindButtonText));
+                OnPropertyChanged(nameof(CompactBindButtonText));
                 OnPropertyChanged(nameof(ShowBlock));
             OnPropertyChanged(nameof(CanBlock));
                 OnPropertyChanged(nameof(Block));
