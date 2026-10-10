@@ -262,7 +262,6 @@
                 <Border Grid.Row="0" Grid.ColumnSpan="2" Padding="20 12 20 13"
                         Background="#202020" BorderBrush="#383838" BorderThickness="0 0 0 1">
                     <StackPanel>
-                        <TextBlock Text="PROFILE / WORKSPACE" FontSize="11" FontWeight="Bold" Foreground="#AAAAAA"/>
                         <TextBlock Text="{Binding Profile.Title}" FontSize="22" FontWeight="SemiBold"
                                    Foreground="White" Margin="0 4 0 1"/>
                         <TextBlock Text="{Binding MappingsList.Count, StringFormat={}{0} mappings}"
@@ -864,11 +863,20 @@
                 </Grid.RowDefinitions>
                 <Border Padding="18 15" BorderBrush="#363636" BorderThickness="1 0 0 1">
                     <StackPanel>
-                        <TextBlock Text="SELECTED MAPPING" FontSize="11" FontWeight="Bold" Foreground="#AFAFAF"/>
-                        <TextBlock Text="{Binding SelectedMapping.MappingTitle, TargetNullValue='Select a mapping'}"
-                                   FontSize="21" FontWeight="SemiBold" Foreground="White" Margin="0 4 0 3"/>
-                        <TextBlock Text="Edit inputs and outputs directly"
-                                   Foreground="#A8A8A8" FontSize="12"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{Binding SelectedMapping.MappingTitle, TargetNullValue='Select a mapping'}"
+                                       FontSize="21" FontWeight="SemiBold" Foreground="White" Margin="0 4 8 0"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            <Button Grid.Column="1" Width="34" Height="34" Margin="4 0 0 0"
+                                    Click="DeleteSelectedMapping_OnClick" IsEnabled="{Binding CanEditProfile}"
+                                    ToolTip="Delete selected mapping" Style="{StaticResource UcrProfileActionButton}">
+                                <materialDesign:PackIcon Kind="Delete" Width="19" Height="19"/>
+                            </Button>
+                        </Grid>
                     </StackPanel>
                 </Border>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
