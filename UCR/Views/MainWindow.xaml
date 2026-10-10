@@ -203,7 +203,7 @@
         <materialDesign:DialogHost x:Name="RootDialog" Grid.Row="2" Identifier="RootDialog">
             <Grid Margin="8">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="260" MinWidth="220"/>
+                    <ColumnDefinition Width="305" MinWidth="275"/>
                     <ColumnDefinition Width="5"/>
                     <ColumnDefinition Width="*" MinWidth="240"/>
                 </Grid.ColumnDefinitions>
@@ -217,7 +217,6 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                         <StackPanel Grid.Row="0" Margin="10 11 10 12">
-                            <TextBlock Text="WORKSPACE" FontSize="11" FontWeight="Bold" Foreground="#AAAAAA" Margin="12 3 0 8"/>
                             <Button Content="Mappings" Height="37" Margin="0 1" HorizontalContentAlignment="Left"
                                     Click="WorkspaceMappings_OnClick" Style="{StaticResource UcrProfileActionButton}"/>
                             <Button Content="Devices" Height="37" Margin="0 1" HorizontalContentAlignment="Left"
@@ -329,12 +328,12 @@
                             <TreeView.ItemTemplate>
                                 <DataTemplate DataType="{x:Type dashboard:ProfileItem}">
                                     <Grid Width="{Binding RelativeSource={RelativeSource AncestorType={x:Type materialDesign:Ripple}}, Path=ActualWidth}"
-                                          HorizontalAlignment="Left" ToolTip="{Binding Title}">
+                                          HorizontalAlignment="Stretch" ClipToBounds="True" ToolTip="{Binding Title}">
                                         <Grid Margin="8 2" MinHeight="38" HorizontalAlignment="Stretch">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" MinWidth="50"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto" MinWidth="50"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*" MinWidth="0"/>
+                                                <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
 
                                             <ItemsControl Grid.Column="0" ItemsSource="{Binding InputVisuals}"
@@ -344,10 +343,14 @@
                                             </ItemsControl>
 
                                             <Grid Grid.Column="1" Margin="6 0">
-                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Title}" FontSize="15.5" FontWeight="Medium"
+                                                <Grid HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" MinWidth="0"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0" Text="{Binding Title}" FontSize="15.5" FontWeight="Medium"
                                                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                                    <Border Margin="6 0 0 0" Padding="5 1" CornerRadius="7" Background="#26382B" BorderBrush="#4B8B58" BorderThickness="1"
+                                                    <Border Grid.Column="1" Margin="6 0 0 0" Padding="5 1" CornerRadius="7" Background="#26382B" BorderBrush="#4B8B58" BorderThickness="1"
                                                             VerticalAlignment="Center" ToolTip="This profile is currently running">
                                                         <Border.Style>
                                                             <Style TargetType="Border">
@@ -361,7 +364,7 @@
                                                         </Border.Style>
                                                         <TextBlock Text="ACTIVE" FontSize="8.5" FontWeight="Bold" Foreground="#FFFFFF"/>
                                                     </Border>
-                                                </StackPanel>
+                                                </Grid>
                                                 <Ellipse Width="7" Height="7" Margin="0 0 4 0" HorizontalAlignment="Right"
                                                          Fill="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center" ToolTip="Auto-apply enabled">
                                                     <Ellipse.Style>
