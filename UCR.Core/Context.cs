@@ -45,6 +45,17 @@ namespace HidWizards.UCR.Core
         internal IOController IOController { get; set; }
         [XmlIgnore] internal ContextStore Store { get; private set; }
         private OptionSet options;
+        private const int HistoryLimit = 10;
+        private readonly List<string> _undoHistory = new List<string>();
+        private readonly List<string> _redoHistory = new List<string>();
+        private UcrJsonSerializer _historySerializer;
+        private string _historyCurrentSnapshot;
+        private string _historySavedSnapshot;
+        private bool _restoringHistory;
+
+        public bool CanUndo => _undoHistory.Count > 0;
+        public bool CanRedo => _redoHistory.Count > 0;
+
 
         public Context() : this(ContextStore.CreateDefault())
         {
@@ -107,7 +118,110 @@ namespace HidWizards.UCR.Core
         public void ContextChanged()
         {
             Logger.Trace("Context changed");
+            if (_restoringHistory) return;
             IsNotSaved = true;
+            if (_historySerializer == null) return;
+            try
+            {
+                var current = CaptureHistorySnapshot();
+                if (string.Equals(current, _historyCurrentSnapshot, StringComparison.Ordinal))
+                {
+                    IsNotSaved = _historySavedSnapshot == null ||
+                        !string.Equals(current, _historySavedSnapshot, StringComparison.Ordinal);
+                    return;
+                }
+                PushHistory(_undoHistory, _historyCurrentSnapshot);
+                _historyCurrentSnapshot = current;
+                _redoHistory.Clear();
+                IsNotSaved = _historySavedSnapshot == null ||
+                    !string.Equals(current, _historySavedSnapshot, StringComparison.Ordinal);
+            }
+            catch (Exception exception)
+            {
+                Logger.Warn(exception, "Could not record an edit in undo history.");
+                IsNotSaved = true;
+            }
+        }
+
+        // History contains in-memory configuration only. It never creates files.
+        // Keep at most ten completed configuration states in either direction.
+        public void InitializeEditHistory()
+        {
+            _historySerializer = new UcrJsonSerializer(
+                PluginManager.Plugins.Select(plugin => plugin.GetType()).Distinct());
+            _undoHistory.Clear();
+            _redoHistory.Clear();
+            _historyCurrentSnapshot = CaptureHistorySnapshot();
+            _historySavedSnapshot = IsNotSaved ? null : _historyCurrentSnapshot;
+        }
+
+        private string CaptureHistorySnapshot()
+        {
+            return _historySerializer.Serialize(new ProfileExportPackage
+            {
+                Profiles = Profiles,
+                DeviceAliases = DeviceAliases
+            });
+        }
+
+        private static void PushHistory(List<string> history, string snapshot)
+        {
+            if (snapshot == null) return;
+            history.Add(snapshot);
+            if (history.Count > HistoryLimit) history.RemoveAt(0);
+        }
+
+        public bool Undo()
+        {
+            return ApplyHistory(_undoHistory, _redoHistory);
+        }
+
+        public bool Redo()
+        {
+            return ApplyHistory(_redoHistory, _undoHistory);
+        }
+
+        private bool ApplyHistory(List<string> from, List<string> to)
+        {
+            if (ActiveProfiles.Count > 0 || from.Count == 0 || _historySerializer == null)
+                return false;
+            var snapshot = from[from.Count - 1];
+            var restored = _historySerializer.Deserialize<ProfileExportPackage>(snapshot);
+            if (restored?.Profiles == null || restored.DeviceAliases == null)
+                throw new InvalidDataException("Undo snapshot contains incomplete configuration.");
+
+            var oldProfiles = Profiles.ToList();
+            var oldAliases = DeviceAliases.ToList();
+            _restoringHistory = true;
+            try
+            {
+                Profiles.Clear();
+                Profiles.AddRange(restored.Profiles);
+                DeviceAliases.Clear();
+                DeviceAliases.AddRange(restored.DeviceAliases);
+                PostLoad();
+                OnDeviceAliasesChangedEvent();
+            }
+            catch
+            {
+                Profiles.Clear();
+                Profiles.AddRange(oldProfiles);
+                DeviceAliases.Clear();
+                DeviceAliases.AddRange(oldAliases);
+                PostLoad();
+                throw;
+            }
+            finally
+            {
+                _restoringHistory = false;
+            }
+
+            PushHistory(to, _historyCurrentSnapshot);
+            from.RemoveAt(from.Count - 1);
+            _historyCurrentSnapshot = snapshot;
+            IsNotSaved = _historySavedSnapshot == null ||
+                !string.Equals(snapshot, _historySavedSnapshot, StringComparison.Ordinal);
+            return true;
         }
 
         internal bool HasUnsavedPersistentChanges(List<Type> pluginTypes = null)
@@ -141,6 +255,11 @@ namespace HidWizards.UCR.Core
         {
             Store.Save(this, pluginTypes);
             IsNotSaved = false;
+            if (_historySerializer != null)
+            {
+                _historyCurrentSnapshot = CaptureHistorySnapshot();
+                _historySavedSnapshot = _historyCurrentSnapshot;
+            }
             return true;
         }
 
