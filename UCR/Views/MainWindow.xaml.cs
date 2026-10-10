@@ -230,7 +230,7 @@ namespace HidWizards.UCR.Views
             if (!string.IsNullOrWhiteSpace(item.Title))
             {
                 var text = new FormattedText(item.Title, CultureInfo.CurrentCulture,
-                    FlowDirection.LeftToRight, new Typeface(FontFamily), 15.5, Brushes.White);
+                    FlowDirection.LeftToRight, new Typeface(FontFamily, FontStyles.Normal, FontWeights.Medium, FontStretches.Normal), 15.5, Brushes.White);
                 longest = Math.Max(longest, text.WidthIncludingTrailingWhitespace);
             }
             foreach (var child in item.Items ?? Enumerable.Empty<ProfileItem>())
