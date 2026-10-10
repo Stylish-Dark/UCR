@@ -24,6 +24,16 @@ namespace HidWizards.UCR.Views.Controls
             get => (bool)GetValue(InspectorModeProperty);
             set => SetValue(InspectorModeProperty, value);
         }
+        public static readonly DependencyProperty InspectorSectionProperty = DependencyProperty.Register(
+            nameof(InspectorSection), typeof(string), typeof(MappingCardControl),
+            new PropertyMetadata("All"));
+
+        public string InspectorSection
+        {
+            get => (string)GetValue(InspectorSectionProperty);
+            set => SetValue(InspectorSectionProperty, value);
+        }
+
         public MappingCardControl()
         {
             InitializeComponent();
