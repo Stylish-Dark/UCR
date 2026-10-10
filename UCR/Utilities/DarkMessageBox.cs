@@ -35,6 +35,23 @@ namespace HidWizards.UCR.Utilities
             return dialog.Result;
         }
 
+        // Dedicated, clearly labelled unsaved-changes prompt. Do not make users
+        // translate Yes/No into save/discard or read a redundant legend.
+        public static MessageBoxResult ShowSaveChanges(Window owner)
+        {
+            if (owner == null) throw new ArgumentNullException(nameof(owner));
+            var labels = new Dictionary<MessageBoxResult, string>
+            {
+                { MessageBoxResult.Yes, "Save" },
+                { MessageBoxResult.No, "Don't Save" },
+                { MessageBoxResult.Cancel, "Cancel" }
+            };
+            var dialog = new DarkMessageBoxWindow("Save changes before closing UCR?",
+                "Unsaved changes", MessageBoxButton.YesNoCancel, MessageBoxImage.None, owner, labels);
+            dialog.ShowDialog();
+            return dialog.Result;
+        }
+
         private sealed class DarkMessageBoxWindow : Window
         {
             private static readonly Brush BackgroundBrush = BrushFromRgb(0x21, 0x21, 0x21);
@@ -45,13 +62,17 @@ namespace HidWizards.UCR.Utilities
             private static readonly Brush SecondaryTextBrush = BrushFromRgb(0xD0, 0xD0, 0xD0);
 
             private readonly MessageBoxButton _buttons;
+            private readonly IReadOnlyDictionary<MessageBoxResult, string> _buttonLabels;
             private MessageBoxResult _result = MessageBoxResult.None;
 
             public MessageBoxResult Result => _result;
 
-            public DarkMessageBoxWindow(string message, string caption, MessageBoxButton buttons, MessageBoxImage icon, Window owner)
+            public DarkMessageBoxWindow(string message, string caption, MessageBoxButton buttons,
+                MessageBoxImage icon, Window owner,
+                IReadOnlyDictionary<MessageBoxResult, string> buttonLabels = null)
             {
                 _buttons = buttons;
+                _buttonLabels = buttonLabels;
                 Title = string.IsNullOrWhiteSpace(caption) ? "Universal Control Remapper" : caption;
                 Width = 470;
                 MinWidth = 360;
@@ -191,7 +212,8 @@ namespace HidWizards.UCR.Utilities
             {
                 var button = new Button
                 {
-                    Content = ResultText(result),
+                    Content = _buttonLabels != null && _buttonLabels.TryGetValue(result, out var label)
+                        ? label : ResultText(result),
                     MinWidth = 78,
                     Height = 32,
                     Margin = new Thickness(8, 0, 0, 0),
