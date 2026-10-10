@@ -325,8 +325,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public void AddPlugin(Plugin plugin)
         {
+            var preferredDevices = Plugins.LastOrDefault()?.Plugin?.Outputs
+                .Select(output => output.DeviceConfigurationGuid).ToList();
             var newPlugin = ProfileViewModel.Profile.Context.PluginManager.GetNewPlugin(plugin);
             if (!Mapping.AddPlugin(newPlugin)) return;
+            SelectCompatibleOutputDevices(newPlugin, preferredDevices);
 
             var pluginViewModel = new PluginViewModel(this, newPlugin);
             Plugins.Add(pluginViewModel);
@@ -542,6 +545,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             var replacement = ProfileViewModel.Profile.Context.PluginManager.GetNewPlugin(replacementTemplate);
             replacement.SetProfile(ProfileViewModel.Profile);
+            SelectCompatibleOutputDevices(replacement,
+                original.Plugin.Outputs.Select(binding => binding.DeviceConfigurationGuid).ToList());
             var replacementViewModel = new PluginViewModel(this, replacement);
             foreach (var binding in original.DeviceBindings)
                 binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
@@ -557,6 +562,27 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ProfileViewModel.RefreshFilterReferenceLabels();
             Logger.Info("Changed output type in mapping '" + MappingTitle + "' to " + replacement.PluginName);
             return true;
+        }
+
+        // Preserve the previous device when it supports the new output type. Otherwise
+        // choose a genuinely compatible output device instead of the first device in the list.
+        private void SelectCompatibleOutputDevices(Plugin plugin, IList<Guid> preferredDevices)
+        {
+            if (plugin?.Outputs == null) return;
+            var profile = ProfileViewModel.Profile;
+            var candidates = profile.GetDeviceConfigurationList(DeviceIoType.Output);
+            for (var index = 0; index < plugin.Outputs.Count && index < plugin.OutputCategories.Count; index++)
+            {
+                var category = plugin.OutputCategories[index].Category;
+                var compatible = candidates.Where(device => DeviceBindingViewModel.SupportsOutputCategory(
+                    device, category, profile.Context)).ToList();
+                var preference = preferredDevices != null && index < preferredDevices.Count
+                    ? preferredDevices[index] : Guid.Empty;
+                var selected = compatible.FirstOrDefault(device => device.Guid == preference)
+                    ?? compatible.FirstOrDefault();
+                if (selected != null)
+                    plugin.Outputs[index].SetDeviceConfigurationGuid(selected.Guid, false);
+            }
         }
 
         public void RemovePlugin(PluginViewModel pluginViewModel)
