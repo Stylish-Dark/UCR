@@ -513,6 +513,52 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     (item.Binding.InputExpressionNegated ? "NOT " : string.Empty) + "Input " + (item.Index + 1)))));
         }
 
+        // Adding an output uses the existing compatible output type by default.
+        // The new row's type selector can change it afterwards.
+        public bool AddDefaultOutput()
+        {
+            if (!ButtonsEnabled) return false;
+            var options = GetCompatiblePluginOptions();
+            var currentType = Plugins.LastOrDefault()?.Plugin?.GetType();
+            var selected = options.FirstOrDefault(option => option.Plugin.GetType() == currentType)
+                ?? options.FirstOrDefault(option => option.OutputType == "Button")
+                ?? options.FirstOrDefault();
+            if (selected == null) return false;
+
+            var count = Plugins.Count;
+            AddPlugin(selected.Plugin);
+            return Plugins.Count > count;
+        }
+
+        // Swap only the chosen output plugin, never the mapping's shared input bindings.
+        public bool ChangeOutputType(PluginViewModel original, Plugin replacementTemplate)
+        {
+            if (!ButtonsEnabled || original == null || replacementTemplate == null) return false;
+            var index = Plugins.IndexOf(original);
+            if (index < 0 || index >= Mapping.Plugins.Count) return false;
+            if (!Mapping.GetPluginList().Any(option => option.GetType() == replacementTemplate.GetType()))
+                return false;
+            if (original.Plugin.GetType() == replacementTemplate.GetType()) return true;
+
+            var replacement = ProfileViewModel.Profile.Context.PluginManager.GetNewPlugin(replacementTemplate);
+            replacement.SetProfile(ProfileViewModel.Profile);
+            var replacementViewModel = new PluginViewModel(this, replacement);
+            foreach (var binding in original.DeviceBindings)
+                binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
+            original.Dispose();
+            Mapping.Plugins[index] = replacement;
+            Plugins[index] = replacementViewModel;
+            foreach (var binding in replacementViewModel.DeviceBindings)
+                SubscribeSummaryBinding(binding);
+            ProfileViewModel.Profile.PruneUndefinedFilterReferencesRecursive();
+            ProfileViewModel.Profile.Context.ContextChanged();
+            RefreshHeaderState();
+            RefreshCollapsedSummary();
+            ProfileViewModel.RefreshFilterReferenceLabels();
+            Logger.Info("Changed output type in mapping '" + MappingTitle + "' to " + replacement.PluginName);
+            return true;
+        }
+
         public void RemovePlugin(PluginViewModel pluginViewModel)
         {
             if (!Mapping.RemovePlugin(pluginViewModel.Plugin)) return;
