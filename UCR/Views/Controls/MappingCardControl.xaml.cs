@@ -368,46 +368,40 @@ namespace HidWizards.UCR.Views.Controls
 
         private void AddPlugin_OnClick(object sender, RoutedEventArgs e)
         {
-            var mappingViewModel = DataContext as MappingViewModel;
-            var button = sender as Button;
-            if (mappingViewModel == null || button == null) return;
+            var mapping = DataContext as MappingViewModel;
+            if (mapping?.ButtonsEnabled != true) return;
+            mapping.AddDefaultOutput();
+        }
 
-            var options = mappingViewModel.GetCompatiblePluginOptions();
+        private void ChangeOutputType_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var output = button?.DataContext as PluginViewModel;
+            var mapping = output?.MappingViewModel;
+            if (mapping?.ButtonsEnabled != true) return;
+            var options = mapping.GetCompatiblePluginOptions();
             if (options.Count == 0) return;
 
-            var menu = new ContextMenu
-            {
-                PlacementTarget = button,
-                Placement = PlacementMode.Bottom,
-                Background = new SolidColorBrush(Color.FromRgb(0x24, 0x24, 0x24)),
-                Foreground = Brushes.White,
-                BorderBrush = new SolidColorBrush(Color.FromRgb(0x45, 0x45, 0x45)),
-                BorderThickness = new Thickness(1),
-                Padding = new Thickness(4)
-            };
-
+            var menu = CreateDarkContextMenu(button);
+            menu.Placement = PlacementMode.Bottom;
             foreach (var option in options)
             {
-                var capturedOption = option;
+                var selected = option;
                 var item = new MenuItem
                 {
-                    Header = capturedOption.MenuLabel,
-                    ToolTip = capturedOption.Description,
+                    Header = selected.MenuLabel,
+                    ToolTip = selected.Description,
                     Foreground = Brushes.White,
                     Background = Brushes.Transparent,
-                    Padding = new Thickness(10, 6, 14, 6)
+                    Padding = new Thickness(10, 6, 14, 6),
+                    IsChecked = output.Plugin.GetType() == selected.Plugin.GetType()
                 };
-                item.Click += (clickSender, clickArgs) => mappingViewModel.AddPlugin(capturedOption.Plugin);
+                item.Click += (s, args) => mapping.ChangeOutputType(output, selected.Plugin);
                 menu.Items.Add(item);
             }
-
-            menu.Closed += (closedSender, closedArgs) =>
-            {
-                if (ReferenceEquals(button.ContextMenu, menu)) button.ContextMenu = null;
-            };
-            button.ContextMenu = menu;
             menu.IsOpen = true;
         }
+
         private void RemoveOutput_OnClick(object sender, RoutedEventArgs e)
         {
             var plugin = (sender as FrameworkElement)?.DataContext as PluginViewModel;
