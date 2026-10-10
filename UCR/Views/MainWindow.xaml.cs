@@ -1081,9 +1081,7 @@ namespace HidWizards.UCR.Views
             // configuration differs from the last explicit save.
             if (Context.HasUnsavedPersistentChanges())
             {
-                var answer = DarkMessageBox.Show(this,
-                    "Save changes before closing UCR?\n\nYes = Save   No = Discard   Cancel = Keep UCR open",
-                    "Save changes?", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+                var answer = DarkMessageBox.ShowSaveChanges(this);
                 if (answer == MessageBoxResult.Cancel || answer == MessageBoxResult.None) return;
                 if (answer == MessageBoxResult.Yes)
                 {
