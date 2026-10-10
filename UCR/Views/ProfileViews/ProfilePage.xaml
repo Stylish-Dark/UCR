@@ -874,21 +874,53 @@
                             <Button Grid.Column="1" Width="34" Height="34" Margin="4 0 0 0"
                                     Click="DeleteSelectedMapping_OnClick" IsEnabled="{Binding CanEditProfile}"
                                     ToolTip="Delete selected mapping" Style="{StaticResource UcrProfileActionButton}">
-                                <materialDesign:PackIcon Kind="Delete" Width="19" Height="19"/>
+                                <Path Data="M 3,3 L 17,17 M 17,3 L 3,17" Width="20" Height="20"
+                                      Stroke="#F06464" StrokeThickness="2.8" StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" Stretch="Uniform"/>
                             </Button>
                         </Grid>
                     </StackPanel>
                 </Border>
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled" Background="#202020">
-                    <ContentControl Content="{Binding SelectedMapping}" HorizontalContentAlignment="Stretch">
-                        <ContentControl.ContentTemplate>
-                            <DataTemplate>
-                                <controls:MappingCardControl InspectorMode="True"/>
-                            </DataTemplate>
-                        </ContentControl.ContentTemplate>
-                    </ContentControl>
-                </ScrollViewer>
+                <!-- The inspector is two distinct, independently scrolling frames. -->
+                <Grid Grid.Row="1" Background="#202020">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" MinHeight="125"/>
+                        <RowDefinition Height="6"/>
+                        <RowDefinition Height="*" MinHeight="125"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" BorderBrush="#414141" BorderThickness="1 0 0 1"
+                            Background="#202020" ClipToBounds="True">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      CanContentScroll="False">
+                            <ContentControl Content="{Binding SelectedMapping}"
+                                            HorizontalContentAlignment="Stretch">
+                                <ContentControl.ContentTemplate>
+                                    <DataTemplate>
+                                        <controls:MappingCardControl InspectorMode="True" InspectorSection="Inputs"/>
+                                    </DataTemplate>
+                                </ContentControl.ContentTemplate>
+                            </ContentControl>
+                        </ScrollViewer>
+                    </Border>
+                    <Border Grid.Row="1" Background="#343434" BorderBrush="#494949"
+                            BorderThickness="1 0 0 0"/>
+                    <Border Grid.Row="2" BorderBrush="#414141" BorderThickness="1 1 0 0"
+                            Background="#202020" ClipToBounds="True">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      CanContentScroll="False">
+                            <ContentControl Content="{Binding SelectedMapping}"
+                                            HorizontalContentAlignment="Stretch">
+                                <ContentControl.ContentTemplate>
+                                    <DataTemplate>
+                                        <controls:MappingCardControl InspectorMode="True" InspectorSection="Outputs"/>
+                                    </DataTemplate>
+                                </ContentControl.ContentTemplate>
+                            </ContentControl>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
             </Grid>
             </Grid>
         </materialDesign:DialogHost>
