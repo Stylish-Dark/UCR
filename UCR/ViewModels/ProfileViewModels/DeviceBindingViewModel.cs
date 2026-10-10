@@ -225,10 +225,44 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(SelectedDevice));
         }
         
+        // Output devices must actually expose a control of the selected output category.
+        // In particular, a keyboard cannot be silently selected as an axis device.
+        public static bool SupportsOutputCategory(DeviceConfiguration configuration,
+            DeviceBindingCategory category, Context context)
+        {
+            if (configuration?.Device == null || context == null) return false;
+            try
+            {
+                return MenuHasCategory(context.DevicesManager.GetDeviceBindingMenu(
+                    configuration.Device, DeviceIoType.Output), category);
+            }
+            catch (Exception exception)
+            {
+                Logger.Warn("Unable to check output device binding categories.", exception);
+                return false;
+            }
+        }
+
+        private static bool MenuHasCategory(IEnumerable<DeviceBindingNode> nodes,
+            DeviceBindingCategory category)
+        {
+            if (nodes == null) return false;
+            foreach (var node in nodes)
+            {
+                if (node == null) continue;
+                if (node.DeviceBindingInfo?.DeviceBindingCategory == category) return true;
+                if (MenuHasCategory(node.ChildrenNodes, category)) return true;
+            }
+            return false;
+        }
+
         private void LoadDeviceInputs()
         {
             var devicesManager = DeviceBinding.Profile.Context.DevicesManager;
             var deviceConfigurationList = DeviceBinding.Profile.GetDeviceConfigurationList(DeviceBinding.DeviceIoType)
+                .Where(configuration => configuration?.Device != null &&
+                    (DeviceBinding.DeviceIoType != DeviceIoType.Output ||
+                     SupportsOutputCategory(configuration, DeviceBindingCategory, DeviceBinding.Profile.Context)))
                 .Select((configuration, index) => new
                 {
                     Configuration = configuration,
@@ -294,7 +328,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             if (Devices.Count == 0)
             {
-                Devices.Add(new ComboBoxItemViewModel("No devices", Guid.Empty));
+                Devices.Add(new ComboBoxItemViewModel(
+                    DeviceBinding.DeviceIoType == DeviceIoType.Output ? "No compatible output devices" : "No devices",
+                    Guid.Empty));
                 selectedDevice = Devices[0];
             }
             else if (selectedDevice == null && DeviceBinding.DeviceConfigurationGuid != Guid.Empty)
