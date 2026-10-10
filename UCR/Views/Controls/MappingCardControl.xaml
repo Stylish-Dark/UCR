@@ -200,17 +200,10 @@
                                                                         </Style>
                                                                     </ToggleButton.Style>
                                                                 </ToggleButton>
-                                                                <Button Width="34" Height="32" Click="RemoveExpressionInput_OnClick"
+                                                                <Button Click="RemoveExpressionInput_OnClick"
                                                                         IsEnabled="{Binding CanRemoveExpressionInput}"
-                                                                        ToolTip="Remove input condition"
-                                                                        Foreground="White" Background="#343434"
-                                                                        BorderBrush="#555555" BorderThickness="1"
-                                                                        ToolTipService.ShowOnDisabled="True">
-                                                                    <Path Data="M 3,3 L 17,17 M 17,3 L 3,17" Width="20" Height="20"
-                                                                          Stroke="#F06464" StrokeThickness="2.8"
-                                                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                                                          Stretch="Uniform"/>
-                                                                </Button>
+                                                                        ToolTip="Remove input condition" ToolTipService.ShowOnDisabled="True"
+                                                                        Style="{StaticResource UcrDeleteCrossButton}"/>
                                                             </StackPanel>
                                                         </StackPanel>
                                                     </Border>
@@ -314,17 +307,10 @@
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
-                                            <Button Width="36" Height="33" HorizontalAlignment="Right"
-                                                    Margin="0 2 0 0"
-                                                    Click="RemoveOutput_OnClick"
-                                                    IsEnabled="{Binding CanRemove}" ToolTip="Remove this output"
-                                                    Background="#383838" BorderBrush="#5C5C5C"
-                                                    Foreground="#FFFFFF" BorderThickness="1">
-                                                <Path Data="M 3,3 L 17,17 M 17,3 L 3,17" Width="20" Height="20"
-                                                      Stroke="#F06464" StrokeThickness="2.8"
-                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                                      Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Button>
+                                            <Button HorizontalAlignment="Right" Margin="0 2 0 0"
+                                                    Click="RemoveOutput_OnClick" IsEnabled="{Binding CanRemove}"
+                                                    ToolTip="Remove this output" ToolTipService.ShowOnDisabled="True"
+                                                    Style="{StaticResource UcrDeleteCrossButton}"/>
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
@@ -514,10 +500,9 @@
                                 Style="{StaticResource UcrMappingActionButton}" IsEnabled="{Binding ButtonsEnabled}" Click="MoveSection_OnClick">
                             <TextBlock Text="↪" FontSize="17" FontWeight="Bold" VerticalAlignment="Center"/>
                         </Button>
-                        <Button ToolTip="Remove mapping. Stop the active profile to edit." ToolTipService.ShowOnDisabled="True" Style="{StaticResource UcrMappingDeleteButton}"
-                                IsEnabled="{Binding ButtonsEnabled}" Click="Remove_OnClick">
-                            <materialDesign:PackIcon Kind="Trash" Width="17" Height="17"/>
-                        </Button>
+                        <Button ToolTip="Remove mapping. Stop the active profile to edit." ToolTipService.ShowOnDisabled="True"
+                                Width="30" Height="30" Margin="2" Style="{StaticResource UcrDeleteCrossButton}"
+                                IsEnabled="{Binding ButtonsEnabled}" Click="Remove_OnClick"/>
                     </StackPanel>
                 </Grid>
             </Expander.Header>
