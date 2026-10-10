@@ -196,7 +196,10 @@
                                                                         ToolTip="Remove input condition"
                                                                         Foreground="White" Background="#343434"
                                                                         BorderBrush="#555555" BorderThickness="1"
-                                                                        FontSize="21" Content="×"/>
+                                                                        ToolTipService.ShowOnDisabled="True">
+                                                                    <materialDesign:PackIcon Kind="Close" Width="19" Height="19"
+                                                                                             Foreground="#FFFFFF"/>
+                                                                </Button>
                                                             </StackPanel>
                                                         </StackPanel>
                                                     </Border>
@@ -254,6 +257,18 @@
                                     <Border Margin="0 0 0 7" Padding="7" Background="#262626"
                                             BorderBrush="#454545" BorderThickness="1" CornerRadius="3">
                                         <StackPanel>
+                                            <Button HorizontalAlignment="Left" Margin="0 0 0 6" Padding="8 3"
+                                                    Height="30" MinWidth="88" Click="ChangeOutputType_OnClick"
+                                                    ToolTip="Change this output's type"
+                                                    IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"
+                                                    Background="#383838" Foreground="#FFFFFF" BorderBrush="#5C5C5C"
+                                                    BorderThickness="1">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding OutputType}" VerticalAlignment="Center"/>
+                                                    <materialDesign:PackIcon Kind="ChevronDown" Margin="6 0 0 0"
+                                                                             Width="15" Height="15" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
                                             <ItemsControl ItemsSource="{Binding DeviceBindings}">
                                                 <ItemsControl.ItemsPanel>
                                                     <ItemsPanelTemplate><StackPanel Orientation="Vertical"/></ItemsPanelTemplate>
@@ -272,10 +287,9 @@
                                                     IsEnabled="{Binding CanRemove}" ToolTip="Remove this output"
                                                     Background="#383838" BorderBrush="#5C5C5C"
                                                     Foreground="#FFFFFF" BorderThickness="1">
-                                                <TextBlock Text="×" FontSize="24" FontFamily="Segoe UI"
-                                                           FontWeight="Normal" Foreground="White"
-                                                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                           Margin="0 -4 0 0"/>
+                                                <materialDesign:PackIcon Kind="Close" Width="19" Height="19"
+                                                                         Foreground="#FFFFFF"
+                                                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             </Button>
                                         </StackPanel>
                                     </Border>
