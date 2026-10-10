@@ -186,8 +186,8 @@ namespace HidWizards.UCR.Tests.ModelTests
                 Assert.That(loaded.Profiles[0].MappingGroups.Count, Is.EqualTo(1));
                 Assert.That(loaded.Profiles[0].MappingGroups[0].Title, Is.EqualTo("Child Profile"));
                 Assert.That(loaded.Profiles[0].MappingGroups[0].Enabled, Is.False);
-                Assert.That(loaded.IsNotSaved, Is.False,
-                    "Automatic post-load migration must not impersonate a user configuration edit.");
+                Assert.That(loaded.IsNotSaved, Is.EqualTo(i == 0),
+                    "A one-time migration must remain unsaved until the first explicit Save.");
                 loaded.SaveContext(null);
             }
         }
