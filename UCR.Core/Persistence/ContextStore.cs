@@ -242,14 +242,10 @@ namespace HidWizards.UCR.Core.Persistence
             context.DeviceAliases.AddRange(devices.DeviceAliases ?? new List<DeviceAlias>());
             context.PostLoad();
 
-            // PostLoad may perform one-time migrations/repairs. Those are application maintenance,
-            // not a user edit. Persist them immediately so an untouched launch remains clean and
-            // never shows a false "Configuration has changed" prompt on exit.
+            // Do not save changes during startup. Even migration/repair output stays
+            // in memory until the user explicitly saves or chooses Save on exit.
             if (context.IsNotSaved)
-            {
-                Logger.Info("Persisting automatic post-load configuration migration.");
-                context.SaveContext(additionalPluginTypes);
-            }
+                Logger.Info("Post-load configuration repairs are pending explicit save.");
 
             return context;
         }
