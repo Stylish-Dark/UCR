@@ -202,5 +202,35 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.That(restored.OutlineColor, Is.EqualTo(DeviceOutlineColor.Purple));
             Assert.That(restored.DefaultOutlineColor, Is.EqualTo("#ABC123"));
         }
+        [Test]
+        public void UnmappedBlockingFollowsTheDeviceIdentityAndSurvivesSerialization()
+        {
+            var context = new HidWizards.UCR.Core.Context();
+            var keyboard = new Device("Keyboard A", "Core_Interception", @"Keyboard\HID\VID_046D&PID_C534", 0);
+            var otherKeyboard = new Device("Keyboard B", "Core_Interception", @"Keyboard\HID\VID_046D&PID_C535", 0);
+            var setting = DevicesManager.BuildAliasIdentity(keyboard);
+            Assert.That(setting, Is.Not.Null);
+            setting.BlockUnmappedInputs = true;
+            context.DeviceAliases.Add(setting);
+
+            Assert.That(context.DevicesManager.GetDeviceBlockUnmappedInputs(keyboard), Is.True);
+            Assert.That(context.DevicesManager.GetDeviceBlockUnmappedInputs(otherKeyboard), Is.False);
+            Assert.That(setting.HasPresentationSettings, Is.True);
+            Assert.That(setting.Clone().BlockUnmappedInputs, Is.True);
+
+            var serializer = new XmlSerializer(typeof(DeviceAlias));
+            string xml;
+            using (var writer = new StringWriter())
+            {
+                serializer.Serialize(writer, setting);
+                xml = writer.ToString();
+            }
+            using (var reader = new StringReader(xml))
+            {
+                var restored = (DeviceAlias)serializer.Deserialize(reader);
+                Assert.That(restored.BlockUnmappedInputs, Is.True);
+            }
+        }
+
     }
 }
