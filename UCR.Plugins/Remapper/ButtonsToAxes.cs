@@ -1,4 +1,5 @@
 using HidWizards.UCR.Core.Attributes;
+using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
 
@@ -30,7 +31,8 @@ namespace HidWizards.UCR.Plugins.Remapper
             // Opposite directions cancel, including when neither is held.
             var x = DirectionValue(values[2] != 0, values[3] != 0);
             var y = DirectionValue(values[0] != 0, values[1] != 0);
-            WriteOutput(0, InvertX ? (short)-x : x);
-            WriteOutput(1, InvertY ? (short)-y : y);
+            WriteOutput(0, InvertX ? Functions.Invert(x) : x);
+            WriteOutput(1, InvertY ? Functions.Invert(y) : y);
         }
     }
+}
