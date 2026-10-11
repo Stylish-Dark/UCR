@@ -133,6 +133,7 @@
                                 <ColumnDefinition Width="52"/>
                                 <ColumnDefinition Width="190"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="165"/>
                                 <ColumnDefinition Width="82"/>
                                 <ColumnDefinition Width="140"/>
                             </Grid.ColumnDefinitions>
@@ -164,7 +165,24 @@
                                 </Button>
                             </Grid>
 
-                            <CheckBox Grid.Column="3" Content="Hidden" Foreground="#FFFFFF" VerticalAlignment="Center"
+                            <CheckBox Grid.Column="3" Content="Block unmapped" Foreground="#FFFFFF"
+                                      VerticalAlignment="Center" Margin="4 0 8 0"
+                                      IsChecked="{Binding BlockUnmappedInputs, Mode=TwoWay}"
+                                      IsEnabled="{Binding CanPersist}"
+                                      ToolTip="Block unmapped inputs from this device while an active profile uses it">
+                                <CheckBox.Style>
+                                    <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasInput}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </CheckBox.Style>
+                            </CheckBox>
+
+                            <CheckBox Grid.Column="4" Content="Hidden" Foreground="#FFFFFF" VerticalAlignment="Center"
                                       IsChecked="{Binding Hidden, Mode=TwoWay}" IsEnabled="{Binding CanHide}">
                                 <CheckBox.Style>
                                     <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
@@ -178,7 +196,7 @@
                                 </CheckBox.Style>
                             </CheckBox>
 
-                            <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <StackPanel Grid.Column="5" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                                 <Button ToolTip="{Binding RemoveFromUcrToolTip}" Click="RemoveFromUcr_OnClick" Padding="4">
                                     <Button.Style>
                                         <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignCardButton}">
