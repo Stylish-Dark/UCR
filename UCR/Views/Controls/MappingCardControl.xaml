@@ -237,7 +237,7 @@
                                                                 <Button Click="RemoveExpressionInput_OnClick"
                                                                         IsEnabled="{Binding CanRemoveExpressionInput}"
                                                                         ToolTip="Remove input condition" ToolTipService.ShowOnDisabled="True"
-                                                                        Style="{StaticResource UcrDeleteCrossButton}"/>
+                                                                        Style="{StaticResource UcrDeleteItemButton}"/>
                                                             </StackPanel>
                                                         </Grid>
                                                     </Border>
@@ -352,7 +352,7 @@
                                                     VerticalAlignment="Bottom" Margin="7 0 0 1"
                                                     Click="RemoveOutput_OnClick" IsEnabled="{Binding CanRemove}"
                                                     ToolTip="Remove this output" ToolTipService.ShowOnDisabled="True"
-                                                    Style="{StaticResource UcrDeleteCrossButton}"/>
+                                                    Style="{StaticResource UcrDeleteItemButton}"/>
                                         </Grid>
                                         <!-- Compact workspace must expose the same filter and plugin-property
                                              editors as the classic expanded plugin UI. -->
