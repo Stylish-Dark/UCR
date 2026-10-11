@@ -589,6 +589,7 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="Mappings" FontSize="19" FontWeight="SemiBold" VerticalAlignment="Center"/>
@@ -665,13 +666,19 @@
                             </StackPanel>
                         </Button>
 
-                        <Button Grid.Column="7" Margin="5 0 1 0" Padding="4" Width="28" Height="28"
+                        <Button Grid.Column="7" Margin="6 0 2 0" Padding="8 2" Height="30"
+                                ToolTip="Select mapping cards using Ctrl or Shift, then block or unblock their inputs"
+                                ToolTipService.ShowOnDisabled="True" IsEnabled="{Binding CanEditProfile}"
+                                Style="{StaticResource UcrProfileActionButton}" Click="BulkInputBlock_OnClick"
+                                Content="Block ▾" Foreground="#FFFFFF"/>
+
+                        <Button Grid.Column="8" Margin="5 0 1 0" Padding="4" Width="28" Height="28"
                                 ToolTip="Collapse all mappings" Style="{StaticResource UcrProfileActionButton}"
                                 Click="CollapseAllMappings_OnClick">
                             <materialDesign:PackIcon Kind="Minus" Width="16" Height="16"/>
                         </Button>
 
-                        <Button Grid.Column="8" Margin="1 0 0 0" Padding="4" Width="28" Height="28"
+                        <Button Grid.Column="9" Margin="1 0 0 0" Padding="4" Width="28" Height="28"
                                 ToolTip="Expand all mappings" Style="{StaticResource UcrProfileActionButton}"
                                 Click="ExpandAllMappings_OnClick">
                             <materialDesign:PackIcon Kind="Plus" Width="16" Height="16"/>
@@ -799,7 +806,7 @@
                                                 </Grid>
                                             </Border>
 
-                                            <ListView Grid.Row="1" ItemsSource="{Binding Mappings}" Margin="0" Padding="0 2 0 3"
+                                            <ListView Grid.Row="1" ItemsSource="{Binding Mappings}" SelectionMode="Extended" Margin="0" Padding="0 2 0 3"
                                                       Background="Transparent" BorderThickness="0"
                                                       Visibility="{Binding IsExpanded, Converter={StaticResource MappingSectionVisibilityConverter}}"
                                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"

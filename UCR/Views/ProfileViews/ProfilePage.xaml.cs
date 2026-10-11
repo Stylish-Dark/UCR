@@ -338,6 +338,67 @@ namespace HidWizards.UCR.Views.ProfileViews
             e.Handled = true;
         }
 
+        private void BulkInputBlock_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (!ProfileViewModel.CanEditProfile) return;
+            var button = sender as Button;
+            if (button == null) return;
+            var menu = new ContextMenu
+            {
+                PlacementTarget = button,
+                Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom
+            };
+            var block = new MenuItem { Header = "Block inputs in selected mappings" };
+            block.Click += (s, args) => SetSelectedMappingsInputBlocking(true);
+            menu.Items.Add(block);
+            var unblock = new MenuItem { Header = "Unblock inputs in selected mappings" };
+            unblock.Click += (s, args) => SetSelectedMappingsInputBlocking(false);
+            menu.Items.Add(unblock);
+            menu.IsOpen = true;
+        }
+
+        private void SetSelectedMappingsInputBlocking(bool block)
+        {
+            if (!ProfileViewModel.CanEditProfile) return;
+            var selected = FindMappingListViews(MappingSectionsItemsControl)
+                .SelectMany(view => view.SelectedItems.OfType<MappingViewModel>())
+                .Distinct().ToList();
+            if (selected.Count == 0)
+            {
+                DarkMessageBox.Show("Select one or more mapping cards using Ctrl or Shift first.",
+                    "No mappings selected", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var count = 0;
+            foreach (var mapping in selected)
+            {
+                foreach (var input in mapping.DeviceBindings)
+                {
+                    var binding = input.DeviceBinding;
+                    if (binding == null || !binding.IsBound || (block && !binding.IsBlockable())) continue;
+                    if (binding.Block == block) continue;
+                    binding.SetBlock(block);
+                    count++;
+                }
+                mapping.RefreshCollapsedSummary();
+            }
+            Logger.Info((block ? "Blocked " : "Unblocked ") + count + " inputs across " +
+                selected.Count + " selected mappings.");
+        }
+
+        private static IEnumerable<ListView> FindMappingListViews(DependencyObject root)
+        {
+            if (root == null) yield break;
+            var list = root as ListView;
+            if (list != null) yield return list;
+            for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+            {
+                foreach (var nested in FindMappingListViews(VisualTreeHelper.GetChild(root, index)))
+                    yield return nested;
+            }
+        }
+
         private void CollapseAllMappings_OnClick(object sender, RoutedEventArgs e)
         {
             foreach (var mapping in ProfileViewModel.MappingsList) mapping.IsExpanded = false;
