@@ -276,7 +276,10 @@ namespace HidWizards.UCR.Views.ProfileViews
             var result = (BatchDeviceChangeDialogViewModel)await DialogHost.Show(dialog, ProfileViewModel.ProfileDialogIdentifier);
             if (result?.SelectedSource == null || result.SelectedTarget == null) return;
 
-            var change = ProfileViewModel.BatchChangeDevice(result.SelectedSource, result.SelectedTarget);
+            var selectedGroups = result.MappingGroups.Where(group => group.IsSelected)
+                .Select(group => group.Section).ToList();
+            if (selectedGroups.Count == 0) return;
+            var change = ProfileViewModel.BatchChangeDevice(result.SelectedSource, result.SelectedTarget, selectedGroups);
             Logger.Info("Profile device replacement: " + result.SelectedSource.DisplayTitle + " -> " + result.SelectedTarget.DisplayTitle +
                         "; changed=" + change.Changed + "; incompatible-cleared=" + change.ClearedAsIncompatible +
                         "; unknown-preserved=" + change.PreservedUnknown);
