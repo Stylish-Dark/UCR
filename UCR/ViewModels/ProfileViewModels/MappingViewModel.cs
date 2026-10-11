@@ -539,6 +539,65 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return Plugins.Count > count;
         }
 
+        // The two axis modes are distinct core plugins with different input counts.
+        // Convert the selected mapping in place, keeping its title, first input,
+        // output binding and filter references. Never alter sibling mappings.
+        public bool ChangeAxisButtonMode(PluginViewModel original, bool useTwoButtons)
+        {
+            if (!ButtonsEnabled || original == null || Plugins.Count != 1 ||
+                Mapping.Plugins.Count != 1 || Mapping.UseInputExpression ||
+                !original.IsAxisButtonMapping) return false;
+
+            if (original.IsTwoButtonAxis == useTwoButtons) return true;
+            var targetName = useTwoButtons ? "Buttons to Axis" : "Button to Axis";
+            var template = ProfileViewModel.Profile.Context.GetPlugins()
+                .FirstOrDefault(plugin => string.Equals(plugin.PluginName, targetName,
+                    StringComparison.OrdinalIgnoreCase));
+            if (template == null) return false;
+            var requiredInputCount = template.InputCategories.Count;
+            if (requiredInputCount != (useTwoButtons ? 2 : 1)) return false;
+
+            var replacement = ProfileViewModel.Profile.Context.PluginManager.GetNewPlugin(template);
+            replacement.SetProfile(ProfileViewModel.Profile);
+            if (replacement.Outputs.Count != 1 || original.Plugin.Outputs.Count != 1)
+                return false;
+
+            // Both plugins emit a signed range to the same selected output.
+            replacement.Outputs[0] = original.Plugin.Outputs[0];
+            replacement.Filters = original.Plugin.Filters.ToList();
+
+            foreach (var binding in DeviceBindings)
+            {
+                binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
+                binding.Dispose();
+            }
+            DeviceBindings.Clear();
+            foreach (var binding in original.DeviceBindings)
+                binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
+            original.Dispose();
+
+            while (Mapping.DeviceBindings.Count < requiredInputCount)
+                Mapping.DeviceBindings.Add(new DeviceBinding(Mapping.Update,
+                    ProfileViewModel.Profile, DeviceIoType.Input));
+            while (Mapping.DeviceBindings.Count > requiredInputCount)
+                Mapping.DeviceBindings.RemoveAt(Mapping.DeviceBindings.Count - 1);
+
+            Mapping.Plugins[0] = replacement;
+            var newViewModel = new PluginViewModel(this, replacement);
+            Plugins[0] = newViewModel;
+            PopulateDeviceBindingsViewModels();
+            foreach (var binding in DeviceBindings) SubscribeSummaryBinding(binding);
+            foreach (var binding in newViewModel.DeviceBindings) SubscribeSummaryBinding(binding);
+            ProfileViewModel.Profile.Context.ContextChanged();
+            RefreshHeaderState();
+            RefreshInputExpressionPresentation();
+            RefreshCollapsedSummary();
+            ProfileViewModel.RefreshFilterReferenceLabels();
+            Logger.Info("Axis mode for '" + MappingTitle + "': " +
+                (useTwoButtons ? "two buttons" : "one button"));
+            return true;
+        }
+
         // Swap only the chosen output plugin, never the mapping's shared input bindings.
         public bool ChangeOutputType(PluginViewModel original, Plugin replacementTemplate)
         {
