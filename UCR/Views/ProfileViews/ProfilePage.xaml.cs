@@ -908,12 +908,9 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (definingMapping != null) ScrollMappingIntoView(definingMapping);
         }
 
-        private string _workspaceSection = "Mappings";
-
         public void ShowWorkspaceInspector()
         {
             if (_disposed) return;
-            _workspaceSection = "Mappings";
             SelectedMappingInspector.Visibility = Visibility.Visible;
             SidebarGrid.Visibility = Visibility.Collapsed;
         }
@@ -921,8 +918,8 @@ namespace HidWizards.UCR.Views.ProfileViews
         public void ShowWorkspaceToolbox(string section)
         {
             if (_disposed) return;
-            // Keep the selected tab open when a mapping is clicked elsewhere.
-            _workspaceSection = section;
+            // Dedicated workspace navigation shows only the relevant classic controls.
+            // The mapping inspector is restored whenever a row is selected.
             MappingToolboxPanel.Visibility = section == "Add mapping" ? Visibility.Visible : Visibility.Collapsed;
             MappingFiltersPanel.Visibility = section == "Filters" ? Visibility.Visible : Visibility.Collapsed;
             ProfileDevicesPanel.Visibility = section == "Devices" ? Visibility.Visible : Visibility.Collapsed;
@@ -974,8 +971,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             var selected = (sender as ListView)?.SelectedItem as MappingViewModel;
             if (selected == null) return;
             ProfileViewModel.SelectedMapping = selected;
-            if (_workspaceSection == "Mappings" || _workspaceSection == "Add mapping")
-                ShowWorkspaceInspector();
+            ShowWorkspaceInspector();
         }
 
         private void AddMapping_OnClick(object sender, RoutedEventArgs e)
