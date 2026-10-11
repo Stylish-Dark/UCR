@@ -115,6 +115,25 @@
             <Border Margin="8 0 8 8" Padding="4 6 4 4" Background="#202020"
                     BorderBrush="#303030" BorderThickness="1 1 1 0" CornerRadius="3">
                 <StackPanel>
+                    <StackPanel Margin="6 3 6 9">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasKeyboardAxisPresets}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <TextBlock Text="Four-way joystick — keyboard presets" FontSize="13" FontWeight="SemiBold" Margin="0 0 0 5"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="WASD" Tag="WASD" Click="AxisKeyboardPreset_OnClick" Margin="0 0 6 0" ToolTip="Up W, down S, left A, right D"/>
+                            <Button Content="Arrows" Tag="Arrows" Click="AxisKeyboardPreset_OnClick" Margin="0 0 6 0" ToolTip="Arrow keys"/>
+                            <Button Content="Numpad" Tag="Numpad" Click="AxisKeyboardPreset_OnClick" Margin="0 0 6 0" ToolTip="8, 2, 4, 6 on the numeric keypad"/>
+                            <Button Content="U/J + H/K" Tag="UJHK" Click="AxisKeyboardPreset_OnClick" ToolTip="Up U, down J, left H, right K"/>
+                        </StackPanel>
+                    </StackPanel>
                     <!-- Non-boolean plugins retain the full legacy editor. -->
                     <ItemsControl ItemsSource="{Binding DeviceBindings}" HorizontalContentAlignment="Stretch">
                         <ItemsControl.Style>

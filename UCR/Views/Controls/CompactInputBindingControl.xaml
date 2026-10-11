@@ -114,6 +114,7 @@
         </Button>
 
         <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Visibility="{Binding ShowBlock}"
                     ToolTip="Block this physical input from reaching its original destination">
         <TextBlock Text="Block" FontSize="12" Foreground="#FFFFFF" Margin="3 0 5 0" VerticalAlignment="Center"/>
         <ToggleButton HorizontalAlignment="Center" VerticalAlignment="Center"

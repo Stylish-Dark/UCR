@@ -72,6 +72,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<InputConditionViewModel> InputConditions { get; private set; }
         public bool ButtonsEnabled => !ProfileViewModel.Profile.IsActive();
+        public bool HasKeyboardAxisPresets => Mapping?.Plugins?.FirstOrDefault()?.PluginName == "Buttons to Axes";
         public bool SupportsNativeInputExpression => Mapping?.SupportsNativeInputExpression() == true;
         public bool UsesInputExpression => Mapping?.UseInputExpression == true;
         public string InputLogicSummary => BuildInputLogicSummary();
@@ -323,6 +324,76 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ProfileViewModel.RemoveMapping(this);
         }
 
+        public bool ApplyKeyboardAxisPreset(string preset, out string error)
+        {
+            error = null;
+            if (!ButtonsEnabled || !HasKeyboardAxisPresets || Mapping.DeviceBindings.Count != 4)
+            {
+                error = "Select an editable four-button joystick mapping.";
+                return false;
+            }
+
+            var names = new Dictionary<string, string[]>
+            {
+                { "WASD", new[] { "W", "S", "A", "D" } },
+                { "Arrows", new[] { "Up", "Down", "Left", "Right" } },
+                { "Numpad", new[] { "Numpad8", "Numpad2", "Numpad4", "Numpad6" } },
+                { "UJHK", new[] { "U", "J", "H", "K" } }
+            };
+
+            string[] keys;
+            if (!names.TryGetValue(preset ?? string.Empty, out keys)) return false;
+
+            var profile = ProfileViewModel.Profile;
+            var keyboard = profile.GetDeviceConfigurationList(DeviceIoType.Input)
+                .FirstOrDefault(configuration => configuration?.Device != null &&
+                    DeviceVisualCatalog.Describe(configuration, profile, DeviceIoType.Input).Kind ==
+                    DeviceVisualKind.Keyboard);
+            if (keyboard == null)
+            {
+                error = "Add a keyboard to this profile's input devices first.";
+                return false;
+            }
+
+            var available = FlattenBindingNodes(profile.Context.DevicesManager.GetDeviceBindingMenu(
+                    keyboard.Device, DeviceIoType.Input))
+                .Where(node => node.DeviceBindingInfo != null &&
+                    node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary).ToList();
+
+            var resolved = new List<DeviceBindingNode>();
+            foreach (var key in keys)
+            {
+                var aliases = key.StartsWith("Numpad", StringComparison.OrdinalIgnoreCase)
+                    ? new[] { key, key.Replace("Numpad", "Num"), key.Replace("Numpad", "Keypad") }
+                    : new[] { key };
+                var node = available.FirstOrDefault(item => aliases.Any(alias =>
+                    NormalizePresetKey(item.Title) == NormalizePresetKey(alias)));
+                if (node == null)
+                {
+                    error = "The keyboard does not expose a key named " + key + ".";
+                    return false;
+                }
+                resolved.Add(node);
+            }
+
+            for (var index = 0; index < resolved.Count; index++)
+            {
+                var binding = Mapping.DeviceBindings[index];
+                var info = resolved[index].DeviceBindingInfo;
+                binding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
+                binding.SetDeviceConfigurationGuid(keyboard.Guid);
+                binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+            }
+            foreach (var item in DeviceBindings) item.RefreshDeviceList();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
+        private static string NormalizePresetKey(string value)
+        {
+            return Regex.Replace(value ?? string.Empty, "[^A-Za-z0-9]", string.Empty).ToUpperInvariant();
+        }
+
         public void AddPlugin(Plugin plugin)
         {
             var newPlugin = ProfileViewModel.Profile.Context.PluginManager.GetNewPlugin(plugin);
@@ -553,6 +624,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             _mappingOutputTypeLabel = GetMappingOutputTypeLabel();
             RefreshFilterPresentationCache();
 
+            OnPropertyChanged(nameof(HasKeyboardAxisPresets));
             OnPropertyChanged(nameof(MappingRoute));
             OnPropertyChanged(nameof(MappingRouteDisplay));
             OnPropertyChanged(nameof(MappingRouteTokens));

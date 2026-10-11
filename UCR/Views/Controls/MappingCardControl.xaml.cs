@@ -309,6 +309,16 @@ namespace HidWizards.UCR.Views.Controls
             return null;
         }
 
+        private void AxisKeyboardPreset_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mapping = DataContext as MappingViewModel;
+            var preset = (sender as Button)?.Tag as string;
+            if (mapping == null || string.IsNullOrEmpty(preset)) return;
+            string error;
+            if (!mapping.ApplyKeyboardAxisPreset(preset, out error) && !string.IsNullOrEmpty(error))
+                DarkMessageBox.Show(error, "Keyboard preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
         private void AddAndInput_OnClick(object sender, RoutedEventArgs e)
         {
             (DataContext as MappingViewModel)?.AddAndInput();
