@@ -19,12 +19,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public string OutputType => new SimplePluginViewModel(Plugin).OutputType;
         public bool IsAxisButtonMapping =>
             string.Equals(Plugin.PluginName, "Button to Axis", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(Plugin.PluginName, "Buttons to Axis", StringComparison.OrdinalIgnoreCase);
+            string.Equals(Plugin.PluginName, "Buttons to Axis", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Plugin.PluginName, "Buttons to Axes", StringComparison.OrdinalIgnoreCase);
+        public bool IsFourButtonAxis => string.Equals(Plugin.PluginName, "Buttons to Axes", StringComparison.OrdinalIgnoreCase);
         public bool IsTwoButtonAxis => string.Equals(Plugin.PluginName, "Buttons to Axis", StringComparison.OrdinalIgnoreCase);
         public Visibility AxisButtonModeVisibility => IsAxisButtonMapping ? Visibility.Visible : Visibility.Collapsed;
         public bool CanChangeAxisButtonMode => MappingViewModel.ButtonsEnabled &&
             MappingViewModel.Plugins.Count == 1 && !MappingViewModel.UsesInputExpression;
-        public string AxisButtonModeDescription => IsTwoButtonAxis ? "2 buttons" : "1 button";
+        public string AxisButtonModeDescription => IsFourButtonAxis ? "4 ways" : IsTwoButtonAxis ? "2 buttons" : "1 button";
+        public Visibility FourButtonPresetVisibility => IsFourButtonAxis ? Visibility.Visible : Visibility.Collapsed;
 
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<PluginPropertyGroupViewModel> PluginPropertyGroups { get; set; }
