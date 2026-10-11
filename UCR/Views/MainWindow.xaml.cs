@@ -1070,6 +1070,13 @@ namespace HidWizards.UCR.Views
         private void MainWindow_OnClosing(object sender, CancelEventArgs e)
         {
             if (CloseState.ForceClose.Equals(WindowCloseState)) return;
+            // Window X hides to tray. Only the explicit Exit UCR command closes it.
+            if (!_exitRequested)
+            {
+                e.Cancel = true;
+                HideToTray();
+                return;
+            }
             if (CloseState.Closing.Equals(WindowCloseState))
             {
                 e.Cancel = true;
