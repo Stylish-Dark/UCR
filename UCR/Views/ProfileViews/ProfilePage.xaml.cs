@@ -316,6 +316,11 @@ namespace HidWizards.UCR.Views.ProfileViews
             ProfileViewModel.InputDeviceControlViewModel?.ManageDeviceConfiguration();
         }
 
+        private void CancelProfileInputDetection_OnClick(object sender, RoutedEventArgs e)
+        {
+            ProfileViewModel.InputDeviceControlViewModel?.CancelInputDeviceDetection();
+        }
+
         private async void DetectProfileInputDevice_OnClick(object sender, RoutedEventArgs e)
         {
             Keyboard.ClearFocus();
@@ -687,6 +692,14 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void ProfilePage_OnPreviewKeyDown(object sender, KeyEventArgs e)
         {
+            if (e.Key == Key.Escape &&
+                ProfileViewModel.InputDeviceControlViewModel?.IsDetecting == true)
+            {
+                ProfileViewModel.InputDeviceControlViewModel.CancelInputDeviceDetection();
+                e.Handled = true;
+                return;
+            }
+
             if (_mappingDragActive && e.Key == Key.Escape)
             {
                 EndMappingDrag(false);
