@@ -23,7 +23,7 @@ namespace HidWizards.UCR.Plugins.Remapper
         public static short DirectionValue(bool negativePressed, bool positivePressed)
         {
             if (negativePressed == positivePressed) return 0;
-            return negativePressed ? Constants.AxisMinValue : Constants.AxisMaxValue;
+            return (short)(negativePressed ? Constants.AxisMinValue : Constants.AxisMaxValue);
         }
 
         public override void Update(params short[] values)
