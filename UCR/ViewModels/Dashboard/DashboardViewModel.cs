@@ -86,6 +86,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             RebuildProfileView();
             context.ActiveProfileChangedEvent += OnActiveProfileChangedEvent;
             context.DeviceAliasesChangedEvent += OnDeviceAliasesChangedEvent;
+            context.ProfileDevicesChangedEvent += OnProfileDevicesChangedEvent;
         }
 
         public void ReplaceProfileList(ObservableCollection<ProfileItem> profileList)
@@ -167,6 +168,20 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             if (item == null) return;
             item.RefreshPresentation();
             foreach (var child in item.Items) RefreshProfilePresentation(child);
+        }
+
+        private void OnProfileDevicesChangedEvent(Guid profileGuid)
+        {
+            // A parent profile's devices may also be inherited by its children.
+            // Recompute cached visuals for every profile without rebuilding the
+            // list or disturbing the current selection.
+            foreach (var item in ProfileList)
+                RefreshProfilePresentation(item);
+
+            // WPF does not automatically move an item to its new input-device
+            // group after an existing GroupDescription key changes.
+            if (GroupProfilesByInput)
+                ProfileListView?.Refresh();
         }
 
         private void OnDeviceAliasesChangedEvent()

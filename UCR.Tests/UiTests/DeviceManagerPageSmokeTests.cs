@@ -43,6 +43,61 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void FilterSelectorOpensWithoutMissingXamlResources()
+        {
+            EnsureApplicationResources();
+
+            foreach (var allowNew in new[] { false, true })
+            {
+                Assert.DoesNotThrow(() =>
+                {
+                    var dialog = new FilterSelectDialog(new[] { "Existing filter" }, allowNew);
+                    dialog.Measure(new Size(480, 300));
+                    dialog.Arrange(new Rect(0, 0, 480, 300));
+                    dialog.UpdateLayout();
+                    Assert.That(FindVisualChildren<Button>(dialog).Any(), Is.True);
+                }, "The Filter selector must load its resources before the user can add a filter.");
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void ProfileListUpdatesInputGlyphAndGroupingAfterDeviceChanges()
+        {
+            EnsureApplicationResources();
+
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Glyph refresh", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var dashboard = new DashboardViewModel(context);
+            var item = dashboard.ProfileList.Single(x => x.Id == profile.Guid);
+
+            Assert.That(item.InputVisuals.Count, Is.EqualTo(0));
+            var keyboard = new DeviceConfiguration(
+                new Device("Laptop Keyboard", "Core_Interception", "kbd", 0));
+            profile.AddDeviceConfigurations(new List<DeviceConfiguration> { keyboard }, DeviceIoType.Input);
+            Assert.That(item.InputVisuals.Count, Is.EqualTo(1));
+            Assert.That(item.InputVisuals.Single().Kind, Is.EqualTo(DeviceVisualKind.Keyboard));
+
+            dashboard.GroupProfilesByInput = true;
+            var controller = new DeviceConfiguration(
+                new Device("Xbox 360 Controller", "SharpDX_XInput", "xinput", 1));
+            profile.AddDeviceConfigurations(new List<DeviceConfiguration> { controller }, DeviceIoType.Input);
+            profile.SetPrimaryDeviceConfiguration(DeviceIoType.Input, controller.Guid);
+            Assert.That(item.InputVisuals.Single().Kind, Is.EqualTo(DeviceVisualKind.Xbox360));
+            Assert.That(item.InputGroupName, Is.EqualTo("Multiple input devices"));
+            Assert.That(item.HasAdditionalInputs, Is.True);
+
+            profile.RemoveDeviceConfiguration(controller);
+            Assert.That(item.InputVisuals.Single().Kind, Is.EqualTo(DeviceVisualKind.Keyboard));
+            Assert.That(item.HasAdditionalInputs, Is.False);
+            profile.RemoveDeviceConfiguration(keyboard);
+            Assert.That(item.InputVisuals.Count, Is.EqualTo(0));
+            Assert.That(item.InputGroupName, Is.EqualTo("No input device"));
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void DeviceSymbolControlRendersEveryEmbeddedFontGlyphWithoutFallbackBoxes()
         {
             EnsureApplicationResources();

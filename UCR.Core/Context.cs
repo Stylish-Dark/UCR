@@ -40,6 +40,10 @@ namespace HidWizards.UCR.Core
 
         public delegate void DeviceAliasesChanged();
         public event DeviceAliasesChanged DeviceAliasesChangedEvent;
+
+        // The profile list caches its device glyphs independently of the editor.
+        // Device configuration changes must invalidate that cache in every view.
+        public event Action<Guid> ProfileDevicesChangedEvent;
         
         internal bool IsNotSaved { get; private set; }
         internal IOController IOController { get; set; }
@@ -455,6 +459,11 @@ namespace HidWizards.UCR.Core
         public void OnDeviceAliasesChangedEvent()
         {
             DeviceAliasesChangedEvent?.Invoke();
+        }
+
+        public void OnProfileDevicesChanged(Guid profileGuid)
+        {
+            ProfileDevicesChangedEvent?.Invoke(profileGuid);
         }
     }
 }
