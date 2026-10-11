@@ -212,12 +212,25 @@
                                                                     <ToggleButton.Style>
                                                                         <Style TargetType="ToggleButton">
                                                                             <Setter Property="FontWeight" Value="SemiBold"/>
-                                                                            <Style.Triggers>
-                                                                                <Trigger Property="IsChecked" Value="True">
-                                                                                    <Setter Property="Background" Value="#164AA7"/>
-                                                                                    <Setter Property="BorderBrush" Value="#397AF0"/>
-                                                                                </Trigger>
-                                                                            </Style.Triggers>
+                                                                            <Setter Property="Foreground" Value="#FFFFFF"/>
+                                                                            <Setter Property="Template">
+                                                                                <Setter.Value>
+                                                                                    <ControlTemplate TargetType="ToggleButton">
+                                                                                        <Border x:Name="NotSurface" Background="#343434"
+                                                                                                BorderBrush="#626262" BorderThickness="1">
+                                                                                            <ContentPresenter HorizontalAlignment="Center"
+                                                                                                              VerticalAlignment="Center"
+                                                                                                              TextElement.Foreground="#FFFFFF"/>
+                                                                                        </Border>
+                                                                                        <ControlTemplate.Triggers>
+                                                                                            <Trigger Property="IsChecked" Value="True">
+                                                                                                <Setter TargetName="NotSurface" Property="Background" Value="#164AA7"/>
+                                                                                                <Setter TargetName="NotSurface" Property="BorderBrush" Value="#397AF0"/>
+                                                                                            </Trigger>
+                                                                                        </ControlTemplate.Triggers>
+                                                                                    </ControlTemplate>
+                                                                                </Setter.Value>
+                                                                            </Setter>
                                                                         </Style>
                                                                     </ToggleButton.Style>
                                                                 </ToggleButton>
