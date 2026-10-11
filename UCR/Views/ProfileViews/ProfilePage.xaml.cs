@@ -75,6 +75,7 @@ namespace HidWizards.UCR.Views.ProfileViews
         }
 
         public event EventHandler BackRequested;
+        public event EventHandler ProfileOptionsRequested;
         private bool _disposed;
 
         public void Dispose()
@@ -908,11 +909,45 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (definingMapping != null) ScrollMappingIntoView(definingMapping);
         }
 
+        private void InspectorMappingsTab_OnClick(object sender, RoutedEventArgs e)
+        {
+            ShowWorkspaceInspector();
+        }
+
+        private void InspectorDevicesTab_OnClick(object sender, RoutedEventArgs e)
+        {
+            ShowWorkspaceToolbox("Devices");
+        }
+
+        private void InspectorFiltersTab_OnClick(object sender, RoutedEventArgs e)
+        {
+            ShowWorkspaceToolbox("Filters");
+        }
+
+        private void InspectorOptionsTab_OnClick(object sender, RoutedEventArgs e)
+        {
+            ProfileOptionsRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void HighlightInspectorTab(Button selected)
+        {
+            foreach (var tab in new[] { InspectorMappingsTab, InspectorDevicesTab,
+                         InspectorFiltersTab, InspectorOptionsTab })
+            {
+                if (tab == null) continue;
+                tab.Background = tab == selected
+                    ? new SolidColorBrush(Color.FromRgb(43, 61, 83))
+                    : new SolidColorBrush(Color.FromRgb(40, 40, 40));
+                tab.Foreground = Brushes.White;
+            }
+        }
+
         public void ShowWorkspaceInspector()
         {
             if (_disposed) return;
             SelectedMappingInspector.Visibility = Visibility.Visible;
             SidebarGrid.Visibility = Visibility.Collapsed;
+            HighlightInspectorTab(InspectorMappingsTab);
         }
 
         public void ShowWorkspaceToolbox(string section)
@@ -925,6 +960,8 @@ namespace HidWizards.UCR.Views.ProfileViews
             ProfileDevicesPanel.Visibility = section == "Devices" ? Visibility.Visible : Visibility.Collapsed;
             SelectedMappingInspector.Visibility = Visibility.Collapsed;
             SidebarGrid.Visibility = Visibility.Visible;
+            HighlightInspectorTab(section == "Devices" ? InspectorDevicesTab
+                : section == "Filters" ? InspectorFiltersTab : InspectorMappingsTab);
         }
 
         private void DeleteSelectedMapping_OnClick(object sender, RoutedEventArgs e)
