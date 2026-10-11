@@ -81,6 +81,18 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             }
         }
 
+        private bool _blockUnmappedInputs;
+        public bool BlockUnmappedInputs
+        {
+            get => _blockUnmappedInputs;
+            set
+            {
+                if (_blockUnmappedInputs == value) return;
+                _blockUnmappedInputs = value;
+                OnPropertyChanged();
+            }
+        }
+
         private bool _hidden;
         public bool Hidden
         {
@@ -132,7 +144,8 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         internal string StableKey { get; }
 
         public DeviceManagerItemViewModel(Device device, DeviceIoType type, bool canPersist,
-            string alias, bool hidden, string stableKey, DeviceOutlineColor outlineColor)
+            string alias, bool hidden, string stableKey, DeviceOutlineColor outlineColor,
+            bool blockUnmappedInputs = false)
         {
             Device = device;
             ValidationType = type;
@@ -143,6 +156,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             TextColor = outlineColor;
             AddIoType(type);
             Hidden = hidden;
+            BlockUnmappedInputs = blockUnmappedInputs;
         }
 
 
@@ -205,6 +219,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             public string Alias { get; set; }
             public bool Hidden { get; set; }
             public DeviceOutlineColor OutlineColor { get; set; }
+            public bool BlockUnmappedInputs { get; set; }
             public int Order { get; set; }
         }
 
@@ -291,6 +306,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                     item.Alias = pending.Alias;
                     item.Hidden = pending.Hidden;
                     item.TextColor = pending.OutlineColor;
+                    item.BlockUnmappedInputs = pending.BlockUnmappedInputs;
                 }
             }
 
@@ -360,6 +376,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                     Alias = item.Alias,
                     Hidden = item.Hidden,
                     OutlineColor = item.TextColor,
+                    BlockUnmappedInputs = item.BlockUnmappedInputs,
                     Order = index
                 };
             }
@@ -407,7 +424,8 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                     _devicesManager.GetDeviceAlias(device),
                     type == DeviceIoType.Output && _devicesManager.GetDeviceHidden(device),
                     stableKey,
-                    _devicesManager.GetDeviceOutlineColor(device));
+                    _devicesManager.GetDeviceOutlineColor(device),
+                    _devicesManager.GetDeviceBlockUnmappedInputs(device));
 
                 Devices.Add(item);
                 byStableIdentity[stableKey] = item;
@@ -544,7 +562,8 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
                 var hidden = item.CanHide && item.Hidden;
                 if (_devicesManager.TrySetDevicePresentation(item.Device, item.ValidationType,
-                        item.Alias, hidden, index, item.TextColor, out error)) continue;
+                        item.Alias, hidden, index, item.TextColor, out error,
+                        item.HasInput ? (bool?)item.BlockUnmappedInputs : null)) continue;
 
                 return false;
             }
