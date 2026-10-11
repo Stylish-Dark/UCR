@@ -946,6 +946,11 @@ namespace HidWizards.UCR.Core.Managers
             return FindAlias(device)?.Alias;
         }
 
+        public bool GetDeviceBlockUnmappedInputs(Device device)
+        {
+            return FindAlias(device)?.BlockUnmappedInputs ?? false;
+        }
+
         public bool GetDeviceHidden(Device device)
         {
             return FindAlias(device)?.Hidden ?? false;
@@ -1048,7 +1053,8 @@ namespace HidWizards.UCR.Core.Managers
         }
 
         public bool TrySetDevicePresentation(Device device, DeviceIoType type, string alias, bool hidden,
-            int sortOrder, DeviceOutlineColor outlineColor, out string error)
+            int sortOrder, DeviceOutlineColor outlineColor, out string error,
+            bool? blockUnmappedInputs = null)
         {
             error = null;
             if (device == null)
@@ -1069,10 +1075,11 @@ namespace HidWizards.UCR.Core.Managers
             var existing = _context.DeviceAliases.FirstOrDefault(candidate => AliasIdentityEquals(candidate, identity));
             var normalizedAlias = string.IsNullOrWhiteSpace(alias) ? null : alias.Trim();
             var normalizedSortOrder = sortOrder < 0 ? int.MaxValue : sortOrder;
+            var blockUnmapped = blockUnmappedInputs ?? existing?.BlockUnmappedInputs ?? false;
             // DefaultOutlineColor existed briefly in pre-0.9.9r builds. Keep the XML field readable for
             // backwards compatibility, but never let it influence presentation or persistence again.
             var wantsPersistentSettings = normalizedAlias != null || hidden || normalizedSortOrder != int.MaxValue ||
-                                          outlineColor != DeviceOutlineColor.Default;
+                                          outlineColor != DeviceOutlineColor.Default || blockUnmapped;
 
             // HID paths and intentional logical slots are stable. A handle-only physical device is safe
             // only while that provider exposes exactly one matching live device; otherwise two identical
@@ -1102,7 +1109,7 @@ namespace HidWizards.UCR.Core.Managers
             }
             else if (string.Equals(existing.Alias, normalizedAlias, StringComparison.Ordinal) &&
                      existing.Hidden == hidden && existing.SortOrder == normalizedSortOrder &&
-                     existing.OutlineColor == outlineColor &&
+                     existing.OutlineColor == outlineColor && existing.BlockUnmappedInputs == blockUnmapped &&
                      string.IsNullOrWhiteSpace(existing.DefaultOutlineColor))
             {
                 device.Alias = normalizedAlias;
@@ -1113,6 +1120,7 @@ namespace HidWizards.UCR.Core.Managers
             existing.Hidden = hidden;
             existing.SortOrder = normalizedSortOrder;
             existing.OutlineColor = outlineColor;
+            existing.BlockUnmappedInputs = blockUnmapped;
             // Scrub the obsolete generated-default field the next time this device is saved.
             existing.DefaultOutlineColor = null;
             device.Alias = normalizedAlias;
@@ -1143,6 +1151,7 @@ namespace HidWizards.UCR.Core.Managers
                           existing.Removed != imported.Removed ||
                           existing.SortOrder != imported.SortOrder ||
                           existing.OutlineColor != imported.OutlineColor ||
+                          existing.BlockUnmappedInputs != imported.BlockUnmappedInputs ||
                           !string.IsNullOrWhiteSpace(existing.DefaultOutlineColor)))
                 {
                     existing.Alias = imported.Alias;
@@ -1150,6 +1159,7 @@ namespace HidWizards.UCR.Core.Managers
                     existing.Removed = imported.Removed;
                     existing.SortOrder = imported.SortOrder;
                     existing.OutlineColor = imported.OutlineColor;
+                    existing.BlockUnmappedInputs = imported.BlockUnmappedInputs;
                     existing.DefaultOutlineColor = null;
                     changed = true;
                 }
