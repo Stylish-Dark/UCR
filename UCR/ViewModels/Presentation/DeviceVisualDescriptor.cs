@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Windows.Media;
 using HidWizards.UCR.Core.Managers;
@@ -89,6 +90,45 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
     public static class DeviceVisualCatalog
     {
+        // User-editable glyph labels live next to the application, not inside UCR.exe.
+        // Invalid or missing overrides never prevent UCR from starting.
+        private static readonly Dictionary<string, string> GlyphLabelOverrides = ReadGlyphLabelOverrides();
+
+        private static Dictionary<string, string> ReadGlyphLabelOverrides()
+        {
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
+                    "Assets", "Glyphs", "control-labels.ini");
+                if (!File.Exists(path)) return result;
+                foreach (var line in File.ReadAllLines(path))
+                {
+                    var trimmed = line.Trim();
+                    if (trimmed.Length == 0 || trimmed.StartsWith("#")) continue;
+                    var separator = trimmed.IndexOf('=');
+                    if (separator <= 0) continue;
+                    var key = trimmed.Substring(0, separator).Trim();
+                    var label = trimmed.Substring(separator + 1).Trim();
+                    if (key.Length > 0 && label.Length > 0 && label.Length <= 12)
+                        result[key] = label;
+                }
+            }
+            catch (Exception)
+            {
+                // The controls retain their built-in labels on file or parse errors.
+            }
+            return result;
+        }
+
+        private static string OverrideGlyphLabel(string category, string key, string fallback)
+        {
+            var normalized = (key ?? string.Empty).Trim();
+            string replacement;
+            return GlyphLabelOverrides.TryGetValue(category + "." + normalized, out replacement)
+                ? replacement : fallback;
+        }
+
         public static readonly Brush XboxBrush = Freeze(Color.FromRgb(0, 168, 0));
         public static readonly Brush PlayStationBrush = Freeze(Color.FromRgb(0, 105, 255));
         public static readonly Brush VJoyBrush = Freeze(Color.FromRgb(140, 0, 232));
@@ -357,7 +397,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
             if (kind == DeviceVisualKind.Keyboard)
             {
                 result.ControlKind = ControlVisualKind.Key;
-                result.ControlLabel = CleanKeyboardLabel(leaf);
+                result.ControlLabel = OverrideGlyphLabel("Keyboard", leaf, CleanKeyboardLabel(leaf));
                 result.ControlBrush = NeutralBrush;
                 return;
             }
@@ -617,6 +657,9 @@ namespace HidWizards.UCR.ViewModels.Presentation
             if (lower.Contains("altgr")) return "ALTGR";
             if (lower.Contains(" alt") || lower.StartsWith("alt") || lower == "lalt" || lower == "ralt") return "ALT";
             if (lower.Contains("escape")) return "ESC";
+            if (lower == "comma" || lower == "oemcomma" || lower == "oem comma" || lower == ",") return ",";
+            if (lower == "period" || lower == "oemperiod" || lower == "oem period") return ".";
+            if (lower == "semicolon" || lower == "oemsemicolon") return ";";
             if (lower.Contains("backspace")) return "BKSP";
             if (lower == "return" || lower.Contains("enter")) return "ENTER";
             if (lower.Contains("space")) return "SPACE";
