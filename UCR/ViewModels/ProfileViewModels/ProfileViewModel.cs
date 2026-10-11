@@ -448,12 +448,20 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public HidWizards.UCR.ViewModels.Dialogs.BatchDeviceChangeResult BatchChangeDevice(
             HidWizards.UCR.ViewModels.Dialogs.BatchDeviceOption source,
-            HidWizards.UCR.ViewModels.Dialogs.BatchDeviceOption target)
+            HidWizards.UCR.ViewModels.Dialogs.BatchDeviceOption target,
+            IEnumerable<MappingGroupViewModel> selectedSections)
         {
             var result = new HidWizards.UCR.ViewModels.Dialogs.BatchDeviceChangeResult();
             if (source == null || target == null || source.IoType != target.IoType || source.Guid == target.Guid) return result;
+            var targetMappings = new HashSet<MappingViewModel>(
+                (selectedSections ?? Enumerable.Empty<MappingGroupViewModel>())
+                    .Where(section => section != null && MappingSections.Contains(section))
+                    .SelectMany(section => section.Mappings));
+            if (targetMappings.Count == 0) return result;
 
-            foreach (var binding in GetAllBindingViewModels())
+            foreach (var mapping in targetMappings)
+            foreach (var binding in mapping.DeviceBindings.Concat(
+                mapping.Plugins.SelectMany(plugin => plugin.DeviceBindings)))
             {
                 if (binding?.DeviceBinding == null) continue;
                 if (binding.DeviceBinding.DeviceIoType != source.IoType || binding.DeviceBinding.DeviceConfigurationGuid != source.Guid) continue;
