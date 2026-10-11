@@ -151,11 +151,6 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         {
             if (deviceItem == null) return;
             var wasPrimary = deviceItem.IsPrimary;
-            var result = HidWizards.UCR.Utilities.DarkMessageBox.Show(
-                "Remove " + deviceItem.Title + " from this profile? Existing mappings that use it may become unbound.",
-                "Remove device", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (result != MessageBoxResult.Yes) return;
-
             _profile.RemoveDeviceConfiguration(deviceItem.DeviceConfiguration);
             Devices.Remove(deviceItem);
 
@@ -185,6 +180,13 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             RefreshPrimaryState();
             _presentationChanged?.Invoke();
             OnPropertyChanged(nameof(Devices));
+        }
+
+        public void CancelInputDeviceDetection()
+        {
+            if (!IsDetecting) return;
+            _detectionCancellation?.Cancel();
+            DetectionStatus = "Detection cancelled.";
         }
 
         public async Task<DeviceItem> DetectAndAddInputDeviceAsync()
