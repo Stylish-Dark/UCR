@@ -418,6 +418,18 @@ namespace HidWizards.UCR.Views.Controls
             menu.IsOpen = true;
         }
 
+        private void AxisOneButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
+            axis?.MappingViewModel.ChangeAxisButtonMode(axis, false);
+        }
+
+        private void AxisTwoButtons_OnClick(object sender, RoutedEventArgs e)
+        {
+            var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
+            axis?.MappingViewModel.ChangeAxisButtonMode(axis, true);
+        }
+
         private void AddOutputFilter_OnClick(object sender, RoutedEventArgs e)
         {
             ((sender as FrameworkElement)?.DataContext as PluginViewModel)?.AddFilter();
