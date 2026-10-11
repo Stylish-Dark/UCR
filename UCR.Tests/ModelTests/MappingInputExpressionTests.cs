@@ -15,8 +15,8 @@ namespace HidWizards.UCR.Tests.ModelTests
         {
             Assert.That(ButtonsToAxes.DirectionValue(false, false), Is.EqualTo(0));
             Assert.That(ButtonsToAxes.DirectionValue(true, true), Is.EqualTo(0));
-            Assert.That(ButtonsToAxes.DirectionValue(true, false), Is.EqualTo(HidWizards.UCR.Core.Constants.AxisMinValue));
-            Assert.That(ButtonsToAxes.DirectionValue(false, true), Is.EqualTo(HidWizards.UCR.Core.Constants.AxisMaxValue));
+            Assert.That(ButtonsToAxes.DirectionValue(true, false), Is.EqualTo(HidWizards.UCR.Core.Utilities.Constants.AxisMinValue));
+            Assert.That(ButtonsToAxes.DirectionValue(false, true), Is.EqualTo(HidWizards.UCR.Core.Utilities.Constants.AxisMaxValue));
         }
 
         [Test]
