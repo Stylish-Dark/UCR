@@ -354,6 +354,27 @@
                                                     ToolTip="Remove this output" ToolTipService.ShowOnDisabled="True"
                                                     Style="{StaticResource UcrDeleteItemButton}"/>
                                         </Grid>
+                                        <!-- Button-to-axis plugins share the same output device but
+                                             require one or two physical button inputs respectively. -->
+                                        <StackPanel Orientation="Horizontal" Margin="4 5 0 2"
+                                                    Visibility="{Binding AxisButtonModeVisibility}">
+                                            <TextBlock Text="Axis input mode" Foreground="#D8D8D8"
+                                                       VerticalAlignment="Center" Margin="0 0 10 0"
+                                                       ToolTip="One button: pressed/released axis values. Two buttons: positive/negative directions."/>
+                                            <Button Content="1 button" Height="30" Padding="10 2"
+                                                    Margin="0 0 4 0" Click="AxisOneButton_OnClick"
+                                                    IsEnabled="{Binding CanChangeAxisButtonMode}"
+                                                    ToolTip="Use one button and set axis values for press and release"
+                                                    Background="#353535" Foreground="White" BorderBrush="#666666"/>
+                                            <Button Content="2 buttons" Height="30" Padding="10 2"
+                                                    Click="AxisTwoButtons_OnClick"
+                                                    IsEnabled="{Binding CanChangeAxisButtonMode}"
+                                                    ToolTip="Use separate buttons for the positive and negative axis directions"
+                                                    Background="#353535" Foreground="White" BorderBrush="#666666"/>
+                                            <TextBlock Text="{Binding AxisButtonModeDescription}"
+                                                       VerticalAlignment="Center" Foreground="#9EC4FF"
+                                                       FontWeight="SemiBold" Margin="10 0 0 0"/>
+                                        </StackPanel>
                                         <!-- Compact workspace must expose the same filter and plugin-property
                                              editors as the classic expanded plugin UI. -->
                                         <StackPanel Margin="2 6 2 0">
