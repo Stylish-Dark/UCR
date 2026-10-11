@@ -461,6 +461,24 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void TwoButtonAxisProducesOppositeDirectionsAndNeutralOnBothButtons()
+        {
+            var plugin = new ButtonsToAxis();
+            plugin.Update(1, 0);
+            Assert.That(plugin.Outputs.Single().CurrentValue, Is.GreaterThan(0),
+                "The Positive (+) button must drive the positive axis direction.");
+
+            plugin.Update(0, 1);
+            Assert.That(plugin.Outputs.Single().CurrentValue, Is.LessThan(0),
+                "The Negative (-) button must drive the negative axis direction.");
+
+            plugin.Update(1, 1);
+            Assert.That(plugin.Outputs.Single().CurrentValue, Is.Zero);
+            plugin.Update(0, 0);
+            Assert.That(plugin.Outputs.Single().CurrentValue, Is.Zero);
+        }
+
+        [Test]
         public void AxisButtonModeSwitchPreservesTheFirstInputAndOutputBinding()
         {
             var original = new ButtonToAxis();
