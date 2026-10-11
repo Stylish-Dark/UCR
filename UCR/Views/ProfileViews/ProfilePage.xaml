@@ -505,7 +505,7 @@
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                         <TextBlock Text="INPUT" FontSize="10.5" FontWeight="SemiBold" Opacity="0.68" VerticalAlignment="Center"/>
                                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
-                                            <Button ToolTip="Detect and add input device" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="DetectProfileInputDevice_OnClick">
+                                            <Button ToolTip="Detect and add input device (press Esc or click again to cancel)" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="DetectProfileInputDevice_OnClick">
                                                 <materialDesign:PackIcon Kind="Radar" Width="15" Height="15"/>
                                             </Button>
                                             <Button ToolTip="Add input device" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="AddProfileInputDevice_OnClick">
@@ -564,7 +564,10 @@
                                                 </Style.Triggers>
                                             </Style>
                                         </StackPanel.Style>
-                                        <TextBlock Text="{Binding InputDeviceControlViewModel.DetectionStatus}" FontSize="10.5"
+                                        <Button Content="Cancel detection" HorizontalAlignment="Right" Margin="0 4 0 0"
+                                                 Click="CancelProfileInputDetection_OnClick" Height="28"
+                                                 Style="{StaticResource UcrProfileActionButton}"/>
+                                         <TextBlock Text="{Binding InputDeviceControlViewModel.DetectionStatus}" FontSize="10.5"
                                                    Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"/>
                                         <ProgressBar Height="2" Margin="0 2 0 0" Minimum="0" Maximum="100"
                                                      Value="{Binding InputDeviceControlViewModel.DetectionProgress, Mode=OneWay}"
@@ -652,9 +655,6 @@
                                        FontSize="12" Foreground="#A0A0A0" VerticalAlignment="Center" Margin="6 0 0 0"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
-                            <Button Content="Capture" Height="34" Margin="0 0 7 0"
-                                    Click="BatchCapture_OnClick" IsEnabled="{Binding CanEditProfile}"
-                                    Style="{StaticResource UcrProfileActionButton}"/>
                             <Button Content="+ Add mapping" Height="34" Margin="0 0 7 0"
                                     Click="WorkspaceAddMapping_OnClick" IsEnabled="{Binding CanEditProfile}"
                                     Style="{StaticResource UcrProfileActionButton}"/>
@@ -666,7 +666,6 @@
                                         <MenuItem Header="Add group" Click="AddMappingGroup_OnClick"/>
                                         <MenuItem Header="Paste group" Click="PasteMappingGroup_OnClick"/>
                                         <Separator/>
-                                        <MenuItem Header="Assign outputs" Click="BatchAssign_OnClick"/>
                                         <MenuItem Header="Rename mappings" Click="RenameMappings_OnClick"/>
                                         <MenuItem Header="Replace device" Click="BatchDevices_OnClick"/>
                                         <Separator/>
@@ -843,8 +842,8 @@
                                                     <DataTemplate>
                                                         <Border Margin="0 3" Padding="10 6" CornerRadius="4"
                                                                 Background="#252525" BorderBrush="#393939" BorderThickness="1"
-                                                                MinWidth="520" MaxWidth="920" HorizontalAlignment="Left">
-                                                            <Grid MinHeight="50">
+                                                                HorizontalAlignment="Stretch">
+                                                            <Grid MinHeight="44">
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="2*"/>
                                                                     <ColumnDefinition Width="Auto"/>
@@ -854,7 +853,7 @@
                                                                 </Grid.ColumnDefinitions>
                                                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                                                     <TextBlock Text="{Binding MappingTitle}" Foreground="White"
-                                                                               FontSize="17" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                                               FontSize="15.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
                                                                     <TextBlock Text="{Binding MappingOutputTypeLabel}" FontSize="13"
                                                                                Foreground="#B0B0B0" Margin="0 3 0 0"/>
                                                                 </StackPanel>
@@ -866,7 +865,7 @@
                                                                             <controls:ControlGlyphControl Kind="{Binding ControlKind}"
                                                                                                           AccentBrush="{Binding ControlBrush}"
                                                                                                           Label="{Binding ControlLabel}"
-                                                                                                          Width="62" Height="44"
+                                                                                                          Width="48" Height="35"
                                                                                                           ToolTip="{Binding ToolTip}" Margin="1 0"/>
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
@@ -881,7 +880,7 @@
                                                                             <controls:ControlGlyphControl Kind="{Binding ControlKind}"
                                                                                                           AccentBrush="{Binding ControlBrush}"
                                                                                                           Label="{Binding ControlLabel}"
-                                                                                                          Width="62" Height="44"
+                                                                                                          Width="48" Height="35"
                                                                                                           ToolTip="{Binding ToolTip}" Margin="1 0"/>
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
