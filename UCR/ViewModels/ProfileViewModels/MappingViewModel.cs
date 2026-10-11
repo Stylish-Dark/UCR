@@ -258,6 +258,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(CanMoveDown));
         }
 
+        public void RefreshFilterDefinitionPresentation()
+        {
+            RefreshHeaderState();
+            RefreshCollapsedSummary();
+        }
+
         public void RefreshCollapsedSummary()
         {
             _collapsedSummary = BuildCollapsedSummary();
