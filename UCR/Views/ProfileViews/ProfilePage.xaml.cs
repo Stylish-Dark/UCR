@@ -1146,6 +1146,49 @@ namespace HidWizards.UCR.Views.ProfileViews
             }
         }
 
+        private void BlockSelectedInputs_OnClick(object sender, RoutedEventArgs e)
+        {
+            SetSelectedMappingInputBlocking(true);
+        }
+
+        private void UnblockSelectedInputs_OnClick(object sender, RoutedEventArgs e)
+        {
+            SetSelectedMappingInputBlocking(false);
+        }
+
+        private void SetSelectedMappingInputBlocking(bool block)
+        {
+            if (Profile.IsActive()) return;
+            var selected = FindVisualChildren<ListView>(MappingSectionsItemsControl)
+                .Where(view => view.Name == "MappingRowsList")
+                .SelectMany(view => view.SelectedItems.OfType<MappingViewModel>())
+                .Distinct().ToList();
+            if (selected.Count == 0)
+            {
+                DarkMessageBox.Show("Select one or more mappings with Ctrl or Shift first.",
+                    "No mappings selected", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var changed = 0;
+            foreach (var mapping in selected)
+            {
+                foreach (var input in mapping.DeviceBindings)
+                {
+                    var binding = input.DeviceBinding;
+                    if (binding == null || binding.DeviceIoType != DeviceIoType.Input || !binding.IsBound)
+                        continue;
+                    if (block && !binding.IsBlockable()) continue;
+                    if (binding.Block == block) continue;
+                    binding.SetBlock(block);
+                    changed++;
+                }
+                mapping.RefreshCollapsedSummary();
+            }
+            Logger.Info((block ? "Blocked " : "Unblocked ") + changed +
+                " inputs across " + selected.Count + " selected mappings.");
+        }
+
         private void MappingListView_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             var selected = (sender as ListView)?.SelectedItem as MappingViewModel;

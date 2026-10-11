@@ -698,6 +698,11 @@
                                         <MenuItem Header="Rename mappings" Click="RenameMappings_OnClick"/>
                                         <MenuItem Header="Replace device" Click="BatchDevices_OnClick"/>
                                         <Separator/>
+                                        <MenuItem Header="Input blocking (selected mappings)">
+                                            <MenuItem Header="Block selected inputs" Click="BlockSelectedInputs_OnClick"/>
+                                            <MenuItem Header="Unblock selected inputs" Click="UnblockSelectedInputs_OnClick"/>
+                                        </MenuItem>
+                                        <Separator/>
                                         <MenuItem Header="Collapse groups" Click="CollapseAllMappings_OnClick"/>
                                         <MenuItem Header="Expand groups" Click="ExpandAllMappings_OnClick"/>
                                     </ContextMenu>
@@ -834,7 +839,8 @@
                                                 </Grid>
                                             </Border>
 
-                                            <ListView Grid.Row="1" ItemsSource="{Binding Mappings}" SelectionChanged="MappingListView_OnSelectionChanged" Margin="0" Padding="0 2 0 3"
+                                            <ListView x:Name="MappingRowsList" Grid.Row="1" ItemsSource="{Binding Mappings}" SelectionMode="Extended"
+                                                       SelectionChanged="MappingListView_OnSelectionChanged" Margin="0" Padding="0 2 0 3"
                                                       Background="Transparent" BorderThickness="0"
                                                       Visibility="{Binding IsExpanded, Converter={StaticResource MappingSectionVisibilityConverter}}"
                                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
