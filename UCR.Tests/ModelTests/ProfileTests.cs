@@ -461,6 +461,74 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void AxisButtonModeSwitchPreservesTheFirstInputAndOutputBinding()
+        {
+            var original = new ButtonToAxis();
+            _profile.AddPlugin(_mapping, original);
+            var viewModel = new ProfileViewModel(_profile);
+            var mapping = viewModel.MappingsList.Single(candidate =>
+                ReferenceEquals(candidate.Mapping, _mapping));
+            var firstInput = _mapping.DeviceBindings.Single();
+            var output = original.Outputs.Single();
+
+            Assert.That(mapping.Plugins.Single().IsTwoButtonAxis, Is.False);
+            Assert.That(mapping.ChangeAxisButtonMode(mapping.Plugins.Single(), true), Is.True);
+            Assert.That(_mapping.Plugins.Single(), Is.TypeOf<ButtonsToAxis>());
+            Assert.That(_mapping.DeviceBindings.Count, Is.EqualTo(2));
+            Assert.That(_mapping.DeviceBindings[0], Is.SameAs(firstInput));
+            Assert.That(_mapping.Plugins.Single().Outputs.Single(), Is.SameAs(output));
+            Assert.That(mapping.Plugins.Single().IsTwoButtonAxis, Is.True);
+            Assert.That(_mapping.Plugins.Single().InputCategories[0].Name, Does.Contain("Positive"));
+            Assert.That(_mapping.Plugins.Single().InputCategories[1].Name, Does.Contain("Negative"));
+
+            Assert.That(mapping.ChangeAxisButtonMode(mapping.Plugins.Single(), false), Is.True);
+            Assert.That(_mapping.Plugins.Single(), Is.TypeOf<ButtonToAxis>());
+            Assert.That(_mapping.DeviceBindings.Count, Is.EqualTo(1));
+            Assert.That(_mapping.DeviceBindings[0], Is.SameAs(firstInput));
+            Assert.That(_mapping.Plugins.Single().Outputs.Single(), Is.SameAs(output));
+            viewModel.Dispose();
+        }
+
+        [Test]
+        public void AxisPressAndReleaseSettingsAreAvailableInCompactInspector()
+        {
+            _profile.AddPlugin(_mapping, new ButtonToAxis());
+            var viewModel = new ProfileViewModel(_profile);
+            var axis = viewModel.MappingsList.Single().Plugins.Single();
+
+            axis.EnsureEditorInitialized();
+            var names = axis.PluginPropertyGroups
+                .SelectMany(group => group.PluginProperties)
+                .Select(property => property.Name).ToList();
+
+            Assert.That(names, Does.Contain("Initialize axis"));
+            Assert.That(names, Does.Contain("Axis on release"));
+            Assert.That(names, Does.Contain("Axis when pressed"));
+            Assert.That(axis.AxisButtonModeVisibility, Is.EqualTo(System.Windows.Visibility.Visible));
+            viewModel.Dispose();
+        }
+
+        [Test]
+        public void FilterDefinitionAndReferenceCanBeCreatedWithoutAnOutputDevice()
+        {
+            var producer = _profile.AddMapping("Aim mode");
+            var filter = new ButtonToFilter();
+            _profile.AddPlugin(producer, filter);
+            var filterProperty = filter.GetGuiMatrix().SelectMany(group => group.PluginProperties)
+                .Single(property => property.PropertyInfo.Name == "FilterName");
+            filterProperty.Property = "Aim mode";
+
+            var consumer = _profile.AddMapping("Aim");
+            var button = new ButtonToButton();
+            _profile.AddPlugin(consumer, button);
+            button.AddFilter("Aim mode");
+
+            Assert.That(filter.Outputs, Is.Empty);
+            Assert.That(_profile.GetFilters(), Does.Contain("Aim mode"));
+            Assert.That(button.Filters.Single().Name, Is.EqualTo("Aim mode"));
+        }
+
+        [Test]
         public void AddOutputMenuUsesConciseDestinationNameForSimpleRoutes()
         {
             var option = new SimplePluginViewModel(new ButtonToFilter());
