@@ -549,15 +549,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 !original.IsAxisButtonMapping) return false;
 
             if (original.IsTwoButtonAxis == useTwoButtons) return true;
-            var targetName = useTwoButtons ? "Buttons to Axis" : "Button to Axis";
-            var template = ProfileViewModel.Profile.Context.GetPlugins()
-                .FirstOrDefault(plugin => string.Equals(plugin.PluginName, targetName,
-                    StringComparison.OrdinalIgnoreCase));
-            if (template == null) return false;
-            var requiredInputCount = template.InputCategories.Count;
+            // Both routes ship in the same plugin assembly. Resolve directly from
+            // the currently loaded assembly; a portable/test installation may not
+            // expose the plugin in the discovery catalog at this moment.
+            var targetTypeName = original.Plugin.GetType().Namespace + "." +
+                (useTwoButtons ? "ButtonsToAxis" : "ButtonToAxis");
+            var targetType = original.Plugin.GetType().Assembly.GetType(targetTypeName);
+            if (targetType == null || !typeof(Plugin).IsAssignableFrom(targetType)) return false;
+            var replacement = (Plugin)Activator.CreateInstance(targetType);
+            var requiredInputCount = replacement.InputCategories.Count;
             if (requiredInputCount != (useTwoButtons ? 2 : 1)) return false;
-
-            var replacement = ProfileViewModel.Profile.Context.PluginManager.GetNewPlugin(template);
             replacement.SetProfile(ProfileViewModel.Profile);
             if (replacement.Outputs.Count != 1 || original.Plugin.Outputs.Count != 1)
                 return false;
