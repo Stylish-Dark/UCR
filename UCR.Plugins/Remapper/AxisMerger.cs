@@ -9,8 +9,8 @@ using HidWizards.UCR.Core.Utilities.AxisHelpers;
 namespace HidWizards.UCR.Plugins.Remapper
 {
     [Plugin("Axis Merger", Group = "Axis", Description = "Merge two axes into one output axis")]
-    [PluginInput(DeviceBindingCategory.Range, "Axis high")]
-    [PluginInput(DeviceBindingCategory.Range, "Axis low")]
+    [PluginInput(DeviceBindingCategory.Range, "Axis 1")]
+    [PluginInput(DeviceBindingCategory.Range, "Axis 2")]
     [PluginOutput(DeviceBindingCategory.Range, "Axis")]
 	[PluginSettingsGroup("Sensitivity", Group = "Sensitivity")]
     public class AxisMerger : Plugin
@@ -21,10 +21,10 @@ namespace HidWizards.UCR.Plugins.Remapper
         [PluginGui("Mode", Order = 0)]
         public AxisMergerMode Mode { get; set; }
 
-        [PluginGui("Invert high", Order = 1)]
+        [PluginGui("Invert axis 1", Order = 1)]
         public bool InvertHigh { get; set; }
 
-        [PluginGui("Invert low", Order = 2)]
+        [PluginGui("Invert axis 2", Order = 2)]
         public bool InvertLow { get; set; }
 
         [PluginGui("Linear", Order = 1, Group = "Sensitivity")]
