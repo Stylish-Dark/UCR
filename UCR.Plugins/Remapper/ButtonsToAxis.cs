@@ -6,8 +6,8 @@ using HidWizards.UCR.Core.Utilities;
 namespace HidWizards.UCR.Plugins.Remapper
 {
     [Plugin("Buttons to Axis", Group = "Axis", Description = "Map two buttons to one axis")]
-    [PluginInput(DeviceBindingCategory.Momentary, "Button (Low)")]
-    [PluginInput(DeviceBindingCategory.Momentary, "Button (High)")]
+    [PluginInput(DeviceBindingCategory.Momentary, "Positive (+)")]
+    [PluginInput(DeviceBindingCategory.Momentary, "Negative (−)")]
     [PluginOutput(DeviceBindingCategory.Range, "Axis")]
     public class ButtonsToAxis : Plugin
     {
