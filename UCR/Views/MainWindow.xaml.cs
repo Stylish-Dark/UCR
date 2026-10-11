@@ -73,6 +73,7 @@ namespace HidWizards.UCR.Views
         {
             if (_workspaceReady) return;
             _workspaceReady = true;
+            HighlightWorkspaceTab(MappingsTabButton);
             UpdateProfilePaneWidth();
             // Selecting a profile while InitializeComponent builds the TreeView can happen before
             // ProfileEditorHost exists. Wait until the whole visual tree has loaded.
@@ -500,23 +501,43 @@ namespace HidWizards.UCR.Views
         {
             WorkspaceTabs.SelectedIndex = 0;
             _embeddedProfilePage?.ShowWorkspaceInspector();
+            HighlightWorkspaceTab(MappingsTabButton);
         }
 
         private void WorkspaceDevices_OnClick(object sender, RoutedEventArgs e)
         {
             WorkspaceTabs.SelectedIndex = 0;
             _embeddedProfilePage?.ShowWorkspaceToolbox("Devices");
+            HighlightWorkspaceTab(DevicesTabButton);
         }
 
         private void WorkspaceFilters_OnClick(object sender, RoutedEventArgs e)
         {
             WorkspaceTabs.SelectedIndex = 0;
             _embeddedProfilePage?.ShowWorkspaceToolbox("Filters");
+            HighlightWorkspaceTab(FiltersTabButton);
         }
 
         private void WorkspaceOptions_OnClick(object sender, RoutedEventArgs e)
         {
             WorkspaceTabs.SelectedIndex = 1;
+            HighlightWorkspaceTab(OptionsTabButton);
+        }
+
+        private void HighlightWorkspaceTab(Button selected)
+        {
+            foreach (var button in new[] { MappingsTabButton, DevicesTabButton,
+                         FiltersTabButton, OptionsTabButton })
+            {
+                if (button == null) continue;
+                button.Background = button == selected
+                    ? new SolidColorBrush(Color.FromRgb(46, 56, 73))
+                    : new SolidColorBrush(Color.FromRgb(35, 35, 35));
+                button.Foreground = Brushes.White;
+                button.BorderBrush = button == selected
+                    ? new SolidColorBrush(Color.FromRgb(75, 115, 170))
+                    : new SolidColorBrush(Color.FromRgb(57, 57, 57));
+            }
         }
 
         private void OpenProfileWindow(Profile profile)
