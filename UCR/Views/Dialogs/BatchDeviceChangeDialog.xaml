@@ -49,12 +49,13 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0" Text="Replace device" Foreground="#FFFFFF"
                    Style="{StaticResource MaterialDesignTitleTextBlock}" FontSize="20"/>
         <TextBlock Grid.Row="1" Margin="0 7 0 16" Foreground="#FFFFFF" Opacity="0.72" TextWrapping="Wrap"
-                   Text="Replace one device throughout this profile. Compatible bindings are translated; definitely incompatible bindings are cleared rather than silently mis-mapped."/>
+                   Text="Replace the selected device in only the mapping groups you choose. Incompatible bindings are cleared."/>
 
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
@@ -98,10 +99,25 @@
             </StackPanel>
         </Grid>
 
-        <TextBlock Grid.Row="3" Margin="0 12 0 0" Foreground="#FFFFFF" Opacity="0.62" TextWrapping="Wrap"
-                   Text="Only the selected input/output side is changed. Other device bindings in the profile are untouched."/>
+        <StackPanel Grid.Row="3" Margin="0 14 0 0">
+            <TextBlock Text="Apply to mapping groups" Foreground="#FFFFFF"
+                       FontWeight="SemiBold" Margin="0 0 0 6"/>
+            <TextBlock Text="Choose exactly which groups should use the replacement device."
+                       Foreground="#BBBBBB" Margin="0 0 0 8"/>
+            <ItemsControl ItemsSource="{Binding MappingGroups}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <CheckBox Content="{Binding Title}" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                  Margin="0 3 18 5" Foreground="White"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+        <TextBlock Grid.Row="4" Margin="0 12 0 0" Foreground="#FFFFFF" Opacity="0.62" TextWrapping="Wrap"
+                   Text="Only bindings in the checked mapping groups are changed. Unchecked groups stay unchanged."/>
 
-        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 18 0 0">
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 18 0 0">
             <Button Content="REPLACE" IsDefault="True" IsEnabled="{Binding CanApply}"
                     Style="{StaticResource UcrDialogRaisedButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" CommandParameter="{Binding ViewModel}"/>
