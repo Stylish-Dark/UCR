@@ -138,6 +138,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+        public string BindingActionToolTip => DeviceBinding.DeviceIoType == DeviceIoType.Input
+            ? "Listen for the input control to bind. Press Esc to cancel."
+            : "Choose the output control for this binding.";
+
         public string BindButtonText
         {
             get
@@ -155,6 +159,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             get
             {
                 var label = BindButtonText;
+                if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Output)
+                    return "Choose output";
                 if (string.IsNullOrWhiteSpace(label)) return label;
                 foreach (var group in new[] { "Keys", "Buttons" })
                 {
