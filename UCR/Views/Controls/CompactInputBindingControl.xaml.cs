@@ -84,29 +84,27 @@ namespace HidWizards.UCR.Views.Controls
             var configuration = GetSelectedDeviceConfiguration();
             if (configuration?.Device != null && DeviceBinding?.Profile?.Context != null)
             {
-                foreach (var node in configuration.Device.GetDeviceBindingMenu(
-                    DeviceBinding.Profile.Context, DeviceBinding.DeviceIoType))
+                var nodes = configuration.Device.GetDeviceBindingMenu(
+                    DeviceBinding.Profile.Context, DeviceBinding.DeviceIoType);
+                foreach (var node in nodes)
                 {
+                    // Expand only the keyboard's top-level "Keys" folder into
+                    // the same categories offered by the legacy binding editor.
+                    if (IsKeyboardRoot(node))
+                    {
+                        foreach (var categoryNode in DeviceBindingControl.BuildKeyboardCategories(node.ChildrenNodes))
+                        {
+                            var categoryItem = BuildMenuItem(categoryNode, configuration.Guid);
+                            if (categoryItem != null) Ddl.Items.Add(categoryItem);
+                        }
+                        continue;
+                    }
                     var item = BuildMenuItem(node, configuration.Guid);
                     if (item != null) Ddl.Items.Add(item);
                 }
             }
 
             if (Ddl.Items.Count > 0) Ddl.Items.Add(new Separator());
-
-            var blockItem = new MenuItem
-            {
-                Header = "Block original input",
-                IsCheckable = true,
-                IsChecked = DeviceBinding?.Block == true,
-                IsEnabled = DeviceBinding?.IsBlockable() == true,
-                Foreground = System.Windows.Media.Brushes.White
-            };
-            blockItem.Click += (clickSender, clickArgs) =>
-            {
-                if (DeviceBinding != null) DeviceBinding.SetBlock(blockItem.IsChecked);
-            };
-            Ddl.Items.Add(blockItem);
 
             var clearItem = new MenuItem
             {
@@ -115,6 +113,13 @@ namespace HidWizards.UCR.Views.Controls
             };
             clearItem.Click += (clickSender, clickArgs) => DeviceBinding?.ClearBinding();
             Ddl.Items.Add(clearItem);
+        }
+
+        private static bool IsKeyboardRoot(DeviceBindingNode node)
+        {
+            return node != null && node.ChildrenNodes != null &&
+                   node.ChildrenNodes.Count >= 20 &&
+                   string.Equals(node.Title, "Keys", StringComparison.OrdinalIgnoreCase);
         }
 
         private MenuItem BuildMenuItem(DeviceBindingNode node, Guid configurationGuid)
@@ -132,8 +137,7 @@ namespace HidWizards.UCR.Views.Controls
                 var info = node.DeviceBindingInfo;
                 if (info == null || info.DeviceBindingCategory !=
                     (DataContext as DeviceBindingViewModel)?.DeviceBindingCategory) return null;
-                // The compact editor must offer the same visual shorthand used by
-                // the mapping route; plain text menus lost the controller glyphs.
+                // Keyboard keys are text, not gaming-control icons.
                 var candidate = new DeviceBinding
                 {
                     Profile = DeviceBinding.Profile,
@@ -148,15 +152,16 @@ namespace HidWizards.UCR.Views.Controls
                 var visual = DeviceVisualCatalog.DescribeBinding(
                     candidate, info.DeviceBindingCategory, DeviceBinding.Profile);
                 var label = new StackPanel { Orientation = Orientation.Horizontal };
-                label.Children.Add(new ControlGlyphControl
-                {
-                    Width = 46,
-                    Height = 28,
-                    Margin = new Thickness(0, 0, 10, 0),
-                    Kind = visual.ControlKind,
-                    AccentBrush = visual.ControlBrush ?? Brushes.Gray,
-                    Label = visual.ControlLabel
-                });
+                if (visual.ControlKind != ControlVisualKind.Key)
+                    label.Children.Add(new ControlGlyphControl
+                    {
+                        Width = 46,
+                        Height = 28,
+                        Margin = new Thickness(0, 0, 10, 0),
+                        Kind = visual.ControlKind,
+                        AccentBrush = visual.ControlBrush ?? Brushes.Gray,
+                        Label = visual.ControlLabel
+                    });
                 label.Children.Add(new TextBlock
                 {
                     Text = node.Title,
@@ -227,12 +232,36 @@ namespace HidWizards.UCR.Views.Controls
 
             var category = (DataContext as DeviceBindingViewModel)?.DeviceBindingCategory
                 ?? DeviceBinding.DeviceBindingCategory;
-            var choices = FlattenControls(config.Device.GetDeviceBindingMenu(
-                    DeviceBinding.Profile.Context, DeviceIoType.Output))
-                .Where(node => node.DeviceBindingInfo.DeviceBindingCategory == category).ToList();
+            var rawMenu = config.Device.GetDeviceBindingMenu(
+                DeviceBinding.Profile.Context, DeviceIoType.Output);
+            var keyboard = DeviceVisualCatalog.Describe(config, DeviceBinding.Profile, DeviceIoType.Output).Kind
+                == DeviceVisualKind.Keyboard;
+            var groups = new List<KeyValuePair<string, List<DeviceBindingNode>>>();
+            if (keyboard)
+            {
+                foreach (var rootNode in rawMenu)
+                {
+                    if (!IsKeyboardRoot(rootNode)) continue;
+                    foreach (var group in DeviceBindingControl.BuildKeyboardCategories(rootNode.ChildrenNodes))
+                    {
+                        var matching = FlattenControls(group.ChildrenNodes)
+                            .Where(node => node.DeviceBindingInfo.DeviceBindingCategory == category).ToList();
+                        if (matching.Count > 0)
+                            groups.Add(new KeyValuePair<string, List<DeviceBindingNode>>(group.Title, matching));
+                    }
+                }
+            }
+            if (groups.Count == 0)
+            {
+                var matching = FlattenControls(rawMenu)
+                    .Where(node => node.DeviceBindingInfo.DeviceBindingCategory == category).ToList();
+                if (matching.Count > 0)
+                    groups.Add(new KeyValuePair<string, List<DeviceBindingNode>>("Controls", matching));
+            }
+            var choices = groups.SelectMany(group => group.Value).ToList();
 
             if (_outputPicker != null) _outputPicker.IsOpen = false;
-            var grid = new UniformGrid { Columns = 2 };
+            var grid = new StackPanel();
             var popup = new Popup
             {
                 PlacementTarget = target,
@@ -243,8 +272,18 @@ namespace HidWizards.UCR.Views.Controls
             };
             _outputPicker = popup;
 
-            foreach (var node in choices)
+            foreach (var group in groups)
             {
+                if (keyboard)
+                    grid.Children.Add(new TextBlock
+                    {
+                        Text = group.Key.ToUpperInvariant(), FontWeight = FontWeights.SemiBold,
+                        Foreground = Brushes.LightGray, Margin = new Thickness(8, 11, 0, 5)
+                    });
+                var groupGrid = new UniformGrid { Columns = 2 };
+                grid.Children.Add(groupGrid);
+                foreach (var node in group.Value)
+                {
                 var info = node.DeviceBindingInfo;
                 var candidate = new DeviceBinding
                 {
@@ -259,13 +298,14 @@ namespace HidWizards.UCR.Views.Controls
                 };
                 var visual = DeviceVisualCatalog.DescribeBinding(candidate, category, DeviceBinding.Profile);
                 var contents = new StackPanel { Orientation = Orientation.Horizontal };
-                contents.Children.Add(new ControlGlyphControl
-                {
-                    Width = 54, Height = 34, Margin = new Thickness(0, 0, 8, 0),
-                    Kind = visual.ControlKind,
-                    AccentBrush = visual.ControlBrush ?? Brushes.Gray,
-                    Label = visual.ControlLabel
-                });
+                if (visual.ControlKind != ControlVisualKind.Key)
+                    contents.Children.Add(new ControlGlyphControl
+                    {
+                        Width = 54, Height = 34, Margin = new Thickness(0, 0, 8, 0),
+                        Kind = visual.ControlKind,
+                        AccentBrush = visual.ControlBrush ?? Brushes.Gray,
+                        Label = visual.ControlLabel
+                    });
                 contents.Children.Add(new TextBlock
                 {
                     Text = node.Title, Foreground = Brushes.White,
@@ -294,7 +334,8 @@ namespace HidWizards.UCR.Views.Controls
                     DeviceBinding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
                     popup.IsOpen = false;
                 };
-                grid.Children.Add(button);
+                groupGrid.Children.Add(button);
+                }
             }
 
             var root = new StackPanel();
