@@ -539,31 +539,35 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return Plugins.Count > count;
         }
 
-        // The two axis modes are distinct core plugins with different input counts.
-        // Convert the selected mapping in place, keeping its title, first input,
-        // output binding and filter references. Never alter sibling mappings.
+        // Change the number of button inputs without replacing the mapping,
+        // its title, first axis output or filter references.
         public bool ChangeAxisButtonMode(PluginViewModel original, bool useTwoButtons)
+        {
+            return ChangeAxisInputMode(original, useTwoButtons ? 2 : 1);
+        }
+
+        public bool ChangeAxisInputMode(PluginViewModel original, int buttonCount)
         {
             if (!ButtonsEnabled || original == null || Plugins.Count != 1 ||
                 Mapping.Plugins.Count != 1 || Mapping.UseInputExpression ||
-                !original.IsAxisButtonMapping) return false;
-
-            if (original.IsTwoButtonAxis == useTwoButtons) return true;
-            // Both routes ship in the same plugin assembly. Resolve directly from
-            // the currently loaded assembly; a portable/test installation may not
-            // expose the plugin in the discovery catalog at this moment.
-            var targetTypeName = original.Plugin.GetType().Namespace + "." +
-                (useTwoButtons ? "ButtonsToAxis" : "ButtonToAxis");
-            var targetType = original.Plugin.GetType().Assembly.GetType(targetTypeName);
-            if (targetType == null || !typeof(Plugin).IsAssignableFrom(targetType)) return false;
-            var replacement = (Plugin)Activator.CreateInstance(targetType);
-            var requiredInputCount = replacement.InputCategories.Count;
-            if (requiredInputCount != (useTwoButtons ? 2 : 1)) return false;
-            replacement.SetProfile(ProfileViewModel.Profile);
-            if (replacement.Outputs.Count != 1 || original.Plugin.Outputs.Count != 1)
+                !original.IsAxisButtonMapping || (buttonCount != 1 && buttonCount != 2 && buttonCount != 4))
                 return false;
 
-            // Both plugins emit a signed range to the same selected output.
+            var currentCount = original.IsFourButtonAxis ? 4 : original.IsTwoButtonAxis ? 2 : 1;
+            if (currentCount == buttonCount) return true;
+
+            var className = buttonCount == 1 ? "ButtonToAxis" :
+                buttonCount == 2 ? "ButtonsToAxis" : "ButtonsToAxes";
+            var targetType = original.Plugin.GetType().Assembly.GetType(
+                original.Plugin.GetType().Namespace + "." + className);
+            if (targetType == null || !typeof(Plugin).IsAssignableFrom(targetType)) return false;
+            var replacement = (Plugin)Activator.CreateInstance(targetType);
+            replacement.SetProfile(ProfileViewModel.Profile);
+            if (replacement.InputCategories.Count != buttonCount ||
+                replacement.Outputs.Count < 1 || original.Plugin.Outputs.Count < 1) return false;
+
+            // Four-way mode has separate X and Y axes. Preserve X on conversion;
+            // switching back to one axis requires user confirmation to discard Y.
             replacement.Outputs[0] = original.Plugin.Outputs[0];
             replacement.Filters = original.Plugin.Filters.ToList();
 
@@ -577,26 +581,98 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
             original.Dispose();
 
-            while (Mapping.DeviceBindings.Count < requiredInputCount)
+            while (Mapping.DeviceBindings.Count < buttonCount)
                 Mapping.DeviceBindings.Add(new DeviceBinding(Mapping.Update,
                     ProfileViewModel.Profile, DeviceIoType.Input));
-            while (Mapping.DeviceBindings.Count > requiredInputCount)
+            while (Mapping.DeviceBindings.Count > buttonCount)
                 Mapping.DeviceBindings.RemoveAt(Mapping.DeviceBindings.Count - 1);
 
             Mapping.Plugins[0] = replacement;
-            var newViewModel = new PluginViewModel(this, replacement);
-            Plugins[0] = newViewModel;
+            var viewModel = new PluginViewModel(this, replacement);
+            Plugins[0] = viewModel;
             PopulateDeviceBindingsViewModels();
             foreach (var binding in DeviceBindings) SubscribeSummaryBinding(binding);
-            foreach (var binding in newViewModel.DeviceBindings) SubscribeSummaryBinding(binding);
+            foreach (var binding in viewModel.DeviceBindings) SubscribeSummaryBinding(binding);
             ProfileViewModel.Profile.Context.ContextChanged();
             RefreshHeaderState();
             RefreshInputExpressionPresentation();
             RefreshCollapsedSummary();
             ProfileViewModel.RefreshFilterReferenceLabels();
-            Logger.Info("Axis mode for '" + MappingTitle + "': " +
-                (useTwoButtons ? "two buttons" : "one button"));
+            Logger.Info("Axis input mode for '" + MappingTitle + "': " + buttonCount + " buttons");
             return true;
+        }
+
+        // Apply all four directions as a single transaction. Resolve every key
+        // before changing a binding, so missing keys cannot partially apply.
+        public bool ApplyKeyboardAxisPreset(string preset, out string error)
+        {
+            error = null;
+            if (!ButtonsEnabled || Mapping.Plugins.Count != 1 ||
+                !string.Equals(Mapping.Plugins[0].PluginName, "Buttons to Axes",
+                    StringComparison.OrdinalIgnoreCase) || Mapping.DeviceBindings.Count != 4)
+            {
+                error = "Select a four-way joystick mapping first.";
+                return false;
+            }
+
+            var presets = new Dictionary<string, string[]>
+            {
+                { "WASD", new[] { "W", "S", "A", "D" } },
+                { "Arrows", new[] { "Up", "Down", "Left", "Right" } },
+                { "Numpad", new[] { "Numpad8", "Numpad2", "Numpad4", "Numpad6" } },
+                { "UJHK", new[] { "U", "J", "H", "K" } }
+            };
+            string[] names;
+            if (!presets.TryGetValue(preset ?? string.Empty, out names)) return false;
+
+            var profile = ProfileViewModel.Profile;
+            var keyboard = profile.GetDeviceConfigurationList(DeviceIoType.Input)
+                .FirstOrDefault(item => item?.Device != null &&
+                    DeviceVisualCatalog.Describe(item, profile, DeviceIoType.Input).Kind ==
+                    DeviceVisualKind.Keyboard);
+            if (keyboard == null)
+            {
+                error = "Add a keyboard to this profile's input devices first.";
+                return false;
+            }
+
+            var keys = FlattenBindingNodes(profile.Context.DevicesManager.GetDeviceBindingMenu(
+                    keyboard.Device, DeviceIoType.Input))
+                .Where(node => node.DeviceBindingInfo != null &&
+                    node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary)
+                .ToList();
+            var selected = new List<DeviceBindingNode>();
+            foreach (var name in names)
+            {
+                var aliases = name.StartsWith("Numpad", StringComparison.OrdinalIgnoreCase)
+                    ? new[] { name, name.Replace("Numpad", "Num"), name.Replace("Numpad", "Keypad") }
+                    : new[] { name };
+                var key = keys.FirstOrDefault(node => aliases.Any(alias =>
+                    NormalizeAxisPresetKey(node.Title) == NormalizeAxisPresetKey(alias)));
+                if (key == null)
+                {
+                    error = "The input keyboard does not expose " + name + ".";
+                    return false;
+                }
+                selected.Add(key);
+            }
+
+            for (var i = 0; i < selected.Count; i++)
+            {
+                var binding = Mapping.DeviceBindings[i];
+                var info = selected[i].DeviceBindingInfo;
+                binding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
+                binding.SetDeviceConfigurationGuid(keyboard.Guid);
+                binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+            }
+            foreach (var binding in DeviceBindings) binding.RefreshDeviceList();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
+        private static string NormalizeAxisPresetKey(string value)
+        {
+            return Regex.Replace(value ?? string.Empty, "[^A-Za-z0-9]", "").ToUpperInvariant();
         }
 
         // Swap only the chosen output plugin, never the mapping's shared input bindings.
