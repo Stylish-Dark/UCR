@@ -83,6 +83,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
         public Guid BindingGuid { get; set; }
         public bool ShowDeviceBadge { get; set; }
         public bool IsBlockedInput { get; set; }
+        public bool IsNegatedInput { get; set; }
         public bool IsFilterControl => ControlKind == ControlVisualKind.Filter;
     }
 

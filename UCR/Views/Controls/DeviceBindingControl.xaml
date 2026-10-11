@@ -124,7 +124,6 @@
                     Name="BindButton"
                     Margin="0"
                     Click="BindButton_OnClick"
-                    PreviewMouseRightButtonUp="BindButton_OnMouseRightButtonUp"
                     MinWidth="110"
                     materialDesign:TransitionAssist.DisableTransitions="True"
                     materialDesign:ShadowAssist.ShadowEdges="Left, Top, Bottom">
@@ -157,7 +156,7 @@
 
         <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Vertical" Margin="8 0 0 0" VerticalAlignment="Center">
             <StackPanel Orientation="Horizontal" Visibility="{Binding ShowBlock}" VerticalAlignment="Center" Margin="0 0 0 2">
-                <TextBlock Text="Block" VerticalAlignment="Center" Margin="0 0 7 0" FontSize="14" Foreground="#E2E2E2"/>
+                <TextBlock Text="Block" VerticalAlignment="Center" Margin="0 0 7 0" FontSize="14" Foreground="#E2E2E2" ToolTip="Prevent this input from reaching its original destination"/>
                 <ToggleButton IsChecked="{Binding Block, Mode=TwoWay}" IsEnabled="{Binding CanBlock}" ToolTip="{Binding BlockAvailability}" Style="{StaticResource UcrBrightSwitchToggleButton}"/>
             </StackPanel>
             <StackPanel Orientation="Horizontal" Visibility="{Binding ShowInvertInput}" VerticalAlignment="Center">

@@ -48,13 +48,28 @@ namespace HidWizards.UCR.Views.Controls
             BuildContextMenu();
         }
 
-        private void BindButton_OnClick(object sender, RoutedEventArgs e)
+        private async void BindButton_OnClick(object sender, RoutedEventArgs e)
         {
             if (DeviceBinding == null || DeviceBinding.IsInBindMode) return;
             try
             {
-                DeviceBinding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
-                DeviceBinding.EnterBindMode();
+                if (DeviceBinding.DeviceIoType == DeviceIoType.Input)
+                {
+                    DeviceBinding.EnterBindMode();
+                }
+                else
+                {
+                    var mappingCard = FindAncestor<MappingCardControl>(this);
+                    var binding = DataContext as DeviceBindingViewModel;
+                    if (mappingCard != null && binding != null)
+                        await mappingCard.OpenQuickOutputPickerAsync(binding, BindButton);
+                    else
+                    {
+                        BuildContextMenu();
+                        Ddl.PlacementTarget = BindButton;
+                        Ddl.IsOpen = true;
+                    }
+                }
             }
             catch (Exception exception)
             {
@@ -83,8 +98,14 @@ namespace HidWizards.UCR.Views.Controls
                 foreach (var node in configuration.Device.GetDeviceBindingMenu(
                     DeviceBinding.Profile.Context, DeviceBinding.DeviceIoType))
                 {
-                    var item = BuildMenuItem(node, configuration.Guid);
-                    if (item != null) Ddl.Items.Add(item);
+                    var children = DeviceBindingControl.IsKeyboardKeyGroup(node)
+                        ? DeviceBindingControl.BuildKeyboardCategories(node.ChildrenNodes)
+                        : new System.Collections.Generic.List<DeviceBindingNode> { node };
+                    foreach (var category in children)
+                    {
+                        var item = BuildMenuItem(category, configuration.Guid);
+                        if (item != null) Ddl.Items.Add(item);
+                    }
                 }
             }
 
@@ -126,11 +147,10 @@ namespace HidWizards.UCR.Views.Controls
             if (node.IsBinding)
             {
                 var info = node.DeviceBindingInfo;
-                if (info == null || info.DeviceBindingCategory != DeviceBindingCategory.Momentary) return null;
+                if (info == null || DeviceBinding == null || info.DeviceBindingCategory != DeviceBinding.DeviceBindingCategory) return null;
                 item.Click += (sender, args) =>
                 {
                     DeviceBinding.SetDeviceConfigurationGuid(configurationGuid);
-                    DeviceBinding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
                     DeviceBinding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
                 };
                 return item;
@@ -143,6 +163,18 @@ namespace HidWizards.UCR.Views.Controls
             }
 
             return item.Items.Count == 0 ? null : item;
+        }
+
+        private static T FindAncestor<T>(DependencyObject start) where T : DependencyObject
+        {
+            var current = System.Windows.Media.VisualTreeHelper.GetParent(start);
+            while (current != null)
+            {
+                var found = current as T;
+                if (found != null) return found;
+                current = System.Windows.Media.VisualTreeHelper.GetParent(current);
+            }
+            return null;
         }
 
         private DeviceConfiguration GetSelectedDeviceConfiguration()

@@ -107,7 +107,7 @@ namespace HidWizards.UCR.Views.Controls
             return menuList;
         }
 
-        private static bool IsKeyboardKeyGroup(DeviceBindingNode node)
+        internal static bool IsKeyboardKeyGroup(DeviceBindingNode node)
         {
             return node != null &&
                    node.ChildrenNodes != null &&
@@ -115,7 +115,7 @@ namespace HidWizards.UCR.Views.Controls
                    string.Equals(node.Title, "Keys", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static List<DeviceBindingNode> BuildKeyboardCategories(List<DeviceBindingNode> keyboardNodes)
+        internal static List<DeviceBindingNode> BuildKeyboardCategories(List<DeviceBindingNode> keyboardNodes)
         {
             var order = new[]
             {
@@ -318,13 +318,6 @@ namespace HidWizards.UCR.Views.Controls
                 HidWizards.UCR.Utilities.DarkMessageBox.Show("UCR could not start input detection for this binding. The error has been written to the log.",
                     "Unable to bind input", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-        }
-
-        private void BindButton_OnMouseRightButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            if (DeviceBinding == null || DeviceBinding.DeviceIoType != DeviceIoType.Output) return;
-            e.Handled = true;
-            OpenContextMenu();
         }
 
         private void BindMenuButton_OnClick(object sender, RoutedEventArgs e)

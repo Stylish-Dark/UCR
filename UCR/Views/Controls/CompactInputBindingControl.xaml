@@ -45,7 +45,7 @@
             <ColumnDefinition Width="138"/>
             <ColumnDefinition Width="150"/>
             <ColumnDefinition Width="34"/>
-            <ColumnDefinition Width="46"/>
+            <ColumnDefinition Width="84"/>
         </Grid.ColumnDefinitions>
 
         <ComboBox Grid.Column="0" x:Name="DeviceSelectionBox"
@@ -113,11 +113,13 @@
             </Button.ContextMenu>
         </Button>
 
-        <ToggleButton Grid.Column="3"
-                      HorizontalAlignment="Center" VerticalAlignment="Center"
+        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center"
+                    ToolTip="Block this physical input from reaching its original destination">
+        <TextBlock Text="Block" FontSize="12" Foreground="#FFFFFF" Margin="3 0 5 0" VerticalAlignment="Center"/>
+        <ToggleButton HorizontalAlignment="Center" VerticalAlignment="Center"
                       IsChecked="{Binding Block, Mode=TwoWay}"
                       IsEnabled="{Binding CanBlock}"
-                      ToolTip="Block this physical input">
+                      ToolTip="Block this physical input from reaching its original destination">
             <ToggleButton.Style>
                 <Style TargetType="{x:Type ToggleButton}" BasedOn="{StaticResource CompactBlockSwitch}">
                     <Setter Property="Visibility" Value="Visible"/>
@@ -129,5 +131,6 @@
                 </Style>
             </ToggleButton.Style>
         </ToggleButton>
+        </StackPanel>
     </Grid>
 </UserControl>
