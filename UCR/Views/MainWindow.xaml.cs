@@ -543,6 +543,8 @@ namespace HidWizards.UCR.Views
             _profileRecency.Remove(profile.Guid);
             _profileRecency.AddLast(profile.Guid);
             page.UseEmbeddedLayout();
+            page.ProfileOptionsRequested -= EmbeddedProfileOptionsRequested;
+            page.ProfileOptionsRequested += EmbeddedProfileOptionsRequested;
             _embeddedProfilePage = page;
             _embeddedProfile = profile;
             ProfileEditorHost.Content = page;
@@ -556,6 +558,11 @@ namespace HidWizards.UCR.Views
                 _profileCache.Remove(oldest);
                 discarded.Dispose();
             }
+        }
+
+        private void EmbeddedProfileOptionsRequested(object sender, EventArgs e)
+        {
+            WorkspaceTabs.SelectedIndex = 1;
         }
 
         private void ReleaseEmbeddedProfile()
