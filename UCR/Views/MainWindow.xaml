@@ -390,7 +390,7 @@
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Grid.Column="0" Text="{Binding Title}" FontSize="15.5" FontWeight="Medium"
-                                                               HorizontalAlignment="Center" TextAlignment="Center"
+                                                               Foreground="#FFFFFF" HorizontalAlignment="Center" TextAlignment="Center"
                                                                VerticalAlignment="Center" TextWrapping="NoWrap"
                                                                TextTrimming="None" ToolTip="{Binding Title}"/>
                                                     <Border Grid.Column="1" Margin="6 0 0 0" Padding="5 1" CornerRadius="7" Background="#26382B" BorderBrush="#4B8B58" BorderThickness="1"
