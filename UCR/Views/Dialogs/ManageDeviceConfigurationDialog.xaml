@@ -112,23 +112,6 @@
                             <TextBlock Text="Optional label used only for this device configuration in the current profile."
                                        TextWrapping="Wrap" Foreground="#FFFFFF" FontSize="11.5" Margin="0 7 0 0"/>
 
-                            <StackPanel Margin="0 16 0 0">
-                                <StackPanel.Style>
-                                    <Style TargetType="StackPanel">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsInputDevice}" Value="True">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </StackPanel.Style>
-                                <CheckBox Content="Block unmapped inputs on this device by default"
-                                          IsChecked="{Binding BlockUnmappedInputs, Mode=TwoWay}"
-                                          Foreground="#FFFFFF" FontWeight="SemiBold"/>
-                                <TextBlock Text="This device participates only when the profile-wide Block all unmapped inputs switch is enabled."
-                                           TextWrapping="Wrap" Foreground="#FFFFFF" FontSize="11.5" Margin="24 5 0 0"/>
-                            </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
                 </Border>

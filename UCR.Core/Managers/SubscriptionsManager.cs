@@ -524,7 +524,7 @@ namespace HidWizards.UCR.Core.Managers
                 if (profile == null) continue;
 
                 foreach (var configuration in profile.GetDeviceConfigurationList(DeviceIoType.Input)
-                    .Where(item => item != null && item.Device != null && profile.IsBlockUnmappedInputsEnabled(item)))
+                    .Where(item => item != null && item.Device != null && _context.DevicesManager.GetDeviceBlockUnmappedInputs(item.Device)))
                 {
                     var runtimeDevice = ResolveRuntimeDevice(configuration.Device, DeviceIoType.Input, resolutionCache);
                     if (runtimeDevice == null)

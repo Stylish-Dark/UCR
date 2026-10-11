@@ -571,12 +571,6 @@
                                                                   ToolTip="Exclusive Mode: hide this physical HID controller from games while its profile runs (requires HidHide)">
                                                             <materialDesign:PackIcon Kind="EyeOff" Width="15" Height="15" Foreground="{DynamicResource PrimaryHueLightBrush}"/>
                                                         </CheckBox>
-                                                        <CheckBox IsChecked="{Binding BlockUnmappedInputs, Mode=TwoWay}"
-                                                              IsEnabled="{Binding CanEditConfiguration}"
-                                                              VerticalAlignment="Center" Margin="6 0 2 0"
-                                                              ToolTip="Block all unmapped inputs from this device in this profile">
-                                                        <materialDesign:PackIcon Kind="ShieldOutline" Width="15" Height="15" Foreground="#FFFFFF"/>
-                                                    </CheckBox>
                                                     </StackPanel>
                                                 </Grid>
                                             </DataTemplate>
