@@ -177,15 +177,54 @@
                                                     Margin="0 0 4 0" Click="AxisOneButton_OnClick"
                                                     IsEnabled="{Binding CanChangeAxisButtonMode}"
                                                     ToolTip="Use one button and set axis values for press and release"
-                                                    Background="#353535" Foreground="White" BorderBrush="#666666"/>
+                                                    Foreground="White">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                                                        <Setter Property="Background" Value="#353535"/>
+                                                        <Setter Property="BorderBrush" Value="#666666"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsOneButtonAxis}" Value="True">
+                                                                <Setter Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
                                             <Button Content="2 buttons" Height="30" Padding="10 2"
                                                     Click="AxisTwoButtons_OnClick"
                                                     IsEnabled="{Binding CanChangeAxisButtonMode}"
                                                     ToolTip="Use separate buttons for the positive and negative axis directions"
-                                                    Background="#353535" Foreground="White" BorderBrush="#666666" Margin="0 0 4 0"/>
+                                                    Foreground="White" Margin="0 0 4 0">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                                                        <Setter Property="Background" Value="#353535"/>
+                                                        <Setter Property="BorderBrush" Value="#666666"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsTwoButtonAxis}" Value="True">
+                                                                <Setter Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
                                              <Button Content="4 ways" Height="30" Padding="10 2" Click="AxisFourButtons_OnClick"
                                                      IsEnabled="{Binding CanChangeAxisButtonMode}" ToolTip="Control a full X/Y joystick using four buttons"
-                                                     Background="#353535" Foreground="White" BorderBrush="#666666"/>
+                                                     Foreground="White">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                                                        <Setter Property="Background" Value="#353535"/>
+                                                        <Setter Property="BorderBrush" Value="#666666"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFourButtonAxis}" Value="True">
+                                                                <Setter Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
 
                                         </WrapPanel>
                                          <StackPanel Margin="5 6 0 6" Visibility="{Binding FourButtonPresetVisibility}">

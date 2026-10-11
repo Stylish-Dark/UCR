@@ -37,6 +37,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         }
         public void RefreshFourWayDestination() => OnPropertyChanged(nameof(FourWayOutputLabel));
         public bool IsTwoButtonAxis => string.Equals(Plugin.PluginName, "Buttons to Axis", StringComparison.OrdinalIgnoreCase);
+        public bool IsOneButtonAxis => IsAxisButtonMapping && !IsTwoButtonAxis && !IsFourButtonAxis;
         public Visibility AxisButtonModeVisibility => IsAxisButtonMapping ? Visibility.Visible : Visibility.Collapsed;
         public bool CanChangeAxisButtonMode => MappingViewModel.ButtonsEnabled &&
             MappingViewModel.Plugins.Count == 1 && !MappingViewModel.UsesInputExpression;
