@@ -370,6 +370,9 @@
                                         <materialDesign:PackIcon Kind="Filter" Width="16" Height="16" Margin="0 0 7 0" Foreground="{StaticResource MappingTypeFilterBrush}"/>
                                         <TextBlock Text="Filters" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                         <TextBlock Text="{Binding FilterDefinitions.Count, StringFormat={}  {0}}" FontSize="12" Opacity="0.45" VerticalAlignment="Center"/>
+                                        <Button Content="+ Create" Margin="9 0 0 0" Height="27" Padding="7 0"
+                                                IsEnabled="{Binding CanEditProfile}" Click="CreateFilter_OnClick"
+                                                ToolTip="Create a button- or axis-controlled filter" Style="{StaticResource UcrSidebarIconButton}"/>
                                     </StackPanel>
                                 </Border>
                             </Expander.Header>
@@ -386,7 +389,7 @@
                                                             <StackPanel Margin="8 18" HorizontalAlignment="Center">
                                                                 <materialDesign:PackIcon Kind="Filter" Width="20" Height="20" HorizontalAlignment="Center" Opacity="0.28"/>
                                                                 <TextBlock Margin="0 6 0 0" Text="No filters defined" FontSize="14" Opacity="0.55" HorizontalAlignment="Center"/>
-                                                                <TextBlock Margin="0 2 0 0" Text="Create one with a → Filter mapping." FontSize="12" Opacity="0.38" HorizontalAlignment="Center"/>
+                                                                <TextBlock Margin="0 2 0 0" Text="Use Create above to add a filter." FontSize="12" Opacity="0.38" HorizontalAlignment="Center"/>
                                                             </StackPanel>
                                                         </ControlTemplate>
                                                     </Setter.Value>

@@ -1,11 +1,13 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace HidWizards.UCR.ViewModels.Dialogs
 {
     public class FilterSelectDialogViewModel : System.ComponentModel.INotifyPropertyChanged
     {
-        public string Title => "Add filter";
+        public string Title => AllowNew ? "Choose or create filter" : "Add filter";
+        public bool AllowNew { get; }
         public ObservableCollection<string> FilterNames { get; }
 
         private string _selectedFilter;
@@ -21,7 +23,9 @@ namespace HidWizards.UCR.ViewModels.Dialogs
             }
         }
 
-        public bool HasSelection => !string.IsNullOrWhiteSpace(SelectedFilter);
+        public bool HasSelection => !string.IsNullOrWhiteSpace(SelectedFilter) &&
+            (AllowNew || FilterNames.Any(name =>
+                string.Equals(name, SelectedFilter.Trim(), System.StringComparison.OrdinalIgnoreCase)));
         public FilterSelectDialogViewModel ViewModel => this;
 
         public FilterSelectDialogViewModel()
@@ -29,8 +33,9 @@ namespace HidWizards.UCR.ViewModels.Dialogs
             FilterNames = new ObservableCollection<string>();
         }
 
-        public FilterSelectDialogViewModel(IEnumerable<string> filterNames) : this()
+        public FilterSelectDialogViewModel(IEnumerable<string> filterNames, bool allowNew = false) : this()
         {
+            AllowNew = allowNew;
             if (filterNames == null) return;
             foreach (var filterName in filterNames)
             {

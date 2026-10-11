@@ -324,6 +324,36 @@
                                     ToolTip="Add another output binding"/>
                         </WrapPanel>
                     </StackPanel>
+                    <ItemsControl ItemsSource="{Binding Plugins}" Margin="5 5 5 4">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0 4 0 0">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasSettings}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock Text="{Binding Plugin.PluginName, StringFormat={}{0} settings}"
+                                               FontWeight="SemiBold" FontSize="13" Margin="0 5 0 5"/>
+                                    <ItemsControl ItemsSource="{Binding PluginPropertyGroups}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="0 3 0 0">
+                                                    <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold" FontSize="12" Opacity="0.78"/>
+                                                    <plugin:PluginPropertyListControl DataContext="{Binding}"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </StackPanel>
             </Border>
         </DataTemplate>

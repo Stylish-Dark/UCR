@@ -891,10 +891,84 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (definingMapping != null) ScrollMappingIntoView(definingMapping);
         }
 
-        private void AddMapping_OnClick(object sender, RoutedEventArgs e)
+        private void CreateFilter_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (!ProfileViewModel.CanEditProfile) return;
+            var button = sender as Button;
+            if (button == null) return;
+            var menu = new ContextMenu { PlacementTarget = button, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+            foreach (var option in new[] { "Button to Filter", "Axis to Filter" })
+            {
+                var pluginName = option;
+                var item = new MenuItem { Header = option == "Button to Filter" ? "Controlled by button" : "Controlled by axis" };
+                item.Click += async (s, args) => await CreateFilterMappingAsync(pluginName);
+                menu.Items.Add(item);
+            }
+            menu.IsOpen = true;
+        }
+
+        private async System.Threading.Tasks.Task CreateFilterMappingAsync(string pluginName)
+        {
+            if (!ProfileViewModel.CanEditProfile) return;
+            var dialog = new StringDialog("Create filter", "Filter name", "New filter");
+            var accepted = (bool?)await DialogHost.Show(dialog, ProfileViewModel.ProfileDialogIdentifier);
+            if (accepted != true || string.IsNullOrWhiteSpace(dialog.Value)) return;
+            var name = dialog.Value.Trim();
+            if (Profile.GetFilters().Contains(name))
+            {
+                DarkMessageBox.Show("A filter named '" + name + "' already exists. Select it when adding a filter mapping instead.",
+                    "Filter already exists", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var template = Context.GetPlugins().FirstOrDefault(plugin =>
+                string.Equals(plugin.PluginName, pluginName, StringComparison.OrdinalIgnoreCase));
+            if (template == null)
+            {
+                DarkMessageBox.Show("The " + pluginName + " plugin could not be found.",
+                    "Filter unavailable", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            CreateNamedFilterMapping(template, name);
+        }
+
+        private MappingViewModel CreateNamedFilterMapping(Plugin template, string filterName)
+        {
+            var mapping = ProfileViewModel.AddMappingToSelectedSection(ProfileViewModel.GetNextMappingTitle());
+            if (mapping == null) return null;
+            mapping.AddPlugin(template);
+            var createdPlugin = mapping.Mapping.Plugins.FirstOrDefault();
+            var filterProperty = createdPlugin?.GetGuiMatrix().SelectMany(group => group.PluginProperties)
+                .FirstOrDefault(property => property.PropertyInfo.Name == "FilterName");
+            if (filterProperty == null)
+            {
+                ProfileViewModel.RemoveMapping(mapping);
+                return null;
+            }
+
+            filterProperty.Property = filterName;
+            mapping.RefreshFilterIndicator();
+            mapping.RefreshCollapsedSummary();
+            ProfileViewModel.RefreshFilterReferenceLabels();
+            mapping.IsExpanded = true;
+            Dispatcher.BeginInvoke((Action)(() => ScrollMappingIntoView(mapping)), DispatcherPriority.Background);
+            return mapping;
+        }
+
+        private async void AddMapping_OnClick(object sender, RoutedEventArgs e)
         {
             var selectedRoute = ProfileViewModel.PluginToolbox.SelectedRoute;
             if (selectedRoute == null || selectedRoute.PluginItem == null) return;
+
+            if (string.Equals(selectedRoute.OutputLabel, "Filter", StringComparison.OrdinalIgnoreCase))
+            {
+                var picker = new FilterSelectDialog(Profile.GetFilters().OrderBy(value => value, StringComparer.OrdinalIgnoreCase), true);
+                var selected = (FilterSelectDialogViewModel)await DialogHost.Show(picker, ProfileViewModel.ProfileDialogIdentifier);
+                if (selected == null || !selected.HasSelection) return;
+                CreateNamedFilterMapping(selectedRoute.PluginItem.Plugin, selected.SelectedFilter.Trim());
+                return;
+            }
 
             var mappingViewModel = ProfileViewModel.AddMappingToSelectedSection(ProfileViewModel.GetNextMappingTitle());
             if (mappingViewModel == null) return;

@@ -17,6 +17,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public Plugin Plugin { get; set; }
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<PluginPropertyGroupViewModel> PluginPropertyGroups { get; set; }
+        public bool HasSettings => Plugin?.PluginPropertyGroups?.Any(group =>
+            group.PluginProperties != null && group.PluginProperties.Count > 0 &&
+            group.GroupType != PluginPropertyGroup.GroupTypes.Output) == true;
         public bool CanRemove => !MappingViewModel.ProfileViewModel.Profile.IsActive() && MappingViewModel.Plugins.Count > 1;
         public bool CanAddFilter => !MappingViewModel.ProfileViewModel.Profile.IsActive();
         public ObservableCollection<FilterViewModel> Filters { get; set; }

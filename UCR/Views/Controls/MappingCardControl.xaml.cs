@@ -48,6 +48,9 @@ namespace HidWizards.UCR.Views.Controls
         private void ShowExpandedBody()
         {
             if (ExpandedBodyHost == null) return;
+            var mapping = DataContext as MappingViewModel;
+            if (mapping?.Plugins != null)
+                foreach (var plugin in mapping.Plugins) plugin.EnsureEditorInitialized();
 
             // Interrupt any closing fade if the user immediately reopens the card.
             ExpandedBodyHost.BeginAnimation(OpacityProperty, null);
