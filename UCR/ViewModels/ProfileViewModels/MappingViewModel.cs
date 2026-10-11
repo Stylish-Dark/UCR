@@ -1023,11 +1023,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 foreach (var binding in plugin.DeviceBindings)
                     result.Add(DescribeCollapsedBinding(binding));
 
-                if (plugin.DeviceBindings.Count == 0)
+                if (plugin.DeviceBindings.Count == 0 &&
+                    string.Equals(plugin.Plugin.Group, "Filter", StringComparison.OrdinalIgnoreCase))
                 {
+                    // Filter-definition plugins have no physical output binding. Do not
+                    // misleadingly draw an unbound '?' as though they require a device.
                     var filterName = plugin.Plugin.GetDefinedFilterName();
-                    if (!string.IsNullOrWhiteSpace(filterName))
-                        result.Add(DeviceVisualCatalog.Filter(filterName));
+                    result.Add(DeviceVisualCatalog.Filter(
+                        string.IsNullOrWhiteSpace(filterName) ? "Set filter name" : filterName));
                 }
             }
 
