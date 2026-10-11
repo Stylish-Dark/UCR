@@ -138,15 +138,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
-        public string BindingActionToolTip => DeviceBinding.DeviceIoType == DeviceIoType.Input
-            ? "Listen for the input control to bind. Press Esc to cancel."
-            : "Choose the output control for this binding.";
+        public string BindingActionToolTip => DeviceBinding.DeviceIoType == DeviceIoType.Output
+            ? "Choose a supported output control from this device."
+            : DeviceBindingCategory == DeviceBindingCategory.Range
+                ? "Move the joystick or squeeze a trigger to detect its axis. Press Esc to cancel."
+                : "Press an input control to bind it. Press Esc to cancel.";
 
         public string BindButtonText
         {
             get
             {
-                if (DeviceBinding.IsInBindMode) return "Press input device";
+                if (DeviceBinding.IsInBindMode)
+                    return DeviceBindingCategory == DeviceBindingCategory.Range
+                        ? "Move axis to detect" : "Press input device";
                 if (DeviceBinding.IsBound) return DeviceBinding.BoundName();
                 return "Click to bind";
             }
@@ -161,6 +165,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var label = BindButtonText;
                 if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Output)
                     return "Choose output";
+                if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Input &&
+                    DeviceBindingCategory == DeviceBindingCategory.Range)
+                    return "Move axis to bind";
                 if (string.IsNullOrWhiteSpace(label)) return label;
                 foreach (var group in new[] { "Keys", "Buttons" })
                 {
