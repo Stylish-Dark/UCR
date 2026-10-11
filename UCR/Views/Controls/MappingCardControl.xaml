@@ -166,6 +166,39 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
+                    <StackPanel DataContext="{Binding Plugins[0]}">
+                                        <!-- Input mode belongs with input binding, never in output selection. -->
+                                        <WrapPanel Orientation="Horizontal" Margin="4 5 0 2"
+                                                    Visibility="{Binding AxisButtonModeVisibility}">
+                                            <TextBlock Text="Axis input mode" Foreground="#D8D8D8"
+                                                       VerticalAlignment="Center" Margin="0 0 10 0"
+                                                       ToolTip="One button: pressed/released axis values. Two buttons: positive/negative directions."/>
+                                            <Button Content="1 button" Height="30" Padding="10 2"
+                                                    Margin="0 0 4 0" Click="AxisOneButton_OnClick"
+                                                    IsEnabled="{Binding CanChangeAxisButtonMode}"
+                                                    ToolTip="Use one button and set axis values for press and release"
+                                                    Background="#353535" Foreground="White" BorderBrush="#666666"/>
+                                            <Button Content="2 buttons" Height="30" Padding="10 2"
+                                                    Click="AxisTwoButtons_OnClick"
+                                                    IsEnabled="{Binding CanChangeAxisButtonMode}"
+                                                    ToolTip="Use separate buttons for the positive and negative axis directions"
+                                                    Background="#353535" Foreground="White" BorderBrush="#666666" Margin="0 0 4 0"/>
+                                             <Button Content="4 ways" Height="30" Padding="10 2" Click="AxisFourButtons_OnClick"
+                                                     IsEnabled="{Binding CanChangeAxisButtonMode}" ToolTip="Control a full X/Y joystick using four buttons"
+                                                     Background="#353535" Foreground="White" BorderBrush="#666666"/>
+
+                                        </WrapPanel>
+                                         <StackPanel Margin="5 6 0 6" Visibility="{Binding FourButtonPresetVisibility}">
+                                             <TextBlock Text="Keyboard presets" Foreground="#D8D8D8" FontWeight="SemiBold" Margin="0 0 0 5"/>
+                                             <WrapPanel>
+                                                 <Button Content="WASD" Tag="WASD" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4" ToolTip="W up, S down, A left, D right"/>
+                                                 <Button Content="Arrows" Tag="Arrows" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4"/>
+                                                 <Button Content="Numpad" Tag="Numpad" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4" ToolTip="Numpad 8, 2, 4, 6"/>
+                                                 <Button Content="U/J + H/K" Tag="UJHK" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4"/>
+                                             </WrapPanel>
+                                         </StackPanel>
+                    </StackPanel>
+
                     <!-- One row is one input condition. Terms within the row are ANDed; rows are ORed. -->
                     <StackPanel Margin="2 0 2 3">
                         <StackPanel.Style>
@@ -355,39 +388,6 @@
                                                     ToolTip="Remove this output" ToolTipService.ShowOnDisabled="True"
                                                     Style="{StaticResource UcrDeleteItemButton}"/>
                                         </Grid>
-                                        <!-- Button-to-axis plugins share the same output device but
-                                             require one or two physical button inputs respectively. -->
-                                        <WrapPanel Orientation="Horizontal" Margin="4 5 0 2"
-                                                    Visibility="{Binding AxisButtonModeVisibility}">
-                                            <TextBlock Text="Axis input mode" Foreground="#D8D8D8"
-                                                       VerticalAlignment="Center" Margin="0 0 10 0"
-                                                       ToolTip="One button: pressed/released axis values. Two buttons: positive/negative directions."/>
-                                            <Button Content="1 button" Height="30" Padding="10 2"
-                                                    Margin="0 0 4 0" Click="AxisOneButton_OnClick"
-                                                    IsEnabled="{Binding CanChangeAxisButtonMode}"
-                                                    ToolTip="Use one button and set axis values for press and release"
-                                                    Background="#353535" Foreground="White" BorderBrush="#666666"/>
-                                            <Button Content="2 buttons" Height="30" Padding="10 2"
-                                                    Click="AxisTwoButtons_OnClick"
-                                                    IsEnabled="{Binding CanChangeAxisButtonMode}"
-                                                    ToolTip="Use separate buttons for the positive and negative axis directions"
-                                                    Background="#353535" Foreground="White" BorderBrush="#666666" Margin="0 0 4 0"/>
-                                             <Button Content="4 ways" Height="30" Padding="10 2" Click="AxisFourButtons_OnClick"
-                                                     IsEnabled="{Binding CanChangeAxisButtonMode}" ToolTip="Control a full X/Y joystick using four buttons"
-                                                     Background="#353535" Foreground="White" BorderBrush="#666666"/>
-                                            <TextBlock Text="{Binding AxisButtonModeDescription}"
-                                                       VerticalAlignment="Center" Foreground="#9EC4FF"
-                                                       FontWeight="SemiBold" Margin="10 0 0 0"/>
-                                        </WrapPanel>
-                                         <StackPanel Margin="5 6 0 6" Visibility="{Binding FourButtonPresetVisibility}">
-                                             <TextBlock Text="Keyboard presets" Foreground="#D8D8D8" FontWeight="SemiBold" Margin="0 0 0 5"/>
-                                             <WrapPanel>
-                                                 <Button Content="WASD" Tag="WASD" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4" ToolTip="W up, S down, A left, D right"/>
-                                                 <Button Content="Arrows" Tag="Arrows" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4"/>
-                                                 <Button Content="Numpad" Tag="Numpad" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4" ToolTip="Numpad 8, 2, 4, 6"/>
-                                                 <Button Content="U/J + H/K" Tag="UJHK" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4"/>
-                                             </WrapPanel>
-                                         </StackPanel>
                                         <!-- Compact workspace must expose the same filter and plugin-property
                                              editors as the classic expanded plugin UI. -->
                                         <StackPanel Margin="2 6 2 0">

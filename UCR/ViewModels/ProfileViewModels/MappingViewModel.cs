@@ -566,10 +566,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (replacement.InputCategories.Count != buttonCount ||
                 replacement.Outputs.Count < 1 || original.Plugin.Outputs.Count < 1) return false;
 
-            // Four-way mode has separate X and Y axes. Preserve X on conversion;
-            // switching back to one axis requires user confirmation to discard Y.
-            replacement.Outputs[0] = original.Plugin.Outputs[0];
+            // Single-axis mode keeps X when leaving a two-axis stick. Entering four-way
+            // mode requires choosing a whole destination, not reusing one arbitrary axis.
+            if (buttonCount != 4 && !original.IsFourButtonAxis ||
+                buttonCount != 4 && original.IsFourButtonAxis &&
+                original.Plugin.OutputCategories[0].Category == DeviceBindingCategory.Range)
+                replacement.Outputs[0] = original.Plugin.Outputs[0];
             replacement.Filters = original.Plugin.Filters.ToList();
+            var preferredOutput = original.Plugin.Outputs.Select(binding => binding.DeviceConfigurationGuid).ToList();
+            SelectCompatibleOutputDevices(replacement, preferredOutput);
 
             foreach (var binding in DeviceBindings)
             {
@@ -583,7 +588,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             while (Mapping.DeviceBindings.Count < buttonCount)
                 Mapping.DeviceBindings.Add(new DeviceBinding(Mapping.Update,
-                    ProfileViewModel.Profile, DeviceIoType.Input));
+                    ProfileViewModel.Profile, DeviceIoType.Input)
+                {
+                    DeviceConfigurationGuid = ProfileViewModel.Profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input)?.Guid ?? Guid.Empty
+                });
             while (Mapping.DeviceBindings.Count > buttonCount)
                 Mapping.DeviceBindings.RemoveAt(Mapping.DeviceBindings.Count - 1);
 
@@ -626,10 +634,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!presets.TryGetValue(preset ?? string.Empty, out names)) return false;
 
             var profile = ProfileViewModel.Profile;
-            var keyboard = profile.GetDeviceConfigurationList(DeviceIoType.Input)
-                .FirstOrDefault(item => item?.Device != null &&
-                    DeviceVisualCatalog.Describe(item, profile, DeviceIoType.Input).Kind ==
-                    DeviceVisualKind.Keyboard);
+            // Respect the keyboard explicitly chosen on the first input, otherwise
+            // the profile primary keyboard, before considering a fallback keyboard.
+            var inputDevices = profile.GetDeviceConfigurationList(DeviceIoType.Input);
+            var preferredInput = Mapping.DeviceBindings[0].DeviceConfigurationGuid;
+            var primaryInput = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input);
+            Func<DeviceConfiguration, bool> isKeyboard = item => item?.Device != null &&
+                DeviceVisualCatalog.Describe(item, profile, DeviceIoType.Input).Kind == DeviceVisualKind.Keyboard;
+            var keyboard = inputDevices.FirstOrDefault(item => item.Guid == preferredInput && isKeyboard(item))
+                ?? inputDevices.FirstOrDefault(item => item.Guid == primaryInput?.Guid && isKeyboard(item))
+                ?? inputDevices.FirstOrDefault(isKeyboard);
             if (keyboard == null)
             {
                 error = "Add a keyboard to this profile's input devices first.";
@@ -720,7 +734,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     device, category, profile.Context)).ToList();
                 var preference = preferredDevices != null && index < preferredDevices.Count
                     ? preferredDevices[index] : Guid.Empty;
+                var primary = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output);
                 var selected = compatible.FirstOrDefault(device => device.Guid == preference)
+                    ?? compatible.FirstOrDefault(device => device.Guid == primary?.Guid)
                     ?? compatible.FirstOrDefault();
                 if (selected != null)
                     plugin.Outputs[index].SetDeviceConfigurationGuid(selected.Guid, false);

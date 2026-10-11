@@ -138,5 +138,14 @@
             </ToggleButton.Style>
         </ToggleButton>
         </StackPanel>
+        <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Visibility="{Binding ShowInvertInput}"
+                    ToolTip="Invert the physical input axis direction">
+            <TextBlock Text="Invert direction" Foreground="#E2E2E2" FontSize="11"
+                       Margin="0 0 5 0" VerticalAlignment="Center"/>
+            <ToggleButton IsChecked="{Binding InvertInput, Mode=TwoWay}"
+                          IsEnabled="{Binding BindingEnabled}" Style="{StaticResource CompactBlockSwitch}"/>
+        </StackPanel>
     </Grid>
 </UserControl>

@@ -323,7 +323,16 @@ namespace HidWizards.UCR.Core.Managers
             try
             {
                 Logger.Debug($"Bind input accepted: provider={pendingInput.ProviderName}, handle={pendingInput.DeviceHandle}, instance={pendingInput.DeviceInstance}, type={pendingInput.KeyType}, index={pendingInput.KeyValue}, subIndex={pendingInput.KeySubValue}, value={pendingInput.Value}");
-                pendingInput.Binding.SetDeviceConfigurationGuid(pendingInput.DeviceConfigurationGuid);
+                var selected = pendingInput.Binding.Profile.GetDeviceConfiguration(
+                    DeviceIoType.Input, pendingInput.Binding.DeviceConfigurationGuid);
+                var detected = pendingInput.Binding.Profile.GetDeviceConfiguration(
+                    DeviceIoType.Input, pendingInput.DeviceConfigurationGuid);
+                // A key press identifies the KEY, not a different keyboard destination.
+                // Preserve an explicitly selected Keyboard 2 even when Keyboard 1 supplied
+                // the keystroke for quick binding. Other device families still follow detection.
+                var destination = IsInterceptionKeyboard(selected) && IsInterceptionKeyboard(detected)
+                    ? selected.Guid : pendingInput.DeviceConfigurationGuid;
+                pendingInput.Binding.SetDeviceConfigurationGuid(destination);
                 pendingInput.Binding.SetKeyTypeValue(pendingInput.KeyType, pendingInput.KeyValue, pendingInput.KeySubValue);
                 EndBindMode();
             }
@@ -333,6 +342,16 @@ namespace HidWizards.UCR.Core.Managers
                 lock (bindmodeLock) bindCommitPending = false;
                 EndBindMode();
             }
+        }
+
+        private static bool IsInterceptionKeyboard(DeviceConfiguration configuration)
+        {
+            var device = configuration?.Device;
+            if (device == null || !string.Equals(device.ProviderName, "Core_Interception",
+                    StringComparison.OrdinalIgnoreCase)) return false;
+            var title = DevicesManager.GetLogicalDeviceTitle(device) ?? string.Empty;
+            return title.StartsWith("K:", StringComparison.OrdinalIgnoreCase) ||
+                   (device.DeviceHandle ?? string.Empty).StartsWith("Keyboard", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool IsInputValid(BindingCategory bindingCategory, short value)
