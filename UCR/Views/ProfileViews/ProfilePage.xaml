@@ -648,7 +648,7 @@
                         <ItemsControl x:Name="MappingSectionsItemsControl" ItemsSource="{Binding MappingSections}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Margin="4 2 6 9" Background="#1C1C1C" BorderBrush="#343434" BorderThickness="1" CornerRadius="5">
+                                    <Border Margin="4 2 6 9" Background="#1C1C1C" BorderBrush="#343434" BorderThickness="1" CornerRadius="5" MaxWidth="860" HorizontalAlignment="Left">
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto"/>
@@ -797,9 +797,9 @@
                                                 </ListView.Style>
                                                 <ListView.ItemTemplate>
                                                     <DataTemplate>
-                                                        <Border Margin="0 3" Padding="12 9" CornerRadius="4"
+                                                        <Border Margin="0 4" Padding="14 12" CornerRadius="4" MaxWidth="840" HorizontalAlignment="Left"
                                                                 Background="#252525" BorderBrush="#393939" BorderThickness="1">
-                                                            <Grid MinHeight="50">
+                                                            <Grid MinHeight="68">
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="2*"/>
                                                                     <ColumnDefinition Width="Auto"/>
@@ -809,8 +809,8 @@
                                                                 </Grid.ColumnDefinitions>
                                                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                                                     <TextBlock Text="{Binding MappingTitle}" Foreground="White"
-                                                                               FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                                                    <TextBlock Text="{Binding MappingOutputTypeLabel}" FontSize="11"
+                                                                               FontSize="17" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                                    <TextBlock Text="{Binding MappingOutputTypeLabel}" FontSize="12.5"
                                                                                Foreground="#B0B0B0" Margin="0 3 0 0"/>
                                                                 </StackPanel>
                                                                 <ItemsControl Grid.Column="1" ItemsSource="{Binding CollapsedInputVisuals}"
@@ -821,13 +821,13 @@
                                                                             <controls:ControlGlyphControl Kind="{Binding ControlKind}"
                                                                                                           AccentBrush="{Binding ControlBrush}"
                                                                                                           Label="{Binding ControlLabel}"
-                                                                                                          Width="46" Height="32"
+                                                                                                          Width="60" Height="42"
                                                                                                           ToolTip="{Binding ToolTip}" Margin="1 0"/>
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
                                                                 </ItemsControl>
                                                                 <TextBlock Grid.Column="2" Text="→" Foreground="#AAAAAA"
-                                                                           Margin="7 0" FontSize="19" VerticalAlignment="Center"/>
+                                                                           Margin="10 0" FontSize="23" VerticalAlignment="Center"/>
                                                                 <ItemsControl Grid.Column="3" ItemsSource="{Binding CollapsedOutputVisuals}"
                                                                               VerticalAlignment="Center">
                                                                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
