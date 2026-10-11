@@ -446,6 +446,7 @@
                                     </StackPanel>
                                 </Border>
                             </Expander.Header>
+                            <StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="10 9 8 2">
                                 <Button Content="+ Button filter" Height="32" Padding="10 4"
                                         Margin="0 0 7 0" Click="CreateButtonFilter_OnClick"
@@ -505,6 +506,7 @@
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
+                            </StackPanel>
                         </Expander>
                     </Border>
 
