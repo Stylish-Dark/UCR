@@ -88,7 +88,7 @@
                     Style="{StaticResource MaterialDesignRaisedButton}"
                     Foreground="#FFFFFF"
                     materialDesign:TransitionAssist.DisableTransitions="True"
-                    ToolTip="Input: listen for a press. Output: choose a control from the graphical picker."/>
+                    ToolTip="{Binding BindingActionToolTip}"/>
             <ProgressBar Height="3" Margin="8 0 8 2" VerticalAlignment="Bottom"
                          Minimum="0" Maximum="100" Value="{Binding PreviewValue, Mode=OneWay}"
                          IsHitTestVisible="False">
@@ -120,7 +120,7 @@
                       HorizontalAlignment="Center" VerticalAlignment="Center"
                       IsChecked="{Binding Block, Mode=TwoWay}"
                       IsEnabled="{Binding CanBlock}"
-                      ToolTip="Block this physical input">
+                      ToolTip="Block this original physical input while this mapping runs (when supported)">
             <ToggleButton.Style>
                 <Style TargetType="{x:Type ToggleButton}" BasedOn="{StaticResource CompactBlockSwitch}">
                     <Setter Property="Visibility" Value="Visible"/>
