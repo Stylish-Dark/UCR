@@ -38,6 +38,22 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void FourWayDPadUsesOneOutputPerDirectionAndSupportsInversion()
+        {
+            var plugin = new ButtonsToDPad();
+            Assert.That(plugin.InputCategories.Count, Is.EqualTo(4));
+            Assert.That(plugin.OutputCategories.Count, Is.EqualTo(4));
+            Assert.That(plugin.OutputCategories.All(category => category.Category == DeviceBindingCategory.Momentary), Is.True);
+            plugin.Update(1, 0, 0, 0);
+            Assert.That(plugin.Outputs[0].CurrentValue, Is.EqualTo(1));
+            Assert.That(plugin.Outputs[1].CurrentValue, Is.EqualTo(0));
+            plugin.InvertY = true;
+            plugin.Update(1, 0, 0, 0);
+            Assert.That(plugin.Outputs[0].CurrentValue, Is.EqualTo(0));
+            Assert.That(plugin.Outputs[1].CurrentValue, Is.EqualTo(1));
+        }
+
+        [Test]
         public void ReleaseMetadataIdentifiesCurrentVersion()
         {
             var assembly = typeof(HidWizards.UCR.App).Assembly;

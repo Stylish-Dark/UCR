@@ -20,8 +20,22 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool IsAxisButtonMapping =>
             string.Equals(Plugin.PluginName, "Button to Axis", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(Plugin.PluginName, "Buttons to Axis", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(Plugin.PluginName, "Buttons to Axes", StringComparison.OrdinalIgnoreCase);
-        public bool IsFourButtonAxis => string.Equals(Plugin.PluginName, "Buttons to Axes", StringComparison.OrdinalIgnoreCase);
+            string.Equals(Plugin.PluginName, "Buttons to Axes", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Plugin.PluginName, "Buttons to DPad", StringComparison.OrdinalIgnoreCase);
+        public bool IsFourButtonAxis => string.Equals(Plugin.PluginName, "Buttons to Axes", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Plugin.PluginName, "Buttons to DPad", StringComparison.OrdinalIgnoreCase);
+        public bool IsDPadOutput => string.Equals(Plugin.PluginName, "Buttons to DPad", StringComparison.OrdinalIgnoreCase);
+        public string FourWayOutputLabel
+        {
+            get
+            {
+                if (!IsFourButtonAxis || Plugin.Outputs.Count == 0 ||
+                    Plugin.Outputs.Any(binding => !binding.IsBound)) return "Choose output";
+                if (IsDPadOutput) return "D-pad";
+                return Plugin.Outputs[0].KeyValue == 2 ? "Right stick" : "Left stick";
+            }
+        }
+        public void RefreshFourWayDestination() => OnPropertyChanged(nameof(FourWayOutputLabel));
         public bool IsTwoButtonAxis => string.Equals(Plugin.PluginName, "Buttons to Axis", StringComparison.OrdinalIgnoreCase);
         public Visibility AxisButtonModeVisibility => IsAxisButtonMapping ? Visibility.Visible : Visibility.Collapsed;
         public bool CanChangeAxisButtonMode => MappingViewModel.ButtonsEnabled &&

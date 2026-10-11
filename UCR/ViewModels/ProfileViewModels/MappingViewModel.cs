@@ -38,6 +38,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public string ToolTip { get; set; }
     }
 
+    public sealed class FourWayOutputChoice
+    {
+        public Guid DeviceConfigurationGuid { get; set; }
+        public string DeviceTitle { get; set; }
+        public string Destination { get; set; }
+        public bool IsDPad { get; set; }
+        // Input/output key descriptors are resolved before any binding is changed.
+        public DeviceBindingInfo[] Controls { get; set; }
+    }
+
     public sealed class QuickBindingOption
     {
         public string Title { get; set; }
@@ -610,14 +620,177 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return true;
         }
 
+        // One four-way destination may consist of two analogue axes or four D-pad buttons.
+        // Only offer a choice after verifying *all* its constituent controls exist.
+        public List<FourWayOutputChoice> GetFourWayOutputChoices()
+        {
+            var result = new List<FourWayOutputChoice>();
+            var profile = ProfileViewModel.Profile;
+            foreach (var device in profile.GetDeviceConfigurationList(DeviceIoType.Output))
+            {
+                if (device?.Device == null || !string.Equals(device.Device.ProviderName,
+                    "Core_ViGEm", StringComparison.OrdinalIgnoreCase)) continue;
+                var nodes = FlattenBindingNodes(profile.Context.DevicesManager.GetDeviceBindingMenu(
+                    device.Device, DeviceIoType.Output))
+                    .Where(node => node?.DeviceBindingInfo != null).ToList();
+                var axes = nodes.Where(node => node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Range &&
+                    node.DeviceBindingInfo.KeyValue >= 0 && node.DeviceBindingInfo.KeyValue <= 3)
+                    .GroupBy(node => node.DeviceBindingInfo.KeyType)
+                    .FirstOrDefault(group => Enumerable.Range(0, 4).All(index =>
+                        group.Any(node => node.DeviceBindingInfo.KeyValue == index)))?.ToList();
+                if (axes != null)
+                {
+                    foreach (var side in new[] { 0, 2 })
+                    {
+                        result.Add(new FourWayOutputChoice
+                        {
+                            DeviceConfigurationGuid = device.Guid,
+                            DeviceTitle = device.GetFullTitleForProfile(profile),
+                            Destination = side == 0 ? "Left stick" : "Right stick",
+                            Controls = new[] { axes.First(node => node.DeviceBindingInfo.KeyValue == side).DeviceBindingInfo,
+                                axes.First(node => node.DeviceBindingInfo.KeyValue == side + 1).DeviceBindingInfo }
+                        });
+                    }
+                }
+                var dpad = FindDPadControls(device, DeviceIoType.Output);
+                if (dpad != null)
+                    result.Add(new FourWayOutputChoice
+                    {
+                        DeviceConfigurationGuid = device.Guid,
+                        DeviceTitle = device.GetFullTitleForProfile(profile),
+                        Destination = "D-pad", IsDPad = true,
+                        Controls = dpad
+                    });
+            }
+            return result;
+        }
+
+        // Stored order matches the four input directions: Up, Down, Left, Right.
+        private DeviceBindingInfo[] FindDPadControls(DeviceConfiguration device, DeviceIoType ioType)
+        {
+            var profile = ProfileViewModel.Profile;
+            if (device?.Device == null) return null;
+            var nodes = FlattenBindingNodes(profile.Context.DevicesManager.GetDeviceBindingMenu(
+                device.Device, ioType)).Where(node => node?.DeviceBindingInfo != null &&
+                    node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary).ToList();
+            var dpad = nodes.Where(node =>
+            {
+                var info = node.DeviceBindingInfo;
+                var candidate = new DeviceBinding
+                {
+                    Profile = profile, DeviceIoType = ioType,
+                    DeviceBindingCategory = DeviceBindingCategory.Momentary,
+                    DeviceConfigurationGuid = device.Guid, IsBound = true,
+                    KeyType = info.KeyType, KeyValue = info.KeyValue, KeySubValue = info.KeySubValue
+                };
+                return DeviceVisualCatalog.DescribeBinding(candidate,
+                    DeviceBindingCategory.Momentary, profile).ControlKind == ControlVisualKind.DPad;
+            }).ToList();
+            if (!Enumerable.Range(0, 4).All(index => dpad.Any(node => node.DeviceBindingInfo.KeyValue == index)))
+                return null;
+            return new[] { 0, 2, 3, 1 }
+                .Select(index => dpad.First(node => node.DeviceBindingInfo.KeyValue == index).DeviceBindingInfo)
+                .ToArray();
+        }
+
+        public bool ApplyFourWayOutput(PluginViewModel axis, FourWayOutputChoice choice)
+        {
+            if (!ButtonsEnabled || axis?.IsFourButtonAxis != true || choice?.Controls == null ||
+                Plugins.Count != 1 || Mapping.Plugins.Count != 1) return false;
+            var destination = ProfileViewModel.Profile.GetDeviceConfiguration(
+                DeviceIoType.Output, choice.DeviceConfigurationGuid);
+            if (destination?.Device == null ||
+                choice.Controls.Length != (choice.IsDPad ? 4 : 2)) return false;
+            var typeName = choice.IsDPad ? "ButtonsToDPad" : "ButtonsToAxes";
+            var type = axis.Plugin.GetType().Assembly.GetType(axis.Plugin.GetType().Namespace + "." + typeName);
+            if (type == null || !typeof(Plugin).IsAssignableFrom(type)) return false;
+            var replace = axis.Plugin.GetType() != type;
+            var plugin = replace ? (Plugin)Activator.CreateInstance(type) : axis.Plugin;
+            if (replace)
+            {
+                plugin.SetProfile(ProfileViewModel.Profile);
+                plugin.Filters = axis.Plugin.Filters.ToList();
+                foreach (var propertyName in new[] { "InvertX", "InvertY" })
+                {
+                    var source = axis.Plugin.GetType().GetProperty(propertyName);
+                    var target = type.GetProperty(propertyName);
+                    if (source != null && target != null)
+                        target.SetValue(plugin, source.GetValue(axis.Plugin, null), null);
+                }
+            }
+            if (plugin.Outputs.Count != choice.Controls.Length) return false;
+            for (var i = 0; i < plugin.Outputs.Count; i++)
+            {
+                var info = choice.Controls[i];
+                var binding = plugin.Outputs[i];
+                binding.DeviceBindingCategory = plugin.OutputCategories[i].Category;
+                binding.SetDeviceConfigurationGuid(destination.Guid, false);
+                binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+            }
+            if (replace)
+            {
+                foreach (var oldBinding in axis.DeviceBindings)
+                    oldBinding.PropertyChanged -= SummaryBindingOnPropertyChanged;
+                axis.Dispose();
+                Mapping.Plugins[0] = plugin;
+                var newAxis = new PluginViewModel(this, plugin);
+                Plugins[0] = newAxis;
+                foreach (var output in newAxis.DeviceBindings) SubscribeSummaryBinding(output);
+            }
+            else
+            {
+                foreach (var output in axis.DeviceBindings) output.RefreshDeviceList();
+                axis.RefreshFourWayDestination();
+            }
+            ProfileViewModel.Profile.Context.ContextChanged();
+            RefreshHeaderState();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
+        public bool ApplyControllerDPadPreset(out string error)
+        {
+            error = null;
+            if (!ButtonsEnabled || Mapping.Plugins.Count != 1 ||
+                !(Plugins[0].IsFourButtonAxis) || Mapping.DeviceBindings.Count != 4)
+            {
+                error = "Select a four-way mapping first.";
+                return false;
+            }
+            var profile = ProfileViewModel.Profile;
+            var devices = profile.GetDeviceConfigurationList(DeviceIoType.Input);
+            var preferred = Mapping.DeviceBindings[0].DeviceConfigurationGuid;
+            var primary = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input)?.Guid;
+            var choice = devices.Select(device => new { Device = device, Controls = FindDPadControls(device, DeviceIoType.Input) })
+                .Where(item => item.Controls != null).ToList();
+            var selected = choice.FirstOrDefault(item => item.Device.Guid == preferred)
+                ?? choice.FirstOrDefault(item => item.Device.Guid == primary)
+                ?? choice.FirstOrDefault();
+            if (selected == null)
+            {
+                error = "Add a controller with a D-pad to this profile's input devices first.";
+                return false;
+            }
+            for (var i = 0; i < 4; i++)
+            {
+                var info = selected.Controls[i];
+                var binding = Mapping.DeviceBindings[i];
+                binding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
+                binding.SetDeviceConfigurationGuid(selected.Device.Guid, false);
+                binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+            }
+            foreach (var binding in DeviceBindings) binding.RefreshDeviceList();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
         // Apply all four directions as a single transaction. Resolve every key
         // before changing a binding, so missing keys cannot partially apply.
         public bool ApplyKeyboardAxisPreset(string preset, out string error)
         {
             error = null;
             if (!ButtonsEnabled || Mapping.Plugins.Count != 1 ||
-                !string.Equals(Mapping.Plugins[0].PluginName, "Buttons to Axes",
-                    StringComparison.OrdinalIgnoreCase) || Mapping.DeviceBindings.Count != 4)
+                !Plugins[0].IsFourButtonAxis || Mapping.DeviceBindings.Count != 4)
             {
                 error = "Select a four-way joystick mapping first.";
                 return false;
@@ -738,7 +911,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var selected = compatible.FirstOrDefault(device => device.Guid == preference)
                     ?? compatible.FirstOrDefault(device => device.Guid == primary?.Guid)
                     ?? compatible.FirstOrDefault();
-                if (selected != null)
+                if (selected != null && (!plugin.Outputs[index].IsBound ||
+                    plugin.Outputs[index].DeviceConfigurationGuid != selected.Guid))
                     plugin.Outputs[index].SetDeviceConfigurationGuid(selected.Guid, false);
             }
         }
