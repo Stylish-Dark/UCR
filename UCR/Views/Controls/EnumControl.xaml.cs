@@ -55,7 +55,11 @@ namespace HidWizards.UCR.Views.Controls
 
         private void EnumComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            PluginProperty.Property = ((ComboBoxItemViewModel) EnumComboBox.SelectedItem).Value;
+            // WPF clears the selection while ItemsSource is replaced in PopulateEnums.
+            // That notification is not a user selection and must not crash the dispatcher.
+            var selected = EnumComboBox.SelectedItem as ComboBoxItemViewModel;
+            if (PluginProperty == null || selected == null) return;
+            PluginProperty.Property = selected.Value;
         }
     }
 }
