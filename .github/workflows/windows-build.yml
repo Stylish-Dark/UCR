@@ -102,7 +102,11 @@ jobs:
           $revision = ([int]$env:GITHUB_RUN_NUMBER * 2) + 1
           if ($revision -gt 65535) { throw 'UCR build revision exceeds the assembly version range.' }
           $gitVersionConfig = Get-Content -LiteralPath '.\GitVersion.yml' -Raw
-          $versionMatch = [regex]::Match($gitVersionConfig, '(?m)^next-version:\s*(\d+\.\d+\.\d+)\s*
+          $versionMatch = [regex]::Match($gitVersionConfig, '(?m)^next-version:\s*(\d+\.\d+\.\d+)')
+          if (-not $versionMatch.Success) {
+            throw 'Cannot derive UCR release version from GitVersion.yml.'
+          }
+          $baseVersion = $versionMatch.Groups[1].Value
           $file = '.\\UCR\\Properties\\AssemblyInfo.cs'
           $source = [System.IO.File]::ReadAllText($file)
           $source = [regex]::Replace($source, 'AssemblyFileVersion\("[^"]+"\)',
@@ -116,7 +120,12 @@ jobs:
         shell: pwsh
         run: |
           $gitVersionConfig = Get-Content -LiteralPath '.\GitVersion.yml' -Raw
-          $versionMatch = [regex]::Match($gitVersionConfig, '(?m)^next-version:\s*(\d+\.\d+\.\d+)\s*
+          $versionMatch = [regex]::Match($gitVersionConfig, '(?m)^next-version:\s*(\d+\.\d+\.\d+)')
+          if (-not $versionMatch.Success) {
+            throw 'Cannot derive UCR release version from GitVersion.yml.'
+          }
+          $baseVersion = $versionMatch.Groups[1].Value
+          $common = @(
             "/m",
             "/p:Configuration=Release",
             "/p:SolutionDir=$env:GITHUB_WORKSPACE\",
