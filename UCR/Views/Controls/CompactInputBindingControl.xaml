@@ -120,7 +120,8 @@
                       HorizontalAlignment="Center" VerticalAlignment="Center"
                       IsChecked="{Binding Block, Mode=TwoWay}"
                       IsEnabled="{Binding CanBlock}"
-                      ToolTip="Block this original physical input while this mapping runs (when supported)">
+                      ToolTip="Block original physical input from reaching the game (supported input providers only)"
+                      ToolTipService.ShowOnDisabled="True">
             <ToggleButton.Style>
                 <Style TargetType="{x:Type ToggleButton}" BasedOn="{StaticResource CompactBlockSwitch}">
                     <Setter Property="Visibility" Value="Visible"/>
