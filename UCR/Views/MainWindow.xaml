@@ -420,7 +420,9 @@
                                 </DataTemplate>
                             </TreeView.ItemTemplate>
                         </TreeView>
-                        <Border Grid.Row="3" Margin="8 7 8 8" Padding="9 8" Background="#202020"
+                        <!-- Normal list when no profile is open; the selected profile's
+                             actual device editor docks here below Profiles. -->
+                        <Border x:Name="ProfileDeviceOverview" Grid.Row="3" Margin="8 7 8 8" Padding="9 8" Background="#202020"
                                 BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
                             <StackPanel>
                                 <TextBlock Text="PROFILE DEVICES" FontSize="11" FontWeight="Bold"
@@ -474,6 +476,11 @@
                                 </ScrollViewer>
                             </StackPanel>
                         </Border>
+                        <ContentControl x:Name="ProfileDeviceEditorHost" Grid.Row="3"
+                                        Visibility="Collapsed" Margin="0"
+                                        MaxHeight="280"
+                                        HorizontalContentAlignment="Stretch"
+                                        VerticalContentAlignment="Bottom"/>
                     </Grid>
                 </materialDesign:Card>
 
