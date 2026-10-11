@@ -74,6 +74,52 @@ namespace HidWizards.UCR.Views.ProfileViews
             ProfilePageToolbar.Visibility = Visibility.Collapsed;
         }
 
+        private Panel _deviceOriginalParent;
+        private ContentControl _deviceDock;
+        private Thickness _deviceOriginalMargin;
+        private double _deviceOriginalScrollMaxHeight;
+
+        // Reuse the actual device-management controls beneath the profile list.
+        // This is not a duplicate readonly list: add, remove and detection remain wired.
+        public void DockProfileDevices(ContentControl target)
+        {
+            if (_disposed || target == null) return;
+            if (ReferenceEquals(target, _deviceDock)) return;
+            UndockProfileDevices();
+
+            var originalParent = ProfileDevicesPanel.Parent as Panel;
+            if (originalParent == null) return;
+            _deviceOriginalParent = originalParent;
+            _deviceOriginalMargin = ProfileDevicesPanel.Margin;
+            _deviceOriginalScrollMaxHeight = ProfileDevicesScrollViewer.MaxHeight;
+            originalParent.Children.Remove(ProfileDevicesPanel);
+
+            ProfileDevicesPanel.Margin = new Thickness(8, 7, 8, 8);
+            ProfileDevicesPanel.Visibility = Visibility.Visible;
+            ProfileDevicesPanel.DataContext = ProfileViewModel;
+            ProfileDevicesScrollViewer.MaxHeight = 205;
+            target.Content = ProfileDevicesPanel;
+            _deviceDock = target;
+            ShowInspectorTab(InspectorTabs.SelectedIndex);
+        }
+
+        public void UndockProfileDevices()
+        {
+            if (_deviceDock == null) return;
+            _deviceDock.Content = null;
+            _deviceDock = null;
+            ProfileDevicesPanel.Margin = _deviceOriginalMargin;
+            ProfileDevicesScrollViewer.MaxHeight = _deviceOriginalScrollMaxHeight;
+            ProfileDevicesPanel.ClearValue(DataContextProperty);
+            if (_deviceOriginalParent != null)
+            {
+                Grid.SetRow(ProfileDevicesPanel, 2);
+                _deviceOriginalParent.Children.Add(ProfileDevicesPanel);
+                _deviceOriginalParent = null;
+            }
+            if (!_disposed) ShowInspectorTab(InspectorTabs.SelectedIndex);
+        }
+
         public event EventHandler BackRequested;
         private bool _disposed;
 
@@ -957,7 +1003,8 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (_disposed || SidebarGrid == null || SelectedMappingInspector == null
                 || ProfileOptionsHost == null) return;
             SelectedMappingInspector.Visibility = index == 0 ? Visibility.Visible : Visibility.Collapsed;
-            SidebarGrid.Visibility = index == 1 || index == 2 ? Visibility.Visible : Visibility.Collapsed;
+            SidebarGrid.Visibility = (index == 1 && _deviceDock == null) || index == 2
+                ? Visibility.Visible : Visibility.Collapsed;
             ProfileOptionsHost.Visibility = index == 3 ? Visibility.Visible : Visibility.Collapsed;
             MappingToolboxPanel.Visibility = Visibility.Collapsed;
             MappingFiltersPanel.Visibility = index == 2 ? Visibility.Visible : Visibility.Collapsed;
