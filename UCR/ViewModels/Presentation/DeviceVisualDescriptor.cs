@@ -728,6 +728,9 @@ namespace HidWizards.UCR.ViewModels.Presentation
         private static string ExtractLeaf(string boundName)
         {
             if (string.IsNullOrWhiteSpace(boundName)) return string.Empty;
+            // A comma key is serialized by the provider as "Keys,,".
+            // Removing empty comma-delimited segments falsely identifies it as "Keys".
+            if (boundName.TrimEnd().EndsWith(",,", StringComparison.Ordinal)) return ",";
             var parts = boundName.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
             return parts.Length == 0 ? boundName.Trim() : parts[parts.Length - 1].Trim();
         }
