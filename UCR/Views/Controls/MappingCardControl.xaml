@@ -353,6 +353,51 @@
                                                     ToolTip="Remove this output" ToolTipService.ShowOnDisabled="True"
                                                     Style="{StaticResource UcrDeleteCrossButton}"/>
                                         </Grid>
+                                        <!-- Compact workspace must expose the same filter and plugin-property
+                                             editors as the classic expanded plugin UI. -->
+                                        <StackPanel Margin="2 6 2 0">
+                                            <Button Content="+ Add filter" HorizontalAlignment="Left"
+                                                    Height="30" Padding="8 2"
+                                                    Click="AddOutputFilter_OnClick"
+                                                    IsEnabled="{Binding CanAddFilter}"
+                                                    Foreground="#FFFFFF" Background="#353535"
+                                                    BorderBrush="#555555" BorderThickness="1"
+                                                    ToolTip="Assign a defined filter to this output"/>
+                                            <ItemsControl ItemsSource="{Binding Filters}" Margin="0 4 0 0">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal" Margin="0 0 6 3">
+                                                            <Button Content="{Binding Name}" Click="ToggleOutputFilter_OnClick"
+                                                                    Height="28" Padding="8 1"
+                                                                    IsEnabled="{Binding IsEnabled}"
+                                                                    Foreground="#FFFFFF" Background="#353535"
+                                                                    BorderBrush="#5C5C5C" BorderThickness="1"
+                                                                    ToolTip="Toggle filter inversion"/>
+                                                            <Button Content="×" Click="RemoveOutputFilter_OnClick"
+                                                                    Height="28" Width="27" Padding="0"
+                                                                    IsEnabled="{Binding IsEnabled}"
+                                                                    Foreground="#FF6868" FontSize="19"
+                                                                    Background="#353535" BorderBrush="#5C5C5C"
+                                                                    BorderThickness="1" ToolTip="Remove filter"/>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <ItemsControl ItemsSource="{Binding PluginPropertyGroups}" Margin="0 5 0 0">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Visibility="{Binding ShowPropertyList}">
+                                                            <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold"
+                                                                       Foreground="#DADADA" Margin="0 5 0 3"/>
+                                                            <plugin:PluginPropertyListControl DataContext="{Binding}"/>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
