@@ -1006,6 +1006,8 @@ namespace HidWizards.UCR.Views.ProfileViews
             SidebarGrid.Visibility = (index == 1 && _deviceDock == null) || index == 2
                 ? Visibility.Visible : Visibility.Collapsed;
             ProfileOptionsHost.Visibility = index == 3 ? Visibility.Visible : Visibility.Collapsed;
+            DockedDevicesNotice.Visibility = index == 1 && _deviceDock != null
+                ? Visibility.Visible : Visibility.Collapsed;
             MappingToolboxPanel.Visibility = Visibility.Collapsed;
             MappingFiltersPanel.Visibility = index == 2 ? Visibility.Visible : Visibility.Collapsed;
             ProfileDevicesPanel.Visibility = index == 1 ? Visibility.Visible : Visibility.Collapsed;
