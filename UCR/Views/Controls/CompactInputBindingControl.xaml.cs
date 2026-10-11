@@ -219,6 +219,39 @@ namespace HidWizards.UCR.Views.Controls
             }
         }
 
+        private HidWizards.UCR.Core.Models.Plugin FindButtonToAxisPlugin()
+        {
+            if (DeviceBinding?.Profile == null) return null;
+            return DeviceBinding.Profile.GetAllMappings()
+                .Where(mapping => mapping?.Plugins != null)
+                .SelectMany(mapping => mapping.Plugins)
+                .FirstOrDefault(plugin =>
+                    string.Equals(plugin?.PluginName, "Button to Axis", StringComparison.OrdinalIgnoreCase)
+                    && plugin.Outputs != null
+                    && plugin.Outputs.Any(binding => binding.Guid == DeviceBinding.Guid));
+        }
+
+        private bool IsButtonToAxisOutput()
+        {
+            return FindButtonToAxisPlugin() != null;
+        }
+
+        private void SetButtonToAxisDirection(int percent)
+        {
+            var plugin = FindButtonToAxisPlugin();
+            var property = plugin?.GetType().GetProperty("RangePressed");
+            if (property == null || !property.CanWrite) return;
+            property.SetValue(plugin, (double)percent, null);
+            DeviceBinding.Profile.Context.ContextChanged();
+        }
+
+        private void ApplyOutputControl(Guid configuration, DeviceBindingInfo info)
+        {
+            DeviceBinding.SetDeviceConfigurationGuid(configuration);
+            DeviceBinding.DeviceBindingCategory = info.DeviceBindingCategory;
+            DeviceBinding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+        }
+
         private void ShowOutputPicker(FrameworkElement target)
         {
             var config = GetSelectedDeviceConfiguration();
@@ -313,6 +346,44 @@ namespace HidWizards.UCR.Views.Controls
                     TextTrimming = TextTrimming.CharacterEllipsis,
                     MaxWidth = 122
                 });
+                // A button driving an analog axis needs a direction, not merely
+                // an axis name. Expose negative/positive choices for this plugin.
+                var signedAxis = category == DeviceBindingCategory.Range && IsButtonToAxisOutput();
+                if (signedAxis)
+                {
+                    var axisName = node.Title ?? "Axis";
+                    var isVertical = axisName.IndexOf("Y", StringComparison.OrdinalIgnoreCase) >= 0
+                        || axisName.IndexOf("Vertical", StringComparison.OrdinalIgnoreCase) >= 0;
+                    var negative = new Button
+                    {
+                        Content = axisName + (isVertical ? "  Up (−)" : "  Left (−)"),
+                        Width = 208, Height = 40, Margin = new Thickness(2),
+                        Background = new SolidColorBrush(Color.FromRgb(42, 42, 42)),
+                        Foreground = Brushes.White, BorderBrush = Brushes.DimGray
+                    };
+                    var positive = new Button
+                    {
+                        Content = axisName + (isVertical ? "  Down (+)" : "  Right (+)"),
+                        Width = 208, Height = 40, Margin = new Thickness(2),
+                        Background = new SolidColorBrush(Color.FromRgb(42, 42, 42)),
+                        Foreground = Brushes.White, BorderBrush = Brushes.DimGray
+                    };
+                    negative.Click += (sender, args) =>
+                    {
+                        ApplyOutputControl(config.Guid, info);
+                        SetButtonToAxisDirection(-100);
+                        popup.IsOpen = false;
+                    };
+                    positive.Click += (sender, args) =>
+                    {
+                        ApplyOutputControl(config.Guid, info);
+                        SetButtonToAxisDirection(100);
+                        popup.IsOpen = false;
+                    };
+                    groupGrid.Children.Add(negative);
+                    groupGrid.Children.Add(positive);
+                    continue;
+                }
                 var button = new Button
                 {
                     Content = contents,
