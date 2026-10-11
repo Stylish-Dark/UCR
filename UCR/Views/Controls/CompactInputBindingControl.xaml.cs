@@ -236,12 +236,19 @@ namespace HidWizards.UCR.Views.Controls
             return FindButtonToAxisPlugin() != null;
         }
 
-        private void SetButtonToAxisDirection(int percent)
+        private void SetButtonToAxisDirection(int percent, bool trigger = false)
         {
             var plugin = FindButtonToAxisPlugin();
             var property = plugin?.GetType().GetProperty("RangePressed");
             if (property == null || !property.CanWrite) return;
             property.SetValue(plugin, (double)percent, null);
+            if (trigger)
+            {
+                // Trigger is a one-direction analog control. Neutral must be released,
+                // rather than an arbitrary Left/Right half-axis direction.
+                plugin.GetType().GetProperty("Range")?.SetValue(plugin, -100.0, null);
+                plugin.GetType().GetProperty("Initialize")?.SetValue(plugin, true, null);
+            }
             DeviceBinding.Profile.Context.ContextChanged();
         }
 
@@ -351,19 +358,50 @@ namespace HidWizards.UCR.Views.Controls
                 var signedAxis = category == DeviceBindingCategory.Range && IsButtonToAxisOutput();
                 if (signedAxis)
                 {
-                    var axisName = node.Title ?? "Axis";
-                    var isVertical = axisName.IndexOf("Y", StringComparison.OrdinalIgnoreCase) >= 0
-                        || axisName.IndexOf("Vertical", StringComparison.OrdinalIgnoreCase) >= 0;
+                    var axisName = string.IsNullOrWhiteSpace(visual.ControlLabel)
+                        ? node.Title ?? "Axis" : visual.ControlLabel;
+                    var upper = axisName.Trim().ToUpperInvariant();
+                    var isTrigger = visual.ControlKind == ControlVisualKind.Trigger ||
+                        upper == "LT" || upper == "RT" || upper == "L2" || upper == "R2" ||
+                        (node.Title ?? "").IndexOf("trigger", StringComparison.OrdinalIgnoreCase) >= 0;
+                    if (isTrigger)
+                    {
+                        var triggerButton = new Button
+                        {
+                            Content = axisName + "  —  Pull trigger",
+                            Width = 208, Height = 44, Margin = new Thickness(2),
+                            Background = new SolidColorBrush(Color.FromRgb(42, 42, 42)),
+                            Foreground = Brushes.White, BorderBrush = Brushes.DimGray,
+                            ToolTip = "Button pressed: trigger fully pulled. Released: trigger neutral."
+                        };
+                        triggerButton.Click += (sender, args) =>
+                        {
+                            ApplyOutputControl(config.Guid, info);
+                            SetButtonToAxisDirection(100, true);
+                            popup.IsOpen = false;
+                        };
+                        groupGrid.Children.Add(triggerButton);
+                        continue;
+                    }
+
+                    var isVertical = upper == "LY" || upper == "RY" ||
+                        axisName.EndsWith(" Y", StringComparison.OrdinalIgnoreCase) ||
+                        (node.Title ?? "").IndexOf("vertical", StringComparison.OrdinalIgnoreCase) >= 0;
+                    var isHorizontal = upper == "LX" || upper == "RX" ||
+                        axisName.EndsWith(" X", StringComparison.OrdinalIgnoreCase) ||
+                        (node.Title ?? "").IndexOf("horizontal", StringComparison.OrdinalIgnoreCase) >= 0;
+                    var negativeLabel = isVertical ? "Up (−)" : isHorizontal ? "Left (−)" : "Negative (−)";
+                    var positiveLabel = isVertical ? "Down (+)" : isHorizontal ? "Right (+)" : "Positive (+)";
                     var negative = new Button
                     {
-                        Content = axisName + (isVertical ? "  Up (−)" : "  Left (−)"),
+                        Content = axisName + "  " + negativeLabel,
                         Width = 208, Height = 40, Margin = new Thickness(2),
                         Background = new SolidColorBrush(Color.FromRgb(42, 42, 42)),
                         Foreground = Brushes.White, BorderBrush = Brushes.DimGray
                     };
                     var positive = new Button
                     {
-                        Content = axisName + (isVertical ? "  Down (+)" : "  Right (+)"),
+                        Content = axisName + "  " + positiveLabel,
                         Width = 208, Height = 40, Margin = new Thickness(2),
                         Background = new SolidColorBrush(Color.FromRgb(42, 42, 42)),
                         Foreground = Brushes.White, BorderBrush = Brushes.DimGray
