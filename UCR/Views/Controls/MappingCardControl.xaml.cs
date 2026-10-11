@@ -412,6 +412,21 @@ namespace HidWizards.UCR.Views.Controls
             menu.IsOpen = true;
         }
 
+        private void AddOutputFilter_OnClick(object sender, RoutedEventArgs e)
+        {
+            ((sender as FrameworkElement)?.DataContext as PluginViewModel)?.AddFilter();
+        }
+
+        private void ToggleOutputFilter_OnClick(object sender, RoutedEventArgs e)
+        {
+            ((sender as FrameworkElement)?.DataContext as FilterViewModel)?.ToggleFilter();
+        }
+
+        private void RemoveOutputFilter_OnClick(object sender, RoutedEventArgs e)
+        {
+            ((sender as FrameworkElement)?.DataContext as FilterViewModel)?.RemoveFilter();
+        }
+
         private void RemoveOutput_OnClick(object sender, RoutedEventArgs e)
         {
             var plugin = (sender as FrameworkElement)?.DataContext as PluginViewModel;
