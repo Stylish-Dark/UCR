@@ -34,3 +34,4 @@ namespace HidWizards.UCR.Plugins.Remapper
             WriteOutput(1, InvertY ? Functions.Invert(y) : y);
         }
     }
+}
