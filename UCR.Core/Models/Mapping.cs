@@ -321,7 +321,10 @@ namespace HidWizards.UCR.Core.Models
             {
                 foreach (var _ in plugin.InputCategories)
                 {
-                    DeviceBindings.Add(new DeviceBinding(Update, Profile, DeviceIoType.Input));
+                    DeviceBindings.Add(new DeviceBinding(Update, Profile, DeviceIoType.Input)
+                    {
+                        DeviceConfigurationGuid = Profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input)?.Guid ?? Guid.Empty
+                    });
                 }
             }
 

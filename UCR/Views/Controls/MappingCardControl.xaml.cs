@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -418,14 +419,6 @@ namespace HidWizards.UCR.Views.Controls
             menu.IsOpen = true;
         }
 
-        private bool ConfirmDiscardSecondAxis(PluginViewModel axis)
-        {
-            if (axis?.IsFourButtonAxis != true) return true;
-            return DarkMessageBox.Show(
-                "Changing to a single-axis mapping will remove the joystick Y-axis output. Continue?",
-                "Change axis mode", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
-        }
-
         private void AxisFourButtons_OnClick(object sender, RoutedEventArgs e)
         {
             var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
@@ -434,7 +427,7 @@ namespace HidWizards.UCR.Views.Controls
 
         private void AxisKeyboardPreset_OnClick(object sender, RoutedEventArgs e)
         {
-            var mapping = DataContext as MappingViewModel;
+            var mapping = ((sender as Button)?.DataContext as PluginViewModel)?.MappingViewModel;
             var preset = (sender as Button)?.Tag as string;
             if (mapping == null || string.IsNullOrEmpty(preset)) return;
             string error;
@@ -442,16 +435,89 @@ namespace HidWizards.UCR.Views.Controls
                 DarkMessageBox.Show(error, "Keyboard preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
+        private void AxisStickInputPreset_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mapping = DataContext as MappingViewModel;
+            int index;
+            if (mapping == null || !int.TryParse((sender as Button)?.Tag as string, out index)) return;
+            string error;
+            if (!mapping.ApplyControllerStickInputPreset(index, out error) && !string.IsNullOrEmpty(error))
+                DarkMessageBox.Show(error, "Controller input preset unavailable", MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+        }
+
+        private void AxisControllerPreset_OnClick(object sender, RoutedEventArgs e)
+        {
+            var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
+            if (axis?.MappingViewModel == null) return;
+            string error;
+            if (!axis.MappingViewModel.ApplyControllerDPadPreset(out error) && !string.IsNullOrEmpty(error))
+                DarkMessageBox.Show(error, "Controller preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void AxisInvertX_OnClick(object sender, RoutedEventArgs e) => SetFourWayInversion(sender, "InvertX");
+        private void AxisInvertY_OnClick(object sender, RoutedEventArgs e) => SetFourWayInversion(sender, "InvertY");
+
+        private static void SetFourWayInversion(object sender, string propertyName)
+        {
+            var toggle = sender as ToggleButton;
+            var axis = toggle?.DataContext as PluginViewModel;
+            if (axis?.IsFourButtonAxis != true || axis.MappingViewModel?.ButtonsEnabled != true) return;
+            var property = axis.Plugin.GetType().GetProperty(propertyName);
+            if (property == null || property.PropertyType != typeof(bool) || !property.CanWrite) return;
+            property.SetValue(axis.Plugin, toggle.IsChecked == true, null);
+            axis.Plugin.ContextChanged();
+        }
+
+        private void FourWayOutput_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var axis = button?.DataContext as PluginViewModel;
+            if (axis?.IsFourButtonAxis != true || axis.MappingViewModel?.ButtonsEnabled != true) return;
+            var options = axis.MappingViewModel.GetFourWayOutputChoices();
+            var menu = CreateDarkContextMenu(button);
+            menu.Placement = PlacementMode.Bottom;
+            foreach (var group in options.GroupBy(option => option.DeviceTitle))
+            {
+                var deviceItem = new MenuItem
+                {
+                    Header = group.Key,
+                    Foreground = Brushes.White,
+                    Background = Brushes.Transparent
+                };
+                foreach (var option in group)
+                {
+                    var chosen = option;
+                    var item = new MenuItem
+                    {
+                        Header = option.Destination,
+                        Foreground = Brushes.White,
+                        Background = Brushes.Transparent,
+                        Padding = new Thickness(10, 6, 12, 6)
+                    };
+                    item.Click += (s, args) => axis.MappingViewModel.ApplyFourWayOutput(axis, chosen);
+                    deviceItem.Items.Add(item);
+                }
+                menu.Items.Add(deviceItem);
+            }
+            if (options.Count == 0) menu.Items.Add(new MenuItem
+            {
+                Header = "No compatible controller outputs in this profile",
+                IsEnabled = false, Foreground = Brushes.LightGray
+            });
+            menu.IsOpen = true;
+        }
+
         private void AxisOneButton_OnClick(object sender, RoutedEventArgs e)
         {
             var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
-            if (ConfirmDiscardSecondAxis(axis)) axis?.MappingViewModel.ChangeAxisButtonMode(axis, false);
+            axis?.MappingViewModel.ChangeAxisButtonMode(axis, false);
         }
 
         private void AxisTwoButtons_OnClick(object sender, RoutedEventArgs e)
         {
             var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
-            if (ConfirmDiscardSecondAxis(axis)) axis?.MappingViewModel.ChangeAxisButtonMode(axis, true);
+            axis?.MappingViewModel.ChangeAxisButtonMode(axis, true);
         }
 
         private void AddOutputFilter_OnClick(object sender, RoutedEventArgs e)

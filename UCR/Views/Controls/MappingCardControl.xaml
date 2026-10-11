@@ -166,6 +166,102 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
+                    <StackPanel DataContext="{Binding Plugins[0]}">
+                                        <!-- Input mode belongs with input binding, never in output selection. -->
+                                        <WrapPanel Orientation="Horizontal" Margin="4 5 0 2"
+                                                    Visibility="{Binding AxisButtonModeVisibility}">
+                                            <TextBlock Text="Axis input mode" Foreground="#D8D8D8"
+                                                       VerticalAlignment="Center" Margin="0 0 10 0"
+                                                       ToolTip="One button: pressed/released axis values. Two buttons: positive/negative directions."/>
+                                            <Button Content="1 button" Height="30" Padding="10 2"
+                                                    Margin="0 0 4 0" Click="AxisOneButton_OnClick"
+                                                    IsEnabled="{Binding CanChangeAxisButtonMode}"
+                                                    ToolTip="Use one button and set axis values for press and release"
+                                                    Foreground="White">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                                                        <Setter Property="Background" Value="#353535"/>
+                                                        <Setter Property="BorderBrush" Value="#666666"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsOneButtonAxis}" Value="True">
+                                                                <Setter Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                            <Button Content="2 buttons" Height="30" Padding="10 2"
+                                                    Click="AxisTwoButtons_OnClick"
+                                                    IsEnabled="{Binding CanChangeAxisButtonMode}"
+                                                    ToolTip="Use separate buttons for the positive and negative axis directions"
+                                                    Foreground="White" Margin="0 0 4 0">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                                                        <Setter Property="Background" Value="#353535"/>
+                                                        <Setter Property="BorderBrush" Value="#666666"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsTwoButtonAxis}" Value="True">
+                                                                <Setter Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                             <Button Content="4 ways" Height="30" Padding="10 2" Click="AxisFourButtons_OnClick"
+                                                     IsEnabled="{Binding CanChangeAxisButtonMode}" ToolTip="Control a full X/Y joystick using four buttons"
+                                                     Foreground="White">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                                                        <Setter Property="Background" Value="#353535"/>
+                                                        <Setter Property="BorderBrush" Value="#666666"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFourButtonAxis}" Value="True">
+                                                                <Setter Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+
+                                        </WrapPanel>
+                                         <StackPanel Margin="5 6 0 6" Visibility="{Binding FourButtonPresetVisibility}">
+                                             <TextBlock Text="Keyboard presets" Foreground="#D8D8D8" FontWeight="SemiBold" Margin="0 0 0 5"/>
+                                             <WrapPanel>
+                                                 <Button Content="WASD" Tag="WASD" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4" ToolTip="W up, S down, A left, D right"/>
+                                                 <Button Content="Arrows" Tag="Arrows" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4"/>
+                                                 <Button Content="Numpad" Tag="Numpad" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4" ToolTip="Numpad 8, 2, 4, 6"/>
+                                                 <Button Content="U/J + H/K" Tag="UJHK" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4"/>
+                                             </WrapPanel>
+                                             <TextBlock Text="Controller presets" Foreground="#D8D8D8" FontWeight="SemiBold" Margin="0 7 0 5"/>
+                                             <Button Content="D-pad" Tag="DPad" Click="AxisControllerPreset_OnClick"
+                                                     Height="30" Padding="12 2" HorizontalAlignment="Left"
+                                                     ToolTip="Assign Up, Down, Left and Right from the chosen controller's D-pad"/>
+                                             <StackPanel Orientation="Horizontal" Margin="0 9 0 0">
+                                                 <CheckBox Content="Invert horizontal" Margin="0 0 15 0"
+                                                           IsChecked="{Binding Plugin.InvertX, Mode=OneWay}"
+                                                           Click="AxisInvertX_OnClick" Foreground="#E2E2E2"/>
+                                                 <CheckBox Content="Invert vertical"
+                                                           IsChecked="{Binding Plugin.InvertY, Mode=OneWay}"
+                                                           Click="AxisInvertY_OnClick" Foreground="#E2E2E2"/>
+                                             </StackPanel>
+                                         </StackPanel>
+                    </StackPanel>
+                    <StackPanel Margin="5 8 0 5" Visibility="{Binding ControllerStickPresetVisibility}">
+                        <TextBlock Text="Controller input presets" FontWeight="SemiBold"
+                                   Foreground="#D8D8D8" Margin="0 0 0 5"/>
+                        <WrapPanel Orientation="Horizontal">
+                            <Button Content="Left stick" Tag="0" Click="AxisStickInputPreset_OnClick"
+                                    Height="30" Margin="0 0 5 0" Padding="10 2"
+                                    ToolTip="Assign both analogue axes from the selected controller's left stick"/>
+                            <Button Content="Right stick" Tag="2" Click="AxisStickInputPreset_OnClick"
+                                    Height="30" Padding="10 2"
+                                    ToolTip="Assign both analogue axes from the selected controller's right stick"/>
+                        </WrapPanel>
+                    </StackPanel>
+
                     <!-- One row is one input condition. Terms within the row are ANDed; rows are ORed. -->
                     <StackPanel Margin="2 0 2 3">
                         <StackPanel.Style>
@@ -338,6 +434,15 @@
                                                 </StackPanel>
                                             </Button>
                                             <ItemsControl Grid.Column="1" ItemsSource="{Binding DeviceBindings}">
+                                                <ItemsControl.Style>
+                                                    <Style TargetType="{x:Type ItemsControl}">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFourButtonAxis}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </ItemsControl.Style>
                                                 <ItemsControl.ItemsPanel>
                                                     <ItemsPanelTemplate><StackPanel Orientation="Vertical"/></ItemsPanelTemplate>
                                                 </ItemsControl.ItemsPanel>
@@ -349,45 +454,29 @@
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
+                                            <!-- Four directions form ONE destination: do not expose X/Y binding buttons. -->
+                                            <Button Grid.Column="1" Height="36" Margin="0 1 0 1"
+                                                    Content="{Binding FourWayOutputLabel}"
+                                                    Click="FourWayOutput_OnClick"
+                                                    IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"
+                                                    Foreground="#FFFFFF" ToolTip="Choose D-pad, left stick or right stick">
+                                                <Button.Style>
+                                                    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFourButtonAxis}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
                                             <Button Grid.Column="2" HorizontalAlignment="Right"
                                                     VerticalAlignment="Bottom" Margin="7 0 0 1"
                                                     Click="RemoveOutput_OnClick" IsEnabled="{Binding CanRemove}"
                                                     ToolTip="Remove this output" ToolTipService.ShowOnDisabled="True"
                                                     Style="{StaticResource UcrDeleteItemButton}"/>
                                         </Grid>
-                                        <!-- Button-to-axis plugins share the same output device but
-                                             require one or two physical button inputs respectively. -->
-                                        <WrapPanel Orientation="Horizontal" Margin="4 5 0 2"
-                                                    Visibility="{Binding AxisButtonModeVisibility}">
-                                            <TextBlock Text="Axis input mode" Foreground="#D8D8D8"
-                                                       VerticalAlignment="Center" Margin="0 0 10 0"
-                                                       ToolTip="One button: pressed/released axis values. Two buttons: positive/negative directions."/>
-                                            <Button Content="1 button" Height="30" Padding="10 2"
-                                                    Margin="0 0 4 0" Click="AxisOneButton_OnClick"
-                                                    IsEnabled="{Binding CanChangeAxisButtonMode}"
-                                                    ToolTip="Use one button and set axis values for press and release"
-                                                    Background="#353535" Foreground="White" BorderBrush="#666666"/>
-                                            <Button Content="2 buttons" Height="30" Padding="10 2"
-                                                    Click="AxisTwoButtons_OnClick"
-                                                    IsEnabled="{Binding CanChangeAxisButtonMode}"
-                                                    ToolTip="Use separate buttons for the positive and negative axis directions"
-                                                    Background="#353535" Foreground="White" BorderBrush="#666666" Margin="0 0 4 0"/>
-                                             <Button Content="4 ways" Height="30" Padding="10 2" Click="AxisFourButtons_OnClick"
-                                                     IsEnabled="{Binding CanChangeAxisButtonMode}" ToolTip="Control a full X/Y joystick using four buttons"
-                                                     Background="#353535" Foreground="White" BorderBrush="#666666"/>
-                                            <TextBlock Text="{Binding AxisButtonModeDescription}"
-                                                       VerticalAlignment="Center" Foreground="#9EC4FF"
-                                                       FontWeight="SemiBold" Margin="10 0 0 0"/>
-                                        </WrapPanel>
-                                         <StackPanel Margin="5 6 0 6" Visibility="{Binding FourButtonPresetVisibility}">
-                                             <TextBlock Text="Keyboard presets" Foreground="#D8D8D8" FontWeight="SemiBold" Margin="0 0 0 5"/>
-                                             <WrapPanel>
-                                                 <Button Content="WASD" Tag="WASD" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4" ToolTip="W up, S down, A left, D right"/>
-                                                 <Button Content="Arrows" Tag="Arrows" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4"/>
-                                                 <Button Content="Numpad" Tag="Numpad" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4" ToolTip="Numpad 8, 2, 4, 6"/>
-                                                 <Button Content="U/J + H/K" Tag="UJHK" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4"/>
-                                             </WrapPanel>
-                                         </StackPanel>
                                         <!-- Compact workspace must expose the same filter and plugin-property
                                              editors as the classic expanded plugin UI. -->
                                         <StackPanel Margin="2 6 2 0">
@@ -422,6 +511,15 @@
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
                                             <ItemsControl ItemsSource="{Binding PluginPropertyGroups}" Margin="0 5 0 0">
+                                                <ItemsControl.Style>
+                                                    <Style TargetType="{x:Type ItemsControl}">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFourButtonAxis}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </ItemsControl.Style>
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
                                                         <StackPanel Visibility="{Binding ShowPropertyList}">

@@ -16,13 +16,28 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
     {
         public MappingViewModel MappingViewModel { get; }
         public Plugin Plugin { get; set; }
-        public string OutputType => new SimplePluginViewModel(Plugin).OutputType;
+        public string OutputType => IsFourButtonAxis ? "Axis" : new SimplePluginViewModel(Plugin).OutputType;
         public bool IsAxisButtonMapping =>
             string.Equals(Plugin.PluginName, "Button to Axis", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(Plugin.PluginName, "Buttons to Axis", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(Plugin.PluginName, "Buttons to Axes", StringComparison.OrdinalIgnoreCase);
-        public bool IsFourButtonAxis => string.Equals(Plugin.PluginName, "Buttons to Axes", StringComparison.OrdinalIgnoreCase);
+            string.Equals(Plugin.PluginName, "Buttons to Axes", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Plugin.PluginName, "Buttons to DPad", StringComparison.OrdinalIgnoreCase);
+        public bool IsFourButtonAxis => string.Equals(Plugin.PluginName, "Buttons to Axes", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Plugin.PluginName, "Buttons to DPad", StringComparison.OrdinalIgnoreCase);
+        public bool IsDPadOutput => string.Equals(Plugin.PluginName, "Buttons to DPad", StringComparison.OrdinalIgnoreCase);
+        public string FourWayOutputLabel
+        {
+            get
+            {
+                if (!IsFourButtonAxis || Plugin.Outputs.Count == 0 ||
+                    Plugin.Outputs.Any(binding => !binding.IsBound)) return "Choose output";
+                if (IsDPadOutput) return "D-pad";
+                return Plugin.Outputs[0].KeyValue == 2 ? "Right stick" : "Left stick";
+            }
+        }
+        public void RefreshFourWayDestination() => OnPropertyChanged(nameof(FourWayOutputLabel));
         public bool IsTwoButtonAxis => string.Equals(Plugin.PluginName, "Buttons to Axis", StringComparison.OrdinalIgnoreCase);
+        public bool IsOneButtonAxis => IsAxisButtonMapping && !IsTwoButtonAxis && !IsFourButtonAxis;
         public Visibility AxisButtonModeVisibility => IsAxisButtonMapping ? Visibility.Visible : Visibility.Collapsed;
         public bool CanChangeAxisButtonMode => MappingViewModel.ButtonsEnabled &&
             MappingViewModel.Plugins.Count == 1 && !MappingViewModel.UsesInputExpression;

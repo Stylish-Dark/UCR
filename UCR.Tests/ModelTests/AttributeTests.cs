@@ -38,6 +38,22 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void FourWayDPadUsesOneOutputPerDirectionAndSupportsInversion()
+        {
+            var plugin = new ButtonsToDPad();
+            Assert.That(plugin.InputCategories.Count, Is.EqualTo(4));
+            Assert.That(plugin.OutputCategories.Count, Is.EqualTo(4));
+            Assert.That(plugin.OutputCategories.All(category => category.Category == DeviceBindingCategory.Momentary), Is.True);
+            plugin.Update(1, 0, 0, 0);
+            Assert.That(plugin.Outputs[0].CurrentValue, Is.EqualTo(1));
+            Assert.That(plugin.Outputs[1].CurrentValue, Is.EqualTo(0));
+            plugin.InvertY = true;
+            plugin.Update(1, 0, 0, 0);
+            Assert.That(plugin.Outputs[0].CurrentValue, Is.EqualTo(0));
+            Assert.That(plugin.Outputs[1].CurrentValue, Is.EqualTo(1));
+        }
+
+        [Test]
         public void ReleaseMetadataIdentifiesCurrentVersion()
         {
             var assembly = typeof(HidWizards.UCR.App).Assembly;
@@ -46,12 +62,12 @@ namespace HidWizards.UCR.Tests.ModelTests
                 .Single();
             var versionInfo = FileVersionInfo.GetVersionInfo(assembly.Location);
 
-            Assert.That(assembly.GetName().Version, Is.EqualTo(new Version(0, 9, 16, 0)));
+            Assert.That(assembly.GetName().Version, Is.EqualTo(new Version(0, 9, 17, 0)));
             Version releaseBuild;
             Assert.That(Version.TryParse(versionInfo.FileVersion, out releaseBuild), Is.True);
             Assert.That(releaseBuild.Major, Is.EqualTo(0));
             Assert.That(releaseBuild.Minor, Is.EqualTo(9));
-            Assert.That(releaseBuild.Build, Is.EqualTo(16));
+            Assert.That(releaseBuild.Build, Is.EqualTo(17));
             Assert.That(informational.InformationalVersion, Is.EqualTo("v" + versionInfo.FileVersion));
             Assert.That(versionInfo.ProductVersion, Is.EqualTo(informational.InformationalVersion));
         }

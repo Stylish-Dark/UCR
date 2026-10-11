@@ -354,7 +354,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             else if (selectedDevice == null)
             {
-                selectedDevice = Devices[0];
+                var primaryGuid = DeviceBinding.Profile.GetPrimaryDeviceConfiguration(DeviceBinding.DeviceIoType)?.Guid;
+                selectedDevice = Devices.FirstOrDefault(item => item.Value == primaryGuid) ?? Devices[0];
+                // Device dropdowns must reflect the real model selection, not merely show
+                // a default item while the binding still holds Guid.Empty.
+                if (!DeviceBinding.IsBound && selectedDevice.Value != Guid.Empty)
+                    DeviceBinding.SetDeviceConfigurationGuid(selectedDevice.Value, false);
             }
 
             SelectedDevice = selectedDevice;
