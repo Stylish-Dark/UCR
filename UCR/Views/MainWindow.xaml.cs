@@ -516,7 +516,8 @@ namespace HidWizards.UCR.Views
 
         private void WorkspaceOptions_OnClick(object sender, RoutedEventArgs e)
         {
-            WorkspaceTabs.SelectedIndex = 1;
+            WorkspaceTabs.SelectedIndex = 0;
+            _embeddedProfilePage?.ShowWorkspaceToolbox("Profile options");
         }
 
         private void OpenProfileWindow(Profile profile)
@@ -543,8 +544,15 @@ namespace HidWizards.UCR.Views
             _profileRecency.Remove(profile.Guid);
             _profileRecency.AddLast(profile.Guid);
             page.UseEmbeddedLayout();
-            page.ProfileOptionsRequested -= EmbeddedProfileOptionsRequested;
-            page.ProfileOptionsRequested += EmbeddedProfileOptionsRequested;
+            // Move the existing, fully functional settings panel into the right
+            // details tab. It stays visible alongside the profiles/mapping list.
+            var optionsTab = WorkspaceTabs.Items.Count > 1
+                ? WorkspaceTabs.Items[1] as TabItem : null;
+            if (optionsTab != null && ReferenceEquals(optionsTab.Content, ProfileSummaryPanel))
+                optionsTab.Content = null;
+            ProfileSummaryPanel.DataContext = _dashboardViewModel;
+            page.AttachProfileOptions(ProfileSummaryPanel);
+            WorkspaceTabs.SelectedIndex = 0;
             _embeddedProfilePage = page;
             _embeddedProfile = profile;
             ProfileEditorHost.Content = page;
@@ -560,14 +568,10 @@ namespace HidWizards.UCR.Views
             }
         }
 
-        private void EmbeddedProfileOptionsRequested(object sender, EventArgs e)
-        {
-            WorkspaceTabs.SelectedIndex = 1;
-        }
-
         private void ReleaseEmbeddedProfile()
         {
             if (_embeddedProfilePage == null) return;
+            _embeddedProfilePage.DetachProfileOptions();
             _embeddedProfilePage.SuspendEmbeddedVisuals();
             ProfileEditorHost.Content = null;
             _embeddedProfilePage = null;
