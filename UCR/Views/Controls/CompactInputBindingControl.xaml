@@ -48,7 +48,7 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="34"/>
-            <ColumnDefinition Width="44"/>
+            <ColumnDefinition Width="92"/>
         </Grid.ColumnDefinitions>
 
         <ComboBox Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" x:Name="DeviceSelectionBox"
@@ -116,8 +116,12 @@
             </Button.ContextMenu>
         </Button>
 
-        <ToggleButton Grid.Row="0" Grid.Column="2"
-                      HorizontalAlignment="Center" VerticalAlignment="Center"
+        <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Visibility="{Binding ShowBlock}"
+                    ToolTip="Block the original physical input (where the provider supports it)">
+        <TextBlock Text="Block" Foreground="#E2E2E2" FontSize="12" Margin="0 0 6 0" VerticalAlignment="Center"/>
+        <ToggleButton HorizontalAlignment="Center" VerticalAlignment="Center"
                       IsChecked="{Binding Block, Mode=TwoWay}"
                       IsEnabled="{Binding CanBlock}"
                       ToolTip="Block original physical input from reaching the game (supported input providers only)"
@@ -133,5 +137,6 @@
                 </Style>
             </ToggleButton.Style>
         </ToggleButton>
+        </StackPanel>
     </Grid>
 </UserControl>

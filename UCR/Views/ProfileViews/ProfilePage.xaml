@@ -906,7 +906,17 @@
                                                                                                           AccentBrush="{Binding ControlBrush}"
                                                                                                           Label="{Binding ControlLabel}"
                                                                                                           Width="58" Height="42"
-                                                                                                          ToolTip="{Binding ToolTip}" Margin="2 1"/>
+                                                                                                          ToolTip="{Binding ToolTip}" Margin="2 1">
+                                                                                <controls:ControlGlyphControl.Style>
+                                                                                    <Style TargetType="{x:Type controls:ControlGlyphControl}">
+                                                                                        <Style.Triggers>
+                                                                                            <DataTrigger Binding="{Binding IsNegatedInput}" Value="True">
+                                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                            </DataTrigger>
+                                                                                        </Style.Triggers>
+                                                                                    </Style>
+                                                                                </controls:ControlGlyphControl.Style>
+                                                                            </controls:ControlGlyphControl>
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
                                                                 </ItemsControl>

@@ -98,6 +98,9 @@
                                 <Setter Property="Width" Value="65"/>
                                 <Setter Property="Height" Value="38"/>
                                 <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsNegatedInput}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
                                     <DataTrigger Binding="{Binding IsFilterControl}" Value="True">
                                         <Setter Property="Width" Value="20"/>
                                         <Setter Property="Height" Value="20"/>
@@ -114,9 +117,7 @@
                             <Style TargetType="Line">
                                 <Setter Property="Visibility" Value="Collapsed"/>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsNegatedInput}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
+                                    <!-- NOT hides the glyph rather than drawing over it. -->
                                 </Style.Triggers>
                             </Style>
                         </Line.Style>

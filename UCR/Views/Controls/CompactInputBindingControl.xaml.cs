@@ -53,24 +53,34 @@ namespace HidWizards.UCR.Views.Controls
             if (_outputPicker != null) _outputPicker.IsOpen = false;
         }
 
-        private void BindButton_OnClick(object sender, RoutedEventArgs e)
+        private async void BindButton_OnClick(object sender, RoutedEventArgs e)
         {
             if (DeviceBinding == null || DeviceBinding.IsInBindMode) return;
-            if (DeviceBinding.DeviceIoType == DeviceIoType.Output)
+            if (DeviceBinding.DeviceIoType == DeviceIoType.Input)
             {
-                ShowOutputPicker(BindButton);
+                StartPressCapture();
                 return;
             }
-            StartPressCapture();
+
+            // Keyboard outputs use pressed-key capture; controllers retain the
+            // graphical picker with trigger and axis-specific choices.
+            var configuration = GetSelectedDeviceConfiguration();
+            if (DeviceVisualCatalog.Describe(configuration, DeviceBinding.Profile, DeviceIoType.Output).Kind ==
+                DeviceVisualKind.Keyboard)
+            {
+                var mappingCard = FindAncestor<MappingCardControl>(this);
+                var bindingViewModel = DataContext as DeviceBindingViewModel;
+                if (mappingCard != null && bindingViewModel != null)
+                {
+                    await mappingCard.OpenQuickOutputPickerAsync(bindingViewModel, BindButton);
+                    return;
+                }
+            }
+            ShowOutputPicker(BindButton);
         }
 
         private void MenuButton_OnClick(object sender, RoutedEventArgs e)
         {
-            if (DeviceBinding?.DeviceIoType == DeviceIoType.Output)
-            {
-                ShowOutputPicker(MenuButton);
-                return;
-            }
             BuildContextMenu();
             Ddl.PlacementTarget = MenuButton;
             Ddl.IsOpen = true;
@@ -137,39 +147,8 @@ namespace HidWizards.UCR.Views.Controls
                 var info = node.DeviceBindingInfo;
                 if (info == null || info.DeviceBindingCategory !=
                     (DataContext as DeviceBindingViewModel)?.DeviceBindingCategory) return null;
-                // Keyboard keys are text, not gaming-control icons.
-                var candidate = new DeviceBinding
-                {
-                    Profile = DeviceBinding.Profile,
-                    DeviceIoType = DeviceBinding.DeviceIoType,
-                    DeviceConfigurationGuid = configurationGuid,
-                    DeviceBindingCategory = info.DeviceBindingCategory,
-                    IsBound = true,
-                    KeyType = info.KeyType,
-                    KeyValue = info.KeyValue,
-                    KeySubValue = info.KeySubValue
-                };
-                var visual = DeviceVisualCatalog.DescribeBinding(
-                    candidate, info.DeviceBindingCategory, DeviceBinding.Profile);
-                var label = new StackPanel { Orientation = Orientation.Horizontal };
-                if (visual.ControlKind != ControlVisualKind.Key)
-                    label.Children.Add(new ControlGlyphControl
-                    {
-                        Width = 46,
-                        Height = 28,
-                        Margin = new Thickness(0, 0, 10, 0),
-                        Kind = visual.ControlKind,
-                        AccentBrush = visual.ControlBrush ?? Brushes.Gray,
-                        Label = visual.ControlLabel
-                    });
-                label.Children.Add(new TextBlock
-                {
-                    Text = node.Title,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Foreground = Brushes.White
-                });
-                item.Header = label;
-                item.ToolTip = visual.ToolTip;
+                // The ellipsis is a text-only nested menu, not a second visual picker.
+                item.ToolTip = "Assign " + node.Title;
                 item.Click += (sender, args) =>
                 {
                     DeviceBinding.SetDeviceConfigurationGuid(configurationGuid);
@@ -207,6 +186,18 @@ namespace HidWizards.UCR.Views.Controls
                     "\n\nChoose the control from the menu instead, or check that the input device is connected.",
                     "Control detection unavailable", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private static T FindAncestor<T>(DependencyObject start) where T : DependencyObject
+        {
+            var current = System.Windows.Media.VisualTreeHelper.GetParent(start);
+            while (current != null)
+            {
+                var found = current as T;
+                if (found != null) return found;
+                current = System.Windows.Media.VisualTreeHelper.GetParent(current);
+            }
+            return null;
         }
 
         private static IEnumerable<DeviceBindingNode> FlattenControls(IEnumerable<DeviceBindingNode> nodes)
