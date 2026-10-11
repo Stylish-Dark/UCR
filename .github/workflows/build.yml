@@ -381,14 +381,222 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $revision = ([int]$env:GITHUB_RUN_NUMBER * 2) + 0
           if ($revision -gt 65535) { throw 'UCR build revision exceeds the assembly version range.' }
+          $gitVersionConfig = Get-Content -LiteralPath '.\GitVersion.yml' -Raw
+          $versionMatch = [regex]::Match($gitVersionConfig, '(?m)^next-version:\s*(\d+\.\d+\.\d+)\s*
           $file = '.\\UCR\\Properties\\AssemblyInfo.cs'
           $source = [System.IO.File]::ReadAllText($file)
           $source = [regex]::Replace($source, 'AssemblyFileVersion\("[^"]+"\)',
-            ('AssemblyFileVersion("0.9.11.' + $revision + '")'))
+            ('AssemblyFileVersion("' + $baseVersion + '.' + $revision + '")'))
           $source = [regex]::Replace($source, 'AssemblyInformationalVersion\("[^"]+"\)',
-            ('AssemblyInformationalVersion("v0.9.11.' + $revision + '")'))
+            ('AssemblyInformationalVersion("v' + $baseVersion + '.' + $revision + '")'))
           [System.IO.File]::WriteAllText($file, $source, [System.Text.UTF8Encoding]::new($false))
-          Write-Host "UCR build identity: 0.9.11.$revision"
+          Write-Host "UCR build identity: $baseVersion.$revision"
+
+      - name: Build UCR Stylish Release
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $gitVersionConfig = Get-Content -LiteralPath '.\GitVersion.yml' -Raw
+          $versionMatch = [regex]::Match($gitVersionConfig, '(?m)^next-version:\s*(\d+)\.(\d+)\.(\d+)\s*$')
+          if (-not $versionMatch.Success) {
+            throw 'Could not derive a deterministic numeric build version from GitVersion.yml next-version.'
+          }
+
+          $versionNumber = '{0}.{1}.{2}.0' -f `
+            $versionMatch.Groups[1].Value, `
+            $versionMatch.Groups[2].Value, `
+            $versionMatch.Groups[3].Value
+
+          Write-Host "Using deterministic VersionNumber=$versionNumber from GitVersion.yml"
+          msbuild .\UCR.sln /m:1 /t:Rebuild /p:Configuration=Release /p:Platform="Any CPU" /p:VersionNumber="$versionNumber" /v:minimal
+          if ($LASTEXITCODE -ne 0) {
+            throw "UCR Release build failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Verify built executable
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $exe = '.\UCR\bin\Release\UCR.exe'
+          if (-not (Test-Path $exe)) {
+            throw "Build reported success but the expected executable does not exist: $exe"
+          }
+
+          $exeInfo = Get-Item $exe
+          if ($exeInfo.Length -le 0) {
+            throw "The built UCR.exe is empty."
+          }
+
+          $loggingConfig = '.\UCR\bin\Release\NLog.config'
+          if (-not (Test-Path -LiteralPath $loggingConfig -PathType Leaf)) {
+            throw "Final UCR build is missing NLog.config."
+          }
+          $loggingConfigText = Get-Content -LiteralPath $loggingConfig -Raw
+          if ($loggingConfigText -notmatch 'UCR-latest\.log' -or $loggingConfigText -notmatch 'name="latest"') {
+            throw 'Final UCR logging configuration is missing the stable UCR-latest.log target.'
+          }
+          Write-Host 'Verified final UCR logging configuration includes UCR-latest.log.'
+          $finalInterceptionSettings = '.\UCR\bin\Release\Providers\Core_Interception\Settings.xml'
+          if (-not (Test-Path -LiteralPath $finalInterceptionSettings -PathType Leaf)) {
+            throw "Final Core Interception settings are missing: $finalInterceptionSettings"
+          }
+          [xml]$finalSettings = Get-Content -LiteralPath $finalInterceptionSettings -Raw
+          $finalBlocking = @($finalSettings.SelectNodes('/Settings/Setting[Name="BlockingEnabled"]/Value'))
+          if ($finalBlocking.Count -ne 1 -or $finalBlocking[0].InnerText.Trim() -ne 'true') {
+            throw 'Final UCR build does not have Core Interception BlockingEnabled=true.'
+          }
+
+          $hash = (Get-FileHash -Algorithm SHA256 $exe).Hash
+          Write-Host "UCR.exe size: $($exeInfo.Length) bytes"
+          Write-Host "UCR.exe SHA-256: $hash"
+          Write-Host 'Verified final Core Interception settings have BlockingEnabled=true.'
+
+      - name: Verify provider fixes in final output
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $expected = @(
+            @{
+              Path = '.\UCR\bin\Release\Providers\Core_Interception\IOWrapper.Libraries.PollingDeviceHandler.dll'
+              Sha256 = 'dec7437219bb5b410955c0fc50d1a3f92af31cf08bc1c23ec7e5dcdfa4207b25'
+            }
+          )
+
+          foreach ($item in $expected) {
+            if (-not (Test-Path -LiteralPath $item.Path -PathType Leaf)) {
+              throw "Approved provider DLL is missing from final output: $($item.Path)"
+            }
+            $actual = (Get-FileHash -LiteralPath $item.Path -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actual -ne $item.Sha256) {
+              throw "Final provider DLL hash mismatch for $($item.Path). Expected $($item.Sha256), got $actual."
+            }
+            Write-Host "Verified final provider DLL: $($item.Path) [$actual]"
+          }
+
+          $vigemPath = '.\UCR\bin\Release\Providers\Core_ViGEm\Core_ViGEm.dll'
+          $oldUnpatchedHash = 'bb6a4862a723fd5b6e40ecfcb955f577d36373e6ae425fe82bffaf88fd87ec65'
+          if (-not (Test-Path -LiteralPath $vigemPath -PathType Leaf)) {
+            throw "Patched Core_ViGEm provider is missing from final output: $vigemPath"
+          }
+          $vigemHash = (Get-FileHash -LiteralPath $vigemPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($vigemHash -eq $oldUnpatchedHash) {
+            throw 'Final Core_ViGEm provider is still the old unpatched pinned DLL.'
+          }
+          Write-Host "Verified rebuilt Core_ViGEm DS4 provider: $vigemPath [$vigemHash]"
+
+      - name: Verify provider entry DLLs in final runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $providerEntries = @(
+            '.\UCR\bin\Release\Providers\Core_DS4WindowsApi\Core_DS4WindowsApi.dll',
+            '.\UCR\bin\Release\Providers\Core_Interception\Core_Interception.dll',
+            '.\UCR\bin\Release\Providers\Core_Midi\Core_Midi.dll',
+            '.\UCR\bin\Release\Providers\Core_SpaceMouse\Core_SpaceMouse.dll',
+            '.\UCR\bin\Release\Providers\Core_TitanOne\Core_TitanOne.dll',
+            '.\UCR\bin\Release\Providers\Core_Tobii_Interaction\Core_Tobii_Interaction.dll',
+            '.\UCR\bin\Release\Providers\Core_ViGEm\Core_ViGEm.dll',
+            '.\UCR\bin\Release\Providers\Core_vJoyInterfaceWrap\Core_vJoyInterfaceWrap.dll',
+            '.\UCR\bin\Release\Providers\SharpDX_DirectInput\SharpDX_DirectInput.dll',
+            '.\UCR\bin\Release\Providers\SharpDX_XInput\SharpDX_XInput.dll'
+          )
+
+          foreach ($providerEntry in $providerEntries) {
+            if (-not (Test-Path -LiteralPath $providerEntry -PathType Leaf)) {
+              throw "Provider entry DLL is missing from final runtime: $providerEntry"
+            }
+            $providerEntryInfo = Get-Item -LiteralPath $providerEntry
+            if ($providerEntryInfo.Length -le 0) {
+              throw "Provider entry DLL is empty in final runtime: $providerEntry"
+            }
+            Write-Host "Verified provider entry DLL: $providerEntry [$($providerEntryInfo.Length) bytes]"
+          }
+
+          Write-Host "Verified all $($providerEntries.Count) expected IOWrapper provider entry DLLs in final runtime."
+
+      - name: Smoke-test final IOWrapper provider composition
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          # UCR runs on the 32-bit .NET Framework path. Test the deployed providers in that same
+          # CLR/bitness rather than loading net452 assemblies into 64-bit PowerShell 7.
+          $x86PowerShell = Join-Path $env:WINDIR 'SysWOW64\WindowsPowerShell\v1.0\powershell.exe'
+          if (-not (Test-Path -LiteralPath $x86PowerShell -PathType Leaf)) {
+            throw "32-bit Windows PowerShell is unavailable: $x86PowerShell"
+          }
+
+          & $x86PowerShell -NoProfile -NonInteractive -ExecutionPolicy Bypass `
+            -File '.\build\verify-provider-composition.ps1' `
+            -RuntimePath '.\UCR\bin\Release'
+          if ($LASTEXITCODE -ne 0) {
+            throw "Final provider-composition smoke test failed with exit code $LASTEXITCODE."
+          }
+
+          Write-Host 'Verified final deployed IOWrapper provider composition in the 32-bit .NET Framework runtime.'
+
+      - name: Run UCR unit tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $runner = '.\packages\NUnit.ConsoleRunner.3.9.0\tools\nunit3-console.exe'
+          $tests = '.\UCR.Tests\bin\Release\UCR.Tests.dll'
+          if (-not (Test-Path $runner)) {
+            throw "NUnit console runner is missing: $runner"
+          }
+          if (-not (Test-Path $tests)) {
+            throw "UCR test assembly is missing: $tests"
+          }
+
+          # The WPF smoke test initializes the real App resources. Old-style .NET Framework
+          # project references do not reliably carry UCR's package dependencies transitively,
+          # so require the test output to contain the exact theme assemblies before NUnit runs.
+          $testRuntimeDependencies = @(
+            '.\UCR.Tests\bin\Release\MaterialDesignThemes.Wpf.dll',
+            '.\UCR.Tests\bin\Release\MaterialDesignColors.dll',
+            '.\UCR.Tests\bin\Release\IOWrapper.Core.dll',
+            '.\UCR.Tests\bin\Release\IOWrapper.DTOs.dll',
+            '.\UCR.Tests\bin\Release\IOWrapper.IProvider.dll'
+          )
+          foreach ($dependency in $testRuntimeDependencies) {
+            if (-not (Test-Path -LiteralPath $dependency -PathType Leaf)) {
+              throw "Runtime test dependency is missing from UCR.Tests output: $dependency"
+            }
+            if ((Get-Item -LiteralPath $dependency).Length -le 0) {
+              throw "Runtime test dependency is empty: $dependency"
+            }
+          }
+          Write-Host 'Verified UCR.Tests runtime dependency closure.'
+
+          & $runner $tests --noresult
+          if ($LASTEXITCODE -ne 0) {
+            throw "UCR unit tests failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Upload UCR Stylish Windows build
+        uses: actions/upload-artifact@v7
+        with:
+          name: UCR-Stylish-Windows
+          path: UCR/bin/Release/
+          if-no-files-found: error
+)
+          if (-not $versionMatch.Success) {
+            throw 'Cannot derive UCR release version from GitVersion.yml.'
+          }
+          $baseVersion = $versionMatch.Groups[1].Value
+          $file = '.\\UCR\\Properties\\AssemblyInfo.cs'
+          $source = [System.IO.File]::ReadAllText($file)
+          $source = [regex]::Replace($source, 'AssemblyFileVersion\("[^"]+"\)',
+            ('AssemblyFileVersion("' + $baseVersion + '.' + $revision + '")'))
+          $source = [regex]::Replace($source, 'AssemblyInformationalVersion\("[^"]+"\)',
+            ('AssemblyInformationalVersion("v' + $baseVersion + '.' + $revision + '")'))
+          [System.IO.File]::WriteAllText($file, $source, [System.Text.UTF8Encoding]::new($false))
+          Write-Host "UCR build identity: $baseVersion.$revision"
 
       - name: Build UCR Stylish Release
         shell: pwsh
