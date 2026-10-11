@@ -115,7 +115,7 @@ namespace HidWizards.UCR.Views.Controls
                    string.Equals(node.Title, "Keys", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static List<DeviceBindingNode> BuildKeyboardCategories(List<DeviceBindingNode> keyboardNodes)
+        internal static List<DeviceBindingNode> BuildKeyboardCategories(List<DeviceBindingNode> keyboardNodes)
         {
             var order = new[]
             {
