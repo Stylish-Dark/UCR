@@ -966,6 +966,69 @@ namespace HidWizards.UCR.Views.ProfileViews
             return null;
         }
 
+        private async void CreateButtonFilter_OnClick(object sender, RoutedEventArgs e)
+        {
+            await CreateNamedFilterAsync("Button to Filter");
+        }
+
+        private async void CreateAxisFilter_OnClick(object sender, RoutedEventArgs e)
+        {
+            await CreateNamedFilterAsync("Axis to Filter");
+        }
+
+        private async System.Threading.Tasks.Task CreateNamedFilterAsync(string pluginName)
+        {
+            if (Profile.IsActive()) return;
+            var filterTemplate = Context.GetPlugins().FirstOrDefault(plugin =>
+                string.Equals(plugin.PluginName, pluginName, StringComparison.OrdinalIgnoreCase));
+            if (filterTemplate == null)
+            {
+                DarkMessageBox.Show("The filter plugin is unavailable.", "Filter unavailable",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var dialog = new StringDialog("Create filter", "Filter name", "New filter");
+            var accepted = (bool?)await DialogHost.Show(dialog, ProfileViewModel.ProfileDialogIdentifier);
+            if (accepted != true) return;
+            var name = dialog.Value?.Trim();
+            if (string.IsNullOrWhiteSpace(name)) return;
+            if (Profile.GetFilters().Any(existing =>
+                string.Equals(existing, name, StringComparison.OrdinalIgnoreCase)))
+            {
+                DarkMessageBox.Show("A filter with that name already exists. Choose a unique name.",
+                    "Filter already exists", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // A filter is a mapping that produces a named condition, not an output device.
+            // AddPlugin creates the input binding and allows the normal binding UI to configure it.
+            var mapping = ProfileViewModel.AddMappingToSelectedSection(name);
+            if (mapping == null) return;
+            mapping.AddPlugin(filterTemplate);
+            if (mapping.Plugins.Count == 0)
+            {
+                mapping.Remove();
+                return;
+            }
+
+            var filterPlugin = mapping.Plugins[0].Plugin;
+            var filterName = filterPlugin.GetGuiMatrix()
+                .SelectMany(group => group.PluginProperties)
+                .FirstOrDefault(property => property.PropertyInfo.Name == "FilterName");
+            if (filterName == null)
+            {
+                mapping.Remove();
+                return;
+            }
+            filterName.Property = name;
+            mapping.RefreshFilterDefinitionPresentation();
+            ProfileViewModel.RefreshFilterReferenceLabels();
+            ProfileViewModel.SelectedMapping = mapping;
+            ShowWorkspaceInspector();
+            Dispatcher.BeginInvoke((Action)(() => ScrollMappingIntoView(mapping)), DispatcherPriority.Background);
+        }
+
         private void FilterDefinitionList_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             var filter = FilterDefinitionList.SelectedItem as FilterDefinitionItemViewModel;
