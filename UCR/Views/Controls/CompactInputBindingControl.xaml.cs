@@ -111,6 +111,8 @@ namespace HidWizards.UCR.Views.Controls
 
             if (Ddl.Items.Count > 0) Ddl.Items.Add(new Separator());
 
+            if (DeviceBinding?.DeviceIoType == DeviceIoType.Input)
+            {
             var blockItem = new MenuItem
             {
                 Header = "Block original input",
@@ -124,6 +126,7 @@ namespace HidWizards.UCR.Views.Controls
                 if (DeviceBinding != null) DeviceBinding.SetBlock(blockItem.IsChecked);
             };
             Ddl.Items.Add(blockItem);
+            }
 
             var clearItem = new MenuItem
             {
@@ -147,10 +150,12 @@ namespace HidWizards.UCR.Views.Controls
             if (node.IsBinding)
             {
                 var info = node.DeviceBindingInfo;
-                if (info == null || DeviceBinding == null || info.DeviceBindingCategory != DeviceBinding.DeviceBindingCategory) return null;
+                var requiredCategory = (DataContext as DeviceBindingViewModel)?.DeviceBindingCategory ?? DeviceBindingCategory.Momentary;
+                if (info == null || DeviceBinding == null || info.DeviceBindingCategory != requiredCategory) return null;
                 item.Click += (sender, args) =>
                 {
                     DeviceBinding.SetDeviceConfigurationGuid(configurationGuid);
+                    DeviceBinding.DeviceBindingCategory = requiredCategory;
                     DeviceBinding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
                 };
                 return item;

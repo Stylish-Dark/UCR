@@ -8,7 +8,22 @@ namespace HidWizards.UCR.ViewModels.Dialogs
     {
         public string Title => AllowNew ? "Choose or create filter" : "Add filter";
         public bool AllowNew { get; }
+        public string Prompt => AllowNew
+            ? "Choose an existing filter or type a name for a new one."
+            : "Choose an existing filter.";
         public ObservableCollection<string> FilterNames { get; }
+
+        private string _selectedExistingFilter;
+        public string SelectedExistingFilter
+        {
+            get => _selectedExistingFilter;
+            set
+            {
+                if (_selectedExistingFilter == value) return;
+                _selectedExistingFilter = value;
+                if (!string.IsNullOrWhiteSpace(value)) SelectedFilter = value;
+            }
+        }
 
         private string _selectedFilter;
         public string SelectedFilter

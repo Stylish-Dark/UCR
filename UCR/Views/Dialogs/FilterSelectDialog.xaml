@@ -15,12 +15,12 @@
         </Grid.RowDefinitions>
         <TextBlock Grid.Row="0" Text="{Binding Title}" Style="{StaticResource MaterialDesignTitleTextBlock}"/>
         <StackPanel Grid.Row="1" Margin="0 16 0 0">
-            <TextBlock Text="Choose a named filter. To define a new one, select Create new." Opacity="0.72" Margin="0 0 0 8"/>
+            <TextBlock Text="{Binding Prompt}" Opacity="0.72" Margin="0 0 0 8"/>
             <ComboBox x:Name="FilterNamesCombo" IsEditable="{Binding AllowNew}"
                       Text="{Binding SelectedFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                       IsTextSearchEnabled="True"
                       ItemsSource="{Binding FilterNames}"
-                      SelectedItem="{Binding SelectedFilter, Mode=TwoWay}"
+                      SelectedItem="{Binding SelectedExistingFilter, Mode=TwoWay}"
                       materialDesign:HintAssist.Hint="Existing filter"
                       MinWidth="320"/>
             <Button Content="+ Create new filter" HorizontalAlignment="Left" Margin="0 8 0 0"
