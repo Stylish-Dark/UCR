@@ -38,7 +38,7 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
-        public void ReleaseMetadataIdentifiesV0911()
+        public void ReleaseMetadataIdentifiesCurrentVersion()
         {
             var assembly = typeof(HidWizards.UCR.App).Assembly;
             var informational = assembly.GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false)
@@ -51,7 +51,7 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.That(Version.TryParse(versionInfo.FileVersion, out releaseBuild), Is.True);
             Assert.That(releaseBuild.Major, Is.EqualTo(0));
             Assert.That(releaseBuild.Minor, Is.EqualTo(9));
-            Assert.That(releaseBuild.Build, Is.EqualTo(11));
+            Assert.That(releaseBuild.Build, Is.EqualTo(16));
             Assert.That(informational.InformationalVersion, Is.EqualTo("v" + versionInfo.FileVersion));
             Assert.That(versionInfo.ProductVersion, Is.EqualTo(informational.InformationalVersion));
         }
