@@ -446,6 +446,18 @@
                                     </StackPanel>
                                 </Border>
                             </Expander.Header>
+                            <StackPanel Orientation="Horizontal" Margin="10 9 8 2">
+                                <Button Content="+ Button filter" Height="32" Padding="10 4"
+                                        Margin="0 0 7 0" Click="CreateButtonFilter_OnClick"
+                                        IsEnabled="{Binding CanEditProfile}"
+                                        ToolTip="Create a named filter controlled by a button"
+                                        Style="{StaticResource UcrProfileActionButton}"/>
+                                <Button Content="+ Axis filter" Height="32" Padding="10 4"
+                                        Click="CreateAxisFilter_OnClick"
+                                        IsEnabled="{Binding CanEditProfile}"
+                                        ToolTip="Create a named filter controlled by an axis"
+                                        Style="{StaticResource UcrProfileActionButton}"/>
+                            </StackPanel>
                             <ListBox x:Name="FilterDefinitionList" Margin="8" MaxHeight="150" ItemsSource="{Binding FilterDefinitions}"
                                      BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto"
                                      SelectionChanged="FilterDefinitionList_OnSelectionChanged">
@@ -459,7 +471,7 @@
                                                             <StackPanel Margin="8 18" HorizontalAlignment="Center">
                                                                 <materialDesign:PackIcon Kind="Filter" Width="20" Height="20" HorizontalAlignment="Center" Opacity="0.28"/>
                                                                 <TextBlock Margin="0 6 0 0" Text="No filters defined" FontSize="14" Opacity="0.55" HorizontalAlignment="Center"/>
-                                                                <TextBlock Margin="0 2 0 0" Text="Create one with a → Filter mapping." FontSize="12" Opacity="0.38" HorizontalAlignment="Center"/>
+                                                                <TextBlock Margin="0 2 0 0" Text="Use the buttons above to create a filter." FontSize="12" Opacity="0.38" HorizontalAlignment="Center"/>
                                                             </StackPanel>
                                                         </ControlTemplate>
                                                     </Setter.Value>
