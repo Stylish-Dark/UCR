@@ -243,14 +243,39 @@ namespace HidWizards.UCR.Views.Controls
 
         private static void DrawStickAxis(DrawingContext dc, Rect b, Brush accent, string label)
         {
-            var center = new Point(b.Left + b.Width * 0.28, b.Top + b.Height * 0.5);
-            var radius = Math.Min(b.Width, b.Height) * 0.19;
-            dc.DrawEllipse(null, Pen(accent, 1.5), center, radius, radius);
-            dc.DrawLine(Pen(accent, 1.4), new Point(center.X - radius * 0.7, center.Y), new Point(center.X + radius * 0.7, center.Y));
-            dc.DrawLine(Pen(accent, 1.4), new Point(center.X, center.Y - radius * 0.7), new Point(center.X, center.Y + radius * 0.7));
+            // Thumbstick, not a crosshair: housing, inset cap, a direction mark and
+            // a dedicated readable axis label. The drawing scales with its cell.
+            var center = new Point(b.Left + b.Width * 0.31, b.Top + b.Height * 0.50);
+            var radius = Math.Min(b.Height * 0.37, b.Width * 0.24);
+            var housing = new SolidColorBrush(Color.FromRgb(30, 30, 30));
+            var cap = new SolidColorBrush(Color.FromRgb(54, 54, 54));
+
+            dc.DrawEllipse(housing, Pen(accent, 1.6), center, radius, radius);
+            dc.DrawEllipse(null, Pen(accent, 0.75), center, radius * 0.81, radius * 0.81);
+            dc.DrawEllipse(cap, Pen(accent, 1.25), center, radius * 0.66, radius * 0.66);
+
+            var upper = (label ?? string.Empty).ToUpperInvariant();
+            var vertical = upper.EndsWith("Y", StringComparison.Ordinal);
+            var axisSpan = radius * 0.43;
+            var axisPen = Pen(accent, 2.2);
+            if (vertical)
+            {
+                dc.DrawLine(axisPen, new Point(center.X, center.Y - axisSpan),
+                    new Point(center.X, center.Y + axisSpan));
+                dc.DrawEllipse(accent, null, new Point(center.X, center.Y - axisSpan), 1.7, 1.7);
+                dc.DrawEllipse(accent, null, new Point(center.X, center.Y + axisSpan), 1.7, 1.7);
+            }
+            else
+            {
+                dc.DrawLine(axisPen, new Point(center.X - axisSpan, center.Y),
+                    new Point(center.X + axisSpan, center.Y));
+                dc.DrawEllipse(accent, null, new Point(center.X - axisSpan, center.Y), 1.7, 1.7);
+                dc.DrawEllipse(accent, null, new Point(center.X + axisSpan, center.Y), 1.7, 1.7);
+            }
+
             DrawCenteredText(dc, label, accent,
-                new Rect(b.Left + b.Width * 0.48, b.Top, b.Width * 0.52, b.Height),
-                FontFor(label, b.Height * 0.45), FontWeights.Bold);
+                new Rect(b.Left + b.Width * 0.57, b.Top, b.Width * 0.43, b.Height),
+                FontFor(label, b.Height * 0.42), FontWeights.Bold);
         }
 
         private static void DrawAxis(DrawingContext dc, Rect b, Brush accent, string label)
