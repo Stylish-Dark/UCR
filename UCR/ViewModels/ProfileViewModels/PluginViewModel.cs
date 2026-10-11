@@ -16,7 +16,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
     {
         public MappingViewModel MappingViewModel { get; }
         public Plugin Plugin { get; set; }
-        public string OutputType => new SimplePluginViewModel(Plugin).OutputType;
+        public string OutputType => IsFourButtonAxis ? "Axis" : new SimplePluginViewModel(Plugin).OutputType;
         public bool IsAxisButtonMapping =>
             string.Equals(Plugin.PluginName, "Button to Axis", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(Plugin.PluginName, "Buttons to Axis", StringComparison.OrdinalIgnoreCase) ||

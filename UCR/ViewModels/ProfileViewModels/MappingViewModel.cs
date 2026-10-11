@@ -620,6 +620,59 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return true;
         }
 
+        public Visibility ControllerStickPresetVisibility =>
+            Mapping?.Plugins?.Count == 1 &&
+            string.Equals(Mapping.Plugins[0].PluginName, "Axes to Axes", StringComparison.OrdinalIgnoreCase) &&
+            Mapping.DeviceBindings.Count == 2 ? Visibility.Visible : Visibility.Collapsed;
+
+        public bool ApplyControllerStickInputPreset(int axisIndex, out string error)
+        {
+            error = null;
+            if (!ButtonsEnabled || ControllerStickPresetVisibility != Visibility.Visible ||
+                (axisIndex != 0 && axisIndex != 2)) return false;
+            var profile = ProfileViewModel.Profile;
+            var preferred = Mapping.DeviceBindings[0].DeviceConfigurationGuid;
+            var primary = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input)?.Guid;
+            var options = new List<Tuple<DeviceConfiguration, DeviceBindingInfo[]>>();
+            foreach (var device in profile.GetDeviceConfigurationList(DeviceIoType.Input))
+            {
+                if (device?.Device == null) continue;
+                var kind = DeviceVisualCatalog.Describe(device, profile, DeviceIoType.Input).Kind;
+                if (kind == DeviceVisualKind.Keyboard || kind == DeviceVisualKind.Mouse ||
+                    kind == DeviceVisualKind.Unavailable || kind == DeviceVisualKind.Unknown) continue;
+                var axes = FlattenBindingNodes(profile.Context.DevicesManager.GetDeviceBindingMenu(
+                    device.Device, DeviceIoType.Input)).Where(node => node?.DeviceBindingInfo != null &&
+                    node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Range).ToList();
+                var pair = axes.GroupBy(node => node.DeviceBindingInfo.KeyType).FirstOrDefault(group =>
+                    group.Any(node => node.DeviceBindingInfo.KeyValue == axisIndex) &&
+                    group.Any(node => node.DeviceBindingInfo.KeyValue == axisIndex + 1));
+                if (pair != null) options.Add(Tuple.Create(device, new[]
+                {
+                    pair.First(node => node.DeviceBindingInfo.KeyValue == axisIndex).DeviceBindingInfo,
+                    pair.First(node => node.DeviceBindingInfo.KeyValue == axisIndex + 1).DeviceBindingInfo
+                }));
+            }
+            var selected = options.FirstOrDefault(option => option.Item1.Guid == preferred)
+                ?? options.FirstOrDefault(option => option.Item1.Guid == primary)
+                ?? options.FirstOrDefault();
+            if (selected == null)
+            {
+                error = "Add a controller with the requested analogue stick to the profile's input devices first.";
+                return false;
+            }
+            for (var i = 0; i < 2; i++)
+            {
+                var info = selected.Item2[i];
+                var binding = Mapping.DeviceBindings[i];
+                binding.DeviceBindingCategory = DeviceBindingCategory.Range;
+                binding.SetDeviceConfigurationGuid(selected.Item1.Guid, false);
+                binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+            }
+            foreach (var binding in DeviceBindings) binding.RefreshDeviceList();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
         // One four-way destination may consist of two analogue axes or four D-pad buttons.
         // Only offer a choice after verifying *all* its constituent controls exist.
         public List<FourWayOutputChoice> GetFourWayOutputChoices()
@@ -966,6 +1019,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(HasFilterReferences));
             OnPropertyChanged(nameof(FilterIndicatorToolTip));
             OnPropertyChanged(nameof(HasFilters));
+            OnPropertyChanged(nameof(ControllerStickPresetVisibility));
         }
 
         private void RefreshFilterPresentationCache()

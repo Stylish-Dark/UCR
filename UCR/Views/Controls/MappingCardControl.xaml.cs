@@ -435,6 +435,17 @@ namespace HidWizards.UCR.Views.Controls
                 DarkMessageBox.Show(error, "Keyboard preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
+        private void AxisStickInputPreset_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mapping = DataContext as MappingViewModel;
+            int index;
+            if (mapping == null || !int.TryParse((sender as Button)?.Tag as string, out index)) return;
+            string error;
+            if (!mapping.ApplyControllerStickInputPreset(index, out error) && !string.IsNullOrEmpty(error))
+                DarkMessageBox.Show(error, "Controller input preset unavailable", MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+        }
+
         private void AxisControllerPreset_OnClick(object sender, RoutedEventArgs e)
         {
             var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;

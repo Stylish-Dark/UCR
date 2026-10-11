@@ -210,6 +210,18 @@
                                              </StackPanel>
                                          </StackPanel>
                     </StackPanel>
+                    <StackPanel Margin="5 8 0 5" Visibility="{Binding ControllerStickPresetVisibility}">
+                        <TextBlock Text="Controller input presets" FontWeight="SemiBold"
+                                   Foreground="#D8D8D8" Margin="0 0 0 5"/>
+                        <WrapPanel Orientation="Horizontal">
+                            <Button Content="Left stick" Tag="0" Click="AxisStickInputPreset_OnClick"
+                                    Height="30" Margin="0 0 5 0" Padding="10 2"
+                                    ToolTip="Assign both analogue axes from the selected controller's left stick"/>
+                            <Button Content="Right stick" Tag="2" Click="AxisStickInputPreset_OnClick"
+                                    Height="30" Padding="10 2"
+                                    ToolTip="Assign both analogue axes from the selected controller's right stick"/>
+                        </WrapPanel>
+                    </StackPanel>
 
                     <!-- One row is one input condition. Terms within the row are ANDed; rows are ORed. -->
                     <StackPanel Margin="2 0 2 3">

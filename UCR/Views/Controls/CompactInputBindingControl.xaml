@@ -142,7 +142,7 @@
                     HorizontalAlignment="Center" VerticalAlignment="Center"
                     Visibility="{Binding ShowInvertInput}"
                     ToolTip="Invert the physical input axis direction">
-            <TextBlock Text="Invert direction" Foreground="#E2E2E2" FontSize="11"
+            <TextBlock Text="Invert" Foreground="#E2E2E2" FontSize="12"
                        Margin="0 0 5 0" VerticalAlignment="Center"/>
             <ToggleButton IsChecked="{Binding InvertInput, Mode=TwoWay}"
                           IsEnabled="{Binding BindingEnabled}" Style="{StaticResource CompactBlockSwitch}"/>
