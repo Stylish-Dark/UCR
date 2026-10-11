@@ -958,9 +958,9 @@ namespace HidWizards.UCR.Views.ProfileViews
         public void ShowWorkspaceToolbox(string section)
         {
             if (_disposed) return;
-            if (section == "Devices" || section == "Filters")
+            if (section == "Devices" || section == "Filters" || section == "Profile options")
             {
-                var index = section == "Devices" ? 1 : 2;
+                var index = section == "Devices" ? 1 : section == "Filters" ? 2 : 3;
                 SelectInspectorTab(index);
                 ShowInspectorTab(index);
                 return;
@@ -1020,7 +1020,9 @@ namespace HidWizards.UCR.Views.ProfileViews
             var selected = (sender as ListView)?.SelectedItem as MappingViewModel;
             if (selected == null) return;
             ProfileViewModel.SelectedMapping = selected;
-            ShowWorkspaceInspector();
+            // Selecting a row does not hijack another inspector tab.
+            if (InspectorTabs.SelectedIndex == 0)
+                ShowWorkspaceInspector();
         }
 
         private void AddMapping_OnClick(object sender, RoutedEventArgs e)
