@@ -841,9 +841,10 @@
                                                 </ListView.Style>
                                                 <ListView.ItemTemplate>
                                                     <DataTemplate>
-                                                        <Border Margin="0 3" Padding="12 9" CornerRadius="4"
-                                                                Background="#252525" BorderBrush="#393939" BorderThickness="1">
-                                                            <Grid MinHeight="50">
+                                                        <Border Margin="0 4" Padding="12 10" CornerRadius="4"
+                                                                Background="#252525" BorderBrush="#393939" BorderThickness="1"
+                                                                MinWidth="520" MaxWidth="920" HorizontalAlignment="Left">
+                                                            <Grid MinHeight="66">
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="2*"/>
                                                                     <ColumnDefinition Width="Auto"/>
@@ -853,8 +854,8 @@
                                                                 </Grid.ColumnDefinitions>
                                                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                                                     <TextBlock Text="{Binding MappingTitle}" Foreground="White"
-                                                                               FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                                                    <TextBlock Text="{Binding MappingOutputTypeLabel}" FontSize="11"
+                                                                               FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                                    <TextBlock Text="{Binding MappingOutputTypeLabel}" FontSize="12.5"
                                                                                Foreground="#B0B0B0" Margin="0 3 0 0"/>
                                                                 </StackPanel>
                                                                 <ItemsControl Grid.Column="1" ItemsSource="{Binding CollapsedInputVisuals}"
@@ -865,7 +866,7 @@
                                                                             <controls:ControlGlyphControl Kind="{Binding ControlKind}"
                                                                                                           AccentBrush="{Binding ControlBrush}"
                                                                                                           Label="{Binding ControlLabel}"
-                                                                                                          Width="46" Height="32"
+                                                                                                          Width="56" Height="40"
                                                                                                           ToolTip="{Binding ToolTip}" Margin="1 0"/>
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
@@ -880,7 +881,7 @@
                                                                             <controls:ControlGlyphControl Kind="{Binding ControlKind}"
                                                                                                           AccentBrush="{Binding ControlBrush}"
                                                                                                           Label="{Binding ControlLabel}"
-                                                                                                          Width="46" Height="32"
+                                                                                                          Width="56" Height="40"
                                                                                                           ToolTip="{Binding ToolTip}" Margin="1 0"/>
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
