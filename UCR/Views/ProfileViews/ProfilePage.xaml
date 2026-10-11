@@ -810,15 +810,15 @@
                                                       Visibility="{Binding IsExpanded, Converter={StaticResource MappingSectionVisibilityConverter}}"
                                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                                       ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                                                      HorizontalContentAlignment="Left" VirtualizingPanel.IsVirtualizing="False"
+                                                      HorizontalContentAlignment="Stretch" VirtualizingPanel.IsVirtualizing="False"
                                                       PreviewMouseRightButtonDown="MappingListView_OnPreviewMouseRightButtonDown"
                                                       PreviewMouseRightButtonUp="MappingListView_OnPreviewMouseRightButtonUp"
                                                       PreviewMouseMove="MappingListView_OnPreviewMouseMove"
                                                       LostMouseCapture="MappingListView_OnLostMouseCapture">
                                                 <ListView.ItemContainerStyle>
                                                     <Style TargetType="{x:Type ListViewItem}">
-                                                        <Setter Property="HorizontalAlignment" Value="Left"/>
-                                                        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                                        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                                                         <Setter Property="Padding" Value="0"/>
                                                         <Setter Property="Margin" Value="0"/>
                                                         <Setter Property="Background" Value="Transparent"/>
@@ -841,53 +841,70 @@
                                                 </ListView.Style>
                                                 <ListView.ItemTemplate>
                                                     <DataTemplate>
+                                                        <!-- All rows use identical proportional columns. Name, input,
+                                                             arrow and output stay aligned across every mapping;
+                                                             the glyphs are centred WITHIN their own columns. -->
                                                         <Border Margin="0 3" Padding="12 7" CornerRadius="4"
-                                                                Background="#252525" BorderBrush="#393939" BorderThickness="1"
-                                                                HorizontalAlignment="Left" MinWidth="690" MaxWidth="850">
-                                                            <Grid MinHeight="64" HorizontalAlignment="Left">
+                                                                Background="#252525" BorderBrush="#393939"
+                                                                BorderThickness="1" HorizontalAlignment="Stretch">
+                                                            <Grid MinHeight="58" HorizontalAlignment="Stretch">
                                                                 <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="310"/>
-                                                                    <ColumnDefinition Width="Auto"/>
-                                                                    <ColumnDefinition Width="Auto"/>
-                                                                    <ColumnDefinition Width="Auto"/>
-                                                                    <ColumnDefinition Width="24"/>
+                                                                    <ColumnDefinition Width="1.25*" MinWidth="0"/>
+                                                                    <ColumnDefinition Width="1.05*" MinWidth="0"/>
+                                                                    <ColumnDefinition Width="44"/>
+                                                                    <ColumnDefinition Width="1.05*" MinWidth="0"/>
+                                                                    <ColumnDefinition Width="30"/>
                                                                 </Grid.ColumnDefinitions>
-                                                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                                <StackPanel Grid.Column="0" VerticalAlignment="Center"
+                                                                            Margin="3 0 8 0">
                                                                     <TextBlock Text="{Binding MappingTitle}" Foreground="White"
-                                                                               FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                                               FontSize="18" FontWeight="SemiBold"
+                                                                               TextTrimming="CharacterEllipsis"/>
                                                                     <TextBlock Text="{Binding MappingOutputTypeLabel}" FontSize="14"
                                                                                Foreground="#B0B0B0" Margin="0 3 0 0"/>
                                                                 </StackPanel>
                                                                 <ItemsControl Grid.Column="1" ItemsSource="{Binding CollapsedInputVisuals}"
-                                                                              VerticalAlignment="Center">
-                                                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                                                              HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                                                                    <ItemsControl.ItemsPanel>
+                                                                        <ItemsPanelTemplate>
+                                                                            <WrapPanel Orientation="Horizontal"
+                                                                                       HorizontalAlignment="Center"/>
+                                                                        </ItemsPanelTemplate>
+                                                                    </ItemsControl.ItemsPanel>
                                                                     <ItemsControl.ItemTemplate>
                                                                         <DataTemplate>
                                                                             <controls:ControlGlyphControl Kind="{Binding ControlKind}"
                                                                                                           AccentBrush="{Binding ControlBrush}"
                                                                                                           Label="{Binding ControlLabel}"
-                                                                                                          Width="74" Height="54"
-                                                                                                          ToolTip="{Binding ToolTip}" Margin="1 0"/>
+                                                                                                          Width="58" Height="42"
+                                                                                                          ToolTip="{Binding ToolTip}" Margin="2 1"/>
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
                                                                 </ItemsControl>
-                                                                <TextBlock Grid.Column="2" Text="→" Foreground="#AAAAAA"
-                                                                           Margin="12 0" FontSize="24" VerticalAlignment="Center"/>
+                                                                <TextBlock Grid.Column="2" Text="→" Foreground="#BBBBBB"
+                                                                           FontSize="24" VerticalAlignment="Center"
+                                                                           HorizontalAlignment="Center"/>
                                                                 <ItemsControl Grid.Column="3" ItemsSource="{Binding CollapsedOutputVisuals}"
-                                                                              VerticalAlignment="Center">
-                                                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                                                              HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                                                                    <ItemsControl.ItemsPanel>
+                                                                        <ItemsPanelTemplate>
+                                                                            <WrapPanel Orientation="Horizontal"
+                                                                                       HorizontalAlignment="Center"/>
+                                                                        </ItemsPanelTemplate>
+                                                                    </ItemsControl.ItemsPanel>
                                                                     <ItemsControl.ItemTemplate>
                                                                         <DataTemplate>
                                                                             <controls:ControlGlyphControl Kind="{Binding ControlKind}"
                                                                                                           AccentBrush="{Binding ControlBrush}"
                                                                                                           Label="{Binding ControlLabel}"
-                                                                                                          Width="74" Height="54"
-                                                                                                          ToolTip="{Binding ToolTip}" Margin="1 0"/>
+                                                                                                          Width="58" Height="42"
+                                                                                                          ToolTip="{Binding ToolTip}" Margin="2 1"/>
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
                                                                 </ItemsControl>
-                                                                <TextBlock Grid.Column="4" Text="›" FontSize="26" Foreground="#AFAFAF"
-                                                                           VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                                <TextBlock Grid.Column="4" Text="›" FontSize="23"
+                                                                           Foreground="#AFAFAF" VerticalAlignment="Center"
+                                                                           HorizontalAlignment="Center"/>
                                                             </Grid>
                                                         </Border>
                                                     </DataTemplate>
