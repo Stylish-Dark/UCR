@@ -418,16 +418,40 @@ namespace HidWizards.UCR.Views.Controls
             menu.IsOpen = true;
         }
 
+        private bool ConfirmDiscardSecondAxis(PluginViewModel axis)
+        {
+            if (axis?.IsFourButtonAxis != true) return true;
+            return DarkMessageBox.Show(
+                "Changing to a single-axis mapping will remove the joystick Y-axis output. Continue?",
+                "Change axis mode", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
+        }
+
+        private void AxisFourButtons_OnClick(object sender, RoutedEventArgs e)
+        {
+            var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
+            axis?.MappingViewModel.ChangeAxisInputMode(axis, 4);
+        }
+
+        private void AxisKeyboardPreset_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mapping = DataContext as MappingViewModel;
+            var preset = (sender as Button)?.Tag as string;
+            if (mapping == null || string.IsNullOrEmpty(preset)) return;
+            string error;
+            if (!mapping.ApplyKeyboardAxisPreset(preset, out error) && !string.IsNullOrEmpty(error))
+                DarkMessageBox.Show(error, "Keyboard preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
         private void AxisOneButton_OnClick(object sender, RoutedEventArgs e)
         {
             var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
-            axis?.MappingViewModel.ChangeAxisButtonMode(axis, false);
+            if (ConfirmDiscardSecondAxis(axis)) axis?.MappingViewModel.ChangeAxisButtonMode(axis, false);
         }
 
         private void AxisTwoButtons_OnClick(object sender, RoutedEventArgs e)
         {
             var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
-            axis?.MappingViewModel.ChangeAxisButtonMode(axis, true);
+            if (ConfirmDiscardSecondAxis(axis)) axis?.MappingViewModel.ChangeAxisButtonMode(axis, true);
         }
 
         private void AddOutputFilter_OnClick(object sender, RoutedEventArgs e)
