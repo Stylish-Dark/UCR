@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Windows;
 using System.Runtime.CompilerServices;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Models;
@@ -16,6 +17,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public MappingViewModel MappingViewModel { get; }
         public Plugin Plugin { get; set; }
         public string OutputType => new SimplePluginViewModel(Plugin).OutputType;
+        public bool IsAxisButtonMapping =>
+            string.Equals(Plugin.PluginName, "Button to Axis", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Plugin.PluginName, "Buttons to Axis", StringComparison.OrdinalIgnoreCase);
+        public bool IsTwoButtonAxis => string.Equals(Plugin.PluginName, "Buttons to Axis", StringComparison.OrdinalIgnoreCase);
+        public Visibility AxisButtonModeVisibility => IsAxisButtonMapping ? Visibility.Visible : Visibility.Collapsed;
+        public bool CanChangeAxisButtonMode => MappingViewModel.ButtonsEnabled &&
+            MappingViewModel.Plugins.Count == 1 && !MappingViewModel.UsesInputExpression;
+        public string AxisButtonModeDescription => IsTwoButtonAxis ? "2 buttons" : "1 button";
+
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<PluginPropertyGroupViewModel> PluginPropertyGroups { get; set; }
         public bool CanRemove => !MappingViewModel.ProfileViewModel.Profile.IsActive() && MappingViewModel.Plugins.Count > 1;
@@ -129,8 +139,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             foreach (var pluginPropertyGroup in Plugin.PluginPropertyGroups)
             {
-                if (pluginPropertyGroup.PluginProperties.Count == 0 || pluginPropertyGroup.GroupType.Equals(PluginPropertyGroup.GroupTypes.Output)) continue;
-
+                if (pluginPropertyGroup.PluginProperties.Count == 0) continue;
+                // The compact output inspector must show output-specific values too:
+                // Button to Axis has pressed/released axis positions in its "Axis"
+                // output group, which used to be silently omitted here.
                 PluginPropertyGroups.Add(new PluginPropertyGroupViewModel(pluginPropertyGroup));
             }
         }
