@@ -75,7 +75,6 @@ namespace HidWizards.UCR.Views.ProfileViews
         }
 
         public event EventHandler BackRequested;
-        public event EventHandler ProfileOptionsRequested;
         private bool _disposed;
 
         public void Dispose()
@@ -909,59 +908,72 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (definingMapping != null) ScrollMappingIntoView(definingMapping);
         }
 
-        private void InspectorMappingsTab_OnClick(object sender, RoutedEventArgs e)
+        // Profile settings use the actual existing settings controls, embedded inside
+        // the right inspector instead of navigating away from the mapping workspace.
+        public void AttachProfileOptions(UIElement options)
         {
-            ShowWorkspaceInspector();
+            ProfileOptionsHost.Content = options;
         }
 
-        private void InspectorDevicesTab_OnClick(object sender, RoutedEventArgs e)
+        public void DetachProfileOptions()
         {
-            ShowWorkspaceToolbox("Devices");
+            ProfileOptionsHost.Content = null;
         }
 
-        private void InspectorFiltersTab_OnClick(object sender, RoutedEventArgs e)
+        private bool _switchingInspectorTab;
+
+        private void InspectorTabs_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            ShowWorkspaceToolbox("Filters");
+            if (e.Source != InspectorTabs || _switchingInspectorTab || _disposed) return;
+            ShowInspectorTab(InspectorTabs.SelectedIndex);
         }
 
-        private void InspectorOptionsTab_OnClick(object sender, RoutedEventArgs e)
+        private void SelectInspectorTab(int index)
         {
-            ProfileOptionsRequested?.Invoke(this, EventArgs.Empty);
+            if (InspectorTabs == null || InspectorTabs.SelectedIndex == index) return;
+            _switchingInspectorTab = true;
+            try { InspectorTabs.SelectedIndex = index; }
+            finally { _switchingInspectorTab = false; }
         }
 
-        private void HighlightInspectorTab(Button selected)
+        private void ShowInspectorTab(int index)
         {
-            foreach (var tab in new[] { InspectorMappingsTab, InspectorDevicesTab,
-                         InspectorFiltersTab, InspectorOptionsTab })
-            {
-                if (tab == null) continue;
-                tab.Background = tab == selected
-                    ? new SolidColorBrush(Color.FromRgb(43, 61, 83))
-                    : new SolidColorBrush(Color.FromRgb(40, 40, 40));
-                tab.Foreground = Brushes.White;
-            }
+            if (_disposed || SidebarGrid == null || SelectedMappingInspector == null
+                || ProfileOptionsHost == null) return;
+            SelectedMappingInspector.Visibility = index == 0 ? Visibility.Visible : Visibility.Collapsed;
+            SidebarGrid.Visibility = index == 1 || index == 2 ? Visibility.Visible : Visibility.Collapsed;
+            ProfileOptionsHost.Visibility = index == 3 ? Visibility.Visible : Visibility.Collapsed;
+            MappingToolboxPanel.Visibility = Visibility.Collapsed;
+            MappingFiltersPanel.Visibility = index == 2 ? Visibility.Visible : Visibility.Collapsed;
+            ProfileDevicesPanel.Visibility = index == 1 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         public void ShowWorkspaceInspector()
         {
             if (_disposed) return;
-            SelectedMappingInspector.Visibility = Visibility.Visible;
-            SidebarGrid.Visibility = Visibility.Collapsed;
-            HighlightInspectorTab(InspectorMappingsTab);
+            SelectInspectorTab(0);
+            ShowInspectorTab(0);
         }
 
         public void ShowWorkspaceToolbox(string section)
         {
             if (_disposed) return;
-            // Dedicated workspace navigation shows only the relevant classic controls.
-            // The mapping inspector is restored whenever a row is selected.
-            MappingToolboxPanel.Visibility = section == "Add mapping" ? Visibility.Visible : Visibility.Collapsed;
-            MappingFiltersPanel.Visibility = section == "Filters" ? Visibility.Visible : Visibility.Collapsed;
-            ProfileDevicesPanel.Visibility = section == "Devices" ? Visibility.Visible : Visibility.Collapsed;
-            SelectedMappingInspector.Visibility = Visibility.Collapsed;
-            SidebarGrid.Visibility = Visibility.Visible;
-            HighlightInspectorTab(section == "Devices" ? InspectorDevicesTab
-                : section == "Filters" ? InspectorFiltersTab : InspectorMappingsTab);
+            if (section == "Devices" || section == "Filters")
+            {
+                var index = section == "Devices" ? 1 : 2;
+                SelectInspectorTab(index);
+                ShowInspectorTab(index);
+                return;
+            }
+            // Add mapping remains available through its existing workflow.
+            SelectInspectorTab(0);
+            ShowInspectorTab(0);
+            if (section == "Add mapping")
+            {
+                SidebarGrid.Visibility = Visibility.Visible;
+                SelectedMappingInspector.Visibility = Visibility.Collapsed;
+                MappingToolboxPanel.Visibility = Visibility.Visible;
+            }
         }
 
         private void DeleteSelectedMapping_OnClick(object sender, RoutedEventArgs e)
