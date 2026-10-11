@@ -100,6 +100,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private void Plugins_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             OnPropertyChanged(nameof(CanRemove));
+            OnPropertyChanged(nameof(CanChangeAxisButtonMode));
         }
 
         internal void RefreshActiveState()
