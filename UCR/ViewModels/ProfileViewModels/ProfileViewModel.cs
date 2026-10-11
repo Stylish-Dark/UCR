@@ -484,14 +484,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public void RemoveMapping(MappingViewModel mappingViewModel)
         {
             if (mappingViewModel == null) return;
-            if (mappingViewModel.Mapping.DeviceBindings.Count > 0 || mappingViewModel.Plugins.Count > 0)
-            {
-                var result = HidWizards.UCR.Utilities.DarkMessageBox.Show(
-                    "Remove mapping '" + mappingViewModel.Mapping.Title + "'?",
-                    "Remove mapping", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-                if (result != MessageBoxResult.Yes) return;
-            }
-
+            // Delete immediately; Ctrl+Z provides bounded undo.
             if (Profile.RemoveMapping(mappingViewModel.Mapping))
             {
                 var section = FindSection(mappingViewModel);
