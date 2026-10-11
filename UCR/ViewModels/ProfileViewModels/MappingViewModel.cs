@@ -1042,6 +1042,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (viewModel == null) return DeviceVisualCatalog.DescribeBinding(null, DeviceBindingCategory.Momentary, ProfileViewModel.Profile);
             var descriptor = DeviceVisualCatalog.DescribeBinding(
                 viewModel.DeviceBinding, viewModel.DeviceBindingCategory, ProfileViewModel.Profile);
+            descriptor.IsNegatedInput = viewModel.DeviceBinding?.DeviceIoType == DeviceIoType.Input &&
+                viewModel.InputExpressionNegated;
             var binding = viewModel.DeviceBinding;
             if (binding == null || !descriptor.IsBound || descriptor.Device == null) return descriptor;
 
