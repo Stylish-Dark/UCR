@@ -74,6 +74,12 @@ namespace HidWizards.UCR.Views.Controls
         private void ShowExpandedBody()
         {
             if (ExpandedBodyHost == null) return;
+            // Output property controls (especially Button/Axis-to-Filter's Filter name)
+            // are populated lazily. The compact inspector must initialize them too.
+            var mapping = DataContext as MappingViewModel;
+            if (mapping != null)
+                foreach (var plugin in mapping.Plugins)
+                    plugin.EnsureEditorInitialized();
 
             // Interrupt any closing fade if the user immediately reopens the card.
             ExpandedBodyHost.BeginAnimation(OpacityProperty, null);
