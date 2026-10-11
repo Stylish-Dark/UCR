@@ -107,6 +107,9 @@ namespace HidWizards.UCR.Views.ProfileViews
         {
             if (_deviceDock == null) return;
             _deviceDock.Content = null;
+            // Ensure the old ContentPresenter releases its visual child before
+            // the Border is reattached to the original Grid.
+            _deviceDock.UpdateLayout();
             _deviceDock = null;
             ProfileDevicesPanel.Margin = _deviceOriginalMargin;
             ProfileDevicesScrollViewer.MaxHeight = _deviceOriginalScrollMaxHeight;
