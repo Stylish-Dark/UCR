@@ -1156,10 +1156,43 @@ namespace HidWizards.UCR.Views.ProfileViews
                 ShowWorkspaceInspector();
         }
 
-        private void AddMapping_OnClick(object sender, RoutedEventArgs e)
+        private MappingViewModel AddNamedFilterMapping(Plugin template, string name)
+        {
+            var mapping = ProfileViewModel.AddMappingToSelectedSection(ProfileViewModel.GetNextMappingTitle());
+            if (mapping == null) return null;
+            mapping.AddPlugin(template);
+            var property = mapping.Mapping.Plugins.FirstOrDefault()?.GetGuiMatrix()
+                .SelectMany(group => group.PluginProperties)
+                .FirstOrDefault(item => item.PropertyInfo.Name == "FilterName");
+            if (property == null)
+            {
+                mapping.Remove();
+                return null;
+            }
+            property.Property = name;
+            mapping.RefreshFilterDefinitionPresentation();
+            ProfileViewModel.RefreshFilterReferenceLabels();
+            ProfileViewModel.SelectedMapping = mapping;
+            ShowWorkspaceInspector();
+            Dispatcher.BeginInvoke((Action)(() => ScrollMappingIntoView(mapping)), DispatcherPriority.Background);
+            return mapping;
+        }
+
+        private async void AddMapping_OnClick(object sender, RoutedEventArgs e)
         {
             var selectedRoute = ProfileViewModel.PluginToolbox.SelectedRoute;
             if (selectedRoute == null || selectedRoute.PluginItem == null) return;
+
+            if (string.Equals(selectedRoute.OutputLabel, "Filter", StringComparison.OrdinalIgnoreCase))
+            {
+                var picker = new FilterSelectDialog(Profile.GetFilters().OrderBy(name => name,
+                    StringComparer.OrdinalIgnoreCase), true);
+                var selected = (FilterSelectDialogViewModel)await DialogHost.Show(picker,
+                    ProfileViewModel.ProfileDialogIdentifier);
+                if (selected == null || !selected.HasSelection) return;
+                AddNamedFilterMapping(selectedRoute.PluginItem.Plugin, selected.SelectedFilter.Trim());
+                return;
+            }
 
             var mappingViewModel = ProfileViewModel.AddMappingToSelectedSection(ProfileViewModel.GetNextMappingTitle());
             if (mappingViewModel == null) return;
