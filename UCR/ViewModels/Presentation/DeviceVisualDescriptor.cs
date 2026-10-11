@@ -541,12 +541,17 @@ namespace HidWizards.UCR.ViewModels.Presentation
         private static string KnownAxisLabelFromName(string lower, DeviceVisualKind kind)
         {
             if (string.IsNullOrWhiteSpace(lower)) return null;
-            if ((lower.Contains("left") && lower.Contains("x")) || lower.Contains("lx")) return "LX";
-            if ((lower.Contains("left") && lower.Contains("y")) || lower.Contains("ly")) return "LY";
-            if ((lower.Contains("right") && lower.Contains("x")) || lower.Contains("rx")) return "RX";
-            if ((lower.Contains("right") && lower.Contains("y")) || lower.Contains("ry")) return "RY";
-            if (lower.Contains("left trigger") || lower.Contains("l2")) return IsPlayStation(kind) ? "L2" : "LT";
-            if (lower.Contains("right trigger") || lower.Contains("r2")) return IsPlayStation(kind) ? "R2" : "RT";
+            // Triggers are analog pressure controls, never left/right stick axes.
+            if (lower.Contains("left trigger") || lower == "lt" || lower == "l2" ||
+                lower.Contains("trigger l") || lower.Contains("trigger left"))
+                return IsPlayStation(kind) ? "L2" : "LT";
+            if (lower.Contains("right trigger") || lower == "rt" || lower == "r2" ||
+                lower.Contains("trigger r") || lower.Contains("trigger right"))
+                return IsPlayStation(kind) ? "R2" : "RT";
+            if ((lower.Contains("left") && lower.Contains("x")) || lower == "lx") return "LX";
+            if ((lower.Contains("left") && lower.Contains("y")) || lower == "ly") return "LY";
+            if ((lower.Contains("right") && lower.Contains("x")) || lower == "rx") return "RX";
+            if ((lower.Contains("right") && lower.Contains("y")) || lower == "ry") return "RY";
             return null;
         }
 
