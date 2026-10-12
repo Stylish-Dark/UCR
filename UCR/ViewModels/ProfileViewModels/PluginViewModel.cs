@@ -38,7 +38,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public void RefreshFourWayDestination()
         {
             OnPropertyChanged(nameof(FourWayOutputLabel));
-            OnPropertyChanged(nameof(SelectedFourWayOutputDevice));
+            OnPropertyChanged(nameof(SelectedFourWayOutputDeviceGuid));
             OnPropertyChanged(nameof(FourWayOutputDevices));
         }
         public bool IsTwoButtonAxis => string.Equals(Plugin.PluginName, "Buttons to Axis", StringComparison.OrdinalIgnoreCase);
@@ -59,19 +59,20 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         }
         public System.Collections.Generic.List<FourWayOutputDeviceOption> FourWayOutputDevices =>
             MappingViewModel.GetFourWayOutputDevices();
-        public FourWayOutputDeviceOption SelectedFourWayOutputDevice
+        public Guid SelectedFourWayOutputDeviceGuid
         {
             get
             {
                 var current = Plugin.Outputs.FirstOrDefault()?.DeviceConfigurationGuid ?? Guid.Empty;
-                return FourWayOutputDevices.FirstOrDefault(item => item.Guid == current)
-                    ?? FourWayOutputDevices.FirstOrDefault();
+                var devices = FourWayOutputDevices;
+                return devices.Any(item => item.Guid == current)
+                    ? current : devices.FirstOrDefault()?.Guid ?? Guid.Empty;
             }
             set
             {
-                if (value == null || value.Guid == Plugin.Outputs.FirstOrDefault()?.DeviceConfigurationGuid) return;
-                MappingViewModel.SetFourWayOutputDevice(this, value.Guid);
-                OnPropertyChanged(nameof(SelectedFourWayOutputDevice));
+                if (value == Guid.Empty || value == Plugin.Outputs.FirstOrDefault()?.DeviceConfigurationGuid) return;
+                MappingViewModel.SetFourWayOutputDevice(this, value);
+                OnPropertyChanged(nameof(SelectedFourWayOutputDeviceGuid));
                 OnPropertyChanged(nameof(FourWayOutputLabel));
             }
         }

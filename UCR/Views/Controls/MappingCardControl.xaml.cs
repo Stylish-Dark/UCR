@@ -474,7 +474,7 @@ namespace HidWizards.UCR.Views.Controls
             var button = sender as Button;
             var axis = button?.DataContext as PluginViewModel;
             if (axis?.IsFourButtonAxis != true || axis.MappingViewModel?.ButtonsEnabled != true) return;
-            var selectedGuid = axis.SelectedFourWayOutputDevice?.Guid ?? Guid.Empty;
+            var selectedGuid = axis.SelectedFourWayOutputDeviceGuid;
             var options = axis.MappingViewModel.GetFourWayOutputChoices()
                 .Where(option => option.DeviceConfigurationGuid == selectedGuid).ToList();
             var menu = CreateDarkContextMenu(button);
