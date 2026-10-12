@@ -40,7 +40,7 @@
             </Setter>
         </Style>
     </UserControl.Resources>
-    <Grid MinHeight="68">
+    <Grid MinHeight="64">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -116,7 +116,7 @@
             </Button.ContextMenu>
         </Button>
 
-        <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal"
+        <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal"
                     HorizontalAlignment="Center" VerticalAlignment="Center"
                     Visibility="{Binding ShowBlock}"
                     ToolTip="Block the original physical input (where the provider supports it)">
@@ -138,7 +138,7 @@
             </ToggleButton.Style>
         </ToggleButton>
         </StackPanel>
-        <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal"
+        <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal"
                     HorizontalAlignment="Center" VerticalAlignment="Center"
                     Visibility="{Binding ShowInvertInput}"
                     ToolTip="Invert the physical input axis direction">
