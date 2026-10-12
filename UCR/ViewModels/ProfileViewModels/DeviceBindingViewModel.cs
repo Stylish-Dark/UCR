@@ -152,7 +152,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     return DeviceBindingCategory == DeviceBindingCategory.Range
                         ? "Move axis to detect" : "Press input device";
                 if (DeviceBinding.IsBound) return DeviceBinding.BoundName();
-                return "Click to bind";
+                return "Bind";
             }
         }
 
