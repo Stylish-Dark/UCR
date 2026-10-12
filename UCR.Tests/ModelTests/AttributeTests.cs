@@ -67,8 +67,18 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.That(Version.TryParse(versionInfo.FileVersion, out releaseBuild), Is.True);
             Assert.That(releaseBuild.Major, Is.EqualTo(0));
             Assert.That(releaseBuild.Minor, Is.EqualTo(9));
-            Assert.That(releaseBuild.Build, Is.EqualTo(17));
-            Assert.That(informational.InformationalVersion, Is.EqualTo("v" + versionInfo.FileVersion));
+            // The file build/revision fields encode UTC days since 2020-01-01
+            // and minute-of-day; the human-readable product version carries
+            // the full UTC timestamp rather than a per-workflow counter.
+            var match = System.Text.RegularExpressions.Regex.Match(
+                informational.InformationalVersion,
+                @"^v0\.9\.17-(\d{8})\.(\d{6})Z$");
+            Assert.That(match.Success, Is.True);
+            var timestamp = DateTime.ParseExact(match.Groups[1].Value + match.Groups[2].Value,
+                "yyyyMMddHHmmss", System.Globalization.CultureInfo.InvariantCulture);
+            var expectedDay = (int)(timestamp.Date - new DateTime(2020, 1, 1)).TotalDays;
+            Assert.That(releaseBuild.Build, Is.EqualTo(expectedDay));
+            Assert.That(releaseBuild.Revision, Is.EqualTo(timestamp.Hour * 60 + timestamp.Minute));
             Assert.That(versionInfo.ProductVersion, Is.EqualTo(informational.InformationalVersion));
         }
     }
