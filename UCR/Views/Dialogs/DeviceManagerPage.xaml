@@ -11,6 +11,19 @@
              KeyboardNavigation.TabNavigation="Cycle"
              PreviewKeyDown="DeviceManagerWindow_OnPreviewKeyDown">
     <UserControl.Resources>
+        <Style x:Key="DevicePageTextButton" TargetType="{x:Type Button}" BasedOn="{StaticResource UcrDialogFlatButton}">
+            <Setter Property="Background" Value="#303030"/>
+            <Setter Property="BorderBrush" Value="#686868"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10 6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#414141"/>
+                    <Setter Property="BorderBrush" Value="#A0A0A0"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
         <Style x:Key="DeviceRowIconButton" TargetType="{x:Type Button}">
             <Setter Property="Width" Value="38"/>
             <Setter Property="Height" Value="38"/>
@@ -113,9 +126,9 @@
             <TextBlock Grid.Column="0" Text="Devices" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignTitleTextBlock}" VerticalAlignment="Center"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal">
                 <Button Content="WINDOWS DEVICES" Click="OpenWindowsDevices_OnClick" Margin="0 0 6 0"
-                        Style="{StaticResource UcrDialogFlatButton}" ToolTip="Open Windows Device Manager for live hardware removal or driver management"/>
+                        Style="{StaticResource DevicePageTextButton}" ToolTip="Open Windows Device Manager for live hardware removal or driver management"/>
                 <Button Content="{Binding DetectionButtonText}" Click="DetectDevice_OnClick"
-                        Style="{StaticResource UcrDialogFlatButton}" ToolTip="Identify an input device by pressing one of its buttons or keys"/>
+                        Style="{StaticResource DevicePageTextButton}" ToolTip="Identify an input device by pressing one of its buttons or keys"/>
             </StackPanel>
         </Grid>
         <StackPanel Grid.Row="1" Margin="0 6 0 12">
@@ -322,7 +335,7 @@
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 14 0 0">
             <Button Content="SAVE" IsDefault="True" Style="{StaticResource UcrDialogRaisedButton}" Click="Save_OnClick"/>
-            <Button Content="CANCEL" Margin="8 0 0 0" Style="{StaticResource UcrDialogFlatButton}" Click="Cancel_OnClick"/>
+            <Button Content="CANCEL" Margin="8 0 0 0" Style="{StaticResource DevicePageTextButton}" Click="Cancel_OnClick"/>
         </StackPanel>
         </Grid>
     </Grid>
