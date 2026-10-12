@@ -123,6 +123,21 @@
             </Border>
             <ToolBarTray Style="{DynamicResource MaterialDesignToolBarTray}" IsEnabled="{Binding Source={x:Reference RootDialog}, Path=IsOpen, Converter={StaticResource InverseBooleanConverter}}">
                 <ToolBar ToolBarTray.IsLocked="True" Style="{DynamicResource MaterialDesignToolBar}" ClipToBounds="False">
+                    <ToolBar.Resources>
+                        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignToolButton}">
+                            <Setter Property="Background" Value="#292929"/>
+                            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                            <Setter Property="BorderThickness" Value="1"/>
+                            <Setter Property="MinWidth" Value="34"/>
+                            <Setter Property="MinHeight" Value="34"/>
+                            <Setter Property="Margin" Value="2"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource PrimaryHueDarkBrush}"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ToolBar.Resources>
                     <Button ToolTip="Save" Command="Save">
                         <materialDesign:PackIcon Kind="ContentSave"/>
                     </Button>
