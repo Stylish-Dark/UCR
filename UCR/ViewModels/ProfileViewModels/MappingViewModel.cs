@@ -38,6 +38,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public string ToolTip { get; set; }
     }
 
+    public sealed class FourWayOutputDeviceOption
+    {
+        public Guid Guid { get; set; }
+        public string Title { get; set; }
+    }
+
     public sealed class FourWayOutputChoice
     {
         public Guid DeviceConfigurationGuid { get; set; }
@@ -321,6 +327,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
 
             RefreshInputExpressionPresentation();
+            RefreshPresetAvailability();
             RefreshCollapsedSummary();
         }
 
@@ -614,6 +621,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ProfileViewModel.Profile.Context.ContextChanged();
             RefreshHeaderState();
             RefreshInputExpressionPresentation();
+            RefreshPresetAvailability();
             RefreshCollapsedSummary();
             ProfileViewModel.RefreshFilterReferenceLabels();
             Logger.Info("Axis input mode for '" + MappingTitle + "': " + buttonCount + " buttons");
@@ -675,6 +683,51 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         // One four-way destination may consist of two analogue axes or four D-pad buttons.
         // Only offer a choice after verifying *all* its constituent controls exist.
+        public DeviceConfiguration GetSelectedPresetInputDevice()
+        {
+            var profile = ProfileViewModel.Profile;
+            var guid = Mapping.DeviceBindings.FirstOrDefault()?.DeviceConfigurationGuid ?? Guid.Empty;
+            return profile.GetDeviceConfiguration(DeviceIoType.Input, guid)
+                ?? profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input);
+        }
+
+        public bool SelectedPresetInputIsKeyboard =>
+            DeviceVisualCatalog.Describe(GetSelectedPresetInputDevice(), ProfileViewModel.Profile,
+                DeviceIoType.Input).Kind == DeviceVisualKind.Keyboard;
+
+        public bool SelectedPresetInputHasDPad =>
+            FindDPadControls(GetSelectedPresetInputDevice(), DeviceIoType.Input) != null;
+
+        public void RefreshPresetAvailability()
+        {
+            OnPropertyChanged(nameof(SelectedPresetInputIsKeyboard));
+            OnPropertyChanged(nameof(SelectedPresetInputHasDPad));
+            foreach (var plugin in Plugins ?? Enumerable.Empty<PluginViewModel>())
+                plugin.RefreshInputPresetDisplay();
+        }
+
+        public List<FourWayOutputDeviceOption> GetFourWayOutputDevices()
+        {
+            return GetFourWayOutputChoices().GroupBy(option => option.DeviceConfigurationGuid)
+                .Select(group => new FourWayOutputDeviceOption
+                {
+                    Guid = group.Key, Title = group.First().DeviceTitle
+                }).ToList();
+        }
+
+        public void SetFourWayOutputDevice(PluginViewModel axis, Guid guid)
+        {
+            if (axis?.IsFourButtonAxis != true || !ButtonsEnabled) return;
+            var options = GetFourWayOutputChoices()
+                .Where(option => option.DeviceConfigurationGuid == guid).ToList();
+            if (options.Count == 0) return;
+            var preferred = axis.FourWayOutputLabel;
+            var chosen = options.FirstOrDefault(option => option.Destination == preferred)
+                ?? options.FirstOrDefault(option => option.Destination == "Left stick")
+                ?? options.First();
+            ApplyFourWayOutput(axis, chosen);
+        }
+
         public List<FourWayOutputChoice> GetFourWayOutputChoices()
         {
             var result = new List<FourWayOutputChoice>();
@@ -811,25 +864,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return false;
             }
             var profile = ProfileViewModel.Profile;
-            var devices = profile.GetDeviceConfigurationList(DeviceIoType.Input);
-            var preferred = Mapping.DeviceBindings[0].DeviceConfigurationGuid;
-            var primary = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input)?.Guid;
-            var choice = devices.Select(device => new { Device = device, Controls = FindDPadControls(device, DeviceIoType.Input) })
-                .Where(item => item.Controls != null).ToList();
-            var selected = choice.FirstOrDefault(item => item.Device.Guid == preferred)
-                ?? choice.FirstOrDefault(item => item.Device.Guid == primary)
-                ?? choice.FirstOrDefault();
-            if (selected == null)
+            var selectedDevice = GetSelectedPresetInputDevice();
+            var selectedControls = FindDPadControls(selectedDevice, DeviceIoType.Input);
+            if (selectedControls == null)
             {
                 error = "Add a controller with a D-pad to this profile's input devices first.";
                 return false;
             }
             for (var i = 0; i < 4; i++)
             {
-                var info = selected.Controls[i];
+                var info = selectedControls[i];
                 var binding = Mapping.DeviceBindings[i];
                 binding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
-                binding.SetDeviceConfigurationGuid(selected.Device.Guid, false);
+                binding.SetDeviceConfigurationGuid(selectedDevice.Guid, false);
                 binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
             }
             foreach (var binding in DeviceBindings) binding.RefreshDeviceList();
@@ -862,14 +909,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var profile = ProfileViewModel.Profile;
             // Respect the keyboard explicitly chosen on the first input, otherwise
             // the profile primary keyboard, before considering a fallback keyboard.
-            var inputDevices = profile.GetDeviceConfigurationList(DeviceIoType.Input);
-            var preferredInput = Mapping.DeviceBindings[0].DeviceConfigurationGuid;
-            var primaryInput = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input);
-            Func<DeviceConfiguration, bool> isKeyboard = item => item?.Device != null &&
-                DeviceVisualCatalog.Describe(item, profile, DeviceIoType.Input).Kind == DeviceVisualKind.Keyboard;
-            var keyboard = inputDevices.FirstOrDefault(item => item.Guid == preferredInput && isKeyboard(item))
-                ?? inputDevices.FirstOrDefault(item => item.Guid == primaryInput?.Guid && isKeyboard(item))
-                ?? inputDevices.FirstOrDefault(isKeyboard);
+            var keyboard = SelectedPresetInputIsKeyboard ? GetSelectedPresetInputDevice() : null;
             if (keyboard == null)
             {
                 error = "Add a keyboard to this profile's input devices first.";

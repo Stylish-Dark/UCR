@@ -228,6 +228,7 @@
 
                                         </WrapPanel>
                                          <StackPanel Margin="5 6 0 6" Visibility="{Binding FourButtonPresetVisibility}">
+                                             <StackPanel Visibility="{Binding KeyboardAxisPresetVisibility}">
                                              <TextBlock Text="Keyboard presets" Foreground="#D8D8D8" FontWeight="SemiBold" Margin="0 0 0 5"/>
                                              <WrapPanel>
                                                  <Button Content="WASD" Tag="WASD" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4" ToolTip="W up, S down, A left, D right"/>
@@ -235,10 +236,13 @@
                                                  <Button Content="Numpad" Tag="Numpad" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4" ToolTip="Numpad 8, 2, 4, 6"/>
                                                  <Button Content="U/J + H/K" Tag="UJHK" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4"/>
                                              </WrapPanel>
+                                             </StackPanel>
+                                             <StackPanel Visibility="{Binding ControllerAxisPresetVisibility}">
                                              <TextBlock Text="Controller presets" Foreground="#D8D8D8" FontWeight="SemiBold" Margin="0 7 0 5"/>
                                              <Button Content="D-pad" Tag="DPad" Click="AxisControllerPreset_OnClick"
                                                      Height="30" Padding="12 2" HorizontalAlignment="Left"
-                                                     ToolTip="Assign Up, Down, Left and Right from the chosen controller's D-pad"/>
+                                                     ToolTip="Assign Up, Down, Left and Right from the selected controller's D-pad"/>
+                                             </StackPanel>
                                              <StackPanel Orientation="Horizontal" Margin="0 9 0 0">
                                                  <CheckBox Content="Invert horizontal" Margin="0 0 15 0"
                                                            IsChecked="{Binding Plugin.InvertX, Mode=OneWay}"
@@ -454,8 +458,27 @@
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
+                                            <!-- Four-way output device and its logical destination are independently selectable. -->
+                                            <StackPanel Grid.Column="1" Margin="0 1 0 1">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="{x:Type StackPanel}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsFourButtonAxis}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </StackPanel.Style>
+                                                <ComboBox Height="30" Margin="0 0 0 5"
+                                                          ItemsSource="{Binding FourWayOutputDevices}"
+                                                          SelectedValuePath="Guid"
+                                                          SelectedValue="{Binding SelectedFourWayOutputDeviceGuid, Mode=TwoWay}"
+                                                          DisplayMemberPath="Title"
+                                                          IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"
+                                                          ToolTip="Select output controller"/>
                                             <!-- Four directions form ONE destination: do not expose X/Y binding buttons. -->
-                                            <Button Grid.Column="1" Height="36" Margin="0 1 0 1"
+                                            <Button Height="36" Margin="0"
                                                     Content="{Binding FourWayOutputLabel}"
                                                     Click="FourWayOutput_OnClick"
                                                     IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"
@@ -471,6 +494,7 @@
                                                     </Style>
                                                 </Button.Style>
                                             </Button>
+                                            </StackPanel>
                                             <Button Grid.Column="2" HorizontalAlignment="Right"
                                                     VerticalAlignment="Bottom" Margin="7 0 0 1"
                                                     Click="RemoveOutput_OnClick" IsEnabled="{Binding CanRemove}"

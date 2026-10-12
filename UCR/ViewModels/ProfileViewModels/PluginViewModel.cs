@@ -35,7 +35,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return Plugin.Outputs[0].KeyValue == 2 ? "Right stick" : "Left stick";
             }
         }
-        public void RefreshFourWayDestination() => OnPropertyChanged(nameof(FourWayOutputLabel));
+        public void RefreshFourWayDestination()
+        {
+            OnPropertyChanged(nameof(FourWayOutputLabel));
+            OnPropertyChanged(nameof(SelectedFourWayOutputDeviceGuid));
+            OnPropertyChanged(nameof(FourWayOutputDevices));
+        }
         public bool IsTwoButtonAxis => string.Equals(Plugin.PluginName, "Buttons to Axis", StringComparison.OrdinalIgnoreCase);
         public bool IsOneButtonAxis => IsAxisButtonMapping && !IsTwoButtonAxis && !IsFourButtonAxis;
         public Visibility AxisButtonModeVisibility => IsAxisButtonMapping ? Visibility.Visible : Visibility.Collapsed;
@@ -43,6 +48,34 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             MappingViewModel.Plugins.Count == 1 && !MappingViewModel.UsesInputExpression;
         public string AxisButtonModeDescription => IsFourButtonAxis ? "4 ways" : IsTwoButtonAxis ? "2 buttons" : "1 button";
         public Visibility FourButtonPresetVisibility => IsFourButtonAxis ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility KeyboardAxisPresetVisibility =>
+            IsFourButtonAxis && MappingViewModel.SelectedPresetInputIsKeyboard ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility ControllerAxisPresetVisibility =>
+            IsFourButtonAxis && MappingViewModel.SelectedPresetInputHasDPad ? Visibility.Visible : Visibility.Collapsed;
+        public void RefreshInputPresetDisplay()
+        {
+            OnPropertyChanged(nameof(KeyboardAxisPresetVisibility));
+            OnPropertyChanged(nameof(ControllerAxisPresetVisibility));
+        }
+        public System.Collections.Generic.List<FourWayOutputDeviceOption> FourWayOutputDevices =>
+            MappingViewModel.GetFourWayOutputDevices();
+        public Guid SelectedFourWayOutputDeviceGuid
+        {
+            get
+            {
+                var current = Plugin.Outputs.FirstOrDefault()?.DeviceConfigurationGuid ?? Guid.Empty;
+                var devices = FourWayOutputDevices;
+                return devices.Any(item => item.Guid == current)
+                    ? current : devices.FirstOrDefault()?.Guid ?? Guid.Empty;
+            }
+            set
+            {
+                if (value == Guid.Empty || value == Plugin.Outputs.FirstOrDefault()?.DeviceConfigurationGuid) return;
+                MappingViewModel.SetFourWayOutputDevice(this, value);
+                OnPropertyChanged(nameof(SelectedFourWayOutputDeviceGuid));
+                OnPropertyChanged(nameof(FourWayOutputLabel));
+            }
+        }
 
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<PluginPropertyGroupViewModel> PluginPropertyGroups { get; set; }
