@@ -327,6 +327,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
 
             RefreshInputExpressionPresentation();
+            RefreshPresetAvailability();
             RefreshCollapsedSummary();
         }
 
