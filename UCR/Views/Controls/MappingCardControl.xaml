@@ -283,10 +283,13 @@
                         <ItemsControl ItemsSource="{Binding InputConditions}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <StackPanel Margin="0 0 0 5">
+                                    <StackPanel Margin="0 0 0 9">
                                         <TextBlock Text="OR" Visibility="{Binding OrLabelVisibility}"
                                                    Foreground="#B4B4B4" FontWeight="Bold" FontSize="12"
-                                                   Margin="4 4 0 5"/>
+                                                   Margin="4 7 0 6"/>
+                                        <Border Background="#242424" BorderBrush="#505050" BorderThickness="1"
+                                                CornerRadius="4" Padding="7 8 7 7">
+                                          <StackPanel>
                                         <ItemsControl ItemsSource="{Binding Inputs}">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate><StackPanel Orientation="Vertical"/></ItemsPanelTemplate>
@@ -367,6 +370,8 @@
                                                 </Button.Style>
                                             </Button>
                                         </StackPanel>
+                                        </StackPanel>
+                                        </Border>
                                     </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>

@@ -99,16 +99,16 @@
     </UserControl.Resources>
     <Grid Background="#212121">
         <Grid.RowDefinitions>
-            <RowDefinition Height="32"/>
+            <RowDefinition Height="42"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid Grid.Row="0" Background="#202020">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Margin="5 2 8 2" Click="Back_OnClick"
+            <Button Grid.Column="0" Width="36" Height="34" Margin="8 3 9 3" Click="Back_OnClick"
                     Style="{StaticResource UcrNavigationBackButton}" ToolTip="Back to profiles (Alt+Left)">
                 <materialDesign:PackIcon Kind="ArrowLeft" Width="23" Height="23" Foreground="#FFFFFF"/>
             </Button>
-            <TextBlock Grid.Column="1" Text="Devices" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="1" Text="Devices" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0 0 0 1"/>
         </Grid>
         <Grid Grid.Row="1" Margin="18" Background="#212121">
         <Grid.RowDefinitions>

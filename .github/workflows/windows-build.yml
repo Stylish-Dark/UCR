@@ -99,8 +99,12 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $revision = ([int]$env:GITHUB_RUN_NUMBER * 2) + 1
-          if ($revision -gt 65535) { throw 'UCR build revision exceeds the assembly version range.' }
+          # UTC calendar day + minute of day form a monotonic four-part Windows
+          # file version, independent of the two unrelated workflow run counters.
+          $now = [DateTime]::UtcNow
+          $buildDay = [int]($now.Date - [DateTime]::new(2020,1,1)).TotalDays
+          $buildMinute = $now.Hour * 60 + $now.Minute
+          $stamp = $now.ToString('yyyyMMdd.HHmmss') + 'Z'
           $gitVersionConfig = Get-Content -LiteralPath '.\GitVersion.yml' -Raw
           $versionMatch = [regex]::Match($gitVersionConfig, '(?m)^next-version:\s*(\d+\.\d+\.\d+)\s*$')
           if (-not $versionMatch.Success) {
@@ -109,12 +113,13 @@ jobs:
           $baseVersion = $versionMatch.Groups[1].Value
           $file = '.\\UCR\\Properties\\AssemblyInfo.cs'
           $source = [System.IO.File]::ReadAllText($file)
+          $numeric = "0.9.$buildDay.$buildMinute"
           $source = [regex]::Replace($source, 'AssemblyFileVersion\("[^"]+"\)',
-            ('AssemblyFileVersion("' + $baseVersion + '.' + $revision + '")'))
+            ('AssemblyFileVersion("' + $numeric + '")'))
           $source = [regex]::Replace($source, 'AssemblyInformationalVersion\("[^"]+"\)',
-            ('AssemblyInformationalVersion("v' + $baseVersion + '.' + $revision + '")'))
+            ('AssemblyInformationalVersion("v' + $baseVersion + '-' + $stamp + '")'))
           [System.IO.File]::WriteAllText($file, $source, [System.Text.UTF8Encoding]::new($false))
-          Write-Host "UCR build identity: $baseVersion.$revision"
+          Write-Host "UCR build identity: $baseVersion-$stamp ($numeric)"
 
       - name: Build release
         shell: pwsh
