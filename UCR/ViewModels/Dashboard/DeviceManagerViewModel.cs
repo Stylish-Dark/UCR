@@ -58,6 +58,11 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public bool HasOutput { get; private set; }
         public bool CanRemoveFromUcr => HasInput;
         public bool CanHide => HasOutput && !HasInput && CanPersist;
+        // The pinned interception provider is the only physical input provider
+        // with verified block-unmapped support. Do not offer a misleading switch
+        // on SharpDX controllers, virtual devices or other read-only providers.
+        public bool CanBlockUnmapped => HasInput && CanPersist &&
+            string.Equals(Device?.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase);
         public bool CanRemoveFromWindows
         {
             get
@@ -200,6 +205,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
             OnPropertyChanged(nameof(IoTypes));
             OnPropertyChanged(nameof(HasInput));
+            OnPropertyChanged(nameof(CanBlockUnmapped));
             OnPropertyChanged(nameof(HasOutput));
             OnPropertyChanged(nameof(CanRemoveFromUcr));
             OnPropertyChanged(nameof(CanHide));
@@ -563,7 +569,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 var hidden = item.CanHide && item.Hidden;
                 if (_devicesManager.TrySetDevicePresentation(item.Device, item.ValidationType,
                         item.Alias, hidden, index, item.TextColor, out error,
-                        item.HasInput ? (bool?)item.BlockUnmappedInputs : null)) continue;
+                        item.CanBlockUnmapped ? (bool?)item.BlockUnmappedInputs : null)) continue;
 
                 return false;
             }
