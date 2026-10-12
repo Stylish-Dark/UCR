@@ -303,8 +303,8 @@
                                                                                                 DeviceBinding="{Binding DeviceBinding}"
                                                                                                 HorizontalAlignment="Stretch"/>
                                                             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
-                                                                        VerticalAlignment="Bottom" Margin="7 0 0 0">
-                                                                <ToggleButton Content="NOT" Width="62" Height="32" Margin="0 0 5 0"
+                                                                        VerticalAlignment="Center" Margin="4 0 0 0">
+                                                                <ToggleButton Content="NOT" Width="54" Height="30" Margin="0 0 4 0"
                                                                               IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
                                                                               Click="InputNegated_OnClick"
                                                                               Foreground="#FFFFFF" Background="#343434"
@@ -318,7 +318,7 @@
                                                                                 <Setter.Value>
                                                                                     <ControlTemplate TargetType="ToggleButton">
                                                                                         <Border x:Name="NotSurface" Background="#343434"
-                                                                                                BorderBrush="#626262" BorderThickness="1">
+                                                                                                BorderBrush="{DynamicResource PrimaryHueLightBrush}" BorderThickness="1">
                                                                                             <ContentPresenter HorizontalAlignment="Center"
                                                                                                               VerticalAlignment="Center"
                                                                                                               TextElement.Foreground="#FFFFFF"/>
@@ -415,7 +415,7 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Margin="0 0 0 4" Padding="5" Background="#262626"
+                                    <Border Margin="0 0 0 2" Padding="5" Background="#262626"
                                             BorderBrush="#454545" BorderThickness="1" CornerRadius="3">
                                         <StackPanel>
                                         <Grid>
@@ -424,12 +424,12 @@
                                                 <ColumnDefinition Width="*" MinWidth="205"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <Button Grid.Column="0" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                            <Button Grid.Column="0" HorizontalAlignment="Left" VerticalAlignment="Center"
                                                     Margin="0 1 7 0" Padding="6 2"
                                                     Height="32" MinWidth="76" Click="ChangeOutputType_OnClick"
                                                     ToolTip="Change this output's type"
                                                     IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"
-                                                    Background="#383838" Foreground="#FFFFFF" BorderBrush="#5C5C5C"
+                                                    Background="#383838" Foreground="#FFFFFF" BorderBrush="{DynamicResource PrimaryHueLightBrush}"
                                                     BorderThickness="1">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Text="{Binding OutputType}" VerticalAlignment="Center"/>
@@ -503,14 +503,16 @@
                                         </Grid>
                                         <!-- Compact workspace must expose the same filter and plugin-property
                                              editors as the classic expanded plugin UI. -->
-                                        <StackPanel Margin="2 6 2 0">
-                                            <Button Content="+ Add filter" HorizontalAlignment="Left"
-                                                    Height="30" Padding="8 2"
+                                        <StackPanel Margin="2 3 2 0">
+                                            <Button HorizontalAlignment="Left" Width="34"
+                                                    Height="30" Padding="3"
                                                     Click="AddOutputFilter_OnClick"
                                                     IsEnabled="{Binding CanAddFilter}"
                                                     Foreground="#FFFFFF" Background="#353535"
-                                                    BorderBrush="#555555" BorderThickness="1"
-                                                    ToolTip="Assign a defined filter to this output"/>
+                                                    BorderBrush="{DynamicResource PrimaryHueLightBrush}" BorderThickness="1"
+                                                    ToolTip="Add filter to this output">
+                                                <materialDesign:PackIcon Kind="Plus" Width="19" Height="19"/>
+                                            </Button>
                                             <ItemsControl ItemsSource="{Binding Filters}" Margin="0 4 0 0">
                                                 <ItemsControl.ItemsPanel>
                                                     <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
@@ -534,7 +536,7 @@
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
-                                            <ItemsControl ItemsSource="{Binding PluginPropertyGroups}" Margin="0 5 0 0">
+                                            <ItemsControl ItemsSource="{Binding PluginPropertyGroups}" Margin="0 2 0 0">
                                                 <ItemsControl.Style>
                                                     <Style TargetType="{x:Type ItemsControl}">
                                                         <Style.Triggers>
@@ -548,7 +550,7 @@
                                                     <DataTemplate>
                                                         <StackPanel Visibility="{Binding ShowPropertyList}">
                                                             <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold"
-                                                                       Foreground="#DADADA" Margin="0 5 0 3"/>
+                                                                       Foreground="#DADADA" Margin="0 2 0 1"/>
                                                             <plugin:PluginPropertyListControl DataContext="{Binding}"/>
                                                         </StackPanel>
                                                     </DataTemplate>
@@ -560,7 +562,7 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <Button Content="+ Add output" MinWidth="125" Height="34" HorizontalAlignment="Left"
+                        <Button Content="+ Add output" MinWidth="125" Height="32" HorizontalAlignment="Left"
                                 Margin="0 3 0 2"
                                 Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
                                 IsEnabled="{Binding ButtonsEnabled}" Click="AddPlugin_OnClick"
