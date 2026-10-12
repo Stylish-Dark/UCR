@@ -754,6 +754,11 @@ namespace HidWizards.UCR.Views
         }
 
 
+        private void ToggleProfileGrouping_OnClick(object sender, RoutedEventArgs e)
+        {
+            _dashboardViewModel.GroupProfilesByInput = !_dashboardViewModel.GroupProfilesByInput;
+        }
+
         private void ContextMenuButton_OnClick(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
@@ -1094,8 +1099,16 @@ namespace HidWizards.UCR.Views
                 return;
             }
 
+            // The title-bar close button hides UCR; only Exit UCR and explicit
+            // version replacement should shut down the process.
+            if (!_exitRequested)
+            {
+                e.Cancel = true;
+                HideToTray();
+                return;
+            }
             e.Cancel = true;
-            // Closing the window really exits UCR. Only ask when the persisted
+            // Explicit exit asks about unsaved changes. Only ask when the persisted
             // configuration differs from the last explicit save.
             if (Context.HasUnsavedPersistentChanges())
             {
