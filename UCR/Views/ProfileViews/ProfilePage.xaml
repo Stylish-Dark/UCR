@@ -905,21 +905,28 @@
                                                                     </ItemsControl.ItemsPanel>
                                                                     <ItemsControl.ItemTemplate>
                                                                         <DataTemplate>
-                                                                            <controls:ControlGlyphControl Kind="{Binding ControlKind}"
-                                                                                                          AccentBrush="{Binding ControlBrush}"
-                                                                                                          Label="{Binding ControlLabel}"
-                                                                                                          Width="58" Height="42"
-                                                                                                          ToolTip="{Binding ToolTip}" Margin="2 1">
-                                                                                <controls:ControlGlyphControl.Style>
-                                                                                    <Style TargetType="{x:Type controls:ControlGlyphControl}">
-                                                                                        <Style.Triggers>
-                                                                                            <DataTrigger Binding="{Binding IsNegatedInput}" Value="True">
-                                                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                            </DataTrigger>
-                                                                                        </Style.Triggers>
-                                                                                    </Style>
-                                                                                </controls:ControlGlyphControl.Style>
-                                                                            </controls:ControlGlyphControl>
+                                                                            <Grid Width="62" Height="44" Margin="2 1"
+                                                                                  ToolTip="{Binding ToolTip}">
+                                                                                <controls:ControlGlyphControl Kind="{Binding ControlKind}"
+                                                                                                              AccentBrush="{Binding ControlBrush}"
+                                                                                                              Label="{Binding ControlLabel}"
+                                                                                                              Width="58" Height="42"/>
+                                                                                <Line X1="7" Y1="36" X2="55" Y2="6"
+                                                                                      Stroke="#D9D9D9" StrokeThickness="2.8"
+                                                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                                                      IsHitTestVisible="False">
+                                                                                    <Line.Style>
+                                                                                        <Style TargetType="Line">
+                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                            <Style.Triggers>
+                                                                                                <DataTrigger Binding="{Binding IsNegatedInput}" Value="True">
+                                                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                                                </DataTrigger>
+                                                                                            </Style.Triggers>
+                                                                                        </Style>
+                                                                                    </Line.Style>
+                                                                                </Line>
+                                                                            </Grid>
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
                                                                 </ItemsControl>

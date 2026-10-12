@@ -98,9 +98,6 @@
                                 <Setter Property="Width" Value="65"/>
                                 <Setter Property="Height" Value="38"/>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsNegatedInput}" Value="True">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                    </DataTrigger>
                                     <DataTrigger Binding="{Binding IsFilterControl}" Value="True">
                                         <Setter Property="Width" Value="20"/>
                                         <Setter Property="Height" Value="20"/>
@@ -109,15 +106,19 @@
                             </Style>
                         </local:ControlGlyphControl.Style>
                     </local:ControlGlyphControl>
-                    <Line X1="4" Y1="34" X2="61" Y2="4"
-                          Stroke="#FF6868" StrokeThickness="3.2"
+                    <!-- Negation preserves the actual input glyph and crosses it out,
+                         instead of replacing it with text or hiding its identity. -->
+                    <Line X1="7" Y1="33" X2="58" Y2="5"
+                          Stroke="#D9D9D9" StrokeThickness="2.8"
                           StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                           IsHitTestVisible="False">
                         <Line.Style>
                             <Style TargetType="Line">
                                 <Setter Property="Visibility" Value="Collapsed"/>
                                 <Style.Triggers>
-                                    <!-- NOT hides the glyph rather than drawing over it. -->
+                                    <DataTrigger Binding="{Binding IsNegatedInput}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </Line.Style>
@@ -173,7 +174,7 @@
                                             <TextBlock Text="Axis input mode" Foreground="#D8D8D8"
                                                        VerticalAlignment="Center" Margin="0 0 10 0"
                                                        ToolTip="One button: pressed/released axis values. Two buttons: positive/negative directions."/>
-                                            <Button Content="1 button" Height="30" Padding="10 2"
+                                            <Button Content="1" MinWidth="42" Height="30" Padding="10 2"
                                                     Margin="0 0 4 0" Click="AxisOneButton_OnClick"
                                                     IsEnabled="{Binding CanChangeAxisButtonMode}"
                                                     ToolTip="Use one button and set axis values for press and release"
@@ -191,7 +192,7 @@
                                                     </Style>
                                                 </Button.Style>
                                             </Button>
-                                            <Button Content="2 buttons" Height="30" Padding="10 2"
+                                            <Button Content="2" MinWidth="42" Height="30" Padding="10 2"
                                                     Click="AxisTwoButtons_OnClick"
                                                     IsEnabled="{Binding CanChangeAxisButtonMode}"
                                                     ToolTip="Use separate buttons for the positive and negative axis directions"
@@ -209,8 +210,8 @@
                                                     </Style>
                                                 </Button.Style>
                                             </Button>
-                                             <Button Content="4 ways" Height="30" Padding="10 2" Click="AxisFourButtons_OnClick"
-                                                     IsEnabled="{Binding CanChangeAxisButtonMode}" ToolTip="Control a full X/Y joystick using four buttons"
+                                             <Button Content="4" MinWidth="42" Height="30" Padding="10 2" Click="AxisFourButtons_OnClick"
+                                                     IsEnabled="{Binding CanChangeAxisButtonMode}" ToolTip="Four directions: Up, Down, Left and Right"
                                                      Foreground="White">
                                                 <Button.Style>
                                                     <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
