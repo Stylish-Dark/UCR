@@ -40,19 +40,22 @@
             </Setter>
         </Style>
     </UserControl.Resources>
-    <Grid MinHeight="64">
+    <Grid MinHeight="38">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="56"/>
+            <ColumnDefinition Width="*" MinWidth="90"/>
             <ColumnDefinition Width="34"/>
             <ColumnDefinition Width="92"/>
         </Grid.ColumnDefinitions>
 
-        <ComboBox Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" x:Name="DeviceSelectionBox"
-                  Margin="0 0 5 0" MinHeight="31" Padding="5 1"
+        <ComboBox Grid.Row="0" Grid.Column="0" x:Name="DeviceSelectionBox"
+                  Width="54" Height="36" Margin="0 0 4 0" Padding="2 1"
+                  BorderBrush="{DynamicResource PrimaryHueLightBrush}" BorderThickness="2"
+                  HorizontalAlignment="Left"
                   ItemsSource="{Binding Devices}"
                   SelectedItem="{Binding SelectedDevice}"
                   IsEnabled="{Binding BindingEnabled}"
@@ -60,7 +63,7 @@
                   ToolTip="Binding device">
             <ComboBox.ItemTemplate>
                 <DataTemplate>
-                    <Grid MinWidth="112">
+                    <Grid MinWidth="35">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="38"/>
                             <ColumnDefinition Width="*"/>
@@ -69,18 +72,31 @@
                         <local:DeviceSymbolControl Grid.Column="0"
                                                    SymbolText="{Binding Visual.SymbolText}"
                                                    Foreground="{Binding Visual.BadgeTextBrush}"
-                                                   GlyphSize="22" Width="34" Height="22"
+                                                   GlyphSize="26" Width="34" Height="27"
                                                    Margin="0 0 5 0" VerticalAlignment="Center"
                                                    ToolTip="{Binding Visual.ToolTip}"/>
                         <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="#FFFFFF"
                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                   ToolTip="{Binding Title}"/>
+                                   ToolTip="{Binding Title}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <!-- The selection displays only its device glyph; the
+                                             opened dropdown displays full device names. -->
+                                        <DataTrigger Binding="{Binding IsVisible, RelativeSource={RelativeSource AncestorType={x:Type ComboBoxItem}}}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </Grid>
                 </DataTemplate>
             </ComboBox.ItemTemplate>
         </ComboBox>
 
-        <Grid Grid.Row="1" Grid.Column="0" Margin="0 2 0 0">
+        <Grid Grid.Row="0" Grid.Column="1" Margin="0 0 0 0">
             <Button x:Name="BindButton" MinHeight="32" MinWidth="120"
                     Content="{Binding CompactBindButtonText}"
                     IsEnabled="{Binding BindingEnabled}"
@@ -105,7 +121,7 @@
             </ProgressBar>
         </Grid>
 
-        <Button Grid.Row="1" Grid.Column="1" x:Name="MenuButton" Margin="2 2 0 0" Width="32" MinHeight="32" Padding="0"
+        <Button Grid.Row="0" Grid.Column="2" x:Name="MenuButton" Margin="2 0 0 0" Width="32" MinHeight="32" Padding="0"
                 IsEnabled="{Binding BindingEnabled}" Click="MenuButton_OnClick"
                 Style="{StaticResource MaterialDesignRaisedButton}" Foreground="#FFFFFF"
                 ToolTip="Binding options">
@@ -116,7 +132,7 @@
             </Button.ContextMenu>
         </Button>
 
-        <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal"
+        <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Horizontal"
                     HorizontalAlignment="Center" VerticalAlignment="Center"
                     Visibility="{Binding ShowBlock}"
                     ToolTip="Block the original physical input (where the provider supports it)">
@@ -138,7 +154,7 @@
             </ToggleButton.Style>
         </ToggleButton>
         </StackPanel>
-        <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal"
+        <StackPanel Grid.Row="1" Grid.Column="3" Orientation="Horizontal"
                     HorizontalAlignment="Center" VerticalAlignment="Center"
                     Visibility="{Binding ShowInvertInput}"
                     ToolTip="Invert the physical input axis direction">
