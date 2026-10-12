@@ -189,9 +189,42 @@
                 <Setter Property="FocusManager.IsFocusScope" Value="True"/>
             </Style>
 
+            <!-- Unstyled buttons must still read as interactive controls. Explicit
+                 specialised styles may override these defaults, but cannot silently
+                 turn ordinary actions into bare text. -->
+            <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="Background" Value="#292929"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource PrimaryHueDarkBrush}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
             <!-- Accent colour belongs to selected surfaces, not ordinary text. -->
+            <Style x:Key="UcrAccentOutlineButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="Background" Value="#272727"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                <Setter Property="BorderThickness" Value="1.5"/>
+                <Setter Property="MinHeight" Value="30"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource PrimaryHueDarkBrush}"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.45"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
             <Style x:Key="UcrDialogFlatButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
                 <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
                     <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
@@ -199,6 +232,7 @@
                 </Style.Triggers>
             </Style>
             <Style x:Key="UcrDialogRaisedButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
                 <Setter Property="Foreground" Value="#FFFFFF"/>
@@ -210,7 +244,8 @@
             <Style x:Key="UcrNavigationBackButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
                 <Setter Property="Foreground" Value="#FFFFFF"/>
                 <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="Padding" Value="3"/>
                 <Setter Property="Width" Value="34"/>
                 <Setter Property="Height" Value="30"/>
@@ -262,12 +297,17 @@
             </Style>
             <SolidColorBrush x:Key="Red" Color="#FFB00000"/>
             <Style x:Key="MaterialDesignCardButton" TargetType="{x:Type ButtonBase}" BasedOn="{StaticResource MaterialDesignToolButton}">
-                <Setter Property="Width" Value="24"/>
-                <Setter Property="Height" Value="24"/>
-                <Setter Property="Margin" Value="4"/>
-                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Width" Value="34"/>
+                <Setter Property="Height" Value="34"/>
+                <Setter Property="Margin" Value="3"/>
+                <Setter Property="Padding" Value="4"/>
+                <Setter Property="Background" Value="#292929"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
             </Style>
             <Style x:Key="MaterialDesignGroupBoxButton" TargetType="{x:Type ButtonBase}" BasedOn="{StaticResource MaterialDesignToolButton}">
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="Width" Value="24"/>
                 <Setter Property="Height" Value="20"/>
                 <Setter Property="Margin" Value="4 2"/>

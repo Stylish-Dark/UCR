@@ -41,14 +41,14 @@
             <Style x:Key="UcrProfileActionButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
                 <Setter Property="Foreground" Value="#DEDEDE"/>
                 <Setter Property="Background" Value="#282828"/>
-                <Setter Property="BorderBrush" Value="#3D3D3D"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
                 <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="Opacity" Value="0.94"/>
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
                         <Setter Property="Foreground" Value="#FFFFFF"/>
                         <Setter Property="Background" Value="#343434"/>
-                        <Setter Property="BorderBrush" Value="#555555"/>
+                        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
                         <Setter Property="Opacity" Value="1"/>
                     </Trigger>
                     <Trigger Property="IsEnabled" Value="False">
@@ -123,6 +123,21 @@
             </Border>
             <ToolBarTray Style="{DynamicResource MaterialDesignToolBarTray}" IsEnabled="{Binding Source={x:Reference RootDialog}, Path=IsOpen, Converter={StaticResource InverseBooleanConverter}}">
                 <ToolBar ToolBarTray.IsLocked="True" Style="{DynamicResource MaterialDesignToolBar}" ClipToBounds="False">
+                    <ToolBar.Resources>
+                        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignToolButton}">
+                            <Setter Property="Background" Value="#292929"/>
+                            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                            <Setter Property="BorderThickness" Value="1"/>
+                            <Setter Property="MinWidth" Value="34"/>
+                            <Setter Property="MinHeight" Value="34"/>
+                            <Setter Property="Margin" Value="2"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource PrimaryHueDarkBrush}"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ToolBar.Resources>
                     <Button ToolTip="Save" Command="Save">
                         <materialDesign:PackIcon Kind="ContentSave"/>
                     </Button>
@@ -179,13 +194,8 @@
                             <Ellipse Width="5" Height="5" Fill="#212121" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Grid>
                     </Button>
-                    <Button ToolTip="More" Click="ContextMenuButton_OnClick" Padding="8 0">
-                        <materialDesign:PackIcon Kind="DotsVertical" Width="20" Height="20"/>
-                        <Button.ContextMenu>
-                            <ContextMenu Style="{StaticResource MaterialDesignContextMenu}">
-                                <MenuItem Header="Open diagnostic logs" Click="OpenLogs_OnClick"/>
-                            </ContextMenu>
-                        </Button.ContextMenu>
+                    <Button ToolTip="Open diagnostic logs" Click="OpenLogs_OnClick" Padding="8 0">
+                        <materialDesign:PackIcon Kind="FileDocumentOutline" Width="20" Height="20"/>
                     </Button>
                 </ToolBar>
             </ToolBarTray>
@@ -228,23 +238,21 @@
                                         Click="ImportProfile">
                                     <materialDesign:PackIcon Kind="FileImport" Width="20" Height="20"/>
                                 </Button>
-                                <Button ToolTip="Add profile"
-                                        Style="{StaticResource MaterialDesignCardButton}"
+                                <Button ToolTip="Add profile" Width="40" Height="36"
+                                        Style="{StaticResource UcrAccentOutlineButton}"
                                         Click="AddProfile">
-                                    <materialDesign:PackIcon Kind="AccountPlus" Width="20" Height="20"/>
+                                    <materialDesign:PackIcon Kind="Plus" Width="24" Height="24"/>
                                 </Button>
-                                <Button ToolTip="Profile view options"
+                                <Button ToolTip="Delete selected profile"
                                         Style="{StaticResource MaterialDesignCardButton}"
-                                        Click="ContextMenuButton_OnClick">
-                                    <materialDesign:PackIcon Kind="DotsVertical" Width="20" Height="20"/>
-                                    <Button.ContextMenu>
-                                        <ContextMenu Style="{StaticResource MaterialDesignContextMenu}"
-                                                     DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                            <MenuItem Header="Group profiles by input device"
-                                                      IsCheckable="True"
-                                                      IsChecked="{Binding GroupProfilesByInput, Mode=TwoWay}"/>
-                                        </ContextMenu>
-                                    </Button.ContextMenu>
+                                        IsEnabled="{Binding CanActivateProfile}"
+                                        Click="RemoveProfile">
+                                    <materialDesign:PackIcon Kind="TrashCanOutline" Width="20" Height="20"/>
+                                </Button>
+                                <Button ToolTip="Group profiles by input device"
+                                        Style="{StaticResource MaterialDesignCardButton}"
+                                        Click="ToggleProfileGrouping_OnClick">
+                                    <materialDesign:PackIcon Kind="ViewList" Width="20" Height="20"/>
                                 </Button>
                             </StackPanel>
                         </Grid>
