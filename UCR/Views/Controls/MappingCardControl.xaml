@@ -146,7 +146,7 @@
                                                      Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="INPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
                                        FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            <Button Content="Input type ▼" Margin="12 0 0 0" Padding="8 2" Height="28"
+                            <Button Content="{Binding MappingInputTypeLabel, StringFormat={}{0} ▼}" Margin="12 0 0 0" Padding="8 2" Height="28"
                                     Click="ChooseInputCategory_OnClick" IsEnabled="{Binding ButtonsEnabled}"
                                     Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
                                     ToolTip="Choose the input mapping category"/>
@@ -413,7 +413,7 @@
                                                      Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="OUTPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
                                        FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            <Button Content="Output type ▼" Margin="12 0 0 0" Padding="8 2" Height="28"
+                            <Button Content="{Binding OutputType, StringFormat={}{0} ▼}" Margin="12 0 0 0" Padding="8 2" Height="28"
                                     DataContext="{Binding Plugins[0]}"
                                     Click="ChangeOutputType_OnClick"
                                     IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"
