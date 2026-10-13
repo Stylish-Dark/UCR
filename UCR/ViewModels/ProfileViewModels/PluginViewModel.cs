@@ -45,7 +45,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool IsOneButtonAxis => IsAxisButtonMapping && !IsTwoButtonAxis && !IsFourButtonAxis;
         public Visibility AxisButtonModeVisibility => IsAxisButtonMapping ? Visibility.Visible : Visibility.Collapsed;
         public bool CanChangeAxisButtonMode => MappingViewModel.ButtonsEnabled &&
-            MappingViewModel.Plugins.Count == 1 && !MappingViewModel.UsesInputExpression;
+            MappingViewModel.Plugins.Count == 1;
         public string AxisButtonModeDescription => IsFourButtonAxis ? "4 ways" : IsTwoButtonAxis ? "2 buttons" : "1 button";
         public Visibility FourButtonPresetVisibility => IsFourButtonAxis ? Visibility.Visible : Visibility.Collapsed;
         public Visibility KeyboardAxisPresetVisibility =>
