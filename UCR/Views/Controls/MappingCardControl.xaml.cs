@@ -422,7 +422,26 @@ namespace HidWizards.UCR.Views.Controls
         private void AxisFourButtons_OnClick(object sender, RoutedEventArgs e)
         {
             var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
-            axis?.MappingViewModel.ChangeAxisInputMode(axis, 4);
+            RequestAxisInputMode(axis, 4);
+        }
+
+        private void RequestAxisInputMode(PluginViewModel axis, int buttonCount)
+        {
+            if (axis == null || !axis.CanChangeAxisButtonMode) return;
+            var currentCount = axis.IsFourButtonAxis ? 4 : axis.IsTwoButtonAxis ? 2 : 1;
+            if (currentCount == buttonCount) return;
+
+            // An AND/OR expression returns one boolean state. There is no lossless
+            // conversion from that expression to two or four independent directions.
+            if (axis.MappingViewModel.UsesInputExpression)
+            {
+                var answer = DarkMessageBox.Show(
+                    "Changing to " + buttonCount + " button mode replaces this mapping's AND/OR input conditions " +
+                    "with dedicated directional inputs. Existing input conditions will be discarded. Continue?",
+                    "Replace input conditions?", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (answer != MessageBoxResult.Yes) return;
+            }
+            axis.MappingViewModel.ChangeAxisInputMode(axis, buttonCount);
         }
 
         private void AxisKeyboardPreset_OnClick(object sender, RoutedEventArgs e)
@@ -513,13 +532,13 @@ namespace HidWizards.UCR.Views.Controls
         private void AxisOneButton_OnClick(object sender, RoutedEventArgs e)
         {
             var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
-            axis?.MappingViewModel.ChangeAxisButtonMode(axis, false);
+            RequestAxisInputMode(axis, 1);
         }
 
         private void AxisTwoButtons_OnClick(object sender, RoutedEventArgs e)
         {
             var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
-            axis?.MappingViewModel.ChangeAxisButtonMode(axis, true);
+            RequestAxisInputMode(axis, 2);
         }
 
         private void AddOutputFilter_OnClick(object sender, RoutedEventArgs e)
