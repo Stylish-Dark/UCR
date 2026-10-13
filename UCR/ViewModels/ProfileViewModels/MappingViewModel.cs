@@ -988,6 +988,20 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         }
 
         // Swap only the chosen output plugin, never the mapping's shared input bindings.
+        public bool ChangeAllOutputTypes(Plugin replacementTemplate)
+        {
+            if (!ButtonsEnabled || replacementTemplate == null || Plugins.Count == 0) return false;
+            var candidates = GetCompatiblePluginOptions();
+            if (!candidates.Any(candidate => candidate.Plugin.GetType() == replacementTemplate.GetType()))
+                return false;
+            // Apply the common category to each destination. Individual output type changes
+            // remain available in the row's optional settings.
+            var success = true;
+            foreach (var output in Plugins.ToList())
+                success &= ChangeOutputType(output, replacementTemplate);
+            return success;
+        }
+
         public bool ChangeOutputType(PluginViewModel original, Plugin replacementTemplate)
         {
             if (!ButtonsEnabled || original == null || replacementTemplate == null) return false;
