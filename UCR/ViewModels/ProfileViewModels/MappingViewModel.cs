@@ -82,6 +82,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
     public sealed class CollapsedConditionVisualRow
     {
         public List<BindingVisualDescriptor> Visuals { get; set; }
+        public bool StartsAlternative { get; set; }
+        public Visibility AlternativeDividerVisibility =>
+            StartsAlternative ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public class MappingViewModel : INotifyPropertyChanged, IDisposable
@@ -111,6 +114,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public string CollapsedSummary => _collapsedSummary;
         public List<BindingVisualDescriptor> CollapsedInputVisuals => _collapsedInputVisuals;
         public List<CollapsedConditionVisualRow> CollapsedInputRows => _collapsedInputRows;
+        public List<CollapsedConditionVisualRow> CollapsedOutputRows => _collapsedOutputRows;
         public List<BindingVisualDescriptor> CollapsedOutputVisuals => _collapsedOutputVisuals;
 
         private List<MappingHeaderToken> _mappingRouteTokens = new List<MappingHeaderToken>();
@@ -121,6 +125,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private string _collapsedSummary;
         private List<BindingVisualDescriptor> _collapsedInputVisuals = new List<BindingVisualDescriptor>();
         private List<CollapsedConditionVisualRow> _collapsedInputRows = new List<CollapsedConditionVisualRow>();
+        private List<CollapsedConditionVisualRow> _collapsedOutputRows = new List<CollapsedConditionVisualRow>();
         private List<BindingVisualDescriptor> _collapsedOutputVisuals = new List<BindingVisualDescriptor>();
 
         private bool _isFilterDefinitionHighlighted;
@@ -293,10 +298,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             _collapsedInputVisuals = BuildCollapsedInputVisuals();
             _collapsedInputRows = BuildCollapsedInputRows();
             _collapsedOutputVisuals = BuildCollapsedOutputVisuals();
+            _collapsedOutputRows = ChunkVisuals(_collapsedOutputVisuals);
 
             OnPropertyChanged(nameof(CollapsedSummary));
             OnPropertyChanged(nameof(CollapsedInputVisuals));
             OnPropertyChanged(nameof(CollapsedInputRows));
+            OnPropertyChanged(nameof(CollapsedOutputRows));
             OnPropertyChanged(nameof(CollapsedOutputVisuals));
             OnPropertyChanged(nameof(InputLogicSummary));
         }
@@ -1433,21 +1440,49 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+        // Build preview rows from the actual bindings. InputConditions is a presentation
+        // collection and may be empty for plugin types without native expressions.
+        // Never truncate the preview at the first three bindings.
         private List<CollapsedConditionVisualRow> BuildCollapsedInputRows()
         {
-            var rows = new List<CollapsedConditionVisualRow>();
-            foreach (var condition in InputConditions)
+            var result = new List<CollapsedConditionVisualRow>();
+            var groups = SupportsNativeInputExpression && UsesInputExpression
+                ? DeviceBindings.Where(binding => binding?.DeviceBinding != null)
+                    .GroupBy(binding => Math.Max(0, binding.DeviceBinding.InputExpressionGroup))
+                    .OrderBy(group => group.Key)
+                    .Select(group => group.ToList()).ToList()
+                : new List<List<DeviceBindingViewModel>> { DeviceBindings.ToList() };
+
+            for (var groupIndex = 0; groupIndex < groups.Count; groupIndex++)
             {
-                var visuals = condition.Inputs.Select(DescribeCollapsedBinding).ToList();
-                // Split long AND conditions into small glyph rows without losing bindings.
+                var visuals = groups[groupIndex].Select(DescribeCollapsedBinding).ToList();
                 for (var start = 0; start < visuals.Count; start += 3)
-                    rows.Add(new CollapsedConditionVisualRow
+                    result.Add(new CollapsedConditionVisualRow
                     {
-                        Visuals = visuals.Skip(start).Take(3).ToList()
+                        Visuals = visuals.Skip(start).Take(3).ToList(),
+                        StartsAlternative = groupIndex > 0 && start == 0
                     });
             }
-            if (rows.Count == 0)
-                rows.Add(new CollapsedConditionVisualRow { Visuals = BuildCollapsedInputVisuals() });
+            if (result.Count == 0)
+                result.Add(new CollapsedConditionVisualRow
+                {
+                    Visuals = new List<BindingVisualDescriptor>
+                    {
+                        DeviceVisualCatalog.DescribeBinding(null,
+                            DeviceBindingCategory.Momentary, ProfileViewModel.Profile)
+                    }
+                });
+            return result;
+        }
+
+        private static List<CollapsedConditionVisualRow> ChunkVisuals(List<BindingVisualDescriptor> visuals)
+        {
+            var rows = new List<CollapsedConditionVisualRow>();
+            for (var start = 0; start < visuals.Count; start += 3)
+                rows.Add(new CollapsedConditionVisualRow
+                {
+                    Visuals = visuals.Skip(start).Take(3).ToList()
+                });
             return rows;
         }
 
