@@ -70,7 +70,7 @@
                     <local:DeviceSymbolControl Grid.Row="0"
                                                SymbolText="{Binding Device.SymbolText}"
                                                Foreground="{Binding Device.BadgeTextBrush}"
-                                               GlyphSize="21" Width="32" Height="22" Margin="0 0 0 1"
+                                               GlyphSize="24" Width="38" Height="25" Margin="0 0 0 2"
                                                ToolTip="{Binding Device.ToolTip}">
                         <local:DeviceSymbolControl.Style>
                             <Style TargetType="{x:Type local:DeviceSymbolControl}">
@@ -176,7 +176,7 @@
                                                        ToolTip="One button: pressed/released axis values. Two buttons: positive/negative directions."/>
                                             <Button Content="1" MinWidth="42" Height="30" Padding="10 2"
                                                     Margin="0 0 4 0" Click="AxisOneButton_OnClick"
-                                                    IsEnabled="{Binding CanChangeAxisButtonMode}"
+                                                    IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"
                                                     ToolTip="Use one button and set axis values for press and release"
                                                     Foreground="White">
                                                 <Button.Style>
@@ -194,7 +194,7 @@
                                             </Button>
                                             <Button Content="2" MinWidth="42" Height="30" Padding="10 2"
                                                     Click="AxisTwoButtons_OnClick"
-                                                    IsEnabled="{Binding CanChangeAxisButtonMode}"
+                                                    IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"
                                                     ToolTip="Use separate buttons for the positive and negative axis directions"
                                                     Foreground="White" Margin="0 0 4 0">
                                                 <Button.Style>
@@ -211,7 +211,7 @@
                                                 </Button.Style>
                                             </Button>
                                              <Button Content="4" MinWidth="42" Height="30" Padding="10 2" Click="AxisFourButtons_OnClick"
-                                                     IsEnabled="{Binding CanChangeAxisButtonMode}" ToolTip="Four directions: Up, Down, Left and Right"
+                                                     IsEnabled="{Binding MappingViewModel.ButtonsEnabled}" ToolTip="Four directions: Up, Down, Left and Right"
                                                      Foreground="White">
                                                 <Button.Style>
                                                     <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
@@ -287,7 +287,7 @@
                                         <TextBlock Text="OR" Visibility="{Binding OrLabelVisibility}"
                                                    Foreground="#B4B4B4" FontWeight="Bold" FontSize="12"
                                                    Margin="4 7 0 6"/>
-                                        <Border Background="#303030" BorderBrush="#606060" BorderThickness="1"
+                                        <Border Background="#353535" BorderBrush="#555555" BorderThickness="1"
                                                 CornerRadius="4" Padding="7 8 7 7">
                                           <StackPanel>
                                         <ItemsControl ItemsSource="{Binding Inputs}">
@@ -297,7 +297,7 @@
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
                                                     <Border Margin="0 0 0 3" Padding="5" CornerRadius="3"
-                                                            Background="#262626" BorderBrush="#454545" BorderThickness="1">
+                                                            Background="#2A2A2A" BorderBrush="#505050" BorderThickness="1">
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="*" MinWidth="205"/>
@@ -308,7 +308,7 @@
                                                                                                 HorizontalAlignment="Stretch"/>
                                                             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
                                                                         VerticalAlignment="Center" Margin="4 0 0 0">
-                                                                <ToggleButton Content="NOT" Width="54" Height="30" Margin="0 0 4 0"
+                                                                <ToggleButton Content="NOT" Width="54" Height="30" Margin="0 0 12 0"
                                                                               IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
                                                                               Click="InputNegated_OnClick"
                                                                               Foreground="#FFFFFF" Background="#343434"
