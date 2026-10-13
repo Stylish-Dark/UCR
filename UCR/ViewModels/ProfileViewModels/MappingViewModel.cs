@@ -79,6 +79,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         }
     }
 
+    public sealed class CollapsedConditionVisualRow
+    {
+        public List<BindingVisualDescriptor> Visuals { get; set; }
+    }
+
     public class MappingViewModel : INotifyPropertyChanged, IDisposable
     {
         public string MappingTitle => Mapping.FullTitle;
@@ -105,6 +110,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                                   Mapping.Plugins.Any(plugin => plugin.Filters != null && plugin.Filters.Count > 0);
         public string CollapsedSummary => _collapsedSummary;
         public List<BindingVisualDescriptor> CollapsedInputVisuals => _collapsedInputVisuals;
+        public List<CollapsedConditionVisualRow> CollapsedInputRows => _collapsedInputRows;
         public List<BindingVisualDescriptor> CollapsedOutputVisuals => _collapsedOutputVisuals;
 
         private List<MappingHeaderToken> _mappingRouteTokens = new List<MappingHeaderToken>();
@@ -114,6 +120,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private string _filterIndicatorToolTip;
         private string _collapsedSummary;
         private List<BindingVisualDescriptor> _collapsedInputVisuals = new List<BindingVisualDescriptor>();
+        private List<CollapsedConditionVisualRow> _collapsedInputRows = new List<CollapsedConditionVisualRow>();
         private List<BindingVisualDescriptor> _collapsedOutputVisuals = new List<BindingVisualDescriptor>();
 
         private bool _isFilterDefinitionHighlighted;
@@ -284,10 +291,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             _collapsedSummary = BuildCollapsedSummary();
             _collapsedInputVisuals = BuildCollapsedInputVisuals();
+            _collapsedInputRows = BuildCollapsedInputRows();
             _collapsedOutputVisuals = BuildCollapsedOutputVisuals();
 
             OnPropertyChanged(nameof(CollapsedSummary));
             OnPropertyChanged(nameof(CollapsedInputVisuals));
+            OnPropertyChanged(nameof(CollapsedInputRows));
             OnPropertyChanged(nameof(CollapsedOutputVisuals));
             OnPropertyChanged(nameof(InputLogicSummary));
         }
@@ -1422,6 +1431,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (node.IsBinding) yield return node;
                 foreach (var child in FlattenBindingNodes(node.ChildrenNodes)) yield return child;
             }
+        }
+
+        private List<CollapsedConditionVisualRow> BuildCollapsedInputRows()
+        {
+            var rows = new List<CollapsedConditionVisualRow>();
+            foreach (var condition in InputConditions)
+            {
+                var visuals = condition.Inputs.Select(DescribeCollapsedBinding).ToList();
+                // Split long AND conditions into small glyph rows without losing bindings.
+                for (var start = 0; start < visuals.Count; start += 3)
+                    rows.Add(new CollapsedConditionVisualRow
+                    {
+                        Visuals = visuals.Skip(start).Take(3).ToList()
+                    });
+            }
+            if (rows.Count == 0)
+                rows.Add(new CollapsedConditionVisualRow { Visuals = BuildCollapsedInputVisuals() });
+            return rows;
         }
 
         private List<BindingVisualDescriptor> BuildCollapsedInputVisuals()
