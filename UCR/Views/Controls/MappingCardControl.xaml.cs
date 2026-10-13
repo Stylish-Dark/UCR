@@ -390,6 +390,35 @@ namespace HidWizards.UCR.Views.Controls
             mapping.AddDefaultOutput();
         }
 
+        private void ChooseInputCategory_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var mapping = DataContext as MappingViewModel;
+            if (button == null || mapping?.ButtonsEnabled != true || mapping.Plugins.Count == 0) return;
+            // Mapping input categories are dictated by their remapper plugin, so offer
+            // compatible plugin choices rather than an independent, nonfunctional switch.
+            var output = mapping.Plugins[0];
+            var options = mapping.GetCompatiblePluginOptions();
+            var menu = CreateDarkContextMenu(button);
+            menu.Placement = PlacementMode.Bottom;
+            foreach (var option in options)
+            {
+                var selected = option;
+                var item = new MenuItem
+                {
+                    Header = selected.MenuLabel,
+                    ToolTip = selected.Description,
+                    Foreground = Brushes.White,
+                    Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 14, 6),
+                    IsChecked = output.Plugin.GetType() == selected.Plugin.GetType()
+                };
+                item.Click += (s, args) => mapping.ChangeOutputType(output, selected.Plugin);
+                menu.Items.Add(item);
+            }
+            menu.IsOpen = true;
+        }
+
         private void ChangeOutputType_OnClick(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
