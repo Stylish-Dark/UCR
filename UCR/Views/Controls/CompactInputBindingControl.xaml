@@ -115,7 +115,8 @@
 
         <StackPanel Grid.Column="3" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
             <TextBlock Text="Block" FontSize="10" Foreground="#D0D0D0"
-                       HorizontalAlignment="Center" Margin="0 0 0 2"/>
+                       HorizontalAlignment="Center" Margin="0 0 0 2"
+                       Visibility="{Binding ShowBlock}"/>
             <ToggleButton 
                           HorizontalAlignment="Center" VerticalAlignment="Center"
                           IsChecked="{Binding Block, Mode=TwoWay}"
