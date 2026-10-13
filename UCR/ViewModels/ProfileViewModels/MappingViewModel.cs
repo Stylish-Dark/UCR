@@ -1755,14 +1755,28 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+        // A category change must preserve every existing output, including mappings with
+        // several independently configured destinations.
+        private bool HasReplacementForEachOutput(Plugin template, IList<Plugin> catalog)
+        {
+            if (template == null || Mapping?.Plugins == null) return false;
+            var inputSignature = template.InputCategories.Select(c => c.Category).ToList();
+            return Mapping.Plugins.All(original => catalog.Any(candidate =>
+                candidate.InputCategories.Select(c => c.Category).SequenceEqual(inputSignature) &&
+                candidate.OutputCategories.Select(c => c.Category)
+                    .SequenceEqual(original.OutputCategories.Select(c => c.Category))));
+        }
+
         public List<SimplePluginViewModel> GetCompatibleInputPluginOptions()
         {
-            if (Mapping?.Plugins?.Count != 1) return new List<SimplePluginViewModel>();
+            if (Mapping?.Plugins?.Count == 0) return new List<SimplePluginViewModel>();
             var current = Mapping.Plugins[0];
-            return ProfileViewModel.Profile.Context.GetPlugins()
-                .Where(candidate => candidate.OutputCategories.Count == current.OutputCategories.Count &&
+            var catalog = ProfileViewModel.Profile.Context.GetPlugins().ToList();
+            return catalog
+                .Where(candidate => candidate.InputCategories.Count > 0 &&
                     candidate.OutputCategories.Select(c => c.Category)
-                        .SequenceEqual(current.OutputCategories.Select(c => c.Category)))
+                        .SequenceEqual(current.OutputCategories.Select(c => c.Category)) &&
+                    HasReplacementForEachOutput(candidate, catalog))
                 .Select(candidate => new SimplePluginViewModel(candidate))
                 .OrderBy(candidate => candidate.Name, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
@@ -1771,38 +1785,57 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool ChangeInputType(PluginViewModel original, Plugin replacementTemplate)
         {
             if (!ButtonsEnabled || original == null || replacementTemplate == null ||
-                Plugins.Count != 1 || Plugins[0] != original || Mapping.Plugins.Count != 1)
-                return false;
+                Plugins.Count == 0 || Plugins[0] != original ||
+                Mapping.Plugins.Count != Plugins.Count) return false;
             if (!GetCompatibleInputPluginOptions().Any(option =>
                 option.Plugin.GetType() == replacementTemplate.GetType())) return false;
-            if (original.Plugin.GetType() == replacementTemplate.GetType()) return true;
+            if (original.Plugin.GetType() == replacementTemplate.GetType() &&
+                Mapping.Plugins.All(p => p.InputCategories.Select(c => c.Category)
+                    .SequenceEqual(replacementTemplate.InputCategories.Select(c => c.Category))))
+                return true;
 
             var profile = ProfileViewModel.Profile;
-            var replacement = profile.Context.PluginManager.GetNewPlugin(replacementTemplate);
-            replacement.SetProfile(profile);
-            var existing = original.Plugin;
-            for (var i = 0; i < replacement.Outputs.Count; i++)
-                replacement.Outputs[i] = existing.Outputs[i];
-            replacement.Filters = existing.Filters.ToList();
+            var catalog = profile.Context.GetPlugins().ToList();
+            var inputSignature = replacementTemplate.InputCategories.Select(c => c.Category).ToList();
+            var replacements = new List<Plugin>();
+            for (var i = 0; i < Mapping.Plugins.Count; i++)
+            {
+                var existing = Mapping.Plugins[i];
+                var choice = i == 0 ? replacementTemplate : catalog.FirstOrDefault(candidate =>
+                    candidate.InputCategories.Select(c => c.Category).SequenceEqual(inputSignature) &&
+                    candidate.OutputCategories.Select(c => c.Category)
+                        .SequenceEqual(existing.OutputCategories.Select(c => c.Category)));
+                if (choice == null) return false;
+                var next = profile.Context.PluginManager.GetNewPlugin(choice);
+                next.SetProfile(profile);
+                if (next.Outputs.Count != existing.Outputs.Count) return false;
+                for (var j = 0; j < next.Outputs.Count; j++)
+                    next.Outputs[j] = existing.Outputs[j];
+                next.Filters = existing.Filters.ToList();
+                replacements.Add(next);
+            }
 
+            var oldInputCategories = original.Plugin.InputCategories.Select(c => c.Category).ToList();
             foreach (var binding in DeviceBindings)
             {
                 binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
                 binding.Dispose();
             }
             DeviceBindings.Clear();
-            foreach (var binding in original.DeviceBindings)
-                binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
-            original.Dispose();
+            foreach (var output in Plugins)
+            {
+                foreach (var binding in output.DeviceBindings)
+                    binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
+                output.Dispose();
+            }
 
             Mapping.UseInputExpression = false;
             var former = Mapping.DeviceBindings.ToList();
             Mapping.DeviceBindings.Clear();
-            for (var i = 0; i < replacement.InputCategories.Count; i++)
+            for (var i = 0; i < inputSignature.Count; i++)
             {
-                var category = replacement.InputCategories[i].Category;
-                var previous = i < former.Count && i < existing.InputCategories.Count &&
-                    existing.InputCategories[i].Category == category ? former[i] : null;
+                var previous = i < former.Count && i < oldInputCategories.Count &&
+                    oldInputCategories[i] == inputSignature[i] ? former[i] : null;
                 if (previous != null)
                 {
                     previous.SetInputExpressionGroup(0);
@@ -1817,12 +1850,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     });
                 }
             }
-            Mapping.Plugins[0] = replacement;
-            var viewModel = new PluginViewModel(this, replacement);
-            Plugins[0] = viewModel;
+
+            Mapping.Plugins.Clear();
+            Mapping.Plugins.AddRange(replacements);
+            Plugins.Clear();
+            foreach (var next in replacements)
+            {
+                var viewModel = new PluginViewModel(this, next);
+                Plugins.Add(viewModel);
+                foreach (var binding in viewModel.DeviceBindings)
+                    SubscribeSummaryBinding(binding);
+            }
             PopulateDeviceBindingsViewModels();
             foreach (var binding in DeviceBindings) SubscribeSummaryBinding(binding);
-            foreach (var binding in viewModel.DeviceBindings) SubscribeSummaryBinding(binding);
             profile.Context.ContextChanged();
             RefreshHeaderState();
             RefreshInputExpressionPresentation();
@@ -1830,7 +1870,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             RefreshCollapsedSummary();
             profile.PruneUndefinedFilterReferencesRecursive();
             ProfileViewModel.RefreshFilterReferenceLabels();
-            Logger.Info("Changed input type in mapping '" + MappingTitle + "' to " + replacement.PluginName);
+            Logger.Info("Changed input category in mapping '" + MappingTitle + "' to " + replacementTemplate.PluginName);
             return true;
         }
 
