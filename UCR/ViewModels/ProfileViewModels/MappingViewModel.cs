@@ -298,7 +298,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             _collapsedInputVisuals = BuildCollapsedInputVisuals();
             _collapsedInputRows = BuildCollapsedInputRows();
             _collapsedOutputVisuals = BuildCollapsedOutputVisuals();
-            _collapsedOutputRows = ChunkVisuals(_collapsedOutputVisuals);
+            _collapsedOutputRows = _collapsedOutputVisuals.Select(visual =>
+                new CollapsedConditionVisualRow
+                {
+                    Visuals = new List<BindingVisualDescriptor> { visual }
+                }).ToList();
 
             OnPropertyChanged(nameof(CollapsedSummary));
             OnPropertyChanged(nameof(CollapsedInputVisuals));
