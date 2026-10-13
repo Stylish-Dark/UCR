@@ -516,8 +516,16 @@
                                         </Grid>
                                         <!-- Compact workspace must expose the same filter and plugin-property
                                              editors as the classic expanded plugin UI. -->
-                                        <StackPanel Margin="2 3 2 0">
-
+                                        <Expander Header="Options" IsExpanded="False" Margin="2 3 2 0"
+                                                  Foreground="#D0D0D0" Background="Transparent"
+                                                  ToolTip="Optional output settings and filters">
+                                            <StackPanel Margin="6 3 0 4">
+                                                <Button Content="Add filter" Height="28" HorizontalAlignment="Left"
+                                                        Margin="0 0 0 6" Padding="8 2"
+                                                        Click="AddOutputFilter_OnClick" IsEnabled="{Binding CanAddFilter}"
+                                                        Foreground="#D5D5D5" Background="#353535"
+                                                        BorderBrush="#555555" BorderThickness="1"
+                                                        ToolTip="Add a filter to this output"/>
                                             <ItemsControl ItemsSource="{Binding Filters}" Margin="0 4 0 0">
                                                 <ItemsControl.ItemsPanel>
                                                     <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
@@ -561,7 +569,8 @@
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
-                                        </StackPanel>
+                                            </StackPanel>
+                                        </Expander>
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
