@@ -433,23 +433,11 @@
                                         <StackPanel>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="0"/>
                                                 <ColumnDefinition Width="*" MinWidth="205"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <Button Grid.Column="0" HorizontalAlignment="Left" VerticalAlignment="Center"
-                                                    Margin="0 1 7 0" Padding="6 2"
-                                                    Height="32" MinWidth="76" Click="ChangeOutputType_OnClick"
-                                                    ToolTip="Change this output's type"
-                                                    IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"
-                                                    Background="#383838" Foreground="#FFFFFF" BorderBrush="{DynamicResource PrimaryHueLightBrush}"
-                                                    BorderThickness="1">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding OutputType}" VerticalAlignment="Center"/>
-                                                    <materialDesign:PackIcon Kind="ChevronDown" Margin="4 0 0 0"
-                                                                             Width="14" Height="14" VerticalAlignment="Center"/>
-                                                </StackPanel>
-                                            </Button>
+
                                             <ItemsControl Grid.Column="1" ItemsSource="{Binding DeviceBindings}">
                                                 <ItemsControl.Style>
                                                     <Style TargetType="{x:Type ItemsControl}">
@@ -520,6 +508,19 @@
                                                   Foreground="#D0D0D0" Background="Transparent"
                                                   ToolTip="Optional output settings and filters">
                                             <StackPanel Margin="6 3 0 4">
+                                            <Button HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                    Margin="0 0 0 7" Padding="6 2"
+                                                    Height="32" MinWidth="76" Click="ChangeOutputType_OnClick"
+                                                    ToolTip="Change only this output type"
+                                                    IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"
+                                                    Background="#383838" Foreground="#FFFFFF" BorderBrush="{DynamicResource PrimaryHueLightBrush}"
+                                                    BorderThickness="1">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding OutputType}" VerticalAlignment="Center"/>
+                                                    <materialDesign:PackIcon Kind="ChevronDown" Margin="4 0 0 0"
+                                                                             Width="14" Height="14" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
                                                 <Button Content="Add filter" Height="28" HorizontalAlignment="Left"
                                                         Margin="0 0 0 6" Padding="8 2"
                                                         Click="AddOutputFilter_OnClick" IsEnabled="{Binding CanAddFilter}"
