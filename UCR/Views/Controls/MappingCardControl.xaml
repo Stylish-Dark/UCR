@@ -180,8 +180,8 @@
                                                                     <StackPanel Orientation="Horizontal">
                                                                         <local:CompactInputBindingControl DataContext="{Binding}"
                                                                                                           DeviceBinding="{Binding DeviceBinding}"
-                                                                                                          Width="370"/>
-                                                                        <ToggleButton Content="NOT" Width="46" Height="36" Margin="5 0 0 0"
+                                                                                                          Width="356"/>
+                                                                        <ToggleButton Content="NOT" Width="44" Height="36" Margin="1 0 0 0"
                                                                                       IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
                                                                                       Click="InputNegated_OnClick"
                                                                                       Foreground="#FFFFFF" Background="#2B2B2B"
@@ -376,30 +376,28 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
-                            <Viewbox Grid.Column="0" Stretch="Uniform" StretchDirection="DownOnly"
-                                     HorizontalAlignment="Right" VerticalAlignment="Center" ClipToBounds="False">
+                            <Grid Grid.Column="0" VerticalAlignment="Center" ClipToBounds="False">
                                 <ItemsControl ItemsSource="{Binding CollapsedInputVisuals}"
                                               ItemTemplate="{StaticResource MappingBindingVisualTemplate}" HorizontalAlignment="Right"
                                               ClipToBounds="False" Cursor="Hand"
                                               ToolTip="Click a glyph to detect and bind this input"
                                               PreviewMouseLeftButtonUp="QuickBindInput_OnMouseLeftButtonUp">
-                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                 </ItemsControl>
-                            </Viewbox>
+                            </Grid>
 
                             <TextBlock Grid.Column="1" Text="→" Margin="9 0" FontSize="20" FontWeight="Light"
                                        Foreground="#AFAFAF" VerticalAlignment="Center" HorizontalAlignment="Center"/>
 
-                            <Viewbox Grid.Column="2" Stretch="Uniform" StretchDirection="DownOnly"
-                                     HorizontalAlignment="Left" VerticalAlignment="Center" ClipToBounds="False">
+                            <Grid Grid.Column="2" VerticalAlignment="Center" ClipToBounds="False">
                                 <ItemsControl ItemsSource="{Binding CollapsedOutputVisuals}"
                                               ItemTemplate="{StaticResource MappingBindingVisualTemplate}" HorizontalAlignment="Left"
                                               ClipToBounds="False" Cursor="Hand"
                                               ToolTip="Click a glyph to bind this output control"
                                               PreviewMouseLeftButtonUp="QuickBindOutput_OnMouseLeftButtonUp">
-                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                 </ItemsControl>
-                            </Viewbox>
+                            </Grid>
                         </Grid>
 
                         <Grid Grid.Row="1" Margin="2 3 2 0">
