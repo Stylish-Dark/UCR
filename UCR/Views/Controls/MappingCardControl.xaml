@@ -673,13 +673,13 @@
                                                                Foreground="#BABABA"/>
                                                 </Border>
                                             </Grid>
-                                            <Grid MaxWidth="166" HorizontalAlignment="Right">
+                                            <Grid MaxWidth="100" HorizontalAlignment="Right">
                                                 <ItemsControl ItemsSource="{Binding Visuals}"
                                                               ItemTemplate="{StaticResource MappingBindingVisualTemplate}"
                                                               ToolTip="Click a glyph to bind this input">
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate>
-                                                            <WrapPanel Orientation="Horizontal" MaxWidth="166"/>
+                                                            <WrapPanel Orientation="Horizontal" MaxWidth="100"/>
                                                         </ItemsPanelTemplate>
                                                     </ItemsControl.ItemsPanel>
                                                 </ItemsControl>
