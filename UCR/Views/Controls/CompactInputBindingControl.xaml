@@ -72,7 +72,8 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="15"/>
                                 </Grid.ColumnDefinitions>
-                                <local:DeviceSymbolControl Grid.Column="0" IsHitTestVisible="False"
+                                <local:DeviceSymbolControl x:Name="ClosedDeviceGlyph"
+                                    Grid.Column="0" IsHitTestVisible="False"
                                     SymbolText="{Binding SelectedItem.Visual.SymbolText, RelativeSource={RelativeSource TemplatedParent}}"
                                     Foreground="{Binding SelectedItem.Visual.BadgeTextBrush, RelativeSource={RelativeSource TemplatedParent}}"
                                     GlyphSize="31" Width="33" Height="32"
