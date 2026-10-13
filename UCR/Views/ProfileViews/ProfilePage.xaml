@@ -271,9 +271,10 @@
 
                 <!-- Real, mutually exclusive tabs remain visible in the right inspector.
                      Selection changes the pane below, never the entire workspace. -->
-                <TabControl x:Name="InspectorTabs" Grid.Row="1" Grid.Column="1"
-                            Height="45" VerticalAlignment="Top" SelectedIndex="0"
-                            Background="#242424" BorderBrush="#424242" BorderThickness="1 0 0 1"
+                <TabControl x:Name="InspectorTabs" Grid.Row="0" Grid.Column="1"
+                            Height="38" VerticalAlignment="Center" HorizontalAlignment="Right"
+                            Margin="0 0 12 0" SelectedIndex="0"
+                            Background="#202020" BorderBrush="Transparent" BorderThickness="0"
                             Panel.ZIndex="4" SelectionChanged="InspectorTabs_OnSelectionChanged">
                     <TabControl.Resources>
                         <Style TargetType="{x:Type TabItem}">
@@ -311,12 +312,12 @@
                     <TabItem Header="Profile options"/>
                 </TabControl>
                 <ContentControl x:Name="ProfileOptionsHost" Grid.Row="1" Grid.Column="1"
-                                Margin="0 45 0 0" Visibility="Collapsed"
+                                Margin="0" Visibility="Collapsed"
                                 HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
                 <!-- Device management remains in the bottom-left sidebar; the
                      Devices tab points to its location instead of duplicating it. -->
                 <Border x:Name="DockedDevicesNotice" Grid.Row="1" Grid.Column="1"
-                        Margin="14 58 14 0" VerticalAlignment="Top"
+                        Margin="14 12 14 0" VerticalAlignment="Top"
                         Background="#262626" BorderBrush="#3B3B3B"
                         BorderThickness="1" CornerRadius="3" Padding="14 12"
                         Visibility="Collapsed">
@@ -329,7 +330,7 @@
                     </StackPanel>
                 </Border>
                 <Grid x:Name="SidebarGrid" Grid.Row="1" Grid.Column="1"
-                       Margin="12 54 12 8" Visibility="Collapsed" Panel.ZIndex="2">
+                       Margin="12 8 12 8" Visibility="Collapsed" Panel.ZIndex="2">
                     <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -967,7 +968,7 @@
                     </ScrollViewer>
                 </Grid>
             <Grid x:Name="SelectedMappingInspector" Grid.Row="1" Grid.Column="1"
-                  Background="#202020" Margin="0 45 0 0">
+                  Background="#202020" Margin="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
