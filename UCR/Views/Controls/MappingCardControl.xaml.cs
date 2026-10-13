@@ -394,11 +394,10 @@ namespace HidWizards.UCR.Views.Controls
         {
             var button = sender as Button;
             var mapping = DataContext as MappingViewModel;
-            if (button == null || mapping?.ButtonsEnabled != true || mapping.Plugins.Count == 0) return;
-            // Mapping input categories are dictated by their remapper plugin, so offer
-            // compatible plugin choices rather than an independent, nonfunctional switch.
-            var output = mapping.Plugins[0];
-            var options = mapping.GetCompatiblePluginOptions();
+            if (button == null || mapping?.ButtonsEnabled != true || mapping.Plugins.Count != 1) return;
+
+            var current = mapping.Plugins[0];
+            var options = mapping.GetCompatibleInputPluginOptions();
             var menu = CreateDarkContextMenu(button);
             menu.Placement = PlacementMode.Bottom;
             foreach (var option in options)
@@ -411,11 +410,27 @@ namespace HidWizards.UCR.Views.Controls
                     Foreground = Brushes.White,
                     Background = Brushes.Transparent,
                     Padding = new Thickness(10, 6, 14, 6),
-                    IsChecked = output.Plugin.GetType() == selected.Plugin.GetType()
+                    IsChecked = current.Plugin.GetType() == selected.Plugin.GetType()
                 };
-                item.Click += (s, args) => mapping.ChangeOutputType(output, selected.Plugin);
+                item.Click += (s, args) =>
+                {
+                    if (current.Plugin.GetType() == selected.Plugin.GetType()) return;
+                    var response = DarkMessageBox.Show(
+                        "Switching input type may replace incompatible input bindings and AND/OR conditions. " +
+                        "The output destination is retained. Continue?",
+                        "Change input type?", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                    if (response == MessageBoxResult.Yes)
+                        mapping.ChangeInputType(current, selected.Plugin);
+                };
                 menu.Items.Add(item);
             }
+            if (menu.Items.Count == 0)
+                menu.Items.Add(new MenuItem
+                {
+                    Header = "No compatible input types",
+                    IsEnabled = false,
+                    Foreground = Brushes.LightGray
+                });
             menu.IsOpen = true;
         }
 
