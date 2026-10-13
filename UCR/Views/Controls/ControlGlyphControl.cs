@@ -103,7 +103,7 @@ namespace HidWizards.UCR.Views.Controls
             var rect = new Rect(b.Left + (b.Width - side) / 2.0,
                 b.Top + (b.Height - side) / 2.0, side, side);
             var fill = new SolidColorBrush(Color.FromRgb(48, 48, 48));
-            dc.DrawRoundedRectangle(fill, Pen(accent, 1.1), rect, 3, 3);
+            dc.DrawRoundedRectangle(fill, Pen(accent, 1.1), rect, 1.5, 1.5);
             DrawCenteredText(dc, label, Brushes.White, rect, FontFor(label, b.Height * 0.48), FontWeights.SemiBold);
         }
 
@@ -245,20 +245,19 @@ namespace HidWizards.UCR.Views.Controls
 
         private static void DrawStickAxis(DrawingContext dc, Rect b, Brush accent, string label)
         {
-            // Thumbstick, not a crosshair: housing, inset cap, a direction mark and
-            // a dedicated readable axis label. The drawing scales with its cell.
+            // One crisp stick outline and directional axis mark, with its label kept outside
+            // the circular glyph. Avoid concentric rings that turn into visual noise at scale.
             var center = new Point(b.Left + b.Width * 0.31, b.Top + b.Height * 0.50);
             var radius = Math.Min(b.Height * 0.37, b.Width * 0.24);
             var housing = new SolidColorBrush(Color.FromRgb(30, 30, 30));
             var cap = new SolidColorBrush(Color.FromRgb(54, 54, 54));
 
             dc.DrawEllipse(housing, Pen(accent, 1.6), center, radius, radius);
-            dc.DrawEllipse(null, Pen(accent, 0.75), center, radius * 0.81, radius * 0.81);
-            dc.DrawEllipse(cap, Pen(accent, 1.25), center, radius * 0.66, radius * 0.66);
+            dc.DrawEllipse(cap, Pen(accent, 1.15), center, radius * 0.69, radius * 0.69);
 
             var upper = (label ?? string.Empty).ToUpperInvariant();
             var vertical = upper.EndsWith("Y", StringComparison.Ordinal);
-            var axisSpan = radius * 0.43;
+            var axisSpan = radius * 0.40;
             var axisPen = Pen(accent, 2.2);
             if (vertical)
             {
