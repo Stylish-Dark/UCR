@@ -1082,6 +1082,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(MappingRouteDisplay));
             OnPropertyChanged(nameof(MappingRouteTokens));
             OnPropertyChanged(nameof(MappingOutputTypeLabel));
+            OnPropertyChanged(nameof(MappingInputTypeLabel));
             OnPropertyChanged(nameof(DefinedFilterName));
             OnPropertyChanged(nameof(ReferencedFilters));
             OnPropertyChanged(nameof(HasFilterReferences));
@@ -1713,6 +1714,106 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(MappingTitle));
         }
 
+
+        // Input type changes select a real remapper with the same output signature.
+        // They never masquerade as output changes, and cannot silently mutate multi-output mappings.
+        public string MappingInputTypeLabel
+        {
+            get
+            {
+                var inputs = Mapping?.Plugins?.FirstOrDefault()?.InputCategories;
+                if (inputs == null || inputs.Count == 0) return "None";
+                var kinds = inputs.Select(item => item.Category).Distinct().ToList();
+                if (kinds.Count != 1) return "Multiple";
+                switch (kinds[0])
+                {
+                    case DeviceBindingCategory.Momentary: return "Button";
+                    case DeviceBindingCategory.Range: return "Axis";
+                    case DeviceBindingCategory.Event: return "Event";
+                    case DeviceBindingCategory.Delta: return "Delta";
+                    default: return "Value";
+                }
+            }
+        }
+
+        public List<SimplePluginViewModel> GetCompatibleInputPluginOptions()
+        {
+            if (Mapping?.Plugins?.Count != 1) return new List<SimplePluginViewModel>();
+            var current = Mapping.Plugins[0];
+            return ProfileViewModel.Profile.Context.GetPlugins()
+                .Where(candidate => candidate.OutputCategories.Count == current.OutputCategories.Count &&
+                    candidate.OutputCategories.Select(c => c.Category)
+                        .SequenceEqual(current.OutputCategories.Select(c => c.Category)))
+                .Select(candidate => new SimplePluginViewModel(candidate))
+                .OrderBy(candidate => candidate.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+        }
+
+        public bool ChangeInputType(PluginViewModel original, Plugin replacementTemplate)
+        {
+            if (!ButtonsEnabled || original == null || replacementTemplate == null ||
+                Plugins.Count != 1 || Plugins[0] != original || Mapping.Plugins.Count != 1)
+                return false;
+            if (!GetCompatibleInputPluginOptions().Any(option =>
+                option.Plugin.GetType() == replacementTemplate.GetType())) return false;
+            if (original.Plugin.GetType() == replacementTemplate.GetType()) return true;
+
+            var profile = ProfileViewModel.Profile;
+            var replacement = profile.Context.PluginManager.GetNewPlugin(replacementTemplate);
+            replacement.SetProfile(profile);
+            var existing = original.Plugin;
+            for (var i = 0; i < replacement.Outputs.Count; i++)
+                replacement.Outputs[i] = existing.Outputs[i];
+            replacement.Filters = existing.Filters.ToList();
+
+            foreach (var binding in DeviceBindings)
+            {
+                binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
+                binding.Dispose();
+            }
+            DeviceBindings.Clear();
+            foreach (var binding in original.DeviceBindings)
+                binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
+            original.Dispose();
+
+            Mapping.UseInputExpression = false;
+            var former = Mapping.DeviceBindings.ToList();
+            Mapping.DeviceBindings.Clear();
+            for (var i = 0; i < replacement.InputCategories.Count; i++)
+            {
+                var category = replacement.InputCategories[i].Category;
+                var previous = i < former.Count && i < existing.InputCategories.Count &&
+                    existing.InputCategories[i].Category == category ? former[i] : null;
+                if (previous != null)
+                {
+                    previous.SetInputExpressionGroup(0);
+                    previous.SetInputExpressionNegated(false);
+                    Mapping.DeviceBindings.Add(previous);
+                }
+                else
+                {
+                    Mapping.DeviceBindings.Add(new DeviceBinding(Mapping.Update, profile, DeviceIoType.Input)
+                    {
+                        DeviceConfigurationGuid = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input)?.Guid ?? Guid.Empty
+                    });
+                }
+            }
+            Mapping.Plugins[0] = replacement;
+            var viewModel = new PluginViewModel(this, replacement);
+            Plugins[0] = viewModel;
+            PopulateDeviceBindingsViewModels();
+            foreach (var binding in DeviceBindings) SubscribeSummaryBinding(binding);
+            foreach (var binding in viewModel.DeviceBindings) SubscribeSummaryBinding(binding);
+            profile.Context.ContextChanged();
+            RefreshHeaderState();
+            RefreshInputExpressionPresentation();
+            RefreshPresetAvailability();
+            RefreshCollapsedSummary();
+            profile.PruneUndefinedFilterReferencesRecursive();
+            ProfileViewModel.RefreshFilterReferenceLabels();
+            Logger.Info("Changed input type in mapping '" + MappingTitle + "' to " + replacement.PluginName);
+            return true;
+        }
 
         public List<SimplePluginViewModel> GetCompatiblePluginOptions()
         {
