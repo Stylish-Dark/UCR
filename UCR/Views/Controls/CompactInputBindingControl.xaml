@@ -113,21 +113,25 @@
             </Button.ContextMenu>
         </Button>
 
-        <ToggleButton Grid.Column="3"
-                      HorizontalAlignment="Center" VerticalAlignment="Center"
-                      IsChecked="{Binding Block, Mode=TwoWay}"
-                      IsEnabled="{Binding CanBlock}"
-                      ToolTip="Block this physical input">
-            <ToggleButton.Style>
-                <Style TargetType="{x:Type ToggleButton}" BasedOn="{StaticResource CompactBlockSwitch}">
-                    <Setter Property="Visibility" Value="Visible"/>
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding ShowBlock}" Value="Collapsed">
-                            <Setter Property="Visibility" Value="Collapsed"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </ToggleButton.Style>
-        </ToggleButton>
+        <StackPanel Grid.Column="3" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock Text="Block" FontSize="10" Foreground="#D0D0D0"
+                       HorizontalAlignment="Center" Margin="0 0 0 2"/>
+            <ToggleButton 
+                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                          IsChecked="{Binding Block, Mode=TwoWay}"
+                          IsEnabled="{Binding CanBlock}"
+                          ToolTip="Block this physical input">
+                <ToggleButton.Style>
+                    <Style TargetType="{x:Type ToggleButton}" BasedOn="{StaticResource CompactBlockSwitch}">
+                        <Setter Property="Visibility" Value="Visible"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ShowBlock}" Value="Collapsed">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ToggleButton.Style>
+            </ToggleButton>
+        </StackPanel>
     </Grid>
 </UserControl>
