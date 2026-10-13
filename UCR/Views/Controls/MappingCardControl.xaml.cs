@@ -470,7 +470,13 @@ namespace HidWizards.UCR.Views.Controls
                     Padding = new Thickness(10, 6, 14, 6),
                     IsChecked = output.Plugin.GetType() == selected.Plugin.GetType()
                 };
-                item.Click += (s, args) => mapping.ChangeOutputType(output, selected.Plugin);
+                item.Click += (s, args) =>
+                {
+                    if (string.Equals(button.Tag as string, "CategoryHeader", StringComparison.Ordinal))
+                        mapping.ChangeAllOutputTypes(selected.Plugin);
+                    else
+                        mapping.ChangeOutputType(output, selected.Plugin);
+                };
                 menu.Items.Add(item);
             }
             if (string.Equals(button.Tag as string, "CategoryHeader", StringComparison.Ordinal))
