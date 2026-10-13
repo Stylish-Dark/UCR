@@ -124,33 +124,64 @@
             <ToolBarTray Style="{DynamicResource MaterialDesignToolBarTray}" IsEnabled="{Binding Source={x:Reference RootDialog}, Path=IsOpen, Converter={StaticResource InverseBooleanConverter}}">
                 <ToolBar ToolBarTray.IsLocked="True" Style="{DynamicResource MaterialDesignToolBar}" ClipToBounds="False">
                     <ToolBar.Resources>
-                        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignToolButton}">
+                        <!-- The MaterialDesign tool-button template ignores BorderBrush in some
+                             toolbar states. Use one explicit, full-surface hit target for ALL actions. -->
+                        <Style x:Key="UcrToolbarActionButton" TargetType="{x:Type Button}">
+                            <Setter Property="Width" Value="38"/>
+                            <Setter Property="Height" Value="36"/>
+                            <Setter Property="Margin" Value="2"/>
+                            <Setter Property="Padding" Value="5"/>
                             <Setter Property="Background" Value="#292929"/>
+                            <Setter Property="Foreground" Value="#FFFFFF"/>
                             <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
                             <Setter Property="BorderThickness" Value="1"/>
-                            <Setter Property="MinWidth" Value="34"/>
-                            <Setter Property="MinHeight" Value="34"/>
-                            <Setter Property="Margin" Value="2"/>
-                            <Style.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="{DynamicResource PrimaryHueDarkBrush}"/>
-                                </Trigger>
-                            </Style.Triggers>
+                            <Setter Property="Cursor" Value="Hand"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="{x:Type Button}">
+                                        <Border x:Name="ActionSurface" CornerRadius="3"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                SnapsToDevicePixels="True">
+                                            <ContentPresenter RecognizesAccessKey="True"
+                                                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                              Margin="{TemplateBinding Padding}"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ActionSurface" Property="Background" Value="#383838"/>
+                                                <Setter TargetName="ActionSurface" Property="BorderBrush" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsPressed" Value="True">
+                                                <Setter TargetName="ActionSurface" Property="Background" Value="#15469A"/>
+                                            </Trigger>
+                                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                                <Setter TargetName="ActionSurface" Property="BorderThickness" Value="2"/>
+                                            </Trigger>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter Property="Opacity" Value="0.42"/>
+                                                <Setter Property="Cursor" Value="Arrow"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
                         </Style>
                     </ToolBar.Resources>
-                    <Button ToolTip="Save" Command="Save">
+                    <Button Style="{StaticResource UcrToolbarActionButton}" ToolTip="Save" Command="Save">
                         <materialDesign:PackIcon Kind="ContentSave"/>
                     </Button>
-                    <Button IsEnabled="{Binding CanActivateProfile}" ToolTip="Run only this profile (stops other active profiles first)&#x0a;Ctrl+Enter" Click="ActivateProfile">
+                    <Button Style="{StaticResource UcrToolbarActionButton}" IsEnabled="{Binding CanActivateProfile}" ToolTip="Run only this profile (stops other active profiles first)&#x0a;Ctrl+Enter" Click="ActivateProfile">
                         <materialDesign:PackIcon Kind="Play"/>
                     </Button>
-                    <Button IsEnabled="{Binding CanActivateProfile}" ToolTip="Run this profile alongside currently active profiles&#x0a;Ctrl+Shift+Enter" Click="ActivateProfileAlongside">
+                    <Button Style="{StaticResource UcrToolbarActionButton}" IsEnabled="{Binding CanActivateProfile}" ToolTip="Run this profile alongside currently active profiles&#x0a;Ctrl+Shift+Enter" Click="ActivateProfileAlongside">
                         <Grid Width="24" Height="24">
                             <materialDesign:PackIcon Kind="Play" Width="17" Height="17" HorizontalAlignment="Left" VerticalAlignment="Center"/>
                             <TextBlock Text="+" FontSize="14" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Top" Foreground="#FFFFFF"/>
                         </Grid>
                     </Button>
-                    <Button IsEnabled="{Binding CanDeactivateProfile}" ToolTip="Stop active profile" Click="DeactivateProfile">
+                    <Button Style="{StaticResource UcrToolbarActionButton}" IsEnabled="{Binding CanDeactivateProfile}" ToolTip="Stop active profile" Click="DeactivateProfile">
                         <Grid Width="24" Height="24">
                             <Border CornerRadius="12" Background="#4A2020" BorderBrush="#D65C5C" BorderThickness="1">
                                 <Border.Style>
@@ -178,23 +209,23 @@
                             </materialDesign:PackIcon>
                         </Grid>
                     </Button>
-                    <Button IsEnabled="{Binding CanDeactivateAllProfiles}" ToolTip="Stop ALL profiles&#x0a;Emergency shortcut: hold Esc on any keyboard for 3 seconds" Click="StopAllProfiles">
+                    <Button Style="{StaticResource UcrToolbarActionButton}" IsEnabled="{Binding CanDeactivateAllProfiles}" ToolTip="Stop ALL profiles&#x0a;Emergency shortcut: hold Esc on any keyboard for 3 seconds" Click="StopAllProfiles">
                         <materialDesign:PackIcon Kind="Stop" Foreground="#FF8B8B"/>
                     </Button>
                     <Separator />
-                    <Button ToolTip="Import / Export" Click="ImportExport_OnClick">
+                    <Button Style="{StaticResource UcrToolbarActionButton}" ToolTip="Import / Export" Click="ImportExport_OnClick">
                         <materialDesign:PackIcon Kind="FileExport"/>
                     </Button>
-                    <Button ToolTip="Manage devices" Click="ManageDevices_OnClick">
+                    <Button Style="{StaticResource UcrToolbarActionButton}" ToolTip="Manage devices" Click="ManageDevices_OnClick">
                         <materialDesign:PackIcon Kind="Settings"/>
                     </Button>
-                    <Button x:Name="AppearanceButton" ToolTip="Appearance" Click="Appearance_OnClick">
+                    <Button Style="{StaticResource UcrToolbarActionButton}" x:Name="AppearanceButton" ToolTip="Appearance" Click="Appearance_OnClick">
                         <Grid Width="20" Height="20">
                             <Ellipse Width="16" Height="16" Fill="{DynamicResource PrimaryHueMidBrush}" Stroke="#D8D8D8" StrokeThickness="1"/>
                             <Ellipse Width="5" Height="5" Fill="#212121" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Grid>
                     </Button>
-                    <Button ToolTip="Open diagnostic logs" Click="OpenLogs_OnClick">
+                    <Button Style="{StaticResource UcrToolbarActionButton}" ToolTip="Open diagnostic logs" Click="OpenLogs_OnClick">
                         <materialDesign:PackIcon Kind="FileDocumentOutline" Width="20" Height="20"/>
                     </Button>
                 </ToolBar>

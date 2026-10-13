@@ -96,6 +96,72 @@ namespace HidWizards.UCR.Tests.UiTests
             Assert.That(item.InputGroupName, Is.EqualTo("No input device"));
         }
 
+        private sealed class FakeCompactDeviceItem
+        {
+            public string Title { get; set; }
+            public DeviceVisualDescriptor Visual { get; set; }
+        }
+
+        private sealed class FakeCompactBinding
+        {
+            public IList<FakeCompactDeviceItem> Devices { get; set; }
+            public FakeCompactDeviceItem SelectedDevice { get; set; }
+            public bool BindingEnabled => true;
+            public bool ShowButtonPreview => false;
+            public Visibility ShowBlock => Visibility.Collapsed;
+            public Visibility ShowInvertInput => Visibility.Collapsed;
+            public string CompactBindButtonText => "Bind";
+            public string BindingActionToolTip => "Bind";
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void CompactDeviceSelectorKeepsFullSizeGlyphInsideItsActualBorder()
+        {
+            EnsureApplicationResources();
+
+            var option = new FakeCompactDeviceItem
+            {
+                Title = "Laptop Keyboard With A Very Long Friendly Name",
+                Visual = DeviceVisualCatalog.Describe(
+                    new Device("Laptop Keyboard", "Core_Interception", "kbd", 0), DeviceIoType.Input)
+            };
+            var control = new CompactInputBindingControl
+            {
+                DataContext = new FakeCompactBinding
+                {
+                    SelectedDevice = option,
+                    Devices = new[] { option }
+                }
+            };
+            control.Measure(new Size(395, 55));
+            control.Arrange(new Rect(0, 0, 395, 55));
+            control.UpdateLayout();
+
+            var selector = control.FindName("DeviceSelectionBox") as ComboBox;
+            Assert.That(selector, Is.Not.Null);
+            Assert.That(selector.ActualWidth, Is.EqualTo(58).Within(1));
+            selector.ApplyTemplate();
+
+            var border = selector.Template.FindName("DeviceSurface", selector) as Border;
+            var glyph = selector.Template.FindName("ClosedDeviceGlyph", selector) as DeviceSymbolControl;
+            Assert.That(border, Is.Not.Null, "Selected device must have its own dedicated bordered button.");
+            Assert.That(glyph, Is.Not.Null, "Selected device glyph must not be squeezed into a full-name row.");
+            Assert.That(border.BorderThickness.Left, Is.GreaterThanOrEqualTo(2));
+            Assert.That(glyph.SymbolText, Is.EqualTo(option.Visual.SymbolText));
+            Assert.That(glyph.ActualWidth, Is.GreaterThanOrEqualTo(30));
+            Assert.That(glyph.ActualHeight, Is.GreaterThanOrEqualTo(30));
+            Assert.That(glyph.ActualWidth, Is.LessThan(selector.ActualWidth),
+                "The selected glyph must fit beside its dedicated dropdown arrow.");
+
+            var popup = selector.Template.FindName("PART_Popup", selector)
+                as System.Windows.Controls.Primitives.Popup;
+            Assert.That(popup, Is.Not.Null);
+            Assert.That(popup.Child, Is.InstanceOf<Border>());
+            Assert.That(((Border)popup.Child).MinWidth, Is.GreaterThanOrEqualTo(240),
+                "The opened device list needs enough width for full friendly names.");
+        }
+
         [Test]
         [Apartment(ApartmentState.STA)]
         public void DeviceSymbolControlRendersEveryEmbeddedFontGlyphWithoutFallbackBoxes()

@@ -37,7 +37,7 @@
         <!-- A device badge is intentionally shown only when the mapping deviates from the profile's
              primary device, unless the user explicitly enables the Show all devices toggle. -->
         <DataTemplate x:Key="MappingBindingVisualTemplate">
-            <Grid Margin="2 0" MinHeight="39" ClipToBounds="False" ToolTip="{Binding ToolTip}">
+            <Grid Margin="2 0" MinHeight="40" ClipToBounds="False" ToolTip="{Binding ToolTip}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
@@ -95,8 +95,8 @@
                                                HorizontalAlignment="Center">
                         <local:ControlGlyphControl.Style>
                             <Style TargetType="{x:Type local:ControlGlyphControl}">
-                                <Setter Property="Width" Value="42"/>
-                                <Setter Property="Height" Value="37"/>
+                                <Setter Property="Width" Value="39"/>
+                                <Setter Property="Height" Value="39"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsFilterControl}" Value="True">
                                         <Setter Property="Width" Value="20"/>
@@ -108,7 +108,7 @@
                     </local:ControlGlyphControl>
                     <!-- Negation preserves the actual input glyph and crosses it out,
                          instead of replacing it with text or hiding its identity. -->
-                    <Line X1="5" Y1="32" X2="37" Y2="5"
+                    <Line X1="5" Y1="34" X2="34" Y2="5"
                           Stroke="#D9D9D9" StrokeThickness="2.8"
                           StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                           IsHitTestVisible="False">
@@ -649,8 +649,9 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
-                            <!-- Each OR condition gets its own row; AND inputs remain together.
-                                 No hidden fourth input and no squeezing every condition into one line. -->
+                            <!-- Each alternative is a distinct visual row, and AND requirements
+                                 stay together in batches of three glyphs. Individual rows may
+                                 shrink when needed, never the entire mapping preview. -->
                             <ItemsControl Grid.Column="0" ItemsSource="{Binding CollapsedInputRows}"
                                           HorizontalAlignment="Right" VerticalAlignment="Center"
                                           ClipToBounds="False" Cursor="Hand"
@@ -660,34 +661,58 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <ItemsControl ItemsSource="{Binding Visuals}" Margin="0 1"
-                                                      ItemTemplate="{StaticResource MappingBindingVisualTemplate}"
-                                                      HorizontalAlignment="Right" ToolTip="Click a glyph to bind this input">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <WrapPanel Orientation="Horizontal" MaxWidth="162"
-                                                               HorizontalAlignment="Right"/>
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                        </ItemsControl>
+                                        <StackPanel HorizontalAlignment="Right" Margin="0 1">
+                                            <Grid Height="17" Margin="0 2 0 2"
+                                                  Visibility="{Binding AlternativeDividerVisibility}">
+                                                <Border Height="1" Background="#747474"
+                                                        VerticalAlignment="Center"/>
+                                                <Border HorizontalAlignment="Center" Background="#262626"
+                                                        Padding="6 0">
+                                                    <TextBlock Text="OR" FontSize="10" FontWeight="Bold"
+                                                               Foreground="#BABABA"/>
+                                                </Border>
+                                            </Grid>
+                                            <Viewbox Stretch="Uniform" StretchDirection="DownOnly"
+                                                     MaxWidth="166" HorizontalAlignment="Right">
+                                                <ItemsControl ItemsSource="{Binding Visuals}"
+                                                              ItemTemplate="{StaticResource MappingBindingVisualTemplate}"
+                                                              ToolTip="Click a glyph to bind this input">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <StackPanel Orientation="Horizontal"/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                </ItemsControl>
+                                            </Viewbox>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <TextBlock Grid.Column="1" Text="→" Margin="9 0" FontSize="20" FontWeight="Light"
+                            <TextBlock Grid.Column="1" Text="→" Margin="6 0" FontSize="20" FontWeight="Light"
                                        Foreground="#AFAFAF" VerticalAlignment="Center" HorizontalAlignment="Center"/>
 
-                            <ItemsControl Grid.Column="2" ItemsSource="{Binding CollapsedOutputVisuals}"
-                                          ItemTemplate="{StaticResource MappingBindingVisualTemplate}"
+                            <ItemsControl Grid.Column="2" ItemsSource="{Binding CollapsedOutputRows}"
                                           HorizontalAlignment="Left" VerticalAlignment="Center"
                                           ClipToBounds="False" Cursor="Hand"
-                                          ToolTip="Click a glyph to bind this output control"
                                           PreviewMouseLeftButtonUp="QuickBindOutput_OnMouseLeftButtonUp">
                                 <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <WrapPanel Orientation="Horizontal" MaxWidth="162" HorizontalAlignment="Left"/>
-                                    </ItemsPanelTemplate>
+                                    <ItemsPanelTemplate><StackPanel Orientation="Vertical"/></ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Viewbox Stretch="Uniform" StretchDirection="DownOnly"
+                                                 MaxWidth="166" HorizontalAlignment="Left" Margin="0 1">
+                                            <ItemsControl ItemsSource="{Binding Visuals}"
+                                                          ItemTemplate="{StaticResource MappingBindingVisualTemplate}"
+                                                          ToolTip="Click a glyph to bind this output control">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                            </ItemsControl>
+                                        </Viewbox>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </Grid>
 
