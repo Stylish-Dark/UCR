@@ -1013,6 +1013,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             var replacement = ProfileViewModel.Profile.Context.PluginManager.GetNewPlugin(replacementTemplate);
             replacement.SetProfile(ProfileViewModel.Profile);
+            replacement.Filters = original.Plugin.Filters.ToList();
             SelectCompatibleOutputDevices(replacement,
                 original.Plugin.Outputs.Select(binding => binding.DeviceConfigurationGuid).ToList());
             var replacementViewModel = new PluginViewModel(this, replacement);
