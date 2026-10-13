@@ -405,7 +405,7 @@ namespace HidWizards.UCR.Views.Controls
                 var selected = option;
                 var item = new MenuItem
                 {
-                    Header = selected.MenuLabel,
+                    Header = selected.Name,
                     ToolTip = selected.Description,
                     Foreground = Brushes.White,
                     Background = Brushes.Transparent,
