@@ -526,8 +526,12 @@
                             BorderThickness="0" Background="Transparent" Padding="0">
                     <TabControl.Template>
                         <ControlTemplate TargetType="{x:Type TabControl}">
-                            <ContentPresenter ContentSource="SelectedContent"
-                                              HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                            <DockPanel LastChildFill="True">
+                                <TabPanel DockPanel.Dock="Top" IsItemsHost="True" HorizontalAlignment="Right"
+                                          Margin="4 0 12 3"/>
+                                <ContentPresenter ContentSource="SelectedContent"
+                                                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                            </DockPanel>
                         </ControlTemplate>
                     </TabControl.Template>
                     <TabControl.Resources>
