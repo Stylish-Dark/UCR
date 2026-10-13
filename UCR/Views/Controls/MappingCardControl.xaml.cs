@@ -431,6 +431,19 @@ namespace HidWizards.UCR.Views.Controls
                     IsEnabled = false,
                     Foreground = Brushes.LightGray
                 });
+            if (mapping.SupportsNativeInputExpression)
+            {
+                menu.Items.Add(new Separator());
+                menu.Items.Add(new MenuItem
+                {
+                    Header = "Add OR input group",
+                    Foreground = Brushes.White,
+                    Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 14, 6),
+                    Command = null
+                });
+                ((MenuItem)menu.Items[menu.Items.Count - 1]).Click += (s, args) => mapping.AddCondition();
+            }
             menu.IsOpen = true;
         }
 
@@ -459,6 +472,19 @@ namespace HidWizards.UCR.Views.Controls
                 };
                 item.Click += (s, args) => mapping.ChangeOutputType(output, selected.Plugin);
                 menu.Items.Add(item);
+            }
+            if (string.Equals(button.Tag as string, "CategoryHeader", StringComparison.Ordinal))
+            {
+                menu.Items.Add(new Separator());
+                var addOutput = new MenuItem
+                {
+                    Header = "Add another output",
+                    Foreground = Brushes.White,
+                    Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 14, 6)
+                };
+                addOutput.Click += (s, args) => mapping.AddDefaultOutput();
+                menu.Items.Add(addOutput);
             }
             menu.IsOpen = true;
         }
