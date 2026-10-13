@@ -466,7 +466,7 @@
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
                                                         <local:CompactInputBindingControl DataContext="{Binding}"
-                                                            DeviceBinding="{Binding DeviceBinding}"
+                                                            DeviceBinding="{Binding DeviceBinding}" Tag="Output"
                                                             HorizontalAlignment="Stretch" Margin="0"/>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
@@ -517,22 +517,7 @@
                                         <!-- Compact workspace must expose the same filter and plugin-property
                                              editors as the classic expanded plugin UI. -->
                                         <StackPanel Margin="2 3 2 0">
-                                            <Button Content="Add filter" HorizontalAlignment="Left" Height="26"
-                                                    Padding="8 2" Margin="0 2 0 4"
-                                                    Click="AddOutputFilter_OnClick"
-                                                    IsEnabled="{Binding CanAddFilter}"
-                                                    Foreground="#D5D5D5" Background="#353535"
-                                                    BorderBrush="#555555" BorderThickness="1"
-                                                    ToolTip="Add an optional filter to this output">
-                                                <Button.Style>
-                                                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Filters.Count}" Value="0"/>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Button.Style>
-                                            </Button>
+
                                             <ItemsControl ItemsSource="{Binding Filters}" Margin="0 4 0 0">
                                                 <ItemsControl.ItemsPanel>
                                                     <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
