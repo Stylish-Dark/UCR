@@ -146,10 +146,10 @@
                                                      Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="INPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
                                        FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            <Button Content="+" Margin="12 0 0 0" Width="30" Height="28"
-                                    Click="AddCondition_OnClick" IsEnabled="{Binding ButtonsEnabled}"
+                            <Button Content="Input type ▼" Margin="12 0 0 0" Padding="8 2" Height="28"
+                                    Click="ChooseInputCategory_OnClick" IsEnabled="{Binding ButtonsEnabled}"
                                     Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
-                                    ToolTip="Add another input OR condition"/>
+                                    ToolTip="Choose the input mapping category"/>
                         </StackPanel>
                     <!-- Non-boolean plugins retain the full legacy editor. -->
                     <ItemsControl ItemsSource="{Binding DeviceBindings}" HorizontalContentAlignment="Stretch">
@@ -413,10 +413,12 @@
                                                      Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="OUTPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
                                        FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            <Button Content="+" Margin="12 0 0 0" Width="30" Height="28"
-                                    Click="AddPlugin_OnClick" IsEnabled="{Binding ButtonsEnabled}"
+                            <Button Content="Output type ▼" Margin="12 0 0 0" Padding="8 2" Height="28"
+                                    DataContext="{Binding Plugins[0]}"
+                                    Click="ChangeOutputType_OnClick"
+                                    IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"
                                     Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
-                                    ToolTip="Add another output"/>
+                                    ToolTip="Choose the output mapping category"/>
                         </StackPanel>
                     <!-- Each output is a separate vertical row. Never overflow sideways. -->
                     <StackPanel Margin="2 0 2 3">
@@ -515,14 +517,21 @@
                                         <!-- Compact workspace must expose the same filter and plugin-property
                                              editors as the classic expanded plugin UI. -->
                                         <StackPanel Margin="2 3 2 0">
-                                            <Button HorizontalAlignment="Left" Width="34"
-                                                    Height="30" Padding="3"
+                                            <Button Content="Add filter" HorizontalAlignment="Left" Height="26"
+                                                    Padding="8 2" Margin="0 2 0 4"
                                                     Click="AddOutputFilter_OnClick"
                                                     IsEnabled="{Binding CanAddFilter}"
-                                                    Foreground="#FFFFFF" Background="#353535"
-                                                    BorderBrush="{DynamicResource PrimaryHueLightBrush}" BorderThickness="1"
-                                                    ToolTip="Add filter to this output">
-                                                <materialDesign:PackIcon Kind="Plus" Width="19" Height="19"/>
+                                                    Foreground="#D5D5D5" Background="#353535"
+                                                    BorderBrush="#555555" BorderThickness="1"
+                                                    ToolTip="Add an optional filter to this output">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Filters.Count}" Value="0"/>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
                                             </Button>
                                             <ItemsControl ItemsSource="{Binding Filters}" Margin="0 4 0 0">
                                                 <ItemsControl.ItemsPanel>
@@ -673,13 +682,13 @@
                                                                Foreground="#BABABA"/>
                                                 </Border>
                                             </Grid>
-                                            <Grid MaxWidth="100" HorizontalAlignment="Right">
+                                            <Grid HorizontalAlignment="Right">
                                                 <ItemsControl ItemsSource="{Binding Visuals}"
                                                               ItemTemplate="{StaticResource MappingBindingVisualTemplate}"
                                                               ToolTip="Click a glyph to bind this input">
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate>
-                                                            <WrapPanel Orientation="Horizontal" MaxWidth="100"/>
+                                                            <StackPanel Orientation="Horizontal"/>
                                                         </ItemsPanelTemplate>
                                                     </ItemsControl.ItemsPanel>
                                                 </ItemsControl>
