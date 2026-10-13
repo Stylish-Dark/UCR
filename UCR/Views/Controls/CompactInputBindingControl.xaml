@@ -53,29 +53,34 @@
         </Grid.ColumnDefinitions>
 
         <ComboBox Grid.Row="0" Grid.Column="0" x:Name="DeviceSelectionBox"
-                  Width="54" Height="36" Margin="0 0 4 0" Padding="2 1"
+                  Width="54" Height="36" Margin="0 0 4 0" Padding="0"
                   BorderBrush="{DynamicResource PrimaryHueLightBrush}" BorderThickness="2"
                   HorizontalAlignment="Left"
                   ItemsSource="{Binding Devices}"
                   SelectedItem="{Binding SelectedDevice}"
                   IsEnabled="{Binding BindingEnabled}"
                   SelectionChanged="DeviceSelectionBox_OnSelectionChanged"
-                  ToolTip="Binding device">
+                  ToolTip="Select binding device">
+            <ComboBox.ItemContainerStyle>
+                <Style TargetType="{x:Type ComboBoxItem}">
+                    <Setter Property="MinWidth" Value="180"/>
+                </Style>
+            </ComboBox.ItemContainerStyle>
             <ComboBox.ItemTemplate>
                 <DataTemplate>
-                    <Grid MinWidth="35">
+                    <Grid MinWidth="31" HorizontalAlignment="Left">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="38"/>
+                            <ColumnDefinition Width="30"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <!-- Render the actual glyph at selector size, without a fixed-size parent template. -->
                         <local:DeviceSymbolControl Grid.Column="0"
                                                    SymbolText="{Binding Visual.SymbolText}"
                                                    Foreground="{Binding Visual.BadgeTextBrush}"
-                                                   GlyphSize="26" Width="34" Height="27"
-                                                   Margin="0 0 5 0" VerticalAlignment="Center"
+                                                   GlyphSize="27" Width="30" Height="30"
+                                                   Margin="0" VerticalAlignment="Center"
                                                    ToolTip="{Binding Visual.ToolTip}"/>
-                        <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="#FFFFFF"
+                        <TextBlock Grid.Column="1" Margin="8 0 8 0" Text="{Binding Title}" Foreground="#FFFFFF"
                                    VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                    ToolTip="{Binding Title}">
                             <TextBlock.Style>
@@ -132,11 +137,12 @@
             </Button.ContextMenu>
         </Button>
 
-        <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Horizontal"
+        <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Vertical"
                     HorizontalAlignment="Center" VerticalAlignment="Center"
                     Visibility="{Binding ShowBlock}"
                     ToolTip="Block the original physical input (where the provider supports it)">
-        <TextBlock Text="Block" Foreground="#E2E2E2" FontSize="12" Margin="0 0 6 0" VerticalAlignment="Center"/>
+        <TextBlock Text="Block" Foreground="#E2E2E2" FontSize="11" Margin="0 0 0 3"
+                   HorizontalAlignment="Center"/>
         <ToggleButton HorizontalAlignment="Center" VerticalAlignment="Center"
                       IsChecked="{Binding Block, Mode=TwoWay}"
                       IsEnabled="{Binding CanBlock}"

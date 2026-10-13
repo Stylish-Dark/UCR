@@ -188,17 +188,13 @@
                     <Button ToolTip="Manage devices" Click="ManageDevices_OnClick">
                         <materialDesign:PackIcon Kind="Settings"/>
                     </Button>
-                    <Button x:Name="AppearanceButton" ToolTip="Appearance" Click="Appearance_OnClick"
-                            Width="36" Height="34" Padding="3" BorderThickness="1"
-                            BorderBrush="{DynamicResource PrimaryHueLightBrush}" Background="#292929">
+                    <Button x:Name="AppearanceButton" ToolTip="Appearance" Click="Appearance_OnClick">
                         <Grid Width="20" Height="20">
                             <Ellipse Width="16" Height="16" Fill="{DynamicResource PrimaryHueMidBrush}" Stroke="#D8D8D8" StrokeThickness="1"/>
                             <Ellipse Width="5" Height="5" Fill="#212121" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Grid>
                     </Button>
-                    <Button ToolTip="Open diagnostic logs" Click="OpenLogs_OnClick"
-                            Width="36" Height="34" Padding="3" BorderThickness="1"
-                            BorderBrush="{DynamicResource PrimaryHueLightBrush}" Background="#292929">
+                    <Button ToolTip="Open diagnostic logs" Click="OpenLogs_OnClick">
                         <materialDesign:PackIcon Kind="FileDocumentOutline" Width="20" Height="20"/>
                     </Button>
                 </ToolBar>
