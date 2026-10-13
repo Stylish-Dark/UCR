@@ -180,7 +180,7 @@
                                                        ToolTip="One button: pressed/released axis values. Two buttons: positive/negative directions."/>
                                             <Button Content="1" MinWidth="42" Height="30" Padding="10 2"
                                                     Margin="0 0 4 0" Click="AxisOneButton_OnClick"
-                                                    IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"
+                                                    IsEnabled="{Binding CanChangeAxisButtonMode}"
                                                     ToolTip="Use one button and set axis values for press and release"
                                                     Foreground="White">
                                                 <Button.Style>
@@ -198,7 +198,7 @@
                                             </Button>
                                             <Button Content="2" MinWidth="42" Height="30" Padding="10 2"
                                                     Click="AxisTwoButtons_OnClick"
-                                                    IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"
+                                                    IsEnabled="{Binding CanChangeAxisButtonMode}"
                                                     ToolTip="Use separate buttons for the positive and negative axis directions"
                                                     Foreground="White" Margin="0 0 4 0">
                                                 <Button.Style>
@@ -215,7 +215,7 @@
                                                 </Button.Style>
                                             </Button>
                                              <Button Content="4" MinWidth="42" Height="30" Padding="10 2" Click="AxisFourButtons_OnClick"
-                                                     IsEnabled="{Binding MappingViewModel.ButtonsEnabled}" ToolTip="Four directions: Up, Down, Left and Right"
+                                                     IsEnabled="{Binding CanChangeAxisButtonMode}" ToolTip="Four directions: Up, Down, Left and Right"
                                                      Foreground="White">
                                                 <Button.Style>
                                                     <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
