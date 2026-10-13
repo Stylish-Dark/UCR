@@ -582,7 +582,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool ChangeAxisInputMode(PluginViewModel original, int buttonCount)
         {
             if (!ButtonsEnabled || original == null || Plugins.Count != 1 ||
-                Mapping.Plugins.Count != 1 || Mapping.UseInputExpression ||
+                Mapping.Plugins.Count != 1 ||
                 !original.IsAxisButtonMapping || (buttonCount != 1 && buttonCount != 2 && buttonCount != 4))
                 return false;
 
@@ -608,6 +608,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             replacement.Filters = original.Plugin.Filters.ToList();
             var preferredOutput = original.Plugin.Outputs.Select(binding => binding.DeviceConfigurationGuid).ToList();
             SelectCompatibleOutputDevices(replacement, preferredOutput);
+
+            // Axis mode 2/4 consumes positional inputs, not a boolean AND/OR expression.
+            // The caller must explicitly confirm discarding expression terms before this point.
+            if (Mapping.UseInputExpression)
+            {
+                Mapping.UseInputExpression = false;
+                foreach (var term in Mapping.DeviceBindings)
+                {
+                    term.SetInputExpressionGroup(0);
+                    term.SetInputExpressionNegated(false);
+                }
+            }
 
             foreach (var binding in DeviceBindings)
             {
