@@ -188,13 +188,13 @@
                     <Button ToolTip="Manage devices" Click="ManageDevices_OnClick">
                         <materialDesign:PackIcon Kind="Settings"/>
                     </Button>
-                    <Button x:Name="AppearanceButton" ToolTip="Appearance" Click="Appearance_OnClick">
+                    <Button x:Name="AppearanceButton" ToolTip="Appearance" Click="Appearance_OnClick" Width="36" Height="34" Padding="4" Style="{StaticResource UcrAccentOutlineButton}">
                         <Grid Width="20" Height="20">
                             <Ellipse Width="16" Height="16" Fill="{DynamicResource PrimaryHueMidBrush}" Stroke="#D8D8D8" StrokeThickness="1"/>
                             <Ellipse Width="5" Height="5" Fill="#212121" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Grid>
                     </Button>
-                    <Button ToolTip="Open diagnostic logs" Click="OpenLogs_OnClick">
+                    <Button ToolTip="Open diagnostic logs" Click="OpenLogs_OnClick" Width="36" Height="34" Padding="4" Style="{StaticResource UcrAccentOutlineButton}">
                         <materialDesign:PackIcon Kind="FileDocumentOutline" Width="20" Height="20"/>
                     </Button>
                 </ToolBar>
@@ -495,8 +495,10 @@
                             BorderThickness="0" Background="Transparent" Padding="0">
                     <TabControl.Template>
                         <ControlTemplate TargetType="{x:Type TabControl}">
-                            <ContentPresenter ContentSource="SelectedContent"
-                                              HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                            <DockPanel LastChildFill="True">
+                                <TabPanel DockPanel.Dock="Top" IsItemsHost="True" Margin="6 0 0 4" HorizontalAlignment="Left"/>
+                                <ContentPresenter ContentSource="SelectedContent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                            </DockPanel>
                         </ControlTemplate>
                     </TabControl.Template>
                     <TabControl.Resources>
