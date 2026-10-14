@@ -482,6 +482,20 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var group = InputConditions.FirstOrDefault()?.GroupIndex ?? 0;
             if (!Mapping.SetDirectionalInputMode(group, slots)) return;
 
+            // The legacy Button-to-Axis plugin only receives a Boolean, so it
+            // cannot represent negative/positive travel. Convert axis destinations
+            // to the continuous driver before pairing their physical inputs.
+            if (slots > 0)
+            {
+                var axisTemplate = GetCompatiblePluginOptions().FirstOrDefault(option =>
+                    string.Equals(option.Name, "Axis to Axis", StringComparison.OrdinalIgnoreCase))?.Plugin;
+                if (axisTemplate != null)
+                    foreach (var output in Plugins.Where(output => output.OutputType == "Axis" &&
+                        output.Plugin.InputCategories.Count == 1 &&
+                        output.Plugin.InputCategories[0].Category != DeviceBindingCategory.Range).ToList())
+                        ChangeOutputType(output, axisTemplate);
+            }
+
             // A joystick needs two independent analogue destinations (X and Y).
             // Do not automatically delete the user's existing outputs when switching back.
             if (slots == 4 && Plugins.Count(p => p.OutputType == "Axis") < 2)
@@ -1193,6 +1207,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var replacement = ProfileViewModel.Profile.Context.PluginManager.GetNewPlugin(replacementTemplate);
             replacement.SetProfile(ProfileViewModel.Profile);
             replacement.Filters = original.Plugin.Filters.ToList();
+            // Preserve the actual destination when both plugins produce the same
+            // output category, rather than wiping an already-bound controller axis.
+            for (var position = 0; position < Math.Min(original.Plugin.Outputs.Count, replacement.Outputs.Count); position++)
+            {
+                var previous = original.Plugin.Outputs[position];
+                var target = replacement.Outputs[position];
+                if (previous.IsBound &&
+                    original.Plugin.OutputCategories[position].Category == replacement.OutputCategories[position].Category)
+                {
+                    target.SetDeviceConfigurationGuid(previous.DeviceConfigurationGuid, false);
+                    target.SetKeyTypeValue(previous.KeyType, previous.KeyValue, previous.KeySubValue);
+                }
+            }
             SelectCompatibleOutputDevices(replacement,
                 original.Plugin.Outputs.Select(binding => binding.DeviceConfigurationGuid).ToList());
             var replacementViewModel = new PluginViewModel(this, replacement);
