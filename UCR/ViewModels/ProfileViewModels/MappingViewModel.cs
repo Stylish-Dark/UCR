@@ -306,6 +306,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             SubscribeSummaryBindings();
             RefreshHeaderState();
             RefreshCollapsedSummary();
+            foreach (var condition in InputConditions)
+                condition.DirectionalPrimary?.EnsureDeviceListLoaded();
             // New unbound axis outputs use two opposing slots by default.
             // Existing analogue bindings remain single-source and untouched.
             if (HasAxisOutput && DeviceBindings.Count == 1 &&
@@ -1267,6 +1269,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(MappingOutputTypeLabel));
             OnPropertyChanged(nameof(MappingInputTypeLabel));
             OnPropertyChanged(nameof(MappingOutputCategoryDisplay));
+            OnPropertyChanged(nameof(HasAxisOutput));
             OnPropertyChanged(nameof(DefinedFilterName));
             OnPropertyChanged(nameof(ReferencedFilters));
             OnPropertyChanged(nameof(HasFilterReferences));
