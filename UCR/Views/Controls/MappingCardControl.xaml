@@ -312,7 +312,8 @@
                                                     <Border Margin="0 0 0 3" Padding="5" CornerRadius="3"
                                                             Background="#2B2B2B" BorderBrush="#505050" BorderThickness="1">
                                                         <StackPanel>
-                                                            <StackPanel Orientation="Horizontal" Margin="0 0 0 5">
+                                                            <StackPanel Orientation="Horizontal" Margin="0 0 0 5"
+                                                                        Visibility="{Binding InputTypeDetailsVisibility}">
                                                                 <ComboBox Width="142" Height="28"
                                                                           SelectedIndex="{Binding InputExpressionInputKind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                                           IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}">
