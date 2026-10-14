@@ -309,12 +309,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             RefreshCollapsedSummary();
             foreach (var condition in InputConditions)
                 condition.DirectionalPrimary?.EnsureDeviceListLoaded();
-            // New unbound axis outputs use two opposing slots by default.
-            // Existing analogue bindings remain single-source and untouched.
-            if (HasAxisOutput && DeviceBindings.Count == 1 &&
-                DeviceBindings.All(b => !b.DeviceBinding.IsBound &&
-                    b.DeviceBinding.InputDirectionSlot == 0))
-                SetDirectionalMode(2);
+            // Saved mappings are never converted just because their editor loads.
+            // Fresh axis destinations receive pairing when the user adds/selects them.
         }
 
         internal void RefreshActiveState()
@@ -435,6 +431,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             
             PopulateDeviceBindingsViewModels();
             foreach (var binding in DeviceBindings) SubscribeSummaryBinding(binding);
+            if (HasAxisOutput && DeviceBindings.Count == 1 &&
+                !DeviceBindings[0].DeviceBinding.IsBound)
+                SetDirectionalMode(2);
             RefreshCollapsedSummary();
         }
 
@@ -1210,6 +1209,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             RefreshCollapsedSummary();
             ProfileViewModel.RefreshFilterReferenceLabels();
             RefreshInputExpressionPresentation();
+            if (HasAxisOutput && DeviceBindings.Count == 1 &&
+                !DeviceBindings[0].DeviceBinding.IsBound)
+                SetDirectionalMode(2);
             Logger.Info("Changed output type in mapping '" + MappingTitle + "' to " + replacement.PluginName);
             return true;
         }
