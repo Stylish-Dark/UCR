@@ -172,13 +172,20 @@ namespace HidWizards.UCR.Core.Models
                                  _lastInputExpressionValue.Value != digital;
             _lastInputExpressionValue = digital;
 
+            var directionalFourWay = DeviceBindings.Any(b => b.InputDirectionSlot >= 3);
+            var rangeIndex = 0;
             foreach (var plugin in Plugins)
             {
-                if (plugin.IsFiltered()) continue;
                 if (plugin.InputCategories.Count != 1) continue;
                 var isRange = plugin.InputCategories[0].Category == DeviceBindingCategory.Range;
+                var outputValue = analogue;
+                if (isRange && directionalFourWay)
+                    outputValue = EvaluateDirectionalAxis(InputCache, rangeIndex++ == 0 ? 0 : 1);
+                else if (isRange)
+                    rangeIndex++;
+                if (plugin.IsFiltered()) continue;
                 if (!isRange && !digitalChanged) continue;
-                plugin.Update(new[] { isRange ? analogue : digital });
+                plugin.Update(new[] { isRange ? outputValue : digital });
             }
         }
 
@@ -222,6 +229,49 @@ namespace HidWizards.UCR.Core.Models
             return analogue;
         }
 
+        // Physical directions within one logical input are alternatives rather than
+        // AND terms. Remaining inputs in the same group are genuine AND gates.
+        internal short EvaluateDirectionalAxis(IList<short> values, int axis)
+        {
+            if (values == null || !UseInputExpression) return 0;
+            var count = Math.Min(values.Count, DeviceBindings.Count);
+            foreach (var group in Enumerable.Range(0, count)
+                .GroupBy(i => DeviceBindings[i].InputExpressionGroup).OrderBy(g => g.Key))
+            {
+                var directions = group.Where(i => DeviceBindings[i].InputDirectionSlot > 0).ToList();
+                if (directions.Count == 0) continue;
+                var allowed = group.Where(i => DeviceBindings[i].InputDirectionSlot == 0)
+                    .All(i => EvaluateOrdinaryCondition(DeviceBindings[i], values[i]));
+                if (!allowed) continue;
+
+                int amount = 0;
+                foreach (var i in directions)
+                {
+                    var slot = DeviceBindings[i].InputDirectionSlot;
+                    if (axis == 0 && slot > 2 || axis == 1 && slot < 3) continue;
+                    var raw = values[i];
+                    var threshold = DeviceBindings[i].InputExpressionAxisThreshold;
+                    var magnitude = DeviceBindings[i].InputExpressionInputKind == 0
+                        ? (raw != 0 ? short.MaxValue : 0)
+                        : Math.Abs((int)raw) >= threshold ? Math.Abs((int)raw) : 0;
+                    amount += slot == 1 || slot == 3 ? -magnitude : magnitude;
+                }
+                if (directions[0] >= 0 && DeviceBindings[directions[0]].InputExpressionNegated)
+                    amount = -amount;
+                if (amount != 0) return (short)Math.Max(short.MinValue, Math.Min(short.MaxValue, amount));
+            }
+            return 0;
+        }
+
+        private static bool EvaluateOrdinaryCondition(DeviceBinding binding, short raw)
+        {
+            var threshold = Math.Max(1, binding.InputExpressionAxisThreshold);
+            var active = binding.InputExpressionInputKind == 1 ? raw >= threshold :
+                binding.InputExpressionInputKind == 2 ? raw <= -threshold :
+                binding.InputExpressionInputKind == 3 ? Math.Abs((int)raw) >= threshold : raw != 0;
+            return binding.InputExpressionNegated ? !active : active;
+        }
+
         // The first satisfied OR group wins. A non-negated continuous axis in that group
         // drives analogue outputs; otherwise a true group drives a full-scale axis.
         private bool EvaluateInputSignal(IList<short> values, bool forAnalogue, out short analogue)
@@ -235,6 +285,19 @@ namespace HidWizards.UCR.Core.Models
                 .GroupBy(index => Math.Max(0, DeviceBindings[index].InputExpressionGroup))
                 .OrderBy(group => group.Key))
             {
+                if (group.Any(i => DeviceBindings[i].InputDirectionSlot > 0))
+                {
+                    var allowed = group.Where(i => DeviceBindings[i].InputDirectionSlot == 0)
+                        .All(i => EvaluateOrdinaryCondition(DeviceBindings[i], values[i]));
+                    if (!allowed) continue;
+                    var active = group.Any(i => DeviceBindings[i].InputDirectionSlot > 0 &&
+                        values[i] != 0);
+                    if (!active) continue;
+                    analogue = forAnalogue ? EvaluateDirectionalAxis(values, 0) : (short)1;
+                    if (!forAnalogue || analogue != 0) return true;
+                    continue;
+                }
+
                 var groupTrue = true;
                 var driverPresent = false;
                 short driverValue = 0;
