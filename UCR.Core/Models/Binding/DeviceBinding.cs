@@ -63,6 +63,12 @@ namespace HidWizards.UCR.Core.Models.Binding
         [DefaultValue(0)]
         public int InputExpressionInputKind { get; set; }
 
+        // Allows old XML to infer each legacy positional slot's category once, without
+        // overwriting a deliberate per-slot input-kind override on subsequent loads.
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool InputExpressionKindConfigured { get; set; }
+
         [XmlAttribute]
         [DefaultValue(16384)]
         public int InputExpressionAxisThreshold { get; set; } = 16384;
@@ -73,6 +79,7 @@ namespace HidWizards.UCR.Core.Models.Binding
             if (InputExpressionInputKind == kind) return;
             var categoryChanged = (InputExpressionInputKind == 0) != (kind == 0);
             InputExpressionInputKind = kind;
+            InputExpressionKindConfigured = true;
             DeviceBindingCategory = kind == 0 ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
             // A direction/threshold-mode change keeps the same axis binding. Switching
             // between button and axis clears only the incompatible control, not the device.
