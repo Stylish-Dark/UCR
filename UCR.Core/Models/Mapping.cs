@@ -147,66 +147,109 @@ namespace HidWizards.UCR.Core.Models
 
         public void Update(short value)
         {
-            short[] pluginValues;
-            if (UseInputExpression)
+            if (!UseInputExpression)
             {
-                var expressionValue = EvaluateInputExpression(InputCache);
-                if (_lastInputExpressionValue.HasValue && _lastInputExpressionValue.Value == expressionValue) return;
-                _lastInputExpressionValue = expressionValue;
-                pluginValues = new[] { expressionValue };
+                var values = InputCache.ToArray();
+                foreach (var plugin in Plugins)
+                {
+                    if (!plugin.IsFiltered()) plugin.Update(values);
+                }
+                return;
             }
-            else
-            {
-                pluginValues = InputCache.ToArray();
-            }
+
+            // One input expression feeds heterogeneous output plugins. Momentary consumers
+            // receive its Boolean state; range consumers receive an analogue driver, or
+            // full-scale activation when the expression has only discrete conditions.
+            var digital = EvaluateInputExpression(InputCache);
+            short analogue;
+            EvaluateInputSignal(InputCache, true, out analogue);
+            var digitalChanged = !_lastInputExpressionValue.HasValue ||
+                                 _lastInputExpressionValue.Value != digital;
+            _lastInputExpressionValue = digital;
 
             foreach (var plugin in Plugins)
             {
                 if (plugin.IsFiltered()) continue;
-                plugin.Update(pluginValues);
+                if (plugin.InputCategories.Count != 1) continue;
+                var isRange = plugin.InputCategories[0].Category == DeviceBindingCategory.Range;
+                if (!isRange && !digitalChanged) continue;
+                plugin.Update(new[] { isRange ? analogue : digital });
             }
         }
 
         internal short EvaluateInputExpression(IList<short> values)
         {
+            short unused;
+            return EvaluateInputSignal(values, false, out unused) ? (short)1 : (short)0;
+        }
+
+        // The first satisfied OR group wins. A non-negated continuous axis in that group
+        // drives analogue outputs; otherwise a true group drives a full-scale axis.
+        private bool EvaluateInputSignal(IList<short> values, bool forAnalogue, out short analogue)
+        {
+            analogue = 0;
             if (!UseInputExpression || values == null || DeviceBindings == null || DeviceBindings.Count == 0)
-                return 0;
+                return false;
 
             var count = Math.Min(values.Count, DeviceBindings.Count);
-            if (count == 0) return 0;
-
             foreach (var group in Enumerable.Range(0, count)
-                .GroupBy(index => Math.Max(0, DeviceBindings[index].InputExpressionGroup)))
+                .GroupBy(index => Math.Max(0, DeviceBindings[index].InputExpressionGroup))
+                .OrderBy(group => group.Key))
             {
                 var groupTrue = true;
+                var driverPresent = false;
+                short driverValue = 0;
+
                 foreach (var index in group)
                 {
                     var binding = DeviceBindings[index];
-                    var rawValue = values[index];
+                    var raw = values[index];
                     var threshold = Math.Max(1, Math.Min(32767, binding.InputExpressionAxisThreshold));
-                    var termTrue = binding.InputExpressionInputKind == 1
-                        ? rawValue >= threshold
-                        : binding.InputExpressionInputKind == 2
-                            ? rawValue <= -threshold
-                            : rawValue != 0;
-                    if (DeviceBindings[index].InputExpressionNegated) termTrue = !termTrue;
-                    if (termTrue) continue;
-                    groupTrue = false;
-                    break;
+                    bool termTrue;
+                    switch (binding.InputExpressionInputKind)
+                    {
+                        case 1:
+                            termTrue = raw >= threshold;
+                            break;
+                        case 2:
+                            termTrue = raw <= -threshold;
+                            break;
+                        case 3:
+                            termTrue = forAnalogue || Math.Abs((int)raw) >= threshold;
+                            if (forAnalogue && !binding.InputExpressionNegated && !driverPresent)
+                            {
+                                driverPresent = true;
+                                driverValue = raw;
+                            }
+                            break;
+                        default:
+                            termTrue = raw != 0;
+                            break;
+                    }
+
+                    if (binding.InputExpressionNegated) termTrue = !termTrue;
+                    if (!termTrue)
+                    {
+                        groupTrue = false;
+                        break;
+                    }
                 }
 
-                if (groupTrue) return 1;
+                if (!groupTrue) continue;
+                analogue = forAnalogue
+                    ? (driverPresent ? driverValue : short.MaxValue)
+                    : (short)1;
+                return true;
             }
-
-            return 0;
+            return false;
         }
 
         public bool SupportsNativeInputExpression()
         {
-            if (Plugins == null || Plugins.Count == 0) return false;
-            var categories = Plugins[0].InputCategories;
-            return categories != null && categories.Count == 1 &&
-                   categories[0].Category == DeviceBindingCategory.Momentary;
+            return Plugins != null && Plugins.Count > 0 && Plugins.All(plugin =>
+                plugin.InputCategories != null && plugin.InputCategories.Count == 1 &&
+                (plugin.InputCategories[0].Category == DeviceBindingCategory.Momentary ||
+                 plugin.InputCategories[0].Category == DeviceBindingCategory.Range));
         }
 
         public bool EnableInputExpression()
@@ -216,8 +259,15 @@ namespace HidWizards.UCR.Core.Models
             if (DeviceBindings == null || DeviceBindings.Count != 1) return false;
 
             UseInputExpression = true;
-            DeviceBindings[0].InputExpressionGroup = 0;
-            DeviceBindings[0].InputExpressionNegated = false;
+            var first = DeviceBindings[0];
+            first.InputExpressionGroup = 0;
+            first.InputExpressionNegated = false;
+            if (Plugins[0].InputCategories[0].Category == DeviceBindingCategory.Range)
+            {
+                // Existing axis mappings retain their original continuous analogue source.
+                first.InputExpressionInputKind = 3;
+                first.DeviceBindingCategory = DeviceBindingCategory.Range;
+            }
             Profile?.Context?.ContextChanged();
             return true;
         }
