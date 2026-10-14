@@ -578,7 +578,7 @@ namespace HidWizards.UCR.Views.Controls
             switch (category)
             {
                 case "Button": name = "Button to Button"; break;
-                case "Axis": name = analogueInput ? "Axis to Axis" : "Button to Axis"; break;
+                case "Axis": name = "Axis to Axis"; break;
                 case "Filter": name = analogueInput ? "Axis to Filter" : "Button to Filter"; break;
                 case "Event": name = "Button to Event"; break;
             }
