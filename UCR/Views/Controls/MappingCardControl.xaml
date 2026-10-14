@@ -314,10 +314,23 @@
                                                            Margin="2 0 0 5"/>
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <ItemsControl Grid.Column="0" ItemsSource="{Binding DirectionalInputs}">
+                                                    <ComboBox Grid.Column="0" Width="63" Height="36" Margin="0 0 5 0"
+                                                              ItemsSource="{Binding DirectionalPrimary.Devices}"
+                                                              SelectedItem="{Binding DirectionalPrimary.SelectedDevice, Mode=OneWay}"
+                                                              DisplayMemberPath="Title"
+                                                              SelectionChanged="DirectionalDevice_OnSelectionChanged"
+                                                              ToolTip="Any input device, or limit every direction to a chosen device">
+                                                        <ComboBox.ItemContainerStyle>
+                                                            <Style TargetType="ComboBoxItem">
+                                                                <Setter Property="MinWidth" Value="190"/>
+                                                            </Style>
+                                                        </ComboBox.ItemContainerStyle>
+                                                    </ComboBox>
+                                                    <ItemsControl Grid.Column="1" ItemsSource="{Binding DirectionalInputs}">
                                                         <ItemsControl.ItemsPanel>
                                                             <ItemsPanelTemplate>
                                                                 <UniformGrid Rows="1" Columns="{Binding DirectionalColumns}"/>
@@ -348,8 +361,8 @@
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>
-                                                    <StackPanel Grid.Column="1" Orientation="Horizontal"
-                                                                VerticalAlignment="Center" Margin="8 0 0 0">
+                                                    <StackPanel Grid.Column="2" Orientation="Horizontal"
+                                                                VerticalAlignment="Center" Margin="5 0 0 0">
                                                         <StackPanel Orientation="Vertical" Margin="0 0 8 0">
                                                             <TextBlock Text="Block" FontSize="10" Foreground="#D0D0D0"/>
                                                             <ToggleButton IsChecked="{Binding DirectionalPrimary.Block, Mode=OneWay}"
