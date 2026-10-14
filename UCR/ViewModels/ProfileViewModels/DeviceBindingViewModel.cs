@@ -103,13 +103,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             get
             {
-                if (!BindingEnabled || DeviceBinding == null) return false;
-                if (DeviceBinding.DeviceIoType != DeviceIoType.Input) return true;
-                var profile = DeviceBinding.Profile;
-                if (profile == null || DeviceBinding.DeviceConfigurationGuid == Guid.Empty) return false;
-                var configuration = profile.GetDeviceConfiguration(DeviceIoType.Input,
-                    DeviceBinding.DeviceConfigurationGuid);
-                return IsCompatibleInputDevice(configuration, DeviceBindingCategory, profile.Context);
+                // Detection is available before choosing a device. Guid.Empty means
+                // listen to every input device added to the profile; a nonempty GUID
+                // limits detection to that device in BindingManager.
+                if (DeviceBinding == null) return false;
+                return DeviceBinding.DeviceIoType == DeviceIoType.Input || BindingEnabled;
             }
         }
 
@@ -239,10 +237,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             get
             {
-                if (DeviceBinding?.DeviceIoType == DeviceIoType.Input && !CanBindCurrentDevice &&
-                    BindingEnabled)
-                    return DeviceBindingCategory == DeviceBindingCategory.Range
-                        ? "Choose axis device" : "Choose input device";
                 var label = BindButtonText;
                 if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Output)
                     return "Choose output";
@@ -391,13 +385,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 .Where(configuration => IsCompatibleInputDevice(configuration, DeviceBindingCategory, context))
                 .ToList();
             var currentGuid = DeviceBinding.DeviceConfigurationGuid;
-            if (!candidates.Any(configuration => configuration.Guid == currentGuid))
-            {
-                var primaryGuid = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input)?.Guid;
-                var selected = candidates.FirstOrDefault(configuration => configuration.Guid == primaryGuid)
-                    ?? candidates.FirstOrDefault();
-                DeviceBinding.SetDeviceConfigurationGuid(selected?.Guid ?? Guid.Empty, false);
-            }
+            // An incompatible explicit selection returns to listen-to-all. Never
+            // silently lock a new input type to an unrelated primary device.
+            if (currentGuid != Guid.Empty &&
+                !candidates.Any(configuration => configuration.Guid == currentGuid))
+                DeviceBinding.SetDeviceConfigurationGuid(Guid.Empty, false);
             RefreshDeviceList();
         }
 
@@ -421,6 +413,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 .ToList();
 
             Devices = new ObservableCollection<ComboBoxItemViewModel>();
+            if (DeviceBinding.DeviceIoType == DeviceIoType.Input)
+                Devices.Add(new ComboBoxItemViewModel("Any input device", Guid.Empty));
             foreach (var deviceConfiguration in deviceConfigurationList)
             {
                 Devices.Add(new ComboBoxItemViewModel(
@@ -489,12 +483,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             else if (selectedDevice == null)
             {
-                var primaryGuid = DeviceBinding.Profile.GetPrimaryDeviceConfiguration(DeviceBinding.DeviceIoType)?.Guid;
-                selectedDevice = Devices.FirstOrDefault(item => item.Value == primaryGuid) ?? Devices[0];
-                // Device dropdowns must reflect the real model selection, not merely show
-                // a default item while the binding still holds Guid.Empty.
-                if (!DeviceBinding.IsBound && selectedDevice.Value != Guid.Empty)
-                    DeviceBinding.SetDeviceConfigurationGuid(selectedDevice.Value, false);
+                if (DeviceBinding.DeviceIoType == DeviceIoType.Input)
+                {
+                    // A blank selection is intentional: Bind listens to all profile
+                    // devices until an input is detected or a device is chosen.
+                    selectedDevice = Devices.FirstOrDefault(item => item.Value == Guid.Empty);
+                }
+                else
+                {
+                    var primaryGuid = DeviceBinding.Profile.GetPrimaryDeviceConfiguration(DeviceBinding.DeviceIoType)?.Guid;
+                    selectedDevice = Devices.FirstOrDefault(item => item.Value == primaryGuid) ?? Devices[0];
+                    if (!DeviceBinding.IsBound && selectedDevice.Value != Guid.Empty)
+                        DeviceBinding.SetDeviceConfigurationGuid(selectedDevice.Value, false);
+                }
             }
 
             SelectedDevice = selectedDevice;
@@ -502,6 +503,21 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public DeviceBindingTransferCompatibility ChangeDeviceConfiguration(Guid selectedDeviceConfigurationGuid)
         {
+            if (DeviceBinding.DeviceIoType == DeviceIoType.Input &&
+                selectedDeviceConfigurationGuid == Guid.Empty)
+            {
+                // Revert to unrestricted detection and discard the old device's
+                // control key; no specific device may remain implicitly selected.
+                DeviceBinding.SetDeviceConfigurationGuid(Guid.Empty, false);
+                if (_deviceListLoaded)
+                {
+                    SetSelectDevice();
+                    OnPropertyChanged(nameof(SelectedDevice));
+                }
+                OnPropertyChanged(nameof(CompactBindButtonText));
+                OnPropertyChanged(nameof(CanBindCurrentDevice));
+                return DeviceBindingTransferCompatibility.Unknown;
+            }
             var selectedDeviceConfiguration = DeviceBinding.Profile.GetDeviceConfiguration(
                 DeviceBinding.DeviceIoType, selectedDeviceConfigurationGuid);
             if (selectedDeviceConfiguration == null) return DeviceBindingTransferCompatibility.Unknown;
