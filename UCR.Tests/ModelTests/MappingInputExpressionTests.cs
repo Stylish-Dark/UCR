@@ -126,6 +126,71 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void DirectionalInputUnits_ConvertBetweenSinglePairAndFourWayWithoutLeakingSlots()
+        {
+            var mapping = new Mapping();
+            mapping.Plugins.Add(new AxisToAxis());
+            mapping.DeviceBindings.Add(new DeviceBinding());
+            Assert.That(mapping.SetDirectionalInputMode(0, 2), Is.True);
+            Assert.That(mapping.UseInputExpression, Is.True);
+            Assert.That(mapping.DeviceBindings.Select(b => b.InputDirectionSlot), Is.EqualTo(new[] { 1, 2 }));
+            Assert.That(mapping.DeviceBindings.All(b => b.DeviceBindingCategory == DeviceBindingCategory.Momentary),
+                Is.True);
+
+            Assert.That(mapping.SetDirectionalInputMode(0, 4), Is.True);
+            Assert.That(mapping.DeviceBindings.Select(b => b.InputDirectionSlot), Is.EqualTo(new[] { 1, 2, 3, 4 }));
+            Assert.That(mapping.SetDirectionalInputMode(0, 0), Is.True);
+            Assert.That(mapping.DeviceBindings.Count, Is.EqualTo(1));
+            Assert.That(mapping.DeviceBindings[0].InputDirectionSlot, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void DirectionalJoystick_PairsOpposingKeysAndGatesBothAxesWithOtherAndInputs()
+        {
+            var bindings = Enumerable.Range(1, 4).Select(slot => new DeviceBinding
+            {
+                InputDirectionSlot = slot,
+                InputExpressionInputKind = 0,
+                InputExpressionGroup = 0
+            }).ToList();
+            bindings.Add(new DeviceBinding { InputExpressionGroup = 0 });
+            var mapping = new Mapping { UseInputExpression = true, DeviceBindings = bindings };
+
+            Assert.That(mapping.EvaluateDirectionalAxis(new short[] { 1, 0, 0, 0, 1 }, 0),
+                Is.EqualTo(short.MinValue + 1));
+            Assert.That(mapping.EvaluateDirectionalAxis(new short[] { 0, 1, 0, 0, 1 }, 0),
+                Is.EqualTo(short.MaxValue));
+            Assert.That(mapping.EvaluateDirectionalAxis(new short[] { 1, 1, 0, 0, 1 }, 0),
+                Is.EqualTo(0), "Opposing directions must cancel.");
+            Assert.That(mapping.EvaluateDirectionalAxis(new short[] { 0, 0, 1, 0, 1 }, 1),
+                Is.EqualTo(short.MinValue + 1));
+            Assert.That(mapping.EvaluateDirectionalAxis(new short[] { 0, 0, 0, 1, 1 }, 1),
+                Is.EqualTo(short.MaxValue));
+            Assert.That(mapping.EvaluateDirectionalAxis(new short[] { 0, 1, 0, 1, 0 }, 0),
+                Is.EqualTo(0), "A separate inactive AND condition must gate X.");
+            Assert.That(mapping.EvaluateDirectionalAxis(new short[] { 0, 1, 0, 1, 0 }, 1),
+                Is.EqualTo(0), "The same AND condition must gate Y.");
+        }
+
+        [Test]
+        public void PairedInputs_AreAlternativesAndSharedNotDoesNotRequireBothKeys()
+        {
+            var mapping = new Mapping
+            {
+                UseInputExpression = true,
+                DeviceBindings = new List<DeviceBinding>
+                {
+                    new DeviceBinding { InputDirectionSlot = 1 },
+                    new DeviceBinding { InputDirectionSlot = 2 }
+                }
+            };
+            Assert.That(mapping.EvaluateInputExpression(new short[] { 1, 0 }), Is.EqualTo(1));
+            Assert.That(mapping.EvaluateInputExpression(new short[] { 0, 1 }), Is.EqualTo(1));
+            Assert.That(mapping.EvaluateInputExpression(new short[] { 0, 0 }), Is.EqualTo(0));
+            Assert.That(mapping.EvaluateDirectionalAxis(new short[] { 1, 1 }, 0), Is.EqualTo(0));
+        }
+
+        [Test]
         public void ConditionApiKeepsAndTermsOnOneRowAndCreatesSeparateOrRows()
         {
             var mapping = new Mapping();
