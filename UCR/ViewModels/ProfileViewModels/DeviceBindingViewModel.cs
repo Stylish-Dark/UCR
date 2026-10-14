@@ -30,6 +30,28 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         }
         public string IoTypeName => DeviceBinding.DeviceIoType.Equals(DeviceIoType.Input) ? "Input" : "Output";
         public DeviceBindingCategory DeviceBindingCategory { get; set; }
+        public int InputExpressionInputKind
+        {
+            get => DeviceBinding.InputExpressionInputKind;
+            set
+            {
+                if (DeviceBinding.InputExpressionInputKind == value) return;
+                DeviceBinding.SetInputExpressionInputKind(value);
+                DeviceBindingCategory = value == 0 ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(BindButtonText));
+                OnPropertyChanged(nameof(CompactBindButtonText));
+            }
+        }
+        public int InputExpressionAxisThreshold
+        {
+            get => DeviceBinding.InputExpressionAxisThreshold;
+            set
+            {
+                DeviceBinding.SetInputExpressionAxisThreshold(value);
+                OnPropertyChanged();
+            }
+        }
         public ObservableCollection<ComboBoxItemViewModel> Devices { get; set; }
         public ComboBoxItemViewModel SelectedDevice { get; set; }
         public Visibility ShowPreview => DeviceBinding.IsInBindMode ? Visibility.Hidden : Visibility.Visible;
