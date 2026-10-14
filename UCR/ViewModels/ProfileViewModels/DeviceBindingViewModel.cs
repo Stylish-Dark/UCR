@@ -171,7 +171,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public bool Block
         {
-            get => DeviceBinding.Block;
+            // An unbound input cannot block anything. Do not show a misleading
+            // active toggle while the physical control has not been selected.
+            get => DeviceBinding.IsBound && DeviceBinding.Block;
             set => DeviceBinding.SetBlock(value);
         }
 
