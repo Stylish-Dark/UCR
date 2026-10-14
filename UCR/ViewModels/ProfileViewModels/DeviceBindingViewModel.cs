@@ -109,7 +109,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (profile == null || DeviceBinding.DeviceConfigurationGuid == Guid.Empty) return false;
                 var configuration = profile.GetDeviceConfiguration(DeviceIoType.Input,
                     DeviceBinding.DeviceConfigurationGuid);
-                return SupportsInputCategory(configuration, DeviceBindingCategory, profile.Context);
+                return IsCompatibleInputDevice(configuration, DeviceBindingCategory, profile.Context);
             }
         }
 
@@ -351,6 +351,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         // Physical input categories are validated against the provider's actual
         // supported controls. A keyboard must never be offered as an axis source.
+        // Button input providers may expose their keys only when connected or after
+        // provider initialization. Preserve those choices; only range inputs require
+        // a positively reported analogue control.
+        private static bool IsCompatibleInputDevice(DeviceConfiguration configuration,
+            DeviceBindingCategory category, Context context)
+        {
+            return configuration?.Device != null &&
+                   (category != DeviceBindingCategory.Range ||
+                    SupportsInputCategory(configuration, category, context));
+        }
+
         public static bool SupportsInputCategory(DeviceConfiguration configuration,
             DeviceBindingCategory category, Context context)
         {
@@ -375,7 +386,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var profile = DeviceBinding.Profile;
             var context = profile.Context;
             var candidates = profile.GetDeviceConfigurationList(DeviceIoType.Input)
-                .Where(configuration => SupportsInputCategory(configuration, DeviceBindingCategory, context))
+                .Where(configuration => IsCompatibleInputDevice(configuration, DeviceBindingCategory, context))
                 .ToList();
             var currentGuid = DeviceBinding.DeviceConfigurationGuid;
             if (!candidates.Any(configuration => configuration.Guid == currentGuid))
@@ -395,7 +406,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 .Where(configuration => configuration?.Device != null &&
                     (DeviceBinding.DeviceIoType == DeviceIoType.Output
                         ? SupportsOutputCategory(configuration, DeviceBindingCategory, DeviceBinding.Profile.Context)
-                        : SupportsInputCategory(configuration, DeviceBindingCategory, DeviceBinding.Profile.Context)))
+                        : IsCompatibleInputDevice(configuration, DeviceBindingCategory, DeviceBinding.Profile.Context)))
                 .Select((configuration, index) => new
                 {
                     Configuration = configuration,
@@ -494,7 +505,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (selectedDeviceConfiguration == null) return DeviceBindingTransferCompatibility.Unknown;
 
             if (DeviceBinding.DeviceIoType == DeviceIoType.Input &&
-                !SupportsInputCategory(selectedDeviceConfiguration, DeviceBindingCategory,
+                !IsCompatibleInputDevice(selectedDeviceConfiguration, DeviceBindingCategory,
                     DeviceBinding.Profile.Context))
                 return DeviceBindingTransferCompatibility.Incompatible;
 
