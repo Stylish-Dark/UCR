@@ -58,6 +58,15 @@ namespace HidWizards.UCR.Views.Controls
             if (DeviceBinding == null || DeviceBinding.IsInBindMode) return;
             if (DeviceBinding.DeviceIoType == DeviceIoType.Input)
             {
+                var viewModel = DataContext as DeviceBindingViewModel;
+                if (viewModel?.CanBindCurrentDevice == false)
+                {
+                    // Unconfigured bindings must not present an inert "Choose input device"
+                    // button. Open the device picker directly instead of entering impossible capture.
+                    viewModel.EnsureDeviceListLoaded();
+                    DeviceSelectionBox.IsDropDownOpen = true;
+                    return;
+                }
                 StartPressCapture();
                 return;
             }
@@ -83,6 +92,9 @@ namespace HidWizards.UCR.Views.Controls
         {
             BuildContextMenu();
             Ddl.PlacementTarget = MenuButton;
+            // The inspector has a docked footer and a constrained scroll viewport.
+            // Open the binding menu upwards so it cannot cover the footer or clipped rows.
+            Ddl.Placement = PlacementMode.Top;
             Ddl.IsOpen = true;
         }
 
@@ -159,6 +171,7 @@ namespace HidWizards.UCR.Views.Controls
                 Header = "Clear binding",
                 Foreground = System.Windows.Media.Brushes.White
             };
+            clearItem.IsEnabled = DeviceBinding?.IsBound == true;
             clearItem.Click += (clickSender, clickArgs) => DeviceBinding?.ClearBinding();
             Ddl.Items.Add(clearItem);
         }
