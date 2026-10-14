@@ -9,6 +9,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Utilities;
+using HidWizards.UCR.ViewModels;
 using HidWizards.UCR.ViewModels.Presentation;
 using HidWizards.UCR.ViewModels.ProfileViewModels;
 
