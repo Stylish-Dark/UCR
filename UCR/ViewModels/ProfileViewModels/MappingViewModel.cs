@@ -411,6 +411,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     DeviceBindings.Add(new DeviceBindingViewModel(Mapping.DeviceBindings[i])
                     {
                         DeviceBindingName = "Input " + (i + 1),
+                        ExpressionMapping = Mapping,
                         DeviceBindingCategory = Mapping.DeviceBindings[i].InputExpressionInputKind == 0 ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range
                     });
                 }
@@ -463,6 +464,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var viewModel = new DeviceBindingViewModel(binding)
             {
                 DeviceBindingName = "Input",
+                ExpressionMapping = Mapping,
                 DeviceBindingCategory = binding.InputExpressionInputKind == 0 ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range
             };
             var modelIndex = Mapping.DeviceBindings.IndexOf(binding);
