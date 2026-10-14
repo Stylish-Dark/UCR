@@ -73,7 +73,8 @@ namespace HidWizards.UCR.Core.Models.Binding
             if (InputExpressionInputKind == kind) return;
             InputExpressionInputKind = kind;
             DeviceBindingCategory = kind == 0 ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
-            ClearBinding();
+            // Switching category invalidates the selected control, not the selected device.
+            SetDeviceConfigurationGuid(DeviceConfigurationGuid, false);
             Profile?.Context?.ContextChanged();
             OnPropertyChanged(nameof(InputExpressionInputKind));
         }
