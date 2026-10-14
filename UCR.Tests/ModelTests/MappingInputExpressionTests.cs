@@ -173,6 +173,33 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void JoystickOrGroups_NeverMergeXFromOneAlternativeWithYFromAnother()
+        {
+            var mapping = new Mapping
+            {
+                UseInputExpression = true,
+                DeviceBindings = new List<DeviceBinding>
+                {
+                    new DeviceBinding { InputDirectionSlot = 1, InputExpressionGroup = 0 },
+                    new DeviceBinding { InputDirectionSlot = 2, InputExpressionGroup = 0 },
+                    new DeviceBinding { InputDirectionSlot = 3, InputExpressionGroup = 0 },
+                    new DeviceBinding { InputDirectionSlot = 4, InputExpressionGroup = 0 },
+                    new DeviceBinding { InputDirectionSlot = 1, InputExpressionGroup = 1 },
+                    new DeviceBinding { InputDirectionSlot = 2, InputExpressionGroup = 1 },
+                    new DeviceBinding { InputDirectionSlot = 3, InputExpressionGroup = 1 },
+                    new DeviceBinding { InputDirectionSlot = 4, InputExpressionGroup = 1 }
+                }
+            };
+            var input = new short[] { 0, 0, 0, 1, 0, 1, 0, 0 };
+            Assert.That(mapping.EvaluateDirectionalAxis(input, 0), Is.EqualTo(0),
+                "The first active OR group contains Y only: a later group's X cannot join it.");
+            Assert.That(mapping.EvaluateDirectionalAxis(input, 1), Is.EqualTo(short.MaxValue));
+            input[3] = 0;
+            Assert.That(mapping.EvaluateDirectionalAxis(input, 0), Is.EqualTo(short.MaxValue),
+                "The second OR group can take over after the first group becomes inactive.");
+        }
+
+        [Test]
         public void PairedInputs_AreAlternativesAndSharedNotDoesNotRequireBothKeys()
         {
             var mapping = new Mapping
