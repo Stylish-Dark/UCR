@@ -111,11 +111,25 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             get
             {
-                var category = Plugins?.FirstOrDefault()?.OutputType ?? "None";
-                if (string.Equals(category, "Button", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(category, "Buttons", StringComparison.OrdinalIgnoreCase))
-                    return (Mapping?.Plugins?.Sum(p => p.Outputs?.Count ?? 0) ?? 0) == 1 ? "Button" : "Buttons";
-                return category;
+                // The inspector describes what the mapping actually produces.
+                // Different destination categories must never be mislabelled with
+                // the type of the first output plugin.
+                if (Plugins == null || Plugins.Count == 0) return "None";
+                var categories = Plugins.Select(plugin => plugin.OutputType)
+                    .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                if (categories.Count != 1) return "Mixed";
+                var category = categories[0];
+                var outputs = Mapping?.Plugins?.Sum(plugin =>
+                    Math.Max(1, plugin.Outputs?.Count ?? 0)) ?? 0;
+                if (outputs <= 1) return category;
+                switch (category)
+                {
+                    case "Button": return "Buttons";
+                    case "Axis": return "Axes";
+                    case "Event": return "Events";
+                    case "Filter": return "Filters";
+                    default: return category;
+                }
             }
         }
         public string DefinedFilterName => _definedFilterName;
