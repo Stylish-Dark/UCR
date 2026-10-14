@@ -489,6 +489,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public bool HasAxisOutput => Plugins != null &&
             Plugins.Any(p => string.Equals(p.OutputType, "Axis", StringComparison.OrdinalIgnoreCase));
+        public Visibility DirectionalPresetsVisibility => HasAxisOutput ? Visibility.Visible : Visibility.Collapsed;
 
         public void SetDirectionalMode(int slots)
         {
@@ -1328,6 +1329,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(MappingInputTypeLabel));
             OnPropertyChanged(nameof(MappingOutputCategoryDisplay));
             OnPropertyChanged(nameof(HasAxisOutput));
+            OnPropertyChanged(nameof(DirectionalPresetsVisibility));
             OnPropertyChanged(nameof(DefinedFilterName));
             OnPropertyChanged(nameof(ReferencedFilters));
             OnPropertyChanged(nameof(HasFilterReferences));
