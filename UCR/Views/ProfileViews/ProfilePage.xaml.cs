@@ -966,6 +966,35 @@ namespace HidWizards.UCR.Views.ProfileViews
             return null;
         }
 
+        private void AddInspectorOrInput_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (ProfileViewModel?.SelectedMapping?.ButtonsEnabled != true) return;
+            ProfileViewModel.SelectedMapping.AddCondition();
+        }
+
+        private void AddFilter_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            if (button == null || !ProfileViewModel.CanEditProfile) return;
+
+            var menu = new ContextMenu
+            {
+                PlacementTarget = button,
+                Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+                Background = new SolidColorBrush(Color.FromRgb(0x24, 0x24, 0x24)),
+                Foreground = Brushes.White,
+                BorderBrush = new SolidColorBrush(Color.FromRgb(0x45, 0x45, 0x45)),
+                BorderThickness = new Thickness(1)
+            };
+            var buttonFilter = new MenuItem { Header = "Button filter", Padding = new Thickness(10, 6, 14, 6) };
+            buttonFilter.Click += async (s, args) => await CreateNamedFilterAsync("Button to Filter");
+            var axisFilter = new MenuItem { Header = "Axis filter", Padding = new Thickness(10, 6, 14, 6) };
+            axisFilter.Click += async (s, args) => await CreateNamedFilterAsync("Axis to Filter");
+            menu.Items.Add(buttonFilter);
+            menu.Items.Add(axisFilter);
+            menu.IsOpen = true;
+        }
+
         private async void CreateButtonFilter_OnClick(object sender, RoutedEventArgs e)
         {
             await CreateNamedFilterAsync("Button to Filter");
