@@ -506,14 +506,17 @@ namespace HidWizards.UCR.Core.Models
                 }
             }
 
-            foreach (var deviceBinding in DeviceBindings)
+            for (var i = 0; i < DeviceBindings.Count; i++)
             {
+                var deviceBinding = DeviceBindings[i];
                 deviceBinding.Profile = profile;
                 deviceBinding.DeviceIoType = DeviceIoType.Input;
                 if (UseInputExpression || deviceBinding.InputExpressionKindConfigured)
                     deviceBinding.DeviceBindingCategory = deviceBinding.InputExpressionInputKind == 0
                         ? DeviceBindingCategory.Momentary
                         : DeviceBindingCategory.Range;
+                else if (Plugins.Count > 0 && i < Plugins[0].InputCategories.Count)
+                    deviceBinding.DeviceBindingCategory = Plugins[0].InputCategories[i].Category;
             }
 
             foreach (var plugin in Plugins)
