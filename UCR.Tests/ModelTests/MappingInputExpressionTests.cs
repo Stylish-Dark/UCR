@@ -71,6 +71,42 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void ContinuousAxisSignal_PreservesFullAnalogueValueUnlessChordGateIsUnsatisfied()
+        {
+            var mapping = new Mapping
+            {
+                UseInputExpression = true,
+                DeviceBindings = new List<DeviceBinding>
+                {
+                    new DeviceBinding { InputExpressionInputKind = 3, InputExpressionGroup = 0 },
+                    new DeviceBinding { InputExpressionInputKind = 0, InputExpressionGroup = 0 },
+                    new DeviceBinding { InputExpressionInputKind = 1, InputExpressionAxisThreshold = 10000,
+                        InputExpressionNegated = true, InputExpressionGroup = 0 }
+                }
+            };
+            Assert.AreEqual(0, mapping.EvaluateAnalogueInputExpression(new short[] { -23345, 0, 0 }));
+            Assert.AreEqual(-23345, mapping.EvaluateAnalogueInputExpression(new short[] { -23345, 1, 0 }));
+            Assert.AreEqual(0, mapping.EvaluateAnalogueInputExpression(new short[] { -23345, 1, 12000 }));
+            Assert.AreEqual(14444, mapping.EvaluateAnalogueInputExpression(new short[] { 14444, 1, 9000 }));
+        }
+
+        [Test]
+        public void DigitalChord_DrivesAnAnalogueOutputAtFullScale()
+        {
+            var mapping = new Mapping
+            {
+                UseInputExpression = true,
+                DeviceBindings = new List<DeviceBinding>
+                {
+                    new DeviceBinding { InputExpressionGroup = 0 },
+                    new DeviceBinding { InputExpressionGroup = 0 }
+                }
+            };
+            Assert.AreEqual(0, mapping.EvaluateAnalogueInputExpression(new short[] { 1, 0 }));
+            Assert.AreEqual(short.MaxValue, mapping.EvaluateAnalogueInputExpression(new short[] { 1, 1 }));
+        }
+
+        [Test]
         public void ConditionApiKeepsAndTermsOnOneRowAndCreatesSeparateOrRows()
         {
             var mapping = new Mapping();
