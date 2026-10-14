@@ -255,10 +255,10 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
-                        <Button Content="+ OR condition" HorizontalAlignment="Left" Margin="34 5 0 0"
+                        <Button Content="+ Add OR input group" HorizontalAlignment="Left" Margin="0 5 0 0"
                                 Click="AddCondition_OnClick" IsEnabled="{Binding ButtonsEnabled}"
                                 Foreground="#FFFFFF" Style="{StaticResource MaterialDesignFlatButton}"
-                                ToolTip="Add an alternative input condition"/>
+                                ToolTip="Add another alternative input group"/>
                     </StackPanel>
 
                     <!-- Outputs follow inputs: compact bindings, inline remove and add. -->
