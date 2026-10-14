@@ -58,15 +58,8 @@ namespace HidWizards.UCR.Views.Controls
             if (DeviceBinding == null || DeviceBinding.IsInBindMode) return;
             if (DeviceBinding.DeviceIoType == DeviceIoType.Input)
             {
-                var viewModel = DataContext as DeviceBindingViewModel;
-                if (viewModel?.CanBindCurrentDevice == false)
-                {
-                    // Unconfigured bindings must not present an inert "Choose input device"
-                    // button. Open the device picker directly instead of entering impossible capture.
-                    viewModel.EnsureDeviceListLoaded();
-                    DeviceSelectionBox.IsDropDownOpen = true;
-                    return;
-                }
+                // No device selected => listen to all profile input devices.
+                // A chosen device => listen to that device only.
                 StartPressCapture();
                 return;
             }
