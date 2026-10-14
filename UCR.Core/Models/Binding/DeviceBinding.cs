@@ -58,7 +58,7 @@ namespace HidWizards.UCR.Core.Models.Binding
         public bool InputExpressionNegated { get; set; }
 
         // Input expression terms choose their own category, independent of the output plugin.
-        // 0 = button, 1 = positive axis threshold, 2 = negative axis threshold.
+        // 0 = button, 1 = positive axis threshold, 2 = negative axis threshold, 3 = continuous axis source.
         [XmlAttribute]
         [DefaultValue(0)]
         public int InputExpressionInputKind { get; set; }
@@ -69,7 +69,7 @@ namespace HidWizards.UCR.Core.Models.Binding
 
         public void SetInputExpressionInputKind(int kind)
         {
-            kind = Math.Max(0, Math.Min(2, kind));
+            kind = Math.Max(0, Math.Min(3, kind));
             if (InputExpressionInputKind == kind) return;
             InputExpressionInputKind = kind;
             DeviceBindingCategory = kind == 0 ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
