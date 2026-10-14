@@ -91,6 +91,44 @@ namespace HidWizards.UCR.Views.Controls
             if (Ddl == null) return;
             Ddl.Items.Clear();
 
+            var inputViewModel = DataContext as DeviceBindingViewModel;
+            if (DeviceBinding?.DeviceIoType == DeviceIoType.Input &&
+                inputViewModel != null &&
+                (inputViewModel.ExpressionMapping != null ||
+                 inputViewModel.LegacyInputTypeVisibility == Visibility.Visible))
+            {
+                // The default Button case is intentionally single-row. Type selection
+                // lives in the binding's existing ellipsis rather than repeating on every
+                // input card; axis-specific controls appear only once an axis is selected.
+                var inputType = new MenuItem
+                {
+                    Header = "Input type",
+                    Foreground = Brushes.White,
+                    Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 14, 6)
+                };
+                var labels = new[] { "Button", "Axis positive", "Axis negative", "Axis value" };
+                for (var index = 0; index < labels.Length; index++)
+                {
+                    var selectedKind = index;
+                    var kindItem = new MenuItem
+                    {
+                        Header = labels[index],
+                        IsChecked = inputViewModel.InputExpressionInputKind == index,
+                        Foreground = Brushes.White,
+                        Background = Brushes.Transparent,
+                        Padding = new Thickness(10, 6, 14, 6)
+                    };
+                    kindItem.Click += (s, args) =>
+                    {
+                        inputViewModel.InputExpressionInputKind = selectedKind;
+                    };
+                    inputType.Items.Add(kindItem);
+                }
+                Ddl.Items.Add(inputType);
+                Ddl.Items.Add(new Separator());
+            }
+
             var configuration = GetSelectedDeviceConfiguration();
             if (configuration?.Device != null && DeviceBinding?.Profile?.Context != null)
             {
