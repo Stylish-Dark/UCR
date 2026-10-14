@@ -438,7 +438,19 @@ namespace HidWizards.UCR.Core.Models
                 DeviceBindings.Remove(sibling);
             if (slots == 0)
             {
+                // Single mode is a continuous analogue source, never a leftover
+                // digital negative-direction key. Discard the incompatible key.
+                if (first.InputExpressionInputKind != 3)
+                {
+                    first.DeviceConfigurationGuid = Guid.Empty;
+                    first.KeyType = first.KeyValue = first.KeySubValue = 0;
+                    first.IsBound = false;
+                    first.Block = false;
+                }
                 first.InputDirectionSlot = 0;
+                first.InputExpressionInputKind = 3;
+                first.InputExpressionKindConfigured = true;
+                first.DeviceBindingCategory = DeviceBindingCategory.Range;
                 Profile?.Context?.ContextChanged();
                 return true;
             }
