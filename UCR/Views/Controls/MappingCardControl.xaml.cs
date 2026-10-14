@@ -458,7 +458,7 @@ namespace HidWizards.UCR.Views.Controls
             foreach (var category in categories)
             {
                 if (!IsPrimaryOutputCategory(category.Key)) continue;
-                var preferred = PreferredOutputImplementation(category, output, analogueInput);
+                var preferred = PreferredOutputImplementation(category, analogueInput);
                 if (preferred == null) continue;
                 var selected = preferred;
                 var item = new MenuItem
@@ -500,7 +500,7 @@ namespace HidWizards.UCR.Views.Controls
 
         private static SimplePluginViewModel PreferredOutputImplementation(
             System.Collections.Generic.IEnumerable<SimplePluginViewModel> group,
-            PluginViewModel current, bool analogueInput)
+            bool analogueInput)
         {
             var variants = group.ToList();
             if (variants.Count == 0) return null;
