@@ -385,6 +385,13 @@ namespace HidWizards.UCR.Core.Models
             foreach (var deviceBinding in DeviceBindings)
             {
                 deviceBinding.Profile = profile;
+                if (UseInputExpression)
+                {
+                    deviceBinding.DeviceIoType = DeviceIoType.Input;
+                    deviceBinding.DeviceBindingCategory = deviceBinding.InputExpressionInputKind == 0
+                        ? DeviceBindingCategory.Momentary
+                        : DeviceBindingCategory.Range;
+                }
             }
 
             foreach (var plugin in Plugins)
