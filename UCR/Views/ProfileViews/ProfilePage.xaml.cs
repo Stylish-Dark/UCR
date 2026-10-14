@@ -972,6 +972,12 @@ namespace HidWizards.UCR.Views.ProfileViews
             ProfileViewModel.SelectedMapping.AddCondition();
         }
 
+        private void AddInspectorOutput_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (ProfileViewModel?.SelectedMapping?.ButtonsEnabled != true) return;
+            ProfileViewModel.SelectedMapping.AddDefaultOutput();
+        }
+
         private void AddFilter_OnClick(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
