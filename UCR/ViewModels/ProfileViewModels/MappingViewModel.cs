@@ -427,7 +427,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     {
                         DeviceBindingName = plugin.InputCategories[i].Name,
                         ExpressionMapping = SupportsNativeInputExpression ? Mapping : null,
-                        DeviceBindingCategory = plugin.InputCategories[i].Category
+                        DeviceBindingCategory = Mapping.DeviceBindings[i].InputExpressionKindConfigured
+                            ? (Mapping.DeviceBindings[i].InputExpressionInputKind == 0
+                                ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range)
+                            : plugin.InputCategories[i].Category
                     });
                 }
             }
