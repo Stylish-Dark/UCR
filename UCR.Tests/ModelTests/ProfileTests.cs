@@ -666,6 +666,9 @@ namespace HidWizards.UCR.Tests.ModelTests
                 DeviceBindingCategory = DeviceBindingCategory.Momentary
             };
             binding.SetDeviceConfigurationGuid(Guid.NewGuid(), false);
+            binding.SetKeyTypeValue(0, 65, 0);
+            Assert.That(binding.IsBound, Is.True,
+                "Reproduce the saved stale binding that displays Device unavailable.");
             var editor = new DeviceBindingViewModel(binding);
             editor.EnsureDeviceListLoaded();
 
