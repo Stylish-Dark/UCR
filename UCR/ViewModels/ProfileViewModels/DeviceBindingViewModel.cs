@@ -31,6 +31,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public string IoTypeName => DeviceBinding.DeviceIoType.Equals(DeviceIoType.Input) ? "Input" : "Output";
         public DeviceBindingCategory DeviceBindingCategory { get; set; }
         public Mapping ExpressionMapping { get; set; }
+        public Visibility LegacyInputTypeVisibility =>
+            ExpressionMapping == null && DeviceBinding.DeviceIoType == DeviceIoType.Input &&
+            (DeviceBindingCategory == DeviceBindingCategory.Momentary ||
+             DeviceBindingCategory == DeviceBindingCategory.Range)
+                ? Visibility.Visible : Visibility.Collapsed;
         public int InputExpressionInputKind
         {
             get => DeviceBinding.InputExpressionInputKind;
