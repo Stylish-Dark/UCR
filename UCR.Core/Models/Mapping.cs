@@ -354,6 +354,49 @@ namespace HidWizards.UCR.Core.Models
             return binding;
         }
 
+        // Pair and four-way modes belong to the logical input group. Existing
+        // independent AND conditions in that group remain untouched.
+        public bool SetDirectionalInputMode(int groupIndex, int slots)
+        {
+            if (slots != 0 && slots != 2 && slots != 4) return false;
+            if (!EnableInputExpression()) return false;
+            var members = DeviceBindings.Where(b => b.InputExpressionGroup == groupIndex).ToList();
+            var first = members.FirstOrDefault(b => b.InputDirectionSlot == 1)
+                ?? members.FirstOrDefault(b => b.InputDirectionSlot == 0);
+            if (first == null) return false;
+
+            foreach (var sibling in members.Where(b => b.InputDirectionSlot > 0 && b != first).ToList())
+                DeviceBindings.Remove(sibling);
+            if (slots == 0)
+            {
+                first.InputDirectionSlot = 0;
+                Profile?.Context?.ContextChanged();
+                return true;
+            }
+
+            first.SetDeviceConfigurationGuid(Guid.Empty, false);
+            first.InputExpressionInputKind = 0;
+            first.InputExpressionKindConfigured = true;
+            first.DeviceBindingCategory = DeviceBindingCategory.Momentary;
+            first.InputDirectionSlot = 1;
+
+            var position = DeviceBindings.IndexOf(first);
+            for (var slot = 2; slot <= slots; slot++)
+            {
+                DeviceBindings.Insert(++position, new DeviceBinding(Update, Profile, DeviceIoType.Input)
+                {
+                    InputExpressionGroup = groupIndex,
+                    InputDirectionSlot = slot,
+                    InputExpressionInputKind = 0,
+                    InputExpressionKindConfigured = true,
+                    DeviceBindingCategory = DeviceBindingCategory.Momentary,
+                    InputExpressionNegated = first.InputExpressionNegated
+                });
+            }
+            Profile?.Context?.ContextChanged();
+            return true;
+        }
+
         public DeviceBinding AddExpressionCondition()
         {
             if (!EnableInputExpression()) return null;
@@ -366,7 +409,11 @@ namespace HidWizards.UCR.Core.Models
         public bool SetExpressionNegated(DeviceBinding binding, bool negated)
         {
             if (binding == null || !DeviceBindings.Contains(binding) || !EnableInputExpression()) return false;
-            binding.SetInputExpressionNegated(negated);
+            foreach (var member in binding.InputDirectionSlot > 0
+                ? DeviceBindings.Where(b => b.InputExpressionGroup == binding.InputExpressionGroup &&
+                                            b.InputDirectionSlot > 0)
+                : new[] { binding }.AsEnumerable())
+                member.SetInputExpressionNegated(negated);
             return true;
         }
 
@@ -374,7 +421,11 @@ namespace HidWizards.UCR.Core.Models
         {
             if (!UseInputExpression || binding == null || DeviceBindings == null || DeviceBindings.Count <= 1)
                 return false;
-            if (!DeviceBindings.Remove(binding)) return false;
+            if (binding.InputDirectionSlot > 0)
+                foreach (var sibling in DeviceBindings.Where(b =>
+                    b.InputDirectionSlot > 0 && b.InputExpressionGroup == binding.InputExpressionGroup).ToList())
+                    DeviceBindings.Remove(sibling);
+            else if (!DeviceBindings.Remove(binding)) return false;
             NormalizeExpressionGroups();
             Profile?.Context?.ContextChanged();
             return true;
