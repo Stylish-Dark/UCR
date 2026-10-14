@@ -149,10 +149,16 @@ namespace HidWizards.UCR.Core.Models
         {
             if (!UseInputExpression)
             {
-                var values = InputCache.ToArray();
                 foreach (var plugin in Plugins)
                 {
-                    if (!plugin.IsFiltered()) plugin.Update(values);
+                    if (plugin.IsFiltered()) continue;
+                    var values = InputCache.ToArray();
+                    // Preserve positional inputs for multi-channel legacy plugins, while
+                    // allowing each physical slot to bind a different signal category.
+                    for (var i = 0; i < values.Length && i < plugin.InputCategories.Count; i++)
+                        values[i] = AdaptPositionalInput(values[i], DeviceBindings[i],
+                            plugin.InputCategories[i].Category);
+                    plugin.Update(values);
                 }
                 return;
             }
@@ -173,6 +179,33 @@ namespace HidWizards.UCR.Core.Models
                 var isRange = plugin.InputCategories[0].Category == DeviceBindingCategory.Range;
                 if (!isRange && !digitalChanged) continue;
                 plugin.Update(new[] { isRange ? analogue : digital });
+            }
+        }
+
+        internal static short AdaptPositionalInput(short value, DeviceBinding binding,
+            DeviceBindingCategory expectedCategory)
+        {
+            if (binding == null || (expectedCategory != DeviceBindingCategory.Momentary &&
+                                    expectedCategory != DeviceBindingCategory.Range))
+                return value;
+
+            var threshold = Math.Max(1, Math.Min(32767, binding.InputExpressionAxisThreshold));
+            switch (binding.InputExpressionInputKind)
+            {
+                case 1:
+                    return value >= threshold
+                        ? (expectedCategory == DeviceBindingCategory.Range ? short.MaxValue : (short)1)
+                        : (short)0;
+                case 2:
+                    return value <= -threshold
+                        ? (expectedCategory == DeviceBindingCategory.Range ? short.MinValue : (short)1)
+                        : (short)0;
+                case 3:
+                    return expectedCategory == DeviceBindingCategory.Range
+                        ? value : (short)(Math.Abs((int)value) >= threshold ? 1 : 0);
+                default:
+                    return expectedCategory == DeviceBindingCategory.Range
+                        ? (short)(value != 0 ? short.MaxValue : 0) : value;
             }
         }
 
@@ -460,23 +493,27 @@ namespace HidWizards.UCR.Core.Models
         internal void PostLoad(Context context, Profile profile = null)
         {
             Profile = profile;
-            // Historic axis mappings are continuous by default even when they have not
-            // yet been converted to the independent input-expression evaluator.
-            if (!UseInputExpression && DeviceBindings.Count == 1 && Plugins.Count > 0 &&
-                Plugins[0].InputCategories.Count == 1 &&
-                Plugins[0].InputCategories[0].Category == DeviceBindingCategory.Range)
-                DeviceBindings[0].InputExpressionInputKind = 3;
+            // Each old positional slot initially inherits the category expected by
+            // its plugin. A saved explicit type choice always takes precedence.
+            if (!UseInputExpression && Plugins.Count > 0)
+            {
+                var definitions = Plugins[0].InputCategories;
+                for (var i = 0; i < DeviceBindings.Count && i < definitions.Count; i++)
+                {
+                    if (DeviceBindings[i].InputExpressionKindConfigured) continue;
+                    DeviceBindings[i].InputExpressionInputKind =
+                        definitions[i].Category == DeviceBindingCategory.Range ? 3 : 0;
+                }
+            }
 
             foreach (var deviceBinding in DeviceBindings)
             {
                 deviceBinding.Profile = profile;
-                if (UseInputExpression)
-                {
-                    deviceBinding.DeviceIoType = DeviceIoType.Input;
+                deviceBinding.DeviceIoType = DeviceIoType.Input;
+                if (UseInputExpression || deviceBinding.InputExpressionKindConfigured)
                     deviceBinding.DeviceBindingCategory = deviceBinding.InputExpressionInputKind == 0
                         ? DeviceBindingCategory.Momentary
                         : DeviceBindingCategory.Range;
-                }
             }
 
             foreach (var plugin in Plugins)
