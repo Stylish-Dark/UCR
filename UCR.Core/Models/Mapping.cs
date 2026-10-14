@@ -449,6 +449,13 @@ namespace HidWizards.UCR.Core.Models
         internal void PostLoad(Context context, Profile profile = null)
         {
             Profile = profile;
+            // Historic axis mappings are continuous by default even when they have not
+            // yet been converted to the independent input-expression evaluator.
+            if (!UseInputExpression && DeviceBindings.Count == 1 && Plugins.Count > 0 &&
+                Plugins[0].InputCategories.Count == 1 &&
+                Plugins[0].InputCategories[0].Category == DeviceBindingCategory.Range)
+                DeviceBindings[0].InputExpressionInputKind = 3;
+
             foreach (var deviceBinding in DeviceBindings)
             {
                 deviceBinding.Profile = profile;
