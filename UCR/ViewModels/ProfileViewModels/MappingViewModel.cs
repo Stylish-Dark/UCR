@@ -1517,11 +1517,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private List<CollapsedConditionVisualRow> BuildCollapsedInputRows()
         {
             var result = new List<CollapsedConditionVisualRow>();
-            var groups = SupportsNativeInputExpression && UsesInputExpression
-                ? DeviceBindings.Where(binding => binding?.DeviceBinding != null)
-                    .GroupBy(binding => Math.Max(0, binding.DeviceBinding.InputExpressionGroup))
-                    .OrderBy(group => group.Key)
-                    .Select(group => group.ToList()).ToList()
+            // The collapsed preview and the inspector must render the SAME logical
+            // AND/OR groups. Never flatten all inputs into one row merely because
+            // an output plugin reports a different legacy input signature.
+            var groups = UsesInputExpression
+                ? InputConditions.OrderBy(condition => condition.GroupIndex)
+                    .Select(condition => condition.Inputs.ToList()).ToList()
                 : new List<List<DeviceBindingViewModel>> { DeviceBindings.ToList() };
 
             for (var groupIndex = 0; groupIndex < groups.Count; groupIndex++)
