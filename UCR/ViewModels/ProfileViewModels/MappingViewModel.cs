@@ -548,6 +548,51 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+        public bool ApplyDirectionalDPadPreset(out string error)
+        {
+            error = null;
+            var inputs = InputConditions?.FirstOrDefault()?.DirectionalInputs?.ToList();
+            if (!ButtonsEnabled || inputs == null || inputs.Count != 4)
+            {
+                error = "Choose the four-way joystick input mode first.";
+                return false;
+            }
+            var profile = ProfileViewModel.Profile;
+            var selectedGuid = inputs[0].DeviceBinding.DeviceConfigurationGuid;
+            var device = profile.GetDeviceConfiguration(DeviceIoType.Input, selectedGuid);
+            var dpad = FindDPadControls(device, DeviceIoType.Input);
+            if (dpad == null && selectedGuid == Guid.Empty)
+            {
+                foreach (var candidate in profile.GetDeviceConfigurationList(DeviceIoType.Input))
+                {
+                    dpad = FindDPadControls(candidate, DeviceIoType.Input);
+                    if (dpad == null) continue;
+                    device = candidate;
+                    break;
+                }
+            }
+            if (device == null || dpad == null)
+            {
+                error = "Select a controller with a D-pad in the shared device picker, or add one to this profile.";
+                return false;
+            }
+            // Provider controls are ordered Up, Down, Left, Right. Logical unit
+            // slots are Left, Right, Up, Down.
+            var order = new[] { 2, 3, 0, 1 };
+            for (var i = 0; i < 4; i++)
+            {
+                var binding = inputs[i].DeviceBinding;
+                var info = dpad[order[i]];
+                binding.InputExpressionInputKind = 0;
+                binding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
+                binding.SetDeviceConfigurationGuid(device.Guid, false);
+                binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+            }
+            foreach (var input in inputs) input.RefreshDeviceList();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
         public bool ApplyDirectionalKeyboardPreset(string preset, out string error)
         {
             error = null;
