@@ -302,6 +302,24 @@
                                                 <DataTemplate>
                                                     <Border Margin="0 0 0 3" Padding="5" CornerRadius="3"
                                                             Background="#2B2B2B" BorderBrush="#505050" BorderThickness="1">
+                                                        <StackPanel>
+                                                            <StackPanel Orientation="Horizontal" Margin="0 0 0 5">
+                                                                <TextBlock Text="Input" Foreground="#C8C8C8" VerticalAlignment="Center" Margin="0 0 7 0"/>
+                                                                <ComboBox Width="135" Height="28" SelectedValuePath="Tag"
+                                                                          SelectedValue="{Binding InputExpressionInputKind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                          IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}">
+                                                                    <ComboBoxItem Content="Button" Tag="0"/>
+                                                                    <ComboBoxItem Content="Axis right / +" Tag="1"/>
+                                                                    <ComboBoxItem Content="Axis left / -" Tag="2"/>
+                                                                </ComboBox>
+                                                                <StackPanel Orientation="Horizontal" Margin="10 0 0 0"
+                                                                            Visibility="{Binding AxisConditionVisibility}">
+                                                                    <TextBlock Text="Threshold" Foreground="#CCCCCC" VerticalAlignment="Center" Margin="0 0 5 0"/>
+                                                                    <TextBox Width="65" Height="28" VerticalContentAlignment="Center"
+                                                                             Text="{Binding InputExpressionAxisThreshold, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                                             ToolTip="Axis magnitude required to activate (1–32767)"/>
+                                                                </StackPanel>
+                                                            </StackPanel>
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="*" MinWidth="205"/>
@@ -349,6 +367,7 @@
                                                                         Style="{StaticResource UcrDeleteItemButton}"/>
                                                             </StackPanel>
                                                         </Grid>
+                                                        </StackPanel>
                                                     </Border>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
