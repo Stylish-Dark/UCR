@@ -215,6 +215,15 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.That(mapping.EvaluateInputExpression(new short[] { 0, 1 }), Is.EqualTo(1));
             Assert.That(mapping.EvaluateInputExpression(new short[] { 0, 0 }), Is.EqualTo(0));
             Assert.That(mapping.EvaluateDirectionalAxis(new short[] { 1, 1 }, 0), Is.EqualTo(0));
+
+            // NOT belongs to the logical pair, never to only one physical slot.
+            mapping.Plugins.Add(new AxisToAxis());
+            Assert.That(mapping.SetExpressionNegated(mapping.DeviceBindings[0], true), Is.True);
+            Assert.That(mapping.DeviceBindings.All(binding => binding.InputExpressionNegated), Is.True);
+            Assert.That(mapping.EvaluateInputExpression(new short[] { 1, 0 }), Is.EqualTo(0));
+            Assert.That(mapping.EvaluateInputExpression(new short[] { 0, 0 }), Is.EqualTo(1));
+            Assert.That(mapping.EvaluateDirectionalAxis(new short[] { 1, 0 }, 0), Is.EqualTo(0),
+                "NOT must never silently invert the analogue direction.");
         }
 
         [Test]
