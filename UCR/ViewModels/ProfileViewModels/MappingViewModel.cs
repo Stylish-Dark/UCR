@@ -383,6 +383,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void SummaryBindingOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
+            if (_rebuildingDirectionalEditors) return;
             // Countdown/preview animation is deliberately high-frequency and does not change the
             // collapsed route summary. Rebuilding all glyph descriptors on every progress tick was
             // needless WPF churn while the user was trying to press the input we were listening for.
@@ -490,20 +491,33 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             RebuildDirectionalEditors();
         }
 
+        private bool _rebuildingDirectionalEditors;
         private void RebuildDirectionalEditors()
         {
-            foreach (var binding in DeviceBindings)
+            if (_rebuildingDirectionalEditors) return;
+            _rebuildingDirectionalEditors = true;
+            try
             {
-                binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
-                binding.Dispose();
+                // A binding can emit a property notification while it is being
+                // disposed. Snapshot and detach before changing the collection.
+                var oldBindings = DeviceBindings.ToList();
+                DeviceBindings.Clear();
+                foreach (var binding in oldBindings)
+                {
+                    binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
+                    binding.Dispose();
+                }
+                PopulateDeviceBindingsViewModels();
+                foreach (var binding in DeviceBindings.ToList()) SubscribeSummaryBinding(binding);
+                foreach (var group in InputConditions.ToList())
+                    group.DirectionalPrimary?.EnsureDeviceListLoaded();
+                RefreshHeaderState();
+                RefreshCollapsedSummary();
             }
-            DeviceBindings.Clear();
-            PopulateDeviceBindingsViewModels();
-            foreach (var binding in DeviceBindings) SubscribeSummaryBinding(binding);
-            foreach (var group in InputConditions)
-                group.DirectionalPrimary?.EnsureDeviceListLoaded();
-            RefreshHeaderState();
-            RefreshCollapsedSummary();
+            finally
+            {
+                _rebuildingDirectionalEditors = false;
+            }
         }
 
         public bool ApplyDirectionalKeyboardPreset(string preset, out string error)
