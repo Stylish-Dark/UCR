@@ -438,30 +438,73 @@ namespace HidWizards.UCR.Views.Controls
             var options = mapping.GetCompatiblePluginOptions();
             if (options.Count == 0) return;
 
+            var changeAll = string.Equals(button.Tag as string, "CategoryHeader", StringComparison.Ordinal);
+            Action<SimplePluginViewModel> apply = selected =>
+            {
+                if (changeAll) mapping.ChangeAllOutputTypes(selected.Plugin);
+                else mapping.ChangeOutputType(output, selected.Plugin);
+            };
+
             var menu = CreateDarkContextMenu(button);
             menu.Placement = PlacementMode.Bottom;
+
+            // A mapping no longer has an input-to-output plugin identity. Expose one
+            // destination category at the surface, not a duplicate menu entry for
+            // every old 'Button to ...' and 'Axis to ...' implementation.
+            var categories = options.GroupBy(option => option.OutputType,
+                StringComparer.OrdinalIgnoreCase).ToList();
+            var analogueInput = mapping.Mapping.DeviceBindings.Any(input =>
+                input.InputExpressionInputKind == 3);
+            foreach (var category in categories)
+            {
+                if (!IsPrimaryOutputCategory(category.Key)) continue;
+                var preferred = PreferredOutputImplementation(category, output, analogueInput);
+                if (preferred == null) continue;
+                var selected = preferred;
+                var item = new MenuItem
+                {
+                    Header = category.Key,
+                    ToolTip = selected.Description,
+                    Foreground = Brushes.White,
+                    Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 14, 6),
+                    IsChecked = string.Equals(output.OutputType, category.Key,
+                        StringComparison.OrdinalIgnoreCase)
+                };
+                item.Click += (s, args) => apply(selected);
+                menu.Items.Add(item);
+            }
+
+            // Retain specialised plugin capabilities without cluttering the common
+            // output picker. Full plugin names distinguish the advanced variants.
+            var advanced = new MenuItem
+            {
+                Header = "Advanced output modes",
+                Foreground = Brushes.White,
+                Background = Brushes.Transparent,
+                Padding = new Thickness(10, 6, 14, 6)
+            };
             foreach (var option in options)
             {
                 var selected = option;
                 var item = new MenuItem
                 {
-                    Header = selected.MenuLabel,
+                    Header = selected.Name,
                     ToolTip = selected.Description,
                     Foreground = Brushes.White,
                     Background = Brushes.Transparent,
                     Padding = new Thickness(10, 6, 14, 6),
                     IsChecked = output.Plugin.GetType() == selected.Plugin.GetType()
                 };
-                item.Click += (s, args) =>
-                {
-                    if (string.Equals(button.Tag as string, "CategoryHeader", StringComparison.Ordinal))
-                        mapping.ChangeAllOutputTypes(selected.Plugin);
-                    else
-                        mapping.ChangeOutputType(output, selected.Plugin);
-                };
-                menu.Items.Add(item);
+                item.Click += (s, args) => apply(selected);
+                advanced.Items.Add(item);
             }
-            if (string.Equals(button.Tag as string, "CategoryHeader", StringComparison.Ordinal))
+            if (advanced.Items.Count > 0)
+            {
+                if (menu.Items.Count > 0) menu.Items.Add(new Separator());
+                menu.Items.Add(advanced);
+            }
+            if (changeAll)
             {
                 menu.Items.Add(new Separator());
                 var addOutput = new MenuItem
@@ -475,6 +518,38 @@ namespace HidWizards.UCR.Views.Controls
                 menu.Items.Add(addOutput);
             }
             menu.IsOpen = true;
+        }
+
+        private static bool IsPrimaryOutputCategory(string category)
+        {
+            return category == "Button" || category == "Axis" ||
+                   category == "Filter" || category == "Event" ||
+                   category == "Delta" || category == "Value";
+        }
+
+        private static SimplePluginViewModel PreferredOutputImplementation(
+            System.Collections.Generic.IEnumerable<SimplePluginViewModel> group,
+            PluginViewModel current, bool analogueInput)
+        {
+            var variants = group.ToList();
+            if (variants.Count == 0) return null;
+            var existing = variants.FirstOrDefault(option =>
+                current?.Plugin?.GetType() == option.Plugin.GetType());
+            if (existing != null) return existing;
+
+            var category = variants[0].OutputType;
+            string name = null;
+            switch (category)
+            {
+                case "Button": name = "Button to Button"; break;
+                case "Axis": name = analogueInput ? "Axis to Axis" : "Button to Axis"; break;
+                case "Filter": name = analogueInput ? "Axis to Filter" : "Button to Filter"; break;
+                case "Event": name = "Button to Event"; break;
+            }
+            return variants.FirstOrDefault(option =>
+                       string.Equals(option.Name, name, StringComparison.OrdinalIgnoreCase))
+                ?? variants.OrderBy(option => option.Name, StringComparer.OrdinalIgnoreCase)
+                    .First();
         }
 
         private void AxisFourButtons_OnClick(object sender, RoutedEventArgs e)
