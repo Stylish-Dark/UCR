@@ -424,6 +424,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     DeviceBindings.Add(new DeviceBindingViewModel(Mapping.DeviceBindings[i])
                     {
                         DeviceBindingName = plugin.InputCategories[i].Name,
+                        ExpressionMapping = SupportsNativeInputExpression ? Mapping : null,
                         DeviceBindingCategory = plugin.InputCategories[i].Category
                     });
                 }
