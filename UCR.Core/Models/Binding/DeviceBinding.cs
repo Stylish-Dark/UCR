@@ -71,10 +71,12 @@ namespace HidWizards.UCR.Core.Models.Binding
         {
             kind = Math.Max(0, Math.Min(3, kind));
             if (InputExpressionInputKind == kind) return;
+            var categoryChanged = (InputExpressionInputKind == 0) != (kind == 0);
             InputExpressionInputKind = kind;
             DeviceBindingCategory = kind == 0 ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
-            // Switching category invalidates the selected control, not the selected device.
-            SetDeviceConfigurationGuid(DeviceConfigurationGuid, false);
+            // A direction/threshold-mode change keeps the same axis binding. Switching
+            // between button and axis clears only the incompatible control, not the device.
+            if (categoryChanged) SetDeviceConfigurationGuid(DeviceConfigurationGuid, false);
             Profile?.Context?.ContextChanged();
             OnPropertyChanged(nameof(InputExpressionInputKind));
         }
