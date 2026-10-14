@@ -90,6 +90,9 @@ namespace HidWizards.UCR.Views.Controls
 
         private void MenuButton_OnClick(object sender, RoutedEventArgs e)
         {
+            // Reveal the whole binding row before opening its options. Otherwise a
+            // partly scrolled-off row leaves Block/NOT underneath the fixed footer.
+            BringIntoView();
             BuildContextMenu();
             Ddl.PlacementTarget = MenuButton;
             // The inspector has a docked footer and a constrained scroll viewport.
