@@ -656,6 +656,53 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void RemovedInputDevice_DoesNotCreateASelectableUnavailableDevice()
+        {
+            var keyboard = new DeviceConfiguration(new Device("Laptop Keyboard", "Core_Interception", "kbd-a", 0));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { keyboard }, DeviceIoType.Input);
+
+            var binding = new DeviceBinding(value => { }, _profile, DeviceIoType.Input)
+            {
+                DeviceBindingCategory = DeviceBindingCategory.Momentary
+            };
+            binding.SetDeviceConfigurationGuid(Guid.NewGuid(), false);
+            var editor = new DeviceBindingViewModel(binding);
+            editor.EnsureDeviceListLoaded();
+
+            Assert.That(binding.DeviceConfigurationGuid, Is.EqualTo(Guid.Empty),
+                "An input pointing to a device absent from the profile must return to listen-all.");
+            Assert.That(binding.IsBound, Is.False);
+            Assert.That(editor.SelectedDevice.Value, Is.EqualTo(Guid.Empty));
+            Assert.That(editor.Devices.Any(item => item.Title == "Unavailable device"), Is.False);
+            Assert.That(editor.Devices.Any(item => item.Value == keyboard.Guid), Is.True);
+            Assert.That(editor.CompactBindButtonText, Is.EqualTo("Bind"));
+            Assert.That(editor.CanBindCurrentDevice, Is.True);
+            editor.Dispose();
+        }
+
+        [Test]
+        public void ConfiguredInputDevice_IsPreservedWhenSelectionListIsRefreshed()
+        {
+            var keyboard = new DeviceConfiguration(new Device("Laptop Keyboard", "Core_Interception", "kbd-a", 0));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { keyboard }, DeviceIoType.Input);
+
+            var binding = new DeviceBinding(value => { }, _profile, DeviceIoType.Input)
+            {
+                DeviceBindingCategory = DeviceBindingCategory.Momentary
+            };
+            binding.SetDeviceConfigurationGuid(keyboard.Guid, false);
+            var editor = new DeviceBindingViewModel(binding);
+            editor.EnsureDeviceListLoaded();
+            editor.RefreshDeviceList();
+
+            Assert.That(binding.DeviceConfigurationGuid, Is.EqualTo(keyboard.Guid));
+            Assert.That(editor.SelectedDevice.Value, Is.EqualTo(keyboard.Guid));
+            Assert.That(editor.Devices.Any(item => item.Title == "Unavailable device"), Is.False);
+            Assert.That(editor.CanBindCurrentDevice, Is.True);
+            editor.Dispose();
+        }
+
+        [Test]
         public void NewlyCreatedMappingAndExpressionTerms_DoNotInheritAnInputDevice()
         {
             var keyboard = new DeviceConfiguration(new Device("Keyboard A", "Core_Interception", "kbd-a", 0));
