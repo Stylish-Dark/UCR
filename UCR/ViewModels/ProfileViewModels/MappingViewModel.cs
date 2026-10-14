@@ -69,6 +69,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public int GroupIndex { get; }
         public ObservableCollection<DeviceBindingViewModel> Inputs { get; }
         public Visibility OrLabelVisibility => GroupIndex > 0 ? Visibility.Visible : Visibility.Collapsed;
+        public ObservableCollection<DeviceBindingViewModel> DirectionalInputs =>
+            new ObservableCollection<DeviceBindingViewModel>(Inputs.Where(b => b.DeviceBinding.InputDirectionSlot > 0)
+                .OrderBy(b => b.DeviceBinding.InputDirectionSlot));
+        public ObservableCollection<DeviceBindingViewModel> OrdinaryInputs =>
+            new ObservableCollection<DeviceBindingViewModel>(Inputs.Where(b => b.DeviceBinding.InputDirectionSlot == 0));
+        public DeviceBindingViewModel DirectionalPrimary => DirectionalInputs.FirstOrDefault();
+        public Visibility DirectionalVisibility => DirectionalPrimary == null ? Visibility.Collapsed : Visibility.Visible;
+        public bool HasDirectionalInputs => DirectionalPrimary != null;
+        public bool IsFourWay => DirectionalInputs.Count == 4;
+        public string DirectionalModeLabel => IsFourWay ? "4-way joystick" : "Axis";
+
         public bool CanRemoveCondition { get; }
 
         public InputConditionViewModel(int groupIndex, IEnumerable<DeviceBindingViewModel> inputs, bool canRemoveCondition)
@@ -450,6 +461,41 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
 
             RefreshInputExpressionPresentation();
+        }
+
+        public bool HasAxisOutput => Plugins != null &&
+            Plugins.Any(p => string.Equals(p.OutputType, "Axis", StringComparison.OrdinalIgnoreCase));
+
+        public void SetDirectionalMode(int slots)
+        {
+            if (!ButtonsEnabled || !HasAxisOutput || InputConditions == null) return;
+            var group = InputConditions.FirstOrDefault()?.GroupIndex ?? 0;
+            if (!Mapping.SetDirectionalInputMode(group, slots)) return;
+
+            // A joystick needs two independent analogue destinations (X and Y).
+            // Do not automatically delete the user's existing outputs when switching back.
+            if (slots == 4 && Plugins.Count(p => p.OutputType == "Axis") < 2)
+                AddDefaultOutput();
+
+            foreach (var binding in DeviceBindings)
+            {
+                binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
+                binding.Dispose();
+            }
+            DeviceBindings.Clear();
+            PopulateDeviceBindingsViewModels();
+            foreach (var binding in DeviceBindings) SubscribeSummaryBinding(binding);
+            RefreshHeaderState();
+            RefreshCollapsedSummary();
+        }
+
+        public void SetDirectionalBlocked(DeviceBindingViewModel source, bool blocked)
+        {
+            if (source?.DeviceBinding == null || !ButtonsEnabled) return;
+            foreach (var input in Mapping.DeviceBindings.Where(input =>
+                input.InputDirectionSlot > 0 &&
+                input.InputExpressionGroup == source.DeviceBinding.InputExpressionGroup))
+                input.SetBlock(blocked && input.IsBound && input.IsBlockable());
         }
 
         public void AddAndInput()
