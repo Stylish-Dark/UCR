@@ -420,10 +420,6 @@
                                                                         ToolTip="Click to bind this direction; right-click for its input type"
                                                                         Foreground="#FFFFFF"
                                                                         Style="{StaticResource MaterialDesignRaisedButton}">
-                                                                    <TextBlock Text="{Binding DirectionalBindLabel}"
-                                                                               TextAlignment="Center" VerticalAlignment="Center"
-                                                                               FontSize="11" FontWeight="SemiBold"
-                                                                               TextTrimming="CharacterEllipsis"/>
                                                                     <Button.ContextMenu>
                                                                         <ContextMenu>
                                                                             <MenuItem Header="Button" Tag="0"
@@ -436,6 +432,10 @@
                                                                                       Click="DirectionalType_OnClick"/>
                                                                         </ContextMenu>
                                                                     </Button.ContextMenu>
+                                                                    <TextBlock Text="{Binding DirectionalBindLabel}"
+                                                                               TextAlignment="Center" VerticalAlignment="Center"
+                                                                               FontSize="11" FontWeight="SemiBold"
+                                                                               TextTrimming="CharacterEllipsis"/>
                                                                 </Button>
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
