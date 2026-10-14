@@ -48,6 +48,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (ExpressionMapping != null && !ExpressionMapping.EnableInputExpression()) return;
                 DeviceBinding.SetInputExpressionInputKind(value);
                 DeviceBindingCategory = value == 0 ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
+                SelectCompatibleInputDeviceAfterTypeChange();
                 OnPropertyChanged(nameof(DeviceBindingCategory));
                 OnPropertyChanged(nameof(ShowInvertInput));
                 OnPropertyChanged(nameof(InputTypeDetailsVisibility));
@@ -328,13 +329,53 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return false;
         }
 
+        // Physical input categories are validated against the provider's actual
+        // supported controls. A keyboard must never be offered as an axis source.
+        public static bool SupportsInputCategory(DeviceConfiguration configuration,
+            DeviceBindingCategory category, Context context)
+        {
+            if (configuration?.Device == null || context == null) return false;
+            try
+            {
+                return MenuHasCategory(configuration.Device.GetDeviceBindingMenu(
+                    context, DeviceIoType.Input), category);
+            }
+            catch (Exception exception)
+            {
+                Logger.Warn("Unable to inspect input device binding categories.", exception);
+                return false;
+            }
+        }
+
+        private void SelectCompatibleInputDeviceAfterTypeChange()
+        {
+            if (DeviceBinding?.DeviceIoType != DeviceIoType.Input ||
+                DeviceBinding.Profile == null) return;
+
+            var profile = DeviceBinding.Profile;
+            var context = profile.Context;
+            var candidates = profile.GetDeviceConfigurationList(DeviceIoType.Input)
+                .Where(configuration => SupportsInputCategory(configuration, DeviceBindingCategory, context))
+                .ToList();
+            var currentGuid = DeviceBinding.DeviceConfigurationGuid;
+            if (!candidates.Any(configuration => configuration.Guid == currentGuid))
+            {
+                var primaryGuid = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input)?.Guid;
+                var selected = candidates.FirstOrDefault(configuration => configuration.Guid == primaryGuid)
+                    ?? candidates.FirstOrDefault();
+                DeviceBinding.SetDeviceConfigurationGuid(selected?.Guid ?? Guid.Empty, false);
+            }
+            RefreshDeviceList();
+        }
+
         private void LoadDeviceInputs()
         {
             var devicesManager = DeviceBinding.Profile.Context.DevicesManager;
             var deviceConfigurationList = DeviceBinding.Profile.GetDeviceConfigurationList(DeviceBinding.DeviceIoType)
                 .Where(configuration => configuration?.Device != null &&
-                    (DeviceBinding.DeviceIoType != DeviceIoType.Output ||
-                     SupportsOutputCategory(configuration, DeviceBindingCategory, DeviceBinding.Profile.Context)))
+                    (DeviceBinding.DeviceIoType == DeviceIoType.Output
+                        ? SupportsOutputCategory(configuration, DeviceBindingCategory, DeviceBinding.Profile.Context)
+                        : SupportsInputCategory(configuration, DeviceBindingCategory, DeviceBinding.Profile.Context)))
                 .Select((configuration, index) => new
                 {
                     Configuration = configuration,
@@ -401,7 +442,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (Devices.Count == 0)
             {
                 Devices.Add(new ComboBoxItemViewModel(
-                    DeviceBinding.DeviceIoType == DeviceIoType.Output ? "No compatible output devices" : "No devices",
+                    DeviceBinding.DeviceIoType == DeviceIoType.Output ? "No compatible output devices" :
+                        DeviceBindingCategory == DeviceBindingCategory.Range
+                            ? "No compatible axis devices" : "No compatible button devices",
                     Guid.Empty));
                 selectedDevice = Devices[0];
             }
@@ -428,6 +471,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var selectedDeviceConfiguration = DeviceBinding.Profile.GetDeviceConfiguration(
                 DeviceBinding.DeviceIoType, selectedDeviceConfigurationGuid);
             if (selectedDeviceConfiguration == null) return DeviceBindingTransferCompatibility.Unknown;
+
+            if (DeviceBinding.DeviceIoType == DeviceIoType.Input &&
+                !SupportsInputCategory(selectedDeviceConfiguration, DeviceBindingCategory,
+                    DeviceBinding.Profile.Context))
+                return DeviceBindingTransferCompatibility.Incompatible;
 
             var previousDeviceConfiguration = DeviceBinding.Profile.GetDeviceConfiguration(
                 DeviceBinding.DeviceIoType, DeviceBinding.DeviceConfigurationGuid);
