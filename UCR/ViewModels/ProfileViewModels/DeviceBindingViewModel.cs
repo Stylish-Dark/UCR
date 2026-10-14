@@ -51,6 +51,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 SelectCompatibleInputDeviceAfterTypeChange();
                 OnPropertyChanged(nameof(DeviceBindingCategory));
                 OnPropertyChanged(nameof(ShowInvertInput));
+                OnPropertyChanged(nameof(CanBindCurrentDevice));
                 OnPropertyChanged(nameof(InputTypeDetailsVisibility));
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(BindButtonText));
@@ -98,6 +99,20 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ? Visibility.Visible
             : Visibility.Collapsed;
         public bool CanBlock => BindingEnabled && DeviceBinding.IsBound && DeviceBinding.IsBlockable();
+        public bool CanBindCurrentDevice
+        {
+            get
+            {
+                if (!BindingEnabled || DeviceBinding == null) return false;
+                if (DeviceBinding.DeviceIoType != DeviceIoType.Input) return true;
+                var profile = DeviceBinding.Profile;
+                if (profile == null || DeviceBinding.DeviceConfigurationGuid == Guid.Empty) return false;
+                var configuration = profile.GetDeviceConfiguration(DeviceIoType.Input,
+                    DeviceBinding.DeviceConfigurationGuid);
+                return SupportsInputCategory(configuration, DeviceBindingCategory, profile.Context);
+            }
+        }
+
         public string BlockAvailability => CanBlock
             ? "Prevent the original device input from reaching the application"
             : "This input provider or control does not support blocking";
@@ -150,6 +165,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(PreviewValue));
                 OnPropertyChanged(nameof(ShowButtonPreview));
                 OnPropertyChanged(nameof(CanBlock));
+                OnPropertyChanged(nameof(CanBindCurrentDevice));
             }
         }
 
@@ -221,6 +237,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             get
             {
+                if (DeviceBinding?.DeviceIoType == DeviceIoType.Input && !CanBindCurrentDevice &&
+                    BindingEnabled)
+                    return DeviceBindingCategory == DeviceBindingCategory.Range
+                        ? "Choose axis device" : "Choose input device";
                 var label = BindButtonText;
                 if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Output)
                     return "Choose output";
@@ -423,6 +443,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(ShowBlock));
             OnPropertyChanged(nameof(CanBlock));
             OnPropertyChanged(nameof(ShowInvertInput));
+            OnPropertyChanged(nameof(CanBindCurrentDevice));
         }
 
         private void SetSelectDevice()
@@ -528,6 +549,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(Block));
             OnPropertyChanged(nameof(ShowInvertInput));
             OnPropertyChanged(nameof(InvertInput));
+            OnPropertyChanged(nameof(CanBindCurrentDevice));
             Logger.Info("Binding device changed. io=" + DeviceBinding.DeviceIoType +
                         "; category=" + DeviceBindingCategory +
                         "; from=" + (previousDeviceConfiguration?.GetFullTitleForProfile(DeviceBinding.Profile) ?? "unavailable") +
@@ -598,6 +620,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.DeviceConfigurationGuid), StringComparison.Ordinal))
             {
+                OnPropertyChanged(nameof(CanBindCurrentDevice));
+                OnPropertyChanged(nameof(CompactBindButtonText));
                 OnPropertyChanged(nameof(BindButtonText));
                 OnPropertyChanged(nameof(CompactBindButtonText));
                 OnPropertyChanged(nameof(ShowBlock));
