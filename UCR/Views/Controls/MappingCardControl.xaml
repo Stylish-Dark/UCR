@@ -440,7 +440,8 @@
                                                                 VerticalAlignment="Center" Margin="5 0 0 0">
                                                         <StackPanel Orientation="Vertical" Margin="0 0 8 0">
                                                             <TextBlock Text="Block" FontSize="10" Foreground="#D0D0D0"/>
-                                                            <ToggleButton IsChecked="{Binding DirectionalPrimary.Block, Mode=OneWay}"
+                                                            <ToggleButton IsChecked="{Binding DirectionalBlockEnabled, Mode=OneWay}"
+                                                                          Style="{StaticResource CompactBlockSwitch}"
                                                                           Click="DirectionalBlock_OnClick" Width="38" Height="21"
                                                                           ToolTip="Block the original physical inputs for both directions"/>
                                                         </StackPanel>
