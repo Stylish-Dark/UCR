@@ -102,7 +102,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool CanMoveUp => ButtonsEnabled && ProfileViewModel.CanMoveMapping(this, -1);
         public bool CanMoveDown => ButtonsEnabled && ProfileViewModel.CanMoveMapping(this, 1);
         public string MappingRoute => Mapping != null && Mapping.Plugins.Count > 0 ? Mapping.Plugins[0].PluginName : "No plugin";
-        public string MappingRouteDisplay => FormatMappingRoute(MappingRoute, Mapping?.DeviceBindings?.Count ?? 0, Plugins?.Count ?? 0);
+        public string MappingRouteDisplay => SupportsNativeInputExpression
+            ? "Inputs → " + ((Plugins?.Count ?? 0) > 1 ? "Outputs" : MappingOutputCategoryDisplay)
+            : FormatMappingRoute(MappingRoute, Mapping?.DeviceBindings?.Count ?? 0, Mapping?.Plugins?.Sum(p => p.Outputs?.Count ?? 0) ?? 0);
         public List<MappingHeaderToken> MappingRouteTokens => _mappingRouteTokens;
         public string MappingOutputTypeLabel => _mappingOutputTypeLabel;
         public string MappingOutputCategoryDisplay
@@ -112,7 +114,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var category = Plugins?.FirstOrDefault()?.OutputType ?? "None";
                 if (string.Equals(category, "Button", StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(category, "Buttons", StringComparison.OrdinalIgnoreCase))
-                    return (Plugins?.Count ?? 0) == 1 ? "Button" : "Buttons";
+                    return (Mapping?.Plugins?.Sum(p => p.Outputs?.Count ?? 0) ?? 0) == 1 ? "Button" : "Buttons";
                 return category;
             }
         }
