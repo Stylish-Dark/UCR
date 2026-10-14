@@ -75,6 +75,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<DeviceBindingViewModel> OrdinaryInputs =>
             new ObservableCollection<DeviceBindingViewModel>(Inputs.Where(b => b.DeviceBinding.InputDirectionSlot == 0));
         public DeviceBindingViewModel DirectionalPrimary => DirectionalInputs.FirstOrDefault();
+        public bool DirectionalBlockEnabled => DirectionalInputs.Any(input => input.DeviceBinding.Block);
         public Visibility DirectionalVisibility => DirectionalPrimary == null ? Visibility.Collapsed : Visibility.Visible;
         public bool HasDirectionalInputs => DirectionalPrimary != null;
         public bool IsFourWay => DirectionalInputs.Count == 4;
