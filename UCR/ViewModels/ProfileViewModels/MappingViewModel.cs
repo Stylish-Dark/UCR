@@ -528,7 +528,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(UsesInputExpression));
             OnPropertyChanged(nameof(InputLogicSummary));
             OnPropertyChanged(nameof(InputConditions));
-            RefreshHeaderState();
+            // Binding changes also affect the singular/plural header, even during initial load.
+            _mappingRouteTokens = BuildMappingRouteTokens(MappingRouteDisplay);
+            OnPropertyChanged(nameof(MappingInputTypeLabel));
+            OnPropertyChanged(nameof(MappingRouteDisplay));
+            OnPropertyChanged(nameof(MappingRouteTokens));
         }
 
         private void RebuildInputConditions()
