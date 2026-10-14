@@ -503,6 +503,69 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             RefreshCollapsedSummary();
         }
 
+        public bool ApplyDirectionalKeyboardPreset(string preset, out string error)
+        {
+            error = null;
+            var inputs = InputConditions?.FirstOrDefault()?.DirectionalInputs?.ToList();
+            if (!ButtonsEnabled || inputs == null || inputs.Count < 2)
+            {
+                error = "Choose a two-way or four-way input first.";
+                return false;
+            }
+            var patterns = new Dictionary<string, string[]>
+            {
+                { "WASD", new[] { "A", "D", "W", "S" } },
+                { "Arrows", new[] { "Left", "Right", "Up", "Down" } },
+                { "Numpad", new[] { "Numpad4", "Numpad6", "Numpad8", "Numpad2" } },
+                { "UJHK", new[] { "H", "K", "U", "J" } }
+            };
+            string[] keys;
+            if (!patterns.TryGetValue(preset, out keys)) return false;
+            var profile = ProfileViewModel.Profile;
+            var current = profile.GetDeviceConfiguration(DeviceIoType.Input,
+                inputs[0].DeviceBinding.DeviceConfigurationGuid);
+            var keyboard = current != null &&
+                DeviceVisualCatalog.Describe(current.Device, DeviceIoType.Input).Kind == DeviceVisualKind.Keyboard
+                ? current : profile.GetDeviceConfigurationList(DeviceIoType.Input).FirstOrDefault(config =>
+                    config?.Device != null &&
+                    DeviceVisualCatalog.Describe(config.Device, DeviceIoType.Input).Kind == DeviceVisualKind.Keyboard);
+            if (keyboard == null)
+            {
+                error = "Add a keyboard to this profile first.";
+                return false;
+            }
+            var controls = FlattenBindingNodes(profile.Context.DevicesManager.GetDeviceBindingMenu(
+                keyboard.Device, DeviceIoType.Input)).Where(node => node.DeviceBindingInfo != null &&
+                node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary).ToList();
+            var selections = new List<DeviceBindingNode>();
+            foreach (var name in keys.Take(inputs.Count))
+            {
+                var aliases = name.StartsWith("Numpad", StringComparison.OrdinalIgnoreCase)
+                    ? new[] { name, name.Replace("Numpad", "Num"), name.Replace("Numpad", "Keypad") }
+                    : new[] { name };
+                var choice = controls.FirstOrDefault(node => aliases.Any(alias =>
+                    NormalizeAxisPresetKey(node.Title) == NormalizeAxisPresetKey(alias)));
+                if (choice == null)
+                {
+                    error = "The keyboard does not expose " + name + ".";
+                    return false;
+                }
+                selections.Add(choice);
+            }
+            for (var i = 0; i < selections.Count; i++)
+            {
+                var input = inputs[i].DeviceBinding;
+                var info = selections[i].DeviceBindingInfo;
+                input.InputExpressionInputKind = 0;
+                input.DeviceBindingCategory = DeviceBindingCategory.Momentary;
+                input.SetDeviceConfigurationGuid(keyboard.Guid, false);
+                input.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+            }
+            foreach (var input in inputs) input.RefreshDeviceList();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
         public void SetDirectionalBlocked(DeviceBindingViewModel source, bool blocked)
         {
             if (source?.DeviceBinding == null || !ButtonsEnabled) return;
