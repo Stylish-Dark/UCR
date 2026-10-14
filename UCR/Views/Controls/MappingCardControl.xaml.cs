@@ -375,6 +375,56 @@ namespace HidWizards.UCR.Views.Controls
             (DataContext as MappingViewModel)?.RemoveCondition(condition);
         }
 
+        private void BindDirectionalSlot_OnClick(object sender, RoutedEventArgs e)
+        {
+            var input = (sender as FrameworkElement)?.DataContext as DeviceBindingViewModel;
+            if (input?.DeviceBinding == null || input.DeviceBinding.IsInBindMode) return;
+            try
+            {
+                input.DeviceBinding.DeviceBindingCategory = input.DeviceBindingCategory;
+                input.DeviceBinding.EnterBindMode();
+            }
+            catch (Exception exception)
+            {
+                Logger.Error("Unable to capture directional input", exception);
+                DarkMessageBox.Show("Unable to detect this direction: " + exception.GetBaseException().Message,
+                    "Input detection unavailable", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DirectionalType_OnClick(object sender, RoutedEventArgs e)
+        {
+            var item = sender as MenuItem;
+            var button = (item?.Parent as ContextMenu)?.PlacementTarget as Button;
+            var input = button?.DataContext as DeviceBindingViewModel ?? item?.DataContext as DeviceBindingViewModel;
+            int kind;
+            if (input == null || !int.TryParse(item?.Tag as string, out kind)) return;
+            input.InputExpressionInputKind = kind;
+        }
+
+        private void DirectionalNot_OnClick(object sender, RoutedEventArgs e)
+        {
+            var group = (sender as FrameworkElement)?.DataContext as InputConditionViewModel;
+            if (group?.DirectionalPrimary == null) return;
+            (DataContext as MappingViewModel)?.SetInputNegated(group.DirectionalPrimary,
+                (sender as ToggleButton)?.IsChecked == true);
+        }
+
+        private void DirectionalBlock_OnClick(object sender, RoutedEventArgs e)
+        {
+            var group = (sender as FrameworkElement)?.DataContext as InputConditionViewModel;
+            if (group?.DirectionalPrimary == null) return;
+            (DataContext as MappingViewModel)?.SetDirectionalBlocked(group.DirectionalPrimary,
+                (sender as ToggleButton)?.IsChecked == true);
+        }
+
+        private void RemoveDirectionalUnit_OnClick(object sender, RoutedEventArgs e)
+        {
+            var group = (sender as FrameworkElement)?.DataContext as InputConditionViewModel;
+            if (group == null) return;
+            (DataContext as MappingViewModel)?.SetDirectionalMode(0);
+        }
+
         private void InputNegated_OnClick(object sender, RoutedEventArgs e)
         {
             var toggle = sender as ToggleButton;
