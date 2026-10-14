@@ -457,12 +457,12 @@
                                                      Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="OUTPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
                                        FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            <Button Content="{Binding MappingViewModel.MappingOutputCategoryDisplay, StringFormat={}{0} ▼}" Margin="12 0 0 0" Padding="8 2" Height="28"
-                                    DataContext="{Binding Plugins[0]}"
-                                    Click="ChangeOutputType_OnClick" Tag="CategoryHeader"
-                                    IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"
-                                    Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
-                                    ToolTip="Choose the output mapping category"/>
+                            <!-- Output type is a description of configured destinations, not
+                                 a mapping-level setting the user must choose. -->
+                            <TextBlock Text="{Binding MappingOutputCategoryDisplay}" Margin="12 0 0 0"
+                                       Padding="8 3" VerticalAlignment="Center" Foreground="#D0D0D0"
+                                       FontSize="12" FontWeight="Medium"
+                                       ToolTip="Determined automatically from the configured outputs"/>
                         </StackPanel>
                     <!-- Each output is a separate vertical row. Never overflow sideways. -->
                     <StackPanel Margin="2 0 2 3">
