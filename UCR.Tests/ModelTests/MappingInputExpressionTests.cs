@@ -142,6 +142,8 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.That(mapping.SetDirectionalInputMode(0, 0), Is.True);
             Assert.That(mapping.DeviceBindings.Count, Is.EqualTo(1));
             Assert.That(mapping.DeviceBindings[0].InputDirectionSlot, Is.EqualTo(0));
+            Assert.That(mapping.DeviceBindings[0].InputExpressionInputKind, Is.EqualTo(3),
+                "Single-source mode must restore continuous analogue capture.");
         }
 
         [Test]
