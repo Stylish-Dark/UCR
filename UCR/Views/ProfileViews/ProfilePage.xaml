@@ -892,7 +892,7 @@
                                                                      CollapsedInputVisuals list falsely showed OR terms
                                                                      as if they belonged to one AND group. -->
                                                                 <ItemsControl Grid.Column="1" ItemsSource="{Binding CollapsedInputRows}"
-                                                                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                              HorizontalAlignment="Stretch" VerticalAlignment="Center"
                                                                               ClipToBounds="False">
                                                                     <ItemsControl.ItemsPanel>
                                                                         <ItemsPanelTemplate>
@@ -901,11 +901,17 @@
                                                                     </ItemsControl.ItemsPanel>
                                                                     <ItemsControl.ItemTemplate>
                                                                         <DataTemplate>
-                                                                            <StackPanel HorizontalAlignment="Center" Margin="0 1">
+                                                                            <StackPanel HorizontalAlignment="Stretch" Margin="0 1">
                                                                                 <TextBlock Text="OR" HorizontalAlignment="Center"
                                                                                            Foreground="#AFAFAF" FontWeight="SemiBold"
                                                                                            FontSize="11" Margin="0 3 0 3"
                                                                                            Visibility="{Binding AlternativeDividerVisibility}"/>
+                                                                                <!-- Constrain each AND group to its available column width.
+                                                                                     At large UI scale, shrink the glyph group rather than
+                                                                                     clipping its first and last controls. -->
+                                                                                <Viewbox Stretch="Uniform" StretchDirection="DownOnly"
+                                                                                         Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
+                                                                                         HorizontalAlignment="Center">
                                                                                 <ItemsControl ItemsSource="{Binding Visuals}"
                                                                                               HorizontalAlignment="Center"
                                                                                               AlternationCount="100">
@@ -958,6 +964,7 @@
                                                                                         </DataTemplate>
                                                                                     </ItemsControl.ItemTemplate>
                                                                                 </ItemsControl>
+                                                                                </Viewbox>
                                                                             </StackPanel>
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
