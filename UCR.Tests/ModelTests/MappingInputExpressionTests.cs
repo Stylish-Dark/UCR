@@ -107,6 +107,25 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void LegacyMultiChannelSlots_AcceptIndependentlyTypedPhysicalInputs()
+        {
+            var rightAxis = new DeviceBinding { InputExpressionInputKind = 1, InputExpressionAxisThreshold = 14000 };
+            var leftAxis = new DeviceBinding { InputExpressionInputKind = 2, InputExpressionAxisThreshold = 14000 };
+            var rawAxis = new DeviceBinding { InputExpressionInputKind = 3 };
+            var button = new DeviceBinding { InputExpressionInputKind = 0 };
+
+            Assert.AreEqual(1, Mapping.AdaptPositionalInput(20000, rightAxis, DeviceBindingCategory.Momentary));
+            Assert.AreEqual(0, Mapping.AdaptPositionalInput(-20000, rightAxis, DeviceBindingCategory.Momentary));
+            Assert.AreEqual(short.MinValue, Mapping.AdaptPositionalInput(-20000, leftAxis, DeviceBindingCategory.Range));
+            Assert.AreEqual(0, Mapping.AdaptPositionalInput(-10000, leftAxis, DeviceBindingCategory.Range));
+            Assert.AreEqual(13200, Mapping.AdaptPositionalInput(13200, rawAxis, DeviceBindingCategory.Range));
+            Assert.AreEqual(0, Mapping.AdaptPositionalInput(12000, rawAxis, DeviceBindingCategory.Momentary));
+            Assert.AreEqual(1, Mapping.AdaptPositionalInput(20000, rawAxis, DeviceBindingCategory.Momentary));
+            Assert.AreEqual(short.MaxValue, Mapping.AdaptPositionalInput(1, button, DeviceBindingCategory.Range));
+            Assert.AreEqual(0, Mapping.AdaptPositionalInput(0, button, DeviceBindingCategory.Range));
+        }
+
+        [Test]
         public void ConditionApiKeepsAndTermsOnOneRowAndCreatesSeparateOrRows()
         {
             var mapping = new Mapping();
