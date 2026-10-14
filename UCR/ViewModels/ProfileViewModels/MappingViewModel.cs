@@ -380,6 +380,20 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private void SummaryBindingOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (_rebuildingDirectionalEditors) return;
+            var changed = sender as DeviceBindingViewModel;
+            if (changed?.DeviceBinding?.InputDirectionSlot > 0 &&
+                changed.DeviceBinding.IsBound &&
+                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.BindButtonText), StringComparison.Ordinal))
+            {
+                // The single visible Block toggle represents every direction. When
+                // another slot is captured later, honour the unit's existing setting.
+                var member = changed.DeviceBinding;
+                if (!member.Block && Mapping.DeviceBindings.Any(other =>
+                    other != member && other.InputDirectionSlot > 0 &&
+                    other.InputExpressionGroup == member.InputExpressionGroup && other.Block) &&
+                    member.IsBlockable())
+                    member.SetBlock(true);
+            }
             // Countdown/preview animation is deliberately high-frequency and does not change the
             // collapsed route summary. Rebuilding all glyph descriptors on every progress tick was
             // needless WPF churn while the user was trying to press the input we were listening for.
