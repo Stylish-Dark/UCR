@@ -30,12 +30,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         }
         public string IoTypeName => DeviceBinding.DeviceIoType.Equals(DeviceIoType.Input) ? "Input" : "Output";
         public DeviceBindingCategory DeviceBindingCategory { get; set; }
+        public Mapping ExpressionMapping { get; set; }
         public int InputExpressionInputKind
         {
             get => DeviceBinding.InputExpressionInputKind;
             set
             {
                 if (DeviceBinding.InputExpressionInputKind == value) return;
+                if (ExpressionMapping != null && !ExpressionMapping.EnableInputExpression()) return;
                 DeviceBinding.SetInputExpressionInputKind(value);
                 DeviceBindingCategory = value == 0 ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
                 OnPropertyChanged();
