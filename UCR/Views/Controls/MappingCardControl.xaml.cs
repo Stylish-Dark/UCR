@@ -392,6 +392,21 @@ namespace HidWizards.UCR.Views.Controls
             }
         }
 
+        private void DirectionalDevice_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var combo = sender as ComboBox;
+            var group = combo?.DataContext as InputConditionViewModel;
+            var selected = combo?.SelectedItem as ComboBoxItemViewModel;
+            if (group?.DirectionalPrimary == null || selected == null) return;
+
+            // WPF fires SelectionChanged when the template first loads. That must
+            // not clear existing inputs unless the user chose a different device.
+            var primary = group.DirectionalPrimary;
+            if (selected.Value == primary.DeviceBinding.DeviceConfigurationGuid) return;
+            foreach (var input in group.DirectionalInputs)
+                input.ChangeDeviceConfiguration(selected.Value);
+        }
+
         private void DirectionalType_OnClick(object sender, RoutedEventArgs e)
         {
             var item = sender as MenuItem;
