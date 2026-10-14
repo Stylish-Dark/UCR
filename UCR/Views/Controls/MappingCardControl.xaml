@@ -318,18 +318,93 @@
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <ComboBox Grid.Column="0" Width="63" Height="36" Margin="0 0 5 0"
-                                                              ItemsSource="{Binding DirectionalPrimary.Devices}"
-                                                              SelectedItem="{Binding DirectionalPrimary.SelectedDevice, Mode=OneWay}"
-                                                              DisplayMemberPath="Title"
-                                                              SelectionChanged="DirectionalDevice_OnSelectionChanged"
-                                                              ToolTip="Any input device, or limit every direction to a chosen device">
-                                                        <ComboBox.ItemContainerStyle>
-                                                            <Style TargetType="ComboBoxItem">
-                                                                <Setter Property="MinWidth" Value="190"/>
-                                                            </Style>
-                                                        </ComboBox.ItemContainerStyle>
-                                                    </ComboBox>
+        <ComboBox Grid.Column="0"
+                  Width="58" Height="38" Margin="0 0 4 0" Padding="0"
+                  HorizontalAlignment="Left"
+                  ItemsSource="{Binding DirectionalPrimary.Devices}"
+                  SelectedItem="{Binding DirectionalPrimary.SelectedDevice, Mode=OneWay}"
+                  IsEnabled="{Binding DirectionalPrimary.BindingEnabled}"
+                  SelectionChanged="DirectionalDevice_OnSelectionChanged"
+                  ToolTip="{Binding DirectionalPrimary.SelectedDevice.Title}">
+            <ComboBox.Template>
+                <ControlTemplate TargetType="{x:Type ComboBox}">
+                    <Grid SnapsToDevicePixels="True">
+                        <Border x:Name="DeviceSurface" CornerRadius="3" Background="#292929"
+                                BorderBrush="{DynamicResource PrimaryHueLightBrush}" BorderThickness="2">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="15"/>
+                                </Grid.ColumnDefinitions>
+                                <local:DeviceSymbolControl x:Name="ClosedDeviceGlyph"
+                                    Grid.Column="0" IsHitTestVisible="False"
+                                    SymbolText="{Binding SelectedItem.Visual.SymbolText, RelativeSource={RelativeSource TemplatedParent}}"
+                                    Foreground="{Binding SelectedItem.Visual.BadgeTextBrush, RelativeSource={RelativeSource TemplatedParent}}"
+                                    GlyphSize="31" Width="33" Height="32"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <materialDesign:PackIcon Grid.Column="1" Kind="ChevronDown"
+                                    Width="13" Height="13" Foreground="#CACACA" IsHitTestVisible="False"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.ColumnSpan="2" Focusable="False"
+                                    IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                            <Border Background="Transparent"/>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                </ToggleButton>
+                            </Grid>
+                        </Border>
+                        <Popup x:Name="PART_Popup" Placement="Bottom"
+                               PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                               IsOpen="{TemplateBinding IsDropDownOpen}"
+                               AllowsTransparency="True" Focusable="False" StaysOpen="False"
+                               PopupAnimation="Fade">
+                            <Border MinWidth="245" MaxWidth="350" Background="#262626"
+                                    BorderBrush="{DynamicResource PrimaryHueLightBrush}" BorderThickness="1"
+                                    Padding="3">
+                                <ScrollViewer MaxHeight="300" CanContentScroll="True"
+                                              VerticalScrollBarVisibility="Auto">
+                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                </ScrollViewer>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="DeviceSurface" Property="Background" Value="#383838"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                            <Setter TargetName="DeviceSurface" Property="BorderBrush" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="DeviceSurface" Property="Opacity" Value="0.40"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </ComboBox.Template>
+            <ComboBox.ItemContainerStyle>
+                <Style TargetType="{x:Type ComboBoxItem}">
+                    <Setter Property="MinHeight" Value="36"/>
+                </Style>
+            </ComboBox.ItemContainerStyle>
+            <ComboBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid MinWidth="218" Margin="6 2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="39"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <local:DeviceSymbolControl Grid.Column="0" SymbolText="{Binding Visual.SymbolText}"
+                            Foreground="{Binding Visual.BadgeTextBrush}" GlyphSize="27"
+                            Width="35" Height="29" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="#FFFFFF"
+                            FontSize="13" VerticalAlignment="Center"
+                            TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}"/>
+                    </Grid>
+                </DataTemplate>
+            </ComboBox.ItemTemplate>
+        </ComboBox>
                                                     <ItemsControl Grid.Column="1" ItemsSource="{Binding DirectionalInputs}">
                                                         <ItemsControl.ItemsPanel>
                                                             <ItemsPanelTemplate>
