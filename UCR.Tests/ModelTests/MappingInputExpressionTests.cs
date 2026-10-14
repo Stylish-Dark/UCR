@@ -45,6 +45,32 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void MixedButtonAndDirectedAxes_UseIndividualThresholdsAndNegation()
+        {
+            var mapping = new Mapping
+            {
+                UseInputExpression = true,
+                DeviceBindings = new List<DeviceBinding>
+                {
+                    new DeviceBinding { InputExpressionGroup = 0, InputExpressionInputKind = 0 },
+                    new DeviceBinding { InputExpressionGroup = 0, InputExpressionInputKind = 1, InputExpressionAxisThreshold = 12000 },
+                    new DeviceBinding { InputExpressionGroup = 0, InputExpressionInputKind = 2, InputExpressionAxisThreshold = 20000, InputExpressionNegated = true },
+                    new DeviceBinding { InputExpressionGroup = 1, InputExpressionInputKind = 2, InputExpressionAxisThreshold = 16000 }
+                }
+            };
+            Assert.AreEqual(1, mapping.EvaluateInputExpression(new short[] { 1, 14000, 0, 0 }),
+                "A held button and right-axis threshold can satisfy one group when the negated left-axis term is not met.");
+            Assert.AreEqual(0, mapping.EvaluateInputExpression(new short[] { 1, 11999, 0, 0 }),
+                "An axis below the positive threshold must not count as active.");
+            Assert.AreEqual(0, mapping.EvaluateInputExpression(new short[] { 1, 14000, -22000, 0 }),
+                "The negated left-axis term must suppress its AND group.");
+            Assert.AreEqual(1, mapping.EvaluateInputExpression(new short[] { 0, 0, 0, -17000 }),
+                "A negative-direction axis can independently satisfy an alternative OR group.");
+            Assert.AreEqual(0, mapping.EvaluateInputExpression(new short[] { 0, -28000, 0, -15000 }),
+                "Wrong axis direction and subthreshold values must not activate the expression.");
+        }
+
+        [Test]
         public void ConditionApiKeepsAndTermsOnOneRowAndCreatesSeparateOrRows()
         {
             var mapping = new Mapping();
