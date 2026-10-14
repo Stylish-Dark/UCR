@@ -1063,7 +1063,8 @@
                         <Button Grid.Row="1" Content="Presets ▾" Height="34"
                                 HorizontalAlignment="Right" Margin="0 6 10 10"
                                 Click="InputDirectionPresets_OnClick"
-                                IsEnabled="{Binding SelectedMapping.HasAxisOutput}"
+                                IsEnabled="{Binding SelectedMapping.ButtonsEnabled}"
+                                Visibility="{Binding SelectedMapping.DirectionalPresetsVisibility}"
                                 Foreground="#FFFFFF" Style="{StaticResource UcrProfileActionButton}"
                                 ToolTip="Choose directional layout or apply a keyboard preset"/>
                         </Grid>
