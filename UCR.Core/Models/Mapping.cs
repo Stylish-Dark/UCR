@@ -340,9 +340,8 @@ namespace HidWizards.UCR.Core.Models
                 InputExpressionNegated = false
             };
 
-            var template = DeviceBindings.LastOrDefault(item => Math.Max(0, item.InputExpressionGroup) == group)
-                           ?? DeviceBindings.LastOrDefault();
-            if (template != null) binding.DeviceConfigurationGuid = template.DeviceConfigurationGuid;
+            // A newly added condition has no selected device. Binding its input
+            // discovers the control from any configured profile input device.
 
             var insertAfter = DeviceBindings.FindLastIndex(item =>
                 Math.Max(0, item.InputExpressionGroup) == group);
@@ -441,7 +440,7 @@ namespace HidWizards.UCR.Core.Models
                 {
                     DeviceBindings.Add(new DeviceBinding(Update, Profile, DeviceIoType.Input)
                     {
-                        DeviceConfigurationGuid = Profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input)?.Guid ?? Guid.Empty,
+                        DeviceConfigurationGuid = Guid.Empty,
                         DeviceBindingCategory = definition.Category,
                         InputExpressionInputKind = definition.Category == DeviceBindingCategory.Range ? 3 : 0
                     });
