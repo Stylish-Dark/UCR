@@ -369,13 +369,30 @@ namespace HidWizards.UCR.Core.Models
             plugins.Sort();
             if (Plugins.Count > 0)
             {
-                plugins = plugins.FindAll(p => p.HasSameInputCategories(Plugins[0]));
+                if (SupportsNativeInputExpression())
+                {
+                    // Once an expression can provide a digital state or analogue drive,
+                    // the output plugin's input signature no longer restricts its choice.
+                    plugins = plugins.FindAll(p => p.InputCategories != null &&
+                        p.InputCategories.Count == 1 &&
+                        (p.InputCategories[0].Category == DeviceBindingCategory.Momentary ||
+                         p.InputCategories[0].Category == DeviceBindingCategory.Range));
+                }
+                else
+                {
+                    // Legacy multi-channel plugins retain their positional input contract.
+                    plugins = plugins.FindAll(p => p.HasSameInputCategories(Plugins[0]));
+                }
             }
             return plugins;
         }
 
         public bool AddPlugin(Plugin plugin)
         {
+            if (plugin == null) return false;
+            if (Plugins.Count > 0 && !plugin.HasSameInputCategories(Plugins[0]) &&
+                !UseInputExpression && !EnableInputExpression())
+                return false;
             if (Plugins.Count == 0)
             {
                 foreach (var _ in plugin.InputCategories)
