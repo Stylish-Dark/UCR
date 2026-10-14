@@ -181,7 +181,14 @@ namespace HidWizards.UCR.Core.Models
                 var groupTrue = true;
                 foreach (var index in group)
                 {
-                    var termTrue = values[index] != 0;
+                    var binding = DeviceBindings[index];
+                    var rawValue = values[index];
+                    var threshold = Math.Max(1, Math.Min(32767, binding.InputExpressionAxisThreshold));
+                    var termTrue = binding.InputExpressionInputKind == 1
+                        ? rawValue >= threshold
+                        : binding.InputExpressionInputKind == 2
+                            ? rawValue <= -threshold
+                            : rawValue != 0;
                     if (DeviceBindings[index].InputExpressionNegated) termTrue = !termTrue;
                     if (termTrue) continue;
                     groupTrue = false;
@@ -235,6 +242,8 @@ namespace HidWizards.UCR.Core.Models
             var binding = new DeviceBinding(Update, Profile, DeviceIoType.Input)
             {
                 DeviceBindingCategory = DeviceBindingCategory.Momentary,
+                InputExpressionInputKind = 0,
+                InputExpressionAxisThreshold = 16384,
                 InputExpressionGroup = group,
                 InputExpressionNegated = false
             };
