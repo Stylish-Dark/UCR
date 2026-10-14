@@ -391,6 +391,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             RefreshHeaderState();
             RefreshCollapsedSummary();
             ProfileViewModel.RefreshFilterReferenceLabels();
+            RefreshInputExpressionPresentation();
             Logger.Info("Output added to mapping '" + MappingTitle + "': " + newPlugin.PluginName);
             if (Plugins.Count != 1) return;
             
@@ -1028,6 +1029,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!Mapping.GetPluginList().Any(option => option.GetType() == replacementTemplate.GetType()))
                 return false;
             if (original.Plugin.GetType() == replacementTemplate.GetType()) return true;
+            if (!Mapping.UseInputExpression &&
+                !original.Plugin.HasSameInputCategories(replacementTemplate) &&
+                !Mapping.EnableInputExpression())
+                return false;
 
             var replacement = ProfileViewModel.Profile.Context.PluginManager.GetNewPlugin(replacementTemplate);
             replacement.SetProfile(ProfileViewModel.Profile);
@@ -1047,6 +1052,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             RefreshHeaderState();
             RefreshCollapsedSummary();
             ProfileViewModel.RefreshFilterReferenceLabels();
+            RefreshInputExpressionPresentation();
             Logger.Info("Changed output type in mapping '" + MappingTitle + "' to " + replacement.PluginName);
             return true;
         }
