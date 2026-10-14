@@ -78,6 +78,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public Visibility DirectionalVisibility => DirectionalPrimary == null ? Visibility.Collapsed : Visibility.Visible;
         public bool HasDirectionalInputs => DirectionalPrimary != null;
         public bool IsFourWay => DirectionalInputs.Count == 4;
+        public int DirectionalColumns => IsFourWay ? 4 : 2;
         public string DirectionalModeLabel => IsFourWay ? "4-way joystick" : "Axis";
 
         public bool CanRemoveCondition { get; }
@@ -305,6 +306,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             SubscribeSummaryBindings();
             RefreshHeaderState();
             RefreshCollapsedSummary();
+            // New unbound axis outputs use two opposing slots by default.
+            // Existing analogue bindings remain single-source and untouched.
+            if (HasAxisOutput && DeviceBindings.Count == 1 &&
+                DeviceBindings.All(b => !b.DeviceBinding.IsBound &&
+                    b.DeviceBinding.InputDirectionSlot == 0))
+                SetDirectionalMode(2);
         }
 
         internal void RefreshActiveState()
@@ -477,6 +484,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (slots == 4 && Plugins.Count(p => p.OutputType == "Axis") < 2)
                 AddDefaultOutput();
 
+            RebuildDirectionalEditors();
+        }
+
+        private void RebuildDirectionalEditors()
+        {
             foreach (var binding in DeviceBindings)
             {
                 binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
@@ -485,6 +497,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             DeviceBindings.Clear();
             PopulateDeviceBindingsViewModels();
             foreach (var binding in DeviceBindings) SubscribeSummaryBinding(binding);
+            foreach (var group in InputConditions)
+                group.DirectionalPrimary?.EnsureDeviceListLoaded();
             RefreshHeaderState();
             RefreshCollapsedSummary();
         }
@@ -549,10 +563,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!ButtonsEnabled || bindingViewModel?.DeviceBinding == null) return;
             if (!Mapping.RemoveExpressionInput(bindingViewModel.DeviceBinding)) return;
 
-            bindingViewModel.Dispose();
-            DeviceBindings.Remove(bindingViewModel);
-            RefreshInputExpressionPresentation();
-            RefreshCollapsedSummary();
+            RebuildDirectionalEditors();
         }
 
         public void RemoveCondition(InputConditionViewModel condition)
