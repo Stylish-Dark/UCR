@@ -41,8 +41,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(BindButtonText));
                 OnPropertyChanged(nameof(CompactBindButtonText));
+                OnPropertyChanged(nameof(AxisConditionVisibility));
             }
         }
+        public Visibility AxisConditionVisibility =>
+            DeviceBinding.InputExpressionInputKind == 0 ? Visibility.Collapsed : Visibility.Visible;
         public int InputExpressionAxisThreshold
         {
             get => DeviceBinding.InputExpressionAxisThreshold;
