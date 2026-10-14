@@ -148,8 +148,17 @@
                                        FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             <Button Content="{Binding MappingInputTypeLabel, StringFormat={}{0} ▼}" Margin="12 0 0 0" Padding="8 2" Height="28"
                                     Click="ChooseInputCategory_OnClick" Tag="CategoryHeader" IsEnabled="{Binding ButtonsEnabled}"
-                                    Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
-                                    ToolTip="Choose the input mapping category"/>
+                                    Foreground="#FFFFFF" ToolTip="Choose the legacy input mapping category">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource UcrAccentOutlineButton}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SupportsNativeInputExpression}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
                         </StackPanel>
                     <!-- Non-boolean plugins retain the full legacy editor. -->
                     <ItemsControl ItemsSource="{Binding DeviceBindings}" HorizontalContentAlignment="Stretch">
@@ -311,9 +320,10 @@
                                                                     <ComboBoxItem Content="Button" Tag="0"/>
                                                                     <ComboBoxItem Content="Axis right / +" Tag="1"/>
                                                                     <ComboBoxItem Content="Axis left / -" Tag="2"/>
+                                                                    <ComboBoxItem Content="Axis (continuous)" Tag="3"/>
                                                                 </ComboBox>
                                                                 <StackPanel Orientation="Horizontal" Margin="10 0 0 0"
-                                                                            Visibility="{Binding AxisConditionVisibility}">
+                                                                            Visibility="{Binding ThresholdConditionVisibility}">
                                                                     <TextBlock Text="Threshold" Foreground="#CCCCCC" VerticalAlignment="Center" Margin="0 0 5 0"/>
                                                                     <TextBox Width="65" Height="28" VerticalContentAlignment="Center"
                                                                              Text="{Binding InputExpressionAxisThreshold, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
