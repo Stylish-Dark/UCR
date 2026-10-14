@@ -1664,11 +1664,21 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             for (var groupIndex = 0; groupIndex < groups.Count; groupIndex++)
             {
-                var visuals = groups[groupIndex].Select(DescribeCollapsedBinding).ToList();
-                for (var start = 0; start < visuals.Count; start += 3)
+                var bindings = groups[groupIndex];
+                var visuals = new List<BindingVisualDescriptor>();
+                for (var i = 0; i < bindings.Count; i++)
+                {
+                    var visual = DescribeCollapsedBinding(bindings[i]);
+                    if (i > 0 && bindings[i].DeviceBinding.InputDirectionSlot > 0 &&
+                        bindings[i - 1].DeviceBinding.InputDirectionSlot > 0)
+                        visual.JoinSymbol = "∨";
+                    visuals.Add(visual);
+                }
+                var chunkSize = bindings.Any(binding => binding.DeviceBinding.InputDirectionSlot > 0) ? 4 : 3;
+                for (var start = 0; start < visuals.Count; start += chunkSize)
                     result.Add(new CollapsedConditionVisualRow
                     {
-                        Visuals = visuals.Skip(start).Take(3).ToList(),
+                        Visuals = visuals.Skip(start).Take(chunkSize).ToList(),
                         StartsAlternative = groupIndex > 0 && start == 0
                     });
             }
