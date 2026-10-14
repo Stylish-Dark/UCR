@@ -256,8 +256,9 @@ namespace HidWizards.UCR.Core.Models
                         : Math.Abs((int)raw) >= threshold ? Math.Abs((int)raw) : 0;
                     amount += slot == 1 || slot == 3 ? -magnitude : magnitude;
                 }
-                if (directions[0] >= 0 && DeviceBindings[directions[0]].InputExpressionNegated)
-                    amount = -amount;
+                // NOT negates the logical condition; it must not reverse the
+                // joystick direction (the output plugin has its own Invert setting).
+                if (DeviceBindings[directions[0]].InputExpressionNegated) continue;
                 if (amount != 0) return (short)Math.Max(short.MinValue, Math.Min(short.MaxValue, amount));
             }
             return 0;
@@ -290,8 +291,9 @@ namespace HidWizards.UCR.Core.Models
                     var allowed = group.Where(i => DeviceBindings[i].InputDirectionSlot == 0)
                         .All(i => EvaluateOrdinaryCondition(DeviceBindings[i], values[i]));
                     if (!allowed) continue;
-                    var active = group.Any(i => DeviceBindings[i].InputDirectionSlot > 0 &&
-                        values[i] != 0);
+                    var directions = group.Where(i => DeviceBindings[i].InputDirectionSlot > 0).ToList();
+                    var active = directions.Any(i => values[i] != 0);
+                    if (DeviceBindings[directions[0]].InputExpressionNegated) active = !active;
                     if (!active) continue;
                     analogue = forAnalogue ? EvaluateDirectionalAxis(values, 0) : (short)1;
                     if (!forAnalogue || analogue != 0) return true;
