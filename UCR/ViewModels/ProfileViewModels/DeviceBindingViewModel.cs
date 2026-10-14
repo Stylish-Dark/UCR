@@ -48,6 +48,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (ExpressionMapping != null && !ExpressionMapping.EnableInputExpression()) return;
                 DeviceBinding.SetInputExpressionInputKind(value);
                 DeviceBindingCategory = value == 0 ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
+                OnPropertyChanged(nameof(DeviceBindingCategory));
+                OnPropertyChanged(nameof(ShowInvertInput));
+                OnPropertyChanged(nameof(InputTypeDetailsVisibility));
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(BindButtonText));
                 OnPropertyChanged(nameof(CompactBindButtonText));
@@ -55,6 +58,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(ThresholdConditionVisibility));
             }
         }
+        // Default button inputs need no extra row; advanced axis controls appear only
+        // when that individual input uses analogue data.
+        public Visibility InputTypeDetailsVisibility =>
+            DeviceBinding.InputExpressionInputKind == 0 ? Visibility.Collapsed : Visibility.Visible;
         public Visibility AxisConditionVisibility =>
             DeviceBinding.InputExpressionInputKind == 0 ? Visibility.Collapsed : Visibility.Visible;
         public Visibility ThresholdConditionVisibility =>
