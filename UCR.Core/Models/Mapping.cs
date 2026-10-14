@@ -395,11 +395,13 @@ namespace HidWizards.UCR.Core.Models
                 return false;
             if (Plugins.Count == 0)
             {
-                foreach (var _ in plugin.InputCategories)
+                foreach (var definition in plugin.InputCategories)
                 {
                     DeviceBindings.Add(new DeviceBinding(Update, Profile, DeviceIoType.Input)
                     {
-                        DeviceConfigurationGuid = Profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input)?.Guid ?? Guid.Empty
+                        DeviceConfigurationGuid = Profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input)?.Guid ?? Guid.Empty,
+                        DeviceBindingCategory = definition.Category,
+                        InputExpressionInputKind = definition.Category == DeviceBindingCategory.Range ? 3 : 0
                     });
                 }
             }
