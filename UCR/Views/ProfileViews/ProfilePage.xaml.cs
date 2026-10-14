@@ -989,6 +989,19 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (mapping.InputConditions?.Any(g => g.HasDirectionalInputs) == true)
             {
                 menu.Items.Add(new Separator());
+                if (mapping.InputConditions.Any(group => group.IsFourWay))
+                {
+                    var dpad = new MenuItem { Header = "Controller D-pad", Padding = new Thickness(12, 7, 14, 7) };
+                    dpad.Click += (source, args) =>
+                    {
+                        string error;
+                        if (!mapping.ApplyDirectionalDPadPreset(out error) &&
+                            !string.IsNullOrWhiteSpace(error))
+                            DarkMessageBox.Show(error, "Preset unavailable",
+                                MessageBoxButton.OK, MessageBoxImage.Information);
+                    };
+                    menu.Items.Add(dpad);
+                }
                 foreach (var preset in new[] { "WASD", "Arrows", "Numpad", "UJHK" })
                 {
                     var choice = preset;
