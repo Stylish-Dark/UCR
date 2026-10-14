@@ -924,7 +924,7 @@
                                                                                     <ItemsControl.ItemTemplate>
                                                                                         <DataTemplate>
                                                                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                                                                <TextBlock Text="+" FontSize="13" Foreground="#B0B0B0"
+                                                                                                <TextBlock Text="{Binding JoinSymbol}" FontSize="13" Foreground="#B0B0B0"
                                                                                                            VerticalAlignment="Center" Margin="0 0 4 0">
                                                                                                     <TextBlock.Style>
                                                                                                         <Style TargetType="TextBlock">
