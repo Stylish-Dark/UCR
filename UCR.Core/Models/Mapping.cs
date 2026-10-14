@@ -437,7 +437,12 @@ namespace HidWizards.UCR.Core.Models
                 return true;
             }
 
-            first.SetDeviceConfigurationGuid(Guid.Empty, false);
+            // Clear the old single-source binding without relying on a live Profile:
+            // profile-less mappings are also constructed by import and unit tests.
+            first.DeviceConfigurationGuid = Guid.Empty;
+            first.KeyType = first.KeyValue = first.KeySubValue = 0;
+            first.IsBound = false;
+            first.Block = false;
             first.InputExpressionInputKind = 0;
             first.InputExpressionKindConfigured = true;
             first.DeviceBindingCategory = DeviceBindingCategory.Momentary;
