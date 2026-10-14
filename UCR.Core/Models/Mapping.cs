@@ -258,8 +258,13 @@ namespace HidWizards.UCR.Core.Models
                 }
                 // NOT negates the logical condition; it must not reverse the
                 // joystick direction (the output plugin has its own Invert setting).
-                if (DeviceBindings[directions[0]].InputExpressionNegated) continue;
-                if (amount != 0) return (short)Math.Max(short.MinValue, Math.Min(short.MaxValue, amount));
+                var anyDirection = directions.Any(i => values[i] != 0);
+                var active = DeviceBindings[directions[0]].InputExpressionNegated
+                    ? !anyDirection : anyDirection;
+                if (!active) continue;
+                // A satisfied OR group owns both X and Y, including a neutral
+                // component. Do not combine X from one group with Y from another.
+                return (short)Math.Max(short.MinValue, Math.Min(short.MaxValue, amount));
             }
             return 0;
         }
@@ -296,8 +301,7 @@ namespace HidWizards.UCR.Core.Models
                     if (DeviceBindings[directions[0]].InputExpressionNegated) active = !active;
                     if (!active) continue;
                     analogue = forAnalogue ? EvaluateDirectionalAxis(values, 0) : (short)1;
-                    if (!forAnalogue || analogue != 0) return true;
-                    continue;
+                    return true;
                 }
 
                 var groupTrue = true;
