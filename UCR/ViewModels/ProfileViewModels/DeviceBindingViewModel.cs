@@ -36,6 +36,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             get => DeviceBinding.InputExpressionInputKind;
             set
             {
+                // WPF briefly reports -1 before ComboBox items have been realised.
+                // That is not a user type change and must never clear a saved binding.
+                if (value < 0 || value > 3) return;
                 if (DeviceBinding.InputExpressionInputKind == value) return;
                 if (ExpressionMapping != null && !ExpressionMapping.EnableInputExpression()) return;
                 DeviceBinding.SetInputExpressionInputKind(value);
