@@ -1661,8 +1661,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             switch (category)
             {
-                case DeviceBindingCategory.Momentary:
-                        return (Mapping?.DeviceBindings?.Count ?? 0) == 1 ? "Button" : "Buttons";
+                case DeviceBindingCategory.Momentary: return "Button";
                 case DeviceBindingCategory.Range: return "Axis";
                 case DeviceBindingCategory.Event: return "Event";
                 case DeviceBindingCategory.Delta: return "Delta";
@@ -1768,7 +1767,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (kinds.Count != 1) return "Multiple";
                 switch (kinds[0])
                 {
-                    case DeviceBindingCategory.Momentary: return "Button";
+                    case DeviceBindingCategory.Momentary:
+                        return (Mapping?.DeviceBindings?.Count ?? 0) == 1 ? "Button" : "Buttons";
                     case DeviceBindingCategory.Range: return "Axis";
                     case DeviceBindingCategory.Event: return "Event";
                     case DeviceBindingCategory.Delta: return "Delta";
