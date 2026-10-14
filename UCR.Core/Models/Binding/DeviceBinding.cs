@@ -57,6 +57,13 @@ namespace HidWizards.UCR.Core.Models.Binding
         [DefaultValue(false)]
         public bool InputExpressionNegated { get; set; }
 
+        // A logical directional control owns opposing physical bindings.
+        // 0 = ordinary condition; 1/2 = negative/positive X; 3/4 = negative/positive Y.
+        // The slots share Block and NOT, while retaining independent physical devices.
+        [XmlAttribute]
+        [DefaultValue(0)]
+        public int InputDirectionSlot { get; set; }
+
         // Input expression terms choose their own category, independent of the output plugin.
         // 0 = button, 1 = positive axis threshold, 2 = negative axis threshold, 3 = continuous axis source.
         [XmlAttribute]
