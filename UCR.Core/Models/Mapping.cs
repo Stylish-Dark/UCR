@@ -242,6 +242,9 @@ namespace HidWizards.UCR.Core.Models
                 }
 
                 if (!groupTrue) continue;
+                // A centred analogue driver produces no activation. Allow a later
+                // OR group to supply an alternative, rather than shadowing it at zero.
+                if (forAnalogue && driverPresent && driverValue == 0) continue;
                 analogue = forAnalogue
                     ? (driverPresent ? driverValue : short.MaxValue)
                     : (short)1;
