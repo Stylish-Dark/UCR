@@ -415,12 +415,7 @@ namespace HidWizards.UCR.Views.Controls
                 item.Click += (s, args) =>
                 {
                     if (current.Plugin.GetType() == selected.Plugin.GetType()) return;
-                    var response = DarkMessageBox.Show(
-                        "Switching input type may replace incompatible input bindings and AND/OR conditions. " +
-                        "The output destination is retained. Continue?",
-                        "Change input type?", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-                    if (response == MessageBoxResult.Yes)
-                        mapping.ChangeInputType(current, selected.Plugin);
+                    mapping.ChangeInputType(current, selected.Plugin);
                 };
                 menu.Items.Add(item);
             }
@@ -431,19 +426,6 @@ namespace HidWizards.UCR.Views.Controls
                     IsEnabled = false,
                     Foreground = Brushes.LightGray
                 });
-            if (mapping.SupportsNativeInputExpression)
-            {
-                menu.Items.Add(new Separator());
-                menu.Items.Add(new MenuItem
-                {
-                    Header = "Add OR input group",
-                    Foreground = Brushes.White,
-                    Background = Brushes.Transparent,
-                    Padding = new Thickness(10, 6, 14, 6),
-                    Command = null
-                });
-                ((MenuItem)menu.Items[menu.Items.Count - 1]).Click += (s, args) => mapping.AddCondition();
-            }
             menu.IsOpen = true;
         }
 
