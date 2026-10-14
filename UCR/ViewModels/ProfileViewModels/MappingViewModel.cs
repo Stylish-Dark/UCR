@@ -78,7 +78,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool CanMoveUp => ButtonsEnabled && ProfileViewModel.CanMoveMapping(this, -1);
         public bool CanMoveDown => ButtonsEnabled && ProfileViewModel.CanMoveMapping(this, 1);
         public string MappingRoute => Mapping != null && Mapping.Plugins.Count > 0 ? Mapping.Plugins[0].PluginName : "No plugin";
-        public string MappingRouteDisplay => FormatMappingRoute(MappingRoute);
+        public string MappingRouteDisplay => FormatMappingRoute(MappingRoute, Mapping?.DeviceBindings?.Count ?? 0, Plugins?.Count ?? 0);
         public List<MappingHeaderToken> MappingRouteTokens => _mappingRouteTokens;
         public string MappingOutputTypeLabel => _mappingOutputTypeLabel;
         public string DefinedFilterName => _definedFilterName;
@@ -471,6 +471,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(UsesInputExpression));
             OnPropertyChanged(nameof(InputLogicSummary));
             OnPropertyChanged(nameof(InputConditions));
+            RefreshHeaderState();
         }
 
         private void RebuildInputConditions()
@@ -571,10 +572,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             _filterIndicatorToolTip = BuildFilterIndicatorToolTip(_referencedFilters);
         }
 
-        private static string FormatMappingRoute(string route)
+        private static string FormatMappingRoute(string route, int inputCount, int outputCount)
         {
             if (string.IsNullOrWhiteSpace(route)) return route;
-            return Regex.Replace(route.Trim(), @"\s+to\s+", " → ", RegexOptions.IgnoreCase);
+            // Keep the underlying plugin type unchanged; label the actual binding cardinality.
+            var sides = Regex.Split(route.Trim(), @"\s+to\s+", RegexOptions.IgnoreCase);
+            if (sides.Length != 2)
+                return Regex.Replace(route.Trim(), @"\s+to\s+", " → ", RegexOptions.IgnoreCase);
+
+            var input = Regex.Replace(sides[0], @"\bButtons?\b",
+                inputCount == 1 ? "Button" : "Buttons", RegexOptions.IgnoreCase);
+            var output = Regex.Replace(sides[1], @"\bButtons?\b",
+                outputCount == 1 ? "Button" : "Buttons", RegexOptions.IgnoreCase);
+            return input + " → " + output;
         }
 
         private static List<MappingHeaderToken> BuildMappingRouteTokens(string route)
