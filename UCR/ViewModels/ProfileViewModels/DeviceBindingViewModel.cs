@@ -219,6 +219,20 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 ? "Move the joystick or squeeze a trigger to detect its axis. Press Esc to cancel."
                 : "Press an input control to bind it. Press Esc to cancel.";
 
+        public string DirectionalBindLabel
+        {
+            get
+            {
+                var slot = DeviceBinding?.InputDirectionSlot ?? 0;
+                var direction = slot == 1 ? "←" : slot == 2 ? "→" :
+                    slot == 3 ? "↑" : slot == 4 ? "↓" : "";
+                if (!DeviceBinding.IsBound) return direction + " Bind";
+                var label = CompactBindButtonText;
+                if (label.Length > 9) label = label.Substring(0, 8) + "…";
+                return direction + " " + label;
+            }
+        }
+
         public string BindButtonText
         {
             get
@@ -664,6 +678,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 BindModeProgress = 0;
                 OnPropertyChanged(nameof(BindButtonText));
                 OnPropertyChanged(nameof(CompactBindButtonText));
+                OnPropertyChanged(nameof(DirectionalBindLabel));
                 OnPropertyChanged(nameof(ShowPreview));
                 OnPropertyChanged(nameof(ShowBindMode));
             }
