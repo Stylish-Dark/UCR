@@ -501,7 +501,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                         var title = saved.ConfigurationName ?? saved.Device?.DisplayTitle
                             ?? saved.Device?.Title ?? "Disconnected input device";
                         selectedDevice = new ComboBoxItemViewModel(title, savedGuid,
-                            DeviceVisualCatalog.Describe(saved, DeviceBinding.Profile, DeviceIoType.Input));
+                            saved.Device == null
+                                ? DeviceVisualCatalog.Describe(saved.Device, DeviceIoType.Input)
+                                : DeviceVisualCatalog.Describe(saved, DeviceBinding.Profile, DeviceIoType.Input));
                         Devices.Add(selectedDevice);
                     }
                 }
