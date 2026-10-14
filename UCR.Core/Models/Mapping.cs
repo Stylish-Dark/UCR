@@ -161,8 +161,7 @@ namespace HidWizards.UCR.Core.Models
             // receive its Boolean state; range consumers receive an analogue driver, or
             // full-scale activation when the expression has only discrete conditions.
             var digital = EvaluateInputExpression(InputCache);
-            short analogue;
-            EvaluateInputSignal(InputCache, true, out analogue);
+            var analogue = EvaluateAnalogueInputExpression(InputCache);
             var digitalChanged = !_lastInputExpressionValue.HasValue ||
                                  _lastInputExpressionValue.Value != digital;
             _lastInputExpressionValue = digital;
@@ -181,6 +180,13 @@ namespace HidWizards.UCR.Core.Models
         {
             short unused;
             return EvaluateInputSignal(values, false, out unused) ? (short)1 : (short)0;
+        }
+
+        internal short EvaluateAnalogueInputExpression(IList<short> values)
+        {
+            short analogue;
+            EvaluateInputSignal(values, true, out analogue);
+            return analogue;
         }
 
         // The first satisfied OR group wins. A non-negated continuous axis in that group
