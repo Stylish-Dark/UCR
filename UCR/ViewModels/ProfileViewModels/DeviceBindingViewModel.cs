@@ -478,8 +478,40 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             else if (selectedDevice == null && DeviceBinding.DeviceConfigurationGuid != Guid.Empty)
             {
-                selectedDevice = new ComboBoxItemViewModel("Unavailable device", DeviceBinding.DeviceConfigurationGuid);
-                Devices.Insert(0, selectedDevice);
+                if (DeviceBinding.DeviceIoType == DeviceIoType.Input)
+                {
+                    var savedGuid = DeviceBinding.DeviceConfigurationGuid;
+                    var saved = DeviceBinding.Profile.GetDeviceConfiguration(DeviceIoType.Input, savedGuid);
+
+                    if (saved == null ||
+                        (saved.Device != null &&
+                         !IsCompatibleInputDevice(saved, DeviceBindingCategory, DeviceBinding.Profile.Context)))
+                    {
+                        // A removed profile device or a category-incompatible control is
+                        // not a selectable input. Reset to unrestricted detection rather
+                        // than manufacturing a phantom "Unavailable device" choice.
+                        DeviceBinding.SetDeviceConfigurationGuid(Guid.Empty, false);
+                        selectedDevice = Devices.FirstOrDefault(item => item.Value == Guid.Empty);
+                    }
+                    else
+                    {
+                        // Preserve references to a configured but temporarily disconnected
+                        // device without inventing a generic unavailable-device entry.
+                        // This prevents losing saved mappings when hardware is unplugged.
+                        var title = saved.ConfigurationName ?? saved.Device?.DisplayTitle
+                            ?? saved.Device?.Title ?? "Disconnected input device";
+                        selectedDevice = new ComboBoxItemViewModel(title, savedGuid,
+                            DeviceVisualCatalog.Describe(saved, DeviceBinding.Profile, DeviceIoType.Input));
+                        Devices.Add(selectedDevice);
+                    }
+                }
+                else
+                {
+                    // Output selections are explicit destinations: never silently
+                    // redirect their saved bindings to another output device.
+                    selectedDevice = new ComboBoxItemViewModel("Unavailable device", DeviceBinding.DeviceConfigurationGuid);
+                    Devices.Insert(0, selectedDevice);
+                }
             }
             else if (selectedDevice == null)
             {
