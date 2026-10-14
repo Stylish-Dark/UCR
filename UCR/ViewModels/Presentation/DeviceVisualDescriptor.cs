@@ -78,6 +78,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
         public ControlVisualKind ControlKind { get; set; }
         public Brush ControlBrush { get; set; }
         public string ControlLabel { get; set; }
+        public string JoinSymbol { get; set; } = "+";
         public string ToolTip { get; set; }
         public bool IsBound { get; set; }
         public Guid DeviceConfigurationGuid { get; set; }
