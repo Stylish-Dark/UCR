@@ -59,6 +59,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 DeviceBinding.SetInputExpressionAxisThreshold(value);
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(AxisThresholdPercent));
+            }
+        }
+
+        public int AxisThresholdPercent
+        {
+            get => (int)Math.Round(DeviceBinding.InputExpressionAxisThreshold * 100.0 / short.MaxValue);
+            set
+            {
+                var percent = Math.Max(1, Math.Min(100, value));
+                InputExpressionAxisThreshold = (int)Math.Round(percent * (double)short.MaxValue / 100.0);
+                OnPropertyChanged();
             }
         }
         public ObservableCollection<ComboBoxItemViewModel> Devices { get; set; }
