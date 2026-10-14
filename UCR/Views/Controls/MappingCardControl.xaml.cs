@@ -475,35 +475,6 @@ namespace HidWizards.UCR.Views.Controls
                 menu.Items.Add(item);
             }
 
-            // Retain specialised plugin capabilities without cluttering the common
-            // output picker. Full plugin names distinguish the advanced variants.
-            var advanced = new MenuItem
-            {
-                Header = "Advanced output modes",
-                Foreground = Brushes.White,
-                Background = Brushes.Transparent,
-                Padding = new Thickness(10, 6, 14, 6)
-            };
-            foreach (var option in options)
-            {
-                var selected = option;
-                var item = new MenuItem
-                {
-                    Header = selected.Name,
-                    ToolTip = selected.Description,
-                    Foreground = Brushes.White,
-                    Background = Brushes.Transparent,
-                    Padding = new Thickness(10, 6, 14, 6),
-                    IsChecked = output.Plugin.GetType() == selected.Plugin.GetType()
-                };
-                item.Click += (s, args) => apply(selected);
-                advanced.Items.Add(item);
-            }
-            if (advanced.Items.Count > 0)
-            {
-                if (menu.Items.Count > 0) menu.Items.Add(new Separator());
-                menu.Items.Add(advanced);
-            }
             if (changeAll)
             {
                 menu.Items.Add(new Separator());
@@ -533,10 +504,9 @@ namespace HidWizards.UCR.Views.Controls
         {
             var variants = group.ToList();
             if (variants.Count == 0) return null;
-            var existing = variants.FirstOrDefault(option =>
-                current?.Plugin?.GetType() == option.Plugin.GetType());
-            if (existing != null) return existing;
-
+            // Changing the category chooses the standard output behaviour, not the
+            // legacy input-to-output plugin identity. Existing specialised mappings
+            // continue to work until the user explicitly changes their output type.
             var category = variants[0].OutputType;
             string name = null;
             switch (category)
