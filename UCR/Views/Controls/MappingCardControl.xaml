@@ -380,11 +380,20 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <Button Content="+ Add OR input group" Height="34"
+                        <Button Content="+ OR input(s)" Height="34"
                                 HorizontalAlignment="Left" Margin="2 2 0 3"
                                 Click="AddCondition_OnClick" IsEnabled="{Binding ButtonsEnabled}"
-                                Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
-                                ToolTip="Add an alternative group of inputs"/>
+                                Foreground="#FFFFFF" ToolTip="Add an alternative group of inputs">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource UcrAccentOutlineButton}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding InspectorMode, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
 
                     </StackPanel>
 
