@@ -1280,6 +1280,14 @@ namespace HidWizards.UCR.Views.ProfileViews
                 " inputs across " + selected.Count + " selected mappings.");
         }
 
+        private void ToggleInlineMapping_OnClick(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            var mapping = (sender as FrameworkElement)?.DataContext as MappingViewModel;
+            if (mapping == null) return;
+            mapping.IsExpanded = !mapping.IsExpanded;
+        }
+
         private void MappingListView_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             var selected = (sender as ListView)?.SelectedItem as MappingViewModel;
