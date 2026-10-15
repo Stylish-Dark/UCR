@@ -828,6 +828,7 @@
                         <ColumnDefinition Width="3*"/>
                         <ColumnDefinition Width="34"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="40"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- The strip describes what the mapping produces, not what happened to feed it. -->
@@ -1009,25 +1010,29 @@
                         <Button ToolTip="Remove mapping. Stop the active profile to edit." ToolTipService.ShowOnDisabled="True"
                                 Width="30" Height="30" Margin="2" Style="{StaticResource UcrDeleteCrossButton}"
                                 IsEnabled="{Binding ButtonsEnabled}" Click="Remove_OnClick"/>
-                        <Button Width="30" Height="30" Margin="5 0 0 0" Padding="4"
-                                ToolTip="Expand or collapse mapping details"
-                                Style="{StaticResource UcrMappingActionButton}"
-                                Click="ExpandMappingButton_OnClick">
-                            <materialDesign:PackIcon Kind="ChevronDown" Width="19" Height="19">
-                                <materialDesign:PackIcon.Style>
-                                    <Style TargetType="{x:Type materialDesign:PackIcon}">
-                                        <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
-                                        <Setter Property="RenderTransform"><Setter.Value><RotateTransform Angle="0"/></Setter.Value></Setter>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                                <Setter Property="RenderTransform"><Setter.Value><RotateTransform Angle="180"/></Setter.Value></Setter>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </materialDesign:PackIcon.Style>
-                            </materialDesign:PackIcon>
-                        </Button>
+
                     </StackPanel>
+                    <!-- Always-visible, dedicated expand control; card content is not a toggle. -->
+                    <Button Grid.Column="5" Width="34" Height="38" Margin="0 0 4 0"
+                            VerticalAlignment="Center" HorizontalAlignment="Center"
+                            Background="Transparent" BorderThickness="0" Foreground="#D6D6D6"
+                            ToolTip="Expand or collapse mapping details"
+                            Click="ExpandMappingButton_OnClick">
+                        <TextBlock Text="⌄" FontFamily="Segoe UI Symbol" FontSize="26" FontWeight="SemiBold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+                                    <Setter Property="RenderTransform"><Setter.Value><RotateTransform Angle="0"/></Setter.Value></Setter>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                            <Setter Property="RenderTransform"><Setter.Value><RotateTransform Angle="180"/></Setter.Value></Setter>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Button>
                 </Grid>
             </Expander.Header>
             </Expander>
