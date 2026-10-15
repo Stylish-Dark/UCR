@@ -866,10 +866,167 @@
                                                 </ListView.Style>
                                                 <ListView.ItemTemplate>
                                                     <DataTemplate>
-                                                        <!-- Use the same actual mapping-card control as the inspector.
-                                                             The card owns its chevron, editable binding glyphs, and
-                                                             lazily populated inline INPUTS/OUTPUTS editor. -->
-                                                        <controls:MappingCardControl/>
+                                                        <!-- All rows use identical proportional columns. Name, input,
+                                                             arrow and output stay aligned across every mapping;
+                                                             the glyphs are centred WITHIN their own columns. -->
+                                                        <Border Margin="0 3" Padding="12 7" CornerRadius="4"
+                                                                Background="#252525" BorderBrush="#393939"
+                                                                BorderThickness="1" HorizontalAlignment="Stretch">
+                                                            <StackPanel><Grid MinHeight="58" HorizontalAlignment="Stretch">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="1.25*" MinWidth="0"/>
+                                                                    <ColumnDefinition Width="1.05*" MinWidth="0"/>
+                                                                    <ColumnDefinition Width="44"/>
+                                                                    <ColumnDefinition Width="1.05*" MinWidth="0"/>
+                                                                    <ColumnDefinition Width="30"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <StackPanel Grid.Column="0" VerticalAlignment="Center"
+                                                                            Margin="3 0 8 0">
+                                                                    <TextBlock Text="{Binding MappingTitle}" Foreground="White"
+                                                                               FontSize="18" FontWeight="SemiBold"
+                                                                               TextTrimming="CharacterEllipsis"/>
+                                                                    <TextBlock Text="{Binding MappingOutputTypeLabel}" FontSize="14"
+                                                                               Foreground="#B0B0B0" Margin="0 3 0 0"/>
+                                                                </StackPanel>
+                                                                <!-- Render the real AND/OR expression. The previous flat
+                                                                     CollapsedInputVisuals list falsely showed OR terms
+                                                                     as if they belonged to one AND group. -->
+                                                                <ItemsControl Grid.Column="1" ItemsSource="{Binding CollapsedInputRows}"
+                                                                              HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                                                                              ClipToBounds="False">
+                                                                    <ItemsControl.ItemsPanel>
+                                                                        <ItemsPanelTemplate>
+                                                                            <StackPanel Orientation="Vertical"/>
+                                                                        </ItemsPanelTemplate>
+                                                                    </ItemsControl.ItemsPanel>
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate>
+                                                                            <StackPanel HorizontalAlignment="Stretch" Margin="0 1">
+                                                                                <TextBlock Text="OR" HorizontalAlignment="Center"
+                                                                                           Foreground="#AFAFAF" FontWeight="SemiBold"
+                                                                                           FontSize="11" Margin="0 3 0 3"
+                                                                                           Visibility="{Binding AlternativeDividerVisibility}"/>
+                                                                                <!-- Constrain each AND group to its available column width.
+                                                                                     At large UI scale, shrink the glyph group rather than
+                                                                                     clipping its first and last controls. -->
+                                                                                <Viewbox Stretch="Uniform" StretchDirection="DownOnly"
+                                                                                         Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
+                                                                                         HorizontalAlignment="Center">
+                                                                                <ItemsControl ItemsSource="{Binding Visuals}"
+                                                                                              HorizontalAlignment="Center"
+                                                                                              AlternationCount="100">
+                                                                                    <ItemsControl.ItemsPanel>
+                                                                                        <ItemsPanelTemplate>
+                                                                                            <StackPanel Orientation="Horizontal"
+                                                                                                        HorizontalAlignment="Center"/>
+                                                                                        </ItemsPanelTemplate>
+                                                                                    </ItemsControl.ItemsPanel>
+                                                                                    <ItemsControl.ItemTemplate>
+                                                                                        <DataTemplate>
+                                                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                                                <TextBlock Text="{Binding JoinSymbol}" FontSize="13" Foreground="#B0B0B0"
+                                                                                                           VerticalAlignment="Center" Margin="0 0 4 0">
+                                                                                                    <TextBlock.Style>
+                                                                                                        <Style TargetType="TextBlock">
+                                                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                                                            <Style.Triggers>
+                                                                                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(ItemsControl.AlternationIndex)}"
+                                                                                                                             Value="0">
+                                                                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                                                </DataTrigger>
+                                                                                                            </Style.Triggers>
+                                                                                                        </Style>
+                                                                                                    </TextBlock.Style>
+                                                                                                </TextBlock>
+                                                                                                <Grid Width="62" Height="44" Margin="2 1"
+                                                                                                      ToolTip="{Binding ToolTip}">
+                                                                                                    <controls:ControlGlyphControl Kind="{Binding ControlKind}"
+                                                                                                                                  AccentBrush="{Binding ControlBrush}"
+                                                                                                                                  Label="{Binding ControlLabel}"
+                                                                                                                                  Width="58" Height="42"/>
+                                                                                                    <Line X1="7" Y1="36" X2="55" Y2="6"
+                                                                                                          Stroke="#D9D9D9" StrokeThickness="2.8"
+                                                                                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                                                                          IsHitTestVisible="False">
+                                                                                                        <Line.Style>
+                                                                                                            <Style TargetType="Line">
+                                                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                                                <Style.Triggers>
+                                                                                                                    <DataTrigger Binding="{Binding IsNegatedInput}" Value="True">
+                                                                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                                                                    </DataTrigger>
+                                                                                                                </Style.Triggers>
+                                                                                                            </Style>
+                                                                                                        </Line.Style>
+                                                                                                    </Line>
+                                                                                                </Grid>
+                                                                                            </StackPanel>
+                                                                                        </DataTemplate>
+                                                                                    </ItemsControl.ItemTemplate>
+                                                                                </ItemsControl>
+                                                                                </Viewbox>
+                                                                            </StackPanel>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
+                                                                <TextBlock Grid.Column="2" Text="→" Foreground="#BBBBBB"
+                                                                           FontSize="24" VerticalAlignment="Center"
+                                                                           HorizontalAlignment="Center"/>
+                                                                <ItemsControl Grid.Column="3" ItemsSource="{Binding CollapsedOutputVisuals}"
+                                                                              HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                                                                    <ItemsControl.ItemsPanel>
+                                                                        <ItemsPanelTemplate>
+                                                                            <WrapPanel Orientation="Horizontal"
+                                                                                       HorizontalAlignment="Center"/>
+                                                                        </ItemsPanelTemplate>
+                                                                    </ItemsControl.ItemsPanel>
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate>
+                                                                            <controls:ControlGlyphControl Kind="{Binding ControlKind}"
+                                                                                                          AccentBrush="{Binding ControlBrush}"
+                                                                                                          Label="{Binding ControlLabel}"
+                                                                                                          Width="58" Height="42"
+                                                                                                          ToolTip="{Binding ToolTip}" Margin="2 1"/>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
+                                                                <Button Grid.Column="4" Width="30" Height="38" Padding="0"
+                                                                        Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                                                        ToolTip="Expand or collapse mapping Inputs and Outputs"
+                                                                        Click="ToggleInlineMapping_OnClick">
+                                                                    <Button.Style>
+                                                                        <Style TargetType="{x:Type Button}">
+                                                                            <Setter Property="Content" Value="▼"/>
+                                                                            <Setter Property="Foreground" Value="#C4D6ED"/>
+                                                                            <Setter Property="FontSize" Value="18"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                                                    <Setter Property="Content" Value="▲"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Button.Style>
+                                                                </Button>
+                                                            </Grid>
+                                                                <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch">
+                                                                    <ContentControl.Style>
+                                                                        <Style TargetType="{x:Type ContentControl}">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </ContentControl.Style>
+                                                                    <ContentControl.ContentTemplate>
+                                                                        <DataTemplate>
+                                                                            <controls:MappingCardControl InspectorMode="True"/>
+                                                                        </DataTemplate>
+                                                                    </ContentControl.ContentTemplate>
+                                                                </ContentControl>
+                                                            </StackPanel>
+                                                        </Border>
                                                     </DataTemplate>
                                                 </ListView.ItemTemplate>
                                             </ListView>
