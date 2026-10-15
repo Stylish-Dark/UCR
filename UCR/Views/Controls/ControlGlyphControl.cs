@@ -100,9 +100,13 @@ namespace HidWizards.UCR.Views.Controls
         private static void DrawKey(DrawingContext dc, Rect b, Brush accent, string label)
         {
             var rect = new Rect(b.Left + 1, b.Top + 2, Math.Max(1, b.Width - 2), Math.Max(1, b.Height - 4));
-            var fill = new SolidColorBrush(Color.FromRgb(48, 48, 48));
+            var fill = Brushes.Black;
             dc.DrawRoundedRectangle(fill, Pen(accent, 1.1), rect, 3, 3);
-            DrawCenteredText(dc, label, Brushes.White, rect, FontFor(label, b.Height * 0.48), FontWeights.SemiBold);
+            // The Q descender makes its visible shape sit slightly lower than other capitals.
+            var textRect = string.Equals(label, "Q", StringComparison.OrdinalIgnoreCase)
+                ? new Rect(rect.Left, rect.Top - 1.1, rect.Width, rect.Height)
+                : rect;
+            DrawCenteredText(dc, label, accent, textRect, FontFor(label, b.Height * 0.48), FontWeights.SemiBold);
         }
 
         private static void DrawMouseButton(DrawingContext dc, Rect b, Brush accent, string label)
