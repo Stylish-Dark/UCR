@@ -275,6 +275,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(body.ActualHeight, Is.GreaterThan(0));
 
                 ((IInvokeProvider)new ButtonAutomationPeer(chevron)).Invoke();
+                PumpDispatcherFor(TimeSpan.FromMilliseconds(40));
                 Assert.That(mapping.IsExpanded, Is.False);
                 Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible),
                     "Closing should preserve the existing short fade instead of snapping away.");
