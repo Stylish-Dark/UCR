@@ -1016,7 +1016,7 @@
                             Margin="0 0 4 0" VerticalAlignment="Center" HorizontalAlignment="Center"
                             Padding="0" Foreground="#D6D6D6" Background="Transparent"
                             BorderThickness="0" Cursor="Hand" Focusable="True"
-                            Content="▼" FontFamily="Segoe UI Symbol" FontSize="17"
+                            FontFamily="Segoe UI Symbol" FontSize="17"
                             ToolTip="Expand or collapse mapping details"
                             Click="ExpandMappingButton_OnClick">
                         <Button.Style>
