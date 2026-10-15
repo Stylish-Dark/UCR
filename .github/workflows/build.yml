@@ -582,10 +582,12 @@ jobs:
           }
           Write-Host 'Verified UCR.Tests runtime dependency closure.'
 
-          & $runner $tests --noresult --workers=0
-          if ($LASTEXITCODE -ne 0) {
-            throw "UCR unit tests failed with exit code $LASTEXITCODE."
-          }
+          # WPF theme resources are owned by the dispatcher that creates App.
+          # Isolate device-row materialization in a fresh NUnit process.
+          & $runner $tests --noresult --workers=0 --where "test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton"
+          if ($LASTEXITCODE -ne 0) { throw "Main UCR tests failed: $LASTEXITCODE" }
+          & $runner $tests --noresult --workers=0 --where "test == HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton"
+          if ($LASTEXITCODE -ne 0) { throw "Isolated device-row UI test failed: $LASTEXITCODE" }
 
       - name: Upload UCR Stylish Windows build
         uses: actions/upload-artifact@v7
