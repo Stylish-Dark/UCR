@@ -888,38 +888,84 @@
                                                                     <TextBlock Text="{Binding MappingOutputTypeLabel}" FontSize="14"
                                                                                Foreground="#B0B0B0" Margin="0 3 0 0"/>
                                                                 </StackPanel>
-                                                                <ItemsControl Grid.Column="1" ItemsSource="{Binding CollapsedInputVisuals}"
-                                                                              HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                                                                <!-- Render the real AND/OR expression. The previous flat
+                                                                     CollapsedInputVisuals list falsely showed OR terms
+                                                                     as if they belonged to one AND group. -->
+                                                                <ItemsControl Grid.Column="1" ItemsSource="{Binding CollapsedInputRows}"
+                                                                              HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                                                                              ClipToBounds="False">
                                                                     <ItemsControl.ItemsPanel>
                                                                         <ItemsPanelTemplate>
-                                                                            <WrapPanel Orientation="Horizontal"
-                                                                                       HorizontalAlignment="Center"/>
+                                                                            <StackPanel Orientation="Vertical"/>
                                                                         </ItemsPanelTemplate>
                                                                     </ItemsControl.ItemsPanel>
                                                                     <ItemsControl.ItemTemplate>
                                                                         <DataTemplate>
-                                                                            <Grid Width="62" Height="44" Margin="2 1"
-                                                                                  ToolTip="{Binding ToolTip}">
-                                                                                <controls:ControlGlyphControl Kind="{Binding ControlKind}"
-                                                                                                              AccentBrush="{Binding ControlBrush}"
-                                                                                                              Label="{Binding ControlLabel}"
-                                                                                                              Width="58" Height="42"/>
-                                                                                <Line X1="7" Y1="36" X2="55" Y2="6"
-                                                                                      Stroke="#D9D9D9" StrokeThickness="2.8"
-                                                                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                                                                      IsHitTestVisible="False">
-                                                                                    <Line.Style>
-                                                                                        <Style TargetType="Line">
-                                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                            <Style.Triggers>
-                                                                                                <DataTrigger Binding="{Binding IsNegatedInput}" Value="True">
-                                                                                                    <Setter Property="Visibility" Value="Visible"/>
-                                                                                                </DataTrigger>
-                                                                                            </Style.Triggers>
-                                                                                        </Style>
-                                                                                    </Line.Style>
-                                                                                </Line>
-                                                                            </Grid>
+                                                                            <StackPanel HorizontalAlignment="Stretch" Margin="0 1">
+                                                                                <TextBlock Text="OR" HorizontalAlignment="Center"
+                                                                                           Foreground="#AFAFAF" FontWeight="SemiBold"
+                                                                                           FontSize="11" Margin="0 3 0 3"
+                                                                                           Visibility="{Binding AlternativeDividerVisibility}"/>
+                                                                                <!-- Constrain each AND group to its available column width.
+                                                                                     At large UI scale, shrink the glyph group rather than
+                                                                                     clipping its first and last controls. -->
+                                                                                <Viewbox Stretch="Uniform" StretchDirection="DownOnly"
+                                                                                         Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
+                                                                                         HorizontalAlignment="Center">
+                                                                                <ItemsControl ItemsSource="{Binding Visuals}"
+                                                                                              HorizontalAlignment="Center"
+                                                                                              AlternationCount="100">
+                                                                                    <ItemsControl.ItemsPanel>
+                                                                                        <ItemsPanelTemplate>
+                                                                                            <StackPanel Orientation="Horizontal"
+                                                                                                        HorizontalAlignment="Center"/>
+                                                                                        </ItemsPanelTemplate>
+                                                                                    </ItemsControl.ItemsPanel>
+                                                                                    <ItemsControl.ItemTemplate>
+                                                                                        <DataTemplate>
+                                                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                                                <TextBlock Text="{Binding JoinSymbol}" FontSize="13" Foreground="#B0B0B0"
+                                                                                                           VerticalAlignment="Center" Margin="0 0 4 0">
+                                                                                                    <TextBlock.Style>
+                                                                                                        <Style TargetType="TextBlock">
+                                                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                                                            <Style.Triggers>
+                                                                                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(ItemsControl.AlternationIndex)}"
+                                                                                                                             Value="0">
+                                                                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                                                </DataTrigger>
+                                                                                                            </Style.Triggers>
+                                                                                                        </Style>
+                                                                                                    </TextBlock.Style>
+                                                                                                </TextBlock>
+                                                                                                <Grid Width="62" Height="44" Margin="2 1"
+                                                                                                      ToolTip="{Binding ToolTip}">
+                                                                                                    <controls:ControlGlyphControl Kind="{Binding ControlKind}"
+                                                                                                                                  AccentBrush="{Binding ControlBrush}"
+                                                                                                                                  Label="{Binding ControlLabel}"
+                                                                                                                                  Width="58" Height="42"/>
+                                                                                                    <Line X1="7" Y1="36" X2="55" Y2="6"
+                                                                                                          Stroke="#D9D9D9" StrokeThickness="2.8"
+                                                                                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                                                                          IsHitTestVisible="False">
+                                                                                                        <Line.Style>
+                                                                                                            <Style TargetType="Line">
+                                                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                                                <Style.Triggers>
+                                                                                                                    <DataTrigger Binding="{Binding IsNegatedInput}" Value="True">
+                                                                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                                                                    </DataTrigger>
+                                                                                                                </Style.Triggers>
+                                                                                                            </Style>
+                                                                                                        </Line.Style>
+                                                                                                    </Line>
+                                                                                                </Grid>
+                                                                                            </StackPanel>
+                                                                                        </DataTemplate>
+                                                                                    </ItemsControl.ItemTemplate>
+                                                                                </ItemsControl>
+                                                                                </Viewbox>
+                                                                            </StackPanel>
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
                                                                 </ItemsControl>
@@ -1014,24 +1060,43 @@
                                 IsEnabled="{Binding CanEditProfile}"
                                 Foreground="#FFFFFF" Style="{StaticResource UcrProfileActionButton}"
                                 ToolTip="Add an alternative input group"/>
+                        <Button Grid.Row="1" Content="Presets ▾" Height="34"
+                                HorizontalAlignment="Right" Margin="0 6 10 10"
+                                Click="InputDirectionPresets_OnClick"
+                                IsEnabled="{Binding SelectedMapping.ButtonsEnabled}"
+                                Visibility="{Binding SelectedMapping.DirectionalPresetsVisibility}"
+                                Foreground="#FFFFFF" Style="{StaticResource UcrProfileActionButton}"
+                                ToolTip="Choose directional layout or apply a keyboard preset"/>
                         </Grid>
                     </Border>
                     <Border Grid.Row="1" Background="#343434" BorderBrush="#494949"
                             BorderThickness="1 0 0 0"/>
                     <Border Grid.Row="2" BorderBrush="#414141" BorderThickness="1 1 0 0"
                             Background="#202020" ClipToBounds="True">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                      HorizontalScrollBarVisibility="Disabled"
-                                      CanContentScroll="False">
-                            <ContentControl Content="{Binding SelectedMapping}"
-                                            HorizontalContentAlignment="Stretch">
-                                <ContentControl.ContentTemplate>
-                                    <DataTemplate>
-                                        <controls:MappingCardControl InspectorMode="True" InspectorSection="Outputs"/>
-                                    </DataTemplate>
-                                </ContentControl.ContentTemplate>
-                            </ContentControl>
-                        </ScrollViewer>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          CanContentScroll="False">
+                                <ContentControl Content="{Binding SelectedMapping}"
+                                                HorizontalContentAlignment="Stretch">
+                                    <ContentControl.ContentTemplate>
+                                        <DataTemplate>
+                                            <controls:MappingCardControl InspectorMode="True" InspectorSection="Outputs"/>
+                                        </DataTemplate>
+                                    </ContentControl.ContentTemplate>
+                                </ContentControl>
+                            </ScrollViewer>
+                            <Button Grid.Row="1" Content="+ Add output" Height="34"
+                                    HorizontalAlignment="Left" Margin="10 6 0 10"
+                                    Click="AddInspectorOutput_OnClick"
+                                    IsEnabled="{Binding SelectedMapping.ButtonsEnabled}"
+                                    Foreground="#FFFFFF" Style="{StaticResource UcrProfileActionButton}"
+                                    ToolTip="Add another output destination"/>
+                        </Grid>
                     </Border>
                 </Grid>
             </Grid>

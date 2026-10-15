@@ -9,6 +9,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Utilities;
+using HidWizards.UCR.ViewModels;
 using HidWizards.UCR.ViewModels.Presentation;
 using HidWizards.UCR.ViewModels.ProfileViewModels;
 
@@ -375,6 +376,71 @@ namespace HidWizards.UCR.Views.Controls
             (DataContext as MappingViewModel)?.RemoveCondition(condition);
         }
 
+        private void BindDirectionalSlot_OnClick(object sender, RoutedEventArgs e)
+        {
+            var input = (sender as FrameworkElement)?.DataContext as DeviceBindingViewModel;
+            if (input?.DeviceBinding == null || input.DeviceBinding.IsInBindMode) return;
+            try
+            {
+                input.DeviceBinding.DeviceBindingCategory = input.DeviceBindingCategory;
+                input.DeviceBinding.EnterBindMode();
+            }
+            catch (Exception exception)
+            {
+                Logger.Error("Unable to capture directional input", exception);
+                DarkMessageBox.Show("Unable to detect this direction: " + exception.GetBaseException().Message,
+                    "Input detection unavailable", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DirectionalDevice_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var combo = sender as ComboBox;
+            var group = combo?.DataContext as InputConditionViewModel;
+            var selected = combo?.SelectedItem as ComboBoxItemViewModel;
+            if (group?.DirectionalPrimary == null || selected == null) return;
+
+            // WPF fires SelectionChanged when the template first loads. That must
+            // not clear existing inputs unless the user chose a different device.
+            var primary = group.DirectionalPrimary;
+            if (selected.Value == primary.DeviceBinding.DeviceConfigurationGuid) return;
+            foreach (var input in group.DirectionalInputs)
+                input.ChangeDeviceConfiguration(selected.Value);
+        }
+
+        private void DirectionalType_OnClick(object sender, RoutedEventArgs e)
+        {
+            var item = sender as MenuItem;
+            var button = (item?.Parent as ContextMenu)?.PlacementTarget as Button;
+            var input = button?.DataContext as DeviceBindingViewModel ?? item?.DataContext as DeviceBindingViewModel;
+            int kind;
+            if (input == null || !int.TryParse(item?.Tag as string, out kind)) return;
+            input.InputExpressionInputKind = kind;
+        }
+
+        private void DirectionalNot_OnClick(object sender, RoutedEventArgs e)
+        {
+            var group = (sender as FrameworkElement)?.DataContext as InputConditionViewModel;
+            if (group?.DirectionalPrimary == null) return;
+            (DataContext as MappingViewModel)?.SetInputNegated(group.DirectionalPrimary,
+                (sender as ToggleButton)?.IsChecked == true);
+        }
+
+        private void DirectionalBlock_OnClick(object sender, RoutedEventArgs e)
+        {
+            var group = (sender as FrameworkElement)?.DataContext as InputConditionViewModel;
+            if (group?.DirectionalPrimary == null) return;
+            (DataContext as MappingViewModel)?.SetDirectionalBlocked(group.DirectionalPrimary,
+                (sender as ToggleButton)?.IsChecked == true);
+        }
+
+        private void RemoveDirectionalUnit_OnClick(object sender, RoutedEventArgs e)
+        {
+            var group = (sender as FrameworkElement)?.DataContext as InputConditionViewModel;
+            if (group == null) return;
+            (DataContext as MappingViewModel)?.SetDirectionalMode(0);
+        }
+
         private void InputNegated_OnClick(object sender, RoutedEventArgs e)
         {
             var toggle = sender as ToggleButton;
@@ -438,30 +504,44 @@ namespace HidWizards.UCR.Views.Controls
             var options = mapping.GetCompatiblePluginOptions();
             if (options.Count == 0) return;
 
+            var changeAll = string.Equals(button.Tag as string, "CategoryHeader", StringComparison.Ordinal);
+            Action<SimplePluginViewModel> apply = selected =>
+            {
+                if (changeAll) mapping.ChangeAllOutputTypes(selected.Plugin);
+                else mapping.ChangeOutputType(output, selected.Plugin);
+            };
+
             var menu = CreateDarkContextMenu(button);
             menu.Placement = PlacementMode.Bottom;
-            foreach (var option in options)
+
+            // A mapping no longer has an input-to-output plugin identity. Expose one
+            // destination category at the surface, not a duplicate menu entry for
+            // every old 'Button to ...' and 'Axis to ...' implementation.
+            var categories = options.GroupBy(option => option.OutputType,
+                StringComparer.OrdinalIgnoreCase).ToList();
+            var analogueInput = mapping.Mapping.DeviceBindings.Any(input =>
+                input.InputExpressionInputKind == 3);
+            foreach (var category in categories)
             {
-                var selected = option;
+                if (!IsPrimaryOutputCategory(category.Key)) continue;
+                var preferred = PreferredOutputImplementation(category, analogueInput);
+                if (preferred == null) continue;
+                var selected = preferred;
                 var item = new MenuItem
                 {
-                    Header = selected.MenuLabel,
+                    Header = category.Key,
                     ToolTip = selected.Description,
                     Foreground = Brushes.White,
                     Background = Brushes.Transparent,
                     Padding = new Thickness(10, 6, 14, 6),
-                    IsChecked = output.Plugin.GetType() == selected.Plugin.GetType()
+                    IsChecked = string.Equals(output.OutputType, category.Key,
+                        StringComparison.OrdinalIgnoreCase)
                 };
-                item.Click += (s, args) =>
-                {
-                    if (string.Equals(button.Tag as string, "CategoryHeader", StringComparison.Ordinal))
-                        mapping.ChangeAllOutputTypes(selected.Plugin);
-                    else
-                        mapping.ChangeOutputType(output, selected.Plugin);
-                };
+                item.Click += (s, args) => apply(selected);
                 menu.Items.Add(item);
             }
-            if (string.Equals(button.Tag as string, "CategoryHeader", StringComparison.Ordinal))
+
+            if (changeAll)
             {
                 menu.Items.Add(new Separator());
                 var addOutput = new MenuItem
@@ -475,6 +555,37 @@ namespace HidWizards.UCR.Views.Controls
                 menu.Items.Add(addOutput);
             }
             menu.IsOpen = true;
+        }
+
+        private static bool IsPrimaryOutputCategory(string category)
+        {
+            return category == "Button" || category == "Axis" ||
+                   category == "Filter" || category == "Event" ||
+                   category == "Delta" || category == "Value";
+        }
+
+        private static SimplePluginViewModel PreferredOutputImplementation(
+            System.Collections.Generic.IEnumerable<SimplePluginViewModel> group,
+            bool analogueInput)
+        {
+            var variants = group.ToList();
+            if (variants.Count == 0) return null;
+            // Changing the category chooses the standard output behaviour, not the
+            // legacy input-to-output plugin identity. Existing specialised mappings
+            // continue to work until the user explicitly changes their output type.
+            var category = variants[0].OutputType;
+            string name = null;
+            switch (category)
+            {
+                case "Button": name = "Button to Button"; break;
+                case "Axis": name = "Axis to Axis"; break;
+                case "Filter": name = analogueInput ? "Axis to Filter" : "Button to Filter"; break;
+                case "Event": name = "Button to Event"; break;
+            }
+            return variants.FirstOrDefault(option =>
+                       string.Equals(option.Name, name, StringComparison.OrdinalIgnoreCase))
+                ?? variants.OrderBy(option => option.Name, StringComparer.OrdinalIgnoreCase)
+                    .First();
         }
 
         private void AxisFourButtons_OnClick(object sender, RoutedEventArgs e)

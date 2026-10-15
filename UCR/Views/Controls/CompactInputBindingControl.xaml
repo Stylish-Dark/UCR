@@ -145,7 +145,7 @@
         <Grid Grid.Row="0" Grid.Column="1" Margin="0 0 0 0">
             <Button x:Name="BindButton" MinHeight="32" MinWidth="120"
                     Content="{Binding CompactBindButtonText}"
-                    IsEnabled="{Binding BindingEnabled}"
+                    IsEnabled="{Binding CanBindCurrentDevice}"
                     Click="BindButton_OnClick"
                     Style="{StaticResource MaterialDesignRaisedButton}"
                     Foreground="#FFFFFF"

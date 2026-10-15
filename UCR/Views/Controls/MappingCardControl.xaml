@@ -148,8 +148,17 @@
                                        FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             <Button Content="{Binding MappingInputTypeLabel, StringFormat={}{0} ▼}" Margin="12 0 0 0" Padding="8 2" Height="28"
                                     Click="ChooseInputCategory_OnClick" Tag="CategoryHeader" IsEnabled="{Binding ButtonsEnabled}"
-                                    Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
-                                    ToolTip="Choose the input mapping category"/>
+                                    Foreground="#FFFFFF" ToolTip="Choose the legacy input mapping category">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource UcrAccentOutlineButton}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SupportsNativeInputExpression}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
                         </StackPanel>
                     <!-- Non-boolean plugins retain the full legacy editor. -->
                     <ItemsControl ItemsSource="{Binding DeviceBindings}" HorizontalContentAlignment="Stretch">
@@ -294,7 +303,166 @@
                                         <Border Background="#343434" BorderBrush="#666666" BorderThickness="1"
                                                 CornerRadius="4" Padding="7 8 7 7">
                                           <StackPanel>
-                                        <ItemsControl ItemsSource="{Binding Inputs}">
+                                        <!-- One logical directional control, with two or four
+                                             independent capture slots and shared action controls. -->
+                                        <Border Visibility="{Binding DirectionalVisibility}" Margin="0 0 0 5"
+                                                Background="#2B2B2B" BorderBrush="#505050"
+                                                BorderThickness="1" CornerRadius="3" Padding="6">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding DirectionalModeLabel}"
+                                                           Foreground="#B8B8B8" FontSize="11"
+                                                           Margin="2 0 0 5"/>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+        <ComboBox Grid.Column="0"
+                  Width="58" Height="38" Margin="0 0 4 0" Padding="0"
+                  HorizontalAlignment="Left"
+                  ItemsSource="{Binding DirectionalPrimary.Devices}"
+                  SelectedItem="{Binding DirectionalPrimary.SelectedDevice, Mode=OneWay}"
+                  IsEnabled="{Binding DirectionalPrimary.BindingEnabled}"
+                  SelectionChanged="DirectionalDevice_OnSelectionChanged"
+                  ToolTip="{Binding DirectionalPrimary.SelectedDevice.Title}">
+            <ComboBox.Template>
+                <ControlTemplate TargetType="{x:Type ComboBox}">
+                    <Grid SnapsToDevicePixels="True">
+                        <Border x:Name="DeviceSurface" CornerRadius="3" Background="#292929"
+                                BorderBrush="{DynamicResource PrimaryHueLightBrush}" BorderThickness="2">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="15"/>
+                                </Grid.ColumnDefinitions>
+                                <local:DeviceSymbolControl x:Name="ClosedDeviceGlyph"
+                                    Grid.Column="0" IsHitTestVisible="False"
+                                    SymbolText="{Binding SelectedItem.Visual.SymbolText, RelativeSource={RelativeSource TemplatedParent}}"
+                                    Foreground="{Binding SelectedItem.Visual.BadgeTextBrush, RelativeSource={RelativeSource TemplatedParent}}"
+                                    GlyphSize="31" Width="33" Height="32"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <materialDesign:PackIcon Grid.Column="1" Kind="ChevronDown"
+                                    Width="13" Height="13" Foreground="#CACACA" IsHitTestVisible="False"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.ColumnSpan="2" Focusable="False"
+                                    IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                            <Border Background="Transparent"/>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                </ToggleButton>
+                            </Grid>
+                        </Border>
+                        <Popup x:Name="PART_Popup" Placement="Bottom"
+                               PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                               IsOpen="{TemplateBinding IsDropDownOpen}"
+                               AllowsTransparency="True" Focusable="False" StaysOpen="False"
+                               PopupAnimation="Fade">
+                            <Border MinWidth="245" MaxWidth="350" Background="#262626"
+                                    BorderBrush="{DynamicResource PrimaryHueLightBrush}" BorderThickness="1"
+                                    Padding="3">
+                                <ScrollViewer MaxHeight="300" CanContentScroll="True"
+                                              VerticalScrollBarVisibility="Auto">
+                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                </ScrollViewer>
+                            </Border>
+                        </Popup>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="DeviceSurface" Property="Background" Value="#383838"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                            <Setter TargetName="DeviceSurface" Property="BorderBrush" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="DeviceSurface" Property="Opacity" Value="0.40"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </ComboBox.Template>
+            <ComboBox.ItemContainerStyle>
+                <Style TargetType="{x:Type ComboBoxItem}">
+                    <Setter Property="MinHeight" Value="36"/>
+                </Style>
+            </ComboBox.ItemContainerStyle>
+            <ComboBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid MinWidth="218" Margin="6 2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="39"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <local:DeviceSymbolControl Grid.Column="0" SymbolText="{Binding Visual.SymbolText}"
+                            Foreground="{Binding Visual.BadgeTextBrush}" GlyphSize="27"
+                            Width="35" Height="29" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="#FFFFFF"
+                            FontSize="13" VerticalAlignment="Center"
+                            TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}"/>
+                    </Grid>
+                </DataTemplate>
+            </ComboBox.ItemTemplate>
+        </ComboBox>
+                                                    <ItemsControl Grid.Column="1" ItemsSource="{Binding DirectionalInputs}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <UniformGrid Rows="1" Columns="{Binding DirectionalColumns}"/>
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Button Height="36" MinWidth="0" Margin="1 0" Padding="2 2"
+                                                                        HorizontalAlignment="Stretch" ClipToBounds="True"
+                                                                        Click="BindDirectionalSlot_OnClick"
+                                                                        IsEnabled="{Binding CanBindCurrentDevice}"
+                                                                        ToolTip="Click to bind this direction; right-click for its input type"
+                                                                        Foreground="#FFFFFF"
+                                                                        Style="{StaticResource MaterialDesignRaisedButton}">
+                                                                    <Button.ContextMenu>
+                                                                        <ContextMenu>
+                                                                            <MenuItem Header="Button" Tag="0"
+                                                                                      Click="DirectionalType_OnClick"/>
+                                                                            <MenuItem Header="Axis positive" Tag="1"
+                                                                                      Click="DirectionalType_OnClick"/>
+                                                                            <MenuItem Header="Axis negative" Tag="2"
+                                                                                      Click="DirectionalType_OnClick"/>
+                                                                            <MenuItem Header="Axis value" Tag="3"
+                                                                                      Click="DirectionalType_OnClick"/>
+                                                                        </ContextMenu>
+                                                                    </Button.ContextMenu>
+                                                                    <TextBlock Text="{Binding DirectionalBindLabel}"
+                                                                               TextAlignment="Center" VerticalAlignment="Center"
+                                                                               FontSize="11" FontWeight="SemiBold"
+                                                                               TextTrimming="CharacterEllipsis"/>
+                                                                </Button>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                    <StackPanel Grid.Column="2" Orientation="Horizontal"
+                                                                VerticalAlignment="Center" Margin="5 0 0 0">
+                                                        <StackPanel Orientation="Vertical" Margin="0 0 8 0">
+                                                            <TextBlock Text="Block" FontSize="10" Foreground="#D0D0D0"/>
+                                                            <ToggleButton IsChecked="{Binding DirectionalBlockEnabled, Mode=OneWay}"
+                                                                          Style="{StaticResource CompactBlockSwitch}"
+                                                                          Click="DirectionalBlock_OnClick" Width="38" Height="21"
+                                                                          ToolTip="Block the original physical inputs for both directions"/>
+                                                        </StackPanel>
+                                                        <ToggleButton Content="NOT" Width="47" Height="30" Margin="0 0 8 0"
+                                                                      IsChecked="{Binding DirectionalPrimary.InputExpressionNegated, Mode=OneWay}"
+                                                                      Click="DirectionalNot_OnClick"
+                                                                      Foreground="White" Background="#343434"
+                                                                      BorderBrush="#626262" BorderThickness="1"
+                                                                      ToolTip="Negate this complete directional control"/>
+                                                        <Button Click="RemoveDirectionalUnit_OnClick" Width="28" Height="30"
+                                                                Content="×" FontSize="22" Foreground="#FF6068"
+                                                                ToolTip="Remove this directional input unit"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+                                        <ItemsControl ItemsSource="{Binding OrdinaryInputs}">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate><StackPanel Orientation="Vertical"/></ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>
@@ -302,6 +470,26 @@
                                                 <DataTemplate>
                                                     <Border Margin="0 0 0 3" Padding="5" CornerRadius="3"
                                                             Background="#2B2B2B" BorderBrush="#505050" BorderThickness="1">
+                                                        <StackPanel>
+                                                            <StackPanel Orientation="Horizontal" Margin="0 0 0 5"
+                                                                        Visibility="{Binding InputTypeDetailsVisibility}">
+                                                                <ComboBox Width="142" Height="28"
+                                                                          SelectedIndex="{Binding InputExpressionInputKind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                          IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}">
+                                                                    <ComboBoxItem Content="Button"/>
+                                                                    <ComboBoxItem Content="Axis positive"/>
+                                                                    <ComboBoxItem Content="Axis negative"/>
+                                                                    <ComboBoxItem Content="Axis value"/>
+                                                                </ComboBox>
+                                                                <StackPanel Orientation="Horizontal" Margin="10 0 0 0"
+                                                                            Visibility="{Binding ThresholdConditionVisibility}">
+                                                                    <TextBlock Text="Threshold" Foreground="#CCCCCC" VerticalAlignment="Center" Margin="0 0 5 0"/>
+                                                                    <TextBox Width="65" Height="28" VerticalContentAlignment="Center"
+                                                                             Text="{Binding AxisThresholdPercent, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                                             ToolTip="Axis travel required to activate (1–100%)"/>
+                                                                    <TextBlock Text="%" VerticalAlignment="Center" Margin="3 0 0 0" Foreground="#CCCCCC"/>
+                                                                </StackPanel>
+                                                            </StackPanel>
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="*" MinWidth="205"/>
@@ -349,6 +537,7 @@
                                                                         Style="{StaticResource UcrDeleteItemButton}"/>
                                                             </StackPanel>
                                                         </Grid>
+                                                        </StackPanel>
                                                     </Border>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
@@ -427,12 +616,12 @@
                                                      Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="OUTPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
                                        FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            <Button Content="{Binding MappingViewModel.MappingOutputCategoryDisplay, StringFormat={}{0} ▼}" Margin="12 0 0 0" Padding="8 2" Height="28"
-                                    DataContext="{Binding Plugins[0]}"
-                                    Click="ChangeOutputType_OnClick" Tag="CategoryHeader"
-                                    IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"
-                                    Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
-                                    ToolTip="Choose the output mapping category"/>
+                            <!-- Output type is a description of configured destinations, not
+                                 a mapping-level setting the user must choose. -->
+                            <TextBlock Text="{Binding MappingOutputCategoryDisplay}" Margin="12 0 0 0"
+                                       Padding="8 3" VerticalAlignment="Center" Foreground="#D0D0D0"
+                                       FontSize="12" FontWeight="Medium"
+                                       ToolTip="Determined automatically from the configured outputs"/>
                         </StackPanel>
                     <!-- Each output is a separate vertical row. Never overflow sideways. -->
                     <StackPanel Margin="2 0 2 3">

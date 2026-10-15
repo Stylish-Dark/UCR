@@ -30,6 +30,66 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         }
         public string IoTypeName => DeviceBinding.DeviceIoType.Equals(DeviceIoType.Input) ? "Input" : "Output";
         public DeviceBindingCategory DeviceBindingCategory { get; set; }
+        public Mapping ExpressionMapping { get; set; }
+        public Visibility LegacyInputTypeVisibility =>
+            ExpressionMapping == null && DeviceBinding.DeviceIoType == DeviceIoType.Input &&
+            (DeviceBindingCategory == DeviceBindingCategory.Momentary ||
+             DeviceBindingCategory == DeviceBindingCategory.Range)
+                ? Visibility.Visible : Visibility.Collapsed;
+        public int InputExpressionInputKind
+        {
+            get => DeviceBinding.InputExpressionInputKind;
+            set
+            {
+                // WPF briefly reports -1 before ComboBox items have been realised.
+                // That is not a user type change and must never clear a saved binding.
+                if (value < 0 || value > 3) return;
+                if (DeviceBinding.InputExpressionInputKind == value) return;
+                if (ExpressionMapping != null && !ExpressionMapping.EnableInputExpression()) return;
+                DeviceBinding.SetInputExpressionInputKind(value);
+                DeviceBindingCategory = value == 0 ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
+                SelectCompatibleInputDeviceAfterTypeChange();
+                OnPropertyChanged(nameof(DeviceBindingCategory));
+                OnPropertyChanged(nameof(ShowInvertInput));
+                OnPropertyChanged(nameof(CanBindCurrentDevice));
+                OnPropertyChanged(nameof(InputTypeDetailsVisibility));
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(BindButtonText));
+                OnPropertyChanged(nameof(CompactBindButtonText));
+                OnPropertyChanged(nameof(AxisConditionVisibility));
+                OnPropertyChanged(nameof(ThresholdConditionVisibility));
+            }
+        }
+        // Default button inputs need no extra row; advanced axis controls appear only
+        // when that individual input uses analogue data.
+        public Visibility InputTypeDetailsVisibility =>
+            DeviceBinding.InputExpressionInputKind == 0 ? Visibility.Collapsed : Visibility.Visible;
+        public Visibility AxisConditionVisibility =>
+            DeviceBinding.InputExpressionInputKind == 0 ? Visibility.Collapsed : Visibility.Visible;
+        public Visibility ThresholdConditionVisibility =>
+            DeviceBinding.InputExpressionInputKind == 1 || DeviceBinding.InputExpressionInputKind == 2
+                ? Visibility.Visible : Visibility.Collapsed;
+        public int InputExpressionAxisThreshold
+        {
+            get => DeviceBinding.InputExpressionAxisThreshold;
+            set
+            {
+                DeviceBinding.SetInputExpressionAxisThreshold(value);
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(AxisThresholdPercent));
+            }
+        }
+
+        public int AxisThresholdPercent
+        {
+            get => (int)Math.Round(DeviceBinding.InputExpressionAxisThreshold * 100.0 / short.MaxValue);
+            set
+            {
+                var percent = Math.Max(1, Math.Min(100, value));
+                InputExpressionAxisThreshold = (int)Math.Round(percent * (double)short.MaxValue / 100.0);
+                OnPropertyChanged();
+            }
+        }
         public ObservableCollection<ComboBoxItemViewModel> Devices { get; set; }
         public ComboBoxItemViewModel SelectedDevice { get; set; }
         public Visibility ShowPreview => DeviceBinding.IsInBindMode ? Visibility.Hidden : Visibility.Visible;
@@ -39,6 +99,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ? Visibility.Visible
             : Visibility.Collapsed;
         public bool CanBlock => BindingEnabled && DeviceBinding.IsBound && DeviceBinding.IsBlockable();
+        public bool CanBindCurrentDevice
+        {
+            get
+            {
+                // Detection is available before choosing a device. Guid.Empty means
+                // listen to every input device added to the profile; a nonempty GUID
+                // limits detection to that device in BindingManager.
+                if (DeviceBinding == null) return false;
+                return DeviceBinding.DeviceIoType == DeviceIoType.Input || BindingEnabled;
+            }
+        }
+
         public string BlockAvailability => CanBlock
             ? "Prevent the original device input from reaching the application"
             : "This input provider or control does not support blocking";
@@ -91,12 +163,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(PreviewValue));
                 OnPropertyChanged(nameof(ShowButtonPreview));
                 OnPropertyChanged(nameof(CanBlock));
+                OnPropertyChanged(nameof(CanBindCurrentDevice));
             }
         }
 
         public bool Block
         {
-            get => DeviceBinding.Block;
+            // An unbound input cannot block anything. Do not show a misleading
+            // active toggle while the physical control has not been selected.
+            get => DeviceBinding.IsBound && DeviceBinding.Block;
             set => DeviceBinding.SetBlock(value);
         }
 
@@ -143,6 +218,20 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             : DeviceBindingCategory == DeviceBindingCategory.Range
                 ? "Move the joystick or squeeze a trigger to detect its axis. Press Esc to cancel."
                 : "Press an input control to bind it. Press Esc to cancel.";
+
+        public string DirectionalBindLabel
+        {
+            get
+            {
+                var slot = DeviceBinding?.InputDirectionSlot ?? 0;
+                var direction = slot == 1 ? "←" : slot == 2 ? "→" :
+                    slot == 3 ? "↑" : slot == 4 ? "↓" : "";
+                if (!DeviceBinding.IsBound) return direction + " Bind";
+                var label = CompactBindButtonText;
+                if (label.Length > 9) label = label.Substring(0, 8) + "…";
+                return direction + " " + label;
+            }
+        }
 
         public string BindButtonText
         {
@@ -270,13 +359,62 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return false;
         }
 
+        // Physical input categories are validated against the provider's actual
+        // supported controls. A keyboard must never be offered as an axis source.
+        // Button input providers may expose their keys only when connected or after
+        // provider initialization. Preserve those choices; only range inputs require
+        // a positively reported analogue control.
+        private static bool IsCompatibleInputDevice(DeviceConfiguration configuration,
+            DeviceBindingCategory category, Context context)
+        {
+            return configuration?.Device != null &&
+                   (category != DeviceBindingCategory.Range ||
+                    SupportsInputCategory(configuration, category, context));
+        }
+
+        public static bool SupportsInputCategory(DeviceConfiguration configuration,
+            DeviceBindingCategory category, Context context)
+        {
+            if (configuration?.Device == null || context == null) return false;
+            try
+            {
+                return MenuHasCategory(configuration.Device.GetDeviceBindingMenu(
+                    context, DeviceIoType.Input), category);
+            }
+            catch (Exception exception)
+            {
+                Logger.Warn("Unable to inspect input device binding categories.", exception);
+                return false;
+            }
+        }
+
+        private void SelectCompatibleInputDeviceAfterTypeChange()
+        {
+            if (DeviceBinding?.DeviceIoType != DeviceIoType.Input ||
+                DeviceBinding.Profile == null) return;
+
+            var profile = DeviceBinding.Profile;
+            var context = profile.Context;
+            var candidates = profile.GetDeviceConfigurationList(DeviceIoType.Input)
+                .Where(configuration => IsCompatibleInputDevice(configuration, DeviceBindingCategory, context))
+                .ToList();
+            var currentGuid = DeviceBinding.DeviceConfigurationGuid;
+            // An incompatible explicit selection returns to listen-to-all. Never
+            // silently lock a new input type to an unrelated primary device.
+            if (currentGuid != Guid.Empty &&
+                !candidates.Any(configuration => configuration.Guid == currentGuid))
+                DeviceBinding.SetDeviceConfigurationGuid(Guid.Empty, false);
+            RefreshDeviceList();
+        }
+
         private void LoadDeviceInputs()
         {
             var devicesManager = DeviceBinding.Profile.Context.DevicesManager;
             var deviceConfigurationList = DeviceBinding.Profile.GetDeviceConfigurationList(DeviceBinding.DeviceIoType)
                 .Where(configuration => configuration?.Device != null &&
-                    (DeviceBinding.DeviceIoType != DeviceIoType.Output ||
-                     SupportsOutputCategory(configuration, DeviceBindingCategory, DeviceBinding.Profile.Context)))
+                    (DeviceBinding.DeviceIoType == DeviceIoType.Output
+                        ? SupportsOutputCategory(configuration, DeviceBindingCategory, DeviceBinding.Profile.Context)
+                        : IsCompatibleInputDevice(configuration, DeviceBindingCategory, DeviceBinding.Profile.Context)))
                 .Select((configuration, index) => new
                 {
                     Configuration = configuration,
@@ -289,6 +427,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 .ToList();
 
             Devices = new ObservableCollection<ComboBoxItemViewModel>();
+            if (DeviceBinding.DeviceIoType == DeviceIoType.Input)
+                Devices.Add(new ComboBoxItemViewModel("Any input device", Guid.Empty));
             foreach (var deviceConfiguration in deviceConfigurationList)
             {
                 Devices.Add(new ComboBoxItemViewModel(
@@ -324,6 +464,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(ShowBlock));
             OnPropertyChanged(nameof(CanBlock));
             OnPropertyChanged(nameof(ShowInvertInput));
+            OnPropertyChanged(nameof(CanBindCurrentDevice));
         }
 
         private void SetSelectDevice()
@@ -343,23 +484,66 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (Devices.Count == 0)
             {
                 Devices.Add(new ComboBoxItemViewModel(
-                    DeviceBinding.DeviceIoType == DeviceIoType.Output ? "No compatible output devices" : "No devices",
+                    DeviceBinding.DeviceIoType == DeviceIoType.Output ? "No compatible output devices" :
+                        DeviceBindingCategory == DeviceBindingCategory.Range
+                            ? "No compatible axis devices" : "No compatible button devices",
                     Guid.Empty));
                 selectedDevice = Devices[0];
             }
             else if (selectedDevice == null && DeviceBinding.DeviceConfigurationGuid != Guid.Empty)
             {
-                selectedDevice = new ComboBoxItemViewModel("Unavailable device", DeviceBinding.DeviceConfigurationGuid);
-                Devices.Insert(0, selectedDevice);
+                if (DeviceBinding.DeviceIoType == DeviceIoType.Input)
+                {
+                    var savedGuid = DeviceBinding.DeviceConfigurationGuid;
+                    var saved = DeviceBinding.Profile.GetDeviceConfiguration(DeviceIoType.Input, savedGuid);
+
+                    if (saved == null ||
+                        (saved.Device != null &&
+                         !IsCompatibleInputDevice(saved, DeviceBindingCategory, DeviceBinding.Profile.Context)))
+                    {
+                        // A removed profile device or a category-incompatible control is
+                        // not a selectable input. Reset to unrestricted detection rather
+                        // than manufacturing a phantom "Unavailable device" choice.
+                        DeviceBinding.SetDeviceConfigurationGuid(Guid.Empty, false);
+                        selectedDevice = Devices.FirstOrDefault(item => item.Value == Guid.Empty);
+                    }
+                    else
+                    {
+                        // Preserve references to a configured but temporarily disconnected
+                        // device without inventing a generic unavailable-device entry.
+                        // This prevents losing saved mappings when hardware is unplugged.
+                        var title = saved.ConfigurationName ?? saved.Device?.DisplayTitle
+                            ?? saved.Device?.Title ?? "Disconnected input device";
+                        selectedDevice = new ComboBoxItemViewModel(title, savedGuid,
+                            saved.Device == null
+                                ? DeviceVisualCatalog.Describe(saved.Device, DeviceIoType.Input)
+                                : DeviceVisualCatalog.Describe(saved, DeviceBinding.Profile, DeviceIoType.Input));
+                        Devices.Add(selectedDevice);
+                    }
+                }
+                else
+                {
+                    // Output selections are explicit destinations: never silently
+                    // redirect their saved bindings to another output device.
+                    selectedDevice = new ComboBoxItemViewModel("Unavailable device", DeviceBinding.DeviceConfigurationGuid);
+                    Devices.Insert(0, selectedDevice);
+                }
             }
             else if (selectedDevice == null)
             {
-                var primaryGuid = DeviceBinding.Profile.GetPrimaryDeviceConfiguration(DeviceBinding.DeviceIoType)?.Guid;
-                selectedDevice = Devices.FirstOrDefault(item => item.Value == primaryGuid) ?? Devices[0];
-                // Device dropdowns must reflect the real model selection, not merely show
-                // a default item while the binding still holds Guid.Empty.
-                if (!DeviceBinding.IsBound && selectedDevice.Value != Guid.Empty)
-                    DeviceBinding.SetDeviceConfigurationGuid(selectedDevice.Value, false);
+                if (DeviceBinding.DeviceIoType == DeviceIoType.Input)
+                {
+                    // A blank selection is intentional: Bind listens to all profile
+                    // devices until an input is detected or a device is chosen.
+                    selectedDevice = Devices.FirstOrDefault(item => item.Value == Guid.Empty);
+                }
+                else
+                {
+                    var primaryGuid = DeviceBinding.Profile.GetPrimaryDeviceConfiguration(DeviceBinding.DeviceIoType)?.Guid;
+                    selectedDevice = Devices.FirstOrDefault(item => item.Value == primaryGuid) ?? Devices[0];
+                    if (!DeviceBinding.IsBound && selectedDevice.Value != Guid.Empty)
+                        DeviceBinding.SetDeviceConfigurationGuid(selectedDevice.Value, false);
+                }
             }
 
             SelectedDevice = selectedDevice;
@@ -367,9 +551,29 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public DeviceBindingTransferCompatibility ChangeDeviceConfiguration(Guid selectedDeviceConfigurationGuid)
         {
+            if (DeviceBinding.DeviceIoType == DeviceIoType.Input &&
+                selectedDeviceConfigurationGuid == Guid.Empty)
+            {
+                // Revert to unrestricted detection and discard the old device's
+                // control key; no specific device may remain implicitly selected.
+                DeviceBinding.SetDeviceConfigurationGuid(Guid.Empty, false);
+                if (_deviceListLoaded)
+                {
+                    SetSelectDevice();
+                    OnPropertyChanged(nameof(SelectedDevice));
+                }
+                OnPropertyChanged(nameof(CompactBindButtonText));
+                OnPropertyChanged(nameof(CanBindCurrentDevice));
+                return DeviceBindingTransferCompatibility.Unknown;
+            }
             var selectedDeviceConfiguration = DeviceBinding.Profile.GetDeviceConfiguration(
                 DeviceBinding.DeviceIoType, selectedDeviceConfigurationGuid);
             if (selectedDeviceConfiguration == null) return DeviceBindingTransferCompatibility.Unknown;
+
+            if (DeviceBinding.DeviceIoType == DeviceIoType.Input &&
+                !IsCompatibleInputDevice(selectedDeviceConfiguration, DeviceBindingCategory,
+                    DeviceBinding.Profile.Context))
+                return DeviceBindingTransferCompatibility.Incompatible;
 
             var previousDeviceConfiguration = DeviceBinding.Profile.GetDeviceConfiguration(
                 DeviceBinding.DeviceIoType, DeviceBinding.DeviceConfigurationGuid);
@@ -422,6 +626,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(Block));
             OnPropertyChanged(nameof(ShowInvertInput));
             OnPropertyChanged(nameof(InvertInput));
+            OnPropertyChanged(nameof(CanBindCurrentDevice));
             Logger.Info("Binding device changed. io=" + DeviceBinding.DeviceIoType +
                         "; category=" + DeviceBindingCategory +
                         "; from=" + (previousDeviceConfiguration?.GetFullTitleForProfile(DeviceBinding.Profile) ?? "unavailable") +
@@ -473,6 +678,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 BindModeProgress = 0;
                 OnPropertyChanged(nameof(BindButtonText));
                 OnPropertyChanged(nameof(CompactBindButtonText));
+                OnPropertyChanged(nameof(DirectionalBindLabel));
                 OnPropertyChanged(nameof(ShowPreview));
                 OnPropertyChanged(nameof(ShowBindMode));
             }
@@ -492,6 +698,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.DeviceConfigurationGuid), StringComparison.Ordinal))
             {
+                OnPropertyChanged(nameof(CanBindCurrentDevice));
+                OnPropertyChanged(nameof(CompactBindButtonText));
                 OnPropertyChanged(nameof(BindButtonText));
                 OnPropertyChanged(nameof(CompactBindButtonText));
                 OnPropertyChanged(nameof(ShowBlock));

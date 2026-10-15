@@ -596,16 +596,131 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.That(viewModel.Devices, Is.Empty,
                 "Collapsed mappings should not build a device dropdown until its editor is shown.");
             viewModel.EnsureDeviceListLoaded();
-            Assert.That(viewModel.Devices.Count, Is.EqualTo(1));
+            Assert.That(viewModel.Devices.Count, Is.EqualTo(2),
+                "Input selection includes the explicit Any input device option.");
 
             _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { second }, DeviceIoType.Input);
             viewModel.RefreshDeviceList();
 
-            Assert.That(viewModel.Devices.Count, Is.EqualTo(2));
+            Assert.That(viewModel.Devices.Count, Is.EqualTo(3));
+            Assert.That(viewModel.Devices.Any(item => item.Value == Guid.Empty), Is.True);
             Assert.That(viewModel.Devices.Any(item => item.Value == second.Guid), Is.True);
-            Assert.That(viewModel.Devices.All(item => item.Visual != null), Is.True,
+            Assert.That(viewModel.Devices.Where(item => item.Value != Guid.Empty)
+                .All(item => item.Visual != null), Is.True,
                 "Every real device choice should carry its semantic visual shorthand.");
             viewModel.Dispose();
+        }
+
+        [Test]
+        public void InputBindDetection_AllowsEveryProfileDeviceOnlyWhenNoDeviceWasSelected()
+        {
+            var keyboard = Guid.NewGuid();
+            var controller = Guid.NewGuid();
+            Assert.That(BindingManager.IsEligibleBindDevice(Guid.Empty, keyboard), Is.True);
+            Assert.That(BindingManager.IsEligibleBindDevice(Guid.Empty, controller), Is.True);
+            Assert.That(BindingManager.IsEligibleBindDevice(keyboard, keyboard), Is.True);
+            Assert.That(BindingManager.IsEligibleBindDevice(keyboard, controller), Is.False);
+            Assert.That(BindingManager.IsEligibleBindDevice(controller, keyboard), Is.False);
+        }
+
+        [Test]
+        public void UnselectedInput_StaysUnselectedAndBindIsEnabledUntilDetection()
+        {
+            var keyboard = new DeviceConfiguration(new Device("Keyboard A", "Core_Interception", "kbd-a", 0));
+            var controller = new DeviceConfiguration(new Device("Controller A", "SharpDX_XInput", "pad-a", 0));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { keyboard, controller }, DeviceIoType.Input);
+            _profile.SetPrimaryDeviceConfiguration(DeviceIoType.Input, keyboard.Guid);
+
+            var binding = new DeviceBinding(value => { }, _profile, DeviceIoType.Input)
+            {
+                DeviceBindingCategory = DeviceBindingCategory.Momentary
+            };
+            var editor = new DeviceBindingViewModel(binding);
+            editor.EnsureDeviceListLoaded();
+
+            Assert.That(binding.DeviceConfigurationGuid, Is.EqualTo(Guid.Empty),
+                "Loading the editor must never silently select the primary device.");
+            Assert.That(editor.SelectedDevice.Value, Is.EqualTo(Guid.Empty));
+            Assert.That(editor.CanBindCurrentDevice, Is.True);
+            Assert.That(editor.CompactBindButtonText, Is.EqualTo("Bind"));
+            Assert.That(editor.Devices.Any(option => option.Value == keyboard.Guid), Is.True);
+            Assert.That(editor.Devices.Any(option => option.Value == controller.Guid), Is.True);
+
+            editor.ChangeDeviceConfiguration(keyboard.Guid);
+            Assert.That(binding.DeviceConfigurationGuid, Is.EqualTo(keyboard.Guid),
+                "An explicit selection restricts the binding to that device.");
+            editor.ChangeDeviceConfiguration(Guid.Empty);
+            Assert.That(binding.DeviceConfigurationGuid, Is.EqualTo(Guid.Empty));
+            Assert.That(editor.CanBindCurrentDevice, Is.True);
+            editor.Dispose();
+        }
+
+        [Test]
+        public void RemovedInputDevice_DoesNotCreateASelectableUnavailableDevice()
+        {
+            var keyboard = new DeviceConfiguration(new Device("Laptop Keyboard", "Core_Interception", "kbd-a", 0));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { keyboard }, DeviceIoType.Input);
+
+            var binding = new DeviceBinding(value => { }, _profile, DeviceIoType.Input)
+            {
+                DeviceBindingCategory = DeviceBindingCategory.Momentary
+            };
+            binding.SetDeviceConfigurationGuid(Guid.NewGuid(), false);
+            binding.SetKeyTypeValue(0, 65, 0);
+            Assert.That(binding.IsBound, Is.True,
+                "Reproduce the saved stale binding that displays Device unavailable.");
+            var editor = new DeviceBindingViewModel(binding);
+            editor.EnsureDeviceListLoaded();
+
+            Assert.That(binding.DeviceConfigurationGuid, Is.EqualTo(Guid.Empty),
+                "An input pointing to a device absent from the profile must return to listen-all.");
+            Assert.That(binding.IsBound, Is.False);
+            Assert.That(editor.SelectedDevice.Value, Is.EqualTo(Guid.Empty));
+            Assert.That(editor.Devices.Any(item => item.Title == "Unavailable device"), Is.False);
+            Assert.That(editor.Devices.Any(item => item.Value == keyboard.Guid), Is.True);
+            Assert.That(editor.CompactBindButtonText, Is.EqualTo("Bind"));
+            Assert.That(editor.CanBindCurrentDevice, Is.True);
+            editor.Dispose();
+        }
+
+        [Test]
+        public void ConfiguredInputDevice_IsPreservedWhenSelectionListIsRefreshed()
+        {
+            var keyboard = new DeviceConfiguration(new Device("Laptop Keyboard", "Core_Interception", "kbd-a", 0));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { keyboard }, DeviceIoType.Input);
+
+            var binding = new DeviceBinding(value => { }, _profile, DeviceIoType.Input)
+            {
+                DeviceBindingCategory = DeviceBindingCategory.Momentary
+            };
+            binding.SetDeviceConfigurationGuid(keyboard.Guid, false);
+            var editor = new DeviceBindingViewModel(binding);
+            editor.EnsureDeviceListLoaded();
+            editor.RefreshDeviceList();
+
+            Assert.That(binding.DeviceConfigurationGuid, Is.EqualTo(keyboard.Guid));
+            Assert.That(editor.SelectedDevice.Value, Is.EqualTo(keyboard.Guid));
+            Assert.That(editor.Devices.Any(item => item.Title == "Unavailable device"), Is.False);
+            Assert.That(editor.CanBindCurrentDevice, Is.True);
+            editor.Dispose();
+        }
+
+        [Test]
+        public void NewlyCreatedMappingAndExpressionTerms_DoNotInheritAnInputDevice()
+        {
+            var keyboard = new DeviceConfiguration(new Device("Keyboard A", "Core_Interception", "kbd-a", 0));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { keyboard }, DeviceIoType.Input);
+            _profile.SetPrimaryDeviceConfiguration(DeviceIoType.Input, keyboard.Guid);
+
+            Assert.That(_mapping.AddPlugin(new ButtonToButton()), Is.True);
+            Assert.That(_mapping.DeviceBindings[0].DeviceConfigurationGuid, Is.EqualTo(Guid.Empty));
+
+            // An explicitly selected first binding must not silently restrict a
+            // subsequently added AND term to the same keyboard.
+            _mapping.DeviceBindings[0].SetDeviceConfigurationGuid(keyboard.Guid, false);
+            var added = _mapping.AddExpressionInputToGroup(0);
+            Assert.That(added, Is.Not.Null);
+            Assert.That(added.DeviceConfigurationGuid, Is.EqualTo(Guid.Empty));
         }
 
         [Test]

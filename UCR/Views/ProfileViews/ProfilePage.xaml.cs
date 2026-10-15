@@ -966,10 +966,72 @@ namespace HidWizards.UCR.Views.ProfileViews
             return null;
         }
 
+        private void InputDirectionPresets_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var mapping = ProfileViewModel?.SelectedMapping;
+            if (button == null || mapping?.ButtonsEnabled != true || !mapping.HasAxisOutput) return;
+
+            var menu = new ContextMenu();
+            foreach (var mode in new[] { 2, 4, 0 })
+            {
+                var slots = mode;
+                var item = new MenuItem
+                {
+                    Header = mode == 2 ? "2-way axis (− / +)" :
+                        mode == 4 ? "4-way joystick (← / → / ↑ / ↓)" : "Single continuous axis",
+                    Padding = new Thickness(12, 7, 14, 7)
+                };
+                item.Click += (source, args) => mapping.SetDirectionalMode(slots);
+                menu.Items.Add(item);
+            }
+
+            if (mapping.InputConditions?.Any(g => g.HasDirectionalInputs) == true)
+            {
+                menu.Items.Add(new Separator());
+                if (mapping.InputConditions.Any(group => group.IsFourWay))
+                {
+                    var dpad = new MenuItem { Header = "Controller D-pad", Padding = new Thickness(12, 7, 14, 7) };
+                    dpad.Click += (source, args) =>
+                    {
+                        string error;
+                        if (!mapping.ApplyDirectionalDPadPreset(out error) &&
+                            !string.IsNullOrWhiteSpace(error))
+                            DarkMessageBox.Show(error, "Preset unavailable",
+                                MessageBoxButton.OK, MessageBoxImage.Information);
+                    };
+                    menu.Items.Add(dpad);
+                }
+                foreach (var preset in new[] { "WASD", "Arrows", "Numpad", "UJHK" })
+                {
+                    var choice = preset;
+                    var item = new MenuItem { Header = choice, Padding = new Thickness(12, 7, 14, 7) };
+                    item.Click += (source, args) =>
+                    {
+                        string error;
+                        if (!mapping.ApplyDirectionalKeyboardPreset(choice, out error) &&
+                            !string.IsNullOrWhiteSpace(error))
+                            DarkMessageBox.Show(error, "Preset unavailable",
+                                MessageBoxButton.OK, MessageBoxImage.Information);
+                    };
+                    menu.Items.Add(item);
+                }
+            }
+            menu.PlacementTarget = button;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
+            menu.IsOpen = true;
+        }
+
         private void AddInspectorOrInput_OnClick(object sender, RoutedEventArgs e)
         {
             if (ProfileViewModel?.SelectedMapping?.ButtonsEnabled != true) return;
             ProfileViewModel.SelectedMapping.AddCondition();
+        }
+
+        private void AddInspectorOutput_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (ProfileViewModel?.SelectedMapping?.ButtonsEnabled != true) return;
+            ProfileViewModel.SelectedMapping.AddDefaultOutput();
         }
 
         private void AddFilter_OnClick(object sender, RoutedEventArgs e)

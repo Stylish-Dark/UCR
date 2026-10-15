@@ -175,6 +175,23 @@ jobs:
           & ".\packages\NUnit.ConsoleRunner.3.9.0\tools\nunit3-console.exe" ".\UCR.Tests\bin\Release\UCR.Tests.dll" --noresult
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Verify grouped-input XAML resources
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          [xml]$app = Get-Content -LiteralPath '.\UCR\App.xaml' -Raw
+          [xml]$mapping = Get-Content -LiteralPath '.\UCR\Views\Controls\MappingCardControl.xaml' -Raw
+          $namespace = New-Object System.Xml.XmlNamespaceManager($app.NameTable)
+          $namespace.AddNamespace('x', 'http://schemas.microsoft.com/winfx/2006/xaml')
+          $name = 'CompactBlockSwitch'
+          $styles = @($app.SelectNodes("//*[@x:Key='$name']", $namespace))
+          if ($styles.Count -ne 1) {
+            throw "Expected an application-scoped $name style, found $($styles.Count). Child-control resources do not reach grouped-input templates."
+          }
+          if ($mapping.OuterXml -notmatch "StaticResource $name") {
+            throw "Grouped-input control no longer references $name; update this regression check."
+          }
+
       - name: Smoke-test actual UCR.exe cold startup
         shell: pwsh
         run: |
@@ -209,6 +226,20 @@ jobs:
             }
             if (-not $startupCompleted) {
               throw 'UCR did not reach its successful startup marker in a clean Windows runtime.'
+            }
+            # WPF measures templates asynchronously AFTER the startup marker.
+            # The old smoke test stopped immediately, missing a fatal resource
+            # lookup 250ms later on machines with populated mapping panels.
+            Start-Sleep -Seconds 4
+            $process.Refresh()
+            if ($process.HasExited) {
+              throw "UCR terminated after reporting successful startup. Exit code: $($process.ExitCode)"
+            }
+            $errors = Join-Path $logDirectory 'UCR-errors.log'
+            if ((Test-Path -LiteralPath $errors) -and
+                (Select-String -LiteralPath $errors -Pattern 'Unhandled WPF dispatcher exception|XamlParseException|Cannot find resource named' -Quiet)) {
+              Get-Content -LiteralPath $errors -Tail 60
+              throw 'UCR emitted a fatal WPF UI rendering error after the startup marker.'
             }
           } finally {
             $process.Refresh()

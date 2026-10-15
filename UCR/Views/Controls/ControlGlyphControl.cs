@@ -99,12 +99,60 @@ namespace HidWizards.UCR.Views.Controls
 
         private static void DrawKey(DrawingContext dc, Rect b, Brush accent, string label)
         {
+            // Keycap geometry is invariant, including in zoomed or grouped previews.
             var side = Math.Max(1, Math.Min(b.Width - 2, b.Height - 4));
             var rect = new Rect(b.Left + (b.Width - side) / 2.0,
                 b.Top + (b.Height - side) / 2.0, side, side);
             var fill = new SolidColorBrush(Color.FromRgb(48, 48, 48));
             dc.DrawRoundedRectangle(fill, Pen(accent, 1.1), rect, 1.5, 1.5);
-            DrawCenteredText(dc, label, Brushes.White, rect, FontFor(label, b.Height * 0.48), FontWeights.SemiBold);
+
+            if (string.IsNullOrEmpty(label)) return;
+            var inner = new Rect(rect.Left + 3, rect.Top + 2,
+                Math.Max(1, rect.Width - 6), Math.Max(1, rect.Height - 4));
+            // Old/custom "NUM 6" overrides are also given the stacked treatment.
+            var display = label.StartsWith("NUM ", StringComparison.OrdinalIgnoreCase)
+                ? "NUM\n" + label.Substring(4).Trim() : label;
+            var lines = display.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+            dc.PushClip(new RectangleGeometry(rect));
+            if (lines.Length == 2)
+            {
+                var top = new Rect(inner.Left, inner.Top, inner.Width, inner.Height * 0.43);
+                var bottom = new Rect(inner.Left, inner.Top + inner.Height * 0.43,
+                    inner.Width, inner.Height * 0.57);
+                DrawFittedKeyText(dc, lines[0], Brushes.White, top,
+                    inner.Height * 0.36, FontWeights.SemiBold);
+                DrawFittedKeyText(dc, lines[1], Brushes.White, bottom,
+                    inner.Height * 0.54, FontWeights.SemiBold);
+            }
+            else
+            {
+                DrawFittedKeyText(dc, display.Replace("\n", " "), Brushes.White, inner,
+                    b.Height * (display.Length == 1 ? 0.55 : 0.48), FontWeights.SemiBold);
+            }
+            dc.Pop();
+        }
+
+        private static void DrawFittedKeyText(DrawingContext dc, string text, Brush brush,
+            Rect rect, double preferredSize, FontWeight weight)
+        {
+            if (string.IsNullOrWhiteSpace(text) || rect.Width <= 0 || rect.Height <= 0) return;
+#pragma warning disable 618
+            var formatted = new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
+                new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, weight, FontStretches.Normal),
+                preferredSize, brush);
+#pragma warning restore 618
+            // Measure actual text, not string length. ENTER, PAUSE and numpad labels
+            // must never bleed beyond the common fixed-width square.
+            if (formatted.Width > 0 && formatted.Height > 0)
+            {
+                var ratio = Math.Min(1.0, Math.Min(
+                    rect.Width * 0.94 / formatted.Width, rect.Height * 0.94 / formatted.Height));
+                if (ratio < 1.0) formatted.SetFontSize(preferredSize * ratio);
+            }
+            dc.DrawText(formatted, new Point(
+                rect.Left + (rect.Width - formatted.Width) / 2.0,
+                rect.Top + (rect.Height - formatted.Height) / 2.0));
         }
 
         private static void DrawMouseButton(DrawingContext dc, Rect b, Brush accent, string label)

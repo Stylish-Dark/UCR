@@ -57,6 +57,53 @@ namespace HidWizards.UCR.Core.Models.Binding
         [DefaultValue(false)]
         public bool InputExpressionNegated { get; set; }
 
+        // A logical directional control owns opposing physical bindings.
+        // 0 = ordinary condition; 1/2 = negative/positive X; 3/4 = negative/positive Y.
+        // The slots share Block and NOT, while retaining independent physical devices.
+        [XmlAttribute]
+        [DefaultValue(0)]
+        public int InputDirectionSlot { get; set; }
+
+        // Input expression terms choose their own category, independent of the output plugin.
+        // 0 = button, 1 = positive axis threshold, 2 = negative axis threshold, 3 = continuous axis source.
+        [XmlAttribute]
+        [DefaultValue(0)]
+        public int InputExpressionInputKind { get; set; }
+
+        // Allows old XML to infer each legacy positional slot's category once, without
+        // overwriting a deliberate per-slot input-kind override on subsequent loads.
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool InputExpressionKindConfigured { get; set; }
+
+        [XmlAttribute]
+        [DefaultValue(16384)]
+        public int InputExpressionAxisThreshold { get; set; } = 16384;
+
+        public void SetInputExpressionInputKind(int kind)
+        {
+            kind = Math.Max(0, Math.Min(3, kind));
+            if (InputExpressionInputKind == kind) return;
+            var categoryChanged = (InputExpressionInputKind == 0) != (kind == 0);
+            InputExpressionInputKind = kind;
+            InputExpressionKindConfigured = true;
+            DeviceBindingCategory = kind == 0 ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
+            // A direction/threshold-mode change keeps the same axis binding. Switching
+            // between button and axis clears only the incompatible control, not the device.
+            if (categoryChanged) SetDeviceConfigurationGuid(DeviceConfigurationGuid, false);
+            Profile?.Context?.ContextChanged();
+            OnPropertyChanged(nameof(InputExpressionInputKind));
+        }
+
+        public void SetInputExpressionAxisThreshold(int threshold)
+        {
+            threshold = Math.Max(1, Math.Min(32767, threshold));
+            if (InputExpressionAxisThreshold == threshold) return;
+            InputExpressionAxisThreshold = threshold;
+            Profile?.Context?.ContextChanged();
+            OnPropertyChanged(nameof(InputExpressionAxisThreshold));
+        }
+
         /* Runtime */
         [XmlIgnore]
         public Guid Guid { get; }

@@ -78,6 +78,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
         public ControlVisualKind ControlKind { get; set; }
         public Brush ControlBrush { get; set; }
         public string ControlLabel { get; set; }
+        public string JoinSymbol { get; set; } = "+";
         public string ToolTip { get; set; }
         public bool IsBound { get; set; }
         public Guid DeviceConfigurationGuid { get; set; }
@@ -650,55 +651,95 @@ namespace HidWizards.UCR.ViewModels.Presentation
             }
         }
 
-        private static string CleanKeyboardLabel(string leaf)
+        // The displayed label is intentionally distinct from the original binding name.
+        // Every key uses the same square glyph; long names become symbols or two lines.
+        // Tooltips still contain the full provider key name.
+        public static string FormatKeyboardGlyphLabel(string leaf)
         {
             if (string.IsNullOrWhiteSpace(leaf)) return "KEY";
             var value = leaf.Trim();
-            var lower = value.ToLowerInvariant();
+            var normalized = System.Text.RegularExpressions.Regex.Replace(
+                value.ToUpperInvariant(), @"[\s_\-]+", string.Empty);
 
-            if (lower.Contains("window") || lower == "lwin" || lower == "rwin" || lower.Contains(" win")) return "WIN";
-            if (lower.Contains("control") || lower == "lctrl" || lower == "rctrl") return "CTRL";
-            if (lower.Contains("shift")) return "SHIFT";
-            if (lower.Contains("altgr")) return "ALTGR";
-            if (lower.Contains(" alt") || lower.StartsWith("alt") || lower == "lalt" || lower == "ralt") return "ALT";
-            if (lower.Contains("escape")) return "ESC";
-            if (lower == "comma" || lower == "oemcomma" || lower == "oem comma" || lower == ",") return ",";
-            if (lower == "period" || lower == "oemperiod" || lower == "oem period") return ".";
-            if (lower == "semicolon" || lower == "oemsemicolon") return ";";
-            if (lower.Contains("backspace")) return "BKSP";
-            if (lower == "return" || lower.Contains("enter")) return "ENTER";
-            if (lower.Contains("space")) return "SPACE";
-            if (lower == "tab" || lower.Contains(" tab")) return "TAB";
-            if (lower.Contains("caps lock")) return "CAPS";
-            if (lower.Contains("num lock")) return "NUM";
-            if (lower.Contains("scroll lock")) return "SCRL";
-            if (lower.Contains("print screen") || lower.Contains("printscreen")) return "PRTSC";
-            if (lower.Contains("page up")) return "PGUP";
-            if (lower.Contains("page down")) return "PGDN";
-            if (lower == "insert" || lower.EndsWith(" insert")) return "INS";
-            if (lower == "delete" || lower.EndsWith(" delete")) return "DEL";
-            if (lower == "home" || lower.EndsWith(" home")) return "HOME";
-            if (lower == "end" || lower.EndsWith(" end")) return "END";
-            if (lower.Contains("arrow up") || lower == "up") return "↑";
-            if (lower.Contains("arrow right") || lower == "right") return "→";
-            if (lower.Contains("arrow down") || lower == "down") return "↓";
-            if (lower.Contains("arrow left") || lower == "left") return "←";
-            if (lower.Contains("applications") || lower.Contains("menu key")) return "MENU";
-
-            var numMatch = System.Text.RegularExpressions.Regex.Match(lower, @"(?:num(?:pad)?|keypad)\s*([0-9])");
-            if (numMatch.Success) return "NUM " + numMatch.Groups[1].Value;
-            if (lower.Contains("numpad") || lower.Contains("keypad") || lower.StartsWith("num "))
+            // Check the keypad BEFORE Enter, Home, End, Insert, arrows, etc.:
+            // keypad keys can have those very same names without being the main key.
+            var keypad = normalized.StartsWith("NUMPAD", StringComparison.Ordinal) ||
+                         normalized.StartsWith("KEYPAD", StringComparison.Ordinal) ||
+                         normalized.StartsWith("NUM", StringComparison.Ordinal) ||
+                         normalized.StartsWith("KP", StringComparison.Ordinal);
+            if (keypad)
             {
-                if (lower.Contains("add") || lower.Contains("plus")) return "NUM +";
-                if (lower.Contains("subtract") || lower.Contains("minus")) return "NUM -";
-                if (lower.Contains("multiply")) return "NUM ×";
-                if (lower.Contains("divide")) return "NUM /";
-                if (lower.Contains("decimal")) return "NUM .";
+                var tail = normalized.StartsWith("NUMPAD") ? normalized.Substring(6) :
+                    normalized.StartsWith("KEYPAD") ? normalized.Substring(6) :
+                    normalized.StartsWith("NUM") ? normalized.Substring(3) : normalized.Substring(2);
+                if (tail == "LOCK") return "NUM\nLK";
+                if (tail.Length == 1 && char.IsDigit(tail[0])) return "NUM\n" + tail;
+                if (tail == "RETURN" || tail == "ENTER") return "NUM\nENT";
+                if (tail == "ADD" || tail == "PLUS" || tail == "+") return "NUM\n+";
+                if (tail == "SUBTRACT" || tail == "MINUS" || tail == "-") return "NUM\n−";
+                if (tail == "MULTIPLY" || tail == "ASTERISK" || tail == "*") return "NUM\n×";
+                if (tail == "DIVIDE" || tail == "SLASH" || tail == "/") return "NUM\n÷";
+                if (tail == "DECIMAL" || tail == "DOT" || tail == "DELETE" || tail == ".") return "NUM\n.";
+                if (tail == "EQUALS" || tail == "=") return "NUM\n=";
+                if (tail == "SEPARATOR" || tail == ",") return "NUM\n,";
             }
 
+            var left = normalized.StartsWith("LEFT", StringComparison.Ordinal) ||
+                       normalized.StartsWith("LCTRL", StringComparison.Ordinal) ||
+                       normalized.StartsWith("LCONTROL", StringComparison.Ordinal) ||
+                       normalized.StartsWith("LSHIFT", StringComparison.Ordinal) ||
+                       normalized.StartsWith("LALT", StringComparison.Ordinal) ||
+                       normalized.StartsWith("LWIN", StringComparison.Ordinal) ||
+                       normalized.EndsWith("LEFT", StringComparison.Ordinal);
+            var right = normalized.StartsWith("RIGHT", StringComparison.Ordinal) ||
+                        normalized.StartsWith("RCTRL", StringComparison.Ordinal) ||
+                        normalized.StartsWith("RCONTROL", StringComparison.Ordinal) ||
+                        normalized.StartsWith("RSHIFT", StringComparison.Ordinal) ||
+                        normalized.StartsWith("RALT", StringComparison.Ordinal) ||
+                        normalized.StartsWith("RWIN", StringComparison.Ordinal) ||
+                        normalized.EndsWith("RIGHT", StringComparison.Ordinal);
+            var side = left ? "L" : right ? "R" : null;
+
+            if (normalized.Contains("SHIFT")) return side == null ? "⇧" : side + "⇧";
+            if (normalized.Contains("CONTROL") || normalized.Contains("CTRL"))
+                return side == null ? "CTRL" : side + "\nCTRL";
+            if (normalized.Contains("ALTGR")) return "ALT\nGR";
+            if (normalized.Contains("ALT")) return side == null ? "ALT" : side + "\nALT";
+            if (normalized.Contains("WINDOW") || normalized == "LWIN" || normalized == "RWIN" ||
+                normalized == "WIN") return side == null ? "WIN" : side + "\nWIN";
+
+            if (normalized == "RETURN" || normalized == "ENTER" || normalized == "RETURNKEY") return "↵";
+            if (normalized == "BACKSPACE" || normalized == "BACK") return "⌫";
+            if (normalized == "TAB") return "⇥";
+            if (normalized == "SPACE" || normalized == "SPACEBAR") return "SPC";
+            if (normalized == "ESCAPE" || normalized == "ESC") return "ESC";
+            if (normalized == "CAPSLOCK") return "CAPS";
+            if (normalized == "SCROLLLOCK") return "SCR\nLK";
+            if (normalized == "PRINTSCREEN" || normalized == "PRTSC" || normalized == "SYSRQ") return "PRT\nSC";
+            if (normalized == "PAGEUP" || normalized == "PGUP" || normalized == "PRIOR") return "PG\nUP";
+            if (normalized == "PAGEDOWN" || normalized == "PGDN" || normalized == "NEXT") return "PG\nDN";
+            if (normalized == "INSERT" || normalized == "INS") return "INS";
+            if (normalized == "DELETE" || normalized == "DEL") return "DEL";
+            if (normalized == "HOME") return "HOME";
+            if (normalized == "END") return "END";
+            if (normalized == "PAUSE" || normalized == "BREAK") return "PAUS";
+            if (normalized == "APPLICATION" || normalized == "APPLICATIONS" || normalized == "MENUKEY")
+                return "MENU";
+            if (normalized == "ARROWUP" || normalized == "UP") return "↑";
+            if (normalized == "ARROWRIGHT" || normalized == "RIGHT") return "→";
+            if (normalized == "ARROWDOWN" || normalized == "DOWN") return "↓";
+            if (normalized == "ARROWLEFT" || normalized == "LEFT") return "←";
+            if (normalized == "COMMA" || normalized == "OEMCOMMA" || value == ",") return ",";
+            if (normalized == "PERIOD" || normalized == "OEMPERIOD") return ".";
+            if (normalized == "SEMICOLON" || normalized == "OEMSEMICOLON") return ";";
+
             value = value.Replace("Keyboard ", string.Empty).Replace("Key ", string.Empty).Trim();
-            if (value.Length <= 6) return value.ToUpperInvariant();
-            return value.Substring(0, 6).ToUpperInvariant();
+            return value.Length <= 6 ? value.ToUpperInvariant() : value.Substring(0, 6).ToUpperInvariant();
+        }
+
+        private static string CleanKeyboardLabel(string leaf)
+        {
+            return FormatKeyboardGlyphLabel(leaf);
         }
 
         private static string ShortMouseLabel(string leaf)
