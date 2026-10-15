@@ -172,7 +172,13 @@ jobs:
       - name: Run tests
         shell: pwsh
         run: |
-          & ".\packages\NUnit.ConsoleRunner.3.9.0\tools\nunit3-console.exe" ".\UCR.Tests\bin\Release\UCR.Tests.dll" --noresult --workers=0
+          $runner = ".\\packages\\NUnit.ConsoleRunner.3.9.0\\tools\\nunit3-console.exe"
+          $tests = ".\\UCR.Tests\\bin\\Release\\UCR.Tests.dll"
+          # WPF Application.Current owns Dispatcher-bound theme resources. The
+          # device-row materialization test must run in a separate NUnit process.
+          & $runner $tests --noresult --workers=0 --where "test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $runner $tests --noresult --workers=0 --where "test == HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Verify grouped-input XAML resources
