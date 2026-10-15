@@ -237,15 +237,11 @@ namespace HidWizards.UCR.Tests.UiTests
         public void ActualProfileWorkspaceMappingChevronExpandsInputsAndOutputsBelowItsOwnRow()
         {
             EnsureApplicationResources();
-
             var context = new Context();
             var profile = context.ProfilesManager.CreateProfile("Workspace expansion", null, null);
             context.ProfilesManager.AddProfile(profile);
             profile.AddMapping("A");
 
-            // Regression for a previous four-day failure: the workspace had its
-            // OWN inert mapping DataTemplate. Isolated MappingCardControl tests
-            // passed, but the cards users actually saw contained a literal '›'.
             var page = new ProfilePage(context, profile, embedded: true);
             try
             {
@@ -257,26 +253,25 @@ namespace HidWizards.UCR.Tests.UiTests
 
                 var rows = FindVisualChildren<ListView>(page)
                     .SingleOrDefault(list => list.Name == "MappingRowsList");
-                Assert.That(rows, Is.Not.Null, "The real mapping rows list must be displayed.");
-
-                var cards = FindVisualChildren<MappingCardControl>(rows).ToList();
-                Assert.That(cards.Count, Is.EqualTo(1),
-                    "Workspace rows must instantiate the functional MappingCardControl, not a duplicate preview.");
-
-                var card = cards.Single();
-                var mapping = card.DataContext as MappingViewModel;
-                var toggle = card.FindName("ExpandMappingButton") as Button;
-                var expandedBody = card.FindName("ExpandedBodyHost") as ContentControl;
+                Assert.That(rows, Is.Not.Null);
+                var row = rows.ItemContainerGenerator.ContainerFromIndex(0) as ListViewItem;
+                Assert.That(row, Is.Not.Null);
+                var mapping = row.DataContext as MappingViewModel;
                 Assert.That(mapping, Is.Not.Null);
-                Assert.That(toggle, Is.Not.Null, "Each real workspace card needs a clickable chevron.");
-                Assert.That(expandedBody, Is.Not.Null);
-                Assert.That(toggle.Content, Is.EqualTo("▼"));
-                Assert.That(expandedBody.Visibility, Is.EqualTo(Visibility.Collapsed));
-                var collapsedHeight = card.ActualHeight;
 
-                // Raise WPF's real routed Button.Click event on the workspace
-                // button. Do not pump the application's OnStartup dispatcher
-                // from this unit test (that starts production HID initialization).
+                // Collapsed rows preserve the original 18pt mapping title,
+                // visual columns, and glyph presentation. Only the chevron
+                // is converted from inert TextBlock to a real Button.
+                var title = FindVisualChildren<TextBlock>(row)
+                    .FirstOrDefault(t => t.Text == mapping.MappingTitle && t.FontSize == 18);
+                Assert.That(title, Is.Not.Null, "Original mapping title typography changed.");
+                var toggle = FindVisualChildren<Button>(row)
+                    .SingleOrDefault(button => (button.ToolTip as string) ==
+                        "Expand or collapse mapping Inputs and Outputs");
+                Assert.That(toggle, Is.Not.Null);
+                Assert.That(toggle.Content, Is.EqualTo("▼"));
+                var collapsedHeight = row.ActualHeight;
+
                 toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, toggle));
                 page.Measure(available);
                 page.Arrange(new Rect(new Point(0, 0), available));
@@ -284,19 +279,26 @@ namespace HidWizards.UCR.Tests.UiTests
 
                 Assert.That(mapping.IsExpanded, Is.True);
                 Assert.That(toggle.Content, Is.EqualTo("▲"));
-                Assert.That(expandedBody.Visibility, Is.EqualTo(Visibility.Visible));
-                Assert.That(expandedBody.ActualHeight, Is.GreaterThan(0));
-                Assert.That(card.ActualHeight, Is.GreaterThan(collapsedHeight),
-                    "The mapping row must grow DOWN, rather than open only in the right inspector.");
-                var headings = FindVisualChildren<TextBlock>(expandedBody).Select(t => t.Text).ToList();
+                Assert.That(row.ActualHeight, Is.GreaterThan(collapsedHeight),
+                    "The original mapping row must expand downwards.");
+                var inlinePanel = FindVisualChildren<MappingCardControl>(row)
+                    .SingleOrDefault(card => card.InspectorMode);
+                Assert.That(inlinePanel, Is.Not.Null);
+                var body = inlinePanel.FindName("ExpandedBodyHost") as ContentControl;
+                Assert.That(body, Is.Not.Null);
+                Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible));
+                Assert.That(body.ActualHeight, Is.GreaterThan(0));
+                var headings = FindVisualChildren<TextBlock>(body).Select(t => t.Text).ToList();
                 Assert.That(headings, Does.Contain("INPUTS"));
                 Assert.That(headings, Does.Contain("OUTPUTS"));
 
                 toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, toggle));
+                page.Measure(available);
+                page.Arrange(new Rect(new Point(0, 0), available));
+                page.UpdateLayout();
                 Assert.That(mapping.IsExpanded, Is.False);
                 Assert.That(toggle.Content, Is.EqualTo("▼"));
-                // The existing fade holds the body until its compositor animation
-                // completes; the isolated MappingCardControl test checks that phase.
+                Assert.That(row.ActualHeight, Is.LessThan(collapsedHeight + 2));
             }
             finally
             {
