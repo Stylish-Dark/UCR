@@ -111,7 +111,13 @@
         <DataTemplate x:Key="ExpandedMappingBodyTemplate">
             <Border Margin="8 0 8 8" Padding="4 6 4 4" Background="#202020"
                     BorderBrush="#303030" BorderThickness="1 1 1 0" CornerRadius="3">
-                <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="0"/>
+                        <ColumnDefinition Width="*" MinWidth="0"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0 0 6 0">
+                    <TextBlock Text="INPUTS" Margin="5 0 0 7" FontSize="13" FontWeight="SemiBold" Foreground="#FFFFFF"/>
                     <!-- Non-boolean plugins retain the full legacy editor. -->
                     <ItemsControl ItemsSource="{Binding DeviceBindings}" HorizontalContentAlignment="Stretch">
                         <ItemsControl.Style>
@@ -261,9 +267,10 @@
                                 ToolTip="Add another alternative input group"/>
                     </StackPanel>
 
+                    </StackPanel>
                     <!-- Outputs follow inputs: compact bindings, inline remove and add. -->
-                    <StackPanel Margin="5 7 5 5">
-                        <TextBlock Text="Outputs" FontSize="14" FontWeight="SemiBold"
+                    <StackPanel Grid.Column="1" Margin="6 0 5 5">
+                        <TextBlock Text="OUTPUTS" FontSize="14" FontWeight="SemiBold"
                                    Foreground="#FFFFFF" Margin="0 0 0 6"/>
                         <WrapPanel Orientation="Horizontal">
                             <ItemsControl ItemsSource="{Binding Plugins}">
@@ -302,7 +309,7 @@
                                     ToolTip="Add another output binding"/>
                         </WrapPanel>
                     </StackPanel>
-                </StackPanel>
+                </Grid>
             </Border>
         </DataTemplate>
     </UserControl.Resources>
