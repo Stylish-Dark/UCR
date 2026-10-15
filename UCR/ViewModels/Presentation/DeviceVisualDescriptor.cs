@@ -399,7 +399,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
             {
                 result.ControlKind = ControlVisualKind.Key;
                 result.ControlLabel = OverrideGlyphLabel("Keyboard", leaf, CleanKeyboardLabel(leaf));
-                result.ControlBrush = result.Device?.AccentBrush ?? NeutralBrush;
+                result.ControlBrush = result.Device?.BadgeTextBrush ?? NeutralBrush;
                 return;
             }
 
