@@ -58,13 +58,6 @@ namespace HidWizards.UCR.Views.Controls
                 HideExpandedBody();
         }
 
-        // Prevent the Expander's header toggle from consuming ordinary card clicks.
-        // Existing quick-bind glyphs and mapping action buttons retain their own events.
-        private void HeaderGrid_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            e.Handled = true;
-        }
-
         private void ExpandMappingButton_OnClick(object sender, RoutedEventArgs e)
         {
             if (InspectorMode) return;
