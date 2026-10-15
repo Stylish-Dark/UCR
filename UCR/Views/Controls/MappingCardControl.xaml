@@ -1016,9 +1016,10 @@
                     <Button Grid.Column="5" Width="34" Height="38" Margin="0 0 4 0"
                             VerticalAlignment="Center" HorizontalAlignment="Center"
                             Background="Transparent" BorderThickness="0" Foreground="#D6D6D6"
+                            Cursor="Hand" Focusable="True"
                             ToolTip="Expand or collapse mapping details"
                             Click="ExpandMappingButton_OnClick">
-                        <TextBlock Text="⌄" FontFamily="Segoe UI Symbol" FontSize="26" FontWeight="SemiBold"
+                        <TextBlock Text="▼" FontFamily="Segoe UI Symbol" FontSize="19" FontWeight="SemiBold"
                                    HorizontalAlignment="Center" VerticalAlignment="Center">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
