@@ -259,6 +259,27 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(body, Is.Not.Null);
                 Assert.That(card.FindName("MappingExpander"), Is.Null,
                     "The header must not remain wrapped in a clickable WPF Expander.");
+                // UI Automation bypasses hit-testing. Check actual pointer reachability.
+                foreach (var width in new[] { 660d, 900d, 1200d })
+                {
+                    card.Measure(new Size(width, 600));
+                    card.Arrange(new Rect(0, 0, width, 600));
+                    card.UpdateLayout();
+                    var point = chevron.TranslatePoint(
+                        new Point(chevron.ActualWidth / 2, chevron.ActualHeight / 2), card);
+                    Assert.That(chevron.ActualWidth, Is.GreaterThanOrEqualTo(30));
+                    Assert.That(point.X, Is.GreaterThanOrEqualTo(0));
+                    Assert.That(point.X, Is.LessThan(width),
+                        "Chevron outside card at width " + width + ": " + point.X);
+                    var hit = VisualTreeHelper.HitTest(card, point)?.VisualHit;
+                    Assert.That(hit, Is.Not.Null);
+                    Assert.That(IsDescendantOf(hit, chevron), Is.True,
+                        "Chevron blocked from pointer input at width " + width);
+                }
+                card.Measure(new Size(900, 600));
+                card.Arrange(new Rect(0, 0, 900, 600));
+                card.UpdateLayout();
+
                 Assert.That(chevron.Content, Is.EqualTo("▼"));
                 Assert.That(mapping.IsExpanded, Is.False);
                 Assert.That(body.Visibility, Is.EqualTo(Visibility.Collapsed));
@@ -385,6 +406,13 @@ var colourButton = FindVisualChildren<Button>(row)
                 if (typed != null) yield return typed;
                 foreach (var nested in FindVisualChildren<T>(child)) yield return nested;
             }
+        }
+
+        private static bool IsDescendantOf(DependencyObject child, DependencyObject ancestor)
+        {
+            for (var p = child; p != null; p = VisualTreeHelper.GetParent(p))
+                if (ReferenceEquals(p, ancestor)) return true;
+            return false;
         }
 
         private static void EnsureApplicationResources()
