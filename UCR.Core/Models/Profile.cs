@@ -589,6 +589,7 @@ namespace HidWizards.UCR.Core.Models
             }
 
             Context?.ContextChanged();
+            Context?.OnProfileDevicesChanged(Guid);
             return true;
         }
 
@@ -623,6 +624,7 @@ namespace HidWizards.UCR.Core.Models
             deviceList.AddRange(deviceConfigurations);
             OnPropertyChanged(deviceIoType == DeviceIoType.Input ? nameof(InputDeviceConfigurations) : nameof(OutputDeviceConfigurations));
             Context.ContextChanged();
+            Context.OnProfileDevicesChanged(Guid);
         }
 
         public bool RemoveDeviceConfiguration(DeviceConfiguration device)
@@ -633,6 +635,7 @@ namespace HidWizards.UCR.Core.Models
                 OnPropertyChanged(nameof(InputDeviceConfigurations));
                 OnPropertyChanged(nameof(OutputDeviceConfigurations));
                 Context.ContextChanged();
+                Context.OnProfileDevicesChanged(Guid);
             }
 
             return success;

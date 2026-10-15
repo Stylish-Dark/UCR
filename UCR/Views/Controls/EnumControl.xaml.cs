@@ -55,7 +55,9 @@ namespace HidWizards.UCR.Views.Controls
 
         private void EnumComboBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            PluginProperty.Property = ((ComboBoxItemViewModel) EnumComboBox.SelectedItem).Value;
+            var selected = EnumComboBox.SelectedItem as ComboBoxItemViewModel;
+            if (PluginProperty == null || selected == null) return;
+            PluginProperty.Property = selected.Value;
         }
     }
 }

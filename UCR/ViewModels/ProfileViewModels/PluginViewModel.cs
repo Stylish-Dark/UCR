@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Windows;
 using System.Runtime.CompilerServices;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Models;
@@ -15,6 +16,67 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
     {
         public MappingViewModel MappingViewModel { get; }
         public Plugin Plugin { get; set; }
+        public string OutputType => IsFourButtonAxis ? "Axis" : new SimplePluginViewModel(Plugin).OutputType;
+        public bool IsAxisButtonMapping =>
+            string.Equals(Plugin.PluginName, "Button to Axis", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Plugin.PluginName, "Buttons to Axis", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Plugin.PluginName, "Buttons to Axes", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Plugin.PluginName, "Buttons to DPad", StringComparison.OrdinalIgnoreCase);
+        public bool IsFourButtonAxis => string.Equals(Plugin.PluginName, "Buttons to Axes", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(Plugin.PluginName, "Buttons to DPad", StringComparison.OrdinalIgnoreCase);
+        public bool IsDPadOutput => string.Equals(Plugin.PluginName, "Buttons to DPad", StringComparison.OrdinalIgnoreCase);
+        public string FourWayOutputLabel
+        {
+            get
+            {
+                if (!IsFourButtonAxis || Plugin.Outputs.Count == 0 ||
+                    Plugin.Outputs.Any(binding => !binding.IsBound)) return "Choose output";
+                if (IsDPadOutput) return "D-pad";
+                return Plugin.Outputs[0].KeyValue == 2 ? "Right stick" : "Left stick";
+            }
+        }
+        public void RefreshFourWayDestination()
+        {
+            OnPropertyChanged(nameof(FourWayOutputLabel));
+            OnPropertyChanged(nameof(SelectedFourWayOutputDeviceGuid));
+            OnPropertyChanged(nameof(FourWayOutputDevices));
+        }
+        public bool IsTwoButtonAxis => string.Equals(Plugin.PluginName, "Buttons to Axis", StringComparison.OrdinalIgnoreCase);
+        public bool IsOneButtonAxis => IsAxisButtonMapping && !IsTwoButtonAxis && !IsFourButtonAxis;
+        public Visibility AxisButtonModeVisibility => IsAxisButtonMapping ? Visibility.Visible : Visibility.Collapsed;
+        public bool CanChangeAxisButtonMode => MappingViewModel.ButtonsEnabled &&
+            MappingViewModel.Plugins.Count == 1;
+        public string AxisButtonModeDescription => IsFourButtonAxis ? "4 ways" : IsTwoButtonAxis ? "2 buttons" : "1 button";
+        public Visibility FourButtonPresetVisibility => IsFourButtonAxis ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility KeyboardAxisPresetVisibility =>
+            IsFourButtonAxis && MappingViewModel.SelectedPresetInputIsKeyboard ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility ControllerAxisPresetVisibility =>
+            IsFourButtonAxis && MappingViewModel.SelectedPresetInputHasDPad ? Visibility.Visible : Visibility.Collapsed;
+        public void RefreshInputPresetDisplay()
+        {
+            OnPropertyChanged(nameof(KeyboardAxisPresetVisibility));
+            OnPropertyChanged(nameof(ControllerAxisPresetVisibility));
+        }
+        public System.Collections.Generic.List<FourWayOutputDeviceOption> FourWayOutputDevices =>
+            MappingViewModel.GetFourWayOutputDevices();
+        public Guid SelectedFourWayOutputDeviceGuid
+        {
+            get
+            {
+                var current = Plugin.Outputs.FirstOrDefault()?.DeviceConfigurationGuid ?? Guid.Empty;
+                var devices = FourWayOutputDevices;
+                return devices.Any(item => item.Guid == current)
+                    ? current : devices.FirstOrDefault()?.Guid ?? Guid.Empty;
+            }
+            set
+            {
+                if (value == Guid.Empty || value == Plugin.Outputs.FirstOrDefault()?.DeviceConfigurationGuid) return;
+                MappingViewModel.SetFourWayOutputDevice(this, value);
+                OnPropertyChanged(nameof(SelectedFourWayOutputDeviceGuid));
+                OnPropertyChanged(nameof(FourWayOutputLabel));
+            }
+        }
+
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<PluginPropertyGroupViewModel> PluginPropertyGroups { get; set; }
         public bool CanRemove => !MappingViewModel.ProfileViewModel.Profile.IsActive() && MappingViewModel.Plugins.Count > 1;
@@ -89,6 +151,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private void Plugins_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             OnPropertyChanged(nameof(CanRemove));
+            OnPropertyChanged(nameof(CanChangeAxisButtonMode));
         }
 
         internal void RefreshActiveState()
@@ -128,8 +191,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             foreach (var pluginPropertyGroup in Plugin.PluginPropertyGroups)
             {
-                if (pluginPropertyGroup.PluginProperties.Count == 0 || pluginPropertyGroup.GroupType.Equals(PluginPropertyGroup.GroupTypes.Output)) continue;
-
+                if (pluginPropertyGroup.PluginProperties.Count == 0) continue;
+                // The compact output inspector must show output-specific values too:
+                // Button to Axis has pressed/released axis positions in its "Axis"
+                // output group, which used to be silently omitted here.
                 PluginPropertyGroups.Add(new PluginPropertyGroupViewModel(pluginPropertyGroup));
             }
         }

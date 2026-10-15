@@ -1,6 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Media;
+using HidWizards.UCR.ViewModels.Presentation;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Core.Utilities;
@@ -16,6 +21,7 @@ namespace HidWizards.UCR.Views.Controls
                 new PropertyMetadata(default(DeviceBinding)));
 
         private bool _loaded;
+        private Popup _outputPicker;
 
         public CompactInputBindingControl()
         {
@@ -34,7 +40,6 @@ namespace HidWizards.UCR.Views.Controls
             var viewModel = DataContext as DeviceBindingViewModel;
             viewModel?.EnsureDeviceListLoaded();
             _loaded = true;
-            BuildContextMenu();
         }
 
         private void DeviceSelectionBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -45,30 +50,47 @@ namespace HidWizards.UCR.Views.Controls
             if (selected == null || viewModel == null) return;
 
             viewModel.ChangeDeviceConfiguration(selected.Value);
-            BuildContextMenu();
+            if (_outputPicker != null) _outputPicker.IsOpen = false;
         }
 
-        private void BindButton_OnClick(object sender, RoutedEventArgs e)
+        private async void BindButton_OnClick(object sender, RoutedEventArgs e)
         {
             if (DeviceBinding == null || DeviceBinding.IsInBindMode) return;
-            try
+            if (DeviceBinding.DeviceIoType == DeviceIoType.Input)
             {
-                DeviceBinding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
-                DeviceBinding.EnterBindMode();
+                // No device selected => listen to all profile input devices.
+                // A chosen device => listen to that device only.
+                StartPressCapture();
+                return;
             }
-            catch (Exception exception)
+
+            // Keyboard outputs use pressed-key capture; controllers retain the
+            // graphical picker with trigger and axis-specific choices.
+            var configuration = GetSelectedDeviceConfiguration();
+            if (DeviceVisualCatalog.Describe(configuration, DeviceBinding.Profile, DeviceIoType.Output).Kind ==
+                DeviceVisualKind.Keyboard)
             {
-                Logger.Error("Failed to enter compact input bind mode", exception);
-                HidWizards.UCR.Utilities.DarkMessageBox.Show(
-                    "UCR could not start input detection for this binding. The error has been written to the log.",
-                    "Unable to bind input", MessageBoxButton.OK, MessageBoxImage.Error);
+                var mappingCard = FindAncestor<MappingCardControl>(this);
+                var bindingViewModel = DataContext as DeviceBindingViewModel;
+                if (mappingCard != null && bindingViewModel != null)
+                {
+                    await mappingCard.OpenQuickOutputPickerAsync(bindingViewModel, BindButton);
+                    return;
+                }
             }
+            ShowOutputPicker(BindButton);
         }
 
         private void MenuButton_OnClick(object sender, RoutedEventArgs e)
         {
+            // Reveal the whole binding row before opening its options. Otherwise a
+            // partly scrolled-off row leaves Block/NOT underneath the fixed footer.
+            BringIntoView();
             BuildContextMenu();
             Ddl.PlacementTarget = MenuButton;
+            // The inspector has a docked footer and a constrained scroll viewport.
+            // Open the binding menu upwards so it cannot cover the footer or clipped rows.
+            Ddl.Placement = PlacementMode.Top;
             Ddl.IsOpen = true;
         }
 
@@ -77,12 +99,62 @@ namespace HidWizards.UCR.Views.Controls
             if (Ddl == null) return;
             Ddl.Items.Clear();
 
+            var inputViewModel = DataContext as DeviceBindingViewModel;
+            if (DeviceBinding?.DeviceIoType == DeviceIoType.Input &&
+                inputViewModel != null &&
+                (inputViewModel.ExpressionMapping != null ||
+                 inputViewModel.LegacyInputTypeVisibility == Visibility.Visible))
+            {
+                // The default Button case is intentionally single-row. Type selection
+                // lives in the binding's existing ellipsis rather than repeating on every
+                // input card; axis-specific controls appear only once an axis is selected.
+                var inputType = new MenuItem
+                {
+                    Header = "Input type",
+                    Foreground = Brushes.White,
+                    Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 14, 6)
+                };
+                var labels = new[] { "Button", "Axis positive", "Axis negative", "Axis value" };
+                for (var index = 0; index < labels.Length; index++)
+                {
+                    var selectedKind = index;
+                    var kindItem = new MenuItem
+                    {
+                        Header = labels[index],
+                        IsChecked = inputViewModel.InputExpressionInputKind == index,
+                        Foreground = Brushes.White,
+                        Background = Brushes.Transparent,
+                        Padding = new Thickness(10, 6, 14, 6)
+                    };
+                    kindItem.Click += (s, args) =>
+                    {
+                        inputViewModel.InputExpressionInputKind = selectedKind;
+                    };
+                    inputType.Items.Add(kindItem);
+                }
+                Ddl.Items.Add(inputType);
+                Ddl.Items.Add(new Separator());
+            }
+
             var configuration = GetSelectedDeviceConfiguration();
             if (configuration?.Device != null && DeviceBinding?.Profile?.Context != null)
             {
-                foreach (var node in configuration.Device.GetDeviceBindingMenu(
-                    DeviceBinding.Profile.Context, DeviceBinding.DeviceIoType))
+                var nodes = configuration.Device.GetDeviceBindingMenu(
+                    DeviceBinding.Profile.Context, DeviceBinding.DeviceIoType);
+                foreach (var node in nodes)
                 {
+                    // Expand only the keyboard's top-level "Keys" folder into
+                    // the same categories offered by the legacy binding editor.
+                    if (IsKeyboardRoot(node))
+                    {
+                        foreach (var categoryNode in DeviceBindingControl.BuildKeyboardCategories(node.ChildrenNodes))
+                        {
+                            var categoryItem = BuildMenuItem(categoryNode, configuration.Guid);
+                            if (categoryItem != null) Ddl.Items.Add(categoryItem);
+                        }
+                        continue;
+                    }
                     var item = BuildMenuItem(node, configuration.Guid);
                     if (item != null) Ddl.Items.Add(item);
                 }
@@ -90,27 +162,21 @@ namespace HidWizards.UCR.Views.Controls
 
             if (Ddl.Items.Count > 0) Ddl.Items.Add(new Separator());
 
-            var blockItem = new MenuItem
-            {
-                Header = "Block original input",
-                IsCheckable = true,
-                IsChecked = DeviceBinding?.Block == true,
-                IsEnabled = DeviceBinding?.IsBlockable() == true,
-                Foreground = System.Windows.Media.Brushes.White
-            };
-            blockItem.Click += (clickSender, clickArgs) =>
-            {
-                if (DeviceBinding != null) DeviceBinding.SetBlock(blockItem.IsChecked);
-            };
-            Ddl.Items.Add(blockItem);
-
             var clearItem = new MenuItem
             {
                 Header = "Clear binding",
                 Foreground = System.Windows.Media.Brushes.White
             };
+            clearItem.IsEnabled = DeviceBinding?.IsBound == true;
             clearItem.Click += (clickSender, clickArgs) => DeviceBinding?.ClearBinding();
             Ddl.Items.Add(clearItem);
+        }
+
+        private static bool IsKeyboardRoot(DeviceBindingNode node)
+        {
+            return node != null && node.ChildrenNodes != null &&
+                   node.ChildrenNodes.Count >= 20 &&
+                   string.Equals(node.Title, "Keys", StringComparison.OrdinalIgnoreCase);
         }
 
         private MenuItem BuildMenuItem(DeviceBindingNode node, Guid configurationGuid)
@@ -126,11 +192,14 @@ namespace HidWizards.UCR.Views.Controls
             if (node.IsBinding)
             {
                 var info = node.DeviceBindingInfo;
-                if (info == null || info.DeviceBindingCategory != DeviceBindingCategory.Momentary) return null;
+                if (info == null || info.DeviceBindingCategory !=
+                    (DataContext as DeviceBindingViewModel)?.DeviceBindingCategory) return null;
+                // The ellipsis is a text-only nested menu, not a second visual picker.
+                item.ToolTip = "Assign " + node.Title;
                 item.Click += (sender, args) =>
                 {
                     DeviceBinding.SetDeviceConfigurationGuid(configurationGuid);
-                    DeviceBinding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
+                    DeviceBinding.DeviceBindingCategory = info.DeviceBindingCategory;
                     DeviceBinding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
                 };
                 return item;
@@ -143,6 +212,325 @@ namespace HidWizards.UCR.Views.Controls
             }
 
             return item.Items.Count == 0 ? null : item;
+        }
+
+        private void StartPressCapture()
+        {
+            if (DeviceBinding == null || DeviceBinding.IsInBindMode) return;
+            try
+            {
+                var category = (DataContext as DeviceBindingViewModel)?.DeviceBindingCategory
+                    ?? DeviceBinding.DeviceBindingCategory;
+                DeviceBinding.DeviceBindingCategory = category;
+                DeviceBinding.EnterBindMode();
+            }
+            catch (Exception exception)
+            {
+                Logger.Error("Unable to start control detection", exception);
+                var reason = exception.GetBaseException()?.Message ?? exception.Message;
+                HidWizards.UCR.Utilities.DarkMessageBox.Show(
+                    "Unable to start detection for the selected device. " + reason +
+                    "\n\nChoose the control from the menu instead, or check that the input device is connected.",
+                    "Control detection unavailable", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private static T FindAncestor<T>(DependencyObject start) where T : DependencyObject
+        {
+            var current = System.Windows.Media.VisualTreeHelper.GetParent(start);
+            while (current != null)
+            {
+                var found = current as T;
+                if (found != null) return found;
+                current = System.Windows.Media.VisualTreeHelper.GetParent(current);
+            }
+            return null;
+        }
+
+        private static IEnumerable<DeviceBindingNode> FlattenControls(IEnumerable<DeviceBindingNode> nodes)
+        {
+            foreach (var node in nodes ?? Enumerable.Empty<DeviceBindingNode>())
+            {
+                if (node == null) continue;
+                if (node.IsBinding && node.DeviceBindingInfo != null) yield return node;
+                foreach (var child in FlattenControls(node.ChildrenNodes)) yield return child;
+            }
+        }
+
+        private HidWizards.UCR.Core.Models.Plugin FindButtonToAxisPlugin()
+        {
+            if (DeviceBinding?.Profile == null) return null;
+            return DeviceBinding.Profile.GetAllMappings()
+                .Where(mapping => mapping?.Plugins != null)
+                .SelectMany(mapping => mapping.Plugins)
+                .FirstOrDefault(plugin =>
+                    string.Equals(plugin?.PluginName, "Button to Axis", StringComparison.OrdinalIgnoreCase)
+                    && plugin.Outputs != null
+                    && plugin.Outputs.Any(binding => binding.Guid == DeviceBinding.Guid));
+        }
+
+        private bool IsButtonToAxisOutput()
+        {
+            return FindButtonToAxisPlugin() != null;
+        }
+
+        private void SetButtonToAxisDirection(int percent, bool trigger = false)
+        {
+            var plugin = FindButtonToAxisPlugin();
+            var property = plugin?.GetType().GetProperty("RangePressed");
+            if (property == null || !property.CanWrite) return;
+            property.SetValue(plugin, (double)percent, null);
+            if (trigger)
+            {
+                // Trigger is a one-direction analog control. Neutral must be released,
+                // rather than an arbitrary Left/Right half-axis direction.
+                plugin.GetType().GetProperty("Range")?.SetValue(plugin, -100.0, null);
+                plugin.GetType().GetProperty("Initialize")?.SetValue(plugin, true, null);
+            }
+            DeviceBinding.Profile.Context.ContextChanged();
+        }
+
+        private void ApplyOutputControl(Guid configuration, DeviceBindingInfo info)
+        {
+            DeviceBinding.SetDeviceConfigurationGuid(configuration);
+            DeviceBinding.DeviceBindingCategory = info.DeviceBindingCategory;
+            DeviceBinding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+        }
+
+        private void ShowOutputPicker(FrameworkElement target)
+        {
+            var config = GetSelectedDeviceConfiguration();
+            if (config?.Device == null || DeviceBinding?.Profile?.Context == null)
+            {
+                HidWizards.UCR.Utilities.DarkMessageBox.Show(
+                    "Select a configured output device first. UCR does not need the game's virtual controller to be physically connected.",
+                    "Output device unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var category = (DataContext as DeviceBindingViewModel)?.DeviceBindingCategory
+                ?? DeviceBinding.DeviceBindingCategory;
+            var rawMenu = config.Device.GetDeviceBindingMenu(
+                DeviceBinding.Profile.Context, DeviceIoType.Output);
+            var keyboard = DeviceVisualCatalog.Describe(config, DeviceBinding.Profile, DeviceIoType.Output).Kind
+                == DeviceVisualKind.Keyboard;
+            var groups = new List<KeyValuePair<string, List<DeviceBindingNode>>>();
+            if (keyboard)
+            {
+                foreach (var rootNode in rawMenu)
+                {
+                    if (!IsKeyboardRoot(rootNode)) continue;
+                    foreach (var group in DeviceBindingControl.BuildKeyboardCategories(rootNode.ChildrenNodes))
+                    {
+                        var matching = FlattenControls(group.ChildrenNodes)
+                            .Where(node => node.DeviceBindingInfo.DeviceBindingCategory == category).ToList();
+                        if (matching.Count > 0)
+                            groups.Add(new KeyValuePair<string, List<DeviceBindingNode>>(group.Title, matching));
+                    }
+                }
+            }
+            if (groups.Count == 0)
+            {
+                var matching = FlattenControls(rawMenu)
+                    .Where(node => node.DeviceBindingInfo.DeviceBindingCategory == category).ToList();
+                if (matching.Count > 0)
+                    groups.Add(new KeyValuePair<string, List<DeviceBindingNode>>("Controls", matching));
+            }
+            var choices = groups.SelectMany(group => group.Value).ToList();
+
+            if (_outputPicker != null) _outputPicker.IsOpen = false;
+            var grid = new StackPanel();
+            var popup = new Popup
+            {
+                PlacementTarget = target,
+                Placement = PlacementMode.Bottom,
+                AllowsTransparency = true,
+                StaysOpen = false,
+                PopupAnimation = PopupAnimation.Fade
+            };
+            _outputPicker = popup;
+
+            foreach (var group in groups)
+            {
+                if (keyboard)
+                    grid.Children.Add(new TextBlock
+                    {
+                        Text = group.Key.ToUpperInvariant(), FontWeight = FontWeights.SemiBold,
+                        Foreground = Brushes.LightGray, Margin = new Thickness(8, 11, 0, 5)
+                    });
+                var groupGrid = new UniformGrid { Columns = 2 };
+                grid.Children.Add(groupGrid);
+                foreach (var node in group.Value)
+                {
+                var info = node.DeviceBindingInfo;
+                var candidate = new DeviceBinding
+                {
+                    Profile = DeviceBinding.Profile,
+                    DeviceIoType = DeviceIoType.Output,
+                    DeviceBindingCategory = info.DeviceBindingCategory,
+                    DeviceConfigurationGuid = config.Guid,
+                    IsBound = true,
+                    KeyType = info.KeyType,
+                    KeyValue = info.KeyValue,
+                    KeySubValue = info.KeySubValue
+                };
+                var visual = DeviceVisualCatalog.DescribeBinding(candidate, category, DeviceBinding.Profile);
+                var contents = new StackPanel { Orientation = Orientation.Horizontal };
+                if (visual.ControlKind != ControlVisualKind.Key)
+                    contents.Children.Add(new ControlGlyphControl
+                    {
+                        Width = 54, Height = 34, Margin = new Thickness(0, 0, 8, 0),
+                        Kind = visual.ControlKind,
+                        AccentBrush = visual.ControlBrush ?? Brushes.Gray,
+                        Label = visual.ControlLabel
+                    });
+                contents.Children.Add(new TextBlock
+                {
+                    Text = node.Title, Foreground = Brushes.White,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    MaxWidth = 122
+                });
+                // A button driving an analog axis needs a direction, not merely
+                // an axis name. Expose negative/positive choices for this plugin.
+                var signedAxis = category == DeviceBindingCategory.Range && IsButtonToAxisOutput();
+                if (signedAxis)
+                {
+                    var axisName = string.IsNullOrWhiteSpace(visual.ControlLabel)
+                        ? node.Title ?? "Axis" : visual.ControlLabel;
+                    var upper = axisName.Trim().ToUpperInvariant();
+                    var isTrigger = visual.ControlKind == ControlVisualKind.Trigger ||
+                        upper == "LT" || upper == "RT" || upper == "L2" || upper == "R2" ||
+                        (node.Title ?? "").IndexOf("trigger", StringComparison.OrdinalIgnoreCase) >= 0;
+                    if (isTrigger)
+                    {
+                        var triggerButton = new Button
+                        {
+                            Content = axisName + "  —  Pull trigger",
+                            Width = 208, Height = 44, Margin = new Thickness(2),
+                            Background = new SolidColorBrush(Color.FromRgb(42, 42, 42)),
+                            Foreground = Brushes.White, BorderBrush = Brushes.DimGray,
+                            ToolTip = "Button pressed: trigger fully pulled. Released: trigger neutral."
+                        };
+                        triggerButton.Click += (sender, args) =>
+                        {
+                            ApplyOutputControl(config.Guid, info);
+                            SetButtonToAxisDirection(100, true);
+                            popup.IsOpen = false;
+                        };
+                        groupGrid.Children.Add(triggerButton);
+                        continue;
+                    }
+
+                    var isVertical = upper == "LY" || upper == "RY" ||
+                        axisName.EndsWith(" Y", StringComparison.OrdinalIgnoreCase) ||
+                        (node.Title ?? "").IndexOf("vertical", StringComparison.OrdinalIgnoreCase) >= 0;
+                    var isHorizontal = upper == "LX" || upper == "RX" ||
+                        axisName.EndsWith(" X", StringComparison.OrdinalIgnoreCase) ||
+                        (node.Title ?? "").IndexOf("horizontal", StringComparison.OrdinalIgnoreCase) >= 0;
+                    var negativeLabel = isVertical ? "Up (−)" : isHorizontal ? "Left (−)" : "Negative (−)";
+                    var positiveLabel = isVertical ? "Down (+)" : isHorizontal ? "Right (+)" : "Positive (+)";
+                    var negative = new Button
+                    {
+                        Content = axisName + "  " + negativeLabel,
+                        Width = 208, Height = 40, Margin = new Thickness(2),
+                        Background = new SolidColorBrush(Color.FromRgb(42, 42, 42)),
+                        Foreground = Brushes.White, BorderBrush = Brushes.DimGray
+                    };
+                    var positive = new Button
+                    {
+                        Content = axisName + "  " + positiveLabel,
+                        Width = 208, Height = 40, Margin = new Thickness(2),
+                        Background = new SolidColorBrush(Color.FromRgb(42, 42, 42)),
+                        Foreground = Brushes.White, BorderBrush = Brushes.DimGray
+                    };
+                    negative.Click += (sender, args) =>
+                    {
+                        ApplyOutputControl(config.Guid, info);
+                        SetButtonToAxisDirection(-100);
+                        popup.IsOpen = false;
+                    };
+                    positive.Click += (sender, args) =>
+                    {
+                        ApplyOutputControl(config.Guid, info);
+                        SetButtonToAxisDirection(100);
+                        popup.IsOpen = false;
+                    };
+                    groupGrid.Children.Add(negative);
+                    groupGrid.Children.Add(positive);
+                    continue;
+                }
+                var button = new Button
+                {
+                    Content = contents,
+                    Width = 208,
+                    Height = 49,
+                    Margin = new Thickness(2),
+                    HorizontalContentAlignment = HorizontalAlignment.Left,
+                    Background = new SolidColorBrush(Color.FromRgb(42, 42, 42)),
+                    Foreground = Brushes.White,
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(60, 60, 60)),
+                    BorderThickness = new Thickness(1),
+                    Padding = new Thickness(8, 3, 5, 3),
+                    ToolTip = visual.ToolTip
+                };
+                button.Click += (sender, args) =>
+                {
+                    DeviceBinding.SetDeviceConfigurationGuid(config.Guid);
+                    DeviceBinding.DeviceBindingCategory = info.DeviceBindingCategory;
+                    DeviceBinding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                    popup.IsOpen = false;
+                };
+                groupGrid.Children.Add(button);
+                }
+            }
+
+            var root = new StackPanel();
+            root.Children.Add(new TextBlock
+            {
+                Text = "CHOOSE OUTPUT", FontWeight = FontWeights.SemiBold, FontSize = 12,
+                Foreground = Brushes.LightGray, Margin = new Thickness(8, 7, 0, 6)
+            });
+            if (choices.Count == 0)
+                root.Children.Add(new TextBlock
+                {
+                    Text = "No compatible output controls for this mapping.",
+                    Foreground = Brushes.White,
+                    Margin = new Thickness(12)
+                });
+            else
+                root.Children.Add(new ScrollViewer
+                {
+                    Content = grid,
+                    MaxHeight = 415,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
+                });
+
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(4, 7, 4, 3) };
+            var clear = new Button { Content = "Clear binding", Padding = new Thickness(10, 5, 10, 5),
+                Background = Brushes.Transparent, Foreground = Brushes.White, BorderThickness = new Thickness(0) };
+            clear.Click += (sender, args) => { DeviceBinding.ClearBinding(); popup.IsOpen = false; };
+            actions.Children.Add(clear);
+
+            if (DeviceVisualCatalog.Describe(config, DeviceBinding.Profile, DeviceIoType.Output).Kind
+                == DeviceVisualKind.Keyboard)
+            {
+                var capture = new Button { Content = "Detect keyboard key", Padding = new Thickness(10, 5, 10, 5),
+                    Background = Brushes.Transparent, Foreground = Brushes.White, BorderThickness = new Thickness(0) };
+                capture.Click += (sender, args) => { popup.IsOpen = false; StartPressCapture(); };
+                actions.Children.Add(capture);
+            }
+            root.Children.Add(actions);
+            popup.Child = new Border
+            {
+                Child = root,
+                Background = new SolidColorBrush(Color.FromRgb(32, 32, 32)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(84, 84, 84)),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(7)
+            };
+            popup.IsOpen = true;
         }
 
         private DeviceConfiguration GetSelectedDeviceConfiguration()

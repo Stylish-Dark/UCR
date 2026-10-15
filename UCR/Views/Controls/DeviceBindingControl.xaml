@@ -66,6 +66,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="95"/>
@@ -166,7 +167,29 @@
             </StackPanel>
         </StackPanel>
 
-        <plugin:PluginPropertyListControl Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4"
+        <!-- Multi-channel plugin inputs keep their positional output roles, but each
+             physical input now independently chooses button or analogue detection. -->
+        <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Orientation="Horizontal"
+                    Margin="0 5 0 1" Visibility="{Binding LegacyInputTypeVisibility}">
+            <ComboBox Width="142" Height="28" Margin="0 0 8 0"
+                      SelectedIndex="{Binding InputExpressionInputKind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                      IsEnabled="{Binding BindingEnabled}" ToolTip="Physical input signal type">
+                <ComboBoxItem Content="Button"/>
+                <ComboBoxItem Content="Axis positive"/>
+                <ComboBoxItem Content="Axis negative"/>
+                <ComboBoxItem Content="Axis value"/>
+            </ComboBox>
+            <StackPanel Orientation="Horizontal" Visibility="{Binding ThresholdConditionVisibility}">
+                <TextBlock Text="Threshold" Foreground="#CCCCCC" VerticalAlignment="Center" Margin="0 0 5 0"/>
+                <TextBox Width="55" Height="28" VerticalContentAlignment="Center"
+                         IsEnabled="{Binding BindingEnabled}"
+                         Text="{Binding AxisThresholdPercent, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                         ToolTip="Axis travel required (1–100%)"/>
+                <TextBlock Text="%" Foreground="#CCCCCC" VerticalAlignment="Center" Margin="3 0 0 0"/>
+            </StackPanel>
+        </StackPanel>
+
+        <plugin:PluginPropertyListControl Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4"
                                           Margin="0 4 0 0"
                                           DataContext="{Binding PluginPropertyGroup}"
                                           Visibility="{Binding ShowPropertyList}"/>

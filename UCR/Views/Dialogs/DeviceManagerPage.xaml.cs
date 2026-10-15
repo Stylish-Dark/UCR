@@ -60,6 +60,37 @@ namespace HidWizards.UCR.Views.Dialogs
             e.Handled = true;
         }
 
+        // Arrow keys navigate rows; Tab / Shift+Tab use WPF's normal control order
+        // within and across rows. Alt+Up/Down in alias fields still reorders devices.
+        private void DeviceList_OnPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            var key = e.Key == Key.System ? e.SystemKey : e.Key;
+            if (key != Key.Up && key != Key.Down) return;
+            if ((Keyboard.Modifiers & (ModifierKeys.Alt | ModifierKeys.Control | ModifierKeys.Shift)) != ModifierKeys.None)
+                return;
+            var vm = DataContext as DeviceManagerViewModel;
+            if (vm == null || vm.Devices.Count == 0) return;
+            var current = vm.SelectedDevice;
+            var index = vm.Devices.IndexOf(current);
+            if (index < 0) index = 0;
+            var targetIndex = Math.Max(0, Math.Min(vm.Devices.Count - 1, index + (key == Key.Down ? 1 : -1)));
+            if (targetIndex == index) return;
+
+            var focused = Keyboard.FocusedElement as DependencyObject;
+            var focusAlias = focused is TextBox;
+            vm.SelectedDevice = vm.Devices[targetIndex];
+            DeviceList.ScrollIntoView(vm.SelectedDevice);
+            e.Handled = true;
+            if (focusAlias) RestoreAliasFocus(vm.SelectedDevice, 0, 0);
+            else Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+            {
+                var row = DeviceList.ItemContainerGenerator.ContainerFromItem(vm.SelectedDevice) as ListViewItem;
+                var button = FindVisualChild<Button>(row);
+                if (button != null) Keyboard.Focus(button);
+                else row?.Focus();
+            }));
+        }
+
         private void AliasTextBox_OnPreviewKeyDown(object sender, KeyEventArgs e)
         {
             var textBox = sender as TextBox;

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -8,6 +9,8 @@ namespace HidWizards.UCR.Views.Controls
 {
     public partial class WindowBar : UserControl
     {
+        public string VersionText => "v" + FileVersionInfo.GetVersionInfo(typeof(WindowBar).Assembly.Location).FileVersion;
+
         private Window Window => Window.GetWindow(this);
         private bool RestoreForDragMove { get; set; }
 

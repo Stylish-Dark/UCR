@@ -461,6 +461,92 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void TwoButtonAxisProducesOppositeDirectionsAndNeutralOnBothButtons()
+        {
+            var plugin = new ButtonsToAxis();
+            plugin.Update(1, 0);
+            Assert.That(plugin.Outputs.Single().CurrentValue, Is.GreaterThan(0),
+                "The Positive (+) button must drive the positive axis direction.");
+
+            plugin.Update(0, 1);
+            Assert.That(plugin.Outputs.Single().CurrentValue, Is.LessThan(0),
+                "The Negative (-) button must drive the negative axis direction.");
+
+            plugin.Update(1, 1);
+            Assert.That(plugin.Outputs.Single().CurrentValue, Is.Zero);
+            plugin.Update(0, 0);
+            Assert.That(plugin.Outputs.Single().CurrentValue, Is.Zero);
+        }
+
+        [Test]
+        public void AxisButtonModeSwitchPreservesTheFirstInputAndOutputBinding()
+        {
+            var original = new ButtonToAxis();
+            _profile.AddPlugin(_mapping, original);
+            var viewModel = new ProfileViewModel(_profile);
+            var mapping = viewModel.MappingsList.Single(candidate =>
+                ReferenceEquals(candidate.Mapping, _mapping));
+            var firstInput = _mapping.DeviceBindings.Single();
+            var output = original.Outputs.Single();
+
+            Assert.That(mapping.Plugins.Single().IsTwoButtonAxis, Is.False);
+            Assert.That(mapping.ChangeAxisButtonMode(mapping.Plugins.Single(), true), Is.True);
+            Assert.That(_mapping.Plugins.Single(), Is.TypeOf<ButtonsToAxis>());
+            Assert.That(_mapping.DeviceBindings.Count, Is.EqualTo(2));
+            Assert.That(_mapping.DeviceBindings[0], Is.SameAs(firstInput));
+            Assert.That(_mapping.Plugins.Single().Outputs.Single(), Is.SameAs(output));
+            Assert.That(mapping.Plugins.Single().IsTwoButtonAxis, Is.True);
+            Assert.That(_mapping.Plugins.Single().InputCategories[0].Name, Does.Contain("Positive"));
+            Assert.That(_mapping.Plugins.Single().InputCategories[1].Name, Does.Contain("Negative"));
+
+            Assert.That(mapping.ChangeAxisButtonMode(mapping.Plugins.Single(), false), Is.True);
+            Assert.That(_mapping.Plugins.Single(), Is.TypeOf<ButtonToAxis>());
+            Assert.That(_mapping.DeviceBindings.Count, Is.EqualTo(1));
+            Assert.That(_mapping.DeviceBindings[0], Is.SameAs(firstInput));
+            Assert.That(_mapping.Plugins.Single().Outputs.Single(), Is.SameAs(output));
+            viewModel.Dispose();
+        }
+
+        [Test]
+        public void AxisPressAndReleaseSettingsAreAvailableInCompactInspector()
+        {
+            _profile.AddPlugin(_mapping, new ButtonToAxis());
+            var viewModel = new ProfileViewModel(_profile);
+            var axis = viewModel.MappingsList.Single().Plugins.Single();
+
+            axis.EnsureEditorInitialized();
+            var names = axis.PluginPropertyGroups
+                .SelectMany(group => group.PluginProperties)
+                .Select(property => property.Name).ToList();
+
+            Assert.That(names, Does.Contain("Initialize axis"));
+            Assert.That(names, Does.Contain("Axis on release"));
+            Assert.That(names, Does.Contain("Axis when pressed"));
+            Assert.That(axis.AxisButtonModeVisibility, Is.EqualTo(System.Windows.Visibility.Visible));
+            viewModel.Dispose();
+        }
+
+        [Test]
+        public void FilterDefinitionAndReferenceCanBeCreatedWithoutAnOutputDevice()
+        {
+            var producer = _profile.AddMapping("Aim mode");
+            var filter = new ButtonToFilter();
+            _profile.AddPlugin(producer, filter);
+            var filterProperty = filter.GetGuiMatrix().SelectMany(group => group.PluginProperties)
+                .Single(property => property.PropertyInfo.Name == "FilterName");
+            filterProperty.Property = "Aim mode";
+
+            var consumer = _profile.AddMapping("Aim");
+            var button = new ButtonToButton();
+            _profile.AddPlugin(consumer, button);
+            button.AddFilter("Aim mode");
+
+            Assert.That(filter.Outputs, Is.Empty);
+            Assert.That(_profile.GetFilters(), Does.Contain("Aim mode"));
+            Assert.That(button.Filters.Single().Name, Is.EqualTo("Aim mode"));
+        }
+
+        [Test]
         public void AddOutputMenuUsesConciseDestinationNameForSimpleRoutes()
         {
             var option = new SimplePluginViewModel(new ButtonToFilter());
@@ -510,16 +596,131 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.That(viewModel.Devices, Is.Empty,
                 "Collapsed mappings should not build a device dropdown until its editor is shown.");
             viewModel.EnsureDeviceListLoaded();
-            Assert.That(viewModel.Devices.Count, Is.EqualTo(1));
+            Assert.That(viewModel.Devices.Count, Is.EqualTo(2),
+                "Input selection includes the explicit Any input device option.");
 
             _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { second }, DeviceIoType.Input);
             viewModel.RefreshDeviceList();
 
-            Assert.That(viewModel.Devices.Count, Is.EqualTo(2));
+            Assert.That(viewModel.Devices.Count, Is.EqualTo(3));
+            Assert.That(viewModel.Devices.Any(item => item.Value == Guid.Empty), Is.True);
             Assert.That(viewModel.Devices.Any(item => item.Value == second.Guid), Is.True);
-            Assert.That(viewModel.Devices.All(item => item.Visual != null), Is.True,
+            Assert.That(viewModel.Devices.Where(item => item.Value != Guid.Empty)
+                .All(item => item.Visual != null), Is.True,
                 "Every real device choice should carry its semantic visual shorthand.");
             viewModel.Dispose();
+        }
+
+        [Test]
+        public void InputBindDetection_AllowsEveryProfileDeviceOnlyWhenNoDeviceWasSelected()
+        {
+            var keyboard = Guid.NewGuid();
+            var controller = Guid.NewGuid();
+            Assert.That(BindingManager.IsEligibleBindDevice(Guid.Empty, keyboard), Is.True);
+            Assert.That(BindingManager.IsEligibleBindDevice(Guid.Empty, controller), Is.True);
+            Assert.That(BindingManager.IsEligibleBindDevice(keyboard, keyboard), Is.True);
+            Assert.That(BindingManager.IsEligibleBindDevice(keyboard, controller), Is.False);
+            Assert.That(BindingManager.IsEligibleBindDevice(controller, keyboard), Is.False);
+        }
+
+        [Test]
+        public void UnselectedInput_StaysUnselectedAndBindIsEnabledUntilDetection()
+        {
+            var keyboard = new DeviceConfiguration(new Device("Keyboard A", "Core_Interception", "kbd-a", 0));
+            var controller = new DeviceConfiguration(new Device("Controller A", "SharpDX_XInput", "pad-a", 0));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { keyboard, controller }, DeviceIoType.Input);
+            _profile.SetPrimaryDeviceConfiguration(DeviceIoType.Input, keyboard.Guid);
+
+            var binding = new DeviceBinding(value => { }, _profile, DeviceIoType.Input)
+            {
+                DeviceBindingCategory = DeviceBindingCategory.Momentary
+            };
+            var editor = new DeviceBindingViewModel(binding);
+            editor.EnsureDeviceListLoaded();
+
+            Assert.That(binding.DeviceConfigurationGuid, Is.EqualTo(Guid.Empty),
+                "Loading the editor must never silently select the primary device.");
+            Assert.That(editor.SelectedDevice.Value, Is.EqualTo(Guid.Empty));
+            Assert.That(editor.CanBindCurrentDevice, Is.True);
+            Assert.That(editor.CompactBindButtonText, Is.EqualTo("Bind"));
+            Assert.That(editor.Devices.Any(option => option.Value == keyboard.Guid), Is.True);
+            Assert.That(editor.Devices.Any(option => option.Value == controller.Guid), Is.True);
+
+            editor.ChangeDeviceConfiguration(keyboard.Guid);
+            Assert.That(binding.DeviceConfigurationGuid, Is.EqualTo(keyboard.Guid),
+                "An explicit selection restricts the binding to that device.");
+            editor.ChangeDeviceConfiguration(Guid.Empty);
+            Assert.That(binding.DeviceConfigurationGuid, Is.EqualTo(Guid.Empty));
+            Assert.That(editor.CanBindCurrentDevice, Is.True);
+            editor.Dispose();
+        }
+
+        [Test]
+        public void RemovedInputDevice_DoesNotCreateASelectableUnavailableDevice()
+        {
+            var keyboard = new DeviceConfiguration(new Device("Laptop Keyboard", "Core_Interception", "kbd-a", 0));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { keyboard }, DeviceIoType.Input);
+
+            var binding = new DeviceBinding(value => { }, _profile, DeviceIoType.Input)
+            {
+                DeviceBindingCategory = DeviceBindingCategory.Momentary
+            };
+            binding.SetDeviceConfigurationGuid(Guid.NewGuid(), false);
+            binding.SetKeyTypeValue(0, 65, 0);
+            Assert.That(binding.IsBound, Is.True,
+                "Reproduce the saved stale binding that displays Device unavailable.");
+            var editor = new DeviceBindingViewModel(binding);
+            editor.EnsureDeviceListLoaded();
+
+            Assert.That(binding.DeviceConfigurationGuid, Is.EqualTo(Guid.Empty),
+                "An input pointing to a device absent from the profile must return to listen-all.");
+            Assert.That(binding.IsBound, Is.False);
+            Assert.That(editor.SelectedDevice.Value, Is.EqualTo(Guid.Empty));
+            Assert.That(editor.Devices.Any(item => item.Title == "Unavailable device"), Is.False);
+            Assert.That(editor.Devices.Any(item => item.Value == keyboard.Guid), Is.True);
+            Assert.That(editor.CompactBindButtonText, Is.EqualTo("Bind"));
+            Assert.That(editor.CanBindCurrentDevice, Is.True);
+            editor.Dispose();
+        }
+
+        [Test]
+        public void ConfiguredInputDevice_IsPreservedWhenSelectionListIsRefreshed()
+        {
+            var keyboard = new DeviceConfiguration(new Device("Laptop Keyboard", "Core_Interception", "kbd-a", 0));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { keyboard }, DeviceIoType.Input);
+
+            var binding = new DeviceBinding(value => { }, _profile, DeviceIoType.Input)
+            {
+                DeviceBindingCategory = DeviceBindingCategory.Momentary
+            };
+            binding.SetDeviceConfigurationGuid(keyboard.Guid, false);
+            var editor = new DeviceBindingViewModel(binding);
+            editor.EnsureDeviceListLoaded();
+            editor.RefreshDeviceList();
+
+            Assert.That(binding.DeviceConfigurationGuid, Is.EqualTo(keyboard.Guid));
+            Assert.That(editor.SelectedDevice.Value, Is.EqualTo(keyboard.Guid));
+            Assert.That(editor.Devices.Any(item => item.Title == "Unavailable device"), Is.False);
+            Assert.That(editor.CanBindCurrentDevice, Is.True);
+            editor.Dispose();
+        }
+
+        [Test]
+        public void NewlyCreatedMappingAndExpressionTerms_DoNotInheritAnInputDevice()
+        {
+            var keyboard = new DeviceConfiguration(new Device("Keyboard A", "Core_Interception", "kbd-a", 0));
+            _profile.AddDeviceConfigurations(new List<DeviceConfiguration> { keyboard }, DeviceIoType.Input);
+            _profile.SetPrimaryDeviceConfiguration(DeviceIoType.Input, keyboard.Guid);
+
+            Assert.That(_mapping.AddPlugin(new ButtonToButton()), Is.True);
+            Assert.That(_mapping.DeviceBindings[0].DeviceConfigurationGuid, Is.EqualTo(Guid.Empty));
+
+            // An explicitly selected first binding must not silently restrict a
+            // subsequently added AND term to the same keyboard.
+            _mapping.DeviceBindings[0].SetDeviceConfigurationGuid(keyboard.Guid, false);
+            var added = _mapping.AddExpressionInputToGroup(0);
+            Assert.That(added, Is.Not.Null);
+            Assert.That(added.DeviceConfigurationGuid, Is.EqualTo(Guid.Empty));
         }
 
         [Test]

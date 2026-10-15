@@ -7,6 +7,7 @@ using System.Xml;
 using System.Xml.Serialization;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
+using HidWizards.UCR.Core.Persistence;
 using NLog;
 
 namespace HidWizards.UCR.Core.Managers
@@ -173,7 +174,28 @@ namespace HidWizards.UCR.Core.Managers
         public Profile ImportProfile(string filePath, Profile parentProfile = null, List<Type> pluginTypes = null)
         {
             ValidateFilePath(filePath);
-            var package = DeserializePackage(filePath, pluginTypes);
+            ProfileExportPackage package;
+            if (string.Equals(Path.GetExtension(filePath), ".json", StringComparison.OrdinalIgnoreCase))
+            {
+                // Accept earlier native JSON backup snapshots as well as portable exports.
+                // Import always creates a new profile; it never overwrites the live profile.
+                var allowedTypes = _context.GetPlugins().Select(p => p.GetType())
+                    .Concat(pluginTypes ?? new List<Type>()).Distinct().ToList();
+                var record = new UcrJsonSerializer(allowedTypes)
+                    .Deserialize<ContextStore.ProfileFile>(File.ReadAllText(filePath, Encoding.UTF8));
+                if (record == null || record.SchemaVersion != 1 || record.Profile == null)
+                    throw new InvalidDataException("This JSON file is not a UCR profile backup.");
+                package = new ProfileExportPackage
+                {
+                    FormatVersion = ExportFormatVersion,
+                    Kind = ProfileExportKind.Profile,
+                    Profiles = new List<Profile> { record.Profile }
+                };
+            }
+            else
+            {
+                package = DeserializePackage(filePath, pluginTypes);
+            }
             ValidatePackage(package, ProfileExportKind.Profile);
 
             RegenerateIdentities(package.Profiles);

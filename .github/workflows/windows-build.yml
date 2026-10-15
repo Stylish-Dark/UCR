@@ -95,14 +95,46 @@ jobs:
           New-Item -ItemType Directory -Force -Path "dependencies" | Out-Null
           Copy-Item "submodules\IOWrapper\Artifacts\*" "dependencies" -Recurse -Force
 
+      - name: Stamp unique UCR build version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # UTC calendar day + minute of day form a monotonic four-part Windows
+          # file version, independent of the two unrelated workflow run counters.
+          $now = [DateTime]::UtcNow
+          $buildDay = [int]($now.Date - [DateTime]::new(2020,1,1)).TotalDays
+          $buildMinute = $now.Hour * 60 + $now.Minute
+          $stamp = $now.ToString('yyyyMMdd.HHmmss') + 'Z'
+          $gitVersionConfig = Get-Content -LiteralPath '.\GitVersion.yml' -Raw
+          $versionMatch = [regex]::Match($gitVersionConfig, '(?m)^next-version:\s*(\d+\.\d+\.\d+)\s*$')
+          if (-not $versionMatch.Success) {
+            throw 'Cannot derive UCR release version from GitVersion.yml.'
+          }
+          $baseVersion = $versionMatch.Groups[1].Value
+          $file = '.\\UCR\\Properties\\AssemblyInfo.cs'
+          $source = [System.IO.File]::ReadAllText($file)
+          $numeric = "0.9.$buildDay.$buildMinute"
+          $source = [regex]::Replace($source, 'AssemblyFileVersion\("[^"]+"\)',
+            ('AssemblyFileVersion("' + $numeric + '")'))
+          $source = [regex]::Replace($source, 'AssemblyInformationalVersion\("[^"]+"\)',
+            ('AssemblyInformationalVersion("v' + $baseVersion + '-' + $stamp + '")'))
+          [System.IO.File]::WriteAllText($file, $source, [System.Text.UTF8Encoding]::new($false))
+          Write-Host "UCR build identity: $baseVersion-$stamp ($numeric)"
+
       - name: Build release
         shell: pwsh
         run: |
+          $gitVersionConfig = Get-Content -LiteralPath '.\GitVersion.yml' -Raw
+          $versionMatch = [regex]::Match($gitVersionConfig, '(?m)^next-version:\s*(\d+\.\d+\.\d+)\s*$')
+          if (-not $versionMatch.Success) {
+            throw 'Cannot derive UCR release version from GitVersion.yml.'
+          }
+          $baseVersion = $versionMatch.Groups[1].Value
           $common = @(
             "/m",
             "/p:Configuration=Release",
             "/p:SolutionDir=$env:GITHUB_WORKSPACE\",
-            "/p:VersionNumber=0.9.9.0",
+            "/p:VersionNumber=$baseVersion.0",
             "/p:SkipGitVersion=true"
           )
           $net452 = $common + "/p:TargetFrameworkRootPath=$env:NET452_ROOT\"
@@ -142,6 +174,77 @@ jobs:
         run: |
           & ".\packages\NUnit.ConsoleRunner.3.9.0\tools\nunit3-console.exe" ".\UCR.Tests\bin\Release\UCR.Tests.dll" --noresult
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify grouped-input XAML resources
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          [xml]$app = Get-Content -LiteralPath '.\UCR\App.xaml' -Raw
+          [xml]$mapping = Get-Content -LiteralPath '.\UCR\Views\Controls\MappingCardControl.xaml' -Raw
+          $namespace = New-Object System.Xml.XmlNamespaceManager($app.NameTable)
+          $namespace.AddNamespace('x', 'http://schemas.microsoft.com/winfx/2006/xaml')
+          $name = 'CompactBlockSwitch'
+          $styles = @($app.SelectNodes("//*[@x:Key='$name']", $namespace))
+          if ($styles.Count -ne 1) {
+            throw "Expected an application-scoped $name style, found $($styles.Count). Child-control resources do not reach grouped-input templates."
+          }
+          if ($mapping.OuterXml -notmatch "StaticResource $name") {
+            throw "Grouped-input control no longer references $name; update this regression check."
+          }
+
+      - name: Smoke-test actual UCR.exe cold startup
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runtime = (Resolve-Path '.\\UCR\\bin\\Release').Path
+          $executable = Join-Path $runtime 'UCR.exe'
+          if (-not (Test-Path -LiteralPath $executable)) { throw "UCR.exe not found: $executable" }
+          $process = Start-Process -FilePath $executable -WorkingDirectory $runtime -PassThru
+          $logDirectory = Join-Path $runtime 'logs'
+          $startupCompleted = $false
+          try {
+            for ($second = 0; $second -lt 45; $second++) {
+              Start-Sleep -Seconds 1
+              $process.Refresh()
+              $log = Join-Path $logDirectory 'UCR-latest.log'
+              if ((Test-Path -LiteralPath $log) -and
+                  (Select-String -LiteralPath $log -Pattern 'UCR startup completed in' -Quiet)) {
+                $startupCompleted = $true
+                break
+              }
+              if ($process.HasExited) { break }
+            }
+            Write-Host "Startup marker seen: $startupCompleted"
+            Write-Host "Process exited: $($process.HasExited)"
+            if ($process.HasExited) { Write-Host "Exit code: $($process.ExitCode)" }
+            foreach ($name in @('UCR-latest.log', 'UCR-errors.log', 'LAST-CRASH.txt')) {
+              $file = Join-Path $logDirectory $name
+              if (Test-Path -LiteralPath $file) {
+                Write-Host "=== $name ==="
+                Get-Content -LiteralPath $file -Tail 90
+              }
+            }
+            if (-not $startupCompleted) {
+              throw 'UCR did not reach its successful startup marker in a clean Windows runtime.'
+            }
+            # WPF measures templates asynchronously AFTER the startup marker.
+            # The old smoke test stopped immediately, missing a fatal resource
+            # lookup 250ms later on machines with populated mapping panels.
+            Start-Sleep -Seconds 4
+            $process.Refresh()
+            if ($process.HasExited) {
+              throw "UCR terminated after reporting successful startup. Exit code: $($process.ExitCode)"
+            }
+            $errors = Join-Path $logDirectory 'UCR-errors.log'
+            if ((Test-Path -LiteralPath $errors) -and
+                (Select-String -LiteralPath $errors -Pattern 'Unhandled WPF dispatcher exception|XamlParseException|Cannot find resource named' -Quiet)) {
+              Get-Content -LiteralPath $errors -Tail 60
+              throw 'UCR emitted a fatal WPF UI rendering error after the startup marker.'
+            }
+          } finally {
+            $process.Refresh()
+            if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
+          }
 
       - name: Upload release build
         if: success()

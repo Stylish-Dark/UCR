@@ -7,7 +7,14 @@ namespace HidWizards.UCR.Utilities
 {
     internal class SingleGlobalInstance : IDisposable
     {
-        public bool HasHandle { get; }
+        public bool HasHandle { get; private set; }
+        public bool TryAcquire(int timeoutMs)
+        {
+            if (HasHandle) return true;
+            try { HasHandle = _mutex.WaitOne(timeoutMs, false); }
+            catch (AbandonedMutexException) { HasHandle = true; }
+            return HasHandle;
+        }
         Mutex _mutex;
         private const string MutexGuid = "f043c687-6714-45b8-b293-9939066dcd73";
 

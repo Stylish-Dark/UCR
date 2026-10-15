@@ -230,6 +230,9 @@ namespace HidWizards.UCR.Core.Models
         [DefaultValue(false)]
         public bool Removed { get; set; }
         [XmlAttribute]
+        [DefaultValue(false)]
+        public bool BlockUnmappedInputs { get; set; }
+        [XmlAttribute]
         [DefaultValue(int.MaxValue)]
         public int SortOrder { get; set; } = int.MaxValue;
         [XmlAttribute]
@@ -242,7 +245,8 @@ namespace HidWizards.UCR.Core.Models
 
         [XmlIgnore]
         public bool HasPresentationSettings => !string.IsNullOrWhiteSpace(Alias) || Hidden || Removed ||
-                                               SortOrder != int.MaxValue || OutlineColor != DeviceOutlineColor.Default;
+                                               SortOrder != int.MaxValue || OutlineColor != DeviceOutlineColor.Default ||
+                                               BlockUnmappedInputs;
 
         public DeviceAlias Clone()
         {
@@ -255,6 +259,7 @@ namespace HidWizards.UCR.Core.Models
                 Alias = Alias,
                 Hidden = Hidden,
                 Removed = Removed,
+                BlockUnmappedInputs = BlockUnmappedInputs,
                 SortOrder = SortOrder,
                 OutlineColor = OutlineColor,
                 DefaultOutlineColor = DefaultOutlineColor

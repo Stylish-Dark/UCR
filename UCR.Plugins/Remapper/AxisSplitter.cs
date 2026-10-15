@@ -9,14 +9,14 @@ namespace HidWizards.UCR.Plugins.Remapper
 {
     [Plugin("Axis Splitter", Group = "Axis", Description = "Split one axis into two new axes")]
     [PluginInput(DeviceBindingCategory.Range, "Axis")]
-    [PluginOutput(DeviceBindingCategory.Range, "Axis high")]
-    [PluginOutput(DeviceBindingCategory.Range, "Axis low")]
+    [PluginOutput(DeviceBindingCategory.Range, "Positive axis (+)")]
+    [PluginOutput(DeviceBindingCategory.Range, "Negative axis (−)")]
     public class AxisSplitter : Plugin
     {
-        [PluginGui("Invert high", Order = 1)]
+        [PluginGui("Invert positive", Order = 1)]
         public bool InvertHigh { get; set; }
 
-        [PluginGui("Invert low", Order = 2)]
+        [PluginGui("Invert negative", Order = 2)]
         public bool InvertLow { get; set; }
 
         [PluginGui("Dead zone")]

@@ -98,6 +98,18 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             InputVisuals.Clear();
             OutputVisuals.Clear();
             PopulatePresentation(this, Profile);
+
+            // Observable collections update the glyph rows, while these properties
+            // update counters and grouped-input headings.
+            OnPropertyChanged(nameof(AdditionalInputCount));
+            OnPropertyChanged(nameof(AdditionalOutputCount));
+            OnPropertyChanged(nameof(HasAdditionalInputs));
+            OnPropertyChanged(nameof(HasAdditionalOutputs));
+            OnPropertyChanged(nameof(AdditionalInputLabel));
+            OnPropertyChanged(nameof(AdditionalOutputLabel));
+            OnPropertyChanged(nameof(InputGroupName));
+            OnPropertyChanged(nameof(InputGroupVisual));
+            OnPropertyChanged(nameof(InputGroup));
         }
 
         public static ObservableCollection<ProfileItem> GetProfileTree(List<Profile> profiles)

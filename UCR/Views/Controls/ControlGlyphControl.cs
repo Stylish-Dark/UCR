@@ -99,10 +99,65 @@ namespace HidWizards.UCR.Views.Controls
 
         private static void DrawKey(DrawingContext dc, Rect b, Brush accent, string label)
         {
-            var rect = new Rect(b.Left + 1, b.Top + 2, Math.Max(1, b.Width - 2), Math.Max(1, b.Height - 4));
-            var fill = new SolidColorBrush(Color.FromRgb(48, 48, 48));
-            dc.DrawRoundedRectangle(fill, Pen(accent, 1.1), rect, 3, 3);
-            DrawCenteredText(dc, label, Brushes.White, rect, FontFor(label, b.Height * 0.48), FontWeights.SemiBold);
+            // Keycap geometry is invariant, including in zoomed or grouped previews.
+            var side = Math.Max(1, Math.Min(b.Width - 2, b.Height - 4));
+            var rect = new Rect(b.Left + (b.Width - side) / 2.0,
+                b.Top + (b.Height - side) / 2.0, side, side);
+            // Keyboard caps keep a neutral black face; device identity belongs to the outline and legend.
+            dc.DrawRoundedRectangle(Brushes.Black, Pen(accent, 1.1), rect, 1.5, 1.5);
+
+            if (string.IsNullOrEmpty(label)) return;
+            var inner = new Rect(rect.Left + 3, rect.Top + 2,
+                Math.Max(1, rect.Width - 6), Math.Max(1, rect.Height - 4));
+            // Old/custom "NUM 6" overrides are also given the stacked treatment.
+            var display = label.StartsWith("NUM ", StringComparison.OrdinalIgnoreCase)
+                ? "NUM\n" + label.Substring(4).Trim() : label;
+            var lines = display.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+            dc.PushClip(new RectangleGeometry(rect));
+            if (lines.Length == 2)
+            {
+                var top = new Rect(inner.Left, inner.Top, inner.Width, inner.Height * 0.43);
+                var bottom = new Rect(inner.Left, inner.Top + inner.Height * 0.43,
+                    inner.Width, inner.Height * 0.57);
+                DrawFittedKeyText(dc, lines[0], accent, top,
+                    inner.Height * 0.36, FontWeights.SemiBold);
+                DrawFittedKeyText(dc, lines[1], accent, bottom,
+                    inner.Height * 0.54, FontWeights.SemiBold);
+            }
+            else
+            {
+                // The descending tail of Q makes it appear below the centre at normal glyph sizes.
+                // A small optical correction applies to Q alone, not to every keyboard legend.
+                var labelArea = string.Equals(display, "Q", StringComparison.OrdinalIgnoreCase)
+                    ? new Rect(inner.Left, inner.Top - 1.25, inner.Width, inner.Height)
+                    : inner;
+                DrawFittedKeyText(dc, display.Replace("\n", " "), accent, labelArea,
+                    b.Height * (display.Length == 1 ? 0.55 : 0.48), FontWeights.SemiBold);
+            }
+            dc.Pop();
+        }
+
+        private static void DrawFittedKeyText(DrawingContext dc, string text, Brush brush,
+            Rect rect, double preferredSize, FontWeight weight)
+        {
+            if (string.IsNullOrWhiteSpace(text) || rect.Width <= 0 || rect.Height <= 0) return;
+#pragma warning disable 618
+            var formatted = new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
+                new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, weight, FontStretches.Normal),
+                preferredSize, brush);
+#pragma warning restore 618
+            // Measure actual text, not string length. ENTER, PAUSE and numpad labels
+            // must never bleed beyond the common fixed-width square.
+            if (formatted.Width > 0 && formatted.Height > 0)
+            {
+                var ratio = Math.Min(1.0, Math.Min(
+                    rect.Width * 0.94 / formatted.Width, rect.Height * 0.94 / formatted.Height));
+                if (ratio < 1.0) formatted.SetFontSize(preferredSize * ratio);
+            }
+            dc.DrawText(formatted, new Point(
+                rect.Left + (rect.Width - formatted.Width) / 2.0,
+                rect.Top + (rect.Height - formatted.Height) / 2.0));
         }
 
         private static void DrawMouseButton(DrawingContext dc, Rect b, Brush accent, string label)
@@ -243,14 +298,38 @@ namespace HidWizards.UCR.Views.Controls
 
         private static void DrawStickAxis(DrawingContext dc, Rect b, Brush accent, string label)
         {
-            var center = new Point(b.Left + b.Width * 0.28, b.Top + b.Height * 0.5);
-            var radius = Math.Min(b.Width, b.Height) * 0.19;
-            dc.DrawEllipse(null, Pen(accent, 1.5), center, radius, radius);
-            dc.DrawLine(Pen(accent, 1.4), new Point(center.X - radius * 0.7, center.Y), new Point(center.X + radius * 0.7, center.Y));
-            dc.DrawLine(Pen(accent, 1.4), new Point(center.X, center.Y - radius * 0.7), new Point(center.X, center.Y + radius * 0.7));
+            // One crisp stick outline and directional axis mark, with its label kept outside
+            // the circular glyph. Avoid concentric rings that turn into visual noise at scale.
+            var center = new Point(b.Left + b.Width * 0.31, b.Top + b.Height * 0.50);
+            var radius = Math.Min(b.Height * 0.37, b.Width * 0.24);
+            var housing = new SolidColorBrush(Color.FromRgb(30, 30, 30));
+            var cap = new SolidColorBrush(Color.FromRgb(54, 54, 54));
+
+            dc.DrawEllipse(housing, Pen(accent, 1.6), center, radius, radius);
+            dc.DrawEllipse(cap, Pen(accent, 1.15), center, radius * 0.69, radius * 0.69);
+
+            var upper = (label ?? string.Empty).ToUpperInvariant();
+            var vertical = upper.EndsWith("Y", StringComparison.Ordinal);
+            var axisSpan = radius * 0.40;
+            var axisPen = Pen(accent, 2.2);
+            if (vertical)
+            {
+                dc.DrawLine(axisPen, new Point(center.X, center.Y - axisSpan),
+                    new Point(center.X, center.Y + axisSpan));
+                dc.DrawEllipse(accent, null, new Point(center.X, center.Y - axisSpan), 1.7, 1.7);
+                dc.DrawEllipse(accent, null, new Point(center.X, center.Y + axisSpan), 1.7, 1.7);
+            }
+            else
+            {
+                dc.DrawLine(axisPen, new Point(center.X - axisSpan, center.Y),
+                    new Point(center.X + axisSpan, center.Y));
+                dc.DrawEllipse(accent, null, new Point(center.X - axisSpan, center.Y), 1.7, 1.7);
+                dc.DrawEllipse(accent, null, new Point(center.X + axisSpan, center.Y), 1.7, 1.7);
+            }
+
             DrawCenteredText(dc, label, accent,
-                new Rect(b.Left + b.Width * 0.48, b.Top, b.Width * 0.52, b.Height),
-                FontFor(label, b.Height * 0.45), FontWeights.Bold);
+                new Rect(b.Left + b.Width * 0.57, b.Top, b.Width * 0.43, b.Height),
+                FontFor(label, b.Height * 0.42), FontWeights.Bold);
         }
 
         private static void DrawAxis(DrawingContext dc, Rect b, Brush accent, string label)

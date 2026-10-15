@@ -44,6 +44,37 @@ namespace HidWizards.UCR.Tests.UiTests
             Assert.That(visual.SymbolText, Is.EqualTo(expected));
         }
 
+        [TestCase("Enter", "↵")]
+        [TestCase("Return", "↵")]
+        [TestCase("Num Enter", "NUM\nENT")]
+        [TestCase("Numpad Enter", "NUM\nENT")]
+        [TestCase("NUM 6", "NUM\n6")]
+        [TestCase("Numpad6", "NUM\n6")]
+        [TestCase("Keypad 0", "NUM\n0")]
+        [TestCase("NumPad Add", "NUM\n+")]
+        [TestCase("Numpad Divide", "NUM\n÷")]
+        [TestCase("Numpad Decimal", "NUM\n.")]
+        [TestCase("Num Lock", "NUM\nLK")]
+        [TestCase("Left Shift", "L⇧")]
+        [TestCase("RShift", "R⇧")]
+        [TestCase("Shift", "⇧")]
+        [TestCase("Left Control", "L\nCTRL")]
+        [TestCase("Right Ctrl", "R\nCTRL")]
+        [TestCase("LAlt", "L\nALT")]
+        [TestCase("Right Windows", "R\nWIN")]
+        [TestCase("Backspace", "⌫")]
+        [TestCase("Tab", "⇥")]
+        [TestCase("Pause", "PAUS")]
+        [TestCase("Home", "HOME")]
+        [TestCase("Page Down", "PG\nDN")]
+        [TestCase("Print Screen", "PRT\nSC")]
+        [TestCase("F24", "F24")]
+        [TestCase("B", "B")]
+        public void KeyboardGlyphLabelsRemainReadableInsideFixedKeycaps(string keyName, string expected)
+        {
+            Assert.That(DeviceVisualCatalog.FormatKeyboardGlyphLabel(keyName), Is.EqualTo(expected));
+        }
+
         [Test]
         public void ViGEmOutputsUseTheControllerTheyActuallyEmulate()
         {

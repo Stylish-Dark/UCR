@@ -15,7 +15,7 @@
         BorderBrush="{DynamicResource PrimaryHueDarkBrush}"
         BorderThickness="1"
         Title="Universal Control Remapper" 
-        Height="600" MinHeight="400" Width="800" MinWidth="600"
+        Height="740" MinHeight="500" Width="1320" MinWidth="1200"
         Closing="MainWindow_OnClosing"
         KeyboardNavigation.TabNavigation="Cycle"
         PreviewKeyDown="MainWindow_OnPreviewKeyDown"
@@ -36,6 +36,26 @@
     <Window.Resources>
         <ResourceDictionary>
             <converter:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+            <!-- This style is also used by ProfilePage, but MainWindow cannot resolve
+                 resources scoped to that child view during InitializeComponent. -->
+            <Style x:Key="UcrProfileActionButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                <Setter Property="Foreground" Value="#DEDEDE"/>
+                <Setter Property="Background" Value="#282828"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Opacity" Value="0.94"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Foreground" Value="#FFFFFF"/>
+                        <Setter Property="Background" Value="#343434"/>
+                        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                        <Setter Property="Opacity" Value="1"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.48"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
             <DataTemplate x:Key="DeviceSymbolTemplate">
                 <controls:DeviceSymbolControl SymbolText="{Binding SymbolText}"
                                               Foreground="{Binding BadgeTextBrush}"
@@ -103,19 +123,65 @@
             </Border>
             <ToolBarTray Style="{DynamicResource MaterialDesignToolBarTray}" IsEnabled="{Binding Source={x:Reference RootDialog}, Path=IsOpen, Converter={StaticResource InverseBooleanConverter}}">
                 <ToolBar ToolBarTray.IsLocked="True" Style="{DynamicResource MaterialDesignToolBar}" ClipToBounds="False">
-                    <Button ToolTip="Save" Command="Save">
+                    <ToolBar.Resources>
+                        <!-- The MaterialDesign tool-button template ignores BorderBrush in some
+                             toolbar states. Use one explicit, full-surface hit target for ALL actions. -->
+                        <Style x:Key="UcrToolbarActionButton" TargetType="{x:Type Button}">
+                            <Setter Property="Width" Value="38"/>
+                            <Setter Property="Height" Value="36"/>
+                            <Setter Property="Margin" Value="2"/>
+                            <Setter Property="Padding" Value="5"/>
+                            <Setter Property="Background" Value="#292929"/>
+                            <Setter Property="Foreground" Value="#FFFFFF"/>
+                            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                            <Setter Property="BorderThickness" Value="1"/>
+                            <Setter Property="Cursor" Value="Hand"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="{x:Type Button}">
+                                        <Border x:Name="ActionSurface" CornerRadius="3"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                SnapsToDevicePixels="True">
+                                            <ContentPresenter RecognizesAccessKey="True"
+                                                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                              Margin="{TemplateBinding Padding}"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ActionSurface" Property="Background" Value="#383838"/>
+                                                <Setter TargetName="ActionSurface" Property="BorderBrush" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsPressed" Value="True">
+                                                <Setter TargetName="ActionSurface" Property="Background" Value="#15469A"/>
+                                            </Trigger>
+                                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                                <Setter TargetName="ActionSurface" Property="BorderThickness" Value="2"/>
+                                            </Trigger>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter Property="Opacity" Value="0.42"/>
+                                                <Setter Property="Cursor" Value="Arrow"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ToolBar.Resources>
+                    <Button Style="{StaticResource UcrToolbarActionButton}" ToolTip="Save" Command="Save">
                         <materialDesign:PackIcon Kind="ContentSave"/>
                     </Button>
-                    <Button IsEnabled="{Binding CanActivateProfile}" ToolTip="Run only this profile (stops other active profiles first)&#x0a;Ctrl+Enter" Click="ActivateProfile">
+                    <Button Style="{StaticResource UcrToolbarActionButton}" IsEnabled="{Binding CanActivateProfile}" ToolTip="Run only this profile (stops other active profiles first)&#x0a;Ctrl+Enter" Click="ActivateProfile">
                         <materialDesign:PackIcon Kind="Play"/>
                     </Button>
-                    <Button IsEnabled="{Binding CanActivateProfile}" ToolTip="Run this profile alongside currently active profiles&#x0a;Ctrl+Shift+Enter" Click="ActivateProfileAlongside">
+                    <Button Style="{StaticResource UcrToolbarActionButton}" IsEnabled="{Binding CanActivateProfile}" ToolTip="Run this profile alongside currently active profiles&#x0a;Ctrl+Shift+Enter" Click="ActivateProfileAlongside">
                         <Grid Width="24" Height="24">
                             <materialDesign:PackIcon Kind="Play" Width="17" Height="17" HorizontalAlignment="Left" VerticalAlignment="Center"/>
                             <TextBlock Text="+" FontSize="14" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Top" Foreground="#FFFFFF"/>
                         </Grid>
                     </Button>
-                    <Button IsEnabled="{Binding CanDeactivateProfile}" ToolTip="Stop active profile" Click="DeactivateProfile">
+                    <Button Style="{StaticResource UcrToolbarActionButton}" IsEnabled="{Binding CanDeactivateProfile}" ToolTip="Stop active profile" Click="DeactivateProfile">
                         <Grid Width="24" Height="24">
                             <Border CornerRadius="12" Background="#4A2020" BorderBrush="#D65C5C" BorderThickness="1">
                                 <Border.Style>
@@ -143,29 +209,24 @@
                             </materialDesign:PackIcon>
                         </Grid>
                     </Button>
-                    <Button IsEnabled="{Binding CanDeactivateAllProfiles}" ToolTip="Stop ALL profiles&#x0a;Emergency shortcut: hold Esc on any keyboard for 3 seconds" Click="StopAllProfiles">
+                    <Button Style="{StaticResource UcrToolbarActionButton}" IsEnabled="{Binding CanDeactivateAllProfiles}" ToolTip="Stop ALL profiles&#x0a;Emergency shortcut: hold Esc on any keyboard for 3 seconds" Click="StopAllProfiles">
                         <materialDesign:PackIcon Kind="Stop" Foreground="#FF8B8B"/>
                     </Button>
                     <Separator />
-                    <Button ToolTip="Import / Export" Click="ImportExport_OnClick">
+                    <Button Style="{StaticResource UcrToolbarActionButton}" ToolTip="Import / Export" Click="ImportExport_OnClick">
                         <materialDesign:PackIcon Kind="FileExport"/>
                     </Button>
-                    <Button ToolTip="Manage devices" Click="ManageDevices_OnClick">
+                    <Button Style="{StaticResource UcrToolbarActionButton}" ToolTip="Manage devices" Click="ManageDevices_OnClick">
                         <materialDesign:PackIcon Kind="Settings"/>
                     </Button>
-                    <Button x:Name="AppearanceButton" ToolTip="Appearance" Click="Appearance_OnClick" Padding="8 0">
+                    <Button Style="{StaticResource UcrToolbarActionButton}" x:Name="AppearanceButton" ToolTip="Appearance" Click="Appearance_OnClick">
                         <Grid Width="20" Height="20">
                             <Ellipse Width="16" Height="16" Fill="{DynamicResource PrimaryHueMidBrush}" Stroke="#D8D8D8" StrokeThickness="1"/>
                             <Ellipse Width="5" Height="5" Fill="#212121" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Grid>
                     </Button>
-                    <Button ToolTip="More" Click="ContextMenuButton_OnClick" Padding="8 0">
-                        <materialDesign:PackIcon Kind="DotsVertical" Width="20" Height="20"/>
-                        <Button.ContextMenu>
-                            <ContextMenu Style="{StaticResource MaterialDesignContextMenu}">
-                                <MenuItem Header="Open diagnostic logs" Click="OpenLogs_OnClick"/>
-                            </ContextMenu>
-                        </Button.ContextMenu>
+                    <Button Style="{StaticResource UcrToolbarActionButton}" ToolTip="Open diagnostic logs" Click="OpenLogs_OnClick">
+                        <materialDesign:PackIcon Kind="FileDocumentOutline" Width="20" Height="20"/>
                     </Button>
                 </ToolBar>
             </ToolBarTray>
@@ -183,17 +244,18 @@
         <materialDesign:DialogHost x:Name="RootDialog" Grid.Row="2" Identifier="RootDialog">
             <Grid Margin="8">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="320" MinWidth="210"/>
-                    <ColumnDefinition Width="5"/>
+                    <ColumnDefinition x:Name="ProfilesColumn" Width="355" MinWidth="320" MaxWidth="480"/>
+                    <ColumnDefinition Width="1"/>
                     <ColumnDefinition Width="*" MinWidth="240"/>
                 </Grid.ColumnDefinitions>
                 <materialDesign:Card Grid.Column="0" Height="{Binding RelativeSource={RelativeSource AncestorType={x:Type Grid}}, Path=ActualHeight}" Margin="0">
                     <Grid Height="Auto">
                         <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
                         <Grid Grid.Row="0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
@@ -201,29 +263,24 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Margin="8 7 4 4" Style="{StaticResource MaterialDesignTitleTextBlock}">Profiles</TextBlock>
-                            <StackPanel Grid.Column="2" HorizontalAlignment="Right" Orientation="Horizontal" Margin="4 0 8 0">
-                                <Button ToolTip="Import profile"
-                                        Style="{StaticResource MaterialDesignCardButton}"
+                            <StackPanel Grid.Column="2" HorizontalAlignment="Right" Orientation="Horizontal" Margin="2 0 6 0">
+                                <Button ToolTip="Add profile" Width="36" Height="34" Padding="4"
+                                        Style="{StaticResource UcrAccentOutlineButton}" Click="AddProfile">
+                                    <materialDesign:PackIcon Kind="Plus" Width="23" Height="23"/>
+                                </Button>
+                                <Button ToolTip="Import profile" Style="{StaticResource MaterialDesignCardButton}"
                                         Click="ImportProfile">
                                     <materialDesign:PackIcon Kind="FileImport" Width="20" Height="20"/>
                                 </Button>
-                                <Button ToolTip="Add profile"
+                                <Button ToolTip="Group profiles by input device"
                                         Style="{StaticResource MaterialDesignCardButton}"
-                                        Click="AddProfile">
-                                    <materialDesign:PackIcon Kind="AccountPlus" Width="20" Height="20"/>
+                                        Click="ToggleProfileGrouping_OnClick">
+                                    <materialDesign:PackIcon Kind="ViewList" Width="20" Height="20"/>
                                 </Button>
-                                <Button ToolTip="Profile view options"
+                                <Button ToolTip="Delete selected profile"
                                         Style="{StaticResource MaterialDesignCardButton}"
-                                        Click="ContextMenuButton_OnClick">
-                                    <materialDesign:PackIcon Kind="DotsVertical" Width="20" Height="20"/>
-                                    <Button.ContextMenu>
-                                        <ContextMenu Style="{StaticResource MaterialDesignContextMenu}"
-                                                     DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                            <MenuItem Header="Group profiles by input device"
-                                                      IsCheckable="True"
-                                                      IsChecked="{Binding GroupProfilesByInput, Mode=TwoWay}"/>
-                                        </ContextMenu>
-                                    </Button.ContextMenu>
+                                        IsEnabled="{Binding CanActivateProfile}" Click="RemoveProfile">
+                                    <materialDesign:PackIcon Kind="TrashCanOutline" Width="20" Height="20"/>
                                 </Button>
                             </StackPanel>
                         </Grid>
@@ -258,12 +315,53 @@
                                 </Style>
                             </TreeView.Style>
                             <TreeView.ItemContainerStyle>
-                                <Style TargetType="{x:Type TreeViewItem}" BasedOn="{StaticResource MaterialDesignTreeViewItem}">
+                                <!-- Profiles are a flat list. The default MaterialDesign TreeViewItem
+                                     reserves a 24px expander gutter despite there being no children.
+                                     Own the template so the entire row (including selection) starts
+                                     at the left edge without a fake hierarchy indent. -->
+                                <Style TargetType="{x:Type TreeViewItem}">
                                     <Setter Property="HorizontalAlignment" Value="Stretch"/>
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                                    <!-- MaterialDesign 2.5.1 applies its Padding inside Ripple. Remove it here so
-                                         the profile template can own its inset while explicitly filling Ripple. -->
                                     <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="{x:Type TreeViewItem}">
+                                                <Grid SnapsToDevicePixels="True">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+                                                    <Border x:Name="ProfileSelectionSurface" Grid.Row="0"
+                                                            Margin="0 1" Background="Transparent" CornerRadius="2">
+                                                        <ContentPresenter ContentSource="Header"
+                                                                          HorizontalAlignment="Stretch"
+                                                                          VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ItemsPresenter x:Name="ChildProfiles" Grid.Row="1"/>
+                                                </Grid>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="ProfileSelectionSurface"
+                                                                Property="Background" Value="#4A4A4A"/>
+                                                    </Trigger>
+                                                    <MultiTrigger>
+                                                        <MultiTrigger.Conditions>
+                                                            <Condition Property="IsMouseOver" Value="True"/>
+                                                            <Condition Property="IsSelected" Value="False"/>
+                                                        </MultiTrigger.Conditions>
+                                                        <Setter TargetName="ProfileSelectionSurface"
+                                                                Property="Background" Value="#303030"/>
+                                                    </MultiTrigger>
+                                                    <Trigger Property="HasItems" Value="False">
+                                                        <Setter TargetName="ChildProfiles" Property="Visibility" Value="Collapsed"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsExpanded" Value="False">
+                                                        <Setter TargetName="ChildProfiles" Property="Visibility" Value="Collapsed"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
                                     <EventSetter Event="MouseDoubleClick" Handler="EditProfile"/>
                                 </Style>
                             </TreeView.ItemContainerStyle>
@@ -281,7 +379,8 @@
                                                                     <ContentControl Content="{Binding Name.Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
                                                                                     Margin="0 0 7 0" VerticalAlignment="Center"/>
                                                                     <TextBlock Text="{Binding Name.Name}" FontSize="13.5" FontWeight="SemiBold"
-                                                                               Opacity="0.76" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                                               Opacity="0.76" VerticalAlignment="Center" TextWrapping="NoWrap"
+                                                                               TextTrimming="None"/>
                                                                 </StackPanel>
                                                             </Border>
                                                             <ItemsPresenter/>
@@ -295,13 +394,12 @@
                             </TreeView.GroupStyle>
                             <TreeView.ItemTemplate>
                                 <DataTemplate DataType="{x:Type dashboard:ProfileItem}">
-                                    <Grid Width="{Binding RelativeSource={RelativeSource AncestorType={x:Type materialDesign:Ripple}}, Path=ActualWidth}"
-                                          HorizontalAlignment="Left" ToolTip="{Binding Title}">
+                                    <Grid HorizontalAlignment="Stretch" ClipToBounds="True" ToolTip="{Binding Title}">
                                         <Grid Margin="8 2" MinHeight="38" HorizontalAlignment="Stretch">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" MinWidth="50"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto" MinWidth="50"/>
+                                                <ColumnDefinition Width="48"/>
+                                                <ColumnDefinition Width="*" MinWidth="0"/>
+                                                <ColumnDefinition Width="48"/>
                                             </Grid.ColumnDefinitions>
 
                                             <ItemsControl Grid.Column="0" ItemsSource="{Binding InputVisuals}"
@@ -311,10 +409,16 @@
                                             </ItemsControl>
 
                                             <Grid Grid.Column="1" Margin="6 0">
-                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Title}" FontSize="15.5" FontWeight="Medium" MaxWidth="185"
-                                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                                    <Border Margin="6 0 0 0" Padding="5 1" CornerRadius="7" Background="#26382B" BorderBrush="#4B8B58" BorderThickness="1"
+                                                <Grid HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" MinWidth="0"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0" Text="{Binding Title}" FontSize="15.5" FontWeight="Medium"
+                                                               Foreground="#FFFFFF" HorizontalAlignment="Center" TextAlignment="Center"
+                                                               VerticalAlignment="Center" TextWrapping="NoWrap"
+                                                               TextTrimming="None" ToolTip="{Binding Title}"/>
+                                                    <Border Grid.Column="1" Margin="6 0 0 0" Padding="5 1" CornerRadius="7" Background="#26382B" BorderBrush="#4B8B58" BorderThickness="1"
                                                             VerticalAlignment="Center" ToolTip="This profile is currently running">
                                                         <Border.Style>
                                                             <Style TargetType="Border">
@@ -328,7 +432,7 @@
                                                         </Border.Style>
                                                         <TextBlock Text="ACTIVE" FontSize="8.5" FontWeight="Bold" Foreground="#FFFFFF"/>
                                                     </Border>
-                                                </StackPanel>
+                                                </Grid>
                                                 <Ellipse Width="7" Height="7" Margin="0 0 4 0" HorizontalAlignment="Right"
                                                          Fill="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center" ToolTip="Auto-apply enabled">
                                                     <Ellipse.Style>
@@ -352,22 +456,114 @@
                                 </DataTemplate>
                             </TreeView.ItemTemplate>
                         </TreeView>
+                        <!-- Normal list when no profile is open; the selected profile's
+                             actual device editor docks here below Profiles. -->
+                        <Border x:Name="ProfileDeviceOverview" Grid.Row="3" Margin="8 7 8 8" Padding="9 8" Background="#202020"
+                                BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="PROFILE DEVICES" FontSize="11" FontWeight="Bold"
+                                           Foreground="#AAAAAA" Margin="2 0 0 6"/>
+                                <ScrollViewer MaxHeight="185" VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Disabled">
+                                    <StackPanel>
+                                        <ItemsControl ItemsSource="{Binding InputDeviceControlViewModel.Devices}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0 3">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="48"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <ContentControl Content="{Binding Visual}" Grid.Column="0"
+                                                                        ContentTemplate="{StaticResource DeviceSymbolTemplate}"
+                                                                        VerticalAlignment="Center"/>
+                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding Title}" FontSize="12"
+                                                                       TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Text="{Binding ProviderName}" FontSize="10"
+                                                                       Foreground="#999999" TextTrimming="CharacterEllipsis"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <ItemsControl ItemsSource="{Binding OutputDeviceControlViewModel.Devices}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0 3">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="48"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <ContentControl Content="{Binding Visual}" Grid.Column="0"
+                                                                        ContentTemplate="{StaticResource DeviceSymbolTemplate}"
+                                                                        VerticalAlignment="Center"/>
+                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding Title}" FontSize="12"
+                                                                       TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Text="{Binding ProviderName}" FontSize="10"
+                                                                       Foreground="#999999" TextTrimming="CharacterEllipsis"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </StackPanel>
+                        </Border>
+                        <ContentControl x:Name="ProfileDeviceEditorHost" Grid.Row="3"
+                                        Visibility="Collapsed" Margin="0"
+                                        MaxHeight="280"
+                                        HorizontalContentAlignment="Stretch"
+                                        VerticalContentAlignment="Bottom"/>
                     </Grid>
                 </materialDesign:Card>
 
-                <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                              ResizeDirection="Columns" ResizeBehavior="PreviousAndNext"
-                              Background="Transparent" Cursor="SizeWE" ToolTip="Resize Profiles pane">
-                    <GridSplitter.Template>
-                        <ControlTemplate TargetType="GridSplitter">
-                            <Border Background="Transparent">
-                                <Border Width="1" HorizontalAlignment="Center" Background="#454545"/>
-                            </Border>
-                        </ControlTemplate>
-                    </GridSplitter.Template>
-                </GridSplitter>
+                <Border Grid.Column="1" Background="#454545" IsHitTestVisible="False"/>
 
-                <Grid Grid.Column="2" Margin="8 0 0 0" Visibility="{Binding ProfileDetailsActive}">
+                <TabControl x:Name="WorkspaceTabs" Grid.Column="2" Margin="2 0 0 0" SelectedIndex="0"
+                            BorderThickness="0" Background="Transparent" Padding="0">
+                    <TabControl.Template>
+                        <ControlTemplate TargetType="{x:Type TabControl}">
+                            <ContentPresenter ContentSource="SelectedContent"
+                                              HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                        </ControlTemplate>
+                    </TabControl.Template>
+                    <TabControl.Resources>
+                        <Style TargetType="{x:Type TabItem}">
+                            <Setter Property="Foreground" Value="#B4B4B4"/>
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="{x:Type TabItem}">
+                                        <Border x:Name="TabSurface" Background="{TemplateBinding Background}"
+                                                BorderBrush="Transparent" BorderThickness="0 0 0 2"
+                                                Margin="0 0 8 0" Padding="14 9 14 8" Cursor="Hand">
+                                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                                                <Setter TargetName="TabSurface" Property="Background" Value="#292929"/>
+                                                <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="TabSurface" Property="Background" Value="#303030"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </TabControl.Resources>
+                    <TabItem Header="Mappings">
+                        <ContentControl x:Name="ProfileEditorHost"
+                                        HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+                    </TabItem>
+                    <TabItem Header="Profile options">
+                <Grid x:Name="ProfileSummaryPanel" Visibility="{Binding ProfileDetailsActive}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
@@ -526,6 +722,8 @@
                         </Grid>
                     </materialDesign:Card>
                 </Grid>
+                    </TabItem>
+                </TabControl>
             </Grid>
         </materialDesign:DialogHost>
         <ContentControl x:Name="NavigationHost" Grid.Row="2" Visibility="Collapsed" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>

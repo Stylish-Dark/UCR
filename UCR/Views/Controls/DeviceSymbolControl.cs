@@ -126,7 +126,11 @@ namespace HidWizards.UCR.Views.Controls
 
                 try
                 {
-                    var fontPath = MaterializeEmbeddedFont();
+                    // Prefer the editable font shipped with UCR. Embedded original
+                    // remains a fallback for old portable installations.
+                    var fontPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
+                        "Assets", "Fonts", FontFileName);
+                    if (!File.Exists(fontPath)) fontPath = MaterializeEmbeddedFont();
                     var typeface = new GlyphTypeface(new Uri(fontPath, UriKind.Absolute));
 
                     for (var codePoint = 0xE001; codePoint <= 0xE005; codePoint++)

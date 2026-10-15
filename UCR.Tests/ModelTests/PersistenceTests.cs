@@ -98,6 +98,43 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void EditHistoryProvidesTenUndoRedoStepsWithoutSavingChanges()
+        {
+            var context = NewContext();
+            context.SaveContext();
+            var savedManifest = File.ReadAllText(_store.StatePath);
+            context.InitializeEditHistory();
+            Assert.That(context.CanUndo, Is.False);
+
+            for (var index = 0; index < 12; index++)
+            {
+                var profile = context.ProfilesManager.CreateProfile("History " + index, null, null);
+                context.ProfilesManager.AddProfile(profile);
+            }
+
+            Assert.That(context.Profiles.Count, Is.EqualTo(12));
+            Assert.That(File.ReadAllText(_store.StatePath), Is.EqualTo(savedManifest),
+                "Edits must remain only in memory until Save.");
+            Assert.That(context.IsNotSaved, Is.True);
+
+            for (var step = 0; step < 10; step++)
+                Assert.That(context.Undo(), Is.True, "Undo step " + step);
+            Assert.That(context.CanUndo, Is.False, "History must be capped at ten edits.");
+            Assert.That(context.Profiles.Count, Is.EqualTo(2));
+            Assert.That(File.ReadAllText(_store.StatePath), Is.EqualTo(savedManifest));
+
+            for (var step = 0; step < 10; step++)
+                Assert.That(context.Redo(), Is.True, "Redo step " + step);
+            Assert.That(context.CanRedo, Is.False);
+            Assert.That(context.Profiles.Count, Is.EqualTo(12));
+
+            context.SaveContext();
+            Assert.That(context.IsNotSaved, Is.False);
+            Assert.That(File.ReadAllText(_store.StatePath), Is.Not.EqualTo(savedManifest));
+            context.Dispose();
+        }
+
+        [Test]
         public void BlankContext()
         {
             var context = NewContext();
@@ -149,8 +186,8 @@ namespace HidWizards.UCR.Tests.ModelTests
                 Assert.That(loaded.Profiles[0].MappingGroups.Count, Is.EqualTo(1));
                 Assert.That(loaded.Profiles[0].MappingGroups[0].Title, Is.EqualTo("Child Profile"));
                 Assert.That(loaded.Profiles[0].MappingGroups[0].Enabled, Is.False);
-                Assert.That(loaded.IsNotSaved, Is.False,
-                    "Automatic post-load migration must not impersonate a user configuration edit.");
+                Assert.That(loaded.IsNotSaved, Is.EqualTo(i == 0),
+                    "A one-time migration must remain unsaved until the first explicit Save.");
                 loaded.SaveContext(null);
             }
         }
@@ -588,6 +625,55 @@ namespace HidWizards.UCR.Tests.ModelTests
             File.WriteAllText(path, json);
 
             Assert.Throws<InvalidDataException>(() => Reload(pluginTypes));
+        }
+
+        [Test]
+        public void BoundOutputValuesRemainIntactAcrossRepeatedJsonLoadsAndSaves()
+        {
+            var types = new List<Type> { typeof(ButtonToButton) };
+            var context = NewContext();
+            var profile = context.ProfilesManager.CreateProfile("Keyboard outputs", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var mapping = profile.AddMapping("Tab to Enter");
+            profile.AddPlugin(mapping, new ButtonToButton());
+            var output = mapping.Plugins.Single().Outputs.Single();
+            SetDeviceBindingValues(output, 28);
+            output.IsBound = true;
+            context.SaveContext(types);
+
+            for (var i = 0; i < 3; i++)
+            {
+                var reloaded = Reload(types);
+                var savedOutput = reloaded.Profiles.Single().Mappings.Single()
+                    .Plugins.Single().Outputs.Single();
+                Assert.That(savedOutput.IsBound, Is.True);
+                Assert.That(savedOutput.KeyType, Is.EqualTo(28));
+                Assert.That(savedOutput.KeyValue, Is.EqualTo(28));
+                Assert.That(savedOutput.KeySubValue, Is.EqualTo(28));
+                reloaded.SaveContext(types);
+            }
+        }
+
+        [Test]
+        public void NativeJsonProfileBackupCanBeImportedAsSeparateProfile()
+        {
+            var types = new List<Type> { typeof(ButtonToButton) };
+            var context = NewContext();
+            var profile = context.ProfilesManager.CreateProfile("Keyboard outputs", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var mapping = profile.AddMapping("Tab to Enter");
+            profile.AddPlugin(mapping, new ButtonToButton());
+            var output = mapping.Plugins.Single().Outputs.Single();
+            SetDeviceBindingValues(output, 28);
+            output.IsBound = true;
+            context.SaveContext(types);
+
+            var jsonPath = Path.Combine(_store.ProfilesRoot, profile.Guid.ToString("D") + ".json");
+            var imported = context.ProfilesManager.ImportProfile(jsonPath, null, types);
+            Assert.That(imported.Guid, Is.Not.EqualTo(profile.Guid));
+            var importedOutput = imported.Mappings.Single().Plugins.Single().Outputs.Single();
+            Assert.That(importedOutput.IsBound, Is.True);
+            Assert.That(importedOutput.KeyValue, Is.EqualTo(28));
         }
 
         private void WriteLegacyContext(string title, List<Type> pluginTypes)

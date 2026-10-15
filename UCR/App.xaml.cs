@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -25,6 +27,7 @@ namespace HidWizards.UCR
         private Context context;
         private HidGuardianClient _hidGuardianClient;
         private SingleGlobalInstance mutex;
+        private bool _forwardToSameVersion = true;
         private Thread _splashThread;
         private SplashWindow _splashWindow;
         private ManualResetEventSlim _splashReady;
@@ -42,15 +45,31 @@ namespace HidWizards.UCR
         {
             base.OnStartup(e);
             RuntimePathManager.NormalizeWorkingDirectory();
-            DeviceOutlineColors.LoadFromIni();
             Logger.InitializeSession();
-            AppearanceManager.ApplySavedAccent();
-            AppearanceManager.ApplySavedUiScale();
             AppDomain.CurrentDomain.UnhandledException += AppDomain_CurrentDomain_UnhandledException;
             DispatcherUnhandledException += App_DispatcherUnhandledException;
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
 
+            // User-customisable appearance files and preferences must not make UCR unlaunchable.
+            try { DeviceOutlineColors.LoadFromIni(); }
+            catch (Exception exception) { Logger.Warn("Could not load device outline colours; using defaults.", exception); }
+            try { AppearanceManager.ApplySavedAccent(); AppearanceManager.ApplySavedUiScale(); }
+            catch (Exception exception) { Logger.Warn("Could not restore appearance preferences; using defaults.", exception); }
+
             mutex = new SingleGlobalInstance();
+            if (!mutex.HasHandle)
+            {
+                try
+                {
+                    if (TryReplaceDifferentVersion())
+                        Logger.Info("Previous UCR build exited; starting this version.");
+                }
+                catch (Exception exception)
+                {
+                    // Another instance can deny process/version inspection. Do not crash this instance.
+                    Logger.Error("Could not inspect or replace the previous UCR instance.", exception);
+                }
+            }
             if (mutex.HasHandle)
             {
                 Logger.Info("Launching UCR");
@@ -96,9 +115,170 @@ namespace HidWizards.UCR
             }
             else
             {
-                SendArgs(string.Join(";", e.Args));
+                if (_forwardToSameVersion)
+                    SendArgs(string.Join(";", e.Args));
+                else
+                    Logger.Warn("A newer UCR build is already running. The older build will not replace it.");
                 Current.Shutdown();
             }
+        }
+
+        private bool TryReplaceDifferentVersion()
+        {
+            var ourVersion = new Version(FileVersionInfo.GetVersionInfo(
+                Assembly.GetExecutingAssembly().Location).FileVersion);
+            var others = GetProcesses().Where(p => p.Id != Process.GetCurrentProcess().Id).ToArray();
+            if (others.Length == 0) return mutex.TryAcquire(1000);
+            foreach (var process in others)
+            {
+                try
+                {
+                    var fileVersion = FileVersionInfo.GetVersionInfo(process.MainModule.FileName).FileVersion;
+                    Version existingVersion;
+                    if (!Version.TryParse(fileVersion, out existingVersion))
+                        return false;
+                    if (existingVersion == ourVersion)
+                    {
+                        _forwardToSameVersion = true;
+                        return false;
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Logger.Warn("Could not verify previous UCR version; leaving it running.", exception);
+                    return false;
+                }
+            }
+
+            foreach (var process in others)
+            {
+                try
+                {
+                    Logger.Info("Requesting shutdown of UCR " + process.Id + " before version replacement.");
+                    // Future versions understand this message and perform their normal save/cleanup.
+                    SendUpgradeMessage(process.Id);
+                    if (!process.WaitForExit(7000))
+                    {
+                        foreach (var handle in GetTopLevelWindowHandles(process.Id))
+                            PostMessage(handle, 0x0010, IntPtr.Zero, IntPtr.Zero);
+                    }
+                    if (!process.WaitForExit(4000))
+                    {
+                        Logger.Warn("Previous UCR build did not release its mutex; stopping it.");
+                        process.Kill();
+                        process.WaitForExit(5000);
+                    }
+                }
+                catch (Exception exception)
+                {
+                    Logger.Error("Cannot replace earlier UCR process.", exception);
+                    return false;
+                }
+            }
+            return mutex.TryAcquire(5000);
+        }
+
+        private void SendUpgradeMessage(int processId)
+        {
+            var command = "UCR_INTERNAL_VERSION_REPLACE";
+            var data = new NativeMethods.COPYDATASTRUCT
+            {
+                dwData = new IntPtr(2),
+                cbData = command.Length + 1,
+                lpData = Marshal.StringToHGlobalAnsi(command)
+            };
+            IntPtr memory = IntPtr.Zero;
+            try
+            {
+                memory = Marshal.AllocCoTaskMem(Marshal.SizeOf(data));
+                Marshal.StructureToPtr(data, memory, false);
+                foreach (var handle in GetTopLevelWindowHandles(processId))
+                {
+                    IntPtr unused;
+                    SendMessageTimeout(handle, (uint)NativeMethods.WM_COPYDATA, IntPtr.Zero,
+                        memory, 0x0002, 1500, out unused);
+                }
+            }
+            finally
+            {
+                if (memory != IntPtr.Zero) Marshal.FreeCoTaskMem(memory);
+                if (data.lpData != IntPtr.Zero) Marshal.FreeHGlobal(data.lpData);
+            }
+        }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SendMessageTimeout(IntPtr window, uint message, IntPtr wParam,
+            IntPtr lParam, uint flags, uint timeout, out IntPtr result);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+
+        private void PreserveOriginalProfileFilesForVersion()
+        {
+            // Make a byte-for-byte safety snapshot before JSON deserialization, migrations,
+            // device loading or the first new-version save can modify the data.
+            var version = "v" + FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion;
+            var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "UCR");
+            var backupRoot = Path.Combine(root, "VersionBackups");
+            var marker = Path.Combine(backupRoot, "last-version.txt");
+            if (File.Exists(marker) && string.Equals(File.ReadAllText(marker).Trim(), version, StringComparison.Ordinal))
+                return;
+
+            var snapshots = Path.Combine(backupRoot, version, "OriginalJson");
+            Directory.CreateDirectory(snapshots);
+            var profiles = Path.Combine(root, "Profiles");
+            if (Directory.Exists(profiles))
+            {
+                foreach (var source in Directory.GetFiles(profiles, "*.json"))
+                {
+                    var destination = Path.Combine(snapshots, Path.GetFileName(source));
+                    if (!File.Exists(destination)) File.Copy(source, destination);
+                }
+            }
+            foreach (var name in new[] { "state.json", "devices.json" })
+            {
+                var source = Path.Combine(root, name);
+                var destination = Path.Combine(snapshots, name);
+                if (File.Exists(source) && !File.Exists(destination))
+                    File.Copy(source, destination);
+            }
+            Logger.Info("Preserved original pre-load profile JSON under " + snapshots);
+        }
+
+        private void CreatePortableVersionBackup()
+        {
+            if (context == null) return;
+            var version = "v" + FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion;
+            var backupRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "UCR", "VersionBackups");
+            var marker = Path.Combine(backupRoot, "last-version.txt");
+            if (File.Exists(marker) && string.Equals(File.ReadAllText(marker).Trim(), version, StringComparison.Ordinal))
+                return;
+            var directory = Path.Combine(backupRoot, version);
+            Directory.CreateDirectory(directory);
+            var archive = Path.Combine(directory, "AllProfiles.ucrprofiles");
+            if (!File.Exists(archive))
+            {
+                var pending = archive + ".pending";
+                context.ProfilesManager.ExportProfileList(pending);
+                File.Move(pending, archive);
+            }
+            foreach (var profile in context.Profiles)
+            {
+                var safeName = new string((profile.Title ?? "Profile")
+                    .Select(ch => Path.GetInvalidFileNameChars().Contains(ch) ? '_' : ch).ToArray());
+                if (safeName.Length > 55) safeName = safeName.Substring(0, 55);
+                var file = Path.Combine(directory, safeName + " - " + profile.Guid.ToString("D") + ".ucrprofile");
+                if (File.Exists(file)) continue;
+                var pendingProfile = file + ".pending";
+                context.ProfilesManager.ExportProfile(profile, pendingProfile);
+                File.Move(pendingProfile, file);
+            }
+            var tempMarker = marker + ".tmp";
+            File.WriteAllText(tempMarker, version);
+            if (File.Exists(marker)) File.Replace(tempMarker, marker, null);
+            else File.Move(tempMarker, marker);
+            Logger.Info("Importable version backup created: " + directory);
         }
 
         private void InitializeUcr()
@@ -106,7 +286,13 @@ namespace HidWizards.UCR
             RunStartupStage("Loading interface resources...", () => new ResourceLoader().Load());
             RunStartupStage("Initializing device providers and loading profiles...", () =>
             {
+                // Backups are important, but locked Documents folders, invalid profile titles or
+                // interrupted earlier backups must not prevent the editor from opening.
+                try { PreserveOriginalProfileFilesForVersion(); }
+                catch (Exception exception) { Logger.Error("Pre-load backup failed; original JSON files were not modified by the backup.", exception); }
                 context = Context.Load();
+                try { CreatePortableVersionBackup(); }
+                catch (Exception exception) { Logger.Error("Portable version backup failed; UCR will continue to open.", exception); }
                 Logger.SetDiagnosticContextProvider(BuildDiagnosticContextSnapshot);
             });
         }
@@ -327,15 +513,11 @@ namespace HidWizards.UCR
                 {
                     RunShutdownStage("Closing profile windows...", 10, ucrWindow.PrepareForShutdown);
                 }
-                if (saveContext)
-                {
-                    RunShutdownStage("Saving configuration...", 15, () => context?.SaveContext());
-                }
-                else
-                {
-                    UpdateShutdownProgress(15);
-                }
-                RunShutdownStage("Saving device state...", 35, () => context?.DevicesManager.UpdateDeviceCache());
+                // All configuration saving is performed by the user's Save command or
+                // by a confirmed Yes response in MainWindow's close dialog. Never
+                // perform a second implicit write during the shutdown sequence.
+                UpdateShutdownProgress(15);
+                UpdateShutdownProgress(35);
                 RunShutdownStage("Stopping input and output services...", 70, () =>
                 {
                     context?.Dispose();
@@ -484,18 +666,7 @@ namespace HidWizards.UCR
         private void App_OnExit(object sender, ExitEventArgs e)
         {
             if (!_shutdownCleanupComplete)
-            {
-                try
-                {
-                    context?.DevicesManager.UpdateDeviceCache();
-                }
-                catch (Exception exception)
-                {
-                    Logger.Error("Updating device cache during application exit failed", exception);
-                }
-
                 Dispose();
-            }
 
             CloseShutdownSplash();
             Logger.Flush();

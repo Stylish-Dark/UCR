@@ -276,7 +276,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 plugin.InputCategories != null && plugin.InputCategories.Count > 0 &&
                 plugin.InputCategories.All(definition => definition.Category == DeviceBindingCategory.Momentary))
             {
-                return plugin.InputCategories.Count == 1 ? "1 button" : plugin.InputCategories.Count + " buttons";
+                return plugin.InputCategories.Count == 1 ? "1 button" :
+                    plugin.InputCategories.Count == 4 ? "4 ways (joystick)" :
+                    plugin.InputCategories.Count + " buttons";
             }
 
             return plugin.PluginName;

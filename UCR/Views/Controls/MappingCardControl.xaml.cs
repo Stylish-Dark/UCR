@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -8,6 +9,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Utilities;
+using HidWizards.UCR.ViewModels;
 using HidWizards.UCR.ViewModels.Presentation;
 using HidWizards.UCR.ViewModels.ProfileViewModels;
 
@@ -15,6 +17,25 @@ namespace HidWizards.UCR.Views.Controls
 {
     public partial class MappingCardControl : UserControl
     {
+        public static readonly DependencyProperty InspectorModeProperty = DependencyProperty.Register(
+            nameof(InspectorMode), typeof(bool), typeof(MappingCardControl),
+            new PropertyMetadata(false));
+
+        public bool InspectorMode
+        {
+            get => (bool)GetValue(InspectorModeProperty);
+            set => SetValue(InspectorModeProperty, value);
+        }
+        public static readonly DependencyProperty InspectorSectionProperty = DependencyProperty.Register(
+            nameof(InspectorSection), typeof(string), typeof(MappingCardControl),
+            new PropertyMetadata("All"));
+
+        public string InspectorSection
+        {
+            get => (string)GetValue(InspectorSectionProperty);
+            set => SetValue(InspectorSectionProperty, value);
+        }
+
         public MappingCardControl()
         {
             InitializeComponent();
@@ -23,11 +44,25 @@ namespace HidWizards.UCR.Views.Controls
 
         private void MappingCardControl_OnLoaded(object sender, RoutedEventArgs e)
         {
+            if (InspectorMode)
+            {
+                MappingExpander.Visibility = Visibility.Collapsed;
+                ShowExpandedBody();
+                return;
+            }
+
             var mapping = DataContext as MappingViewModel;
             if (mapping?.IsExpanded == true)
                 ShowExpandedBody();
             else
                 HideExpandedBody();
+        }
+
+        private void ExpandMappingButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (InspectorMode) return;
+            MappingExpander.IsExpanded = !MappingExpander.IsExpanded;
+            e.Handled = true;
         }
 
         private void MappingExpander_OnExpanded(object sender, RoutedEventArgs e)
@@ -48,6 +83,12 @@ namespace HidWizards.UCR.Views.Controls
         private void ShowExpandedBody()
         {
             if (ExpandedBodyHost == null) return;
+            // Output property controls (especially Button/Axis-to-Filter's Filter name)
+            // are populated lazily. The compact inspector must initialize them too.
+            var mapping = DataContext as MappingViewModel;
+            if (mapping != null)
+                foreach (var plugin in mapping.Plugins)
+                    plugin.EnsureEditorInitialized();
 
             // Interrupt any closing fade if the user immediately reopens the card.
             ExpandedBodyHost.BeginAnimation(OpacityProperty, null);
@@ -342,6 +383,71 @@ namespace HidWizards.UCR.Views.Controls
             (DataContext as MappingViewModel)?.RemoveCondition(condition);
         }
 
+        private void BindDirectionalSlot_OnClick(object sender, RoutedEventArgs e)
+        {
+            var input = (sender as FrameworkElement)?.DataContext as DeviceBindingViewModel;
+            if (input?.DeviceBinding == null || input.DeviceBinding.IsInBindMode) return;
+            try
+            {
+                input.DeviceBinding.DeviceBindingCategory = input.DeviceBindingCategory;
+                input.DeviceBinding.EnterBindMode();
+            }
+            catch (Exception exception)
+            {
+                Logger.Error("Unable to capture directional input", exception);
+                DarkMessageBox.Show("Unable to detect this direction: " + exception.GetBaseException().Message,
+                    "Input detection unavailable", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DirectionalDevice_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var combo = sender as ComboBox;
+            var group = combo?.DataContext as InputConditionViewModel;
+            var selected = combo?.SelectedItem as ComboBoxItemViewModel;
+            if (group?.DirectionalPrimary == null || selected == null) return;
+
+            // WPF fires SelectionChanged when the template first loads. That must
+            // not clear existing inputs unless the user chose a different device.
+            var primary = group.DirectionalPrimary;
+            if (selected.Value == primary.DeviceBinding.DeviceConfigurationGuid) return;
+            foreach (var input in group.DirectionalInputs)
+                input.ChangeDeviceConfiguration(selected.Value);
+        }
+
+        private void DirectionalType_OnClick(object sender, RoutedEventArgs e)
+        {
+            var item = sender as MenuItem;
+            var button = (item?.Parent as ContextMenu)?.PlacementTarget as Button;
+            var input = button?.DataContext as DeviceBindingViewModel ?? item?.DataContext as DeviceBindingViewModel;
+            int kind;
+            if (input == null || !int.TryParse(item?.Tag as string, out kind)) return;
+            input.InputExpressionInputKind = kind;
+        }
+
+        private void DirectionalNot_OnClick(object sender, RoutedEventArgs e)
+        {
+            var group = (sender as FrameworkElement)?.DataContext as InputConditionViewModel;
+            if (group?.DirectionalPrimary == null) return;
+            (DataContext as MappingViewModel)?.SetInputNegated(group.DirectionalPrimary,
+                (sender as ToggleButton)?.IsChecked == true);
+        }
+
+        private void DirectionalBlock_OnClick(object sender, RoutedEventArgs e)
+        {
+            var group = (sender as FrameworkElement)?.DataContext as InputConditionViewModel;
+            if (group?.DirectionalPrimary == null) return;
+            (DataContext as MappingViewModel)?.SetDirectionalBlocked(group.DirectionalPrimary,
+                (sender as ToggleButton)?.IsChecked == true);
+        }
+
+        private void RemoveDirectionalUnit_OnClick(object sender, RoutedEventArgs e)
+        {
+            var group = (sender as FrameworkElement)?.DataContext as InputConditionViewModel;
+            if (group == null) return;
+            (DataContext as MappingViewModel)?.SetDirectionalMode(0);
+        }
+
         private void InputNegated_OnClick(object sender, RoutedEventArgs e)
         {
             var toggle = sender as ToggleButton;
@@ -352,46 +458,280 @@ namespace HidWizards.UCR.Views.Controls
 
         private void AddPlugin_OnClick(object sender, RoutedEventArgs e)
         {
-            var mappingViewModel = DataContext as MappingViewModel;
+            var mapping = DataContext as MappingViewModel;
+            if (mapping?.ButtonsEnabled != true) return;
+            mapping.AddDefaultOutput();
+        }
+
+        private void ChooseInputCategory_OnClick(object sender, RoutedEventArgs e)
+        {
             var button = sender as Button;
-            if (mappingViewModel == null || button == null) return;
+            var mapping = DataContext as MappingViewModel;
+            if (button == null || mapping?.ButtonsEnabled != true || mapping.Plugins.Count != 1) return;
 
-            var options = mappingViewModel.GetCompatiblePluginOptions();
-            if (options.Count == 0) return;
-
-            var menu = new ContextMenu
-            {
-                PlacementTarget = button,
-                Placement = PlacementMode.Bottom,
-                Background = new SolidColorBrush(Color.FromRgb(0x24, 0x24, 0x24)),
-                Foreground = Brushes.White,
-                BorderBrush = new SolidColorBrush(Color.FromRgb(0x45, 0x45, 0x45)),
-                BorderThickness = new Thickness(1),
-                Padding = new Thickness(4)
-            };
-
+            var current = mapping.Plugins[0];
+            var options = mapping.GetCompatibleInputPluginOptions();
+            var menu = CreateDarkContextMenu(button);
+            menu.Placement = PlacementMode.Bottom;
             foreach (var option in options)
             {
-                var capturedOption = option;
+                var selected = option;
                 var item = new MenuItem
                 {
-                    Header = capturedOption.MenuLabel,
-                    ToolTip = capturedOption.Description,
+                    Header = selected.Name,
+                    ToolTip = selected.Description,
+                    Foreground = Brushes.White,
+                    Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 14, 6),
+                    IsChecked = current.Plugin.GetType() == selected.Plugin.GetType()
+                };
+                item.Click += (s, args) =>
+                {
+                    if (current.Plugin.GetType() == selected.Plugin.GetType()) return;
+                    mapping.ChangeInputType(current, selected.Plugin);
+                };
+                menu.Items.Add(item);
+            }
+            if (menu.Items.Count == 0)
+                menu.Items.Add(new MenuItem
+                {
+                    Header = "No compatible input types",
+                    IsEnabled = false,
+                    Foreground = Brushes.LightGray
+                });
+            menu.IsOpen = true;
+        }
+
+        private void ChangeOutputType_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var output = button?.DataContext as PluginViewModel;
+            var mapping = output?.MappingViewModel;
+            if (mapping?.ButtonsEnabled != true) return;
+            var options = mapping.GetCompatiblePluginOptions();
+            if (options.Count == 0) return;
+
+            var changeAll = string.Equals(button.Tag as string, "CategoryHeader", StringComparison.Ordinal);
+            Action<SimplePluginViewModel> apply = selected =>
+            {
+                if (changeAll) mapping.ChangeAllOutputTypes(selected.Plugin);
+                else mapping.ChangeOutputType(output, selected.Plugin);
+            };
+
+            var menu = CreateDarkContextMenu(button);
+            menu.Placement = PlacementMode.Bottom;
+
+            // A mapping no longer has an input-to-output plugin identity. Expose one
+            // destination category at the surface, not a duplicate menu entry for
+            // every old 'Button to ...' and 'Axis to ...' implementation.
+            var categories = options.GroupBy(option => option.OutputType,
+                StringComparer.OrdinalIgnoreCase).ToList();
+            var analogueInput = mapping.Mapping.DeviceBindings.Any(input =>
+                input.InputExpressionInputKind == 3);
+            foreach (var category in categories)
+            {
+                if (!IsPrimaryOutputCategory(category.Key)) continue;
+                var preferred = PreferredOutputImplementation(category, analogueInput);
+                if (preferred == null) continue;
+                var selected = preferred;
+                var item = new MenuItem
+                {
+                    Header = category.Key,
+                    ToolTip = selected.Description,
+                    Foreground = Brushes.White,
+                    Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 14, 6),
+                    IsChecked = string.Equals(output.OutputType, category.Key,
+                        StringComparison.OrdinalIgnoreCase)
+                };
+                item.Click += (s, args) => apply(selected);
+                menu.Items.Add(item);
+            }
+
+            if (changeAll)
+            {
+                menu.Items.Add(new Separator());
+                var addOutput = new MenuItem
+                {
+                    Header = "Add another output",
                     Foreground = Brushes.White,
                     Background = Brushes.Transparent,
                     Padding = new Thickness(10, 6, 14, 6)
                 };
-                item.Click += (clickSender, clickArgs) => mappingViewModel.AddPlugin(capturedOption.Plugin);
-                menu.Items.Add(item);
+                addOutput.Click += (s, args) => mapping.AddDefaultOutput();
+                menu.Items.Add(addOutput);
             }
-
-            menu.Closed += (closedSender, closedArgs) =>
-            {
-                if (ReferenceEquals(button.ContextMenu, menu)) button.ContextMenu = null;
-            };
-            button.ContextMenu = menu;
             menu.IsOpen = true;
         }
+
+        private static bool IsPrimaryOutputCategory(string category)
+        {
+            return category == "Button" || category == "Axis" ||
+                   category == "Filter" || category == "Event" ||
+                   category == "Delta" || category == "Value";
+        }
+
+        private static SimplePluginViewModel PreferredOutputImplementation(
+            System.Collections.Generic.IEnumerable<SimplePluginViewModel> group,
+            bool analogueInput)
+        {
+            var variants = group.ToList();
+            if (variants.Count == 0) return null;
+            // Changing the category chooses the standard output behaviour, not the
+            // legacy input-to-output plugin identity. Existing specialised mappings
+            // continue to work until the user explicitly changes their output type.
+            var category = variants[0].OutputType;
+            string name = null;
+            switch (category)
+            {
+                case "Button": name = "Button to Button"; break;
+                case "Axis": name = "Axis to Axis"; break;
+                case "Filter": name = analogueInput ? "Axis to Filter" : "Button to Filter"; break;
+                case "Event": name = "Button to Event"; break;
+            }
+            return variants.FirstOrDefault(option =>
+                       string.Equals(option.Name, name, StringComparison.OrdinalIgnoreCase))
+                ?? variants.OrderBy(option => option.Name, StringComparer.OrdinalIgnoreCase)
+                    .First();
+        }
+
+        private void AxisFourButtons_OnClick(object sender, RoutedEventArgs e)
+        {
+            var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
+            RequestAxisInputMode(axis, 4);
+        }
+
+        private void RequestAxisInputMode(PluginViewModel axis, int buttonCount)
+        {
+            if (axis == null || !axis.CanChangeAxisButtonMode) return;
+            var currentCount = axis.IsFourButtonAxis ? 4 : axis.IsTwoButtonAxis ? 2 : 1;
+            if (currentCount == buttonCount) return;
+
+            // An AND/OR expression returns one boolean state. There is no lossless
+            // conversion from that expression to two or four independent directions.
+            if (axis.MappingViewModel.UsesInputExpression)
+            {
+                var answer = DarkMessageBox.Show(
+                    "Changing to " + buttonCount + " button mode replaces this mapping's AND/OR input conditions " +
+                    "with dedicated directional inputs. Existing input conditions will be discarded. Continue?",
+                    "Replace input conditions?", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (answer != MessageBoxResult.Yes) return;
+            }
+            axis.MappingViewModel.ChangeAxisInputMode(axis, buttonCount);
+        }
+
+        private void AxisKeyboardPreset_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mapping = ((sender as Button)?.DataContext as PluginViewModel)?.MappingViewModel;
+            var preset = (sender as Button)?.Tag as string;
+            if (mapping == null || string.IsNullOrEmpty(preset)) return;
+            string error;
+            if (!mapping.ApplyKeyboardAxisPreset(preset, out error) && !string.IsNullOrEmpty(error))
+                DarkMessageBox.Show(error, "Keyboard preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void AxisStickInputPreset_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mapping = DataContext as MappingViewModel;
+            int index;
+            if (mapping == null || !int.TryParse((sender as Button)?.Tag as string, out index)) return;
+            string error;
+            if (!mapping.ApplyControllerStickInputPreset(index, out error) && !string.IsNullOrEmpty(error))
+                DarkMessageBox.Show(error, "Controller input preset unavailable", MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+        }
+
+        private void AxisControllerPreset_OnClick(object sender, RoutedEventArgs e)
+        {
+            var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
+            if (axis?.MappingViewModel == null) return;
+            string error;
+            if (!axis.MappingViewModel.ApplyControllerDPadPreset(out error) && !string.IsNullOrEmpty(error))
+                DarkMessageBox.Show(error, "Controller preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void AxisInvertX_OnClick(object sender, RoutedEventArgs e) => SetFourWayInversion(sender, "InvertX");
+        private void AxisInvertY_OnClick(object sender, RoutedEventArgs e) => SetFourWayInversion(sender, "InvertY");
+
+        private static void SetFourWayInversion(object sender, string propertyName)
+        {
+            var toggle = sender as ToggleButton;
+            var axis = toggle?.DataContext as PluginViewModel;
+            if (axis?.IsFourButtonAxis != true || axis.MappingViewModel?.ButtonsEnabled != true) return;
+            var property = axis.Plugin.GetType().GetProperty(propertyName);
+            if (property == null || property.PropertyType != typeof(bool) || !property.CanWrite) return;
+            property.SetValue(axis.Plugin, toggle.IsChecked == true, null);
+            axis.Plugin.ContextChanged();
+        }
+
+        private void FourWayOutput_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var axis = button?.DataContext as PluginViewModel;
+            if (axis?.IsFourButtonAxis != true || axis.MappingViewModel?.ButtonsEnabled != true) return;
+            var selectedGuid = axis.SelectedFourWayOutputDeviceGuid;
+            var options = axis.MappingViewModel.GetFourWayOutputChoices()
+                .Where(option => option.DeviceConfigurationGuid == selectedGuid).ToList();
+            var menu = CreateDarkContextMenu(button);
+            menu.Placement = PlacementMode.Bottom;
+            foreach (var group in options.GroupBy(option => option.DeviceTitle))
+            {
+                var deviceItem = new MenuItem
+                {
+                    Header = group.Key,
+                    Foreground = Brushes.White,
+                    Background = Brushes.Transparent
+                };
+                foreach (var option in group)
+                {
+                    var chosen = option;
+                    var item = new MenuItem
+                    {
+                        Header = option.Destination,
+                        Foreground = Brushes.White,
+                        Background = Brushes.Transparent,
+                        Padding = new Thickness(10, 6, 12, 6)
+                    };
+                    item.Click += (s, args) => axis.MappingViewModel.ApplyFourWayOutput(axis, chosen);
+                    deviceItem.Items.Add(item);
+                }
+                menu.Items.Add(deviceItem);
+            }
+            if (options.Count == 0) menu.Items.Add(new MenuItem
+            {
+                Header = "No compatible controller outputs in this profile",
+                IsEnabled = false, Foreground = Brushes.LightGray
+            });
+            menu.IsOpen = true;
+        }
+
+        private void AxisOneButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
+            RequestAxisInputMode(axis, 1);
+        }
+
+        private void AxisTwoButtons_OnClick(object sender, RoutedEventArgs e)
+        {
+            var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
+            RequestAxisInputMode(axis, 2);
+        }
+
+        private void AddOutputFilter_OnClick(object sender, RoutedEventArgs e)
+        {
+            ((sender as FrameworkElement)?.DataContext as PluginViewModel)?.AddFilter();
+        }
+
+        private void ToggleOutputFilter_OnClick(object sender, RoutedEventArgs e)
+        {
+            ((sender as FrameworkElement)?.DataContext as FilterViewModel)?.ToggleFilter();
+        }
+
+        private void RemoveOutputFilter_OnClick(object sender, RoutedEventArgs e)
+        {
+            ((sender as FrameworkElement)?.DataContext as FilterViewModel)?.RemoveFilter();
+        }
+
         private void RemoveOutput_OnClick(object sender, RoutedEventArgs e)
         {
             var plugin = (sender as FrameworkElement)?.DataContext as PluginViewModel;

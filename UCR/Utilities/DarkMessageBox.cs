@@ -49,7 +49,8 @@ namespace HidWizards.UCR.Utilities
 
             public MessageBoxResult Result => _result;
 
-            public DarkMessageBoxWindow(string message, string caption, MessageBoxButton buttons, MessageBoxImage icon, Window owner)
+            public DarkMessageBoxWindow(string message, string caption, MessageBoxButton buttons,
+                MessageBoxImage icon, Window owner)
             {
                 _buttons = buttons;
                 Title = string.IsNullOrWhiteSpace(caption) ? "Universal Control Remapper" : caption;

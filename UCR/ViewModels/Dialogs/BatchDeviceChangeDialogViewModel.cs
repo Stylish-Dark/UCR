@@ -28,6 +28,25 @@ namespace HidWizards.UCR.ViewModels.Dialogs
         public int PreservedUnknown { get; set; }
     }
 
+    public sealed class BatchMappingGroupSelection : INotifyPropertyChanged
+    {
+        private bool _isSelected;
+        public MappingGroupViewModel Section { get; }
+        public string Title => Section.Title;
+        public bool IsSelected
+        {
+            get => _isSelected;
+            set
+            {
+                if (_isSelected == value) return;
+                _isSelected = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+            }
+        }
+        public BatchMappingGroupSelection(MappingGroupViewModel section) { Section = section; }
+        public event PropertyChangedEventHandler PropertyChanged;
+    }
+
     public class BatchDeviceChangeDialogViewModel : INotifyPropertyChanged
     {
         private readonly ProfileViewModel _profileViewModel;
@@ -35,6 +54,7 @@ namespace HidWizards.UCR.ViewModels.Dialogs
 
         public ObservableCollection<BatchDeviceOption> SourceDevices { get; }
         public ObservableCollection<BatchDeviceOption> TargetDevices { get; }
+        public ObservableCollection<BatchMappingGroupSelection> MappingGroups { get; }
         public BatchDeviceChangeDialogViewModel ViewModel => this;
 
         private BatchDeviceOption _selectedSource;
@@ -64,12 +84,17 @@ namespace HidWizards.UCR.ViewModels.Dialogs
             }
         }
 
-        public bool CanApply => SelectedSource != null && SelectedTarget != null;
+        public bool CanApply => SelectedSource != null && SelectedTarget != null
+            && MappingGroups.Any(group => group.IsSelected);
 
         public BatchDeviceChangeDialogViewModel(ProfileViewModel profileViewModel)
         {
             _profileViewModel = profileViewModel;
             _allDevices = BuildAllDeviceOptions(profileViewModel.Profile);
+            MappingGroups = new ObservableCollection<BatchMappingGroupSelection>(
+                profileViewModel.MappingSections.Select(section => new BatchMappingGroupSelection(section)));
+            foreach (var group in MappingGroups)
+                group.PropertyChanged += (sender, args) => OnPropertyChanged(nameof(CanApply));
             SourceDevices = new ObservableCollection<BatchDeviceOption>(BuildUsedDeviceOptions());
             TargetDevices = new ObservableCollection<BatchDeviceOption>();
             if (SourceDevices.Count > 0) SelectedSource = SourceDevices[0];

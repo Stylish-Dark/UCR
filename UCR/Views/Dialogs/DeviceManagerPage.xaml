@@ -10,18 +10,105 @@
              PreviewMouseWheel="DeviceManagerWindow_OnPreviewMouseWheel"
              KeyboardNavigation.TabNavigation="Cycle"
              PreviewKeyDown="DeviceManagerWindow_OnPreviewKeyDown">
+    <UserControl.Resources>
+        <Style x:Key="DevicePageTextButton" TargetType="{x:Type Button}" BasedOn="{StaticResource UcrDialogFlatButton}">
+            <Setter Property="Background" Value="#303030"/>
+            <Setter Property="BorderBrush" Value="#686868"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10 6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#414141"/>
+                    <Setter Property="BorderBrush" Value="#A0A0A0"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="DeviceRowIconButton" TargetType="{x:Type Button}">
+            <Setter Property="Width" Value="38"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Margin" Value="3 0"/>
+            <Setter Property="Padding" Value="7"/>
+            <Setter Property="Foreground" Value="#E3E3E3"/>
+            <Setter Property="Background" Value="#303030"/>
+            <Setter Property="BorderBrush" Value="#707070"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="Surface" CornerRadius="4" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#454545"/>
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="#A8A8A8"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#123D91"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="#76A7FF"/>
+                                <Setter TargetName="Surface" Property="BorderThickness" Value="2"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.32"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="DeviceRowIconToggle" TargetType="{x:Type CheckBox}">
+            <Setter Property="Width" Value="38"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Margin" Value="3 0"/>
+            <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type CheckBox}">
+                        <Border x:Name="Surface" CornerRadius="4" Background="#303030"
+                                BorderBrush="#707070" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#123D91"/>
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="#5B96F2"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="#B3B3B3"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="#76A7FF"/>
+                                <Setter TargetName="Surface" Property="BorderThickness" Value="2"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.32"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
     <Grid Background="#212121">
         <Grid.RowDefinitions>
-            <RowDefinition Height="32"/>
+            <RowDefinition Height="42"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid Grid.Row="0" Background="#202020">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Margin="5 2 8 2" Click="Back_OnClick"
+            <Button Grid.Column="0" Width="36" Height="34" Margin="8 3 9 3" Click="Back_OnClick"
                     Style="{StaticResource UcrNavigationBackButton}" ToolTip="Back to profiles (Alt+Left)">
                 <materialDesign:PackIcon Kind="ArrowLeft" Width="23" Height="23" Foreground="#FFFFFF"/>
             </Button>
-            <TextBlock Grid.Column="1" Text="Devices" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="1" Text="Devices" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0 0 0 1"/>
         </Grid>
         <Grid Grid.Row="1" Margin="18" Background="#212121">
         <Grid.RowDefinitions>
@@ -39,9 +126,9 @@
             <TextBlock Grid.Column="0" Text="Devices" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignTitleTextBlock}" VerticalAlignment="Center"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal">
                 <Button Content="WINDOWS DEVICES" Click="OpenWindowsDevices_OnClick" Margin="0 0 6 0"
-                        Style="{StaticResource UcrDialogFlatButton}" ToolTip="Open Windows Device Manager for live hardware removal or driver management"/>
+                        Style="{StaticResource DevicePageTextButton}" ToolTip="Open Windows Device Manager for live hardware removal or driver management"/>
                 <Button Content="{Binding DetectionButtonText}" Click="DetectDevice_OnClick"
-                        Style="{StaticResource UcrDialogFlatButton}" ToolTip="Identify an input device by pressing one of its buttons or keys"/>
+                        Style="{StaticResource DevicePageTextButton}" ToolTip="Identify an input device by pressing one of its buttons or keys"/>
             </StackPanel>
         </Grid>
         <StackPanel Grid.Row="1" Margin="0 6 0 12">
@@ -57,7 +144,8 @@
                   HorizontalContentAlignment="Stretch" Background="#212121" Foreground="#FFFFFF"
                   BorderBrush="#424242" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                   ScrollViewer.VerticalScrollBarVisibility="Auto"
-                  KeyboardNavigation.TabNavigation="Continue">
+                  KeyboardNavigation.TabNavigation="Continue"
+                  PreviewKeyDown="DeviceList_OnPreviewKeyDown">
             <ListView.Resources>
                 <Style TargetType="{x:Type ScrollBar}">
                     <Setter Property="Width" Value="8"/>
@@ -131,10 +219,11 @@
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="52"/>
-                                <ColumnDefinition Width="190"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="82"/>
-                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="158"/>
+                                <ColumnDefinition Width="*" MinWidth="105"/>
+                                <ColumnDefinition Width="48"/>
+                                <ColumnDefinition Width="48"/>
+                                <ColumnDefinition Width="182"/>
                             </Grid.ColumnDefinitions>
                             <ContentControl Grid.Column="0" Content="{Binding Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
                                             Width="48" Height="30" Margin="0 0 8 0" VerticalAlignment="Center"/>
@@ -144,30 +233,64 @@
                                 <TextBlock Text="{Binding IoTypes}" Foreground="#FFFFFF" FontSize="13" Opacity="0.72"/>
                             </StackPanel>
 
-                            <Grid Grid.Column="2" Margin="0 0 12 0">
+                            <Grid Grid.Column="2" Margin="0 0 8 0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBox Grid.Column="0" Text="{Binding Alias, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                <TextBox Grid.Column="0" MaxWidth="480" HorizontalAlignment="Stretch"
+                                         Text="{Binding Alias, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                          IsEnabled="{Binding CanPersist}" Background="#2B2B2B" Foreground="#FFFFFF"
                                          CaretBrush="#FFFFFF" BorderBrush="#555555" materialDesign:HintAssist.Hint="Friendly name"
                                          FontSize="17" FontWeight="SemiBold" Padding="10 5" VerticalContentAlignment="Center"
                                          ToolTip="Tab through device names. Alt+Up / Alt+Down moves this device while keeping focus here."
                                          PreviewKeyDown="AliasTextBox_OnPreviewKeyDown"/>
-                                <Button Grid.Column="1" Margin="8 0 0 0" Width="34" Height="32" Padding="0"
+                                <Button Grid.Column="1" Margin="4 0 0 0" Width="38" Height="38"
                                         IsEnabled="{Binding CanPersist}" Click="TextColorButton_OnClick"
-                                        Background="#252525" BorderBrush="#505050" BorderThickness="1"
+                                        Style="{StaticResource DeviceRowIconButton}"
                                         ToolTip="Device accent colour — click to choose; Default follows the device type">
                                     <Border Width="16" Height="16" CornerRadius="2" Background="{Binding CurrentTextBrush}"
                                             BorderBrush="#8A8A8A" BorderThickness="1"/>
                                 </Button>
                             </Grid>
 
-                            <CheckBox Grid.Column="3" Content="Hidden" Foreground="#FFFFFF" VerticalAlignment="Center"
-                                      IsChecked="{Binding Hidden, Mode=TwoWay}" IsEnabled="{Binding CanHide}">
+                            <CheckBox Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                      IsChecked="{Binding BlockUnmappedInputs, Mode=TwoWay}"
+                                      IsEnabled="{Binding CanPersist}"
+                                      ToolTip="Block unmapped inputs while this device is used by an active profile"
+                                      >
+                                <materialDesign:PackIcon Kind="ShieldOutline" Width="23" Height="23"
+                                                         Foreground="#E4E4E4"/>
                                 <CheckBox.Style>
-                                    <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                                    <Style TargetType="CheckBox" BasedOn="{StaticResource DeviceRowIconToggle}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CanBlockUnmapped}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </CheckBox.Style>
+                            </CheckBox>
+                            <CheckBox Grid.Column="4" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                      IsChecked="{Binding Hidden, Mode=TwoWay}" IsEnabled="{Binding CanHide}"
+                                      ToolTip="Hide this output device from normal selection lists"
+                                      >
+                                <materialDesign:PackIcon Width="23" Height="23"
+                                                         Foreground="#E4E4E4">
+                                    <materialDesign:PackIcon.Style>
+                                        <Style TargetType="{x:Type materialDesign:PackIcon}">
+                                            <Setter Property="Kind" Value="EyeOutline"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Hidden}" Value="True">
+                                                    <Setter Property="Kind" Value="EyeOffOutline"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </materialDesign:PackIcon.Style>
+                                </materialDesign:PackIcon>
+                                <CheckBox.Style>
+                                    <Style TargetType="CheckBox" BasedOn="{StaticResource DeviceRowIconToggle}">
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding CanHide}" Value="True">
@@ -178,10 +301,10 @@
                                 </CheckBox.Style>
                             </CheckBox>
 
-                            <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                <Button ToolTip="{Binding RemoveFromUcrToolTip}" Click="RemoveFromUcr_OnClick" Padding="4">
+                            <StackPanel Grid.Column="5" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <Button ToolTip="{Binding RemoveFromUcrToolTip}" Click="RemoveFromUcr_OnClick" >
                                     <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignCardButton}">
+                                        <Style TargetType="Button" BasedOn="{StaticResource DeviceRowIconButton}">
                                             <Setter Property="Visibility" Value="Collapsed"/>
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding CanRemoveFromUcr}" Value="True">
@@ -190,18 +313,18 @@
                                             </Style.Triggers>
                                         </Style>
                                     </Button.Style>
-                                    <materialDesign:PackIcon Kind="Trash" Width="18" Height="18"/>
+                                    <materialDesign:PackIcon Kind="Trash" Width="22" Height="22"/>
                                 </Button>
                                 <Button ToolTip="Remove this exact device instance from Windows (administrator approval required)"
-                                        Style="{StaticResource MaterialDesignCardButton}" IsEnabled="{Binding CanRemoveFromWindows}"
-                                        Click="RemoveFromWindows_OnClick" Padding="4">
-                                    <materialDesign:PackIcon Kind="Usb" Width="18" Height="18"/>
+                                        Style="{StaticResource DeviceRowIconButton}" IsEnabled="{Binding CanRemoveFromWindows}"
+                                        Click="RemoveFromWindows_OnClick" >
+                                    <materialDesign:PackIcon Kind="Usb" Width="22" Height="22"/>
                                 </Button>
-                                <Button ToolTip="Move up (Alt+Up while editing the name)" Style="{StaticResource MaterialDesignCardButton}" IsEnabled="{Binding CanPersist}" Click="MoveUp_OnClick" Padding="4">
-                                    <materialDesign:PackIcon Kind="ArrowUp" Width="18" Height="18"/>
+                                <Button ToolTip="Move up (Alt+Up while editing the name)" Style="{StaticResource DeviceRowIconButton}" IsEnabled="{Binding CanPersist}" Click="MoveUp_OnClick" >
+                                    <materialDesign:PackIcon Kind="ArrowUp" Width="22" Height="22"/>
                                 </Button>
-                                <Button ToolTip="Move down (Alt+Down while editing the name)" Style="{StaticResource MaterialDesignCardButton}" IsEnabled="{Binding CanPersist}" Click="MoveDown_OnClick" Padding="4">
-                                    <materialDesign:PackIcon Kind="ArrowDown" Width="18" Height="18"/>
+                                <Button ToolTip="Move down (Alt+Down while editing the name)" Style="{StaticResource DeviceRowIconButton}" IsEnabled="{Binding CanPersist}" Click="MoveDown_OnClick" >
+                                    <materialDesign:PackIcon Kind="ArrowDown" Width="22" Height="22"/>
                                 </Button>
                             </StackPanel>
                         </Grid>
@@ -212,7 +335,7 @@
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 14 0 0">
             <Button Content="SAVE" IsDefault="True" Style="{StaticResource UcrDialogRaisedButton}" Click="Save_OnClick"/>
-            <Button Content="CANCEL" Margin="8 0 0 0" Style="{StaticResource UcrDialogFlatButton}" Click="Cancel_OnClick"/>
+            <Button Content="CANCEL" Margin="8 0 0 0" Style="{StaticResource DevicePageTextButton}" Click="Cancel_OnClick"/>
         </StackPanel>
         </Grid>
     </Grid>

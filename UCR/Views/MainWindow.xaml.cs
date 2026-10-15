@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Globalization;
 using System.Linq;
 using System.Media;
 using System.Runtime.InteropServices;
@@ -41,6 +42,12 @@ namespace HidWizards.UCR.Views
         private readonly AutoProfileMonitor _autoProfileMonitor;
         private bool _exitRequested;
         private IDisposable _navigationPage;
+        private ProfilePage _embeddedProfilePage;
+        private Profile _embeddedProfile;
+        private bool _workspaceReady;
+        private readonly Dictionary<Guid, ProfilePage> _profileCache = new Dictionary<Guid, ProfilePage>();
+        private readonly LinkedList<Guid> _profileRecency = new LinkedList<Guid>();
+        private const int ProfileCacheLimit = 6;
 
         enum CloseState
         {
@@ -55,12 +62,56 @@ namespace HidWizards.UCR.Views
             DataContext = _dashboardViewModel;
             Context = context;
             InitializeComponent();
+            try { Context.InitializeEditHistory(); }
+            catch (Exception exception) { Logger.Warn("Undo history is unavailable for this session.", exception); }
             InitializeTrayIcon();
             _autoProfileMonitor = new AutoProfileMonitor(context);
+            Loaded += MainWindow_OnWorkspaceLoaded;
+        }
+
+        private void MainWindow_OnWorkspaceLoaded(object sender, RoutedEventArgs e)
+        {
+            if (_workspaceReady) return;
+            _workspaceReady = true;
+            UpdateProfilePaneWidth();
+            // Selecting a profile while InitializeComponent builds the TreeView can happen before
+            // ProfileEditorHost exists. Wait until the whole visual tree has loaded.
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+            {
+                try
+                {
+                    if (ProfileTree.SelectedItem == null && ProfileTree.Items.Count > 0)
+                    {
+                        var first = ProfileTree.ItemContainerGenerator.ContainerFromIndex(0) as TreeViewItem;
+                        if (first != null) first.IsSelected = true;
+                    }
+                    var selected = ProfileTree.SelectedItem as ProfileItem ??
+                        _dashboardViewModel.ProfileList?.FirstOrDefault(item => item.Profile != null);
+                    if (selected != null && !ReferenceEquals(_dashboardViewModel.SelectedProfileItem, selected))
+                        _dashboardViewModel.SelectedProfileItem = selected;
+                    OpenSelectedProfileEditor();
+                }
+                catch (Exception exception)
+                {
+                    Logger.Error("Could not initialise the selected workspace profile.", exception);
+                    ProfileEditorHost.Content = new TextBlock
+                    {
+                        Text = "The selected profile could not be loaded. Check UCR's crash log or choose another profile.",
+                        TextWrapping = TextWrapping.Wrap,
+                        Margin = new Thickness(20)
+                    };
+                }
+            }));
         }
 
         private void MainWindow_OnPreviewKeyDown(object sender, KeyEventArgs e)
         {
+            if (Keyboard.Modifiers == ModifierKeys.Control && (e.Key == Key.Z || e.Key == Key.Y))
+            {
+                ReplayEditHistory(e.Key == Key.Z);
+                e.Handled = true;
+                return;
+            }
             if (AppearancePopup.IsOpen && e.Key == Key.Escape)
             {
                 AppearancePopup.IsOpen = false;
@@ -158,6 +209,65 @@ namespace HidWizards.UCR.Views
         {
             var profileTree = ProfileItem.GetProfileTree(Context.Profiles);
             _dashboardViewModel.ReplaceProfileList(profileTree);
+            UpdateProfilePaneWidth();
+        }
+
+        private void UpdateProfilePaneWidth()
+        {
+            if (ProfilesColumn == null || _dashboardViewModel.ProfileList == null) return;
+            // Size the non-draggable pane to its longest profile title, allowing for
+            // the two device glyphs, group indentation and the active-profile badge.
+            var longest = 0.0;
+            foreach (var item in _dashboardViewModel.ProfileList)
+                MeasureProfileTitles(item, ref longest);
+            var width = Math.Max(335, Math.Min(480, Math.Ceiling(longest + 184)));
+            ProfilesColumn.Width = new GridLength(width, GridUnitType.Pixel);
+        }
+
+        private void MeasureProfileTitles(ProfileItem item, ref double longest)
+        {
+            if (item == null) return;
+            if (!string.IsNullOrWhiteSpace(item.Title))
+            {
+                var text = new FormattedText(item.Title, CultureInfo.CurrentCulture,
+                    FlowDirection.LeftToRight, new Typeface(FontFamily, FontStyles.Normal, FontWeights.Medium, FontStretches.Normal), 15.5, Brushes.White);
+                longest = Math.Max(longest, text.WidthIncludingTrailingWhitespace);
+            }
+            foreach (var child in item.Items ?? Enumerable.Empty<ProfileItem>())
+                MeasureProfileTitles(child, ref longest);
+        }
+
+        private void ReplayEditHistory(bool undo)
+        {
+            if (Context.ActiveProfiles.Count > 0)
+            {
+                DarkMessageBox.Show("Stop the active profile before undoing or redoing configuration changes.",
+                    "Stop profile first", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            if (undo ? !Context.CanUndo : !Context.CanRedo) return;
+            var selectedId = _dashboardViewModel.SelectedProfileItem?.Id ?? Guid.Empty;
+            try
+            {
+                CloseNavigationPage(false);
+                ClearEmbeddedProfileCache();
+                _dashboardViewModel.SelectedProfileItem = null;
+                if (!(undo ? Context.Undo() : Context.Redo())) return;
+                ReloadProfileTree();
+                var selected = _dashboardViewModel.ProfileList.FirstOrDefault(item => item.Id == selectedId)
+                    ?? _dashboardViewModel.ProfileList.FirstOrDefault();
+                _dashboardViewModel.SelectedProfileItem = selected;
+                WorkspaceTabs.SelectedIndex = 0;
+                OpenSelectedProfileEditor();
+            }
+            catch (Exception exception)
+            {
+                Logger.Error("Could not restore configuration edit history.", exception);
+                ReloadProfileTree();
+                OpenSelectedProfileEditor();
+                DarkMessageBox.Show("Undo/redo could not be completed; the error has been logged.",
+                    "Undo/redo failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void ProfileTree_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -386,15 +496,101 @@ namespace HidWizards.UCR.Views
             OpenProfileWindow(profileItem.Profile);
         }
 
+        private void WorkspaceMappings_OnClick(object sender, RoutedEventArgs e)
+        {
+            WorkspaceTabs.SelectedIndex = 0;
+            _embeddedProfilePage?.ShowWorkspaceInspector();
+        }
+
+        private void WorkspaceDevices_OnClick(object sender, RoutedEventArgs e)
+        {
+            WorkspaceTabs.SelectedIndex = 0;
+            _embeddedProfilePage?.ShowWorkspaceToolbox("Devices");
+        }
+
+        private void WorkspaceFilters_OnClick(object sender, RoutedEventArgs e)
+        {
+            WorkspaceTabs.SelectedIndex = 0;
+            _embeddedProfilePage?.ShowWorkspaceToolbox("Filters");
+        }
+
+        private void WorkspaceOptions_OnClick(object sender, RoutedEventArgs e)
+        {
+            WorkspaceTabs.SelectedIndex = 0;
+            _embeddedProfilePage?.ShowWorkspaceToolbox("Profile options");
+        }
+
         private void OpenProfileWindow(Profile profile)
         {
             if (profile == null) return;
-            Dispatcher.BeginInvoke((Action)(() =>
+            if (_embeddedProfilePage != null && ReferenceEquals(_embeddedProfile, profile)) return;
+
+            ReleaseEmbeddedProfile();
+            ProfilePage page;
+            if (_profileCache.TryGetValue(profile.Guid, out page) && !ReferenceEquals(page.Profile, profile))
             {
-                var page = new ProfilePage(Context, profile);
-                page.BackRequested += NavigationPage_OnBackRequested;
-                ShowNavigationPage(page);
-            }));
+                _profileCache.Remove(profile.Guid);
+                _profileRecency.Remove(profile.Guid);
+                page.Dispose();
+                page = null;
+            }
+            if (page == null)
+            {
+                // Embedded pages have no Back/Discard action; avoid a costly XML snapshot
+                // of every mapping every time another profile is selected.
+                page = new ProfilePage(Context, profile, true);
+                _profileCache[profile.Guid] = page;
+            }
+            _profileRecency.Remove(profile.Guid);
+            _profileRecency.AddLast(profile.Guid);
+            page.UseEmbeddedLayout();
+            // Move the existing, fully functional settings panel into the right
+            // details tab. It stays visible alongside the profiles/mapping list.
+            var optionsTab = WorkspaceTabs.Items.Count > 1
+                ? WorkspaceTabs.Items[1] as TabItem : null;
+            if (optionsTab != null && ReferenceEquals(optionsTab.Content, ProfileSummaryPanel))
+                optionsTab.Content = null;
+            ProfileSummaryPanel.DataContext = _dashboardViewModel;
+            page.AttachProfileOptions(ProfileSummaryPanel);
+            WorkspaceTabs.SelectedIndex = 0;
+            _embeddedProfilePage = page;
+            _embeddedProfile = profile;
+            ProfileEditorHost.Content = page;
+            page.DockProfileDevices(ProfileDeviceEditorHost);
+            ProfileDeviceOverview.Visibility = Visibility.Collapsed;
+            ProfileDeviceEditorHost.Visibility = Visibility.Visible;
+            page.ResumeEmbeddedVisuals();
+
+            while (_profileRecency.Count > ProfileCacheLimit)
+            {
+                var oldest = _profileRecency.First.Value;
+                _profileRecency.RemoveFirst();
+                var discarded = _profileCache[oldest];
+                _profileCache.Remove(oldest);
+                discarded.Dispose();
+            }
+        }
+
+        private void ReleaseEmbeddedProfile()
+        {
+            if (_embeddedProfilePage == null) return;
+            _embeddedProfilePage.UndockProfileDevices();
+            ProfileDeviceEditorHost.Content = null;
+            ProfileDeviceEditorHost.Visibility = Visibility.Collapsed;
+            ProfileDeviceOverview.Visibility = Visibility.Visible;
+            _embeddedProfilePage.DetachProfileOptions();
+            _embeddedProfilePage.SuspendEmbeddedVisuals();
+            ProfileEditorHost.Content = null;
+            _embeddedProfilePage = null;
+            _embeddedProfile = null;
+        }
+
+        private void ClearEmbeddedProfileCache()
+        {
+            ReleaseEmbeddedProfile();
+            foreach (var page in _profileCache.Values) page.Dispose();
+            _profileCache.Clear();
+            _profileRecency.Clear();
         }
 
         private void ShowNavigationPage(UserControl page)
@@ -426,6 +622,7 @@ namespace HidWizards.UCR.Views
                 RootDialog.Visibility = Visibility.Visible;
                 MainToolbarHost.Visibility = Visibility.Visible;
                 ReloadProfileTree();
+                OpenSelectedProfileEditor();
                 Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => ProfileTree.Focus()));
             }
         }
@@ -489,7 +686,7 @@ namespace HidWizards.UCR.Views
             var dialog = new OpenFileDialog
             {
                 Title = "Import UCR profile, profile list, or legacy context",
-                Filter = "UCR import files (*.ucrprofile;*.ucrprofiles;context.xml)|*.ucrprofile;*.ucrprofiles;context.xml|UCR profile (*.ucrprofile)|*.ucrprofile|UCR profile list (*.ucrprofiles)|*.ucrprofiles|Legacy UCR context (context.xml)|context.xml",
+                Filter = "UCR imports (*.ucrprofile;*.ucrprofiles;*.json;context.xml)|*.ucrprofile;*.ucrprofiles;*.json;context.xml|UCR profile (*.ucrprofile)|*.ucrprofile|JSON profile backup (*.json)|*.json|Profile list (*.ucrprofiles)|*.ucrprofiles|Legacy context (context.xml)|context.xml",
                 CheckFileExists = true,
                 Multiselect = false
             };
@@ -556,6 +753,11 @@ namespace HidWizards.UCR.Views
             }
         }
 
+
+        private void ToggleProfileGrouping_OnClick(object sender, RoutedEventArgs e)
+        {
+            _dashboardViewModel.GroupProfilesByInput = !_dashboardViewModel.GroupProfilesByInput;
+        }
 
         private void ContextMenuButton_OnClick(object sender, RoutedEventArgs e)
         {
@@ -634,7 +836,7 @@ namespace HidWizards.UCR.Views
             var dialog = new SaveFileDialog
             {
                 Title = "Export UCR profile",
-                Filter = "UCR profile (*.ucrprofile)|*.ucrprofile",
+                Filter = "UCR profile or JSON backup (*.ucrprofile;*.json)|*.ucrprofile;*.json|UCR profile (*.ucrprofile)|*.ucrprofile|JSON backup (*.json)|*.json",
                 DefaultExt = ".ucrprofile",
                 AddExtension = true,
                 FileName = SanitizeFileName(profileItem.Profile.Title) + ".ucrprofile"
@@ -755,10 +957,17 @@ namespace HidWizards.UCR.Views
             }
         }
 
+        public void RequestVersionReplacement()
+        {
+            _exitRequested = true;
+            Close();
+        }
+
         internal void PrepareForShutdown()
         {
             _autoProfileMonitor?.Dispose();
             CloseNavigationPage(false);
+            ClearEmbeddedProfileCache();
             if (_trayIcon != null) _trayIcon.Visible = false;
         }
 
@@ -883,13 +1092,6 @@ namespace HidWizards.UCR.Views
 
         private void MainWindow_OnClosing(object sender, CancelEventArgs e)
         {
-            if (!_exitRequested)
-            {
-                e.Cancel = true;
-                HideToTray();
-                return;
-            }
-
             if (CloseState.ForceClose.Equals(WindowCloseState)) return;
             if (CloseState.Closing.Equals(WindowCloseState))
             {
@@ -897,11 +1099,37 @@ namespace HidWizards.UCR.Views
                 return;
             }
 
+            // The title-bar close button hides UCR; only Exit UCR and explicit
+            // version replacement should shut down the process.
+            if (!_exitRequested)
+            {
+                e.Cancel = true;
+                HideToTray();
+                return;
+            }
             e.Cancel = true;
+            // Explicit exit asks about unsaved changes. Only ask when the persisted
+            // configuration differs from the last explicit save.
+            if (Context.HasUnsavedPersistentChanges())
+            {
+                var answer = DarkMessageBox.Show(this, "Save changes?",
+                    "Universal Control Remapper", MessageBoxButton.YesNoCancel, MessageBoxImage.None);
+                if (answer == MessageBoxResult.Cancel || answer == MessageBoxResult.None) return;
+                if (answer == MessageBoxResult.Yes)
+                {
+                    try { Context.SaveContext(); }
+                    catch (Exception exception)
+                    {
+                        Logger.Error("Saving configuration on exit failed.", exception);
+                        DarkMessageBox.Show(this,
+                            "UCR could not save your changes. The configuration was left open and the error was logged.",
+                            "Save failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                }
+            }
             WindowCloseState = CloseState.Closing;
-            // Closing must not ask the user to decide what to do with configuration changes.
-            // Save changes automatically during the normal shutdown sequence.
-            BeginFinalShutdown(true);
+            BeginFinalShutdown(false);
         }
 
         private void BeginFinalShutdown(bool saveContext)
@@ -936,6 +1164,12 @@ namespace HidWizards.UCR.Views
             
             var data = (NativeMethods.COPYDATASTRUCT)Marshal.PtrToStructure(lParam, typeof(NativeMethods.COPYDATASTRUCT));
             var argsString = Marshal.PtrToStringAnsi(data.lpData);
+            if (string.Equals(argsString, "UCR_INTERNAL_VERSION_REPLACE", StringComparison.Ordinal))
+            {
+                Dispatcher.BeginInvoke((Action)RequestVersionReplacement);
+                handled = true;
+                return new IntPtr(1);
+            }
             if (!string.IsNullOrEmpty(argsString)) Context.ParseCommandLineArguments(argsString.Split(';'));
             RestoreFromTray();
             return IntPtr.Zero;
@@ -971,10 +1205,54 @@ namespace HidWizards.UCR.Views
             await DialogHost.Show(dialog, "RootDialog");
         }
 
+        private void OpenSelectedProfileEditor()
+        {
+            if (!_workspaceReady || ProfileEditorHost == null) return;
+            var selectedProfile = _dashboardViewModel.SelectedProfileItem?.Profile;
+            if (selectedProfile == null)
+            {
+                ReleaseEmbeddedProfile();
+                return;
+            }
+            try
+            {
+                OpenProfileWindow(selectedProfile);
+            }
+            catch (Exception exception)
+            {
+                // A single damaged profile or editor binding must not crash the whole application.
+                Logger.Error("Could not open profile editor: " + selectedProfile.Title, exception);
+                ReleaseEmbeddedProfile();
+                ProfileEditorHost.Content = new TextBlock
+                {
+                    Text = "Unable to open this profile's editor. See UCR's crash log for details. Select another profile to continue.",
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(20)
+                };
+            }
+        }
+
         private void ProfileTree_OnSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
-            var treeView = sender as TreeView;
-            _dashboardViewModel.SelectedProfileItem = treeView?.SelectedItem as ProfileItem;
+            // XAML can raise selection events before ProfileEditorHost is constructed.
+            if (!_workspaceReady) return;
+            try
+            {
+                var treeView = sender as TreeView;
+                _dashboardViewModel.SelectedProfileItem = treeView?.SelectedItem as ProfileItem;
+                if (_navigationPage == null) OpenSelectedProfileEditor();
+            }
+            catch (Exception exception)
+            {
+                Logger.Error("Could not load selected workspace profile.", exception);
+                if (ProfileEditorHost != null)
+                    ProfileEditorHost.Content = new TextBlock
+                    {
+                        Text = "Unable to load this profile. See UCR's crash log for details.",
+                        TextWrapping = TextWrapping.Wrap,
+                        Margin = new Thickness(20)
+                    };
+            }
         }
     }
 }

@@ -36,6 +36,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<MappingViewModel> MappingsList { get; set; }
         public ObservableCollection<MappingGroupViewModel> MappingSections { get; private set; }
         private MappingGroupViewModel _selectedMappingSection;
+        private MappingViewModel _selectedMapping;
+        public MappingViewModel SelectedMapping
+        {
+            get => _selectedMapping;
+            set
+            {
+                if (ReferenceEquals(_selectedMapping, value)) return;
+                _selectedMapping = value;
+                OnPropertyChanged();
+            }
+        }
         private static MappingGroup _copiedMappingGroup;
         private static Profile _copiedMappingGroupSourceProfile;
 
@@ -150,6 +161,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             // profile opening into quadratic work on larger profiles.
             RebuildFlatMappingsList();
             RefreshMappingPositions();
+            SelectedMapping = MappingsList.FirstOrDefault();
         }
 
         public MappingViewModel AddMapping(string title)
@@ -206,7 +218,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 section.Mappings.Add(mappingViewModel);
                 if (refreshCollections) RebuildFlatMappingsList();
             }
-            if (refreshCollections) RefreshMappingPositions();
+            if (refreshCollections)
+            {
+                RefreshMappingPositions();
+                SelectedMapping = mappingViewModel;
+            }
             return mappingViewModel;
         }
 
@@ -432,12 +448,20 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public HidWizards.UCR.ViewModels.Dialogs.BatchDeviceChangeResult BatchChangeDevice(
             HidWizards.UCR.ViewModels.Dialogs.BatchDeviceOption source,
-            HidWizards.UCR.ViewModels.Dialogs.BatchDeviceOption target)
+            HidWizards.UCR.ViewModels.Dialogs.BatchDeviceOption target,
+            IEnumerable<MappingGroupViewModel> selectedSections)
         {
             var result = new HidWizards.UCR.ViewModels.Dialogs.BatchDeviceChangeResult();
             if (source == null || target == null || source.IoType != target.IoType || source.Guid == target.Guid) return result;
+            var targetMappings = new HashSet<MappingViewModel>(
+                (selectedSections ?? Enumerable.Empty<MappingGroupViewModel>())
+                    .Where(section => section != null && MappingSections.Contains(section))
+                    .SelectMany(section => section.Mappings));
+            if (targetMappings.Count == 0) return result;
 
-            foreach (var binding in GetAllBindingViewModels())
+            foreach (var mapping in targetMappings)
+            foreach (var binding in mapping.DeviceBindings.Concat(
+                mapping.Plugins.SelectMany(plugin => plugin.DeviceBindings)))
             {
                 if (binding?.DeviceBinding == null) continue;
                 if (binding.DeviceBinding.DeviceIoType != source.IoType || binding.DeviceBinding.DeviceConfigurationGuid != source.Guid) continue;
@@ -468,17 +492,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public void RemoveMapping(MappingViewModel mappingViewModel)
         {
             if (mappingViewModel == null) return;
-            if (mappingViewModel.Mapping.DeviceBindings.Count > 0 || mappingViewModel.Plugins.Count > 0)
-            {
-                var result = HidWizards.UCR.Utilities.DarkMessageBox.Show(
-                    "Remove mapping '" + mappingViewModel.Mapping.Title + "'?",
-                    "Remove mapping", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-                if (result != MessageBoxResult.Yes) return;
-            }
-
+            // Delete immediately; Ctrl+Z provides bounded undo.
             if (Profile.RemoveMapping(mappingViewModel.Mapping))
             {
                 var section = FindSection(mappingViewModel);
+                if (ReferenceEquals(SelectedMapping, mappingViewModel))
+                    SelectedMapping = MappingsList.FirstOrDefault(other => !ReferenceEquals(other, mappingViewModel));
                 mappingViewModel.Dispose();
                 section?.Mappings.Remove(mappingViewModel);
                 MappingsList.Remove(mappingViewModel);

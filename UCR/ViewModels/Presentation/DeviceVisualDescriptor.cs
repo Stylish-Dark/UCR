@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Windows.Media;
 using HidWizards.UCR.Core.Managers;
@@ -77,17 +78,58 @@ namespace HidWizards.UCR.ViewModels.Presentation
         public ControlVisualKind ControlKind { get; set; }
         public Brush ControlBrush { get; set; }
         public string ControlLabel { get; set; }
+        public string JoinSymbol { get; set; } = "+";
         public string ToolTip { get; set; }
         public bool IsBound { get; set; }
         public Guid DeviceConfigurationGuid { get; set; }
         public Guid BindingGuid { get; set; }
         public bool ShowDeviceBadge { get; set; }
         public bool IsBlockedInput { get; set; }
+        public bool IsNegatedInput { get; set; }
         public bool IsFilterControl => ControlKind == ControlVisualKind.Filter;
     }
 
     public static class DeviceVisualCatalog
     {
+        // User-editable glyph labels live next to the application, not inside UCR.exe.
+        // Invalid or missing overrides never prevent UCR from starting.
+        private static readonly Dictionary<string, string> GlyphLabelOverrides = ReadGlyphLabelOverrides();
+
+        private static Dictionary<string, string> ReadGlyphLabelOverrides()
+        {
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
+                    "Assets", "Glyphs", "control-labels.ini");
+                if (!File.Exists(path)) return result;
+                foreach (var line in File.ReadAllLines(path))
+                {
+                    var trimmed = line.Trim();
+                    if (trimmed.Length == 0 || trimmed.StartsWith("#")) continue;
+                    var separator = trimmed.IndexOf('=');
+                    if (separator <= 0) continue;
+                    var key = trimmed.Substring(0, separator).Trim();
+                    var label = trimmed.Substring(separator + 1).Trim();
+                    if (key.Length > 0 && label.Length > 0 && label.Length <= 12)
+                        result[key] = label;
+                }
+            }
+            catch (Exception)
+            {
+                // The controls retain their built-in labels on file or parse errors.
+            }
+            return result;
+        }
+
+        private static string OverrideGlyphLabel(string category, string key, string fallback)
+        {
+            var normalized = (key ?? string.Empty).Trim();
+            string replacement;
+            return GlyphLabelOverrides.TryGetValue(category + "." + normalized, out replacement)
+                ? replacement : fallback;
+        }
+
         public static readonly Brush XboxBrush = Freeze(Color.FromRgb(0, 168, 0));
         public static readonly Brush PlayStationBrush = Freeze(Color.FromRgb(0, 105, 255));
         public static readonly Brush VJoyBrush = Freeze(Color.FromRgb(140, 0, 232));
@@ -356,7 +398,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
             if (kind == DeviceVisualKind.Keyboard)
             {
                 result.ControlKind = ControlVisualKind.Key;
-                result.ControlLabel = CleanKeyboardLabel(leaf);
+                result.ControlLabel = OverrideGlyphLabel("Keyboard", leaf, CleanKeyboardLabel(leaf));
                 result.ControlBrush = NeutralBrush;
                 return;
             }
@@ -500,12 +542,17 @@ namespace HidWizards.UCR.ViewModels.Presentation
         private static string KnownAxisLabelFromName(string lower, DeviceVisualKind kind)
         {
             if (string.IsNullOrWhiteSpace(lower)) return null;
-            if ((lower.Contains("left") && lower.Contains("x")) || lower.Contains("lx")) return "LX";
-            if ((lower.Contains("left") && lower.Contains("y")) || lower.Contains("ly")) return "LY";
-            if ((lower.Contains("right") && lower.Contains("x")) || lower.Contains("rx")) return "RX";
-            if ((lower.Contains("right") && lower.Contains("y")) || lower.Contains("ry")) return "RY";
-            if (lower.Contains("left trigger") || lower.Contains("l2")) return IsPlayStation(kind) ? "L2" : "LT";
-            if (lower.Contains("right trigger") || lower.Contains("r2")) return IsPlayStation(kind) ? "R2" : "RT";
+            // Triggers are analog pressure controls, never left/right stick axes.
+            if (lower.Contains("left trigger") || lower == "lt" || lower == "l2" ||
+                lower.Contains("trigger l") || lower.Contains("trigger left"))
+                return IsPlayStation(kind) ? "L2" : "LT";
+            if (lower.Contains("right trigger") || lower == "rt" || lower == "r2" ||
+                lower.Contains("trigger r") || lower.Contains("trigger right"))
+                return IsPlayStation(kind) ? "R2" : "RT";
+            if ((lower.Contains("left") && lower.Contains("x")) || lower == "lx") return "LX";
+            if ((lower.Contains("left") && lower.Contains("y")) || lower == "ly") return "LY";
+            if ((lower.Contains("right") && lower.Contains("x")) || lower == "rx") return "RX";
+            if ((lower.Contains("right") && lower.Contains("y")) || lower == "ry") return "RY";
             return null;
         }
 
@@ -604,52 +651,95 @@ namespace HidWizards.UCR.ViewModels.Presentation
             }
         }
 
-        private static string CleanKeyboardLabel(string leaf)
+        // The displayed label is intentionally distinct from the original binding name.
+        // Every key uses the same square glyph; long names become symbols or two lines.
+        // Tooltips still contain the full provider key name.
+        public static string FormatKeyboardGlyphLabel(string leaf)
         {
             if (string.IsNullOrWhiteSpace(leaf)) return "KEY";
             var value = leaf.Trim();
-            var lower = value.ToLowerInvariant();
+            var normalized = System.Text.RegularExpressions.Regex.Replace(
+                value.ToUpperInvariant(), @"[\s_\-]+", string.Empty);
 
-            if (lower.Contains("window") || lower == "lwin" || lower == "rwin" || lower.Contains(" win")) return "WIN";
-            if (lower.Contains("control") || lower == "lctrl" || lower == "rctrl") return "CTRL";
-            if (lower.Contains("shift")) return "SHIFT";
-            if (lower.Contains("altgr")) return "ALTGR";
-            if (lower.Contains(" alt") || lower.StartsWith("alt") || lower == "lalt" || lower == "ralt") return "ALT";
-            if (lower.Contains("escape")) return "ESC";
-            if (lower.Contains("backspace")) return "BKSP";
-            if (lower == "return" || lower.Contains("enter")) return "ENTER";
-            if (lower.Contains("space")) return "SPACE";
-            if (lower == "tab" || lower.Contains(" tab")) return "TAB";
-            if (lower.Contains("caps lock")) return "CAPS";
-            if (lower.Contains("num lock")) return "NUM";
-            if (lower.Contains("scroll lock")) return "SCRL";
-            if (lower.Contains("print screen") || lower.Contains("printscreen")) return "PRTSC";
-            if (lower.Contains("page up")) return "PGUP";
-            if (lower.Contains("page down")) return "PGDN";
-            if (lower == "insert" || lower.EndsWith(" insert")) return "INS";
-            if (lower == "delete" || lower.EndsWith(" delete")) return "DEL";
-            if (lower == "home" || lower.EndsWith(" home")) return "HOME";
-            if (lower == "end" || lower.EndsWith(" end")) return "END";
-            if (lower.Contains("arrow up") || lower == "up") return "↑";
-            if (lower.Contains("arrow right") || lower == "right") return "→";
-            if (lower.Contains("arrow down") || lower == "down") return "↓";
-            if (lower.Contains("arrow left") || lower == "left") return "←";
-            if (lower.Contains("applications") || lower.Contains("menu key")) return "MENU";
-
-            var numMatch = System.Text.RegularExpressions.Regex.Match(lower, @"(?:num(?:pad)?|keypad)\s*([0-9])");
-            if (numMatch.Success) return "NUM " + numMatch.Groups[1].Value;
-            if (lower.Contains("numpad") || lower.Contains("keypad") || lower.StartsWith("num "))
+            // Check the keypad BEFORE Enter, Home, End, Insert, arrows, etc.:
+            // keypad keys can have those very same names without being the main key.
+            var keypad = normalized.StartsWith("NUMPAD", StringComparison.Ordinal) ||
+                         normalized.StartsWith("KEYPAD", StringComparison.Ordinal) ||
+                         normalized.StartsWith("NUM", StringComparison.Ordinal) ||
+                         normalized.StartsWith("KP", StringComparison.Ordinal);
+            if (keypad)
             {
-                if (lower.Contains("add") || lower.Contains("plus")) return "NUM +";
-                if (lower.Contains("subtract") || lower.Contains("minus")) return "NUM -";
-                if (lower.Contains("multiply")) return "NUM ×";
-                if (lower.Contains("divide")) return "NUM /";
-                if (lower.Contains("decimal")) return "NUM .";
+                var tail = normalized.StartsWith("NUMPAD") ? normalized.Substring(6) :
+                    normalized.StartsWith("KEYPAD") ? normalized.Substring(6) :
+                    normalized.StartsWith("NUM") ? normalized.Substring(3) : normalized.Substring(2);
+                if (tail == "LOCK") return "NUM\nLK";
+                if (tail.Length == 1 && char.IsDigit(tail[0])) return "NUM\n" + tail;
+                if (tail == "RETURN" || tail == "ENTER") return "NUM\nENT";
+                if (tail == "ADD" || tail == "PLUS" || tail == "+") return "NUM\n+";
+                if (tail == "SUBTRACT" || tail == "MINUS" || tail == "-") return "NUM\n−";
+                if (tail == "MULTIPLY" || tail == "ASTERISK" || tail == "*") return "NUM\n×";
+                if (tail == "DIVIDE" || tail == "SLASH" || tail == "/") return "NUM\n÷";
+                if (tail == "DECIMAL" || tail == "DOT" || tail == "DELETE" || tail == ".") return "NUM\n.";
+                if (tail == "EQUALS" || tail == "=") return "NUM\n=";
+                if (tail == "SEPARATOR" || tail == ",") return "NUM\n,";
             }
 
+            var left = normalized.StartsWith("LEFT", StringComparison.Ordinal) ||
+                       normalized.StartsWith("LCTRL", StringComparison.Ordinal) ||
+                       normalized.StartsWith("LCONTROL", StringComparison.Ordinal) ||
+                       normalized.StartsWith("LSHIFT", StringComparison.Ordinal) ||
+                       normalized.StartsWith("LALT", StringComparison.Ordinal) ||
+                       normalized.StartsWith("LWIN", StringComparison.Ordinal) ||
+                       normalized.EndsWith("LEFT", StringComparison.Ordinal);
+            var right = normalized.StartsWith("RIGHT", StringComparison.Ordinal) ||
+                        normalized.StartsWith("RCTRL", StringComparison.Ordinal) ||
+                        normalized.StartsWith("RCONTROL", StringComparison.Ordinal) ||
+                        normalized.StartsWith("RSHIFT", StringComparison.Ordinal) ||
+                        normalized.StartsWith("RALT", StringComparison.Ordinal) ||
+                        normalized.StartsWith("RWIN", StringComparison.Ordinal) ||
+                        normalized.EndsWith("RIGHT", StringComparison.Ordinal);
+            var side = left ? "L" : right ? "R" : null;
+
+            if (normalized.Contains("SHIFT")) return side == null ? "⇧" : side + "⇧";
+            if (normalized.Contains("CONTROL") || normalized.Contains("CTRL"))
+                return side == null ? "CTRL" : side + "\nCTRL";
+            if (normalized.Contains("ALTGR")) return "ALT\nGR";
+            if (normalized.Contains("ALT")) return side == null ? "ALT" : side + "\nALT";
+            if (normalized.Contains("WINDOW") || normalized == "LWIN" || normalized == "RWIN" ||
+                normalized == "WIN") return side == null ? "WIN" : side + "\nWIN";
+
+            if (normalized == "RETURN" || normalized == "ENTER" || normalized == "RETURNKEY") return "↵";
+            if (normalized == "BACKSPACE" || normalized == "BACK") return "⌫";
+            if (normalized == "TAB") return "⇥";
+            if (normalized == "SPACE" || normalized == "SPACEBAR") return "SPC";
+            if (normalized == "ESCAPE" || normalized == "ESC") return "ESC";
+            if (normalized == "CAPSLOCK") return "CAPS";
+            if (normalized == "SCROLLLOCK") return "SCR\nLK";
+            if (normalized == "PRINTSCREEN" || normalized == "PRTSC" || normalized == "SYSRQ") return "PRT\nSC";
+            if (normalized == "PAGEUP" || normalized == "PGUP" || normalized == "PRIOR") return "PG\nUP";
+            if (normalized == "PAGEDOWN" || normalized == "PGDN" || normalized == "NEXT") return "PG\nDN";
+            if (normalized == "INSERT" || normalized == "INS") return "INS";
+            if (normalized == "DELETE" || normalized == "DEL") return "DEL";
+            if (normalized == "HOME") return "HOME";
+            if (normalized == "END") return "END";
+            if (normalized == "PAUSE" || normalized == "BREAK") return "PAUS";
+            if (normalized == "APPLICATION" || normalized == "APPLICATIONS" || normalized == "MENUKEY")
+                return "MENU";
+            if (normalized == "ARROWUP" || normalized == "UP") return "↑";
+            if (normalized == "ARROWRIGHT" || normalized == "RIGHT") return "→";
+            if (normalized == "ARROWDOWN" || normalized == "DOWN") return "↓";
+            if (normalized == "ARROWLEFT" || normalized == "LEFT") return "←";
+            if (normalized == "COMMA" || normalized == "OEMCOMMA" || value == ",") return ",";
+            if (normalized == "PERIOD" || normalized == "OEMPERIOD") return ".";
+            if (normalized == "SEMICOLON" || normalized == "OEMSEMICOLON") return ";";
+
             value = value.Replace("Keyboard ", string.Empty).Replace("Key ", string.Empty).Trim();
-            if (value.Length <= 6) return value.ToUpperInvariant();
-            return value.Substring(0, 6).ToUpperInvariant();
+            return value.Length <= 6 ? value.ToUpperInvariant() : value.Substring(0, 6).ToUpperInvariant();
+        }
+
+        private static string CleanKeyboardLabel(string leaf)
+        {
+            return FormatKeyboardGlyphLabel(leaf);
         }
 
         private static string ShortMouseLabel(string leaf)
@@ -684,6 +774,9 @@ namespace HidWizards.UCR.ViewModels.Presentation
         private static string ExtractLeaf(string boundName)
         {
             if (string.IsNullOrWhiteSpace(boundName)) return string.Empty;
+            // A comma key is serialized by the provider as "Keys,,".
+            // Removing empty comma-delimited segments falsely identifies it as "Keys".
+            if (boundName.TrimEnd().EndsWith(",,", StringComparison.Ordinal)) return ",";
             var parts = boundName.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
             return parts.Length == 0 ? boundName.Trim() : parts[parts.Length - 1].Trim();
         }

@@ -15,7 +15,135 @@
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Primary/MaterialDesignColor.Blue.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Accent/MaterialDesignColor.Blue.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <!-- Shared across compact single inputs and grouped directional inputs.
+                 It must be application-scoped: grouped rows are outside the child
+                 CompactInputBindingControl resource dictionary. -->
+            <Style x:Key="CompactBlockSwitch" TargetType="{x:Type ToggleButton}">
+                        <Setter Property="Width" Value="38"/>
+                        <Setter Property="Height" Value="20"/>
+                        <Setter Property="Background" Value="#515151"/>
+                        <Setter Property="BorderBrush" Value="#737373"/>
+                        <Setter Property="BorderThickness" Value="1"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                    <Grid Width="{TemplateBinding Width}" Height="{TemplateBinding Height}">
+                                        <Border x:Name="Track" Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="10"/>
+                                        <Ellipse x:Name="Thumb" Width="14" Height="14" Margin="3 0 0 0"
+                                                 HorizontalAlignment="Left" VerticalAlignment="Center" Fill="#F2F2F2"/>
+                                    </Grid>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="Track" Property="Background" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                                            <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                                            <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right"/>
+                                            <Setter TargetName="Thumb" Property="Margin" Value="0 0 3 0"/>
+                                            <Setter TargetName="Thumb" Property="Fill" Value="#FFFFFF"/>
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Track" Property="BorderBrush" Value="#A0A0A0"/>
+                                        </Trigger>
+                                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.38"/></Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
             <system:Double x:Key="UcrUiScale">1.0</system:Double>
+
+            <!-- A dedicated delete-button template avoids MaterialDesign's icon scaling/clipping.
+                 Two fixed-size strokes always render a legible red X, even when disabled. -->
+            <Style x:Key="UcrDeleteCrossButton" TargetType="{x:Type Button}">
+                <Setter Property="Width" Value="36"/>
+                <Setter Property="Height" Value="34"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Background" Value="#333333"/>
+                <Setter Property="BorderBrush" Value="#606060"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Focusable" Value="True"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type Button}">
+                            <Border x:Name="DeleteChrome"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="3" SnapsToDevicePixels="True">
+                                <Grid Width="22" Height="22"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Line X1="4" Y1="4" X2="18" Y2="18"
+                                          Stroke="#FF6868" StrokeThickness="3.2"
+                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                    <Line X1="18" Y1="4" X2="4" Y2="18"
+                                          Stroke="#FF6868" StrokeThickness="3.2"
+                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="DeleteChrome" Property="Background" Value="#463030"/>
+                                    <Setter TargetName="DeleteChrome" Property="BorderBrush" Value="#B85555"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="DeleteChrome" Property="Background" Value="#552D2D"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="DeleteChrome" Property="Opacity" Value="0.55"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Individual input/output removal uses a lighter cross; full mapping
+                 deletion deliberately keeps the bold UcrDeleteCrossButton. -->
+            <Style x:Key="UcrDeleteItemButton" TargetType="{x:Type Button}">
+                <Setter Property="Width" Value="36"/>
+                <Setter Property="Height" Value="34"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Background" Value="#333333"/>
+                <Setter Property="BorderBrush" Value="#606060"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Focusable" Value="True"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type Button}">
+                            <Border x:Name="DeleteChrome"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="3" SnapsToDevicePixels="True">
+                                <Grid Width="20" Height="20"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Line X1="4" Y1="4" X2="18" Y2="18"
+                                          Stroke="#FF6868" StrokeThickness="1.8"
+                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                    <Line X1="18" Y1="4" X2="4" Y2="18"
+                                          Stroke="#FF6868" StrokeThickness="1.8"
+                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="DeleteChrome" Property="Background" Value="#463030"/>
+                                    <Setter TargetName="DeleteChrome" Property="BorderBrush" Value="#B85555"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="DeleteChrome" Property="Background" Value="#552D2D"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="DeleteChrome" Property="Opacity" Value="0.55"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+
             <!-- Compatibility shim for older compiled templates. Current device icons use DeviceSymbolControl. -->
             <Style x:Key="DeviceSymbolText" TargetType="{x:Type TextBlock}">
                 <Setter Property="FontWeight" Value="Normal"/>
@@ -97,9 +225,42 @@
                 <Setter Property="FocusManager.IsFocusScope" Value="True"/>
             </Style>
 
+            <!-- Unstyled buttons must still read as interactive controls. Explicit
+                 specialised styles may override these defaults, but cannot silently
+                 turn ordinary actions into bare text. -->
+            <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="Background" Value="#292929"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource PrimaryHueDarkBrush}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
             <!-- Accent colour belongs to selected surfaces, not ordinary text. -->
+            <Style x:Key="UcrAccentOutlineButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="Background" Value="#272727"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                <Setter Property="BorderThickness" Value="1.5"/>
+                <Setter Property="MinHeight" Value="30"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource PrimaryHueDarkBrush}"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.45"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
             <Style x:Key="UcrDialogFlatButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
                 <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
                     <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Foreground" Value="#FFFFFF"/></Trigger>
@@ -107,6 +268,7 @@
                 </Style.Triggers>
             </Style>
             <Style x:Key="UcrDialogRaisedButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
                 <Setter Property="Foreground" Value="#FFFFFF"/>
@@ -118,7 +280,8 @@
             <Style x:Key="UcrNavigationBackButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
                 <Setter Property="Foreground" Value="#FFFFFF"/>
                 <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="Padding" Value="3"/>
                 <Setter Property="Width" Value="34"/>
                 <Setter Property="Height" Value="30"/>
@@ -170,12 +333,17 @@
             </Style>
             <SolidColorBrush x:Key="Red" Color="#FFB00000"/>
             <Style x:Key="MaterialDesignCardButton" TargetType="{x:Type ButtonBase}" BasedOn="{StaticResource MaterialDesignToolButton}">
-                <Setter Property="Width" Value="24"/>
-                <Setter Property="Height" Value="24"/>
-                <Setter Property="Margin" Value="4"/>
-                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Width" Value="34"/>
+                <Setter Property="Height" Value="34"/>
+                <Setter Property="Margin" Value="3"/>
+                <Setter Property="Padding" Value="4"/>
+                <Setter Property="Background" Value="#292929"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
             </Style>
             <Style x:Key="MaterialDesignGroupBoxButton" TargetType="{x:Type ButtonBase}" BasedOn="{StaticResource MaterialDesignToolButton}">
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="Width" Value="24"/>
                 <Setter Property="Height" Value="20"/>
                 <Setter Property="Margin" Value="4 2"/>

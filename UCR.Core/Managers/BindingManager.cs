@@ -62,6 +62,13 @@ namespace HidWizards.UCR.Core.Managers
             Logger.Debug("Binding manager initialized");
         }
 
+        // An unselected input listens to every device configured in its profile.
+        // Once a specific device has been selected, detection is restricted to it.
+        internal static bool IsEligibleBindDevice(Guid selectedDeviceGuid, Guid candidateDeviceGuid)
+        {
+            return selectedDeviceGuid == Guid.Empty || selectedDeviceGuid == candidateDeviceGuid;
+        }
+
         public void BeginBindMode(DeviceBinding deviceBinding)
         {
             if (deviceBinding == null) throw new ArgumentNullException(nameof(deviceBinding));
@@ -97,6 +104,8 @@ namespace HidWizards.UCR.Core.Managers
             {
                 foreach (var deviceConfiguration in deviceBinding.Profile.GetDeviceConfigurationList(deviceBinding.DeviceIoType))
                 {
+                    if (!IsEligibleBindDevice(deviceBinding.DeviceConfigurationGuid, deviceConfiguration.Guid))
+                        continue;
                     var runtimeDevice = _context.DevicesManager.ResolveDevice(deviceConfiguration.Device, deviceBinding.DeviceIoType);
                     if (runtimeDevice == null)
                     {
@@ -266,7 +275,9 @@ namespace HidWizards.UCR.Core.Managers
                     return null;
 
                 var deviceConfiguration = FindDeviceConfiguration(providerDescriptor, deviceDescriptor);
-                if (deviceConfiguration == null) return null;
+                if (deviceConfiguration == null ||
+                    !IsEligibleBindDevice(_deviceBinding.DeviceConfigurationGuid, deviceConfiguration.Guid))
+                    return null;
 
                 // The click that opened bind mode can only contaminate pointer bindings. Keyboard,
                 // controller and other device input is accepted immediately instead of being thrown
@@ -323,6 +334,8 @@ namespace HidWizards.UCR.Core.Managers
             try
             {
                 Logger.Debug($"Bind input accepted: provider={pendingInput.ProviderName}, handle={pendingInput.DeviceHandle}, instance={pendingInput.DeviceInstance}, type={pendingInput.KeyType}, index={pendingInput.KeyValue}, subIndex={pendingInput.KeySubValue}, value={pendingInput.Value}");
+                // Only an unselected input can detect across devices. Always bind to
+                // the exact device that supplied the accepted control.
                 pendingInput.Binding.SetDeviceConfigurationGuid(pendingInput.DeviceConfigurationGuid);
                 pendingInput.Binding.SetKeyTypeValue(pendingInput.KeyType, pendingInput.KeyValue, pendingInput.KeySubValue);
                 EndBindMode();

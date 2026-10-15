@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -23,7 +24,7 @@ namespace HidWizards.UCR.Views.ProfileViews
     {
         public Guid ProfileGuid => Profile.Guid;
         private Context Context { get; }
-        private Profile Profile { get; }
+        internal Profile Profile { get; }
         private ProfileViewModel ProfileViewModel { get; }
         private DispatcherTimer DispatcherTimer { get; set; }
         private List<DeviceBindingViewModel> DeviceBindingViewModels { get; set; }
@@ -44,7 +45,7 @@ namespace HidWizards.UCR.Views.ProfileViews
         private bool _mappingDragEnding;
         private Profile _profileSnapshot;
 
-        public ProfilePage(Context context, Profile profile)
+        public ProfilePage(Context context, Profile profile, bool embedded = false)
         {
             Context = context;
             Profile = profile;
@@ -52,9 +53,74 @@ namespace HidWizards.UCR.Views.ProfileViews
             InitializeComponent();
             PageTitle.Text = "Mappings — " + profile.Title;
             DataContext = ProfileViewModel;
-            _profileSnapshot = Context.DeepXmlClone(Profile);
+            _profileSnapshot = embedded ? null : Context.DeepXmlClone(Profile);
             context.ActiveProfileChangedEvent += ContextOnActiveProfileChangedEvent;
             StartGuiTimer();
+        }
+
+        public void ResumeEmbeddedVisuals()
+        {
+            if (!_disposed) StartGuiTimer();
+        }
+
+        public void SuspendEmbeddedVisuals()
+        {
+            StopGuiTimer();
+        }
+
+        public void UseEmbeddedLayout()
+        {
+            ProfilePageHeader.Visibility = Visibility.Collapsed;
+            ProfilePageToolbar.Visibility = Visibility.Collapsed;
+        }
+
+        private Panel _deviceOriginalParent;
+        private ContentControl _deviceDock;
+        private Thickness _deviceOriginalMargin;
+        private double _deviceOriginalScrollMaxHeight;
+
+        // Reuse the actual device-management controls beneath the profile list.
+        // This is not a duplicate readonly list: add, remove and detection remain wired.
+        public void DockProfileDevices(ContentControl target)
+        {
+            if (_disposed || target == null) return;
+            if (ReferenceEquals(target, _deviceDock)) return;
+            UndockProfileDevices();
+
+            var originalParent = ProfileDevicesPanel.Parent as Panel;
+            if (originalParent == null) return;
+            _deviceOriginalParent = originalParent;
+            _deviceOriginalMargin = ProfileDevicesPanel.Margin;
+            _deviceOriginalScrollMaxHeight = ProfileDevicesScrollViewer.MaxHeight;
+            originalParent.Children.Remove(ProfileDevicesPanel);
+
+            ProfileDevicesPanel.Margin = new Thickness(8, 7, 8, 8);
+            ProfileDevicesPanel.Visibility = Visibility.Visible;
+            ProfileDevicesPanel.DataContext = ProfileViewModel;
+            ProfileDevicesScrollViewer.MaxHeight = 205;
+            target.Content = ProfileDevicesPanel;
+            _deviceDock = target;
+            ShowInspectorTab(InspectorTabs.SelectedIndex);
+        }
+
+        public void UndockProfileDevices()
+        {
+            if (_deviceDock == null) return;
+            _deviceDock.Content = null;
+            // Ensure the old ContentPresenter releases its visual child before
+            // the Border is reattached to the original Grid.
+            _deviceDock.UpdateLayout();
+            _deviceDock = null;
+            ProfileDevicesPanel.Margin = _deviceOriginalMargin;
+            ProfileDevicesScrollViewer.MaxHeight = _deviceOriginalScrollMaxHeight;
+            ProfileDevicesPanel.ClearValue(DataContextProperty);
+            if (_deviceOriginalParent != null)
+            {
+                Grid.SetRow(ProfileDevicesPanel, 2);
+                _deviceOriginalParent.Children.Add(ProfileDevicesPanel);
+                _deviceOriginalParent = null;
+            }
+            if (!_disposed) ShowInspectorTab(InspectorTabs.SelectedIndex);
         }
 
         public event EventHandler BackRequested;
@@ -259,7 +325,10 @@ namespace HidWizards.UCR.Views.ProfileViews
             var result = (BatchDeviceChangeDialogViewModel)await DialogHost.Show(dialog, ProfileViewModel.ProfileDialogIdentifier);
             if (result?.SelectedSource == null || result.SelectedTarget == null) return;
 
-            var change = ProfileViewModel.BatchChangeDevice(result.SelectedSource, result.SelectedTarget);
+            var selectedGroups = result.MappingGroups.Where(group => group.IsSelected)
+                .Select(group => group.Section).ToList();
+            if (selectedGroups.Count == 0) return;
+            var change = ProfileViewModel.BatchChangeDevice(result.SelectedSource, result.SelectedTarget, selectedGroups);
             Logger.Info("Profile device replacement: " + result.SelectedSource.DisplayTitle + " -> " + result.SelectedTarget.DisplayTitle +
                         "; changed=" + change.Changed + "; incompatible-cleared=" + change.ClearedAsIncompatible +
                         "; unknown-preserved=" + change.PreservedUnknown);
@@ -297,6 +366,11 @@ namespace HidWizards.UCR.Views.ProfileViews
         private void ManageProfileInputDevice_OnClick(object sender, RoutedEventArgs e)
         {
             ProfileViewModel.InputDeviceControlViewModel?.ManageDeviceConfiguration();
+        }
+
+        private void CancelProfileInputDetection_OnClick(object sender, RoutedEventArgs e)
+        {
+            ProfileViewModel.InputDeviceControlViewModel?.CancelInputDeviceDetection();
         }
 
         private async void DetectProfileInputDevice_OnClick(object sender, RoutedEventArgs e)
@@ -670,6 +744,14 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void ProfilePage_OnPreviewKeyDown(object sender, KeyEventArgs e)
         {
+            if (e.Key == Key.Escape &&
+                ProfileViewModel.InputDeviceControlViewModel?.IsDetecting == true)
+            {
+                ProfileViewModel.InputDeviceControlViewModel.CancelInputDeviceDetection();
+                e.Handled = true;
+                return;
+            }
+
             if (_mappingDragActive && e.Key == Key.Escape)
             {
                 EndMappingDrag(false);
@@ -884,6 +966,160 @@ namespace HidWizards.UCR.Views.ProfileViews
             return null;
         }
 
+        private void InputDirectionPresets_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var mapping = ProfileViewModel?.SelectedMapping;
+            if (button == null || mapping?.ButtonsEnabled != true || !mapping.HasAxisOutput) return;
+
+            var menu = new ContextMenu();
+            foreach (var mode in new[] { 2, 4, 0 })
+            {
+                var slots = mode;
+                var item = new MenuItem
+                {
+                    Header = mode == 2 ? "2-way axis (− / +)" :
+                        mode == 4 ? "4-way joystick (← / → / ↑ / ↓)" : "Single continuous axis",
+                    Padding = new Thickness(12, 7, 14, 7)
+                };
+                item.Click += (source, args) => mapping.SetDirectionalMode(slots);
+                menu.Items.Add(item);
+            }
+
+            if (mapping.InputConditions?.Any(g => g.HasDirectionalInputs) == true)
+            {
+                menu.Items.Add(new Separator());
+                if (mapping.InputConditions.Any(group => group.IsFourWay))
+                {
+                    var dpad = new MenuItem { Header = "Controller D-pad", Padding = new Thickness(12, 7, 14, 7) };
+                    dpad.Click += (source, args) =>
+                    {
+                        string error;
+                        if (!mapping.ApplyDirectionalDPadPreset(out error) &&
+                            !string.IsNullOrWhiteSpace(error))
+                            DarkMessageBox.Show(error, "Preset unavailable",
+                                MessageBoxButton.OK, MessageBoxImage.Information);
+                    };
+                    menu.Items.Add(dpad);
+                }
+                foreach (var preset in new[] { "WASD", "Arrows", "Numpad", "UJHK" })
+                {
+                    var choice = preset;
+                    var item = new MenuItem { Header = choice, Padding = new Thickness(12, 7, 14, 7) };
+                    item.Click += (source, args) =>
+                    {
+                        string error;
+                        if (!mapping.ApplyDirectionalKeyboardPreset(choice, out error) &&
+                            !string.IsNullOrWhiteSpace(error))
+                            DarkMessageBox.Show(error, "Preset unavailable",
+                                MessageBoxButton.OK, MessageBoxImage.Information);
+                    };
+                    menu.Items.Add(item);
+                }
+            }
+            menu.PlacementTarget = button;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
+            menu.IsOpen = true;
+        }
+
+        private void AddInspectorOrInput_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (ProfileViewModel?.SelectedMapping?.ButtonsEnabled != true) return;
+            ProfileViewModel.SelectedMapping.AddCondition();
+        }
+
+        private void AddInspectorOutput_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (ProfileViewModel?.SelectedMapping?.ButtonsEnabled != true) return;
+            ProfileViewModel.SelectedMapping.AddDefaultOutput();
+        }
+
+        private void AddFilter_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            if (button == null || !ProfileViewModel.CanEditProfile) return;
+
+            var menu = new ContextMenu
+            {
+                PlacementTarget = button,
+                Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+                Background = new SolidColorBrush(Color.FromRgb(0x24, 0x24, 0x24)),
+                Foreground = Brushes.White,
+                BorderBrush = new SolidColorBrush(Color.FromRgb(0x45, 0x45, 0x45)),
+                BorderThickness = new Thickness(1)
+            };
+            var buttonFilter = new MenuItem { Header = "Button filter", Padding = new Thickness(10, 6, 14, 6) };
+            buttonFilter.Click += async (s, args) => await CreateNamedFilterAsync("Button to Filter");
+            var axisFilter = new MenuItem { Header = "Axis filter", Padding = new Thickness(10, 6, 14, 6) };
+            axisFilter.Click += async (s, args) => await CreateNamedFilterAsync("Axis to Filter");
+            menu.Items.Add(buttonFilter);
+            menu.Items.Add(axisFilter);
+            menu.IsOpen = true;
+        }
+
+        private async void CreateButtonFilter_OnClick(object sender, RoutedEventArgs e)
+        {
+            await CreateNamedFilterAsync("Button to Filter");
+        }
+
+        private async void CreateAxisFilter_OnClick(object sender, RoutedEventArgs e)
+        {
+            await CreateNamedFilterAsync("Axis to Filter");
+        }
+
+        private async System.Threading.Tasks.Task CreateNamedFilterAsync(string pluginName)
+        {
+            if (Profile.IsActive()) return;
+            var filterTemplate = Context.GetPlugins().FirstOrDefault(plugin =>
+                string.Equals(plugin.PluginName, pluginName, StringComparison.OrdinalIgnoreCase));
+            if (filterTemplate == null)
+            {
+                DarkMessageBox.Show("The filter plugin is unavailable.", "Filter unavailable",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var dialog = new StringDialog("Create filter", "Filter name", "New filter");
+            var accepted = (bool?)await DialogHost.Show(dialog, ProfileViewModel.ProfileDialogIdentifier);
+            if (accepted != true) return;
+            var name = dialog.Value?.Trim();
+            if (string.IsNullOrWhiteSpace(name)) return;
+            if (Profile.GetFilters().Any(existing =>
+                string.Equals(existing, name, StringComparison.OrdinalIgnoreCase)))
+            {
+                DarkMessageBox.Show("A filter with that name already exists. Choose a unique name.",
+                    "Filter already exists", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // A filter is a mapping that produces a named condition, not an output device.
+            // AddPlugin creates the input binding and allows the normal binding UI to configure it.
+            var mapping = ProfileViewModel.AddMappingToSelectedSection(name);
+            if (mapping == null) return;
+            mapping.AddPlugin(filterTemplate);
+            if (mapping.Plugins.Count == 0)
+            {
+                mapping.Remove();
+                return;
+            }
+
+            var filterPlugin = mapping.Plugins[0].Plugin;
+            var filterName = filterPlugin.GetGuiMatrix()
+                .SelectMany(group => group.PluginProperties)
+                .FirstOrDefault(property => property.PropertyInfo.Name == "FilterName");
+            if (filterName == null)
+            {
+                mapping.Remove();
+                return;
+            }
+            filterName.Property = name;
+            mapping.RefreshFilterDefinitionPresentation();
+            ProfileViewModel.RefreshFilterReferenceLabels();
+            ProfileViewModel.SelectedMapping = mapping;
+            ShowWorkspaceInspector();
+            Dispatcher.BeginInvoke((Action)(() => ScrollMappingIntoView(mapping)), DispatcherPriority.Background);
+        }
+
         private void FilterDefinitionList_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             var filter = FilterDefinitionList.SelectedItem as FilterDefinitionItemViewModel;
@@ -891,15 +1127,213 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (definingMapping != null) ScrollMappingIntoView(definingMapping);
         }
 
-        private void AddMapping_OnClick(object sender, RoutedEventArgs e)
+        // Profile settings use the actual existing settings controls, embedded inside
+        // the right inspector instead of navigating away from the mapping workspace.
+        public void AttachProfileOptions(UIElement options)
+        {
+            ProfileOptionsHost.Content = options;
+        }
+
+        public void DetachProfileOptions()
+        {
+            ProfileOptionsHost.Content = null;
+        }
+
+        private bool _switchingInspectorTab;
+
+        private void InspectorTabs_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (e.Source != InspectorTabs || _switchingInspectorTab || _disposed) return;
+            ShowInspectorTab(InspectorTabs.SelectedIndex);
+        }
+
+        private void SelectInspectorTab(int index)
+        {
+            if (InspectorTabs == null || InspectorTabs.SelectedIndex == index) return;
+            _switchingInspectorTab = true;
+            try { InspectorTabs.SelectedIndex = index; }
+            finally { _switchingInspectorTab = false; }
+        }
+
+        private void ShowInspectorTab(int index)
+        {
+            if (_disposed || SidebarGrid == null || SelectedMappingInspector == null
+                || ProfileOptionsHost == null) return;
+            SelectedMappingInspector.Visibility = index == 0 ? Visibility.Visible : Visibility.Collapsed;
+            SidebarGrid.Visibility = (index == 1 && _deviceDock == null) || index == 2
+                ? Visibility.Visible : Visibility.Collapsed;
+            ProfileOptionsHost.Visibility = index == 3 ? Visibility.Visible : Visibility.Collapsed;
+            DockedDevicesNotice.Visibility = index == 1 && _deviceDock != null
+                ? Visibility.Visible : Visibility.Collapsed;
+            MappingToolboxPanel.Visibility = Visibility.Collapsed;
+            MappingFiltersPanel.Visibility = index == 2 ? Visibility.Visible : Visibility.Collapsed;
+            ProfileDevicesPanel.Visibility = index == 1 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        public void ShowWorkspaceInspector()
+        {
+            if (_disposed) return;
+            SelectInspectorTab(0);
+            ShowInspectorTab(0);
+        }
+
+        public void ShowWorkspaceToolbox(string section)
+        {
+            if (_disposed) return;
+            if (section == "Devices" || section == "Filters" || section == "Profile options")
+            {
+                var index = section == "Devices" ? 1 : section == "Filters" ? 2 : 3;
+                SelectInspectorTab(index);
+                ShowInspectorTab(index);
+                return;
+            }
+            // Add mapping remains available through its existing workflow.
+            SelectInspectorTab(0);
+            ShowInspectorTab(0);
+            if (section == "Add mapping")
+            {
+                SidebarGrid.Visibility = Visibility.Visible;
+                SelectedMappingInspector.Visibility = Visibility.Collapsed;
+                MappingToolboxPanel.Visibility = Visibility.Visible;
+            }
+        }
+
+        private void DeleteSelectedMapping_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mapping = ProfileViewModel.SelectedMapping;
+            if (mapping?.ButtonsEnabled != true) return;
+            mapping.Remove();
+        }
+
+        private void WorkspaceAddMapping_OnClick(object sender, RoutedEventArgs e)
+        {
+            ShowWorkspaceToolbox("Add mapping");
+        }
+
+        private void WorkspaceMore_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            if (button?.ContextMenu == null) return;
+            button.ContextMenu.PlacementTarget = button;
+            button.ContextMenu.IsOpen = true;
+        }
+
+        private void WorkspaceSearch_OnTextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (ProfileViewModel?.MappingSections == null) return;
+            var query = WorkspaceMappingSearch?.Text?.Trim();
+            foreach (var section in ProfileViewModel.MappingSections)
+            {
+                var view = CollectionViewSource.GetDefaultView(section.Mappings);
+                if (view == null) continue;
+                if (string.IsNullOrEmpty(query))
+                    view.Filter = null;
+                else
+                    view.Filter = item =>
+                    {
+                        var mapping = item as MappingViewModel;
+                        return mapping?.MappingTitle?.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
+                    };
+            }
+        }
+
+        private void BlockSelectedInputs_OnClick(object sender, RoutedEventArgs e)
+        {
+            SetSelectedMappingInputBlocking(true);
+        }
+
+        private void UnblockSelectedInputs_OnClick(object sender, RoutedEventArgs e)
+        {
+            SetSelectedMappingInputBlocking(false);
+        }
+
+        private void SetSelectedMappingInputBlocking(bool block)
+        {
+            if (Profile.IsActive()) return;
+            var selected = FindVisualChildren<ListView>(MappingSectionsItemsControl)
+                .Where(view => view.Name == "MappingRowsList")
+                .SelectMany(view => view.SelectedItems.OfType<MappingViewModel>())
+                .Distinct().ToList();
+            if (selected.Count == 0)
+            {
+                DarkMessageBox.Show("Select one or more mappings with Ctrl or Shift first.",
+                    "No mappings selected", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var changed = 0;
+            foreach (var mapping in selected)
+            {
+                foreach (var input in mapping.DeviceBindings)
+                {
+                    var binding = input.DeviceBinding;
+                    if (binding == null || binding.DeviceIoType != DeviceIoType.Input || !binding.IsBound)
+                        continue;
+                    if (block && !binding.IsBlockable()) continue;
+                    if (binding.Block == block) continue;
+                    binding.SetBlock(block);
+                    changed++;
+                }
+                mapping.RefreshCollapsedSummary();
+            }
+            Logger.Info((block ? "Blocked " : "Unblocked ") + changed +
+                " inputs across " + selected.Count + " selected mappings.");
+        }
+
+        private void MappingListView_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var selected = (sender as ListView)?.SelectedItem as MappingViewModel;
+            if (selected == null) return;
+            ProfileViewModel.SelectedMapping = selected;
+            // Selecting a row does not hijack another inspector tab.
+            if (InspectorTabs.SelectedIndex == 0)
+                ShowWorkspaceInspector();
+        }
+
+        private MappingViewModel AddNamedFilterMapping(Plugin template, string name)
+        {
+            var mapping = ProfileViewModel.AddMappingToSelectedSection(ProfileViewModel.GetNextMappingTitle());
+            if (mapping == null) return null;
+            mapping.AddPlugin(template);
+            var property = mapping.Mapping.Plugins.FirstOrDefault()?.GetGuiMatrix()
+                .SelectMany(group => group.PluginProperties)
+                .FirstOrDefault(item => item.PropertyInfo.Name == "FilterName");
+            if (property == null)
+            {
+                mapping.Remove();
+                return null;
+            }
+            property.Property = name;
+            mapping.RefreshFilterDefinitionPresentation();
+            ProfileViewModel.RefreshFilterReferenceLabels();
+            ProfileViewModel.SelectedMapping = mapping;
+            ShowWorkspaceInspector();
+            Dispatcher.BeginInvoke((Action)(() => ScrollMappingIntoView(mapping)), DispatcherPriority.Background);
+            return mapping;
+        }
+
+        private async void AddMapping_OnClick(object sender, RoutedEventArgs e)
         {
             var selectedRoute = ProfileViewModel.PluginToolbox.SelectedRoute;
             if (selectedRoute == null || selectedRoute.PluginItem == null) return;
 
+            if (string.Equals(selectedRoute.OutputLabel, "Filter", StringComparison.OrdinalIgnoreCase))
+            {
+                var picker = new FilterSelectDialog(Profile.GetFilters().OrderBy(name => name,
+                    StringComparer.OrdinalIgnoreCase), true);
+                var selected = (FilterSelectDialogViewModel)await DialogHost.Show(picker,
+                    ProfileViewModel.ProfileDialogIdentifier);
+                if (selected == null || !selected.HasSelection) return;
+                AddNamedFilterMapping(selectedRoute.PluginItem.Plugin, selected.SelectedFilter.Trim());
+                return;
+            }
+
             var mappingViewModel = ProfileViewModel.AddMappingToSelectedSection(ProfileViewModel.GetNextMappingTitle());
             if (mappingViewModel == null) return;
             mappingViewModel.AddPlugin(selectedRoute.PluginItem.Plugin);
-            mappingViewModel.IsExpanded = true;
+            mappingViewModel.IsExpanded = false;
+            ProfileViewModel.SelectedMapping = mappingViewModel;
+            ShowWorkspaceInspector();
             Dispatcher.BeginInvoke((Action)(() => ScrollMappingIntoView(mappingViewModel)), DispatcherPriority.Background);
         }
     }
