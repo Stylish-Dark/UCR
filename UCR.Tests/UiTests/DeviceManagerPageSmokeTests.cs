@@ -276,6 +276,9 @@ namespace HidWizards.UCR.Tests.UiTests
 
                 // Invoke the real button in the live ProfilePage visual tree.
                 ((IInvokeProvider)new ButtonAutomationPeer(toggle)).Invoke();
+                // WPF's automation peer dispatches the click asynchronously.
+                // Pump the input dispatcher before asserting the resulting state.
+                PumpDispatcherFor(TimeSpan.FromMilliseconds(120));
                 page.Measure(available);
                 page.Arrange(new Rect(new Point(0, 0), available));
                 page.UpdateLayout();
@@ -291,6 +294,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(headings, Does.Contain("OUTPUTS"));
 
                 ((IInvokeProvider)new ButtonAutomationPeer(toggle)).Invoke();
+                PumpDispatcherFor(TimeSpan.FromMilliseconds(120));
                 Assert.That(mapping.IsExpanded, Is.False);
                 PumpDispatcherFor(TimeSpan.FromMilliseconds(250));
                 page.Measure(available);
