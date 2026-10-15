@@ -811,9 +811,16 @@
                       Style="{StaticResource MaterialDesignExpander}"
                       Expanded="MappingExpander_OnExpanded"
                       Collapsed="MappingExpander_OnCollapsed">
+            <!-- This expander has no embedded body: the lazy editor follows it below.
+                 Render the header without the theme's full-width ToggleButton so only
+                 our explicit chevron expands/collapses the mapping. -->
+            <Expander.Template>
+                <ControlTemplate TargetType="{x:Type Expander}">
+                    <ContentPresenter ContentSource="Header" HorizontalAlignment="Stretch"/>
+                </ControlTemplate>
+            </Expander.Template>
             <Expander.Header>
                 <Grid x:Name="HeaderGrid" MinHeight="74"
-                      MouseLeftButtonUp="HeaderGrid_OnMouseLeftButtonUp"
                       ToolTip="Right-drag while collapsed to reorder this mapping">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="4"/>
