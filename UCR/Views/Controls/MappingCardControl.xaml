@@ -111,7 +111,13 @@
         <DataTemplate x:Key="ExpandedMappingBodyTemplate">
             <Border Margin="8 0 8 8" Padding="4 6 4 4" Background="#202020"
                     BorderBrush="#303030" BorderThickness="1 1 1 0" CornerRadius="3">
-                <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="0"/>
+                        <ColumnDefinition Width="*" MinWidth="0"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0 0 6 0">
+                    <TextBlock Text="INPUTS" Margin="5 0 0 7" FontSize="13" FontWeight="SemiBold" Foreground="#FFFFFF"/>
                     <!-- Non-boolean plugins retain the full legacy editor. -->
                     <ItemsControl ItemsSource="{Binding DeviceBindings}" HorizontalContentAlignment="Stretch">
                         <ItemsControl.Style>
@@ -261,9 +267,10 @@
                                 ToolTip="Add another alternative input group"/>
                     </StackPanel>
 
+                    </StackPanel>
                     <!-- Outputs follow inputs: compact bindings, inline remove and add. -->
-                    <StackPanel Margin="5 7 5 5">
-                        <TextBlock Text="Outputs" FontSize="14" FontWeight="SemiBold"
+                    <StackPanel Grid.Column="1" Margin="6 0 5 5">
+                        <TextBlock Text="OUTPUTS" FontSize="14" FontWeight="SemiBold"
                                    Foreground="#FFFFFF" Margin="0 0 0 6"/>
                         <WrapPanel Orientation="Horizontal">
                             <ItemsControl ItemsSource="{Binding Plugins}">
@@ -282,7 +289,7 @@
                                                         <Border Padding="4" Margin="0 0 3 0" CornerRadius="4"
                                                                 Background="#252525" BorderBrush="#484848" BorderThickness="1">
                                                             <local:CompactInputBindingControl DataContext="{Binding}"
-                                                                                              DeviceBinding="{Binding DeviceBinding}" Width="368"/>
+                                                                                              DeviceBinding="{Binding DeviceBinding}" Width="260"/>
                                                         </Border>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
@@ -302,7 +309,7 @@
                                     ToolTip="Add another output binding"/>
                         </WrapPanel>
                     </StackPanel>
-                </StackPanel>
+                </Grid>
             </Border>
         </DataTemplate>
     </UserControl.Resources>
@@ -333,7 +340,7 @@
                       Expanded="MappingExpander_OnExpanded"
                       Collapsed="MappingExpander_OnCollapsed">
             <Expander.Header>
-                <Grid x:Name="HeaderGrid" MinHeight="64" ToolTip="Right-drag this card while collapsed to reorder it">
+                <Grid x:Name="HeaderGrid" MinHeight="64" ToolTip="Right-drag this card while collapsed to reorder it" MouseLeftButtonUp="HeaderGrid_OnMouseLeftButtonUp">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="4"/>
                         <ColumnDefinition Width="2*"/>
@@ -480,6 +487,24 @@
                         <Button ToolTip="Remove mapping. Stop the active profile to edit." ToolTipService.ShowOnDisabled="True" Style="{StaticResource UcrMappingDeleteButton}"
                                 IsEnabled="{Binding ButtonsEnabled}" Click="Remove_OnClick">
                             <materialDesign:PackIcon Kind="Trash" Width="17" Height="17"/>
+                        </Button>
+                        <Button x:Name="ExpandMappingButton" Width="32" Height="32" Margin="7 0 0 0"
+                                Padding="4" Click="ExpandMappingButton_OnClick"
+                                ToolTip="Expand or collapse mapping details"
+                                Style="{StaticResource UcrMappingActionButton}">
+                            <materialDesign:PackIcon Kind="ChevronDown" Width="20" Height="20">
+                                <materialDesign:PackIcon.Style>
+                                    <Style TargetType="materialDesign:PackIcon">
+                                        <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+                                        <Setter Property="RenderTransform"><Setter.Value><RotateTransform Angle="0"/></Setter.Value></Setter>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                <Setter Property="RenderTransform"><Setter.Value><RotateTransform Angle="180"/></Setter.Value></Setter>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </materialDesign:PackIcon.Style>
+                            </materialDesign:PackIcon>
                         </Button>
                     </StackPanel>
                 </Grid>
