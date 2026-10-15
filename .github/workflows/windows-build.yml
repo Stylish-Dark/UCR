@@ -172,7 +172,7 @@ jobs:
       - name: Run tests
         shell: pwsh
         run: |
-          & ".\packages\NUnit.ConsoleRunner.3.9.0\tools\nunit3-console.exe" ".\UCR.Tests\bin\Release\UCR.Tests.dll" --noresult
+          & ".\packages\NUnit.ConsoleRunner.3.9.0\tools\nunit3-console.exe" ".\UCR.Tests\bin\Release\UCR.Tests.dll" --noresult --workers=0
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Verify grouped-input XAML resources
