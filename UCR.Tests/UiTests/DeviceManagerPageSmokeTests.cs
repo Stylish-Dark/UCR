@@ -17,6 +17,7 @@ using HidWizards.UCR.ViewModels.ProfileViewModels;
 using HidWizards.UCR.ViewModels.Presentation;
 using HidWizards.UCR.Views.Controls;
 using HidWizards.UCR.Views.Dialogs;
+using HidWizards.UCR.Views.ProfileViews;
 using NUnit.Framework;
 
 namespace HidWizards.UCR.Tests.UiTests
@@ -229,6 +230,79 @@ namespace HidWizards.UCR.Tests.UiTests
         {
             EnsureApplicationResources();
             Assert.That(RenderOptions.ProcessRenderMode, Is.EqualTo(System.Windows.Interop.RenderMode.Default));
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void ActualProfileWorkspaceMappingChevronExpandsInputsAndOutputsBelowItsOwnRow()
+        {
+            EnsureApplicationResources();
+
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Workspace expansion", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            profile.AddMapping("A");
+
+            // Regression for a previous four-day failure: the workspace had its
+            // OWN inert mapping DataTemplate. Isolated MappingCardControl tests
+            // passed, but the cards users actually saw contained a literal '›'.
+            var page = new ProfilePage(context, profile, embedded: true);
+            try
+            {
+                page.SuspendEmbeddedVisuals();
+                var available = new Size(1440, 960);
+                page.Measure(available);
+                page.Arrange(new Rect(new Point(0, 0), available));
+                page.UpdateLayout();
+
+                var rows = FindVisualChildren<ListView>(page)
+                    .SingleOrDefault(list => list.Name == "MappingRowsList");
+                Assert.That(rows, Is.Not.Null, "The real mapping rows list must be displayed.");
+
+                var cards = FindVisualChildren<MappingCardControl>(rows).ToList();
+                Assert.That(cards.Count, Is.EqualTo(1),
+                    "Workspace rows must instantiate the functional MappingCardControl, not a duplicate preview.");
+
+                var card = cards.Single();
+                var mapping = card.DataContext as MappingViewModel;
+                var toggle = card.FindName("ExpandMappingButton") as Button;
+                var expandedBody = card.FindName("ExpandedBodyHost") as ContentControl;
+                Assert.That(mapping, Is.Not.Null);
+                Assert.That(toggle, Is.Not.Null, "Each real workspace card needs a clickable chevron.");
+                Assert.That(expandedBody, Is.Not.Null);
+                Assert.That(toggle.Content, Is.EqualTo("▼"));
+                Assert.That(expandedBody.Visibility, Is.EqualTo(Visibility.Collapsed));
+                var collapsedHeight = card.ActualHeight;
+
+                // Invoke the real button in the live ProfilePage visual tree.
+                ((IInvokeProvider)new ButtonAutomationPeer(toggle)).Invoke();
+                page.Measure(available);
+                page.Arrange(new Rect(new Point(0, 0), available));
+                page.UpdateLayout();
+
+                Assert.That(mapping.IsExpanded, Is.True);
+                Assert.That(toggle.Content, Is.EqualTo("▲"));
+                Assert.That(expandedBody.Visibility, Is.EqualTo(Visibility.Visible));
+                Assert.That(expandedBody.ActualHeight, Is.GreaterThan(0));
+                Assert.That(card.ActualHeight, Is.GreaterThan(collapsedHeight),
+                    "The mapping row must grow DOWN, rather than open only in the right inspector.");
+                var headings = FindVisualChildren<TextBlock>(expandedBody).Select(t => t.Text).ToList();
+                Assert.That(headings, Does.Contain("INPUTS"));
+                Assert.That(headings, Does.Contain("OUTPUTS"));
+
+                ((IInvokeProvider)new ButtonAutomationPeer(toggle)).Invoke();
+                Assert.That(mapping.IsExpanded, Is.False);
+                PumpDispatcherFor(TimeSpan.FromMilliseconds(250));
+                page.Measure(available);
+                page.Arrange(new Rect(new Point(0, 0), available));
+                page.UpdateLayout();
+                Assert.That(expandedBody.Visibility, Is.EqualTo(Visibility.Collapsed));
+                Assert.That(toggle.Content, Is.EqualTo("▼"));
+            }
+            finally
+            {
+                page.Dispose();
+            }
         }
 
         [Test]
