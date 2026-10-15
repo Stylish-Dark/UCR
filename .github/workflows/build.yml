@@ -582,7 +582,7 @@ jobs:
           }
           Write-Host 'Verified UCR.Tests runtime dependency closure.'
 
-          & $runner $tests --noresult
+          & $runner $tests --noresult --workers=0
           if ($LASTEXITCODE -ne 0) {
             throw "UCR unit tests failed with exit code $LASTEXITCODE."
           }
