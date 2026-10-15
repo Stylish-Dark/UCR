@@ -30,6 +30,19 @@ namespace HidWizards.UCR.Views.Controls
                 HideExpandedBody();
         }
 
+        // The card remains selectable and its glyphs remain quick-bind targets.
+        // Only the explicit chevron toggles the inline details.
+        private void HeaderGrid_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+        }
+
+        private void ExpandMappingButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            MappingExpander.IsExpanded = !MappingExpander.IsExpanded;
+            e.Handled = true;
+        }
+
         private void MappingExpander_OnExpanded(object sender, RoutedEventArgs e)
         {
             ShowExpandedBody();
