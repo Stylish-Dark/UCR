@@ -1048,7 +1048,6 @@
                             ContentTemplate="{x:Null}"
                             HorizontalContentAlignment="Stretch"
                             Visibility="Collapsed"
-                            Height="0"
                             Opacity="0"
                             ClipToBounds="True"/>
         </StackPanel>
