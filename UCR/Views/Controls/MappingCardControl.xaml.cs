@@ -61,8 +61,17 @@ namespace HidWizards.UCR.Views.Controls
         private void ExpandMappingButton_OnClick(object sender, RoutedEventArgs e)
         {
             if (InspectorMode) return;
-            MappingExpander.IsExpanded = !MappingExpander.IsExpanded;
             e.Handled = true;
+
+            // Update the mapping explicitly: expansion must not depend on
+            // the Material Design Expander header template capturing a click.
+            var mapping = DataContext as MappingViewModel;
+            if (mapping == null) return;
+            var expand = !mapping.IsExpanded;
+            mapping.IsExpanded = expand;
+            MappingExpander.IsExpanded = expand;
+            if (expand) ShowExpandedBody();
+            else HideExpandedBody();
         }
 
         private void MappingExpander_OnExpanded(object sender, RoutedEventArgs e)
