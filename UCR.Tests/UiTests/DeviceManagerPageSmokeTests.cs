@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -231,39 +233,86 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
-        public void MappingCollapseKeepsBodyVisibleWhileTheCloseAnimationRuns()
+        public void MappingChevronReallyOpensAndClosesInlineEditorWithoutExpanderHeader()
         {
             EnsureApplicationResources();
 
             var context = new Context();
-            var profile = context.ProfilesManager.CreateProfile("Animation", null, null);
+            var profile = context.ProfilesManager.CreateProfile("Inline mapping", null, null);
             context.ProfilesManager.AddProfile(profile);
             profile.AddMapping("Mapping");
 
             var profileViewModel = new ProfileViewModel(profile);
-            var card = new MappingCardControl { DataContext = profileViewModel.MappingsList.Single() };
-            card.Measure(new Size(900, 600));
-            card.Arrange(new Rect(0, 0, 900, 600));
-            card.UpdateLayout();
+            try
+            {
+                var mapping = profileViewModel.MappingsList.Single();
+                var card = new MappingCardControl { DataContext = mapping };
+                card.Measure(new Size(900, 600));
+                card.Arrange(new Rect(0, 0, 900, 600));
+                card.UpdateLayout();
 
-            var expander = card.FindName("MappingExpander") as Expander;
-            var body = card.FindName("ExpandedBodyHost") as ContentControl;
-            Assert.That(expander, Is.Not.Null);
-            Assert.That(body, Is.Not.Null);
+                var chevron = card.FindName("ExpandMappingButton") as Button;
+                var header = card.FindName("MappingHeaderSurface") as Border;
+                var body = card.FindName("ExpandedBodyHost") as ContentControl;
+                Assert.That(chevron, Is.Not.Null, "The mapping must expose a dedicated clickable chevron.");
+                Assert.That(header, Is.Not.Null);
+                Assert.That(body, Is.Not.Null);
+                Assert.That(card.FindName("MappingExpander"), Is.Null,
+                    "The header must not remain wrapped in a clickable WPF Expander.");
+                Assert.That(chevron.Content, Is.EqualTo("▼"));
+                Assert.That(mapping.IsExpanded, Is.False);
+                Assert.That(body.Visibility, Is.EqualTo(Visibility.Collapsed));
 
-            expander.IsExpanded = true;
-            card.UpdateLayout();
-            Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible));
-            Assert.That(body.ContentTemplate, Is.Not.Null);
-            PumpDispatcherFor(TimeSpan.FromMilliseconds(220));
-            Assert.That(body.ActualHeight, Is.GreaterThan(0));
+                // Actual WPF button automation, not direct invocation of the private handler.
+                ((IInvokeProvider)new ButtonAutomationPeer(chevron)).Invoke();
+                card.UpdateLayout();
+                PumpDispatcherFor(TimeSpan.FromMilliseconds(100));
 
-            expander.IsExpanded = false;
+                Assert.That(mapping.IsExpanded, Is.True);
+                Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible));
+                Assert.That(body.ContentTemplate, Is.Not.Null);
+                Assert.That(chevron.Content, Is.EqualTo("▲"));
+                Assert.That(body.ActualHeight, Is.GreaterThan(0));
 
-            Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible),
-                "Collapse should animate the body to zero height before hiding it, not snap shut immediately.");
+                ((IInvokeProvider)new ButtonAutomationPeer(chevron)).Invoke();
+                Assert.That(mapping.IsExpanded, Is.False);
+                Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible),
+                    "Closing should preserve the existing short fade instead of snapping away.");
+                PumpDispatcherFor(TimeSpan.FromMilliseconds(250));
+                Assert.That(body.Visibility, Is.EqualTo(Visibility.Collapsed));
+                Assert.That(chevron.Content, Is.EqualTo("▼"));
+            }
+            finally
+            {
+                profileViewModel.Dispose();
+            }
+        }
 
-            profileViewModel.Dispose();
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void MappingBindingVisualTemplateUsesARealClickableButton()
+        {
+            EnsureApplicationResources();
+
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Glyph click", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            profile.AddMapping("Mapping");
+            var profileViewModel = new ProfileViewModel(profile);
+            try
+            {
+                var card = new MappingCardControl { DataContext = profileViewModel.MappingsList.Single() };
+                var template = card.Resources["MappingBindingVisualTemplate"] as DataTemplate;
+                Assert.That(template, Is.Not.Null);
+                var glyph = template.LoadContent() as Button;
+                Assert.That(glyph, Is.Not.Null, "Each glyph must be a real clickable Button, not a passive Grid.");
+                Assert.That(glyph.Cursor, Is.EqualTo(System.Windows.Input.Cursors.Hand));
+                Assert.That(glyph.IsEnabled, Is.True);
+            }
+            finally
+            {
+                profileViewModel.Dispose();
+            }
         }
 
         [Test]
