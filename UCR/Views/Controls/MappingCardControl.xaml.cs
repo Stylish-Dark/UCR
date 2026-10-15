@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -36,54 +37,83 @@ namespace HidWizards.UCR.Views.Controls
             set => SetValue(InspectorSectionProperty, value);
         }
 
+        private MappingViewModel _observedMapping;
+
         public MappingCardControl()
         {
             InitializeComponent();
             Loaded += MappingCardControl_OnLoaded;
+            Unloaded += MappingCardControl_OnUnloaded;
+            DataContextChanged += MappingCardControl_OnDataContextChanged;
         }
 
         private void MappingCardControl_OnLoaded(object sender, RoutedEventArgs e)
         {
+            ObserveMapping();
+            RefreshExpandedVisual(false);
+        }
+
+        private void MappingCardControl_OnUnloaded(object sender, RoutedEventArgs e)
+        {
+            if (_observedMapping != null)
+                _observedMapping.PropertyChanged -= ObservedMappingOnPropertyChanged;
+            _observedMapping = null;
+        }
+
+        private void MappingCardControl_OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            ObserveMapping();
+            RefreshExpandedVisual(false);
+        }
+
+        private void ObserveMapping()
+        {
+            var mapping = DataContext as MappingViewModel;
+            if (ReferenceEquals(mapping, _observedMapping)) return;
+            if (_observedMapping != null)
+                _observedMapping.PropertyChanged -= ObservedMappingOnPropertyChanged;
+            _observedMapping = mapping;
+            if (_observedMapping != null)
+                _observedMapping.PropertyChanged += ObservedMappingOnPropertyChanged;
+        }
+
+        private void ObservedMappingOnPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(MappingViewModel.IsExpanded)) return;
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(() => RefreshExpandedVisual(true)));
+                return;
+            }
+            RefreshExpandedVisual(true);
+        }
+
+        private void RefreshExpandedVisual(bool animateCollapse)
+        {
+            if (MappingHeaderSurface == null || ExpandedBodyHost == null) return;
             if (InspectorMode)
             {
-                MappingExpander.Visibility = Visibility.Collapsed;
+                MappingHeaderSurface.Visibility = Visibility.Collapsed;
                 ShowExpandedBody();
                 return;
             }
 
-            var mapping = DataContext as MappingViewModel;
-            if (mapping?.IsExpanded == true)
+            MappingHeaderSurface.Visibility = Visibility.Visible;
+            if ((DataContext as MappingViewModel)?.IsExpanded == true)
                 ShowExpandedBody();
             else
-                HideExpandedBody();
+                HideExpandedBody(animateCollapse);
         }
 
         private void ExpandMappingButton_OnClick(object sender, RoutedEventArgs e)
         {
-            if (InspectorMode) return;
             e.Handled = true;
-
-            // Update the mapping explicitly: expansion must not depend on
-            // the Material Design Expander header template capturing a click.
+            if (InspectorMode) return;
             var mapping = DataContext as MappingViewModel;
             if (mapping == null) return;
-            var expand = !mapping.IsExpanded;
-            mapping.IsExpanded = expand;
-            MappingExpander.IsExpanded = expand;
-            if (expand) ShowExpandedBody();
-            else HideExpandedBody();
-        }
-
-        private void MappingExpander_OnExpanded(object sender, RoutedEventArgs e)
-        {
-            ShowExpandedBody();
-        }
-
-        private void MappingExpander_OnCollapsed(object sender, RoutedEventArgs e)
-        {
-            // Keep the editor visible until its fade finishes. Do not animate
-            // Height: height animations trigger expensive re-layout of all mappings.
-            HideExpandedBody(true);
+            mapping.IsExpanded = !mapping.IsExpanded;
+            // Also handle cases where a card has been measured but not yet loaded.
+            RefreshExpandedVisual(true);
         }
 
         // Expanding height inside a non-virtualized mappings list remeasures every
@@ -125,7 +155,7 @@ namespace HidWizards.UCR.Views.Controls
                 };
                 fade.Completed += (animationSender, args) =>
                 {
-                    if (MappingExpander?.IsExpanded != true)
+                    if ((DataContext as MappingViewModel)?.IsExpanded != true)
                         HideExpandedBody();
                 };
                 ExpandedBodyHost.BeginAnimation(OpacityProperty, fade);
@@ -203,34 +233,45 @@ namespace HidWizards.UCR.Views.Controls
             mappingViewModel.Rename();
         }
 
-        private void QuickBindInput_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        // Every visible binding glyph is a Button in MappingBindingVisualTemplate.
+        // Its parent lane determines whether to detect an input or choose an output.
+        private async void QuickBindGlyph_OnClick(object sender, RoutedEventArgs e)
         {
-            var mappingViewModel = DataContext as MappingViewModel;
-            var descriptor = FindBindingDescriptor(e.OriginalSource as DependencyObject);
-            if (mappingViewModel == null || descriptor == null || !mappingViewModel.ButtonsEnabled) return;
-
             e.Handled = true;
-            try
-            {
-                mappingViewModel.QuickBindInput(descriptor);
-            }
-            catch (Exception exception)
-            {
-                Logger.Error("Failed to start mapping-card quick input bind", exception);
-                DarkMessageBox.Show("UCR could not start input detection for this binding. The error has been written to the log.",
-                    "Unable to bind input", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
+            var button = sender as Button;
+            var mapping = DataContext as MappingViewModel;
+            var descriptor = button?.DataContext as BindingVisualDescriptor;
+            if (mapping == null || descriptor == null || !mapping.ButtonsEnabled) return;
 
-        private async void QuickBindOutput_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            var mappingViewModel = DataContext as MappingViewModel;
-            var descriptor = FindBindingDescriptor(e.OriginalSource as DependencyObject);
-            var placementTarget = sender as FrameworkElement;
-            if (mappingViewModel == null || descriptor == null || placementTarget == null || !mappingViewModel.ButtonsEnabled) return;
+            string lane = null;
+            for (DependencyObject current = button; current != null; current = VisualTreeHelper.GetParent(current))
+            {
+                var items = current as ItemsControl;
+                var tag = items?.Tag as string;
+                if (tag == "Input" || tag == "Output")
+                {
+                    lane = tag;
+                    break;
+                }
+            }
 
-            e.Handled = true;
-            await OpenQuickOutputPickerAsync(mappingViewModel, descriptor, placementTarget);
+            if (lane == "Input")
+            {
+                try
+                {
+                    mapping.QuickBindInput(descriptor);
+                }
+                catch (Exception exception)
+                {
+                    Logger.Error("Failed to start mapping-card quick input bind", exception);
+                    DarkMessageBox.Show("UCR could not start input detection for this binding. The error has been written to the log.",
+                        "Unable to bind input", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            else if (lane == "Output")
+            {
+                await OpenQuickOutputPickerAsync(mapping, descriptor, button);
+            }
         }
 
         internal async Task<bool> OpenQuickOutputPickerAsync(DeviceBindingViewModel bindingViewModel,
@@ -344,19 +385,6 @@ namespace HidWizards.UCR.Views.Controls
                 BorderThickness = new Thickness(1),
                 Padding = new Thickness(4)
             };
-        }
-
-        private static BindingVisualDescriptor FindBindingDescriptor(DependencyObject source)
-        {
-            var current = source;
-            while (current != null)
-            {
-                var element = current as FrameworkElement;
-                var descriptor = element?.DataContext as BindingVisualDescriptor;
-                if (descriptor != null) return descriptor;
-                current = VisualTreeHelper.GetParent(current);
-            }
-            return null;
         }
 
         private void AddAndInput_OnClick(object sender, RoutedEventArgs e)
