@@ -103,8 +103,8 @@ namespace HidWizards.UCR.Views.Controls
             var side = Math.Max(1, Math.Min(b.Width - 2, b.Height - 4));
             var rect = new Rect(b.Left + (b.Width - side) / 2.0,
                 b.Top + (b.Height - side) / 2.0, side, side);
-            var fill = new SolidColorBrush(Color.FromRgb(48, 48, 48));
-            dc.DrawRoundedRectangle(fill, Pen(accent, 1.1), rect, 1.5, 1.5);
+            // Keyboard caps keep a neutral black face; device identity belongs to the outline and legend.
+            dc.DrawRoundedRectangle(Brushes.Black, Pen(accent, 1.1), rect, 1.5, 1.5);
 
             if (string.IsNullOrEmpty(label)) return;
             var inner = new Rect(rect.Left + 3, rect.Top + 2,
@@ -120,14 +120,19 @@ namespace HidWizards.UCR.Views.Controls
                 var top = new Rect(inner.Left, inner.Top, inner.Width, inner.Height * 0.43);
                 var bottom = new Rect(inner.Left, inner.Top + inner.Height * 0.43,
                     inner.Width, inner.Height * 0.57);
-                DrawFittedKeyText(dc, lines[0], Brushes.White, top,
+                DrawFittedKeyText(dc, lines[0], accent, top,
                     inner.Height * 0.36, FontWeights.SemiBold);
-                DrawFittedKeyText(dc, lines[1], Brushes.White, bottom,
+                DrawFittedKeyText(dc, lines[1], accent, bottom,
                     inner.Height * 0.54, FontWeights.SemiBold);
             }
             else
             {
-                DrawFittedKeyText(dc, display.Replace("\n", " "), Brushes.White, inner,
+                // The descending tail of Q makes it appear below the centre at normal glyph sizes.
+                // A small optical correction applies to Q alone, not to every keyboard legend.
+                var labelArea = string.Equals(display, "Q", StringComparison.OrdinalIgnoreCase)
+                    ? new Rect(inner.Left, inner.Top - 1.25, inner.Width, inner.Height)
+                    : inner;
+                DrawFittedKeyText(dc, display.Replace("\n", " "), accent, labelArea,
                     b.Height * (display.Length == 1 ? 0.55 : 0.48), FontWeights.SemiBold);
             }
             dc.Pop();
