@@ -321,6 +321,60 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void FourWayMappingUsesCompactInputEditorsAndOneOutputSelector()
+        {
+            EnsureApplicationResources();
+
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Four-way layout", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var model = profile.AddMapping("Full stick");
+            profile.AddPlugin(model, new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+            var profileVm = new ProfileViewModel(profile);
+            try
+            {
+                var mapping = profileVm.MappingsList.Single();
+                var first = mapping.Plugins.Single();
+                var axisTemplate = mapping.GetCompatiblePluginOptions()
+                    .FirstOrDefault(option => option.Name == "Button to Axis");
+                Assert.That(axisTemplate, Is.Not.Null);
+                Assert.That(mapping.ChangeOutputType(first, axisTemplate.Plugin), Is.True);
+                Assert.That(mapping.ChangeAxisInputMode(mapping.Plugins.Single(), 4), Is.True);
+                Assert.That(mapping.DeviceBindings.Count, Is.EqualTo(4));
+
+                var card = new MappingCardControl
+                {
+                    InspectorMode = true, InlineWorkspaceMode = true, DataContext = mapping
+                };
+                card.Measure(new Size(1150, 850));
+                card.Arrange(new Rect(0, 0, 1150, 850));
+                card.UpdateLayout();
+
+                var body = card.FindName("ExpandedBodyHost") as ContentControl;
+                Assert.That(body, Is.Not.Null);
+                Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible));
+                Assert.That(FindVisualChildren<CompactInputBindingControl>(body)
+                        .Count(control => control.DeviceBinding?.DeviceIoType == DeviceIoType.Input),
+                    Is.EqualTo(4), "Each direction must use the compact, directly bindable input editor.");
+                Assert.That(FindVisualChildren<DeviceBindingControl>(body), Is.Empty,
+                    "The large legacy directional input form must not be used.");
+                var labelNames = FindVisualChildren<TextBlock>(body).Select(label => label.Text).ToArray();
+                Assert.That(labelNames, Does.Contain("Up"));
+                Assert.That(labelNames, Does.Contain("Down"));
+                Assert.That(labelNames, Does.Contain("Left"));
+                Assert.That(labelNames, Does.Contain("Right"));
+                Assert.That(FindVisualChildren<Button>(body)
+                    .Count(button => Equals(button.ToolTip, "Choose D-pad, left stick or right stick")),
+                    Is.EqualTo(1), "The four-way output needs one selector, not a device ComboBox and button.");
+            }
+            finally
+            {
+                profileVm.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void MappingChevronReallyOpensAndClosesInlineEditorWithoutExpanderHeader()
         {
             EnsureApplicationResources();
