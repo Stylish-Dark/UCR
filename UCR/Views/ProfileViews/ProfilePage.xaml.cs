@@ -1241,13 +1241,41 @@ namespace HidWizards.UCR.Views.ProfileViews
             var descriptor = button?.DataContext as BindingVisualDescriptor;
             var mapping = MappingForWorkspaceGlyph(button);
             if (mapping == null || descriptor == null || !mapping.ButtonsEnabled) return;
-            try { mapping.QuickBindInput(descriptor); }
+            try
+            {
+                var selected = mapping.ResolveCollapsedBinding(descriptor, DeviceIoType.Input)?.DeviceBinding;
+                if (selected?.IsInBindMode == true)
+                    selected.CancelBindMode();
+                else
+                    mapping.QuickBindInput(descriptor);
+            }
             catch (Exception exception)
             {
                 Logger.Error("Failed to start workspace input binding", exception);
                 DarkMessageBox.Show("Unable to detect input: " + exception.GetBaseException().Message,
                     "Input binding failed", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private void QuickBindWorkspaceInput_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            CancelWorkspaceCapture(sender, e);
+        }
+
+        private void QuickBindWorkspaceInput_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            CancelWorkspaceCapture(sender, e);
+        }
+
+        private void CancelWorkspaceCapture(object sender, MouseButtonEventArgs e)
+        {
+            var button = sender as Button;
+            var descriptor = button?.DataContext as BindingVisualDescriptor;
+            var mapping = MappingForWorkspaceGlyph(button);
+            var binding = mapping?.ResolveCollapsedBinding(descriptor, DeviceIoType.Input)?.DeviceBinding;
+            if (binding?.IsInBindMode != true) return;
+            binding.CancelBindMode();
+            e.Handled = true;
         }
 
         private async void QuickBindWorkspaceOutput_OnClick(object sender, RoutedEventArgs e)

@@ -940,12 +940,41 @@
                                                                                                 </TextBlock>
                                                                                                 <Button Width="62" Height="44" Margin="2 1" Padding="0" Background="Transparent"
                                                                                                       BorderThickness="0" Cursor="Hand" Focusable="True"
-                                                                                                      ToolTip="{Binding ToolTip}" Click="QuickBindWorkspaceInput_OnClick">
+                                                                                                      ToolTip="{Binding ToolTip}" Click="QuickBindWorkspaceInput_OnClick"
+                                                                                                      PreviewMouseLeftButtonDown="QuickBindWorkspaceInput_OnPreviewMouseLeftButtonDown"
+                                                                                                      PreviewMouseRightButtonDown="QuickBindWorkspaceInput_OnPreviewMouseRightButtonDown">
                                                                                                     <Grid>
                                                                                                     <controls:ControlGlyphControl Kind="{Binding ControlKind}"
                                                                                                                                   AccentBrush="{Binding ControlBrush}"
                                                                                                                                   Label="{Binding ControlLabel}"
-                                                                                                                                  Width="58" Height="42"/>
+                                                                                                                                  Width="58" Height="42">
+                                                                                                        <controls:ControlGlyphControl.Style>
+                                                                                                            <Style TargetType="{x:Type controls:ControlGlyphControl}">
+                                                                                                                <Style.Triggers>
+                                                                                                                    <DataTrigger Binding="{Binding IsCapturing}" Value="True">
+                                                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                                                    </DataTrigger>
+                                                                                                                </Style.Triggers>
+                                                                                                            </Style>
+                                                                                                        </controls:ControlGlyphControl.Style>
+                                                                                                    </controls:ControlGlyphControl>
+                                                                                                    <Border Width="58" Height="42" CornerRadius="4"
+                                                                                                            BorderThickness="2" BorderBrush="#FFD08E"
+                                                                                                            Background="#944916" IsHitTestVisible="False">
+                                                                                                        <Border.Style>
+                                                                                                            <Style TargetType="{x:Type Border}">
+                                                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                                                <Style.Triggers>
+                                                                                                                    <DataTrigger Binding="{Binding IsCapturing}" Value="True">
+                                                                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                                                                    </DataTrigger>
+                                                                                                                </Style.Triggers>
+                                                                                                            </Style>
+                                                                                                        </Border.Style>
+                                                                                                        <TextBlock Text="PRESS" FontSize="11" FontWeight="Bold"
+                                                                                                                   Foreground="#FFFFFF" HorizontalAlignment="Center"
+                                                                                                                   VerticalAlignment="Center"/>
+                                                                                                    </Border>
                                                                                                     <Line X1="7" Y1="36" X2="55" Y2="6"
                                                                                                           Stroke="#D9D9D9" StrokeThickness="2.8"
                                                                                                           StrokeStartLineCap="Round" StrokeEndLineCap="Round"
