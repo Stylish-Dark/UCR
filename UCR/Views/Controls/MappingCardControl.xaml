@@ -149,9 +149,13 @@
                         <Style TargetType="{x:Type UniformGrid}">
                             <Setter Property="Columns" Value="2"/>
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding InspectorMode, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="True">
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding InspectorMode, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="True"/>
+                                        <Condition Binding="{Binding InlineWorkspaceMode, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="False"/>
+                                    </MultiDataTrigger.Conditions>
                                     <Setter Property="Columns" Value="1"/>
-                                </DataTrigger>
+                                </MultiDataTrigger>
                             </Style.Triggers>
                         </Style>
                     </UniformGrid.Style>
