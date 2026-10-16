@@ -191,10 +191,9 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void ProfilePage_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
-            if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control) return;
-            var scale = AppearanceManager.AdjustUiScale(e.Delta);
-            Logger.Info("UI scale changed to " + Math.Round(scale * 100) + "%");
-            e.Handled = true;
+            // Zoom temporarily disabled; preserve normal scrolling.
+            if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+                e.Handled = true;
         }
 
         private void ProfileDevicesScrollViewer_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
@@ -746,6 +745,13 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void ProfilePage_OnPreviewKeyDown(object sender, KeyEventArgs e)
         {
+            if ((e.Key == Key.Escape || e.SystemKey == Key.Escape) &&
+                Context.BindingManager.IsBindModeActive)
+            {
+                Context.BindingManager.CancelBindMode();
+                e.Handled = true;
+                return;
+            }
             if (e.Key == Key.Escape &&
                 ProfileViewModel.InputDeviceControlViewModel?.IsDetecting == true)
             {

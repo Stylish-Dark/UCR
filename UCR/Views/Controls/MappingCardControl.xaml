@@ -79,6 +79,7 @@
                  preview panel: the user can only rebind the actual token they click. -->
             <Button Padding="0" Background="Transparent" BorderThickness="0" Focusable="True"
                     Cursor="Hand" ToolTip="{Binding ToolTip}" Click="QuickBindGlyph_OnClick"
+                    PreviewMouseLeftButtonDown="QuickBindGlyph_OnPreviewMouseLeftButtonDown"
                     PreviewMouseRightButtonDown="QuickBindGlyph_OnPreviewMouseRightButtonDown">
                 <Button.Template>
                     <ControlTemplate TargetType="{x:Type Button}">
@@ -174,7 +175,7 @@
                                 </Style.Triggers>
                             </Style>
                         </Border.Style>
-                        <TextBlock Text="LISTEN" FontSize="10" FontWeight="Bold"
+                        <TextBlock Text="PRESS" FontSize="11" FontWeight="Bold"
                                    Foreground="#FFFFFF" HorizontalAlignment="Center"
                                    VerticalAlignment="Center"/>
                     </Border>
@@ -238,18 +239,40 @@
                                                         <local:CompactInputBindingControl Grid.Column="0"
                                                             DeviceBinding="{Binding DeviceBinding}"
                                                             DataContext="{Binding}"/>
-                                                        <ToggleButton Grid.Column="1" Content="NOT"
-                                                            IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
-                                                            Click="InputNegated_OnClick" Width="52" Height="31"
-                                                            Margin="5 0 0 0" Foreground="#FFFFFF"
-                                                            Background="#363636" BorderBrush="#696969"
-                                                            ToolTip="Negate this Boolean input condition"/>
-                                                        <Button Grid.Column="2" Content="×"
+                                                        <ToggleButton Grid.Column="1" Content="NOT" Width="54" Height="30"
+                                                            Margin="4 0 8 0" IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
+                                                            Click="InputNegated_OnClick"
+                                                            ToolTip="Negate this Boolean input condition">
+                                                            <ToggleButton.Style>
+                                                                <Style TargetType="{x:Type ToggleButton}">
+                                                                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                    <Setter Property="Template">
+                                                                        <Setter.Value>
+                                                                            <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                                                                <Border x:Name="NotSurface" Background="#343434"
+                                                                                    BorderBrush="{DynamicResource PrimaryHueLightBrush}"
+                                                                                    BorderThickness="1">
+                                                                                    <ContentPresenter HorizontalAlignment="Center"
+                                                                                        VerticalAlignment="Center"/>
+                                                                                </Border>
+                                                                                <ControlTemplate.Triggers>
+                                                                                    <Trigger Property="IsChecked" Value="True">
+                                                                                        <Setter TargetName="NotSurface" Property="Background" Value="#164AA7"/>
+                                                                                        <Setter TargetName="NotSurface" Property="BorderBrush" Value="#397AF0"/>
+                                                                                    </Trigger>
+                                                                                </ControlTemplate.Triggers>
+                                                                            </ControlTemplate>
+                                                                        </Setter.Value>
+                                                                    </Setter>
+                                                                </Style>
+                                                            </ToggleButton.Style>
+                                                        </ToggleButton>
+                                                        <Button Grid.Column="2" Click="RemoveExpressionInput_OnClick"
                                                             IsEnabled="{Binding CanRemoveExpressionInput}"
-                                                            Click="RemoveExpressionInput_OnClick"
-                                                            Width="30" Height="31" Margin="5 0 0 0"
-                                                            Foreground="#F47777" FontSize="20"
-                                                            ToolTip="Remove input"/>
+                                                            ToolTip="Remove input condition"
+                                                            ToolTipService.ShowOnDisabled="True"
+                                                            Style="{StaticResource UcrDeleteItemButton}"/>
                                                     </Grid>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
@@ -440,6 +463,11 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                        <Button Content="+ Add output" Click="AddPlugin_OnClick"
+                            Height="34" Padding="12 3" Margin="3 8 0 2"
+                            HorizontalAlignment="Left" IsEnabled="{Binding ButtonsEnabled}"
+                            Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
+                            ToolTip="Add another output to this mapping"/>
                     </StackPanel>
                 </UniformGrid>
             </Border>

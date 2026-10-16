@@ -42,7 +42,9 @@ namespace HidWizards.UCR.Utilities
 
         public static void ApplySavedUiScale()
         {
-            ApplyUiScale(HidWizards.UCR.Properties.Settings.Default.UiScale, false);
+            // Temporarily lock the workspace to its native 100% scale.
+            // Keep the saved preference untouched so zoom can return later.
+            ApplyUiScale(1.0, false);
         }
 
         public static double AdjustUiScale(int wheelDelta)

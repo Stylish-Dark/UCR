@@ -86,6 +86,14 @@ namespace HidWizards.UCR.Views.Controls
             ShowOutputPicker(BindButton);
         }
 
+        private void BindButton_OnPreviewMouseLeftButtonDown(object sender,
+            System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (DeviceBinding?.IsInBindMode != true) return;
+            DeviceBinding.CancelBindMode();
+            e.Handled = true;
+        }
+
         private void BindButton_OnPreviewMouseRightButtonDown(object sender,
             System.Windows.Input.MouseButtonEventArgs e)
         {

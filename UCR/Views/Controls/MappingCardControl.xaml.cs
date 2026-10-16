@@ -246,6 +246,17 @@ namespace HidWizards.UCR.Views.Controls
 
         // Every visible binding glyph is a Button in MappingBindingVisualTemplate.
         // Its parent lane determines whether to detect an input or choose an output.
+        private void QuickBindGlyph_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            var button = sender as Button;
+            var descriptor = button?.DataContext as BindingVisualDescriptor;
+            var binding = (DataContext as MappingViewModel)?
+                .ResolveCollapsedBinding(descriptor, DeviceIoType.Input)?.DeviceBinding;
+            if (binding?.IsInBindMode != true) return;
+            binding.CancelBindMode();
+            e.Handled = true;
+        }
+
         private void QuickBindGlyph_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
             var button = sender as Button;

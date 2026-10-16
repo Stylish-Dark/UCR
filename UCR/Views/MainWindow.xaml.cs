@@ -171,10 +171,9 @@ namespace HidWizards.UCR.Views
 
         private void MainWindow_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
-            if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control) return;
-            var scale = AppearanceManager.AdjustUiScale(e.Delta);
-            Logger.Info("UI scale changed to " + Math.Round(scale * 100) + "%");
-            e.Handled = true;
+            // UI zoom is temporarily disabled until responsive mapping layout is rebuilt.
+            if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+                e.Handled = true;
         }
 
         /// <summary>

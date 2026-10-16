@@ -47,7 +47,7 @@
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="62"/>
-            <ColumnDefinition Width="*" MinWidth="90"/>
+            <ColumnDefinition Width="*" MinWidth="0"/>
             <ColumnDefinition Width="34"/>
             <!-- Auto collapses to zero for outputs, where Block is hidden.
                  A fixed 92px column previously stole space from Choose output. -->
@@ -145,14 +145,15 @@
         </ComboBox>
 
         <Grid Grid.Row="0" Grid.Column="1" Margin="0 0 0 0">
-            <Button x:Name="BindButton" MinHeight="32" MinWidth="120"
-                    Content="{Binding CompactBindButtonText}"
+            <Button x:Name="BindButton" MinHeight="32" MinWidth="0"
                     IsEnabled="{Binding CanBindCurrentDevice}"
                     Click="BindButton_OnClick"
+                    PreviewMouseLeftButtonDown="BindButton_OnPreviewMouseLeftButtonDown"
                     PreviewMouseRightButtonDown="BindButton_OnPreviewMouseRightButtonDown"
                     Foreground="#FFFFFF"
+                    HorizontalContentAlignment="Stretch"
                     materialDesign:TransitionAssist.DisableTransitions="True"
-                    ToolTip="Click again, right-click, or press Esc to cancel detection">
+                    ToolTip="Waiting for input: click again, right-click or press Esc to cancel">
                 <Button.Style>
                     <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
                         <Style.Triggers>
@@ -165,6 +166,10 @@
                         </Style.Triggers>
                     </Style>
                 </Button.Style>
+                <TextBlock Text="{Binding CompactBindButtonText}"
+                           TextTrimming="CharacterEllipsis"
+                           TextAlignment="Center" VerticalAlignment="Center"
+                           TextWrapping="NoWrap" Margin="4 0"/>
             </Button>
             <ProgressBar Height="3" Margin="8 0 8 2" VerticalAlignment="Bottom"
                          Minimum="0" Maximum="100" Value="{Binding PreviewValue, Mode=OneWay}"

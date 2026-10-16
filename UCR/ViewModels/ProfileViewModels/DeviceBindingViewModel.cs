@@ -240,7 +240,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             get
             {
                 if (DeviceBinding.IsInBindMode)
-                    return "●  LISTENING — CANCEL";
+                    return "●  PRESS INPUT";
                 if (DeviceBinding.IsBound) return DeviceBinding.BoundName();
                 return "Bind";
             }
@@ -253,6 +253,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             get
             {
                 var label = BindButtonText;
+                if (DeviceBinding.IsInBindMode)
+                    return "●  PRESS INPUT";
                 if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Output)
                     return "Choose output";
                 if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Input &&
