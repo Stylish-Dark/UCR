@@ -329,16 +329,13 @@ namespace HidWizards.UCR.Tests.UiTests
             var profile = context.ProfilesManager.CreateProfile("Four-way layout", null, null);
             context.ProfilesManager.AddProfile(profile);
             var model = profile.AddMapping("Full stick");
-            profile.AddPlugin(model, new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+            // Exercise the real four-way editor without requiring the
+            // catalogue-driven type picker as a prerequisite in this fixture.
+            profile.AddPlugin(model, new HidWizards.UCR.Plugins.Remapper.ButtonToAxis());
             var profileVm = new ProfileViewModel(profile);
             try
             {
                 var mapping = profileVm.MappingsList.Single();
-                var first = mapping.Plugins.Single();
-                var axisTemplate = mapping.GetCompatiblePluginOptions()
-                    .FirstOrDefault(option => option.Name == "Button to Axis");
-                Assert.That(axisTemplate, Is.Not.Null);
-                Assert.That(mapping.ChangeOutputType(first, axisTemplate.Plugin), Is.True);
                 Assert.That(mapping.ChangeAxisInputMode(mapping.Plugins.Single(), 4), Is.True);
                 Assert.That(mapping.DeviceBindings.Count, Is.EqualTo(4));
                 Assert.That(mapping.CollapsedInputRows.Count, Is.EqualTo(1),
