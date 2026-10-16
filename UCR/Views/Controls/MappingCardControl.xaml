@@ -139,6 +139,23 @@
                 </Grid>
             </Button>
         </DataTemplate>
+        <!-- One input editor per binding. WPF would instantiate BOTH sets of
+             controls when a hidden legacy ItemsControl sat behind a compact one. -->
+        <DataTemplate x:Key="LegacyMappingInputEditorTemplate">
+            <local:DeviceBindingControl DataContext="{Binding}" DeviceBinding="{Binding DeviceBinding}"
+                                        Label="{Binding DeviceBindingName}" Category="{Binding DeviceBindingCategory}"/>
+        </DataTemplate>
+        <DataTemplate x:Key="CompactFourWayInputEditorTemplate">
+            <Border Background="#292929" BorderBrush="#444444" BorderThickness="1"
+                    CornerRadius="3" Margin="2 2 2 3" Padding="5 5">
+                <StackPanel>
+                    <TextBlock Text="{Binding DeviceBindingName}" Foreground="#DADADA"
+                               FontWeight="SemiBold" FontSize="12" Margin="3 0 0 4"/>
+                    <local:CompactInputBindingControl DataContext="{Binding}"
+                        DeviceBinding="{Binding DeviceBinding}" HorizontalAlignment="Stretch"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
         <DataTemplate x:Key="ExpandedMappingBodyTemplate">
             <Border Margin="2 0 2 3" Padding="6 5" Background="#202020"
                     BorderBrush="#303030" BorderThickness="0 1 0 0" CornerRadius="0">
@@ -188,57 +205,23 @@
                                 </Button.Style>
                             </Button>
                         </StackPanel>
-                    <!-- Non-boolean plugins retain the full legacy editor. -->
+                    <!-- Do not duplicate the editor tree: switching to a four-way
+                         mapping replaces the single input ItemTemplate in place. -->
                     <ItemsControl ItemsSource="{Binding DeviceBindings}" HorizontalContentAlignment="Stretch">
                         <ItemsControl.Style>
-                            <Style TargetType="ItemsControl">
+                            <Style TargetType="{x:Type ItemsControl}">
                                 <Setter Property="Visibility" Value="Visible"/>
+                                <Setter Property="ItemTemplate" Value="{StaticResource LegacyMappingInputEditorTemplate}"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding SupportsNativeInputExpression}" Value="True">
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding Plugins[0].IsFourButtonAxis}" Value="True">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Setter Property="ItemTemplate" Value="{StaticResource CompactFourWayInputEditorTemplate}"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </ItemsControl.Style>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <local:DeviceBindingControl DataContext="{Binding}" DeviceBinding="{Binding DeviceBinding}"
-                                                            Label="{Binding DeviceBindingName}" Category="{Binding DeviceBindingCategory}"/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <!-- A four-way destination is still four individually bindable INPUTS,
-                         but uses the same compact binding editor as normal mapping cards.
-                         Do not regress to the large legacy dropdown controls. -->
-                    <ItemsControl ItemsSource="{Binding DeviceBindings}" HorizontalContentAlignment="Stretch">
-                        <ItemsControl.Style>
-                            <Style TargetType="{x:Type ItemsControl}">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Plugins[0].IsFourButtonAxis}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </ItemsControl.Style>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="#292929" BorderBrush="#444444" BorderThickness="1"
-                                        CornerRadius="3" Margin="2 2 2 3" Padding="5 5">
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding DeviceBindingName}" Foreground="#DADADA"
-                                                   FontWeight="SemiBold" FontSize="12" Margin="3 0 0 4"/>
-                                        <local:CompactInputBindingControl DataContext="{Binding}"
-                                            DeviceBinding="{Binding DeviceBinding}"
-                                            HorizontalAlignment="Stretch"/>
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
                     <StackPanel DataContext="{Binding Plugins[0]}">
