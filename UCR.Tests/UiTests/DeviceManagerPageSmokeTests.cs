@@ -291,6 +291,18 @@ namespace HidWizards.UCR.Tests.UiTests
                 var headings = FindVisualChildren<TextBlock>(body).Select(t => t.Text).ToList();
                 Assert.That(headings, Does.Contain("INPUTS"));
                 Assert.That(headings, Does.Contain("OUTPUTS"));
+                var inlineColumns = FindVisualChildren<UniformGrid>(body).FirstOrDefault();
+                Assert.That(inlineColumns, Is.Not.Null);
+                Assert.That(inlineColumns.Columns, Is.EqualTo(2),
+                    "Inline mapping Inputs and Outputs must appear side by side.");
+
+                // Original collapsed glyphs must be actual clickable buttons.
+                var rebindingButtons = FindVisualChildren<Button>(row)
+                    .Where(button => button.ToolTip is string &&
+                        ((string)button.ToolTip).Contains("bind") &&
+                        button.Cursor == System.Windows.Input.Cursors.Hand).ToList();
+                Assert.That(rebindingButtons.Count, Is.GreaterThan(0),
+                    "The workspace must expose clickable rebinding glyphs.");
 
                 toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, toggle));
                 page.Measure(available);
