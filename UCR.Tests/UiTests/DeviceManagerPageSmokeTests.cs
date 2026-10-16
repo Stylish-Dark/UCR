@@ -341,6 +341,12 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(mapping.ChangeOutputType(first, axisTemplate.Plugin), Is.True);
                 Assert.That(mapping.ChangeAxisInputMode(mapping.Plugins.Single(), 4), Is.True);
                 Assert.That(mapping.DeviceBindings.Count, Is.EqualTo(4));
+                Assert.That(mapping.CollapsedInputRows.Count, Is.EqualTo(1),
+                    "Four independent directions must not wrap as three glyphs plus one.");
+                Assert.That(mapping.CollapsedInputRows.Single().Visuals.Count, Is.EqualTo(4));
+                Assert.That(mapping.CollapsedInputRows.Single().Visuals.Skip(1)
+                    .All(visual => visual.JoinSymbol == "·"), Is.True,
+                    "Independent directional inputs must not be labelled as an AND chord.");
 
                 var card = new MappingCardControl
                 {
