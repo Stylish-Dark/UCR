@@ -1296,11 +1296,32 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             RefreshCollapsedSummary();
             ProfileViewModel.RefreshFilterReferenceLabels();
             RefreshInputExpressionPresentation();
-            if (HasAxisOutput && DeviceBindings.Count == 1 &&
-                !DeviceBindings[0].DeviceBinding.IsBound)
-                SetDirectionalMode(2);
+            // Output selection never implicitly changes the number of inputs.
+            // A previous axis choice may have left an unwanted paired input behind.
+            if (!HasAxisOutput && Mapping.DeviceBindings.Any(input => input.InputDirectionSlot > 0))
+                RestoreBooleanInputsAfterAxis();
             Logger.Info("Changed output type in mapping '" + MappingTitle + "' to " + replacement.PluginName);
             return true;
+        }
+
+        private void RestoreBooleanInputsAfterAxis()
+        {
+            foreach (var group in Mapping.DeviceBindings.Where(input => input.InputDirectionSlot > 0)
+                         .GroupBy(input => input.InputExpressionGroup).ToList())
+            {
+                var primary = group.OrderBy(input => input.InputDirectionSlot).First();
+                foreach (var extra in group.Where(input => input != primary).ToList())
+                    Mapping.DeviceBindings.Remove(extra);
+                if (primary.DeviceBindingCategory != DeviceBindingCategory.Momentary)
+                {
+                    primary.ClearBinding();
+                }
+                primary.InputDirectionSlot = 0;
+                primary.InputExpressionInputKind = 0;
+                primary.InputExpressionKindConfigured = true;
+                primary.DeviceBindingCategory = DeviceBindingCategory.Momentary;
+            }
+            RebuildDirectionalEditors();
         }
 
         // Preserve the previous device when it supports the new output type. Otherwise

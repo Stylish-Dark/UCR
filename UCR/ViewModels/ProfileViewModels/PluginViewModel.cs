@@ -17,6 +17,25 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public MappingViewModel MappingViewModel { get; }
         public Plugin Plugin { get; set; }
         public string OutputType => IsFourButtonAxis ? "Axis" : new SimplePluginViewModel(Plugin).OutputType;
+        private System.Reflection.PropertyInfo InvertProperty => Plugin.GetType().GetProperty("Invert");
+        public Visibility QuickInvertVisibility =>
+            InvertProperty?.PropertyType == typeof(bool) && InvertProperty.CanWrite
+                ? Visibility.Visible : Visibility.Collapsed;
+        public bool QuickInvert
+        {
+            get => QuickInvertVisibility == Visibility.Visible &&
+                (bool)InvertProperty.GetValue(Plugin, null);
+            set
+            {
+                if (QuickInvertVisibility != Visibility.Visible || QuickInvert == value) return;
+                InvertProperty.SetValue(Plugin, value, null);
+                MappingViewModel.ProfileViewModel.Profile.Context.ContextChanged();
+                OnPropertyChanged();
+            }
+        }
+        public ObservableCollection<PluginPropertyGroupViewModel> InlinePropertyGroups { get; }
+            = new ObservableCollection<PluginPropertyGroupViewModel>();
+
         public bool IsAxisButtonMapping =>
             string.Equals(Plugin.PluginName, "Button to Axis", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(Plugin.PluginName, "Buttons to Axis", StringComparison.OrdinalIgnoreCase) ||
@@ -196,6 +215,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 // Button to Axis has pressed/released axis positions in its "Axis"
                 // output group, which used to be silently omitted here.
                 PluginPropertyGroups.Add(new PluginPropertyGroupViewModel(pluginPropertyGroup));
+                var inlineGroup = new PluginPropertyGroupViewModel(pluginPropertyGroup);
+                if (QuickInvertVisibility == Visibility.Visible)
+                    inlineGroup.PluginProperties.RemoveAll(property => property.Name == "Invert");
+                if (inlineGroup.PluginProperties.Count > 0)
+                    InlinePropertyGroups.Add(inlineGroup);
             }
         }
 

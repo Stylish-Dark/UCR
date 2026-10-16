@@ -345,7 +345,7 @@
                                                    Foreground="#B4B4B4" FontWeight="Bold" FontSize="12"
                                                    Margin="4 7 0 6"/>
                                         <Border Background="#343434" BorderBrush="#666666" BorderThickness="1"
-                                                CornerRadius="4" Padding="7 8 7 7">
+                                                CornerRadius="4" Padding="7 8 7 7" MinHeight="295">
                                           <StackPanel>
                                         <!-- One logical directional control, with two or four
                                              independent capture slots and shared action controls. -->
@@ -493,7 +493,7 @@
                                                                           Click="DirectionalBlock_OnClick" Width="38" Height="21"
                                                                           ToolTip="Block the original physical inputs for both directions"/>
                                                         </StackPanel>
-                                                        <ToggleButton Content="NOT" Width="47" Height="30" Margin="0 0 8 0"
+                                                        <ToggleButton Content="Negate" Width="74" Height="30" Margin="0 0 8 0"
                                                                       IsChecked="{Binding DirectionalPrimary.InputExpressionNegated, Mode=OneWay}"
                                                                       Click="DirectionalNot_OnClick"
                                                                       Foreground="White" Background="#343434"
@@ -536,7 +536,7 @@
                                                             </StackPanel>
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="*" MinWidth="205"/>
+                                                                <ColumnDefinition Width="*" MinWidth="0"/>
                                                                 <ColumnDefinition Width="Auto"/>
                                                             </Grid.ColumnDefinitions>
                                                             <local:CompactInputBindingControl Grid.Column="0" DataContext="{Binding}"
@@ -544,12 +544,12 @@
                                                                                                 HorizontalAlignment="Stretch"/>
                                                             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
                                                                         VerticalAlignment="Center" Margin="4 0 0 0">
-                                                                <ToggleButton Content="NOT" Width="54" Height="30" Margin="0 0 12 0"
+                                                                <ToggleButton Content="Negate" Width="76" Height="30" Margin="0 0 8 0"
                                                                               IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
                                                                               Click="InputNegated_OnClick"
                                                                               Foreground="#FFFFFF" Background="#343434"
                                                                               BorderBrush="#626262" BorderThickness="1"
-                                                                              ToolTip="Invert this input condition">
+                                                                              ToolTip="Negate this input condition">
                                                                     <ToggleButton.Style>
                                                                         <Style TargetType="ToggleButton">
                                                                             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -662,7 +662,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Margin="0 0 0 2" Padding="5" Background="#292929"
-                                            BorderBrush="#454545" BorderThickness="1" CornerRadius="3">
+                                            BorderBrush="#454545" BorderThickness="1" CornerRadius="3" MinHeight="295">
                                         <StackPanel>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -723,11 +723,16 @@
                                                 </Button.Style>
                                             </Button>
                                             </StackPanel>
-                                            <Button Grid.Column="2" HorizontalAlignment="Right"
-                                                    VerticalAlignment="Bottom" Margin="7 0 0 1"
-                                                    Click="RemoveOutput_OnClick" IsEnabled="{Binding CanRemove}"
-                                                    ToolTip="Remove this output" ToolTipService.ShowOnDisabled="True"
-                                                    Style="{StaticResource UcrDeleteItemButton}"/>
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
+                                                        HorizontalAlignment="Right" Margin="7 0 0 0">
+                                                <CheckBox Content="Invert" IsChecked="{Binding QuickInvert, Mode=TwoWay}"
+                                                          Visibility="{Binding QuickInvertVisibility}" Foreground="#D8D8D8"
+                                                          VerticalAlignment="Center" Margin="0 0 12 0"
+                                                          ToolTip="Invert this output"/>
+                                                <Button Click="RemoveOutput_OnClick" IsEnabled="{Binding CanRemove}"
+                                                        ToolTip="Remove this output" ToolTipService.ShowOnDisabled="True"
+                                                        Style="{StaticResource UcrDeleteItemButton}"/>
+                                            </StackPanel>
                                         </Grid>
                                         <!-- Compact workspace must expose the same filter and plugin-property
                                              editors as the classic expanded plugin UI. -->
@@ -764,7 +769,7 @@
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
-                                            <ItemsControl ItemsSource="{Binding PluginPropertyGroups}" Margin="0 2 0 0">
+                                            <ItemsControl ItemsSource="{Binding InlinePropertyGroups}" Margin="0 2 0 0">
                                                 <ItemsControl.Style>
                                                     <Style TargetType="{x:Type ItemsControl}">
                                                         <Style.Triggers>

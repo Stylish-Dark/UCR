@@ -137,6 +137,20 @@ namespace HidWizards.UCR.Views.Controls
                 Ddl.Items.Add(new Separator());
             }
 
+            if (DeviceBinding?.DeviceIoType == DeviceIoType.Input &&
+                inputViewModel?.ShowInvertInput == Visibility.Visible)
+            {
+                var invert = new MenuItem
+                {
+                    Header = "Invert input axis", IsChecked = inputViewModel.InvertInput,
+                    Foreground = Brushes.White, Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 14, 6)
+                };
+                invert.Click += (s, args) => inputViewModel.InvertInput = !inputViewModel.InvertInput;
+                Ddl.Items.Add(invert);
+                Ddl.Items.Add(new Separator());
+            }
+
             var configuration = GetSelectedDeviceConfiguration();
             if (configuration?.Device != null && DeviceBinding?.Profile?.Context != null)
             {
@@ -344,10 +358,13 @@ namespace HidWizards.UCR.Views.Controls
             var dpadGrid = new UniformGrid { Columns = 2 };
             var leftGrid = new UniformGrid { Columns = 2 };
             var rightGrid = new UniformGrid { Columns = 2 };
+            var dpadFooter = new StackPanel { Orientation = Orientation.Horizontal };
+            var leftFooter = new StackPanel { Orientation = Orientation.Horizontal };
+            var rightFooter = new StackPanel { Orientation = Orientation.Horizontal };
             foreach (var group in new[] {
-                new { Name = "D-PAD", Grid = dpadGrid },
-                new { Name = "LEFT STICK", Grid = leftGrid },
-                new { Name = "RIGHT STICK", Grid = rightGrid }
+                new { Name = "D-PAD", Grid = dpadGrid, Footer = dpadFooter },
+                new { Name = "LEFT STICK", Grid = leftGrid, Footer = leftFooter },
+                new { Name = "RIGHT STICK", Grid = rightGrid, Footer = rightFooter }
             })
             {
                 directionalRoot.Children.Add(new TextBlock
@@ -356,8 +373,8 @@ namespace HidWizards.UCR.Views.Controls
                     Foreground = Brushes.LightGray, Margin = new Thickness(8, 10, 0, 4)
                 });
                 directionalRoot.Children.Add(group.Grid);
+                directionalRoot.Children.Add(group.Footer);
             }
-            var axisGrid = new UniformGrid { Columns = 2 };
             var used = new HashSet<DeviceBindingNode>();
             var buttonOrder = new[] { "A", "B", "X", "Y", "LB", "RB", "LT", "RT",
                 "LS", "RS", "BK", "ST" };
@@ -398,7 +415,9 @@ namespace HidWizards.UCR.Views.Controls
                     AddOutputPickerChoice(dpadGrid, popup, config, entry.Node,
                         entry.Visual, "D-pad " + direction, "Button to Button", 0, false);
             }
-            AddFullDirectionalChoice(dpadGrid, popup, config, "D-pad");
+            AddFullDirectionalChoice(dpadFooter, popup, config, "D-pad");
+            AddDPadPairChoice(dpadFooter, popup, config, "X");
+            AddDPadPairChoice(dpadFooter, popup, config, "Y");
 
             // Each stick offers four *signed* directions from its X/Y axes.
             // Full stick is one four-way destination, not four unrelated bindings.
@@ -419,19 +438,17 @@ namespace HidWizards.UCR.Views.Controls
                         entry.Visual, stick + " stick " + direction,
                         "Button to Axis", sign, false);
                 }
-                AddFullDirectionalChoice(stickGrid, popup, config, stick + " stick");
-            }
-
-            foreach (var entry in options.Where(item =>
-                item.Node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Range &&
-                item.Visual.ControlKind != ControlVisualKind.Trigger))
-            {
-                var mapping = FindAncestor<MappingCardControl>(this)?.DataContext as MappingViewModel;
-                var analogueInput = mapping?.Mapping?.DeviceBindings.Any(input =>
-                    input.InputExpressionInputKind == 3) == true;
-                AddOutputPickerChoice(axisGrid, popup, config, entry.Node, entry.Visual,
-                    entry.Node.Title, analogueInput ? "Axis to Axis" : "Button to Axis",
-                    analogueInput ? 0 : 100, false);
+                var footer = stick == "Left" ? leftFooter : rightFooter;
+                AddFullDirectionalChoice(footer, popup, config, stick + " stick");
+                foreach (var component in new[] { "X", "Y" })
+                {
+                    var entry = options.FirstOrDefault(item =>
+                        item.Visual.ControlKind == ControlVisualKind.StickAxis &&
+                        string.Equals(item.Visual.ControlLabel, prefix + component,
+                            StringComparison.OrdinalIgnoreCase));
+                    if (entry != null)
+                        AddAxisComponentChoice(footer, popup, config, entry.Node, component);
+                }
             }
 
             var tabs = new TabControl
@@ -441,7 +458,6 @@ namespace HidWizards.UCR.Views.Controls
             };
             tabs.Items.Add(OutputPickerTab("Buttons", buttonGrid));
             tabs.Items.Add(OutputPickerTab("Directionals", directionalRoot));
-            tabs.Items.Add(OutputPickerTab("Axes", axisGrid));
             var root = new StackPanel();
             root.Children.Add(new TextBlock
             {
@@ -564,12 +580,82 @@ namespace HidWizards.UCR.Views.Controls
             return true;
         }
 
+        private void AddAxisComponentChoice(Panel panel, Popup popup, DeviceConfiguration device,
+            DeviceBindingNode node, string axis)
+        {
+            var button = new Button
+            {
+                Content = axis, Width = 101, Height = 49, Margin = new Thickness(2),
+                Foreground = Brushes.White, Background = new SolidColorBrush(Color.FromRgb(42, 42, 42)),
+                BorderBrush = Brushes.DimGray, ToolTip = "Choose " + node.Title + " axis"
+            };
+            button.Click += (sender, args) =>
+            {
+                var mapping = FindAncestor<MappingCardControl>(this)?.DataContext as MappingViewModel;
+                var continuous = mapping?.Mapping?.DeviceBindings.Any(input =>
+                    input.InputExpressionInputKind == 3) == true;
+                if (ApplyTypedOutput(device.Guid, node.DeviceBindingInfo,
+                    continuous ? "Axis to Axis" : "Button to Axis", continuous ? 0 : 100, false))
+                    popup.IsOpen = false;
+            };
+            panel.Children.Add(button);
+        }
+
+        private void AddDPadPairChoice(Panel panel, Popup popup, DeviceConfiguration device, string axis)
+        {
+            var button = new Button
+            {
+                Content = axis, Width = 101, Height = 49, Margin = new Thickness(2),
+                Foreground = Brushes.White, Background = new SolidColorBrush(Color.FromRgb(42, 42, 42)),
+                BorderBrush = Brushes.DimGray,
+                ToolTip = axis == "X" ? "D-pad horizontal (Left and Right)" :
+                    "D-pad vertical (Up and Down)"
+            };
+            button.Click += (sender, args) =>
+            {
+                var mapping = FindAncestor<MappingCardControl>(this)?.DataContext as MappingViewModel;
+                if (mapping == null || !mapping.ButtonsEnabled || mapping.Plugins.Count != 1) return;
+                var choice = mapping.GetFourWayOutputChoices().FirstOrDefault(option =>
+                    option.DeviceConfigurationGuid == device.Guid &&
+                    option.Destination == "D-pad");
+                if (choice == null || !ApplyFullDirectionalOutput(mapping, choice)) return;
+                // A D-pad is digital; X means horizontal direction pair,
+                // Y means vertical direction pair. The opposite two direction
+                // slots are left unbound.
+                for (var i = 0; i < mapping.Mapping.DeviceBindings.Count; i++)
+                    if (axis == "X" ? i < 2 : i >= 2)
+                        mapping.Mapping.DeviceBindings[i].ClearBinding();
+                mapping.RefreshCollapsedSummary();
+                popup.IsOpen = false;
+            };
+            panel.Children.Add(button);
+        }
+
+        private bool ApplyFullDirectionalOutput(MappingViewModel mapping, FourWayOutputChoice choice)
+        {
+            if (mapping?.ButtonsEnabled != true || mapping.Plugins.Count != 1) return false;
+            var axis = mapping.Plugins[0];
+            if (!axis.IsFourButtonAxis)
+            {
+                if (!axis.IsAxisButtonMapping)
+                {
+                    var standard = mapping.GetCompatiblePluginOptions().FirstOrDefault(option =>
+                        string.Equals(option.Name, "Button to Axis", StringComparison.OrdinalIgnoreCase));
+                    if (standard == null || !mapping.ChangeOutputType(axis, standard.Plugin)) return false;
+                    axis = mapping.Plugins[0];
+                }
+                if (!mapping.ChangeAxisInputMode(axis, 4)) return false;
+                axis = mapping.Plugins[0];
+            }
+            return mapping.ApplyFourWayOutput(axis, choice);
+        }
+
         private void AddFullDirectionalChoice(Panel panel, Popup popup,
             DeviceConfiguration config, string destination)
         {
             var button = new Button
             {
-                Content = "Full " + destination, Width = 212, Height = 49,
+                Content = "Full " + destination, Width = 208, Height = 49,
                 Margin = new Thickness(2),
                 Background = new SolidColorBrush(Color.FromRgb(42, 42, 42)),
                 Foreground = Brushes.White, BorderBrush = Brushes.DimGray,
@@ -584,23 +670,7 @@ namespace HidWizards.UCR.Views.Controls
                     string.Equals(option.Destination, destination, StringComparison.OrdinalIgnoreCase));
                 if (choice == null) return;
 
-                var axis = mapping.Plugins[0];
-                if (!axis.IsFourButtonAxis)
-                {
-                    // Selecting a full destination is the user's instruction to switch
-                    // this mapping to four-way input. Apply it immediately, without a
-                    // blocking confirmation dialog.
-                    if (!axis.IsAxisButtonMapping)
-                    {
-                        var standard = mapping.GetCompatiblePluginOptions().FirstOrDefault(option =>
-                            string.Equals(option.Name, "Button to Axis", StringComparison.OrdinalIgnoreCase));
-                        if (standard == null || !mapping.ChangeOutputType(axis, standard.Plugin)) return;
-                        axis = mapping.Plugins[0];
-                    }
-                    if (!mapping.ChangeAxisInputMode(axis, 4)) return;
-                    axis = mapping.Plugins[0];
-                }
-                if (mapping.ApplyFourWayOutput(axis, choice)) popup.IsOpen = false;
+                if (ApplyFullDirectionalOutput(mapping, choice)) popup.IsOpen = false;
             };
             panel.Children.Add(button);
         }
