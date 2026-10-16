@@ -336,7 +336,26 @@ namespace HidWizards.UCR.Tests.UiTests
             try
             {
                 var mapping = profileVm.MappingsList.Single();
+                // The user changes the output while this card is already
+                // expanded. Verify the editor swaps LIVE, without reopening.
+                var card = new MappingCardControl
+                {
+                    InspectorMode = true, InlineWorkspaceMode = true, DataContext = mapping
+                };
+                var size = new Size(1150, 850);
+                card.Measure(size);
+                card.Arrange(new Rect(0, 0, 1150, 850));
+                card.UpdateLayout();
+                var body = card.FindName("ExpandedBodyHost") as ContentControl;
+                Assert.That(body, Is.Not.Null);
+                Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible));
+                Assert.That(FindVisualChildren<DeviceBindingControl>(body), Is.Not.Empty,
+                    "Fixture must begin in the legacy one-axis state.");
+
                 Assert.That(mapping.ChangeAxisInputMode(mapping.Plugins.Single(), 4), Is.True);
+                card.Measure(size);
+                card.Arrange(new Rect(0, 0, 1150, 850));
+                card.UpdateLayout();
                 Assert.That(mapping.DeviceBindings.Count, Is.EqualTo(4));
                 Assert.That(mapping.CollapsedInputRows.Count, Is.EqualTo(1),
                     "Four independent directions must not wrap as three glyphs plus one.");
@@ -345,17 +364,6 @@ namespace HidWizards.UCR.Tests.UiTests
                     .All(visual => visual.JoinSymbol == "·"), Is.True,
                     "Independent directional inputs must not be labelled as an AND chord.");
 
-                var card = new MappingCardControl
-                {
-                    InspectorMode = true, InlineWorkspaceMode = true, DataContext = mapping
-                };
-                card.Measure(new Size(1150, 850));
-                card.Arrange(new Rect(0, 0, 1150, 850));
-                card.UpdateLayout();
-
-                var body = card.FindName("ExpandedBodyHost") as ContentControl;
-                Assert.That(body, Is.Not.Null);
-                Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible));
                 Assert.That(FindVisualChildren<CompactInputBindingControl>(body)
                         .Count(control => control.DeviceBinding?.DeviceIoType == DeviceIoType.Input),
                     Is.EqualTo(4), "Each direction must use the compact, directly bindable input editor.");
