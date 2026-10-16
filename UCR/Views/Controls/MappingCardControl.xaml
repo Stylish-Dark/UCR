@@ -34,6 +34,44 @@
             </Style.Triggers>
         </Style>
 
+        <!-- A compact toggle matching Block: inverted output is a binary
+             state, not a checkbox that consumes the binding button's width. -->
+        <Style x:Key="UcrOutputInvertSwitch" TargetType="{x:Type ToggleButton}">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ToggleButton}">
+                        <Grid Width="{TemplateBinding Width}" Height="{TemplateBinding Height}">
+                            <Border x:Name="Track" Background="#515151" BorderBrush="#737373"
+                                    BorderThickness="1" CornerRadius="11"/>
+                            <Ellipse x:Name="Thumb" Width="16" Height="16" Margin="3 0 0 0"
+                                     Fill="#EAEAEA" HorizontalAlignment="Left"
+                                     VerticalAlignment="Center"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Track" Property="Background"
+                                        Value="{DynamicResource PrimaryHueLightBrush}"/>
+                                <Setter TargetName="Track" Property="BorderBrush"
+                                        Value="{DynamicResource PrimaryHueLightBrush}"/>
+                                <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right"/>
+                                <Setter TargetName="Thumb" Property="Margin" Value="0 0 3 0"/>
+                                <Setter TargetName="Thumb" Property="Fill" Value="#FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Track" Property="BorderBrush" Value="#AAAAAA"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- A device badge is intentionally shown only when the mapping deviates from the profile's
              primary device, unless the user explicitly enables the Show all devices toggle. -->
         <DataTemplate x:Key="MappingBindingVisualTemplate">
@@ -280,7 +318,7 @@
                                 </Style.Triggers>
                             </Style>
                         </StackPanel.Style>
-                        <StackPanel Orientation="Horizontal" Margin="6 0 0 5">
+                        <StackPanel Orientation="Horizontal" Margin="6 0 0 5" Height="30">
                             <materialDesign:PackIcon Kind="ArrowCollapseLeft" Width="16" Height="16"
                                                      Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="INPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
@@ -744,7 +782,7 @@
                                 </Style.Triggers>
                             </Style>
                         </StackPanel.Style>
-                        <StackPanel Orientation="Horizontal" Margin="8 0 0 10">
+                        <StackPanel Orientation="Horizontal" Margin="6 0 0 5" Height="30">
                             <materialDesign:PackIcon Kind="ArrowCollapseRight" Width="16" Height="16"
                                                      Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="OUTPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
@@ -774,7 +812,8 @@
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <ItemsControl Grid.Column="1" ItemsSource="{Binding DeviceBindings}">
+                                            <ItemsControl Grid.Column="1" ItemsSource="{Binding DeviceBindings}"
+                                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
                                                 <ItemsControl.Style>
                                                     <Style TargetType="{x:Type ItemsControl}">
                                                         <Style.Triggers>
@@ -828,10 +867,16 @@
                                             </StackPanel>
                                             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
                                                         HorizontalAlignment="Right" Margin="7 0 0 0">
-                                                <CheckBox Content="Invert" IsChecked="{Binding QuickInvert, Mode=TwoWay}"
-                                                          Visibility="{Binding QuickInvertVisibility}" Foreground="#D8D8D8"
-                                                          VerticalAlignment="Center" Margin="0 0 12 0"
-                                                          ToolTip="Invert this output"/>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                                            Margin="0 0 8 0" Visibility="{Binding QuickInvertVisibility}">
+                                                    <TextBlock Text="Invert" Foreground="#D8D8D8"
+                                                               FontSize="12" VerticalAlignment="Center"
+                                                               Margin="0 0 7 0"/>
+                                                    <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
+                                                                  IsChecked="{Binding QuickInvert, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                  VerticalAlignment="Center"
+                                                                  ToolTip="Invert this output"/>
+                                                </StackPanel>
                                                 <Button Click="RemoveOutput_OnClick" IsEnabled="{Binding CanRemove}"
                                                         ToolTip="Remove this output" ToolTipService.ShowOnDisabled="True"
                                                         Style="{StaticResource UcrDeleteItemButton}"/>

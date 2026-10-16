@@ -321,6 +321,80 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void ExpandedButtonMappingUsesAvailableWidthAndAlignedControls()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Compact layout widths", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var mappingModel = profile.AddMapping("A");
+            profile.AddPlugin(mappingModel, new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+
+            var vm = new ProfileViewModel(profile);
+            try
+            {
+                var mapping = vm.MappingsList.Single();
+                var card = new MappingCardControl
+                {
+                    InspectorMode = true, InlineWorkspaceMode = true,
+                    DataContext = mapping
+                };
+                var size = new Size(1160, 850);
+                card.Measure(size);
+                card.Arrange(new Rect(new Point(0, 0), size));
+                card.UpdateLayout();
+
+                var body = card.FindName("ExpandedBodyHost") as ContentControl;
+                Assert.That(body, Is.Not.Null);
+                Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible));
+                var controls = FindVisualChildren<CompactInputBindingControl>(body).ToList();
+                var input = controls.Single(control =>
+                    control.DeviceBinding?.DeviceIoType == DeviceIoType.Input);
+                var output = controls.Single(control =>
+                    control.DeviceBinding?.DeviceIoType == DeviceIoType.Output);
+                var inputBind = input.FindName("BindButton") as Button;
+                var outputBind = output.FindName("BindButton") as Button;
+                Assert.That(inputBind, Is.Not.Null);
+                Assert.That(outputBind, Is.Not.Null);
+
+                Assert.That(inputBind.ActualWidth, Is.GreaterThan(150),
+                    "The input Bind action must receive flexible width rather than being squeezed.");
+                Assert.That(outputBind.ActualWidth, Is.GreaterThan(190),
+                    "Hidden output Block columns must not steal space from Choose output.");
+
+                var blockLabel = FindVisualChildren<TextBlock>(input)
+                    .Single(item => item.Text == "Block");
+                Assert.That(blockLabel.ActualWidth, Is.GreaterThan(24),
+                    "The Block label must display completely.");
+
+                var inputHeader = FindVisualChildren<TextBlock>(body)
+                    .First(item => item.Text == "INPUTS");
+                var outputHeader = FindVisualChildren<TextBlock>(body)
+                    .First(item => item.Text == "OUTPUTS");
+                var inputTop = inputHeader.TransformToAncestor(body).Transform(new Point()).Y;
+                var outputTop = outputHeader.TransformToAncestor(body).Transform(new Point()).Y;
+                Assert.That(Math.Abs(inputTop - outputTop), Is.LessThanOrEqualTo(4),
+                    "Input and output panel headers must share the same baseline.");
+
+                Assert.That(FindVisualChildren<CheckBox>(body)
+                    .Any(checkBox => Equals(checkBox.Content, "Invert")), Is.False,
+                    "Invert must not regress to a checkbox.");
+                var invert = FindVisualChildren<ToggleButton>(body)
+                    .Single(toggle => Equals(toggle.ToolTip, "Invert this output"));
+                Assert.That(invert.ActualWidth, Is.GreaterThanOrEqualTo(38));
+                invert.IsChecked = true;
+                Assert.That(((HidWizards.UCR.Plugins.Remapper.ButtonToButton)
+                    mapping.Plugins.Single().Plugin).Invert, Is.True,
+                    "The inline switch must operate the actual output inversion property.");
+            }
+            finally
+            {
+                vm.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void FourWayMappingUsesCompactInputEditorsAndOneOutputSelector()
         {
             EnsureApplicationResources();
