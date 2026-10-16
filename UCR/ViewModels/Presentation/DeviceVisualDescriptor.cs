@@ -853,6 +853,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
         private static string BuildSymbolText(DeviceVisualKind kind)
         {
             if (kind == DeviceVisualKind.Keyboard) return "\uE001";
+            if (kind == DeviceVisualKind.Mouse) return "\uE006";
             if (IsXbox(kind)) return "\uE002";
             if (IsPlayStation(kind)) return "\uE003";
             if (kind == DeviceVisualKind.ArcadeStick) return "\uE005";

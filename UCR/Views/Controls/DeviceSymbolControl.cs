@@ -70,6 +70,28 @@ namespace HidWizards.UCR.Views.Controls
 
             if (string.IsNullOrEmpty(SymbolText) || ActualWidth <= 0 || ActualHeight <= 0) return;
 
+            if (SymbolText == "\uE006")
+            {
+                // The bundled symbol font only contains U+E001..U+E005. Draw the
+                // mouse directly so it has the same crisp monochrome device look.
+                var brush = Foreground ?? Brushes.White;
+                var size = Math.Min(ActualWidth / 25.0, ActualHeight / 32.0);
+                var width = 21.0 * size;
+                var height = 30.0 * size;
+                var x = (ActualWidth - width) / 2;
+                var y = (ActualHeight - height) / 2;
+                var stroke = new Pen(brush, Math.Max(1.0, 1.6 * size));
+                drawingContext.DrawRoundedRectangle(null, stroke,
+                    new Rect(x, y, width, height), 9 * size, 9 * size);
+                drawingContext.DrawLine(stroke,
+                    new Point(x + width / 2, y + size),
+                    new Point(x + width / 2, y + 12 * size));
+                drawingContext.DrawLine(stroke,
+                    new Point(x + size, y + 12 * size),
+                    new Point(x + width - size, y + 12 * size));
+                return;
+            }
+
             try
             {
                 var typeface = GetTypeface();
