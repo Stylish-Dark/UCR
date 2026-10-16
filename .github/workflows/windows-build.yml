@@ -176,9 +176,12 @@ jobs:
           $tests = ".\\UCR.Tests\\bin\\Release\\UCR.Tests.dll"
           # WPF Application.Current owns Dispatcher-bound theme resources. The
           # device-row materialization test must run in a separate NUnit process.
-          & $runner $tests --noresult --workers=0 --where "test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton"
+          & $runner $tests --noresult --workers=0 --where "test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton && test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.FourWayMappingUsesCompactInputEditorsAndOneOutputSelector"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $runner $tests --noresult --workers=0 --where "test == HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Isolate the rendered four-way editor in a fresh WPF STA process.
+          & $runner $tests --noresult --workers=0 --where "test == HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.FourWayMappingUsesCompactInputEditorsAndOneOutputSelector"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Verify grouped-input XAML resources
