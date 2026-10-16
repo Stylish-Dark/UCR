@@ -587,11 +587,9 @@ namespace HidWizards.UCR.Views.Controls
                 var axis = mapping.Plugins[0];
                 if (!axis.IsFourButtonAxis)
                 {
-                    var confirm = HidWizards.UCR.Utilities.DarkMessageBox.Show(
-                        "A full directional output requires four independent inputs. " +
-                        "This will replace this mapping's existing input expression and bindings. Continue?",
-                        "Convert to four-way mapping?", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-                    if (confirm != MessageBoxResult.Yes) return;
+                    // Selecting a full destination is the user's instruction to switch
+                    // this mapping to four-way input. Apply it immediately, without a
+                    // blocking confirmation dialog.
                     if (!axis.IsAxisButtonMapping)
                     {
                         var standard = mapping.GetCompatiblePluginOptions().FirstOrDefault(option =>
