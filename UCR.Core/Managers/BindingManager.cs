@@ -4,7 +4,6 @@ using System.Linq;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Threading;
-using System.Windows.Input;
 using HidWizards.IOWrapper.DataTransferObjects;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Models;
@@ -65,7 +64,6 @@ namespace HidWizards.UCR.Core.Managers
             _deviceConfigurationList = new List<DeviceConfiguration>();
             _bindModeRuntimeDevices = new Dictionary<Guid, Device>();
             _dispatcher = Dispatcher.CurrentDispatcher;
-            InputManager.Current.PreProcessInput += OnPreProcessInput;
             Logger.Debug("Binding manager initialized");
         }
 
@@ -198,16 +196,6 @@ namespace HidWizards.UCR.Core.Managers
                 if (!bindmodeActive || (target != null && !ReferenceEquals(_deviceBinding, target))) return;
             }
             EndBindMode();
-        }
-
-        private void OnPreProcessInput(object sender, PreProcessInputEventArgs e)
-        {
-            var key = e.StagingItem.Input as KeyEventArgs;
-            if (key == null || key.RoutedEvent != Keyboard.PreviewKeyDownEvent ||
-                (key.Key != Key.Escape && key.SystemKey != Key.Escape) ||
-                !IsBindModeActive) return;
-            CancelBindMode();
-            key.Handled = true;
         }
 
         private void EndBindMode()
@@ -461,7 +449,6 @@ namespace HidWizards.UCR.Core.Managers
 
         public void Dispose()
         {
-            InputManager.Current.PreProcessInput -= OnPreProcessInput;
             EndBindMode();
         }
 
