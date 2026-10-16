@@ -941,6 +941,7 @@
                                                                                                 <Button Width="62" Height="44" Margin="2 1" Padding="0" Background="Transparent"
                                                                                                       BorderThickness="0" Cursor="Hand" Focusable="True"
                                                                                                       ToolTip="{Binding ToolTip}" Click="QuickBindWorkspaceInput_OnClick">
+                                                                                                    <Grid>
                                                                                                     <controls:ControlGlyphControl Kind="{Binding ControlKind}"
                                                                                                                                   AccentBrush="{Binding ControlBrush}"
                                                                                                                                   Label="{Binding ControlLabel}"
@@ -960,6 +961,7 @@
                                                                                                             </Style>
                                                                                                         </Line.Style>
                                                                                                     </Line>
+                                                                                                </Grid>
                                                                                                 </Button>
                                                                                             </StackPanel>
                                                                                         </DataTemplate>
