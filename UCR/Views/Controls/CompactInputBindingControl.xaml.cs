@@ -523,11 +523,11 @@ namespace HidWizards.UCR.Views.Controls
             var mapping = FindAncestor<MappingCardControl>(this)?.DataContext as MappingViewModel;
             if (mapping == null || !mapping.ButtonsEnabled) return false;
             var oldPlugin = mapping.Plugins.FirstOrDefault(plugin =>
-                plugin.DeviceBindings.Any(binding => binding.DeviceBinding?.Guid == DeviceBinding?.Guid));
+                plugin.DeviceBindings.Any(candidate => candidate.DeviceBinding?.Guid == DeviceBinding?.Guid));
             if (oldPlugin == null) return false;
             var pluginIndex = mapping.Plugins.IndexOf(oldPlugin);
-            var outputIndex = oldPlugin.DeviceBindings.ToList().FindIndex(binding =>
-                binding.DeviceBinding?.Guid == DeviceBinding.Guid);
+            var outputIndex = oldPlugin.DeviceBindings.ToList().FindIndex(candidate =>
+                candidate.DeviceBinding?.Guid == DeviceBinding.Guid);
             var target = mapping.GetCompatiblePluginOptions().FirstOrDefault(option =>
                 string.Equals(option.Name, pluginName, StringComparison.OrdinalIgnoreCase));
             if (target == null)
