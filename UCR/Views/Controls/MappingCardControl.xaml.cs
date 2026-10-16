@@ -705,33 +705,28 @@ namespace HidWizards.UCR.Views.Controls
             var button = sender as Button;
             var axis = button?.DataContext as PluginViewModel;
             if (axis?.IsFourButtonAxis != true || axis.MappingViewModel?.ButtonsEnabled != true) return;
-            var selectedGuid = axis.SelectedFourWayOutputDeviceGuid;
-            var options = axis.MappingViewModel.GetFourWayOutputChoices()
-                .Where(option => option.DeviceConfigurationGuid == selectedGuid).ToList();
+
+            // The output device and whole D-pad/stick destination are one choice.
+            // Do not require a second device dropdown or another submenu click.
+            var options = axis.MappingViewModel.GetFourWayOutputChoices();
             var menu = CreateDarkContextMenu(button);
             menu.Placement = PlacementMode.Bottom;
-            foreach (var group in options.GroupBy(option => option.DeviceTitle))
+            var hasMultipleDevices = options.Select(option => option.DeviceConfigurationGuid)
+                .Distinct().Count() > 1;
+            foreach (var option in options)
             {
-                var deviceItem = new MenuItem
+                var chosen = option;
+                var item = new MenuItem
                 {
-                    Header = group.Key,
+                    Header = hasMultipleDevices
+                        ? option.Destination + "  —  " + option.DeviceTitle
+                        : option.Destination,
                     Foreground = Brushes.White,
-                    Background = Brushes.Transparent
+                    Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 12, 6)
                 };
-                foreach (var option in group)
-                {
-                    var chosen = option;
-                    var item = new MenuItem
-                    {
-                        Header = option.Destination,
-                        Foreground = Brushes.White,
-                        Background = Brushes.Transparent,
-                        Padding = new Thickness(10, 6, 12, 6)
-                    };
-                    item.Click += (s, args) => axis.MappingViewModel.ApplyFourWayOutput(axis, chosen);
-                    deviceItem.Items.Add(item);
-                }
-                menu.Items.Add(deviceItem);
+                item.Click += (s, args) => axis.MappingViewModel.ApplyFourWayOutput(axis, chosen);
+                menu.Items.Add(item);
             }
             if (options.Count == 0) menu.Items.Add(new MenuItem
             {
