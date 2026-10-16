@@ -141,6 +141,100 @@
         </DataTemplate>
         <!-- One input editor per binding. WPF would instantiate BOTH sets of
              controls when a hidden legacy ItemsControl sat behind a compact one. -->
+        <DataTemplate x:Key="FourWayCaptureTemplate">
+            <Button MinWidth="112" Height="46" Padding="5 3" Margin="3 2"
+                    Click="BindDirectionalSlot_OnClick"
+                    IsEnabled="{Binding CanBindCurrentDevice}" Cursor="Hand"
+                    ToolTip="Capture this direction"
+                    Style="{StaticResource UcrAccentOutlineButton}">
+                <TextBlock Text="{Binding CompactBindButtonText}" FontSize="12" FontWeight="SemiBold"
+                           Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"
+                           TextAlignment="Center" VerticalAlignment="Center" MaxWidth="116"/>
+            </Button>
+        </DataTemplate>
+        <!-- Four physical inputs presented as one directional control. -->
+        <DataTemplate x:Key="FourWayCompassTemplate">
+            <Border Background="#292929" BorderBrush="#555555" BorderThickness="1"
+                    CornerRadius="4" Padding="9 8" Margin="3 2 3 5">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="FOUR-WAY INPUT" Foreground="#C9C9C9" FontSize="11"
+                               FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0 0 0 6"/>
+                    <Grid HorizontalAlignment="Center">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="136"/>
+                            <ColumnDefinition Width="136"/>
+                            <ColumnDefinition Width="136"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Row="0" Grid.Column="1" HorizontalAlignment="Center">
+                            <TextBlock Text="↑  UP" Foreground="#CDCDCD" FontWeight="SemiBold"
+                                       HorizontalAlignment="Center" FontSize="11"/>
+                            <ContentControl Content="{Binding DirectionalInputs[0]}"
+                                            ContentTemplate="{StaticResource FourWayCaptureTemplate}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="0" VerticalAlignment="Center"
+                                    HorizontalAlignment="Center">
+                            <TextBlock Text="←  LEFT" Foreground="#CDCDCD" FontWeight="SemiBold"
+                                       HorizontalAlignment="Center" FontSize="11"/>
+                            <ContentControl Content="{Binding DirectionalInputs[2]}"
+                                            ContentTemplate="{StaticResource FourWayCaptureTemplate}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="DEVICE" Foreground="#BBBBBB" FontSize="10"
+                                       HorizontalAlignment="Center" Margin="0 0 0 4"/>
+                            <ComboBox ItemsSource="{Binding DirectionalPrimary.Devices}"
+                                      SelectedItem="{Binding DirectionalPrimary.SelectedDevice, Mode=OneWay}"
+                                      SelectionChanged="DirectionalDevice_OnSelectionChanged"
+                                      IsEnabled="{Binding DirectionalPrimary.BindingEnabled}"
+                                      DisplayMemberPath="Title" Width="126" Height="39" MinWidth="0"
+                                      HorizontalAlignment="Center"
+                                      ToolTip="Choose the physical device for all four directions"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="2" VerticalAlignment="Center"
+                                    HorizontalAlignment="Center">
+                            <TextBlock Text="RIGHT  →" Foreground="#CDCDCD" FontWeight="SemiBold"
+                                       HorizontalAlignment="Center" FontSize="11"/>
+                            <ContentControl Content="{Binding DirectionalInputs[3]}"
+                                            ContentTemplate="{StaticResource FourWayCaptureTemplate}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="2" Grid.Column="1" HorizontalAlignment="Center">
+                            <TextBlock Text="↓  DOWN" Foreground="#CDCDCD" FontWeight="SemiBold"
+                                       HorizontalAlignment="Center" FontSize="11"/>
+                            <ContentControl Content="{Binding DirectionalInputs[1]}"
+                                            ContentTemplate="{StaticResource FourWayCaptureTemplate}"/>
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0 7 0 0">
+                        <TextBlock Text="Block original inputs" Foreground="#BABABA"
+                                   FontSize="11" VerticalAlignment="Center" Margin="0 0 7 0"/>
+                        <ToggleButton Width="38" Height="21"
+                                      IsChecked="{Binding DirectionalBlockEnabled, Mode=OneWay}"
+                                      Click="DirectionalBlock_OnClick"
+                                      Style="{StaticResource CompactBlockSwitch}"
+                                      ToolTip="Block the original physical directions where supported"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+        <DataTemplate x:Key="FourWayMappingInputTemplate">
+            <ContentControl Content="{Binding FourWayInputGroup}"
+                            ContentTemplate="{StaticResource FourWayCompassTemplate}"/>
+        </DataTemplate>
+        <DataTemplate x:Key="LegacyMappingInputsTemplate">
+            <ItemsControl ItemsSource="{Binding DeviceBindings}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <local:DeviceBindingControl DeviceBinding="{Binding DeviceBinding}"
+                                                    Label="{Binding DeviceBindingName}"
+                                                    Category="{Binding DeviceBindingCategory}"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </DataTemplate>
         <DataTemplate x:Key="LegacyMappingInputEditorTemplate">
             <local:DeviceBindingControl DataContext="{Binding}" DeviceBinding="{Binding DeviceBinding}"
                                         Label="{Binding DeviceBindingName}" Category="{Binding DeviceBindingCategory}"/>
@@ -205,24 +299,22 @@
                                 </Button.Style>
                             </Button>
                         </StackPanel>
-                    <!-- Do not duplicate the editor tree: switching to a four-way
-                         mapping replaces the single input ItemTemplate in place. -->
-                    <ItemsControl ItemsSource="{Binding DeviceBindings}" HorizontalContentAlignment="Stretch">
-                        <ItemsControl.Style>
-                            <Style TargetType="{x:Type ItemsControl}">
+                    <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch">
+                        <ContentControl.Style>
+                            <Style TargetType="{x:Type ContentControl}">
                                 <Setter Property="Visibility" Value="Visible"/>
-                                <Setter Property="ItemTemplate" Value="{StaticResource LegacyMappingInputEditorTemplate}"/>
+                                <Setter Property="ContentTemplate" Value="{StaticResource LegacyMappingInputsTemplate}"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding SupportsNativeInputExpression}" Value="True">
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding Plugins[0].IsFourButtonAxis}" Value="True">
-                                        <Setter Property="ItemTemplate" Value="{StaticResource CompactFourWayInputEditorTemplate}"/>
+                                        <Setter Property="ContentTemplate" Value="{StaticResource FourWayMappingInputTemplate}"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </ItemsControl.Style>
-                    </ItemsControl>
+                        </ContentControl.Style>
+                    </ContentControl>
 
                     <StackPanel DataContext="{Binding Plugins[0]}">
                                         <!-- Input mode belongs with input binding, never in output selection. -->
@@ -349,7 +441,7 @@
                                           <StackPanel>
                                         <!-- One logical directional control, with two or four
                                              independent capture slots and shared action controls. -->
-                                        <Border Visibility="{Binding DirectionalVisibility}" Margin="0 0 0 5"
+                                        <Border Visibility="{Binding DirectionalPairVisibility}" Margin="0 0 0 5"
                                                 Background="#2B2B2B" BorderBrush="#505050"
                                                 BorderThickness="1" CornerRadius="3" Padding="6">
                                             <StackPanel>
@@ -493,12 +585,7 @@
                                                                           Click="DirectionalBlock_OnClick" Width="38" Height="21"
                                                                           ToolTip="Block the original physical inputs for both directions"/>
                                                         </StackPanel>
-                                                        <ToggleButton Content="Negate" Width="74" Height="30" Margin="0 0 8 0"
-                                                                      IsChecked="{Binding DirectionalPrimary.InputExpressionNegated, Mode=OneWay}"
-                                                                      Click="DirectionalNot_OnClick"
-                                                                      Foreground="White" Background="#343434"
-                                                                      BorderBrush="#626262" BorderThickness="1"
-                                                                      ToolTip="Negate this complete directional control"/>
+                                                        
                                                         <Button Click="RemoveDirectionalUnit_OnClick" Width="28" Height="30"
                                                                 Content="×" FontSize="22" Foreground="#FF6068"
                                                                 ToolTip="Remove this directional input unit"/>
@@ -506,6 +593,11 @@
                                                 </Grid>
                                             </StackPanel>
                                         </Border>
+                                                                                <!-- The four-way version is a compass; the legacy
+                                             two-direction control remains intact above. -->
+                                        <ContentControl Content="{Binding}"
+                                                        ContentTemplate="{StaticResource FourWayCompassTemplate}"
+                                                        Visibility="{Binding FourWayVisibility}"/>
                                         <ItemsControl ItemsSource="{Binding OrdinaryInputs}">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate><StackPanel Orientation="Vertical"/></ItemsPanelTemplate>
@@ -544,12 +636,12 @@
                                                                                                 HorizontalAlignment="Stretch"/>
                                                             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
                                                                         VerticalAlignment="Center" Margin="4 0 0 0">
-                                                                <ToggleButton Content="Negate" Width="76" Height="30" Margin="0 0 8 0"
+                                                                <ToggleButton Content="NOT" Width="54" Height="30" Margin="0 0 8 0"
                                                                               IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
                                                                               Click="InputNegated_OnClick"
                                                                               Foreground="#FFFFFF" Background="#343434"
                                                                               BorderBrush="#626262" BorderThickness="1"
-                                                                              ToolTip="Negate this input condition">
+                                                                              ToolTip="NOT: negate this Boolean input condition">
                                                                     <ToggleButton.Style>
                                                                         <Style TargetType="ToggleButton">
                                                                             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -572,6 +664,17 @@
                                                                                     </ControlTemplate>
                                                                                 </Setter.Value>
                                                                             </Setter>
+                                                                                                                                                    <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding InputExpressionInputKind}" Value="1">
+                                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding InputExpressionInputKind}" Value="2">
+                                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                </DataTrigger>
+                                                                                <DataTrigger Binding="{Binding InputExpressionInputKind}" Value="3">
+                                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
                                                                         </Style>
                                                                     </ToggleButton.Style>
                                                                 </ToggleButton>

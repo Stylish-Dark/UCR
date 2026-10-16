@@ -364,22 +364,28 @@ namespace HidWizards.UCR.Tests.UiTests
                     .All(visual => visual.JoinSymbol == "·"), Is.True,
                     "Independent directional inputs must not be labelled as an AND chord.");
 
+                // The four channels are one compass-shaped binding, NOT four
+                // vertically stacked input editors. Each arm remains clickable.
                 Assert.That(FindVisualChildren<CompactInputBindingControl>(body)
-                        .Count(control => control.DeviceBinding?.DeviceIoType == DeviceIoType.Input),
-                    Is.EqualTo(4), "Each direction must use the compact, directly bindable input editor.");
+                    .Count(control => control.DeviceBinding?.DeviceIoType == DeviceIoType.Input),
+                    Is.EqualTo(0), "Four-way input must not use four full-size input rows.");
                 Assert.That(FindVisualChildren<DeviceBindingControl>(body), Is.Empty,
-                    "The four-way card must not construct any legacy input editors.");
-                var fourWayInputLists = FindVisualChildren<ItemsControl>(body)
-                    .Where(items => ReferenceEquals(items.ItemsSource, mapping.DeviceBindings)).ToList();
-                Assert.That(fourWayInputLists.Count, Is.EqualTo(1),
-                    "Four-way input editing must use exactly one templated ItemsControl.");
-                Assert.That(fourWayInputLists[0].Visibility, Is.EqualTo(Visibility.Visible));
-
+                    "Legacy directional input controls must not be constructed.");
+                var compassButtons = FindVisualChildren<Button>(body)
+                    .Where(button => Equals(button.ToolTip, "Capture this direction")).ToList();
+                Assert.That(compassButtons.Count, Is.EqualTo(4),
+                    "One compass must contain four individually clickable direction bindings.");
+                var orderedNames = compassButtons.Select(button =>
+                    (button.DataContext as DeviceBindingViewModel)?.DeviceBindingName).ToList();
+                CollectionAssert.AreEquivalent(new[] { "Up", "Down", "Left", "Right" }, orderedNames);
+                Assert.That(FindVisualChildren<ComboBox>(body).Count(combo =>
+                    Equals(combo.ToolTip, "Choose the physical device for all four directions")),
+                    Is.EqualTo(1), "All four directions must share one central device selector.");
                 var labelNames = FindVisualChildren<TextBlock>(body).Select(label => label.Text).ToArray();
-                Assert.That(labelNames, Does.Contain("Up"));
-                Assert.That(labelNames, Does.Contain("Down"));
-                Assert.That(labelNames, Does.Contain("Left"));
-                Assert.That(labelNames, Does.Contain("Right"));
+                Assert.That(labelNames, Does.Contain("↑  UP"));
+                Assert.That(labelNames, Does.Contain("↓  DOWN"));
+                Assert.That(labelNames, Does.Contain("←  LEFT"));
+                Assert.That(labelNames, Does.Contain("RIGHT  →"));
                 Assert.That(FindVisualChildren<Button>(body)
                     .Count(button => Equals(button.ToolTip, "Choose D-pad, left stick or right stick")),
                     Is.EqualTo(1), "The four-way output needs one selector, not a device ComboBox and button.");

@@ -69,14 +69,45 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public int GroupIndex { get; }
         public ObservableCollection<DeviceBindingViewModel> Inputs { get; }
         public Visibility OrLabelVisibility => GroupIndex > 0 ? Visibility.Visible : Visibility.Collapsed;
-        public ObservableCollection<DeviceBindingViewModel> DirectionalInputs =>
-            new ObservableCollection<DeviceBindingViewModel>(Inputs.Where(b => b.DeviceBinding.InputDirectionSlot > 0)
-                .OrderBy(b => b.DeviceBinding.InputDirectionSlot));
+        private readonly bool _positionalFourWay;
+        public ObservableCollection<DeviceBindingViewModel> DirectionalInputs
+        {
+            get
+            {
+                if (_positionalFourWay)
+                    return new ObservableCollection<DeviceBindingViewModel>(Inputs.Take(4));
+                var slots = Inputs.Where(b => b.DeviceBinding.InputDirectionSlot > 0).ToList();
+                if (slots.Count == 4)
+                {
+                    // Native input expression slots are X-/X+/Y-/Y+, whereas
+                    // the ButtonsToAxes plugin order is Up/Down/Left/Right.
+                    // Expose both as Up/Down/Left/Right to the ONE compass.
+                    return new ObservableCollection<DeviceBindingViewModel>(slots.OrderBy(b =>
+                    {
+                        switch (b.DeviceBinding.InputDirectionSlot)
+                        {
+                            case 3: return 0; // Up
+                            case 4: return 1; // Down
+                            case 1: return 2; // Left
+                            case 2: return 3; // Right
+                            default: return 4;
+                        }
+                    }));
+                }
+                return new ObservableCollection<DeviceBindingViewModel>(
+                    slots.OrderBy(b => b.DeviceBinding.InputDirectionSlot));
+            }
+        }
         public ObservableCollection<DeviceBindingViewModel> OrdinaryInputs =>
-            new ObservableCollection<DeviceBindingViewModel>(Inputs.Where(b => b.DeviceBinding.InputDirectionSlot == 0));
+            new ObservableCollection<DeviceBindingViewModel>(_positionalFourWay
+                ? Enumerable.Empty<DeviceBindingViewModel>()
+                : Inputs.Where(b => b.DeviceBinding.InputDirectionSlot == 0));
         public DeviceBindingViewModel DirectionalPrimary => DirectionalInputs.FirstOrDefault();
         public bool DirectionalBlockEnabled => DirectionalInputs.Any(input => input.DeviceBinding.Block);
         public Visibility DirectionalVisibility => DirectionalPrimary == null ? Visibility.Collapsed : Visibility.Visible;
+        public Visibility DirectionalPairVisibility =>
+            DirectionalPrimary != null && !IsFourWay ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility FourWayVisibility => IsFourWay ? Visibility.Visible : Visibility.Collapsed;
         public bool HasDirectionalInputs => DirectionalPrimary != null;
         public bool IsFourWay => DirectionalInputs.Count == 4;
         public int DirectionalColumns => IsFourWay ? 4 : 2;
@@ -84,9 +115,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public bool CanRemoveCondition { get; }
 
-        public InputConditionViewModel(int groupIndex, IEnumerable<DeviceBindingViewModel> inputs, bool canRemoveCondition)
+        public InputConditionViewModel(int groupIndex, IEnumerable<DeviceBindingViewModel> inputs,
+            bool canRemoveCondition, bool positionalFourWay = false)
         {
             GroupIndex = groupIndex;
+            _positionalFourWay = positionalFourWay;
             Inputs = new ObservableCollection<DeviceBindingViewModel>(inputs ?? Enumerable.Empty<DeviceBindingViewModel>());
             CanRemoveCondition = canRemoveCondition;
         }
@@ -487,6 +520,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             RefreshInputExpressionPresentation();
         }
 
+        // A four-way plugin has four physical channels but exactly one logical
+        // input unit in the inspector. Both native-expression and legacy plugin
+        // routes consume the same group/compass editor.
+        public InputConditionViewModel FourWayInputGroup =>
+            Plugins?.Count == 1 && Plugins[0].IsFourButtonAxis && DeviceBindings?.Count == 4
+                ? new InputConditionViewModel(0, DeviceBindings, false, positionalFourWay: true) : null;
+
         public bool HasAxisOutput => Plugins != null &&
             Plugins.Any(p => string.Equals(p.OutputType, "Axis", StringComparison.OrdinalIgnoreCase));
         public Visibility DirectionalPresetsVisibility => HasAxisOutput ? Visibility.Visible : Visibility.Collapsed;
@@ -757,6 +797,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
 
             RebuildInputConditions();
+            if (Plugins?.Count == 1 && Plugins[0].IsFourButtonAxis)
+                DeviceBindings.FirstOrDefault()?.EnsureDeviceListLoaded();
+            OnPropertyChanged(nameof(FourWayInputGroup));
             OnPropertyChanged(nameof(SupportsNativeInputExpression));
             OnPropertyChanged(nameof(UsesInputExpression));
             OnPropertyChanged(nameof(InputLogicSummary));

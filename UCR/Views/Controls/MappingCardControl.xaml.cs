@@ -482,9 +482,24 @@ namespace HidWizards.UCR.Views.Controls
         private void DirectionalBlock_OnClick(object sender, RoutedEventArgs e)
         {
             var group = (sender as FrameworkElement)?.DataContext as InputConditionViewModel;
-            if (group?.DirectionalPrimary == null) return;
-            (DataContext as MappingViewModel)?.SetDirectionalBlocked(group.DirectionalPrimary,
-                (sender as ToggleButton)?.IsChecked == true);
+            var mapping = DataContext as MappingViewModel;
+            if (group?.DirectionalPrimary == null || mapping?.ButtonsEnabled != true) return;
+            var enabled = (sender as ToggleButton)?.IsChecked == true;
+            if (group.DirectionalPrimary.DeviceBinding.InputDirectionSlot > 0)
+            {
+                mapping.SetDirectionalBlocked(group.DirectionalPrimary, enabled);
+            }
+            else
+            {
+                // The four-input ButtonsToAxes plugin is positional: it has
+                // no InputDirectionSlot markers. Its group Block toggle still
+                // applies to all four independently bindable physical inputs.
+                foreach (var input in group.DirectionalInputs)
+                {
+                    var binding = input.DeviceBinding;
+                    binding.SetBlock(enabled && binding.IsBound && binding.IsBlockable());
+                }
+            }
         }
 
         private void RemoveDirectionalUnit_OnClick(object sender, RoutedEventArgs e)
