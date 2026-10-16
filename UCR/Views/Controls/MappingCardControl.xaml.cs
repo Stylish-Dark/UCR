@@ -37,6 +37,15 @@ namespace HidWizards.UCR.Views.Controls
             set => SetValue(InspectorSectionProperty, value);
         }
 
+        public static readonly DependencyProperty InlineWorkspaceModeProperty = DependencyProperty.Register(
+            nameof(InlineWorkspaceMode), typeof(bool), typeof(MappingCardControl), new PropertyMetadata(false));
+
+        public bool InlineWorkspaceMode
+        {
+            get => (bool)GetValue(InlineWorkspaceModeProperty);
+            set => SetValue(InlineWorkspaceModeProperty, value);
+        }
+
         private MappingViewModel _observedMapping;
 
         public MappingCardControl()
@@ -290,7 +299,7 @@ namespace HidWizards.UCR.Views.Controls
             return await OpenQuickOutputPickerAsync(mappingViewModel, descriptor, placementTarget);
         }
 
-        private async Task<bool> OpenQuickOutputPickerAsync(MappingViewModel mappingViewModel,
+        internal static async Task<bool> OpenQuickOutputPickerAsync(MappingViewModel mappingViewModel,
             BindingVisualDescriptor descriptor, FrameworkElement placementTarget)
         {
             try
