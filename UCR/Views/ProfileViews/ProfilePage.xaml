@@ -938,8 +938,9 @@
                                                                                                         </Style>
                                                                                                     </TextBlock.Style>
                                                                                                 </TextBlock>
-                                                                                                <Grid Width="62" Height="44" Margin="2 1"
-                                                                                                      ToolTip="{Binding ToolTip}">
+                                                                                                <Button Width="62" Height="44" Margin="2 1" Padding="0" Background="Transparent"
+                                                                                                      BorderThickness="0" Cursor="Hand" Focusable="True"
+                                                                                                      ToolTip="{Binding ToolTip}" Click="QuickBindWorkspaceInput_OnClick">
                                                                                                     <controls:ControlGlyphControl Kind="{Binding ControlKind}"
                                                                                                                                   AccentBrush="{Binding ControlBrush}"
                                                                                                                                   Label="{Binding ControlLabel}"
@@ -959,7 +960,7 @@
                                                                                                             </Style>
                                                                                                         </Line.Style>
                                                                                                     </Line>
-                                                                                                </Grid>
+                                                                                                </Button>
                                                                                             </StackPanel>
                                                                                         </DataTemplate>
                                                                                     </ItemsControl.ItemTemplate>
@@ -982,11 +983,14 @@
                                                                     </ItemsControl.ItemsPanel>
                                                                     <ItemsControl.ItemTemplate>
                                                                         <DataTemplate>
-                                                                            <controls:ControlGlyphControl Kind="{Binding ControlKind}"
-                                                                                                          AccentBrush="{Binding ControlBrush}"
-                                                                                                          Label="{Binding ControlLabel}"
-                                                                                                          Width="58" Height="42"
-                                                                                                          ToolTip="{Binding ToolTip}" Margin="2 1"/>
+                                                                            <Button Padding="0" BorderThickness="0" Background="Transparent" Cursor="Hand"
+                                                                                    Focusable="True" Margin="2 1" ToolTip="{Binding ToolTip}"
+                                                                                    Click="QuickBindWorkspaceOutput_OnClick">
+                                                                                <controls:ControlGlyphControl Kind="{Binding ControlKind}"
+                                                                                                              AccentBrush="{Binding ControlBrush}"
+                                                                                                              Label="{Binding ControlLabel}"
+                                                                                                              Width="58" Height="42"/>
+                                                                            </Button>
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
                                                                 </ItemsControl>
@@ -1021,7 +1025,7 @@
                                                                     </ContentControl.Style>
                                                                     <ContentControl.ContentTemplate>
                                                                         <DataTemplate>
-                                                                            <controls:MappingCardControl InspectorMode="True"/>
+                                                                            <controls:MappingCardControl InspectorMode="True" InlineWorkspaceMode="True"/>
                                                                         </DataTemplate>
                                                                     </ContentControl.ContentTemplate>
                                                                 </ContentControl>
