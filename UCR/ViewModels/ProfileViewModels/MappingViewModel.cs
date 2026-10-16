@@ -1294,7 +1294,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (!ButtonsEnabled || Plugins.Count != 1 || Mapping.Plugins.Count != 1) return false;
             var template = ProfileViewModel.Profile.Context.GetPlugins()
-                .FirstOrDefault(plugin => string.Equals(plugin.PluginName,
+                .FirstOrDefault(candidate => string.Equals(candidate.PluginName,
                     "Button to Button", StringComparison.OrdinalIgnoreCase));
             if (template == null) return false;
             var old = Plugins[0];

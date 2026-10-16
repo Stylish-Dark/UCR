@@ -55,7 +55,12 @@ namespace HidWizards.UCR.Views.Controls
 
         private async void BindButton_OnClick(object sender, RoutedEventArgs e)
         {
-            if (DeviceBinding == null || DeviceBinding.IsInBindMode) return;
+            if (DeviceBinding == null) return;
+            if (DeviceBinding.IsInBindMode)
+            {
+                DeviceBinding.CancelBindMode();
+                return;
+            }
             if (DeviceBinding.DeviceIoType == DeviceIoType.Input)
             {
                 // No device selected => listen to all profile input devices.
@@ -79,6 +84,14 @@ namespace HidWizards.UCR.Views.Controls
                 }
             }
             ShowOutputPicker(BindButton);
+        }
+
+        private void BindButton_OnPreviewMouseRightButtonDown(object sender,
+            System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (DeviceBinding?.IsInBindMode != true) return;
+            DeviceBinding.CancelBindMode();
+            e.Handled = true;
         }
 
         private void MenuButton_OnClick(object sender, RoutedEventArgs e)
