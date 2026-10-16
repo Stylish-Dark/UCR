@@ -103,6 +103,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             foreach (var plugin in pluginList)
             {
+                // Hide all axis routes from the creation workflow. Do not delete
+                // their plugins or alter existing saved mappings.
+                if (string.Equals(plugin.Group, "Axis", StringComparison.OrdinalIgnoreCase) ||
+                    plugin.InputCategories.Any(category => category.Category == DeviceBindingCategory.Range) ||
+                    plugin.OutputCategories.Any(category => category.Category == DeviceBindingCategory.Range))
+                    continue;
                 var groupName = plugin.Group ?? "Ungrouped";
                 if (!PluginGroupList.ContainsKey(groupName)) PluginGroupList.Add(groupName, new PluginGroupViewModel(groupName));
                 if (!PluginGroupList.TryGetValue(groupName, out var group)) continue;

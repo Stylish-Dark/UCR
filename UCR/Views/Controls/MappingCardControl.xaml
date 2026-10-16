@@ -200,123 +200,95 @@
                 </Grid>
             </Button>
         </DataTemplate>
-        <!-- One input editor per binding. WPF would instantiate BOTH sets of
-             controls when a hidden legacy ItemsControl sat behind a compact one. -->
-        <DataTemplate x:Key="FourWayCaptureTemplate">
-            <Button MinWidth="112" Height="46" Padding="5 3" Margin="3 2"
-                    Click="BindDirectionalSlot_OnClick"
-                    PreviewMouseRightButtonDown="DirectionalCapture_OnPreviewMouseRightButtonDown"
-                    IsEnabled="{Binding CanBindCurrentDevice}" Cursor="Hand"
-                    ToolTip="Capture this direction"
-                    Style="{StaticResource UcrAccentOutlineButton}">
-                <TextBlock Text="{Binding CompactBindButtonText}" FontSize="12" FontWeight="SemiBold"
-                           Foreground="#FFFFFF" TextTrimming="CharacterEllipsis"
-                           TextAlignment="Center" VerticalAlignment="Center" MaxWidth="116"/>
-            </Button>
-        </DataTemplate>
-        <!-- Four physical inputs presented as one directional control. -->
-        <DataTemplate x:Key="FourWayCompassTemplate">
-            <Border Background="#292929" BorderBrush="#555555" BorderThickness="1"
-                    CornerRadius="4" Padding="9 8" Margin="3 2 3 5">
-                <StackPanel HorizontalAlignment="Center">
-                    <TextBlock Text="FOUR-WAY INPUT" Foreground="#C9C9C9" FontSize="11"
-                               FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0 0 0 6"/>
-                    <Grid HorizontalAlignment="Center">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="136"/>
-                            <ColumnDefinition Width="136"/>
-                            <ColumnDefinition Width="136"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Row="0" Grid.Column="1" HorizontalAlignment="Center">
-                            <TextBlock Text="↑  UP" Foreground="#CDCDCD" FontWeight="SemiBold"
-                                       HorizontalAlignment="Center" FontSize="11"/>
-                            <ContentControl Content="{Binding DirectionalInputs[0]}"
-                                            ContentTemplate="{StaticResource FourWayCaptureTemplate}"/>
-                        </StackPanel>
-                        <StackPanel Grid.Row="1" Grid.Column="0" VerticalAlignment="Center"
-                                    HorizontalAlignment="Center">
-                            <TextBlock Text="←  LEFT" Foreground="#CDCDCD" FontWeight="SemiBold"
-                                       HorizontalAlignment="Center" FontSize="11"/>
-                            <ContentControl Content="{Binding DirectionalInputs[2]}"
-                                            ContentTemplate="{StaticResource FourWayCaptureTemplate}"/>
-                        </StackPanel>
-                        <StackPanel Grid.Row="1" Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="DEVICE" Foreground="#BBBBBB" FontSize="10"
-                                       HorizontalAlignment="Center" Margin="0 0 0 4"/>
-                            <ComboBox ItemsSource="{Binding DirectionalPrimary.Devices}"
-                                      SelectedItem="{Binding DirectionalPrimary.SelectedDevice, Mode=OneWay}"
-                                      SelectionChanged="DirectionalDevice_OnSelectionChanged"
-                                      IsEnabled="{Binding DirectionalPrimary.BindingEnabled}"
-                                      DisplayMemberPath="Title" Width="126" Height="39" MinWidth="0"
-                                      HorizontalAlignment="Center"
-                                      ToolTip="Choose the physical device for all four directions"/>
-                        </StackPanel>
-                        <StackPanel Grid.Row="1" Grid.Column="2" VerticalAlignment="Center"
-                                    HorizontalAlignment="Center">
-                            <TextBlock Text="RIGHT  →" Foreground="#CDCDCD" FontWeight="SemiBold"
-                                       HorizontalAlignment="Center" FontSize="11"/>
-                            <ContentControl Content="{Binding DirectionalInputs[3]}"
-                                            ContentTemplate="{StaticResource FourWayCaptureTemplate}"/>
-                        </StackPanel>
-                        <StackPanel Grid.Row="2" Grid.Column="1" HorizontalAlignment="Center">
-                            <TextBlock Text="↓  DOWN" Foreground="#CDCDCD" FontWeight="SemiBold"
-                                       HorizontalAlignment="Center" FontSize="11"/>
-                            <ContentControl Content="{Binding DirectionalInputs[1]}"
-                                            ContentTemplate="{StaticResource FourWayCaptureTemplate}"/>
-                        </StackPanel>
-                    </Grid>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0 7 0 0">
-                        <TextBlock Text="Block original inputs" Foreground="#BABABA"
-                                   FontSize="11" VerticalAlignment="Center" Margin="0 0 7 0"/>
-                        <ToggleButton Width="38" Height="21"
-                                      IsChecked="{Binding DirectionalBlockEnabled, Mode=OneWay}"
-                                      Click="DirectionalBlock_OnClick"
-                                      Style="{StaticResource CompactBlockSwitch}"
-                                      ToolTip="Block the original physical directions where supported"/>
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-        </DataTemplate>
-        <DataTemplate x:Key="FourWayMappingInputTemplate">
-            <ContentControl Content="{Binding FourWayInputGroup}"
-                            ContentTemplate="{StaticResource FourWayCompassTemplate}"/>
-        </DataTemplate>
-        <DataTemplate x:Key="LegacyMappingInputsTemplate">
+
+        <!-- Only the existing button-binding workflow is currently editable.
+             Saved legacy axis mappings remain in the model, unchanged. -->
+        <DataTemplate x:Key="ButtonLegacyInputsTemplate">
             <ItemsControl ItemsSource="{Binding DeviceBindings}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <local:DeviceBindingControl DeviceBinding="{Binding DeviceBinding}"
-                                                    Label="{Binding DeviceBindingName}"
-                                                    Category="{Binding DeviceBindingCategory}"/>
+                        <local:CompactInputBindingControl DataContext="{Binding}"
+                            DeviceBinding="{Binding DeviceBinding}" Margin="0 0 0 5"
+                            HorizontalAlignment="Stretch"/>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </DataTemplate>
-        <DataTemplate x:Key="LegacyMappingInputEditorTemplate">
-            <local:DeviceBindingControl DataContext="{Binding}" DeviceBinding="{Binding DeviceBinding}"
-                                        Label="{Binding DeviceBindingName}" Category="{Binding DeviceBindingCategory}"/>
+
+        <DataTemplate x:Key="ButtonInputConditionsTemplate">
+            <StackPanel>
+                <ItemsControl ItemsSource="{Binding InputConditions}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0 0 0 9">
+                                <TextBlock Text="OR" Visibility="{Binding OrLabelVisibility}"
+                                    Foreground="#BBBBBB" FontWeight="SemiBold" Margin="4 2 0 6"/>
+                                <Border BorderBrush="#515151" BorderThickness="1"
+                                    Background="#2C2C2C" CornerRadius="3" Padding="7">
+                                    <StackPanel>
+                                        <ItemsControl ItemsSource="{Binding OrdinaryInputs}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0 0 0 5">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" MinWidth="0"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <local:CompactInputBindingControl Grid.Column="0"
+                                                            DeviceBinding="{Binding DeviceBinding}"
+                                                            DataContext="{Binding}"/>
+                                                        <ToggleButton Grid.Column="1" Content="NOT"
+                                                            IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
+                                                            Click="InputNegated_OnClick" Width="52" Height="31"
+                                                            Margin="5 0 0 0" Foreground="#FFFFFF"
+                                                            Background="#363636" BorderBrush="#696969"
+                                                            ToolTip="Negate this Boolean input condition"/>
+                                                        <Button Grid.Column="2" Content="×"
+                                                            IsEnabled="{Binding CanRemoveExpressionInput}"
+                                                            Click="RemoveExpressionInput_OnClick"
+                                                            Width="30" Height="31" Margin="5 0 0 0"
+                                                            Foreground="#F47777" FontSize="20"
+                                                            ToolTip="Remove input"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <StackPanel Orientation="Horizontal" Margin="2 3 0 0">
+                                            <Button Content="+ AND input" Click="AddInputToCondition_OnClick"
+                                                Height="32" Padding="10 3" Margin="0 0 6 0"
+                                                Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
+                                                ToolTip="Add another required input"/>
+                                            <Button Content="Remove group" Click="RemoveCondition_OnClick"
+                                                Height="32" Padding="8 2" Foreground="#BBBBBB">
+                                                <Button.Style>
+                                                    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding CanRemoveCondition}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button Content="+ OR input(s)" Click="AddCondition_OnClick"
+                    Height="34" HorizontalAlignment="Left" Padding="12 3" Margin="2 3 0 0"
+                    IsEnabled="{Binding ButtonsEnabled}" Foreground="#FFFFFF"
+                    Style="{StaticResource UcrAccentOutlineButton}"/>
+            </StackPanel>
         </DataTemplate>
-        <DataTemplate x:Key="CompactFourWayInputEditorTemplate">
-            <Border Background="#292929" BorderBrush="#444444" BorderThickness="1"
-                    CornerRadius="3" Margin="2 2 2 3" Padding="5 5">
-                <StackPanel>
-                    <TextBlock Text="{Binding DeviceBindingName}" Foreground="#DADADA"
-                               FontWeight="SemiBold" FontSize="12" Margin="3 0 0 4"/>
-                    <local:CompactInputBindingControl DataContext="{Binding}"
-                        DeviceBinding="{Binding DeviceBinding}" HorizontalAlignment="Stretch"/>
-                </StackPanel>
-            </Border>
-        </DataTemplate>
-        <DataTemplate x:Key="ExpandedMappingBodyTemplate">
+
+        <DataTemplate x:Key="ButtonMappingEditorTemplate">
             <Border Margin="2 0 2 3" Padding="6 5" Background="#202020"
-                    BorderBrush="#303030" BorderThickness="0 1 0 0" CornerRadius="0">
-                <!-- Inline cards show inputs and outputs side by side; the existing
-                     input/output inspector instances keep their full-width layout. -->
+                BorderBrush="#303030" BorderThickness="0 1 0 0">
                 <UniformGrid VerticalAlignment="Top">
                     <UniformGrid.Style>
                         <Style TargetType="{x:Type UniformGrid}">
@@ -332,9 +304,9 @@
                             </Style.Triggers>
                         </Style>
                     </UniformGrid.Style>
-                    <StackPanel Margin="0 0 6 4">
+                    <StackPanel Margin="0 0 6 5">
                         <StackPanel.Style>
-                            <Style TargetType="StackPanel">
+                            <Style TargetType="{x:Type StackPanel}">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding InspectorSection, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="Outputs">
                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -344,454 +316,26 @@
                         </StackPanel.Style>
                         <StackPanel Orientation="Horizontal" Margin="6 0 0 5" Height="30">
                             <materialDesign:PackIcon Kind="ArrowCollapseLeft" Width="16" Height="16"
-                                                     Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
+                                Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="INPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
-                                       FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            <Button Content="{Binding MappingInputTypeLabel, StringFormat={}{0} ▼}" Margin="12 0 0 0" Padding="8 2" Height="28"
-                                    Click="ChooseInputCategory_OnClick" Tag="CategoryHeader" IsEnabled="{Binding ButtonsEnabled}"
-                                    Foreground="#FFFFFF" ToolTip="Choose the legacy input mapping category">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource UcrAccentOutlineButton}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding SupportsNativeInputExpression}" Value="True">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
+                                FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </StackPanel>
-                    <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch">
-                        <ContentControl.Style>
-                            <Style TargetType="{x:Type ContentControl}">
-                                <Setter Property="Visibility" Value="Visible"/>
-                                <Setter Property="ContentTemplate" Value="{StaticResource LegacyMappingInputsTemplate}"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding SupportsNativeInputExpression}" Value="True">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding Plugins[0].IsFourButtonAxis}" Value="True">
-                                        <Setter Property="ContentTemplate" Value="{StaticResource FourWayMappingInputTemplate}"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </ContentControl.Style>
-                    </ContentControl>
-
-                    <StackPanel DataContext="{Binding Plugins[0]}">
-                                        <!-- Input mode belongs with input binding, never in output selection. -->
-                                        <WrapPanel Orientation="Horizontal" Margin="4 5 0 2"
-                                                    Visibility="{Binding AxisButtonModeVisibility}">
-                                            <TextBlock Text="Input arrangement" Foreground="#D8D8D8"
-                                                       VerticalAlignment="Center" Margin="0 0 10 0"
-                                                       ToolTip="One button: pressed/released axis values. Two buttons: positive/negative directions."/>
-                                            <Button Content="1 key" MinWidth="64" Height="30" Padding="10 2"
-                                                    Margin="0 0 4 0" Click="AxisOneButton_OnClick"
-                                                    IsEnabled="{Binding CanChangeAxisButtonMode}"
-                                                    ToolTip="Use one button and set axis values for press and release"
-                                                    Foreground="White">
-                                                <Button.Style>
-                                                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
-                                                        <Setter Property="Background" Value="#353535"/>
-                                                        <Setter Property="BorderBrush" Value="#666666"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsOneButtonAxis}" Value="True">
-                                                                <Setter Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
-                                                                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Button.Style>
-                                            </Button>
-                                            <Button Content="2 keys" MinWidth="70" Height="30" Padding="10 2"
-                                                    Click="AxisTwoButtons_OnClick"
-                                                    IsEnabled="{Binding CanChangeAxisButtonMode}"
-                                                    ToolTip="Use separate buttons for the positive and negative axis directions"
-                                                    Foreground="White" Margin="0 0 4 0">
-                                                <Button.Style>
-                                                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
-                                                        <Setter Property="Background" Value="#353535"/>
-                                                        <Setter Property="BorderBrush" Value="#666666"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsTwoButtonAxis}" Value="True">
-                                                                <Setter Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
-                                                                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Button.Style>
-                                            </Button>
-                                             <Button Content="4-way" MinWidth="70" Height="30" Padding="10 2" Click="AxisFourButtons_OnClick"
-                                                     IsEnabled="{Binding CanChangeAxisButtonMode}" ToolTip="Four directions: Up, Down, Left and Right"
-                                                     Foreground="White">
-                                                <Button.Style>
-                                                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignRaisedButton}">
-                                                        <Setter Property="Background" Value="#353535"/>
-                                                        <Setter Property="BorderBrush" Value="#666666"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsFourButtonAxis}" Value="True">
-                                                                <Setter Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
-                                                                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Button.Style>
-                                            </Button>
-
-                                        </WrapPanel>
-                                         <StackPanel Margin="5 6 0 6" Visibility="{Binding FourButtonPresetVisibility}">
-                                             <StackPanel Visibility="{Binding KeyboardAxisPresetVisibility}">
-                                             <TextBlock Text="Keyboard presets" Foreground="#D8D8D8" FontWeight="SemiBold" Margin="0 0 0 5"/>
-                                             <WrapPanel>
-                                                 <Button Content="WASD" Tag="WASD" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4" ToolTip="W up, S down, A left, D right"/>
-                                                 <Button Content="Arrows" Tag="Arrows" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4"/>
-                                                 <Button Content="Numpad" Tag="Numpad" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4" ToolTip="Numpad 8, 2, 4, 6"/>
-                                                 <Button Content="U/J + H/K" Tag="UJHK" Click="AxisKeyboardPreset_OnClick" Margin="0 0 5 4"/>
-                                             </WrapPanel>
-                                             </StackPanel>
-                                             <StackPanel Visibility="{Binding ControllerAxisPresetVisibility}">
-                                             <TextBlock Text="Controller presets" Foreground="#D8D8D8" FontWeight="SemiBold" Margin="0 7 0 5"/>
-                                             <Button Content="D-pad" Tag="DPad" Click="AxisControllerPreset_OnClick"
-                                                     Height="30" Padding="12 2" HorizontalAlignment="Left"
-                                                     ToolTip="Assign Up, Down, Left and Right from the selected controller's D-pad"/>
-                                             </StackPanel>
-
-                                         </StackPanel>
-                    </StackPanel>
-                    <StackPanel Margin="5 8 0 5" Visibility="{Binding ControllerStickPresetVisibility}">
-                        <TextBlock Text="Controller input presets" FontWeight="SemiBold"
-                                   Foreground="#D8D8D8" Margin="0 0 0 5"/>
-                        <WrapPanel Orientation="Horizontal">
-                            <Button Content="Left stick" Tag="0" Click="AxisStickInputPreset_OnClick"
-                                    Height="30" Margin="0 0 5 0" Padding="10 2"
-                                    ToolTip="Assign both analogue axes from the selected controller's left stick"/>
-                            <Button Content="Right stick" Tag="2" Click="AxisStickInputPreset_OnClick"
-                                    Height="30" Padding="10 2"
-                                    ToolTip="Assign both analogue axes from the selected controller's right stick"/>
-                        </WrapPanel>
-                    </StackPanel>
-
-                    <!-- One row is one input condition. Terms within the row are ANDed; rows are ORed. -->
-                    <StackPanel Margin="2 0 2 3">
-                        <StackPanel.Style>
-                            <Style TargetType="StackPanel">
-                                <Setter Property="Visibility" Value="Collapsed"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding SupportsNativeInputExpression}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </StackPanel.Style>
-
-                        <ItemsControl ItemsSource="{Binding InputConditions}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Margin="0 0 0 9">
-                                        <TextBlock Text="OR" Visibility="{Binding OrLabelVisibility}"
-                                                   Foreground="#B4B4B4" FontWeight="Bold" FontSize="12"
-                                                   Margin="4 7 0 6"/>
-                                        <Border Background="#343434" BorderBrush="#666666" BorderThickness="1"
-                                                CornerRadius="4" Padding="7 8 7 7" MinHeight="295">
-                                          <StackPanel>
-                                        <!-- One logical directional control, with two or four
-                                             independent capture slots and shared action controls. -->
-                                        <Border Visibility="{Binding DirectionalPairVisibility}" Margin="0 0 0 5"
-                                                Background="#2B2B2B" BorderBrush="#505050"
-                                                BorderThickness="1" CornerRadius="3" Padding="6">
-                                            <StackPanel>
-                                                <TextBlock Text="{Binding DirectionalModeLabel}"
-                                                           Foreground="#B8B8B8" FontSize="11"
-                                                           Margin="2 0 0 5"/>
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                    </Grid.ColumnDefinitions>
-        <ComboBox Grid.Column="0"
-                  Width="58" Height="38" Margin="0 0 4 0" Padding="0"
-                  HorizontalAlignment="Left"
-                  ItemsSource="{Binding DirectionalPrimary.Devices}"
-                  SelectedItem="{Binding DirectionalPrimary.SelectedDevice, Mode=OneWay}"
-                  IsEnabled="{Binding DirectionalPrimary.BindingEnabled}"
-                  SelectionChanged="DirectionalDevice_OnSelectionChanged"
-                  ToolTip="{Binding DirectionalPrimary.SelectedDevice.Title}">
-            <ComboBox.Template>
-                <ControlTemplate TargetType="{x:Type ComboBox}">
-                    <Grid SnapsToDevicePixels="True">
-                        <Border x:Name="DeviceSurface" CornerRadius="3" Background="#292929"
-                                BorderBrush="{DynamicResource PrimaryHueLightBrush}" BorderThickness="2">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="15"/>
-                                </Grid.ColumnDefinitions>
-                                <local:DeviceSymbolControl x:Name="ClosedDeviceGlyph"
-                                    Grid.Column="0" IsHitTestVisible="False"
-                                    SymbolText="{Binding SelectedItem.Visual.SymbolText, RelativeSource={RelativeSource TemplatedParent}}"
-                                    Foreground="{Binding SelectedItem.Visual.BadgeTextBrush, RelativeSource={RelativeSource TemplatedParent}}"
-                                    GlyphSize="31" Width="33" Height="32"
-                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <materialDesign:PackIcon Grid.Column="1" Kind="ChevronDown"
-                                    Width="13" Height="13" Foreground="#CACACA" IsHitTestVisible="False"
-                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <ToggleButton Grid.ColumnSpan="2" Focusable="False"
-                                    IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
-                                    <ToggleButton.Template>
-                                        <ControlTemplate TargetType="{x:Type ToggleButton}">
-                                            <Border Background="Transparent"/>
-                                        </ControlTemplate>
-                                    </ToggleButton.Template>
-                                </ToggleButton>
-                            </Grid>
-                        </Border>
-                        <Popup x:Name="PART_Popup" Placement="Bottom"
-                               PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
-                               IsOpen="{TemplateBinding IsDropDownOpen}"
-                               AllowsTransparency="True" Focusable="False" StaysOpen="False"
-                               PopupAnimation="Fade">
-                            <Border MinWidth="245" MaxWidth="350" Background="#262626"
-                                    BorderBrush="{DynamicResource PrimaryHueLightBrush}" BorderThickness="1"
-                                    Padding="3">
-                                <ScrollViewer MaxHeight="300" CanContentScroll="True"
-                                              VerticalScrollBarVisibility="Auto">
-                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
-                                </ScrollViewer>
-                            </Border>
-                        </Popup>
-                    </Grid>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="DeviceSurface" Property="Background" Value="#383838"/>
-                        </Trigger>
-                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                            <Setter TargetName="DeviceSurface" Property="BorderBrush" Value="{DynamicResource PrimaryHueMidBrush}"/>
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="DeviceSurface" Property="Opacity" Value="0.40"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </ComboBox.Template>
-            <ComboBox.ItemContainerStyle>
-                <Style TargetType="{x:Type ComboBoxItem}">
-                    <Setter Property="MinHeight" Value="36"/>
-                </Style>
-            </ComboBox.ItemContainerStyle>
-            <ComboBox.ItemTemplate>
-                <DataTemplate>
-                    <Grid MinWidth="218" Margin="6 2">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="39"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <local:DeviceSymbolControl Grid.Column="0" SymbolText="{Binding Visual.SymbolText}"
-                            Foreground="{Binding Visual.BadgeTextBrush}" GlyphSize="27"
-                            Width="35" Height="29" VerticalAlignment="Center"/>
-                        <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="#FFFFFF"
-                            FontSize="13" VerticalAlignment="Center"
-                            TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}"/>
-                    </Grid>
-                </DataTemplate>
-            </ComboBox.ItemTemplate>
-        </ComboBox>
-                                                    <ItemsControl Grid.Column="1" ItemsSource="{Binding DirectionalInputs}">
-                                                        <ItemsControl.ItemsPanel>
-                                                            <ItemsPanelTemplate>
-                                                                <UniformGrid Rows="1" Columns="{Binding DirectionalColumns}"/>
-                                                            </ItemsPanelTemplate>
-                                                        </ItemsControl.ItemsPanel>
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate>
-                                                                <Button Height="36" MinWidth="0" Margin="1 0" Padding="2 2"
-                                                                        HorizontalAlignment="Stretch" ClipToBounds="True"
-                                                                        Click="BindDirectionalSlot_OnClick"
-                                                                        IsEnabled="{Binding CanBindCurrentDevice}"
-                                                                        ToolTip="Click to bind this direction; right-click for its input type"
-                                                                        Foreground="#FFFFFF"
-                                                                        Style="{StaticResource MaterialDesignRaisedButton}">
-                                                                    <Button.ContextMenu>
-                                                                        <ContextMenu>
-                                                                            <MenuItem Header="Button" Tag="0"
-                                                                                      Click="DirectionalType_OnClick"/>
-                                                                            <MenuItem Header="Axis positive" Tag="1"
-                                                                                      Click="DirectionalType_OnClick"/>
-                                                                            <MenuItem Header="Axis negative" Tag="2"
-                                                                                      Click="DirectionalType_OnClick"/>
-                                                                            <MenuItem Header="Axis value" Tag="3"
-                                                                                      Click="DirectionalType_OnClick"/>
-                                                                        </ContextMenu>
-                                                                    </Button.ContextMenu>
-                                                                    <TextBlock Text="{Binding DirectionalBindLabel}"
-                                                                               TextAlignment="Center" VerticalAlignment="Center"
-                                                                               FontSize="11" FontWeight="SemiBold"
-                                                                               TextTrimming="CharacterEllipsis"/>
-                                                                </Button>
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-                                                    <StackPanel Grid.Column="2" Orientation="Horizontal"
-                                                                VerticalAlignment="Center" Margin="5 0 0 0">
-                                                        <StackPanel Orientation="Vertical" Margin="0 0 8 0">
-                                                            <TextBlock Text="Block" FontSize="10" Foreground="#D0D0D0"/>
-                                                            <ToggleButton IsChecked="{Binding DirectionalBlockEnabled, Mode=OneWay}"
-                                                                          Style="{StaticResource CompactBlockSwitch}"
-                                                                          Click="DirectionalBlock_OnClick" Width="38" Height="21"
-                                                                          ToolTip="Block the original physical inputs for both directions"/>
-                                                        </StackPanel>
-                                                        
-                                                        <Button Click="RemoveDirectionalUnit_OnClick" Width="28" Height="30"
-                                                                Content="×" FontSize="22" Foreground="#FF6068"
-                                                                ToolTip="Remove this directional input unit"/>
-                                                    </StackPanel>
-                                                </Grid>
-                                            </StackPanel>
-                                        </Border>
-                                                                                <!-- The four-way version is a compass; the legacy
-                                             two-direction control remains intact above. -->
-                                        <ContentControl Content="{Binding}"
-                                                        ContentTemplate="{StaticResource FourWayCompassTemplate}"
-                                                        Visibility="{Binding FourWayVisibility}"/>
-                                        <ItemsControl ItemsSource="{Binding OrdinaryInputs}">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate><StackPanel Orientation="Vertical"/></ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Border Margin="0 0 0 3" Padding="5" CornerRadius="3"
-                                                            Background="#2B2B2B" BorderBrush="#505050" BorderThickness="1">
-                                                        <StackPanel>
-                                                            <StackPanel Orientation="Horizontal" Margin="0 0 0 5"
-                                                                        Visibility="{Binding InputTypeDetailsVisibility}">
-                                                                <ComboBox Width="142" Height="28"
-                                                                          SelectedIndex="{Binding InputExpressionInputKind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                          IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}">
-                                                                    <ComboBoxItem Content="Button"/>
-                                                                    <ComboBoxItem Content="Axis positive"/>
-                                                                    <ComboBoxItem Content="Axis negative"/>
-                                                                    <ComboBoxItem Content="Axis value"/>
-                                                                </ComboBox>
-                                                                <StackPanel Orientation="Horizontal" Margin="10 0 0 0"
-                                                                            Visibility="{Binding ThresholdConditionVisibility}">
-                                                                    <TextBlock Text="Threshold" Foreground="#CCCCCC" VerticalAlignment="Center" Margin="0 0 5 0"/>
-                                                                    <TextBox Width="65" Height="28" VerticalContentAlignment="Center"
-                                                                             Text="{Binding AxisThresholdPercent, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                                                                             ToolTip="Axis travel required to activate (1–100%)"/>
-                                                                    <TextBlock Text="%" VerticalAlignment="Center" Margin="3 0 0 0" Foreground="#CCCCCC"/>
-                                                                </StackPanel>
-                                                            </StackPanel>
-                                                        <Grid>
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="*" MinWidth="0"/>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                            </Grid.ColumnDefinitions>
-                                                            <local:CompactInputBindingControl Grid.Column="0" DataContext="{Binding}"
-                                                                                                DeviceBinding="{Binding DeviceBinding}"
-                                                                                                HorizontalAlignment="Stretch"/>
-                                                            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
-                                                                        VerticalAlignment="Center" Margin="4 0 0 0">
-                                                                <ToggleButton Content="NOT" Width="54" Height="30" Margin="0 0 8 0"
-                                                                              IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
-                                                                              Click="InputNegated_OnClick"
-                                                                              Foreground="#FFFFFF" Background="#343434"
-                                                                              BorderBrush="#626262" BorderThickness="1"
-                                                                              ToolTip="NOT: negate this Boolean input condition">
-                                                                    <ToggleButton.Style>
-                                                                        <Style TargetType="ToggleButton">
-                                                                            <Setter Property="FontWeight" Value="SemiBold"/>
-                                                                            <Setter Property="Foreground" Value="#FFFFFF"/>
-                                                                            <Setter Property="Template">
-                                                                                <Setter.Value>
-                                                                                    <ControlTemplate TargetType="ToggleButton">
-                                                                                        <Border x:Name="NotSurface" Background="#343434"
-                                                                                                BorderBrush="{DynamicResource PrimaryHueLightBrush}" BorderThickness="1">
-                                                                                            <ContentPresenter HorizontalAlignment="Center"
-                                                                                                              VerticalAlignment="Center"
-                                                                                                              TextElement.Foreground="#FFFFFF"/>
-                                                                                        </Border>
-                                                                                        <ControlTemplate.Triggers>
-                                                                                            <Trigger Property="IsChecked" Value="True">
-                                                                                                <Setter TargetName="NotSurface" Property="Background" Value="#164AA7"/>
-                                                                                                <Setter TargetName="NotSurface" Property="BorderBrush" Value="#397AF0"/>
-                                                                                            </Trigger>
-                                                                                        </ControlTemplate.Triggers>
-                                                                                    </ControlTemplate>
-                                                                                </Setter.Value>
-                                                                            </Setter>
-                                                                                                                                                    <Style.Triggers>
-                                                                                <DataTrigger Binding="{Binding InputExpressionInputKind}" Value="1">
-                                                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                </DataTrigger>
-                                                                                <DataTrigger Binding="{Binding InputExpressionInputKind}" Value="2">
-                                                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                </DataTrigger>
-                                                                                <DataTrigger Binding="{Binding InputExpressionInputKind}" Value="3">
-                                                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                                                </DataTrigger>
-                                                                            </Style.Triggers>
-                                                                        </Style>
-                                                                    </ToggleButton.Style>
-                                                                </ToggleButton>
-                                                                <Button Click="RemoveExpressionInput_OnClick"
-                                                                        IsEnabled="{Binding CanRemoveExpressionInput}"
-                                                                        ToolTip="Remove input condition" ToolTipService.ShowOnDisabled="True"
-                                                                        Style="{StaticResource UcrDeleteItemButton}"/>
-                                                            </StackPanel>
-                                                        </Grid>
-                                                        </StackPanel>
-                                                    </Border>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <StackPanel Orientation="Horizontal" Margin="2 4 0 0">
-                                            <Button Content="+ AND input" Height="34" Margin="0 0 7 0"
-                                                    IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
-                                                    Click="AddInputToCondition_OnClick"
-                                                    Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
-                                                    ToolTip="Require another input together with this one"/>
-                                            <Button Content="Remove OR group" Height="34"
-                                                    Click="RemoveCondition_OnClick"
-                                                    Foreground="#BBBBBB" ToolTip="Remove this alternative input group">
-                                                <Button.Style>
-                                                    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding CanRemoveCondition}" Value="False">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Button.Style>
-                                            </Button>
-                                        </StackPanel>
-                                        </StackPanel>
-                                        </Border>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <Button Content="+ OR input(s)" Height="34"
-                                HorizontalAlignment="Left" Margin="2 2 0 3"
-                                Click="AddCondition_OnClick" IsEnabled="{Binding ButtonsEnabled}"
-                                Foreground="#FFFFFF" ToolTip="Add an alternative group of inputs">
-                            <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource UcrAccentOutlineButton}">
+                        <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch">
+                            <ContentControl.Style>
+                                <Style TargetType="{x:Type ContentControl}">
+                                    <Setter Property="ContentTemplate" Value="{StaticResource ButtonLegacyInputsTemplate}"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding InspectorMode, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="True">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        <DataTrigger Binding="{Binding SupportsNativeInputExpression}" Value="True">
+                                            <Setter Property="ContentTemplate" Value="{StaticResource ButtonInputConditionsTemplate}"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </Button.Style>
-                        </Button>
-
+                            </ContentControl.Style>
+                        </ContentControl>
                     </StackPanel>
-
-                    </StackPanel>
-<StackPanel Margin="6 0 0 3">
+                    <StackPanel Margin="6 0 0 5">
                         <StackPanel.Style>
-                            <Style TargetType="StackPanel">
+                            <Style TargetType="{x:Type StackPanel}">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding InspectorSection, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="Inputs">
                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -801,127 +345,58 @@
                         </StackPanel.Style>
                         <StackPanel Orientation="Horizontal" Margin="6 0 0 5" Height="30">
                             <materialDesign:PackIcon Kind="ArrowCollapseRight" Width="16" Height="16"
-                                                     Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
+                                Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="OUTPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
-                                       FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            <!-- Output type is a description of configured destinations, not
-                                 a mapping-level setting the user must choose. -->
+                                FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             <Button Content="{Binding MappingOutputCategoryDisplay, StringFormat={}{0} ▼}"
-                                    Margin="12 0 0 0" Padding="8 2" Height="28"
-                                    IsEnabled="{Binding ButtonsEnabled}"
-                                    Click="ChangeMappingOutputCategory_OnClick"
-                                    Foreground="#FFFFFF"
-                                    Style="{StaticResource UcrAccentOutlineButton}"
-                                    ToolTip="Output type: choose Button, Axis, Event or other supported output"/>
+                                Height="28" Padding="8 2" Margin="12 0 0 0"
+                                Style="{StaticResource UcrAccentOutlineButton}"
+                                IsEnabled="{Binding ButtonsEnabled}"
+                                Click="ChangeMappingOutputCategory_OnClick"
+                                ToolTip="Choose an available button-based output type"/>
                         </StackPanel>
-                    <!-- Each output is a separate vertical row. Never overflow sideways. -->
-                    <StackPanel Margin="2 0 2 3">
                         <ItemsControl ItemsSource="{Binding Plugins}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate><StackPanel Orientation="Vertical"/></ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Margin="0 0 0 2" Padding="5" Background="#292929"
-                                            BorderBrush="#454545" BorderThickness="1" CornerRadius="3" MinHeight="295">
+                                    <Border Background="#292929" BorderBrush="#454545"
+                                        BorderThickness="1" CornerRadius="3" Padding="7" Margin="0 0 0 5">
                                         <StackPanel>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="0"/>
-                                                <ColumnDefinition Width="*" MinWidth="205"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-
-                                            <ItemsControl Grid.Column="1" ItemsSource="{Binding DeviceBindings}"
-                                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
-                                                <ItemsControl.Style>
-                                                    <Style TargetType="{x:Type ItemsControl}">
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsFourButtonAxis}" Value="True">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </ItemsControl.Style>
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate><StackPanel Orientation="Vertical"/></ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <local:CompactInputBindingControl DataContext="{Binding}"
-                                                            DeviceBinding="{Binding DeviceBinding}" Tag="Output"
-                                                            HorizontalAlignment="Stretch" Margin="0"/>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                            <!-- Four-way output device and its logical destination are independently selectable. -->
-                                            <StackPanel Grid.Column="1" Margin="0 1 0 1">
-                                                <StackPanel.Style>
-                                                    <Style TargetType="{x:Type StackPanel}">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsFourButtonAxis}" Value="True">
-                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </StackPanel.Style>
-
-                                            <!-- Four directions form ONE destination: do not expose X/Y binding buttons. -->
-                                            <Button Height="36" Margin="0"
-                                                    Content="{Binding FourWayOutputLabel}"
-                                                    Click="FourWayOutput_OnClick"
-                                                    IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"
-                                                    Foreground="#FFFFFF" ToolTip="Choose D-pad, left stick or right stick">
-                                                <Button.Style>
-                                                    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsFourButtonAxis}" Value="True">
-                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Button.Style>
-                                            </Button>
-                                            <StackPanel Orientation="Horizontal" Margin="5 8 0 0" Visibility="{Binding FourButtonPresetVisibility}">
-                                                <TextBlock Text="Invert X" Foreground="#D0D0D0" VerticalAlignment="Center" Margin="0 0 6 0"/>
-                                                <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
-                                                              IsChecked="{Binding Plugin.InvertX, Mode=OneWay}"
-                                                              Click="AxisInvertX_OnClick" Margin="0 0 16 0"/>
-                                                <TextBlock Text="Invert Y" Foreground="#D0D0D0" VerticalAlignment="Center" Margin="0 0 6 0"/>
-                                                <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
-                                                              IsChecked="{Binding Plugin.InvertY, Mode=OneWay}"
-                                                              Click="AxisInvertY_OnClick"/>
-                                            </StackPanel>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
-                                                        HorizontalAlignment="Right" Margin="7 0 0 0">
-                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
-                                                            Margin="0 0 8 0" Visibility="{Binding QuickInvertVisibility}">
-                                                    <TextBlock Text="Invert" Foreground="#D8D8D8"
-                                                               FontSize="12" VerticalAlignment="Center"
-                                                               Margin="0 0 7 0"/>
-                                                    <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
-                                                                  IsChecked="{Binding QuickInvert, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                  VerticalAlignment="Center"
-                                                                  ToolTip="Invert this output"/>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" MinWidth="0"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <ItemsControl Grid.Column="0" ItemsSource="{Binding DeviceBindings}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <local:CompactInputBindingControl
+                                                                DeviceBinding="{Binding DeviceBinding}"
+                                                                DataContext="{Binding}" Tag="Output"
+                                                                HorizontalAlignment="Stretch"/>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                                    VerticalAlignment="Center" Margin="8 0 0 0">
+                                                    <StackPanel Orientation="Horizontal"
+                                                        Visibility="{Binding QuickInvertVisibility}"
+                                                        VerticalAlignment="Center" Margin="0 0 9 0">
+                                                        <TextBlock Text="Invert" Foreground="#D8D8D8"
+                                                            VerticalAlignment="Center" Margin="0 0 6 0"/>
+                                                        <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
+                                                            IsChecked="{Binding QuickInvert, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                            ToolTip="Invert this output"/>
+                                                    </StackPanel>
+                                                    <Button Style="{StaticResource UcrDeleteItemButton}"
+                                                        Click="RemoveOutput_OnClick" IsEnabled="{Binding CanRemove}"
+                                                        ToolTip="Remove this output"/>
                                                 </StackPanel>
-                                                <Button Click="RemoveOutput_OnClick" IsEnabled="{Binding CanRemove}"
-                                                        ToolTip="Remove this output" ToolTipService.ShowOnDisabled="True"
-                                                        Style="{StaticResource UcrDeleteItemButton}"/>
-                                            </StackPanel>
-                                        </Grid>
-                                        <!-- Frequent action at surface. A Settings expander is only
-                                             present when the plugin actually has settings. -->
-                                        <StackPanel Margin="2 8 2 0">
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <Button Content="+ Filter" Height="29" HorizontalAlignment="Left"
-                                                        Padding="10 2" Click="AddOutputFilter_OnClick"
-                                                        IsEnabled="{Binding CanAddFilter}"
-                                                        Foreground="#FFFFFF" Background="#343434"
-                                                        BorderBrush="#555555" BorderThickness="1"
-                                                        ToolTip="Add a filter to this output"/>
+                                            </Grid>
+                                            <StackPanel Orientation="Horizontal" Margin="0 9 0 0">
+                                                <Button Content="+ Filter" Height="29" Padding="10 2"
+                                                    Click="AddOutputFilter_OnClick" IsEnabled="{Binding CanAddFilter}"
+                                                    Foreground="#FFFFFF" Background="#343434" BorderBrush="#555555"
+                                                    BorderThickness="1" ToolTip="Add a filter to this output"/>
                                                 <ItemsControl ItemsSource="{Binding Filters}" Margin="8 0 0 0">
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
@@ -930,30 +405,30 @@
                                                         <DataTemplate>
                                                             <StackPanel Orientation="Horizontal" Margin="0 0 5 0">
                                                                 <Button Content="{Binding Name}" Click="ToggleOutputFilter_OnClick"
-                                                                        Height="29" Padding="8 1" IsEnabled="{Binding IsEnabled}"
-                                                                        ToolTip="Toggle this output filter's inversion"
-                                                                        Foreground="#FFFFFF" Background="#353535"
-                                                                        BorderBrush="#5C5C5C" BorderThickness="1"/>
+                                                                    Height="29" Padding="8 1" IsEnabled="{Binding IsEnabled}"
+                                                                    Foreground="#FFFFFF" Background="#353535"
+                                                                    BorderBrush="#5C5C5C" BorderThickness="1"
+                                                                    ToolTip="Toggle filter inversion"/>
                                                                 <Button Content="×" Click="RemoveOutputFilter_OnClick"
-                                                                        Height="29" Width="26" Padding="0"
-                                                                        IsEnabled="{Binding IsEnabled}"
-                                                                        Foreground="#FF6868" FontSize="18"
-                                                                        Background="#353535" BorderBrush="#5C5C5C"
-                                                                        BorderThickness="1" ToolTip="Remove filter"/>
+                                                                    Height="29" Width="26" Padding="0"
+                                                                    IsEnabled="{Binding IsEnabled}"
+                                                                    Foreground="#FF6868" FontSize="18"
+                                                                    Background="#353535" BorderBrush="#5C5C5C"
+                                                                    BorderThickness="1" ToolTip="Remove filter"/>
                                                             </StackPanel>
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
                                             </StackPanel>
-                                            <Expander Header="Settings" IsExpanded="False" Margin="0 7 0 0"
-                                                      Foreground="#D0D0D0" Visibility="{Binding InlineSettingsVisibility}"
-                                                      ToolTip="Additional settings for this output">
-                                                <ItemsControl ItemsSource="{Binding InlinePropertyGroups}" Margin="6 4 0 3">
+                                            <Expander Header="Settings" Margin="0 6 0 0"
+                                                Visibility="{Binding InlineSettingsVisibility}"
+                                                Foreground="#D0D0D0">
+                                                <ItemsControl ItemsSource="{Binding InlinePropertyGroups}" Margin="6 4">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
                                                             <StackPanel Visibility="{Binding ShowPropertyList}">
                                                                 <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold"
-                                                                           Foreground="#DADADA" Margin="0 2 0 1"/>
+                                                                    Foreground="#DADADA" Margin="0 2 0 1"/>
                                                                 <plugin:PluginPropertyListControl DataContext="{Binding}"/>
                                                             </StackPanel>
                                                         </DataTemplate>
@@ -961,16 +436,46 @@
                                                 </ItemsControl>
                                             </Expander>
                                         </StackPanel>
-                                        </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-
-                    </StackPanel>
                     </StackPanel>
                 </UniformGrid>
             </Border>
+        </DataTemplate>
+
+        <!-- The legacy engine remains intact; do not instantiate an axis editor. -->
+        <DataTemplate x:Key="LegacyMappingUnavailableTemplate">
+            <Border Background="#242424" BorderBrush="#464646" BorderThickness="1"
+                Padding="15 12" Margin="2 3">
+                <StackPanel>
+                    <TextBlock Text="Saved legacy mapping" Foreground="#EEEEEE"
+                        FontSize="14" FontWeight="SemiBold"/>
+                    <TextBlock Text="This mapping is preserved and will continue to run. Its old editor is no longer available. Replacing it keeps button inputs and resets incompatible axis controls."
+                        Foreground="#BDBDBD" TextWrapping="Wrap" Margin="0 6 0 12"/>
+                    <Button Content="Replace with Button mapping" Padding="12 5" Height="34"
+                        HorizontalAlignment="Left" Foreground="#FFFFFF"
+                        Style="{StaticResource UcrAccentOutlineButton}"
+                        Click="ConvertLegacyToButton_OnClick"
+                        IsEnabled="{Binding ButtonsEnabled}"
+                        ToolTip="Replace the legacy remapper with a button mapping"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+        <DataTemplate x:Key="ExpandedMappingBodyTemplate">
+            <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch">
+                <ContentControl.Style>
+                    <Style TargetType="{x:Type ContentControl}">
+                        <Setter Property="ContentTemplate" Value="{StaticResource ButtonMappingEditorTemplate}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsLegacyAxisMapping}" Value="True">
+                                <Setter Property="ContentTemplate" Value="{StaticResource LegacyMappingUnavailableTemplate}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ContentControl.Style>
+            </ContentControl>
         </DataTemplate>
     </UserControl.Resources>
 
@@ -1026,9 +531,32 @@
                         </ItemsControl>
                     </StackPanel>
 
+                    <TextBlock Grid.Column="2" Text="Legacy mapping preserved" Foreground="#C7C7C7"
+                               VerticalAlignment="Center" HorizontalAlignment="Center"
+                               FontSize="12">
+                        <TextBlock.Style>
+                            <Style TargetType="{x:Type TextBlock}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsLegacyAxisMapping}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                     <!-- Symmetric input/output lanes keep every arrow and output origin aligned even
                          when one mapping has one input and another has two or three. -->
                     <Grid Grid.Column="2" x:Name="RouteLaneGrid" Margin="6 5 8 5" VerticalAlignment="Center" ClipToBounds="False">
+                        <Grid.Style>
+                            <Style TargetType="{x:Type Grid}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsLegacyAxisMapping}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>

@@ -10,6 +10,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Core.Models;
+using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Utilities;
 using HidWizards.UCR.ViewModels;
 using HidWizards.UCR.ViewModels.Presentation;
@@ -615,6 +616,13 @@ namespace HidWizards.UCR.Views.Controls
             menu.IsOpen = true;
         }
 
+        private void ConvertLegacyToButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mapping = DataContext as MappingViewModel;
+            if (mapping?.ButtonsEnabled == true)
+                mapping.ConvertToButtonMapping();
+        }
+
         private void ChangeMappingOutputCategory_OnClick(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
@@ -626,8 +634,12 @@ namespace HidWizards.UCR.Views.Controls
             var menu = CreateDarkContextMenu(button);
             menu.Placement = PlacementMode.Bottom;
 
-            var categories = options.GroupBy(option => option.OutputType,
-                StringComparer.OrdinalIgnoreCase).ToList();
+            var categories = options
+                .Where(option => !string.Equals(option.Plugin.Group, "Axis",
+                    StringComparison.OrdinalIgnoreCase) &&
+                    option.Plugin.InputCategories.All(input => input.Category != DeviceBindingCategory.Range) &&
+                    option.Plugin.OutputCategories.All(output => output.Category != DeviceBindingCategory.Range))
+                .GroupBy(option => option.OutputType, StringComparer.OrdinalIgnoreCase).ToList();
             foreach (var category in categories)
             {
                 if (!IsPrimaryOutputCategory(category.Key)) continue;

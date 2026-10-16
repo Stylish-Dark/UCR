@@ -29,7 +29,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             Plugins = new List<SimplePluginViewModel>();
             MappingViewModel = mappingViewModel;
 
-            mappingViewModel.Mapping.GetPluginList().ForEach(p => Plugins.Add(new SimplePluginViewModel(p)));
+            mappingViewModel.Mapping.GetPluginList()
+                .Where(plugin => !string.Equals(plugin.Group, "Axis", StringComparison.OrdinalIgnoreCase) &&
+                    !plugin.InputCategories.Any(category => category.Category == HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Range) &&
+                    !plugin.OutputCategories.Any(category => category.Category == HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Range))
+                .ToList().ForEach(plugin => Plugins.Add(new SimplePluginViewModel(plugin)));
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

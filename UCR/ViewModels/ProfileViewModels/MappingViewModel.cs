@@ -142,13 +142,21 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<InputConditionViewModel> InputConditions { get; private set; }
         public bool ButtonsEnabled => !ProfileViewModel.Profile.IsActive();
+        // Axis runtime/plugins remain supported for existing profiles, but their
+        // experimental editor is intentionally absent until it is redesigned.
+        public bool IsLegacyAxisMapping => Mapping?.Plugins?.Any(plugin =>
+            plugin.InputCategories.Any(category => category.Category == DeviceBindingCategory.Range) ||
+            plugin.OutputCategories.Any(category => category.Category == DeviceBindingCategory.Range) ||
+            string.Equals(plugin.Group, "Axis", StringComparison.OrdinalIgnoreCase)) == true ||
+            Mapping?.DeviceBindings?.Any(binding =>
+                binding.InputExpressionInputKind != 0 || binding.InputDirectionSlot != 0) == true;
         public bool SupportsNativeInputExpression => Mapping?.SupportsNativeInputExpression() == true;
         public bool UsesInputExpression => Mapping?.UseInputExpression == true;
         public string InputLogicSummary => BuildInputLogicSummary();
         public bool CanMoveUp => ButtonsEnabled && ProfileViewModel.CanMoveMapping(this, -1);
         public bool CanMoveDown => ButtonsEnabled && ProfileViewModel.CanMoveMapping(this, 1);
         public string MappingRoute => Mapping != null && Mapping.Plugins.Count > 0 ? Mapping.Plugins[0].PluginName : "No plugin";
-        public string MappingRouteDisplay => SupportsNativeInputExpression
+        public string MappingRouteDisplay => IsLegacyAxisMapping ? "Legacy mapping" : SupportsNativeInputExpression
             ? "Inputs → " + ((Plugins?.Count ?? 0) > 1 ? "Outputs" : MappingOutputCategoryDisplay)
             : FormatMappingRoute(MappingRoute, Mapping?.DeviceBindings?.Count ?? 0, Mapping?.Plugins?.Sum(p => p.Outputs?.Count ?? 0) ?? 0);
         public List<MappingHeaderToken> MappingRouteTokens => _mappingRouteTokens;
@@ -157,6 +165,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             get
             {
+                if (IsLegacyAxisMapping) return "Legacy";
                 // The inspector describes what the mapping actually produces.
                 // Different destination categories must never be mislabelled with
                 // the type of the first output plugin.
@@ -1287,51 +1296,95 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return Regex.Replace(value ?? string.Empty, "[^A-Za-z0-9]", "").ToUpperInvariant();
         }
 
-        // Changing an existing multi-axis mapping back to Button must not require
-        // knowing its legacy remapper plugin or silently discard its physical inputs.
-        // Convert existing inputs to independent alternatives feeding a button.
+        // Explicitly replace a saved legacy mapping with a clean Button mapping.
+        // Never mutate old mappings merely because their editor is hidden.
         public bool ConvertToButtonMapping()
         {
-            if (!ButtonsEnabled || Plugins.Count != 1 || Mapping.Plugins.Count != 1) return false;
-            var template = ProfileViewModel.Profile.Context.GetPlugins()
-                .FirstOrDefault(candidate => string.Equals(candidate.PluginName,
-                    "Button to Button", StringComparison.OrdinalIgnoreCase));
-            if (template == null) return false;
-            var old = Plugins[0];
-            if (old.Plugin.GetType() == template.GetType()) return true;
-            if (DeviceBindings.Count <= 1)
-                return ChangeOutputType(old, template);
-
+            if (!ButtonsEnabled || Plugins.Count == 0 || Mapping.Plugins.Count != Plugins.Count)
+                return false;
             var profile = ProfileViewModel.Profile;
-            var plugin = profile.Context.PluginManager.GetNewPlugin(template);
-            plugin.SetProfile(profile);
-            plugin.Filters = old.Plugin.Filters.ToList();
-            SelectCompatibleOutputDevices(plugin,
-                old.Plugin.Outputs.Select(binding => binding.DeviceConfigurationGuid).ToList());
+            var template = profile.Context.GetPlugins().FirstOrDefault(plugin =>
+                string.Equals(plugin.PluginName, "Button to Button", StringComparison.OrdinalIgnoreCase));
+            if (template == null) return false;
 
-            // Preserve each actual device/control assignment. Independent axes,
-            // directions or buttons become OR alternatives for the new digital
-            // destination rather than being lost during a plugin conversion.
-            Mapping.UseInputExpression = true;
-            for (var i = 0; i < Mapping.DeviceBindings.Count; i++)
+            // Prepare every replacement before changing the stored mapping.
+            var replacements = new List<Plugin>();
+            foreach (var old in Mapping.Plugins)
             {
-                var input = Mapping.DeviceBindings[i];
-                input.InputExpressionGroup = i;
-                input.InputDirectionSlot = 0;
-                input.InputExpressionNegated = false;
-                input.InputExpressionInputKind =
-                    input.DeviceBindingCategory == DeviceBindingCategory.Range ? 3 : 0;
-                input.InputExpressionKindConfigured = true;
+                var next = profile.Context.PluginManager.GetNewPlugin(template);
+                next.SetProfile(profile);
+                next.Filters = old.Filters.ToList();
+                // Retain already assigned digital destinations, never apply an
+                // analogue axis key to a digital button output.
+                if (old.OutputCategories.Count > 0 && old.Outputs.Count > 0 &&
+                    old.OutputCategories[0].Category == DeviceBindingCategory.Momentary &&
+                    old.Outputs[0].IsBound)
+                {
+                    next.Outputs[0].SetDeviceConfigurationGuid(
+                        old.Outputs[0].DeviceConfigurationGuid, false);
+                    next.Outputs[0].SetKeyTypeValue(old.Outputs[0].KeyType,
+                        old.Outputs[0].KeyValue, old.Outputs[0].KeySubValue);
+                }
+                else
+                {
+                    SelectCompatibleOutputDevices(next,
+                        old.Outputs.Select(output => output.DeviceConfigurationGuid).ToList());
+                }
+                replacements.Add(next);
             }
 
-            foreach (var previous in old.DeviceBindings)
-                previous.PropertyChanged -= SummaryBindingOnPropertyChanged;
-            old.Dispose();
-            Mapping.Plugins[0] = plugin;
-            var replacement = new PluginViewModel(this, plugin);
-            Plugins[0] = replacement;
-            foreach (var binding in replacement.DeviceBindings)
-                SubscribeSummaryBinding(binding);
+            var inputs = new List<DeviceBinding>();
+            foreach (var old in Mapping.DeviceBindings)
+            {
+                // A button cannot reuse an analogue axis's physical key identity.
+                // Retain usable digital inputs; make incompatible inputs unbound.
+                var input = old.DeviceBindingCategory == DeviceBindingCategory.Momentary &&
+                    old.InputExpressionInputKind == 0 ? old :
+                    new DeviceBinding(Mapping.Update, profile, DeviceIoType.Input)
+                    {
+                        DeviceBindingCategory = DeviceBindingCategory.Momentary
+                    };
+                input.InputExpressionGroup = inputs.Count;
+                input.InputDirectionSlot = 0;
+                input.InputExpressionNegated = false;
+                input.InputExpressionInputKind = 0;
+                input.InputExpressionKindConfigured = true;
+                inputs.Add(input);
+            }
+            if (inputs.Count == 0)
+                inputs.Add(new DeviceBinding(Mapping.Update, profile, DeviceIoType.Input)
+                {
+                    DeviceBindingCategory = DeviceBindingCategory.Momentary
+                });
+
+            foreach (var binding in DeviceBindings)
+            {
+                binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
+                binding.Dispose();
+            }
+            DeviceBindings.Clear();
+            foreach (var old in Plugins)
+            {
+                foreach (var binding in old.DeviceBindings)
+                    binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
+                old.Dispose();
+            }
+            Plugins.Clear();
+
+            Mapping.DeviceBindings.Clear();
+            Mapping.DeviceBindings.AddRange(inputs);
+            Mapping.UseInputExpression = inputs.Count > 1;
+            Mapping.Plugins.Clear();
+            Mapping.Plugins.AddRange(replacements);
+            foreach (var plugin in replacements)
+            {
+                var viewModel = new PluginViewModel(this, plugin);
+                Plugins.Add(viewModel);
+                foreach (var binding in viewModel.DeviceBindings)
+                    SubscribeSummaryBinding(binding);
+            }
+            PopulateDeviceBindingsViewModels();
+            foreach (var binding in DeviceBindings) SubscribeSummaryBinding(binding);
             profile.Context.ContextChanged();
             RefreshHeaderState();
             RefreshInputExpressionPresentation();
@@ -1339,6 +1392,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             RefreshCollapsedSummary();
             profile.PruneUndefinedFilterReferencesRecursive();
             ProfileViewModel.RefreshFilterReferenceLabels();
+            Logger.Info("Replaced saved legacy mapping with Button mapping: " + MappingTitle);
             return true;
         }
 
@@ -1494,6 +1548,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             _mappingOutputTypeLabel = GetMappingOutputTypeLabel();
             RefreshFilterPresentationCache();
 
+            OnPropertyChanged(nameof(IsLegacyAxisMapping));
             OnPropertyChanged(nameof(MappingRoute));
             OnPropertyChanged(nameof(MappingRouteDisplay));
             OnPropertyChanged(nameof(MappingRouteTokens));
@@ -2052,6 +2107,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private string GetMappingOutputTypeLabel()
         {
+            if (IsLegacyAxisMapping) return "Legacy";
             var plugin = Mapping?.Plugins?.FirstOrDefault();
             if (plugin == null) return "None";
 
