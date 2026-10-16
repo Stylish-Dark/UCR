@@ -359,15 +359,14 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(FindVisualChildren<CompactInputBindingControl>(body)
                         .Count(control => control.DeviceBinding?.DeviceIoType == DeviceIoType.Input),
                     Is.EqualTo(4), "Each direction must use the compact, directly bindable input editor.");
-                // WPF instantiates the legacy ItemsControl visual children even
-                // while its parent is Collapsed. Assert actual editor visibility,
-                // not absence from the visual tree.
+                Assert.That(FindVisualChildren<DeviceBindingControl>(body), Is.Empty,
+                    "The four-way card must not construct any legacy input editors.");
                 var fourWayInputLists = FindVisualChildren<ItemsControl>(body)
                     .Where(items => ReferenceEquals(items.ItemsSource, mapping.DeviceBindings)).ToList();
-                Assert.That(fourWayInputLists.Any(items => items.Visibility == Visibility.Collapsed),
-                    Is.True, "The large legacy editor must remain hidden.");
-                Assert.That(fourWayInputLists.Any(items => items.Visibility == Visibility.Visible),
-                    Is.True, "The compact four-way editor must be visible.");
+                Assert.That(fourWayInputLists.Count, Is.EqualTo(1),
+                    "Four-way input editing must use exactly one templated ItemsControl.");
+                Assert.That(fourWayInputLists[0].Visibility, Is.EqualTo(Visibility.Visible));
+
                 var labelNames = FindVisualChildren<TextBlock>(body).Select(label => label.Text).ToArray();
                 Assert.That(labelNames, Does.Contain("Up"));
                 Assert.That(labelNames, Does.Contain("Down"));
