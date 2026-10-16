@@ -504,6 +504,7 @@ namespace HidWizards.UCR.Views.Controls
             var oldPlugin = mapping.Plugins.FirstOrDefault(plugin =>
                 plugin.DeviceBindings.Any(binding => binding.DeviceBinding?.Guid == DeviceBinding?.Guid));
             if (oldPlugin == null) return false;
+            var pluginIndex = mapping.Plugins.IndexOf(oldPlugin);
             var outputIndex = oldPlugin.DeviceBindings.ToList().FindIndex(binding =>
                 binding.DeviceBinding?.Guid == DeviceBinding.Guid);
             var target = mapping.GetCompatiblePluginOptions().FirstOrDefault(option =>
@@ -517,8 +518,8 @@ namespace HidWizards.UCR.Views.Controls
             }
             if (!mapping.ChangeOutputType(oldPlugin, target.Plugin)) return false;
             var index = Math.Max(0, outputIndex);
-            var refreshed = mapping.Plugins.FirstOrDefault(plugin =>
-                plugin.Plugin.GetType() == target.Plugin.GetType());
+            var refreshed = pluginIndex >= 0 && pluginIndex < mapping.Plugins.Count
+                ? mapping.Plugins[pluginIndex] : null;
             if (refreshed == null || refreshed.DeviceBindings.Count <= index) return false;
             var binding = refreshed.DeviceBindings[index].DeviceBinding;
             binding.DeviceBindingCategory = info.DeviceBindingCategory;
