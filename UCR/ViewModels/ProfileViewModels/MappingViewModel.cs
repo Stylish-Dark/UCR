@@ -1779,7 +1779,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                         visual.JoinSymbol = "∨";
                     visuals.Add(visual);
                 }
-                var chunkSize = bindings.Any(binding => binding.DeviceBinding.InputDirectionSlot > 0) ? 4 : 3;
+                // Four independent directions are one visual row, not an AND
+                // expression split 3+1. Keep every glyph separately clickable.
+                var fourWay = Plugins.Count == 1 && Plugins[0].IsFourButtonAxis;
+                if (fourWay)
+                    for (var index = 1; index < visuals.Count; index++)
+                        visuals[index].JoinSymbol = "·";
+                var chunkSize = fourWay || bindings.Any(binding =>
+                    binding.DeviceBinding.InputDirectionSlot > 0) ? 4 : 3;
                 for (var start = 0; start < visuals.Count; start += chunkSize)
                     result.Add(new CollapsedConditionVisualRow
                     {
