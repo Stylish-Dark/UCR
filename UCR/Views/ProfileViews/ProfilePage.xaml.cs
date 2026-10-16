@@ -15,6 +15,8 @@ using HidWizards.UCR.Utilities;
 using HidWizards.UCR.ViewModels.Dashboard;
 using HidWizards.UCR.ViewModels.Dialogs;
 using HidWizards.UCR.ViewModels.ProfileViewModels;
+using HidWizards.UCR.ViewModels.Presentation;
+using HidWizards.UCR.Views.Controls;
 using HidWizards.UCR.Views.Dialogs;
 using MaterialDesignThemes.Wpf;
 
@@ -1278,6 +1280,42 @@ namespace HidWizards.UCR.Views.ProfileViews
             }
             Logger.Info((block ? "Blocked " : "Unblocked ") + changed +
                 " inputs across " + selected.Count + " selected mappings.");
+        }
+
+        private static MappingViewModel MappingForWorkspaceGlyph(DependencyObject source)
+        {
+            for (var current = source; current != null; current = VisualTreeHelper.GetParent(current))
+            {
+                var row = current as ListViewItem;
+                if (row?.DataContext is MappingViewModel mapping) return mapping;
+            }
+            return null;
+        }
+
+        private void QuickBindWorkspaceInput_OnClick(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            var button = sender as Button;
+            var descriptor = button?.DataContext as BindingVisualDescriptor;
+            var mapping = MappingForWorkspaceGlyph(button);
+            if (mapping == null || descriptor == null || !mapping.ButtonsEnabled) return;
+            try { mapping.QuickBindInput(descriptor); }
+            catch (Exception exception)
+            {
+                Logger.Error("Failed to start workspace input binding", exception);
+                DarkMessageBox.Show("Unable to detect input: " + exception.GetBaseException().Message,
+                    "Input binding failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private async void QuickBindWorkspaceOutput_OnClick(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            var button = sender as Button;
+            var descriptor = button?.DataContext as BindingVisualDescriptor;
+            var mapping = MappingForWorkspaceGlyph(button);
+            if (mapping == null || descriptor == null || !mapping.ButtonsEnabled) return;
+            await MappingCardControl.OpenQuickOutputPickerAsync(mapping, descriptor, button);
         }
 
         private void ToggleInlineMapping_OnClick(object sender, RoutedEventArgs e)
