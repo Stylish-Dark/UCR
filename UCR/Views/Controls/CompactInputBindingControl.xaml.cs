@@ -409,8 +409,12 @@ namespace HidWizards.UCR.Views.Controls
                 item.Node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Range &&
                 item.Visual.ControlKind != ControlVisualKind.Trigger))
             {
+                var mapping = FindAncestor<MappingCardControl>(this)?.DataContext as MappingViewModel;
+                var analogueInput = mapping?.Mapping?.DeviceBindings.Any(input =>
+                    input.InputExpressionInputKind == 3) == true;
                 AddOutputPickerChoice(axisGrid, popup, config, entry.Node, entry.Visual,
-                    entry.Node.Title, "Axis to Axis", 0, false);
+                    entry.Node.Title, analogueInput ? "Axis to Axis" : "Button to Axis",
+                    analogueInput ? 0 : 100, false);
             }
 
             var tabs = new TabControl
