@@ -340,7 +340,23 @@ namespace HidWizards.UCR.Views.Controls
             }).ToList();
 
             var buttonGrid = new UniformGrid { Columns = 2 };
-            var directionalGrid = new UniformGrid { Columns = 2 };
+            var directionalRoot = new StackPanel();
+            var dpadGrid = new UniformGrid { Columns = 2 };
+            var leftGrid = new UniformGrid { Columns = 2 };
+            var rightGrid = new UniformGrid { Columns = 2 };
+            foreach (var group in new[] {
+                new { Name = "D-PAD", Grid = dpadGrid },
+                new { Name = "LEFT STICK", Grid = leftGrid },
+                new { Name = "RIGHT STICK", Grid = rightGrid }
+            })
+            {
+                directionalRoot.Children.Add(new TextBlock
+                {
+                    Text = group.Name, FontWeight = FontWeights.SemiBold,
+                    Foreground = Brushes.LightGray, Margin = new Thickness(8, 10, 0, 4)
+                });
+                directionalRoot.Children.Add(group.Grid);
+            }
             var axisGrid = new UniformGrid { Columns = 2 };
             var used = new HashSet<DeviceBindingNode>();
             var buttonOrder = new[] { "A", "B", "X", "Y", "LB", "RB", "LT", "RT",
@@ -379,16 +395,17 @@ namespace HidWizards.UCR.Views.Controls
                     ((item.Node.Title ?? "").IndexOf(direction, StringComparison.OrdinalIgnoreCase) >= 0 ||
                      string.Equals(item.Visual.ControlLabel, direction, StringComparison.OrdinalIgnoreCase)));
                 if (entry != null)
-                    AddOutputPickerChoice(directionalGrid, popup, config, entry.Node,
+                    AddOutputPickerChoice(dpadGrid, popup, config, entry.Node,
                         entry.Visual, "D-pad " + direction, "Button to Button", 0, false);
             }
-            AddFullDirectionalChoice(directionalGrid, popup, config, "D-pad");
+            AddFullDirectionalChoice(dpadGrid, popup, config, "D-pad");
 
             // Each stick offers four *signed* directions from its X/Y axes.
             // Full stick is one four-way destination, not four unrelated bindings.
             foreach (var stick in new[] { "Left", "Right" })
             {
                 var prefix = stick == "Left" ? "L" : "R";
+                var stickGrid = stick == "Left" ? leftGrid : rightGrid;
                 foreach (var direction in new[] { "Up", "Left", "Down", "Right" })
                 {
                     var axis = direction == "Up" || direction == "Down" ? "Y" : "X";
@@ -398,11 +415,11 @@ namespace HidWizards.UCR.Views.Controls
                             StringComparison.OrdinalIgnoreCase));
                     if (entry == null) continue;
                     var sign = direction == "Up" || direction == "Left" ? -100 : 100;
-                    AddOutputPickerChoice(directionalGrid, popup, config, entry.Node,
+                    AddOutputPickerChoice(stickGrid, popup, config, entry.Node,
                         entry.Visual, stick + " stick " + direction,
                         "Button to Axis", sign, false);
                 }
-                AddFullDirectionalChoice(directionalGrid, popup, config, stick + " stick");
+                AddFullDirectionalChoice(stickGrid, popup, config, stick + " stick");
             }
 
             foreach (var entry in options.Where(item =>
@@ -423,7 +440,7 @@ namespace HidWizards.UCR.Views.Controls
                 BorderThickness = new Thickness(0), SelectedIndex = 0
             };
             tabs.Items.Add(OutputPickerTab("Buttons", buttonGrid));
-            tabs.Items.Add(OutputPickerTab("Directionals", directionalGrid));
+            tabs.Items.Add(OutputPickerTab("Directionals", directionalRoot));
             tabs.Items.Add(OutputPickerTab("Axes", axisGrid));
             var root = new StackPanel();
             root.Children.Add(new TextBlock
