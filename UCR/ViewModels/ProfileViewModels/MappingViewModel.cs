@@ -427,6 +427,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     member.IsBlockable())
                     member.SetBlock(true);
             }
+            // Avoid rebuilding every mapping glyph for duplicate label changes
+            // and unrelated UI-only binding presentation notifications.
+            if (string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.CompactBindButtonText), StringComparison.Ordinal) ||
+                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.IsCapturing), StringComparison.Ordinal) ||
+                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.ShowBlock), StringComparison.Ordinal) ||
+                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.CanBlock), StringComparison.Ordinal) ||
+                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.ShowBindMode), StringComparison.Ordinal))
+                return;
             // Countdown/preview animation is deliberately high-frequency and does not change the
             // collapsed route summary. Rebuilding all glyph descriptors on every progress tick was
             // needless WPF churn while the user was trying to press the input we were listening for.
@@ -1279,6 +1287,61 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return Regex.Replace(value ?? string.Empty, "[^A-Za-z0-9]", "").ToUpperInvariant();
         }
 
+        // Changing an existing multi-axis mapping back to Button must not require
+        // knowing its legacy remapper plugin or silently discard its physical inputs.
+        // Convert existing inputs to independent alternatives feeding a button.
+        public bool ConvertToButtonMapping()
+        {
+            if (!ButtonsEnabled || Plugins.Count != 1 || Mapping.Plugins.Count != 1) return false;
+            var template = ProfileViewModel.Profile.Context.GetPlugins()
+                .FirstOrDefault(plugin => string.Equals(plugin.PluginName,
+                    "Button to Button", StringComparison.OrdinalIgnoreCase));
+            if (template == null) return false;
+            var old = Plugins[0];
+            if (old.Plugin.GetType() == template.GetType()) return true;
+            if (DeviceBindings.Count <= 1)
+                return ChangeOutputType(old, template);
+
+            var profile = ProfileViewModel.Profile;
+            var plugin = profile.Context.PluginManager.GetNewPlugin(template);
+            plugin.SetProfile(profile);
+            plugin.Filters = old.Plugin.Filters.ToList();
+            SelectCompatibleOutputDevices(plugin,
+                old.Plugin.Outputs.Select(binding => binding.DeviceConfigurationGuid).ToList());
+
+            // Preserve each actual device/control assignment. Independent axes,
+            // directions or buttons become OR alternatives for the new digital
+            // destination rather than being lost during a plugin conversion.
+            Mapping.UseInputExpression = true;
+            for (var i = 0; i < Mapping.DeviceBindings.Count; i++)
+            {
+                var input = Mapping.DeviceBindings[i];
+                input.InputExpressionGroup = i;
+                input.InputDirectionSlot = 0;
+                input.InputExpressionNegated = false;
+                input.InputExpressionInputKind =
+                    input.DeviceBindingCategory == DeviceBindingCategory.Range ? 3 : 0;
+                input.InputExpressionKindConfigured = true;
+            }
+
+            foreach (var previous in old.DeviceBindings)
+                previous.PropertyChanged -= SummaryBindingOnPropertyChanged;
+            old.Dispose();
+            Mapping.Plugins[0] = plugin;
+            var replacement = new PluginViewModel(this, plugin);
+            Plugins[0] = replacement;
+            foreach (var binding in replacement.DeviceBindings)
+                SubscribeSummaryBinding(binding);
+            profile.Context.ContextChanged();
+            RefreshHeaderState();
+            RefreshInputExpressionPresentation();
+            RefreshPresetAvailability();
+            RefreshCollapsedSummary();
+            profile.PruneUndefinedFilterReferencesRecursive();
+            ProfileViewModel.RefreshFilterReferenceLabels();
+            return true;
+        }
+
         // Swap only the chosen output plugin, never the mapping's shared input bindings.
         public bool ChangeAllOutputTypes(Plugin replacementTemplate)
         {
@@ -1930,6 +1993,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 viewModel.DeviceBinding, viewModel.DeviceBindingCategory, ProfileViewModel.Profile);
             descriptor.IsNegatedInput = viewModel.DeviceBinding?.DeviceIoType == DeviceIoType.Input &&
                 viewModel.InputExpressionNegated;
+            descriptor.IsCapturing = viewModel.DeviceBinding?.IsInBindMode == true;
+            if (descriptor.IsCapturing)
+                descriptor.ToolTip = "LISTENING — press Esc or right-click to cancel";
             var binding = viewModel.DeviceBinding;
             if (binding == null || !descriptor.IsBound || descriptor.Device == null) return descriptor;
 

@@ -149,10 +149,23 @@
                     Content="{Binding CompactBindButtonText}"
                     IsEnabled="{Binding CanBindCurrentDevice}"
                     Click="BindButton_OnClick"
-                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    PreviewMouseRightButtonDown="BindButton_OnPreviewMouseRightButtonDown"
                     Foreground="#FFFFFF"
                     materialDesign:TransitionAssist.DisableTransitions="True"
-                    ToolTip="{Binding BindingActionToolTip}"/>
+                    ToolTip="Click again, right-click, or press Esc to cancel detection">
+                <Button.Style>
+                    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsCapturing}" Value="True">
+                                <Setter Property="Background" Value="#9A4D16"/>
+                                <Setter Property="BorderBrush" Value="#F0B869"/>
+                                <Setter Property="BorderThickness" Value="2"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
             <ProgressBar Height="3" Margin="8 0 8 2" VerticalAlignment="Bottom"
                          Minimum="0" Maximum="100" Value="{Binding PreviewValue, Mode=OneWay}"
                          IsHitTestVisible="False">

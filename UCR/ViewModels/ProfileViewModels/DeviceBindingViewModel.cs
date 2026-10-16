@@ -233,13 +233,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+        public bool IsCapturing => DeviceBinding?.IsInBindMode == true;
+
         public string BindButtonText
         {
             get
             {
                 if (DeviceBinding.IsInBindMode)
-                    return DeviceBindingCategory == DeviceBindingCategory.Range
-                        ? "Move axis to detect" : "Press input device";
+                    return "●  LISTENING — CANCEL";
                 if (DeviceBinding.IsBound) return DeviceBinding.BoundName();
                 return "Bind";
             }
@@ -670,6 +671,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 }
 
                 OnPropertyChanged(nameof(ShowButtonPreview));
+                OnPropertyChanged(nameof(IsCapturing));
             }
 
             if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.IsBound), StringComparison.Ordinal)

@@ -81,6 +81,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
         public string JoinSymbol { get; set; } = "+";
         public string ToolTip { get; set; }
         public bool IsBound { get; set; }
+        public bool IsCapturing { get; set; }
         public Guid DeviceConfigurationGuid { get; set; }
         public Guid BindingGuid { get; set; }
         public bool ShowDeviceBadge { get; set; }

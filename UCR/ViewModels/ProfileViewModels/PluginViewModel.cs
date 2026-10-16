@@ -35,6 +35,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         }
         public ObservableCollection<PluginPropertyGroupViewModel> InlinePropertyGroups { get; }
             = new ObservableCollection<PluginPropertyGroupViewModel>();
+        public Visibility InlineSettingsVisibility =>
+            InlinePropertyGroups.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
         public bool IsAxisButtonMapping =>
             string.Equals(Plugin.PluginName, "Button to Axis", StringComparison.OrdinalIgnoreCase) ||
@@ -121,6 +123,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             _editorInitialized = true;
             PopulatePluginProperties();
             PopulateFilterViewModels();
+            OnPropertyChanged(nameof(InlineSettingsVisibility));
         }
 
 

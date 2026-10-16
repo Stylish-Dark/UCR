@@ -333,6 +333,12 @@ namespace HidWizards.UCR.Core.Models.Binding
             OutputSink?.Invoke(value);
         }
 
+        public void CancelBindMode()
+        {
+            if (IsInBindMode)
+                Profile?.Context?.BindingManager?.CancelBindMode(this);
+        }
+
         public void EnterBindMode()
         {
             if (IsInBindMode) return;

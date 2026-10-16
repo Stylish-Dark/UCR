@@ -631,6 +631,29 @@ namespace HidWizards.UCR.Views.Controls
             panel.Children.Add(button);
         }
 
+        private static void ShowPickerStatus(Popup popup, string message)
+        {
+            var content = (popup?.Child as Border)?.Child as StackPanel;
+            if (content == null) return;
+            var existing = content.Children.OfType<TextBlock>()
+                .FirstOrDefault(text => string.Equals(text.Tag as string, "PickerStatus",
+                    StringComparison.Ordinal));
+            if (existing != null)
+            {
+                existing.Text = message;
+                return;
+            }
+            content.Children.Insert(Math.Max(0, content.Children.Count - 1), new TextBlock
+            {
+                Tag = "PickerStatus",
+                Text = message,
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = new SolidColorBrush(Color.FromRgb(247, 196, 109)),
+                Margin = new Thickness(8, 7, 8, 5),
+                MaxWidth = 430
+            });
+        }
+
         private bool ApplyFullDirectionalOutput(MappingViewModel mapping, FourWayOutputChoice choice)
         {
             if (mapping?.ButtonsEnabled != true || mapping.Plugins.Count != 1) return false;
@@ -664,13 +687,24 @@ namespace HidWizards.UCR.Views.Controls
             button.Click += (sender, args) =>
             {
                 var mapping = FindAncestor<MappingCardControl>(this)?.DataContext as MappingViewModel;
-                if (mapping == null || !mapping.ButtonsEnabled || mapping.Plugins.Count != 1) return;
+                if (mapping == null || !mapping.ButtonsEnabled) return;
+                if (mapping.Plugins.Count != 1)
+                {
+                    ShowPickerStatus(popup, "A full directional destination currently needs its own mapping.");
+                    return;
+                }
                 var choice = mapping.GetFourWayOutputChoices().FirstOrDefault(option =>
                     option.DeviceConfigurationGuid == config.Guid &&
                     string.Equals(option.Destination, destination, StringComparison.OrdinalIgnoreCase));
-                if (choice == null) return;
-
-                if (ApplyFullDirectionalOutput(mapping, choice)) popup.IsOpen = false;
+                if (choice == null)
+                {
+                    ShowPickerStatus(popup, "This output device does not expose a complete " + destination + ".");
+                    return;
+                }
+                if (ApplyFullDirectionalOutput(mapping, choice))
+                    popup.IsOpen = false;
+                else
+                    ShowPickerStatus(popup, "Couldn't assign this full directional output. Existing input groups may be incompatible.");
             };
             panel.Children.Add(button);
         }

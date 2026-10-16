@@ -78,7 +78,8 @@
             <!-- A real hit-testable button owns each glyph. No click handler on a broad
                  preview panel: the user can only rebind the actual token they click. -->
             <Button Padding="0" Background="Transparent" BorderThickness="0" Focusable="True"
-                    Cursor="Hand" ToolTip="{Binding ToolTip}" Click="QuickBindGlyph_OnClick">
+                    Cursor="Hand" ToolTip="{Binding ToolTip}" Click="QuickBindGlyph_OnClick"
+                    PreviewMouseRightButtonDown="QuickBindGlyph_OnPreviewMouseRightButtonDown">
                 <Button.Template>
                     <ControlTemplate TargetType="{x:Type Button}">
                         <Border Background="{TemplateBinding Background}">
@@ -151,10 +152,32 @@
                                         <Setter Property="Width" Value="20"/>
                                         <Setter Property="Height" Value="20"/>
                                     </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsCapturing}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </local:ControlGlyphControl.Style>
                     </local:ControlGlyphControl>
+                    <!-- Replace the clicked glyph with an unmistakable active
+                         capture state; the existing glyph returns after capture. -->
+                    <Border Width="62" Height="39" BorderBrush="#FFD08E" BorderThickness="2"
+                            Background="#944916" CornerRadius="4"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsCapturing}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="LISTEN" FontSize="10" FontWeight="Bold"
+                                   Foreground="#FFFFFF" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Border>
                     <!-- Negation preserves the actual input glyph and crosses it out,
                          instead of replacing it with text or hiding its identity. -->
                     <Line X1="5" Y1="34" X2="34" Y2="5"
@@ -182,6 +205,7 @@
         <DataTemplate x:Key="FourWayCaptureTemplate">
             <Button MinWidth="112" Height="46" Padding="5 3" Margin="3 2"
                     Click="BindDirectionalSlot_OnClick"
+                    PreviewMouseRightButtonDown="DirectionalCapture_OnPreviewMouseRightButtonDown"
                     IsEnabled="{Binding CanBindCurrentDevice}" Cursor="Hand"
                     ToolTip="Capture this direction"
                     Style="{StaticResource UcrAccentOutlineButton}">
@@ -358,10 +382,10 @@
                                         <!-- Input mode belongs with input binding, never in output selection. -->
                                         <WrapPanel Orientation="Horizontal" Margin="4 5 0 2"
                                                     Visibility="{Binding AxisButtonModeVisibility}">
-                                            <TextBlock Text="Axis input mode" Foreground="#D8D8D8"
+                                            <TextBlock Text="Input arrangement" Foreground="#D8D8D8"
                                                        VerticalAlignment="Center" Margin="0 0 10 0"
                                                        ToolTip="One button: pressed/released axis values. Two buttons: positive/negative directions."/>
-                                            <Button Content="1" MinWidth="42" Height="30" Padding="10 2"
+                                            <Button Content="1 key" MinWidth="64" Height="30" Padding="10 2"
                                                     Margin="0 0 4 0" Click="AxisOneButton_OnClick"
                                                     IsEnabled="{Binding CanChangeAxisButtonMode}"
                                                     ToolTip="Use one button and set axis values for press and release"
@@ -379,7 +403,7 @@
                                                     </Style>
                                                 </Button.Style>
                                             </Button>
-                                            <Button Content="2" MinWidth="42" Height="30" Padding="10 2"
+                                            <Button Content="2 keys" MinWidth="70" Height="30" Padding="10 2"
                                                     Click="AxisTwoButtons_OnClick"
                                                     IsEnabled="{Binding CanChangeAxisButtonMode}"
                                                     ToolTip="Use separate buttons for the positive and negative axis directions"
@@ -397,7 +421,7 @@
                                                     </Style>
                                                 </Button.Style>
                                             </Button>
-                                             <Button Content="4" MinWidth="42" Height="30" Padding="10 2" Click="AxisFourButtons_OnClick"
+                                             <Button Content="4-way" MinWidth="70" Height="30" Padding="10 2" Click="AxisFourButtons_OnClick"
                                                      IsEnabled="{Binding CanChangeAxisButtonMode}" ToolTip="Four directions: Up, Down, Left and Right"
                                                      Foreground="White">
                                                 <Button.Style>
@@ -431,14 +455,7 @@
                                                      Height="30" Padding="12 2" HorizontalAlignment="Left"
                                                      ToolTip="Assign Up, Down, Left and Right from the selected controller's D-pad"/>
                                              </StackPanel>
-                                             <StackPanel Orientation="Horizontal" Margin="0 9 0 0">
-                                                 <CheckBox Content="Invert horizontal" Margin="0 0 15 0"
-                                                           IsChecked="{Binding Plugin.InvertX, Mode=OneWay}"
-                                                           Click="AxisInvertX_OnClick" Foreground="#E2E2E2"/>
-                                                 <CheckBox Content="Invert vertical"
-                                                           IsChecked="{Binding Plugin.InvertY, Mode=OneWay}"
-                                                           Click="AxisInvertY_OnClick" Foreground="#E2E2E2"/>
-                                             </StackPanel>
+
                                          </StackPanel>
                     </StackPanel>
                     <StackPanel Margin="5 8 0 5" Visibility="{Binding ControllerStickPresetVisibility}">
@@ -789,10 +806,13 @@
                                        FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             <!-- Output type is a description of configured destinations, not
                                  a mapping-level setting the user must choose. -->
-                            <TextBlock Text="{Binding MappingOutputCategoryDisplay}" Margin="12 0 0 0"
-                                       Padding="8 3" VerticalAlignment="Center" Foreground="#D0D0D0"
-                                       FontSize="12" FontWeight="Medium"
-                                       ToolTip="Determined automatically from the configured outputs"/>
+                            <Button Content="{Binding MappingOutputCategoryDisplay, StringFormat={}{0} ▼}"
+                                    Margin="12 0 0 0" Padding="8 2" Height="28"
+                                    IsEnabled="{Binding ButtonsEnabled}"
+                                    Click="ChangeMappingOutputCategory_OnClick"
+                                    Foreground="#FFFFFF"
+                                    Style="{StaticResource UcrAccentOutlineButton}"
+                                    ToolTip="Output type: choose Button, Axis, Event or other supported output"/>
                         </StackPanel>
                     <!-- Each output is a separate vertical row. Never overflow sideways. -->
                     <StackPanel Margin="2 0 2 3">
@@ -864,6 +884,16 @@
                                                     </Style>
                                                 </Button.Style>
                                             </Button>
+                                            <StackPanel Orientation="Horizontal" Margin="5 8 0 0" Visibility="{Binding FourButtonPresetVisibility}">
+                                                <TextBlock Text="Invert X" Foreground="#D0D0D0" VerticalAlignment="Center" Margin="0 0 6 0"/>
+                                                <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
+                                                              IsChecked="{Binding Plugin.InvertX, Mode=OneWay}"
+                                                              Click="AxisInvertX_OnClick" Margin="0 0 16 0"/>
+                                                <TextBlock Text="Invert Y" Foreground="#D0D0D0" VerticalAlignment="Center" Margin="0 0 6 0"/>
+                                                <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
+                                                              IsChecked="{Binding Plugin.InvertY, Mode=OneWay}"
+                                                              Click="AxisInvertY_OnClick"/>
+                                            </StackPanel>
                                             </StackPanel>
                                             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
                                                         HorizontalAlignment="Right" Margin="7 0 0 0">
@@ -882,63 +912,55 @@
                                                         Style="{StaticResource UcrDeleteItemButton}"/>
                                             </StackPanel>
                                         </Grid>
-                                        <!-- Compact workspace must expose the same filter and plugin-property
-                                             editors as the classic expanded plugin UI. -->
-                                        <Expander Header="Options" IsExpanded="False" Margin="2 3 2 0"
-                                                  Foreground="#D0D0D0" Background="Transparent"
-                                                  ToolTip="Optional output settings and filters">
-                                            <StackPanel Margin="6 3 0 4">
-                                                <Button Content="Add filter" Height="28" HorizontalAlignment="Left"
-                                                        Margin="0 0 0 6" Padding="8 2"
-                                                        Click="AddOutputFilter_OnClick" IsEnabled="{Binding CanAddFilter}"
-                                                        Foreground="#D5D5D5" Background="#353535"
+                                        <!-- Frequent action at surface. A Settings expander is only
+                                             present when the plugin actually has settings. -->
+                                        <StackPanel Margin="2 8 2 0">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Button Content="+ Filter" Height="29" HorizontalAlignment="Left"
+                                                        Padding="10 2" Click="AddOutputFilter_OnClick"
+                                                        IsEnabled="{Binding CanAddFilter}"
+                                                        Foreground="#FFFFFF" Background="#343434"
                                                         BorderBrush="#555555" BorderThickness="1"
                                                         ToolTip="Add a filter to this output"/>
-                                            <ItemsControl ItemsSource="{Binding Filters}" Margin="0 4 0 0">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <StackPanel Orientation="Horizontal" Margin="0 0 6 3">
-                                                            <Button Content="{Binding Name}" Click="ToggleOutputFilter_OnClick"
-                                                                    Height="28" Padding="8 1"
-                                                                    IsEnabled="{Binding IsEnabled}"
-                                                                    Foreground="#FFFFFF" Background="#353535"
-                                                                    BorderBrush="#5C5C5C" BorderThickness="1"
-                                                                    ToolTip="Toggle filter inversion"/>
-                                                            <Button Content="×" Click="RemoveOutputFilter_OnClick"
-                                                                    Height="28" Width="27" Padding="0"
-                                                                    IsEnabled="{Binding IsEnabled}"
-                                                                    Foreground="#FF6868" FontSize="19"
-                                                                    Background="#353535" BorderBrush="#5C5C5C"
-                                                                    BorderThickness="1" ToolTip="Remove filter"/>
-                                                        </StackPanel>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                            <ItemsControl ItemsSource="{Binding InlinePropertyGroups}" Margin="0 2 0 0">
-                                                <ItemsControl.Style>
-                                                    <Style TargetType="{x:Type ItemsControl}">
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsFourButtonAxis}" Value="True">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </ItemsControl.Style>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <StackPanel Visibility="{Binding ShowPropertyList}">
-                                                            <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold"
-                                                                       Foreground="#DADADA" Margin="0 2 0 1"/>
-                                                            <plugin:PluginPropertyListControl DataContext="{Binding}"/>
-                                                        </StackPanel>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
+                                                <ItemsControl ItemsSource="{Binding Filters}" Margin="8 0 0 0">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Orientation="Horizontal" Margin="0 0 5 0">
+                                                                <Button Content="{Binding Name}" Click="ToggleOutputFilter_OnClick"
+                                                                        Height="29" Padding="8 1" IsEnabled="{Binding IsEnabled}"
+                                                                        ToolTip="Toggle this output filter's inversion"
+                                                                        Foreground="#FFFFFF" Background="#353535"
+                                                                        BorderBrush="#5C5C5C" BorderThickness="1"/>
+                                                                <Button Content="×" Click="RemoveOutputFilter_OnClick"
+                                                                        Height="29" Width="26" Padding="0"
+                                                                        IsEnabled="{Binding IsEnabled}"
+                                                                        Foreground="#FF6868" FontSize="18"
+                                                                        Background="#353535" BorderBrush="#5C5C5C"
+                                                                        BorderThickness="1" ToolTip="Remove filter"/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
                                             </StackPanel>
-                                        </Expander>
+                                            <Expander Header="Settings" IsExpanded="False" Margin="0 7 0 0"
+                                                      Foreground="#D0D0D0" Visibility="{Binding InlineSettingsVisibility}"
+                                                      ToolTip="Additional settings for this output">
+                                                <ItemsControl ItemsSource="{Binding InlinePropertyGroups}" Margin="6 4 0 3">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Visibility="{Binding ShowPropertyList}">
+                                                                <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold"
+                                                                           Foreground="#DADADA" Margin="0 2 0 1"/>
+                                                                <plugin:PluginPropertyListControl DataContext="{Binding}"/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </Expander>
+                                        </StackPanel>
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>

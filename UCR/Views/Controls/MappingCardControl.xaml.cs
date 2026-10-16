@@ -244,6 +244,17 @@ namespace HidWizards.UCR.Views.Controls
 
         // Every visible binding glyph is a Button in MappingBindingVisualTemplate.
         // Its parent lane determines whether to detect an input or choose an output.
+        private void QuickBindGlyph_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            var button = sender as Button;
+            var descriptor = button?.DataContext as BindingVisualDescriptor;
+            var mapping = DataContext as MappingViewModel;
+            var binding = mapping?.ResolveCollapsedBinding(descriptor, DeviceIoType.Input)?.DeviceBinding;
+            if (binding?.IsInBindMode != true) return;
+            binding.CancelBindMode();
+            e.Handled = true;
+        }
+
         private async void QuickBindGlyph_OnClick(object sender, RoutedEventArgs e)
         {
             e.Handled = true;
@@ -268,7 +279,11 @@ namespace HidWizards.UCR.Views.Controls
             {
                 try
                 {
-                    mapping.QuickBindInput(descriptor);
+                    var existing = mapping.ResolveCollapsedBinding(descriptor, DeviceIoType.Input);
+                    if (existing?.DeviceBinding?.IsInBindMode == true)
+                        existing.DeviceBinding.CancelBindMode();
+                    else
+                        mapping.QuickBindInput(descriptor);
                 }
                 catch (Exception exception)
                 {
@@ -432,7 +447,12 @@ namespace HidWizards.UCR.Views.Controls
         private void BindDirectionalSlot_OnClick(object sender, RoutedEventArgs e)
         {
             var input = (sender as FrameworkElement)?.DataContext as DeviceBindingViewModel;
-            if (input?.DeviceBinding == null || input.DeviceBinding.IsInBindMode) return;
+            if (input?.DeviceBinding == null) return;
+            if (input.DeviceBinding.IsInBindMode)
+            {
+                input.DeviceBinding.CancelBindMode();
+                return;
+            }
             try
             {
                 input.DeviceBinding.DeviceBindingCategory = input.DeviceBindingCategory;
@@ -444,6 +464,14 @@ namespace HidWizards.UCR.Views.Controls
                 DarkMessageBox.Show("Unable to detect this direction: " + exception.GetBaseException().Message,
                     "Input detection unavailable", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private void DirectionalCapture_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            var input = (sender as FrameworkElement)?.DataContext as DeviceBindingViewModel;
+            if (input?.DeviceBinding?.IsInBindMode != true) return;
+            input.DeviceBinding.CancelBindMode();
+            e.Handled = true;
         }
 
         private void DirectionalDevice_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -534,6 +562,28 @@ namespace HidWizards.UCR.Views.Controls
             var options = mapping.GetCompatibleInputPluginOptions();
             var menu = CreateDarkContextMenu(button);
             menu.Placement = PlacementMode.Bottom;
+            // Do not strand legacy multi-axis mappings without a route to an
+            // ordinary Button mapping. This explicit choice retains input keys.
+            if (!string.Equals(current.OutputType, "Button", StringComparison.OrdinalIgnoreCase))
+            {
+                var buttonOption = new MenuItem
+                {
+                    Header = "Button",
+                    ToolTip = "Use a button destination and keep current input assignments",
+                    Foreground = Brushes.White, Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 14, 6)
+                };
+                buttonOption.Click += (s, args) => mapping.ConvertToButtonMapping();
+                menu.Items.Add(buttonOption);
+                menu.Items.Add(new Separator());
+            }
+
+            var advanced = new MenuItem
+            {
+                Header = "Advanced remappers",
+                Foreground = Brushes.White, Background = Brushes.Transparent,
+                Padding = new Thickness(10, 6, 14, 6)
+            };
             foreach (var option in options)
             {
                 var selected = option;
@@ -551,8 +601,9 @@ namespace HidWizards.UCR.Views.Controls
                     if (current.Plugin.GetType() == selected.Plugin.GetType()) return;
                     mapping.ChangeInputType(current, selected.Plugin);
                 };
-                menu.Items.Add(item);
+                advanced.Items.Add(item);
             }
+            if (advanced.Items.Count > 0) menu.Items.Add(advanced);
             if (menu.Items.Count == 0)
                 menu.Items.Add(new MenuItem
                 {
@@ -560,6 +611,56 @@ namespace HidWizards.UCR.Views.Controls
                     IsEnabled = false,
                     Foreground = Brushes.LightGray
                 });
+            menu.IsOpen = true;
+        }
+
+        private void ChangeMappingOutputCategory_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var mapping = DataContext as MappingViewModel;
+            if (button == null || mapping?.ButtonsEnabled != true || mapping.Plugins.Count == 0) return;
+
+            var options = mapping.GetCompatiblePluginOptions();
+            var analogue = mapping.Mapping.DeviceBindings.Any(input => input.InputExpressionInputKind == 3);
+            var menu = CreateDarkContextMenu(button);
+            menu.Placement = PlacementMode.Bottom;
+
+            var categories = options.GroupBy(option => option.OutputType,
+                StringComparer.OrdinalIgnoreCase).ToList();
+            foreach (var category in categories)
+            {
+                if (!IsPrimaryOutputCategory(category.Key)) continue;
+                var chosen = PreferredOutputImplementation(category, analogue);
+                if (chosen == null) continue;
+                var item = new MenuItem
+                {
+                    Header = category.Key,
+                    Foreground = Brushes.White, Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 14, 6),
+                    ToolTip = "Set every destination to " + category.Key,
+                    IsChecked = mapping.Plugins.All(p => string.Equals(p.OutputType,
+                        category.Key, StringComparison.OrdinalIgnoreCase))
+                };
+                item.Click += (s, args) => mapping.ChangeAllOutputTypes(chosen.Plugin);
+                menu.Items.Add(item);
+            }
+
+            if (!categories.Any(group => string.Equals(group.Key, "Button",
+                    StringComparison.OrdinalIgnoreCase)) && mapping.Plugins.Count == 1)
+            {
+                var buttonChoice = new MenuItem
+                {
+                    Header = "Button",
+                    Foreground = Brushes.White, Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 14, 6),
+                    ToolTip = "Switch to a button output while preserving existing physical input assignments"
+                };
+                buttonChoice.Click += (s, args) => mapping.ConvertToButtonMapping();
+                menu.Items.Insert(0, buttonChoice);
+            }
+
+            if (menu.Items.Count == 0)
+                menu.Items.Add(new MenuItem { Header = "No compatible output types", IsEnabled = false });
             menu.IsOpen = true;
         }
 

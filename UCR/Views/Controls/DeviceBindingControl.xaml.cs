@@ -293,7 +293,11 @@ namespace HidWizards.UCR.Views.Controls
             {
                 if (DeviceBinding.DeviceIoType.Equals(DeviceIoType.Input))
                 {
-                    if (DeviceBinding.IsInBindMode) return;
+                    if (DeviceBinding.IsInBindMode)
+                    {
+                        DeviceBinding.CancelBindMode();
+                        return;
+                    }
                     if (Category.HasValue) DeviceBinding.DeviceBindingCategory = Category.Value;
                     DeviceBinding.EnterBindMode();
                 }
@@ -322,7 +326,14 @@ namespace HidWizards.UCR.Views.Controls
 
         private void BindButton_OnMouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (DeviceBinding == null || DeviceBinding.DeviceIoType != DeviceIoType.Output) return;
+            if (DeviceBinding == null) return;
+            if (DeviceBinding.IsInBindMode)
+            {
+                DeviceBinding.CancelBindMode();
+                e.Handled = true;
+                return;
+            }
+            if (DeviceBinding.DeviceIoType != DeviceIoType.Output) return;
             e.Handled = true;
             OpenContextMenu();
         }
