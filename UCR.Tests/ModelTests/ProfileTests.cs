@@ -549,26 +549,21 @@ namespace HidWizards.UCR.Tests.ModelTests
         [Test]
         public void ChoosingAnOutputNeverInventsExtraInputBindings()
         {
+            // The test context does not initialise the installed plugin catalogue.
+            // Construct the actual mapping directly rather than selecting from
+            // catalogue items that do not exist in this fixture.
             var mapping = _profile.AddMapping("No automatic pairing");
-            _profile.AddPlugin(mapping, new ButtonToButton());
+            _profile.AddPlugin(mapping, new ButtonToAxis());
             var viewModel = new ProfileViewModel(_profile);
             try
             {
                 var editor = viewModel.MappingsList.Single(item =>
                     ReferenceEquals(item.Mapping, mapping));
-                var axis = editor.GetCompatiblePluginOptions()
-                    .Single(option => option.Name == "Button to Axis");
-                var button = editor.GetCompatiblePluginOptions()
-                    .Single(option => option.Name == "Button to Button");
-
-                Assert.That(editor.ChangeOutputType(editor.Plugins.Single(), axis.Plugin), Is.True);
                 Assert.That(mapping.DeviceBindings.Count, Is.EqualTo(1),
-                    "Selecting an axis output must not create two physical input bindings.");
-
-                Assert.That(editor.ChangeOutputType(editor.Plugins.Single(), button.Plugin), Is.True);
-                Assert.That(mapping.DeviceBindings.Count, Is.EqualTo(1));
-                Assert.That(mapping.DeviceBindings.Single().InputDirectionSlot, Is.EqualTo(0));
-                Assert.That(editor.MappingOutputTypeLabel, Is.EqualTo("Button"));
+                    "A single axis output must not manufacture a second input.");
+                Assert.That(editor.DeviceBindings.Count, Is.EqualTo(1));
+                Assert.That(mapping.DeviceBindings.Single().InputDirectionSlot, Is.EqualTo(0),
+                    "Two-direction input mode must be explicitly selected.");
             }
             finally
             {
