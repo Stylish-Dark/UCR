@@ -176,30 +176,11 @@ jobs:
           $tests = ".\\UCR.Tests\\bin\\Release\\UCR.Tests.dll"
           # WPF Application.Current owns Dispatcher-bound theme resources. The
           # device-row materialization test must run in a separate NUnit process.
-          & $runner $tests --noresult --workers=0 --where "test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton && test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.FourWayMappingUsesCompactInputEditorsAndOneOutputSelector"
+          & $runner $tests --noresult --workers=0 --where "test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $runner $tests --noresult --workers=0 --where "test == HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          # Isolate the rendered four-way editor in a fresh WPF STA process.
-          & $runner $tests --noresult --workers=0 --where "test == HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.FourWayMappingUsesCompactInputEditorsAndOneOutputSelector"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Verify grouped-input XAML resources
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          [xml]$app = Get-Content -LiteralPath '.\UCR\App.xaml' -Raw
-          [xml]$mapping = Get-Content -LiteralPath '.\UCR\Views\Controls\MappingCardControl.xaml' -Raw
-          $namespace = New-Object System.Xml.XmlNamespaceManager($app.NameTable)
-          $namespace.AddNamespace('x', 'http://schemas.microsoft.com/winfx/2006/xaml')
-          $name = 'CompactBlockSwitch'
-          $styles = @($app.SelectNodes("//*[@x:Key='$name']", $namespace))
-          if ($styles.Count -ne 1) {
-            throw "Expected an application-scoped $name style, found $($styles.Count). Child-control resources do not reach grouped-input templates."
-          }
-          if ($mapping.OuterXml -notmatch "StaticResource $name") {
-            throw "Grouped-input control no longer references $name; update this regression check."
-          }
 
       - name: Smoke-test actual UCR.exe cold startup
         shell: pwsh

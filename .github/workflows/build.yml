@@ -584,13 +584,11 @@ jobs:
 
           # WPF theme resources are owned by the dispatcher that creates App.
           # Isolate device-row materialization in a fresh NUnit process.
-          & $runner $tests --noresult --workers=0 --where "test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton && test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.FourWayMappingUsesCompactInputEditorsAndOneOutputSelector"
+          & $runner $tests --noresult --workers=0 --where "test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton"
           if ($LASTEXITCODE -ne 0) { throw "Main UCR tests failed: $LASTEXITCODE" }
           & $runner $tests --noresult --workers=0 --where "test == HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton"
           if ($LASTEXITCODE -ne 0) { throw "Isolated device-row UI test failed: $LASTEXITCODE" }
-          # Exercise the real four-way controls in a fresh STA WPF process.
-          & $runner $tests --noresult --workers=0 --where "test == HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.FourWayMappingUsesCompactInputEditorsAndOneOutputSelector"
-          if ($LASTEXITCODE -ne 0) { throw "Isolated four-way UI test failed: $LASTEXITCODE" }
+
 
       - name: Upload UCR Stylish Windows build
         uses: actions/upload-artifact@v7
