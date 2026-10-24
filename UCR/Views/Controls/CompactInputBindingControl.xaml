@@ -48,10 +48,10 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="62"/>
             <ColumnDefinition Width="*" MinWidth="0"/>
-            <ColumnDefinition Width="34"/>
+            <ColumnDefinition Width="38"/>
             <!-- Auto collapses to zero for outputs, where Block is hidden.
                  A fixed 92px column previously stole space from Choose output. -->
-            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="68"/>
         </Grid.ColumnDefinitions>
 
         <!-- The CLOSED selector and the OPEN list deliberately have different layouts.
@@ -187,7 +187,7 @@
             </ProgressBar>
         </Grid>
 
-        <Button Grid.Row="0" Grid.Column="2" x:Name="MenuButton" Margin="2 0 0 0" Width="32" MinHeight="32" Padding="0"
+        <Button Grid.Row="0" Grid.Column="2" x:Name="MenuButton" Margin="4 0 0 0" Width="32" MinHeight="32" Padding="0"
                 IsEnabled="{Binding BindingEnabled}" Click="MenuButton_OnClick"
                 Style="{StaticResource MaterialDesignRaisedButton}" Foreground="#FFFFFF"
                 ToolTip="Binding options">
@@ -199,11 +199,11 @@
         </Button>
 
         <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Vertical"
-                    Width="52" Margin="6 0 0 0"
+                    Width="62" Margin="4 0 0 2"
                     HorizontalAlignment="Center" VerticalAlignment="Center"
                     Visibility="{Binding ShowBlock}"
                     ToolTip="Block the original physical input (where the provider supports it)">
-        <TextBlock Text="Block" Foreground="#E2E2E2" FontSize="11" Margin="0 0 0 3"
+        <TextBlock Text="Block" Foreground="#E2E2E2" FontSize="11" Margin="0 0 0 4"
                    HorizontalAlignment="Center" TextWrapping="NoWrap"/>
         <ToggleButton HorizontalAlignment="Center" VerticalAlignment="Center"
                       IsChecked="{Binding Block, Mode=TwoWay}"
