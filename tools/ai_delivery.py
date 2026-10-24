@@ -147,14 +147,14 @@ def main() -> int:
             "You are a NEW, INDEPENDENT QUALITY REVIEWER. Read AGENTS.md and the product "
             "philosophy. Review ALL changes since baseline using git diff and inspect tests. "
             "Do not edit any file. Check every criterion, regressions, WPF controls, hit "
-            "targets and reported evidence. Pass=false for any blocker or unverified mandatory "
-            "visual requirement. Source changes are NOT proof of a working UI. Include concrete "
+            "targets and reported evidence. Pass=false for any objectively demonstrated code blocker. List missing mandatory "
+            "visual requirements in unverified_requirements; CI must run before final judgement. Source changes are NOT proof of a working UI. Include concrete "
             "findings and specify which evidence was actually obtained.\n\n"
             f"BASELINE SHA: {base}\nCONTRACT:\n{task_spec}"
         )
         review = json.loads(codex(worktree, audit, f"reviewer-{attempt}", review_prompt, VERDICT_SCHEMA))
         (audit / f"review-{attempt}.json").write_text(json.dumps(review, indent=2), encoding="utf-8")
-        if not review["pass"] or review["unverified_requirements"]:
+        if not review["pass"]:
             feedback = json.dumps(review, indent=2)
             print(f"Review rejected attempt {attempt}; developer receives findings.", flush=True)
             continue
@@ -179,7 +179,7 @@ def main() -> int:
             print(f"CI rejected attempt {attempt}; developer receives failure logs.", flush=True)
             continue
 
-        final_prompt = (
+        # Fail closed: this runner has no Windows desktop screenshot capture yet.\n        # Do not promote visual work on the strength of a build or AI assertion.\n        changed = call(["git", "diff", base, "--name-only"], worktree).stdout.lower()\n        if contract["visual_evidence_required"] or ".xaml" in changed:\n            print("BLOCKED: Windows build passed, but current runtime visual evidence is not automated. Draft PR retained.", file=sys.stderr)\n            return 1\n\n        final_prompt = (
             "Act as PROJECT DIRECTOR, separate from developer and reviewer. Read AGENTS.md, "
             "the product philosophy, git diff versus baseline and the reviewer evidence. "
             "Windows CI has passed, but NEVER infer visual correctness from that. "
