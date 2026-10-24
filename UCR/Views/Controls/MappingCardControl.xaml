@@ -272,7 +272,7 @@
                                                             IsEnabled="{Binding CanRemoveExpressionInput}"
                                                             ToolTip="Remove input condition"
                                                             ToolTipService.ShowOnDisabled="True"
-                                                            Style="{StaticResource UcrDeleteItemButton}" Content="×" FontSize="19" FontWeight="Bold" Foreground="#FF6868" Width="30" Height="30" Padding="0" Margin="2 0 0 0"/>
+                                                            Style="{StaticResource UcrDeleteItemButton}" Width="32" Height="32" Padding="0" Margin="2 0 0 0"/>
                                                     </Grid>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
@@ -532,7 +532,17 @@
         <StackPanel>
             <!-- Deliberately no Expander here: the whole header must NOT toggle expansion.
                  The sole toggle is ExpandMappingButton, with a separate lazy editor below. -->
-            <Border x:Name="MappingHeaderSurface" Background="#242424" CornerRadius="5 5 0 0">
+            <Border x:Name="MappingHeaderSurface" CornerRadius="5 5 0 0">
+                <Border.Style>
+                    <Style TargetType="{x:Type Border}">
+                        <Setter Property="Background" Value="#242424"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                <Setter Property="Background" Value="#202735"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <Grid x:Name="HeaderGrid" MinHeight="74"
                       ToolTip="Right-drag while collapsed to reorder this mapping">
                     <Grid.ColumnDefinitions>
@@ -757,14 +767,8 @@
                             Click="ExpandMappingButton_OnClick">
                         <Button.Style>
                             <Style TargetType="{x:Type Button}">
-                                <Setter Property="Content">
-                                    <Setter.Value><materialDesign:PackIcon Kind="ChevronDown" Width="24" Height="24"/></Setter.Value>
-                                </Setter>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                        <Setter Property="Content">
-                                            <Setter.Value><materialDesign:PackIcon Kind="ChevronUp" Width="24" Height="24"/></Setter.Value>
-                                        </Setter>
                                         <Setter Property="Background" Value="#244A88"/>
                                         <Setter Property="BorderBrush" Value="#6D9AEE"/>
                                     </DataTrigger>
@@ -788,6 +792,19 @@
                                 </Border>
                             </ControlTemplate>
                         </Button.Template>
+                        <!-- Per-card vector chevron; the style never shares a WPF visual across buttons. -->
+                        <materialDesign:PackIcon Width="24" Height="24" IsHitTestVisible="False">
+                            <materialDesign:PackIcon.Style>
+                                <Style TargetType="{x:Type materialDesign:PackIcon}">
+                                    <Setter Property="Kind" Value="ChevronDown"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                            <Setter Property="Kind" Value="ChevronUp"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </materialDesign:PackIcon.Style>
+                        </materialDesign:PackIcon>
                     </Button>
                 </Grid>
             </Border>

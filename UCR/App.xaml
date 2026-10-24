@@ -116,14 +116,10 @@
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
                                     CornerRadius="3" SnapsToDevicePixels="True">
-                                <Grid Width="20" Height="20"
-                                      HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <Line X1="4" Y1="4" X2="18" Y2="18"
-                                          Stroke="#FF6868" StrokeThickness="1.8"
-                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
-                                    <Line X1="18" Y1="4" X2="4" Y2="18"
-                                          Stroke="#FF6868" StrokeThickness="1.8"
-                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                <Grid Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <materialDesign:PackIcon Kind="Close" Width="21" Height="21"
+                                                             Foreground="#FF7979" HorizontalAlignment="Center"
+                                                             VerticalAlignment="Center" IsHitTestVisible="False"/>
                                 </Grid>
                             </Border>
                             <ControlTemplate.Triggers>

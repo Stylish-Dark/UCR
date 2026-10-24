@@ -51,7 +51,7 @@
             <ColumnDefinition Width="38"/>
             <!-- Auto collapses to zero for outputs, where Block is hidden.
                  A fixed 92px column previously stole space from Choose output. -->
-            <ColumnDefinition Width="68"/>
+            <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
         <!-- The CLOSED selector and the OPEN list deliberately have different layouts.
