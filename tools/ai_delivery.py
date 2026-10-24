@@ -179,7 +179,14 @@ def main() -> int:
             print(f"CI rejected attempt {attempt}; developer receives failure logs.", flush=True)
             continue
 
-        # Fail closed: this runner has no Windows desktop screenshot capture yet.\n        # Do not promote visual work on the strength of a build or AI assertion.\n        changed = call(["git", "diff", base, "--name-only"], worktree).stdout.lower()\n        if contract["visual_evidence_required"] or ".xaml" in changed:\n            print("BLOCKED: Windows build passed, but current runtime visual evidence is not automated. Draft PR retained.", file=sys.stderr)\n            return 1\n\n        final_prompt = (
+        # Fail closed: this runner has no Windows desktop screenshot capture yet.
+        # Do not promote visual work on the strength of a build or AI assertion.
+        changed = call(["git", "diff", base, "--name-only"], worktree).stdout.lower()
+        if contract["visual_evidence_required"] or ".xaml" in changed:
+            print("BLOCKED: Windows build passed, but current runtime visual evidence is not automated. Draft PR retained.", file=sys.stderr)
+            return 1
+
+        final_prompt = (
             "Act as PROJECT DIRECTOR, separate from developer and reviewer. Read AGENTS.md, "
             "the product philosophy, git diff versus baseline and the reviewer evidence. "
             "Windows CI has passed, but NEVER infer visual correctness from that. "
