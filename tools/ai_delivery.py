@@ -28,7 +28,7 @@ def codex(cwd: Path, audit: Path, role: str, prompt: str, schema: dict | None = 
     suffix = audit / role
     argv = ["codex", "exec"]
     if role.startswith("developer"):
-        argv += ["--full-auto"]
+        argv += ["--sandbox", "workspace-write"]
     else:
         argv += ["--sandbox", "read-only", "--ask-for-approval", "never"]
     if schema is not None:
