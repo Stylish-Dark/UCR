@@ -20,6 +20,7 @@ using HidWizards.UCR.Views.Controls;
 using HidWizards.UCR.Views.Dialogs;
 using HidWizards.UCR.Views.ProfileViews;
 using NUnit.Framework;
+using MaterialDesignThemes.Wpf;
 
 namespace HidWizards.UCR.Tests.UiTests
 {
@@ -347,7 +348,11 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(body, Is.Not.Null);
                 Assert.That(card.FindName("MappingExpander"), Is.Null,
                     "The header must not remain wrapped in a clickable WPF Expander.");
-                Assert.That(chevron.Content, Is.EqualTo("▼"));
+                Assert.That(chevron.Content, Is.InstanceOf<PackIcon>());
+                var chevronIcon = (PackIcon)chevron.Content;
+                Assert.That(chevronIcon.Kind, Is.EqualTo(PackIconKind.ChevronDown));
+                Assert.That(chevron.Width, Is.GreaterThanOrEqualTo(38));
+                Assert.That(chevron.BorderThickness.Left, Is.GreaterThan(0));
                 Assert.That(mapping.IsExpanded, Is.False);
                 Assert.That(body.Visibility, Is.EqualTo(Visibility.Collapsed));
 
@@ -359,7 +364,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(mapping.IsExpanded, Is.True);
                 Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible));
                 Assert.That(body.ContentTemplate, Is.Not.Null);
-                Assert.That(chevron.Content, Is.EqualTo("▲"));
+                Assert.That(chevronIcon.Kind, Is.EqualTo(PackIconKind.ChevronUp));
                 Assert.That(body.ActualHeight, Is.GreaterThan(0));
 
                 ((IInvokeProvider)new ButtonAutomationPeer(chevron)).Invoke();
@@ -369,7 +374,7 @@ namespace HidWizards.UCR.Tests.UiTests
                     "Closing should preserve the existing short fade instead of snapping away.");
                 PumpDispatcherFor(TimeSpan.FromMilliseconds(250));
                 Assert.That(body.Visibility, Is.EqualTo(Visibility.Collapsed));
-                Assert.That(chevron.Content, Is.EqualTo("▼"));
+                Assert.That(chevronIcon.Kind, Is.EqualTo(PackIconKind.ChevronDown));
             }
             finally
             {
