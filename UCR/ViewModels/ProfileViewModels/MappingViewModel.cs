@@ -156,7 +156,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool CanMoveUp => ButtonsEnabled && ProfileViewModel.CanMoveMapping(this, -1);
         public bool CanMoveDown => ButtonsEnabled && ProfileViewModel.CanMoveMapping(this, 1);
         public string MappingRoute => Mapping != null && Mapping.Plugins.Count > 0 ? Mapping.Plugins[0].PluginName : "No plugin";
-        public string MappingRouteDisplay => IsLegacyAxisMapping ? "Legacy mapping" : SupportsNativeInputExpression
+        public string MappingRouteDisplay => SupportsNativeInputExpression
             ? "Inputs → " + ((Plugins?.Count ?? 0) > 1 ? "Outputs" : MappingOutputCategoryDisplay)
             : FormatMappingRoute(MappingRoute, Mapping?.DeviceBindings?.Count ?? 0, Mapping?.Plugins?.Sum(p => p.Outputs?.Count ?? 0) ?? 0);
         public List<MappingHeaderToken> MappingRouteTokens => _mappingRouteTokens;
@@ -165,7 +165,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             get
             {
-                if (IsLegacyAxisMapping) return "Legacy";
                 // The inspector describes what the mapping actually produces.
                 // Different destination categories must never be mislabelled with
                 // the type of the first output plugin.
@@ -2107,7 +2106,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private string GetMappingOutputTypeLabel()
         {
-            if (IsLegacyAxisMapping) return "Legacy";
             var plugin = Mapping?.Plugins?.FirstOrDefault();
             if (plugin == null) return "None";
 

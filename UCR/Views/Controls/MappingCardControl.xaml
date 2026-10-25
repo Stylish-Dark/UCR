@@ -203,8 +203,8 @@
         </DataTemplate>
 
         <!-- Only the existing button-binding workflow is currently editable.
-             Saved legacy axis mappings remain in the model, unchanged. -->
-        <DataTemplate x:Key="ButtonLegacyInputsTemplate">
+             Existing mappings remain in the model. -->
+        <DataTemplate x:Key="ButtonExistingInputsTemplate">
             <ItemsControl ItemsSource="{Binding DeviceBindings}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -346,7 +346,7 @@
                         <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch">
                             <ContentControl.Style>
                                 <Style TargetType="{x:Type ContentControl}">
-                                    <Setter Property="ContentTemplate" Value="{StaticResource ButtonLegacyInputsTemplate}"/>
+                                    <Setter Property="ContentTemplate" Value="{StaticResource ButtonExistingInputsTemplate}"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding SupportsNativeInputExpression}" Value="True">
                                             <Setter Property="ContentTemplate" Value="{StaticResource ButtonInputConditionsTemplate}"/>
@@ -473,7 +473,7 @@
             </Border>
         </DataTemplate>
 
-        <!-- The legacy engine remains intact; do not instantiate an axis editor. -->
+        
         <DataTemplate x:Key="ExpandedMappingBodyTemplate"><ContentControl Content="{Binding}" ContentTemplate="{StaticResource ButtonMappingEditorTemplate}" HorizontalContentAlignment="Stretch"/></DataTemplate>
     </UserControl.Resources>
 
@@ -548,15 +548,6 @@
                     <!-- Symmetric input/output lanes keep every arrow and output origin aligned even
                          when one mapping has one input and another has two or three. -->
                     <Grid Grid.Column="2" x:Name="RouteLaneGrid" Margin="6 5 8 5" VerticalAlignment="Center" ClipToBounds="False">
-                        <Grid.Style>
-                            <Style TargetType="{x:Type Grid}">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsLegacyAxisMapping}" Value="True">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Grid.Style>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
@@ -719,7 +710,7 @@
                     <Button x:Name="ExpandMappingButton" Grid.Column="5" Width="38" Height="38"
                             Margin="0 0 5 0" VerticalAlignment="Center" HorizontalAlignment="Center"
                             Padding="0" Foreground="#FFFFFF" Background="#292929"
-                            BorderBrush="#696969" BorderThickness="1" Cursor="Hand" Focusable="True"
+                            BorderBrush="#696969" BorderThickness="1" Cursor="Hand" Focusable="False"
                             ToolTip="Expand or collapse mapping details"
                             Click="ExpandMappingButton_OnClick">
                         <Button.Style>
@@ -749,19 +740,18 @@
                                 </Border>
                             </ControlTemplate>
                         </Button.Template>
-                        <!-- Per-card vector chevron; the style never shares a WPF visual across buttons. -->
-                        <materialDesign:PackIcon Width="20" Height="20" Foreground="White" IsHitTestVisible="False">
-                            <materialDesign:PackIcon.Style>
-                                <Style TargetType="{x:Type materialDesign:PackIcon}">
-                                    <Setter Property="Kind" Value="ChevronDown"/>
+                        <TextBlock FontFamily="Segoe UI Symbol" FontSize="23" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="⌄"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                            <Setter Property="Kind" Value="ChevronUp"/>
+                                            <Setter Property="Text" Value="⌃"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </materialDesign:PackIcon.Style>
-                        </materialDesign:PackIcon>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </Button>
                 </Grid>
             </Border>
