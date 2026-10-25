@@ -501,9 +501,17 @@ namespace HidWizards.UCR.Views.ProfileViews
             Logger.Info("Mapping group removed: " + title + " from profile " + Profile.Title);
         }
 
-        private void MappingListView_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        private void MappingListView_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (Profile.IsActive()) return;
+            var sourceVisual = e.OriginalSource as DependencyObject;
+            var onGrip = false;
+            while (sourceVisual != null)
+            {
+                if ((sourceVisual as FrameworkElement)?.Name == "MappingDragHandle") { onGrip = true; break; }
+                sourceVisual = VisualTreeHelper.GetParent(sourceVisual);
+            }
+            if (!onGrip) return;
 
             var list = sender as ListView;
             if (list == null) return;
@@ -517,7 +525,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             _mappingDragOriginalIndex = list.Items.IndexOf(mapping);
         }
 
-        private void MappingListView_OnPreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        private void MappingListView_OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             if (_mappingDragActive)
             {
@@ -536,7 +544,7 @@ namespace HidWizards.UCR.Views.ProfileViews
 
             if (_mappingDragActive)
             {
-                if (e.RightButton != MouseButtonState.Pressed)
+                if (e.LeftButton != MouseButtonState.Pressed)
                 {
                     EndMappingDrag(true);
                     return;
@@ -549,7 +557,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                 return;
             }
 
-            if (!_mappingDragStart.HasValue || _mappingDragSource == null || e.RightButton != MouseButtonState.Pressed) return;
+            if (!_mappingDragStart.HasValue || _mappingDragSource == null || e.LeftButton != MouseButtonState.Pressed) return;
 
             var position = e.GetPosition(list);
             if (Math.Abs(position.X - _mappingDragStart.Value.X) < SystemParameters.MinimumHorizontalDragDistance &&
@@ -1117,8 +1125,8 @@ namespace HidWizards.UCR.Views.ProfileViews
         public void ShowWorkspaceInspector()
         {
             if (_disposed) return;
-            SelectInspectorTab(0);
-            ShowInspectorTab(0);
+            SelectInspectorTab(1);
+            ShowInspectorTab(1);
         }
 
         public void ShowWorkspaceToolbox(string section)
@@ -1146,6 +1154,7 @@ namespace HidWizards.UCR.Views.ProfileViews
         {
             var mapping = ProfileViewModel.SelectedMapping;
             if (mapping?.ButtonsEnabled != true) return;
+            if (MappingCardControl.RequiresDeleteConfirmation(mapping) && MessageBox.Show("Delete mapping '" + mapping.MappingTitle + "'?", "Delete mapping", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
             mapping.Remove();
         }
 

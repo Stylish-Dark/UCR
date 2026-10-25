@@ -273,7 +273,7 @@
                      Selection changes the pane below, never the entire workspace. -->
                 <TabControl x:Name="InspectorTabs" Grid.Row="0" Grid.Column="1"
                             Height="38" VerticalAlignment="Center" HorizontalAlignment="Right"
-                            Margin="0 0 12 0" SelectedIndex="0"
+                            Margin="0 0 12 0" SelectedIndex="1"
                             Background="#202020" BorderBrush="Transparent" BorderThickness="0"
                             Panel.ZIndex="4" SelectionChanged="InspectorTabs_OnSelectionChanged">
                     <TabControl.Resources>
@@ -306,7 +306,7 @@
                             </Setter>
                         </Style>
                     </TabControl.Resources>
-                    <TabItem Header="Mappings"/>
+                    <TabItem Header="Mappings" Visibility="Collapsed"/>
                     <TabItem Header="Devices"/>
                     <TabItem Header="Filters"/>
                     <TabItem Header="Profile options"/>
@@ -836,8 +836,8 @@
                                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                                       ScrollViewer.VerticalScrollBarVisibility="Disabled"
                                                       HorizontalContentAlignment="Stretch" VirtualizingPanel.IsVirtualizing="False"
-                                                      PreviewMouseRightButtonDown="MappingListView_OnPreviewMouseRightButtonDown"
-                                                      PreviewMouseRightButtonUp="MappingListView_OnPreviewMouseRightButtonUp"
+                                                      PreviewMouseLeftButtonDown="MappingListView_OnPreviewMouseLeftButtonDown"
+                                                      PreviewMouseLeftButtonUp="MappingListView_OnPreviewMouseLeftButtonUp"
                                                       PreviewMouseMove="MappingListView_OnPreviewMouseMove"
                                                       LostMouseCapture="MappingListView_OnLostMouseCapture">
                                                 <ListView.ItemContainerStyle>

@@ -224,10 +224,18 @@ namespace HidWizards.UCR.Views.Controls
             menu.IsOpen = true;
         }
 
+        public static bool RequiresDeleteConfirmation(MappingViewModel mapping)
+        {
+            if (mapping?.Mapping == null) return false;
+            return mapping.Mapping.DeviceBindings != null && mapping.Mapping.DeviceBindings.Any(binding => binding != null && binding.Device != null);
+        }
+
         private void Remove_OnClick(object sender, RoutedEventArgs e)
         {
             var mappingViewModel = DataContext as MappingViewModel;
-            mappingViewModel?.Remove();
+            if (mappingViewModel == null) return;
+            if (RequiresDeleteConfirmation(mappingViewModel) && MessageBox.Show("Delete mapping '" + mappingViewModel.MappingTitle + "'?", "Delete mapping", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+            mappingViewModel.Remove();
         }
 
         private void Rename_OnClick(object sender, RoutedEventArgs e)
