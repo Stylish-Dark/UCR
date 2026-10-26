@@ -349,7 +349,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(card.FindName("MappingExpander"), Is.Null,
                     "The header must not remain wrapped in a clickable WPF Expander.");
                 Assert.That(chevron.Content, Is.InstanceOf<Grid>());
-                var chevronIcon = ((Grid)chevron.Content).Children.OfType<Path>().Single();
+                var chevronIcon = ((Grid)chevron.Content).Children.OfType<System.Windows.Shapes.Path>().Single();
                 Assert.That(chevronIcon.Data, Is.Not.Null);
                 Assert.That(chevron.Width, Is.GreaterThanOrEqualTo(38));
                 Assert.That(chevron.BorderThickness.Left, Is.GreaterThan(0));
