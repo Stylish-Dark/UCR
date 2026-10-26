@@ -63,6 +63,8 @@ namespace HidWizards.UCR.Core.Managers
                    SubscriptionState.ActiveProfiles.Any(profile => profile.Guid == profileGuid);
         }
 
+        public string LastActivationError { get; private set; }
+
         public bool ActivateProfile(Profile profile, bool refreshDevices = true)
         {
             if (profile == null) return false;
@@ -127,6 +129,7 @@ namespace HidWizards.UCR.Core.Managers
 
         private bool RebuildActiveProfiles(IList<Profile> targetProfiles, bool refreshDevices, Profile changedProfile)
         {
+            LastActivationError = null;
             targetProfiles = NormalizeProfiles(targetProfiles);
             var previousProfiles = NormalizeProfiles(GetActiveProfiles().ToList());
             var previousState = SubscriptionState;
@@ -167,6 +170,7 @@ namespace HidWizards.UCR.Core.Managers
             var candidate = BuildSubscriptionState(targetProfiles);
             if (candidate == null)
             {
+                LastActivationError = "Could not prepare the mappings, device bindings, or filters. Check that every required device is connected and its provider is available.";
                 Logger.Error("Unable to build candidate active profile state; existing profiles remain running.");
                 return false;
             }
@@ -182,6 +186,7 @@ namespace HidWizards.UCR.Core.Managers
 
             if (!ActivateSubscriptionState(candidate))
             {
+                LastActivationError = "A device subscription could not start. A configured input or output device may be disconnected, unavailable, or already in use.";
                 Logger.Error("Failed to activate candidate profile set; restoring the previous active profiles.");
                 if (candidate.IsActive) DeactivateProfile(candidate);
                 SubscriptionState = null;
@@ -201,6 +206,7 @@ namespace HidWizards.UCR.Core.Managers
             // If HidHide is unavailable, do not claim the requested exclusive profile started.
             if (!_exclusiveMode.Apply(targetProfiles))
             {
+                LastActivationError = "Exclusive Device Mode could not be applied. Check HidHide availability and device permissions.";
                 Logger.Error("Unable to apply Exclusive Device Mode; restoring the previous profile.");
                 DeactivateProfile(candidate);
                 SubscriptionState = null;

@@ -1085,6 +1085,16 @@ namespace HidWizards.UCR.Views.ProfileViews
         private Thickness _filterOriginalMargin;
         private ContentControl _filterDock;
 
+        public void DockRightWorkspacePanels()
+        {
+            DockProfileFilters(RightFiltersHost);
+        }
+
+        public void UndockRightWorkspacePanels()
+        {
+            UndockProfileFilters();
+        }
+
         public void DockProfileFilters(ContentControl target)
         {
             if (target == null || ReferenceEquals(_filterDock, target)) return;
@@ -1150,7 +1160,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             DockedDevicesNotice.Visibility = Visibility.Collapsed;
             MappingToolboxPanel.Visibility = Visibility.Collapsed;
             MappingFiltersPanel.Visibility = _filterDock != null ? Visibility.Visible : Visibility.Collapsed;
-            ProfileDevicesPanel.Visibility = index == 1 ? Visibility.Visible : Visibility.Collapsed;
+            ProfileDevicesPanel.Visibility = _deviceDock != null ? Visibility.Visible : Visibility.Collapsed;
         }
 
         public void ShowWorkspaceInspector()

@@ -264,7 +264,13 @@ namespace HidWizards.UCR.Views.Controls
 
             var nodes = DeviceBinding.Profile.Context.DevicesManager.GetDeviceBindingMenu(
                 config.Device, DeviceIoType.Output);
-            var controls = FlattenControls(nodes).ToList();
+            // A single button input must not silently bind an entire continuous axis.
+            // Only discrete output controls are offered until directional-axis mappings
+            // have explicit negative and positive input slots.
+            var controls = FlattenControls(nodes)
+                .Where(node => node.DeviceBindingInfo != null &&
+                    node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary)
+                .ToList();
             var buttons = new WrapPanel { Width = 440 };
             var directionals = new WrapPanel { Width = 440 };
 
@@ -285,6 +291,7 @@ namespace HidWizards.UCR.Views.Controls
                 };
                 var visual = DeviceVisualCatalog.DescribeBinding(
                     temporary, info.DeviceBindingCategory, DeviceBinding.Profile);
+                if (visual.ControlKind == ControlVisualKind.StickAxis) continue;
                 var title = node.Title ?? "";
                 var lower = title.ToLowerInvariant();
                 bool isDirectional = visual.ControlKind == ControlVisualKind.StickAxis ||

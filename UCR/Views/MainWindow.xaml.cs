@@ -410,7 +410,7 @@ namespace HidWizards.UCR.Views
             HidWizards.UCR.Utilities.DarkMessageBox.Show(
                 alongside
                     ? "The additional Profile could not be activated. The profiles that were already running have been restored."
-                    : "The Profile could not be activated. See the log for more details.",
+                    : (Context.SubscriptionsManager.LastActivationError ?? "The profile could not be activated. Check its configured input and output devices."),
                 "Profile failed to activate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
         }
 

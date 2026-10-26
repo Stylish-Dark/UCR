@@ -568,7 +568,7 @@
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <materialDesign:Card Grid.Column="0" Background="#242424" Height="{Binding RelativeSource={RelativeSource AncestorType={x:Type Grid}}, Path=ActualHeight}">
+                    <materialDesign:Card Grid.Column="0" Background="#242424">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>

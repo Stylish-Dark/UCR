@@ -311,9 +311,15 @@
                     <TabItem Header="Filters"/>
                     <TabItem Header="Profile options"/>
                 </TabControl>
-                <ContentControl x:Name="ProfileOptionsHost" Grid.Row="1" Grid.Column="1"
-                                Margin="0" Visibility="Collapsed"
-                                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+                <Grid Grid.Row="1" Grid.Column="1" Background="#222222" Margin="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <ContentControl x:Name="ProfileOptionsHost" Grid.Row="0" HorizontalContentAlignment="Stretch"/>
+                    <ContentControl x:Name="RightDevicesHost" Grid.Row="1" Visibility="Collapsed" HorizontalContentAlignment="Stretch"/>
+                    <ContentControl x:Name="RightFiltersHost" Grid.Row="1" MaxHeight="225" HorizontalContentAlignment="Stretch"/>
+                </Grid>
                 <!-- Device management remains in the bottom-left sidebar; the
                      Devices tab points to its location instead of duplicating it. -->
                 <Border x:Name="DockedDevicesNotice" Grid.Row="1" Grid.Column="1"
