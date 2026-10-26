@@ -458,7 +458,7 @@
                         </TreeView>
                         <!-- Normal list when no profile is open; the selected profile's
                              actual device editor docks here below Profiles. -->
-                        <Border x:Name="ProfileDeviceOverview" Grid.Row="3" Margin="8 7 8 8" Padding="9 8" Background="#202020"
+                        <Border x:Name="ProfileDeviceOverview" Visibility="Collapsed" Grid.Row="3" Margin="8 7 8 8" Padding="9 8" Background="#202020"
                                 BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
                             <StackPanel>
                                 <TextBlock Text="PROFILE DEVICES" FontSize="11" FontWeight="Bold"
@@ -512,7 +512,7 @@
                                 </ScrollViewer>
                             </StackPanel>
                         </Border>
-                        <ContentControl x:Name="ProfileDeviceEditorHost" Grid.Row="3"
+                        <ContentControl x:Name="ProfileDeviceEditorHost" Grid.Row="3" Visibility="Collapsed"
                                         Visibility="Collapsed" Margin="0"
                                         MaxHeight="280"
                                         HorizontalContentAlignment="Stretch"
@@ -580,6 +580,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <Border Grid.Row="0" Grid.ColumnSpan="2" Height="3" VerticalAlignment="Top" Background="{DynamicResource PrimaryHueMidBrush}"/>
                             <StackPanel Grid.Column="0" Grid.Row="0" FlowDirection="LeftToRight" HorizontalAlignment="Left" Orientation="Horizontal" Margin="0 4 0 0">
@@ -719,6 +720,7 @@
                                 <controls:ProfileDeviceListControl Title="Input devices" MinHeight="200" Margin="8 4 4 4" DataContext="{Binding InputDeviceControlViewModel}"/>
                                 <controls:ProfileDeviceListControl Title="Output devices" Grid.Column="1" MinHeight="200" Margin="4 4 8 4" DataContext="{Binding OutputDeviceControlViewModel}"/>
                             </Grid>
+                            <ContentControl x:Name="ProfileFiltersHost" Grid.Row="5" Grid.ColumnSpan="2" Margin="8 4 8 8" HorizontalContentAlignment="Stretch"/>
                         </Grid>
                     </materialDesign:Card>
                 </Grid>

@@ -555,9 +555,9 @@ namespace HidWizards.UCR.Views
             _embeddedProfilePage = page;
             _embeddedProfile = profile;
             ProfileEditorHost.Content = page;
-            page.DockProfileDevices(ProfileDeviceEditorHost);
+            page.DockProfileFilters(ProfileFiltersHost);
             ProfileDeviceOverview.Visibility = Visibility.Collapsed;
-            ProfileDeviceEditorHost.Visibility = Visibility.Visible;
+            ProfileDeviceEditorHost.Visibility = Visibility.Collapsed;
             page.ResumeEmbeddedVisuals();
 
             while (_profileRecency.Count > ProfileCacheLimit)
@@ -573,10 +573,10 @@ namespace HidWizards.UCR.Views
         private void ReleaseEmbeddedProfile()
         {
             if (_embeddedProfilePage == null) return;
-            _embeddedProfilePage.UndockProfileDevices();
+            _embeddedProfilePage.UndockProfileFilters();
             ProfileDeviceEditorHost.Content = null;
             ProfileDeviceEditorHost.Visibility = Visibility.Collapsed;
-            ProfileDeviceOverview.Visibility = Visibility.Visible;
+            ProfileDeviceOverview.Visibility = Visibility.Collapsed;
             _embeddedProfilePage.DetachProfileOptions();
             _embeddedProfilePage.SuspendEmbeddedVisuals();
             ProfileEditorHost.Content = null;

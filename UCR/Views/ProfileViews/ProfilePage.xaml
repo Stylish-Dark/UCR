@@ -869,10 +869,10 @@
                                                         <!-- All rows use identical proportional columns. Name, input,
                                                              arrow and output stay aligned across every mapping;
                                                              the glyphs are centred WITHIN their own columns. -->
-                                                        <Border Margin="0 3" Padding="12 7" CornerRadius="4"
+                                                        <Border Margin="0 2" Padding="10 4" CornerRadius="4"
                                                                 Background="#252525" BorderBrush="#393939"
                                                                 BorderThickness="1" HorizontalAlignment="Stretch">
-                                                            <StackPanel><Grid MinHeight="58" HorizontalAlignment="Stretch">
+                                                            <StackPanel><Grid MinHeight="49" HorizontalAlignment="Stretch">
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="1.25*" MinWidth="0"/>
                                                                     <ColumnDefinition Width="1.05*" MinWidth="0"/>
@@ -883,13 +883,14 @@
                                                                 <StackPanel Grid.Column="0" VerticalAlignment="Center"
                                                                             Margin="3 0 8 0">
                                                                     <DockPanel LastChildFill="True">
-                                                                        <Border x:Name="MappingDragHandle" DockPanel.Dock="Left" Width="29" Height="37" Margin="0 0 9 0" CornerRadius="3" Background="#343434" Cursor="SizeAll" ToolTip="Drag to reorder mapping">
+                                                                        <Border x:Name="MappingDragHandle" DockPanel.Dock="Left" Width="23" Height="32" Margin="0 0 5 0" CornerRadius="2" Background="Transparent" Cursor="SizeAll" ToolTip="Drag to reorder mapping">
                                                                             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False">
                                                                                 <Border Width="15" Height="2" Background="#C4C4C4" Margin="0 2"/>
                                                                                 <Border Width="15" Height="2" Background="#C4C4C4" Margin="0 2"/>
                                                                                 <Border Width="15" Height="2" Background="#C4C4C4" Margin="0 2"/>
                                                                             </StackPanel>
                                                                         </Border>
+                                                                        <Button DockPanel.Dock="Right" Width="28" Height="30" Margin="4 0 0 0" Padding="3" Background="Transparent" BorderThickness="0" IsEnabled="{Binding ButtonsEnabled}" ToolTip="Rename mapping" Click="RenameMappingRow_OnClick"><materialDesign:PackIcon Kind="Pencil" Width="15" Height="15" Foreground="#C0C0C0"/></Button>
                                                                         <TextBlock Text="{Binding MappingTitle}" Foreground="White" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                                                     </DockPanel>
                                                                 </StackPanel>

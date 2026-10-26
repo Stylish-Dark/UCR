@@ -1081,6 +1081,39 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         // Profile settings use the actual existing settings controls, embedded inside
         // the right inspector instead of navigating away from the mapping workspace.
+        private Panel _filterOriginalParent;
+        private Thickness _filterOriginalMargin;
+        private ContentControl _filterDock;
+
+        public void DockProfileFilters(ContentControl target)
+        {
+            if (target == null || ReferenceEquals(_filterDock, target)) return;
+            UndockProfileFilters();
+            _filterOriginalParent = MappingFiltersPanel.Parent as Panel;
+            if (_filterOriginalParent == null) return;
+            _filterOriginalMargin = MappingFiltersPanel.Margin;
+            _filterOriginalParent.Children.Remove(MappingFiltersPanel);
+            MappingFiltersPanel.Margin = new Thickness(0);
+            MappingFiltersPanel.DataContext = ProfileViewModel;
+            MappingFiltersPanel.Visibility = Visibility.Visible;
+            target.Content = MappingFiltersPanel;
+            _filterDock = target;
+        }
+
+        public void UndockProfileFilters()
+        {
+            if (_filterDock == null) return;
+            _filterDock.Content = null;
+            _filterDock = null;
+            MappingFiltersPanel.Margin = _filterOriginalMargin;
+            MappingFiltersPanel.ClearValue(DataContextProperty);
+            if (_filterOriginalParent != null)
+            {
+                Grid.SetRow(MappingFiltersPanel, 1);
+                _filterOriginalParent.Children.Add(MappingFiltersPanel);
+            }
+        }
+
         public void AttachProfileOptions(UIElement options)
         {
             ProfileOptionsHost.Content = options;
@@ -1116,7 +1149,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             ProfileOptionsHost.Visibility = Visibility.Visible;
             DockedDevicesNotice.Visibility = Visibility.Collapsed;
             MappingToolboxPanel.Visibility = Visibility.Collapsed;
-            MappingFiltersPanel.Visibility = index == 2 ? Visibility.Visible : Visibility.Collapsed;
+            MappingFiltersPanel.Visibility = _filterDock != null ? Visibility.Visible : Visibility.Collapsed;
             ProfileDevicesPanel.Visibility = index == 1 ? Visibility.Visible : Visibility.Collapsed;
         }
 
@@ -1293,6 +1326,13 @@ namespace HidWizards.UCR.Views.ProfileViews
             var mapping = MappingForWorkspaceGlyph(button);
             if (mapping == null || descriptor == null || !mapping.ButtonsEnabled) return;
             await MappingCardControl.OpenQuickOutputPickerAsync(mapping, descriptor, button);
+        }
+
+        private void RenameMappingRow_OnClick(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            var mapping = (sender as FrameworkElement)?.DataContext as MappingViewModel;
+            if (mapping?.ButtonsEnabled == true) mapping.Rename();
         }
 
         private void ToggleInlineMapping_OnClick(object sender, RoutedEventArgs e)
