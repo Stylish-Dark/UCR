@@ -512,7 +512,7 @@
                                 </ScrollViewer>
                             </StackPanel>
                         </Border>
-                        <ContentControl x:Name="ProfileDeviceEditorHost" Grid.Row="3" Visibility="Collapsed"
+                        <ContentControl x:Name="ProfileDeviceEditorHost" Grid.Row="3"
                                         Visibility="Collapsed" Margin="0"
                                         MaxHeight="280"
                                         HorizontalContentAlignment="Stretch"
