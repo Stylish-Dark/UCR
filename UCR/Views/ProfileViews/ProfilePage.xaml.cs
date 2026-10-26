@@ -1111,12 +1111,10 @@ namespace HidWizards.UCR.Views.ProfileViews
         {
             if (_disposed || SidebarGrid == null || SelectedMappingInspector == null
                 || ProfileOptionsHost == null) return;
-            SelectedMappingInspector.Visibility = index == 0 ? Visibility.Visible : Visibility.Collapsed;
-            SidebarGrid.Visibility = (index == 1 && _deviceDock == null) || index == 2
-                ? Visibility.Visible : Visibility.Collapsed;
-            ProfileOptionsHost.Visibility = index == 3 ? Visibility.Visible : Visibility.Collapsed;
-            DockedDevicesNotice.Visibility = index == 1 && _deviceDock != null
-                ? Visibility.Visible : Visibility.Collapsed;
+            SelectedMappingInspector.Visibility = Visibility.Collapsed;
+            SidebarGrid.Visibility = Visibility.Collapsed;
+            ProfileOptionsHost.Visibility = Visibility.Visible;
+            DockedDevicesNotice.Visibility = Visibility.Collapsed;
             MappingToolboxPanel.Visibility = Visibility.Collapsed;
             MappingFiltersPanel.Visibility = index == 2 ? Visibility.Visible : Visibility.Collapsed;
             ProfileDevicesPanel.Visibility = index == 1 ? Visibility.Visible : Visibility.Collapsed;

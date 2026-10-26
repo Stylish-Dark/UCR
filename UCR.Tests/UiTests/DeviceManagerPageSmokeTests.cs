@@ -348,9 +348,9 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(body, Is.Not.Null);
                 Assert.That(card.FindName("MappingExpander"), Is.Null,
                     "The header must not remain wrapped in a clickable WPF Expander.");
-                Assert.That(chevron.Content, Is.InstanceOf<TextBlock>());
-                var chevronIcon = (TextBlock)chevron.Content;
-                Assert.That(chevronIcon.Text, Is.EqualTo("⌄"));
+                Assert.That(chevron.Content, Is.InstanceOf<Grid>());
+                var chevronIcon = ((Grid)chevron.Content).Children.OfType<Path>().Single();
+                Assert.That(chevronIcon.Data, Is.Not.Null);
                 Assert.That(chevron.Width, Is.GreaterThanOrEqualTo(38));
                 Assert.That(chevron.BorderThickness.Left, Is.GreaterThan(0));
                 Assert.That(mapping.IsExpanded, Is.False);
@@ -364,7 +364,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(mapping.IsExpanded, Is.True);
                 Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible));
                 Assert.That(body.ContentTemplate, Is.Not.Null);
-                Assert.That(chevronIcon.Text, Is.EqualTo("⌃"));
+                Assert.That(((RotateTransform)chevronIcon.RenderTransform).Angle, Is.EqualTo(180));
                 Assert.That(body.ActualHeight, Is.GreaterThan(0));
 
                 ((IInvokeProvider)new ButtonAutomationPeer(chevron)).Invoke();
@@ -374,7 +374,7 @@ namespace HidWizards.UCR.Tests.UiTests
                     "Closing should preserve the existing short fade instead of snapping away.");
                 PumpDispatcherFor(TimeSpan.FromMilliseconds(250));
                 Assert.That(body.Visibility, Is.EqualTo(Visibility.Collapsed));
-                Assert.That(chevronIcon.Text, Is.EqualTo("⌄"));
+                Assert.That(((RotateTransform)chevronIcon.RenderTransform).Angle, Is.EqualTo(0));
             }
             finally
             {

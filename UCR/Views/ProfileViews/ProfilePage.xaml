@@ -272,7 +272,7 @@
                 <!-- Real, mutually exclusive tabs remain visible in the right inspector.
                      Selection changes the pane below, never the entire workspace. -->
                 <TabControl x:Name="InspectorTabs" Grid.Row="0" Grid.Column="1"
-                            Height="38" VerticalAlignment="Center" HorizontalAlignment="Right"
+                            Height="38" VerticalAlignment="Center" HorizontalAlignment="Right" Visibility="Collapsed"
                             Margin="0 0 12 0" SelectedIndex="1"
                             Background="#202020" BorderBrush="Transparent" BorderThickness="0"
                             Panel.ZIndex="4" SelectionChanged="InspectorTabs_OnSelectionChanged">
@@ -882,11 +882,16 @@
                                                                 </Grid.ColumnDefinitions>
                                                                 <StackPanel Grid.Column="0" VerticalAlignment="Center"
                                                                             Margin="3 0 8 0">
-                                                                    <TextBlock Text="{Binding MappingTitle}" Foreground="White"
-                                                                               FontSize="18" FontWeight="SemiBold"
-                                                                               TextTrimming="CharacterEllipsis"/>
-                                                                    <TextBlock Text="{Binding MappingOutputTypeLabel}" FontSize="14"
-                                                                               Foreground="#B0B0B0" Margin="0 3 0 0"/>
+                                                                    <DockPanel LastChildFill="True">
+                                                                        <Border x:Name="MappingDragHandle" DockPanel.Dock="Left" Width="29" Height="37" Margin="0 0 9 0" CornerRadius="3" Background="#343434" Cursor="SizeAll" ToolTip="Drag to reorder mapping">
+                                                                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False">
+                                                                                <Border Width="15" Height="2" Background="#C4C4C4" Margin="0 2"/>
+                                                                                <Border Width="15" Height="2" Background="#C4C4C4" Margin="0 2"/>
+                                                                                <Border Width="15" Height="2" Background="#C4C4C4" Margin="0 2"/>
+                                                                            </StackPanel>
+                                                                        </Border>
+                                                                        <TextBlock Text="{Binding MappingTitle}" Foreground="White" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                                    </DockPanel>
                                                                 </StackPanel>
                                                                 <!-- Render the real AND/OR expression. The previous flat
                                                                      CollapsedInputVisuals list falsely showed OR terms

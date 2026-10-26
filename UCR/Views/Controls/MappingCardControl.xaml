@@ -740,18 +740,11 @@
                                 </Border>
                             </ControlTemplate>
                         </Button.Template>
-                        <TextBlock FontFamily="Segoe UI Symbol" FontSize="23" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Text" Value="⌄"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                            <Setter Property="Text" Value="⌃"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
+                        <Grid Width="24" Height="24" IsHitTestVisible="False">
+                            <Path Stroke="#EDF3FF" StrokeThickness="2.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M 5,9 L 12,16 L 19,9">
+                                <Path.Style><Style TargetType="Path"><Setter Property="RenderTransform"><Setter.Value><RotateTransform Angle="0" CenterX="12" CenterY="12"/></Setter.Value></Setter><Style.Triggers><DataTrigger Binding="{Binding IsExpanded}" Value="True"><Setter Property="RenderTransform"><Setter.Value><RotateTransform Angle="180" CenterX="12" CenterY="12"/></Setter.Value></Setter></DataTrigger></Style.Triggers></Style></Path.Style>
+                            </Path>
+                        </Grid>
                     </Button>
                 </Grid>
             </Border>
