@@ -1031,22 +1031,14 @@
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
                                                                 </ItemsControl>
-                                                                <Button Grid.Column="4" Width="30" Height="38" Padding="0"
-                                                                        Background="Transparent" BorderThickness="0" Cursor="Hand"
-                                                                        ToolTip="Expand or collapse mapping Inputs and Outputs"
-                                                                        Click="ToggleInlineMapping_OnClick">
-                                                                    <Button.Style>
-                                                                        <Style TargetType="{x:Type Button}">
-                                                                            <Setter Property="Content" Value="▼"/>
-                                                                            <Setter Property="Foreground" Value="#C4D6ED"/>
-                                                                            <Setter Property="FontSize" Value="18"/>
-                                                                            <Style.Triggers>
-                                                                                <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                                                                                    <Setter Property="Content" Value="▲"/>
-                                                                                </DataTrigger>
-                                                                            </Style.Triggers>
-                                                                        </Style>
-                                                                    </Button.Style>
+                                                                <Button Grid.Column="4" Width="36" Height="38" Padding="0" Background="#303030" BorderBrush="#626262" BorderThickness="1" Focusable="False" Cursor="Hand"
+                                                                        ToolTip="Expand or collapse mapping Inputs and Outputs" Click="ToggleInlineMapping_OnClick">
+                                                                    <Button.Template><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Button.Template>
+                                                                    <Grid Width="23" Height="23" IsHitTestVisible="False">
+                                                                        <Path Stroke="#E7EFFC" StrokeThickness="2.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M 5,9 L 11.5,15 L 18,9">
+                                                                            <Path.Style><Style TargetType="Path"><Setter Property="RenderTransform"><Setter.Value><RotateTransform CenterX="11.5" CenterY="12" Angle="0"/></Setter.Value></Setter><Style.Triggers><DataTrigger Binding="{Binding IsExpanded}" Value="True"><Setter Property="RenderTransform"><Setter.Value><RotateTransform CenterX="11.5" CenterY="12" Angle="180"/></Setter.Value></Setter></DataTrigger></Style.Triggers></Style></Path.Style>
+                                                                        </Path>
+                                                                    </Grid>
                                                                 </Button>
                                                             </Grid>
                                                                 <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch">

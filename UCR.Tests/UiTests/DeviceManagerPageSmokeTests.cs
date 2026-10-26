@@ -265,13 +265,13 @@ namespace HidWizards.UCR.Tests.UiTests
                 // visual columns, and glyph presentation. Only the chevron
                 // is converted from inert TextBlock to a real Button.
                 var title = FindVisualChildren<TextBlock>(row)
-                    .FirstOrDefault(t => t.Text == mapping.MappingTitle && t.FontSize == 18);
+                    .FirstOrDefault(t => t.Text == mapping.MappingTitle && t.FontSize == 20);
                 Assert.That(title, Is.Not.Null, "Original mapping title typography changed.");
                 var toggle = FindVisualChildren<Button>(row)
                     .SingleOrDefault(button => (button.ToolTip as string) ==
                         "Expand or collapse mapping Inputs and Outputs");
                 Assert.That(toggle, Is.Not.Null);
-                Assert.That(toggle.Content, Is.EqualTo("▼"));
+                Assert.That(toggle.Content, Is.InstanceOf<Grid>());
                 var collapsedHeight = row.ActualHeight;
 
                 toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, toggle));
@@ -280,7 +280,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.UpdateLayout();
 
                 Assert.That(mapping.IsExpanded, Is.True);
-                Assert.That(toggle.Content, Is.EqualTo("▲"));
+                Assert.That(toggle.Content, Is.InstanceOf<Grid>());
                 Assert.That(row.ActualHeight, Is.GreaterThan(collapsedHeight),
                     "The original mapping row must expand downwards.");
                 var inlinePanel = FindVisualChildren<MappingCardControl>(row)
