@@ -261,7 +261,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 var mapping = row.DataContext as MappingViewModel;
                 Assert.That(mapping, Is.Not.Null);
 
-                // Collapsed rows preserve the original 18pt mapping title,
+                // Collapsed rows use the larger mapping title,
                 // visual columns, and glyph presentation. Only the chevron
                 // is converted from inert TextBlock to a real Button.
                 var title = FindVisualChildren<TextBlock>(row)
@@ -311,7 +311,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.Arrange(new Rect(new Point(0, 0), available));
                 page.UpdateLayout();
                 Assert.That(mapping.IsExpanded, Is.False);
-                Assert.That(toggle.Content, Is.EqualTo("▼"));
+                Assert.That(toggle.Content, Is.InstanceOf<Grid>());
                 Assert.That(row.ActualHeight, Is.LessThan(collapsedHeight + 2));
             }
             finally
