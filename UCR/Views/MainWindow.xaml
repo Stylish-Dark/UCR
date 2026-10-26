@@ -563,7 +563,7 @@
                                         HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
                     </TabItem>
                     <TabItem Header="Profile options">
-                <Grid x:Name="ProfileSummaryPanel" Visibility="{Binding ProfileDetailsActive}">
+                <Grid x:Name="ProfileSummaryPanel" Visibility="Visible">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>

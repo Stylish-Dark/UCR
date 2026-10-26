@@ -107,6 +107,11 @@ namespace HidWizards.UCR.Views.Controls
             // Reveal the whole binding row before opening its options. Otherwise a
             // partly scrolled-off row leaves Block/NOT underneath the fixed footer.
             BringIntoView();
+            if (DeviceBinding?.DeviceIoType == DeviceIoType.Output)
+            {
+                ShowOutputPicker(MenuButton);
+                return;
+            }
             BuildContextMenu();
             Ddl.PlacementTarget = MenuButton;
             // The inspector has a docked footer and a constrained scroll viewport.
@@ -240,13 +245,13 @@ namespace HidWizards.UCR.Views.Controls
             }
         }
 
-        // Button-only picker. No axis, trigger, full-stick or conversion controls
-        // are exposed here; the installed remapper engine still supports old profiles.
+        // Output selection is divided into buttons and directionals, backed by the
+        // selected device's actual provider descriptors (not hard-coded key IDs).
         private void ShowOutputPicker(FrameworkElement target)
         {
+            if (_outputPicker != null) _outputPicker.IsOpen = false;
             var config = GetSelectedDeviceConfiguration();
             if (config?.Device == null || DeviceBinding?.Profile?.Context == null) return;
-            if (_outputPicker != null) _outputPicker.IsOpen = false;
 
             var popup = new Popup
             {
@@ -256,81 +261,128 @@ namespace HidWizards.UCR.Views.Controls
                 StaysOpen = false
             };
             _outputPicker = popup;
-            var controls = FlattenControls(config.Device.GetDeviceBindingMenu(
-                    DeviceBinding.Profile.Context, DeviceIoType.Output))
-                .Where(node => node.DeviceBindingInfo != null &&
-                    node.DeviceBindingInfo.DeviceBindingCategory == DeviceBinding.DeviceBindingCategory)
-                .ToList();
 
-            var choices = new WrapPanel { Width = 448 };
+            var nodes = DeviceBinding.Profile.Context.DevicesManager.GetDeviceBindingMenu(
+                config.Device, DeviceIoType.Output);
+            var controls = FlattenControls(nodes).ToList();
+            var buttons = new WrapPanel { Width = 440 };
+            var directionals = new WrapPanel { Width = 440 };
+
             foreach (var node in controls)
             {
                 var info = node.DeviceBindingInfo;
+                if (info == null) continue;
                 var temporary = new DeviceBinding
                 {
-                    Profile = DeviceBinding.Profile, DeviceIoType = DeviceIoType.Output,
+                    Profile = DeviceBinding.Profile,
+                    DeviceIoType = DeviceIoType.Output,
                     DeviceBindingCategory = info.DeviceBindingCategory,
-                    DeviceConfigurationGuid = config.Guid, IsBound = true,
-                    KeyType = info.KeyType, KeyValue = info.KeyValue, KeySubValue = info.KeySubValue
+                    DeviceConfigurationGuid = config.Guid,
+                    IsBound = true,
+                    KeyType = info.KeyType,
+                    KeyValue = info.KeyValue,
+                    KeySubValue = info.KeySubValue
                 };
                 var visual = DeviceVisualCatalog.DescribeBinding(
                     temporary, info.DeviceBindingCategory, DeviceBinding.Profile);
-                // Axis-shaped output controls are deliberately absent from this UI.
-                if (visual.ControlKind == ControlVisualKind.StickAxis ||
-                    visual.ControlKind == ControlVisualKind.Trigger) continue;
-
+                var title = node.Title ?? "";
+                var lower = title.ToLowerInvariant();
+                bool isDirectional = visual.ControlKind == ControlVisualKind.StickAxis ||
+                    lower.Contains("d-pad") || lower.Contains("dpad") ||
+                    lower.Contains("hat") || lower.Contains("pov") ||
+                    lower.Contains("axis") || lower.Contains("stick") ||
+                    lower == "up" || lower == "down" || lower == "left" || lower == "right" ||
+                    lower.Contains("north") || lower.Contains("south") ||
+                    lower.Contains("east") || lower.Contains("west");
                 var row = new StackPanel { Orientation = Orientation.Horizontal };
                 row.Children.Add(new ControlGlyphControl
                 {
-                    Kind = visual.ControlKind, Label = visual.ControlLabel,
+                    Kind = visual.ControlKind,
+                    Label = visual.ControlLabel,
                     AccentBrush = visual.ControlBrush ?? Brushes.Gray,
-                    Width = 42, Height = 33, Margin = new Thickness(0, 0, 7, 0)
+                    Width = 41,
+                    Height = 33,
+                    Margin = new Thickness(0, 0, 8, 0)
                 });
                 row.Children.Add(new TextBlock
                 {
-                    Text = node.Title, Foreground = Brushes.White,
-                    TextTrimming = TextTrimming.CharacterEllipsis,
-                    MaxWidth = 144, VerticalAlignment = VerticalAlignment.Center
+                    Text = title,
+                    Foreground = Brushes.White,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 158
                 });
                 var choice = new Button
                 {
-                    Content = row, Width = 211, Height = 48,
+                    Content = row,
+                    Width = 212,
+                    MinHeight = 46,
                     HorizontalContentAlignment = HorizontalAlignment.Left,
-                    Margin = new Thickness(3), Padding = new Thickness(8, 3, 4, 3),
+                    Margin = new Thickness(3),
+                    Padding = new Thickness(8, 4, 5, 4),
                     Background = new SolidColorBrush(Color.FromRgb(43, 43, 43)),
-                    Foreground = Brushes.White, BorderBrush = Brushes.DimGray,
-                    BorderThickness = new Thickness(1), ToolTip = node.Title
+                    Foreground = Brushes.White,
+                    BorderBrush = Brushes.DimGray,
+                    BorderThickness = new Thickness(1),
+                    ToolTip = title
                 };
                 var selectedInfo = info;
                 choice.Click += (sender, args) =>
                 {
+                    DeviceBinding.DeviceBindingCategory = selectedInfo.DeviceBindingCategory;
                     DeviceBinding.SetDeviceConfigurationGuid(config.Guid);
-                    DeviceBinding.SetKeyTypeValue(selectedInfo.KeyType, selectedInfo.KeyValue,
-                        selectedInfo.KeySubValue);
+                    DeviceBinding.SetKeyTypeValue(selectedInfo.KeyType, selectedInfo.KeyValue, selectedInfo.KeySubValue);
                     popup.IsOpen = false;
                 };
-                choices.Children.Add(choice);
+                (isDirectional ? directionals : buttons).Children.Add(choice);
             }
 
+            var tabs = new TabControl { Background = Brushes.Transparent };
+            foreach (var category in new[] {
+                new { Title = "Buttons", Items = buttons },
+                new { Title = "Directionals", Items = directionals }
+            })
+            {
+                if (category.Items.Children.Count == 0)
+                    category.Items.Children.Add(new TextBlock {
+                        Text = "No controls in this category",
+                        Foreground = Brushes.LightGray,
+                        Margin = new Thickness(12)
+                    });
+                tabs.Items.Add(new TabItem
+                {
+                    Header = category.Title,
+                    Foreground = Brushes.White,
+                    Content = new ScrollViewer
+                    {
+                        Content = category.Items,
+                        MaxHeight = 340,
+                        HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                        VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+                    }
+                });
+            }
+            tabs.SelectedIndex = 0;
             var root = new StackPanel();
             root.Children.Add(new TextBlock
             {
-                Text = "CHOOSE OUTPUT", FontSize = 12, FontWeight = FontWeights.SemiBold,
-                Foreground = Brushes.LightGray, Margin = new Thickness(8, 8, 0, 7)
+                Text = "CHOOSE OUTPUT",
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = Brushes.LightGray,
+                Margin = new Thickness(8, 7, 0, 8)
             });
-            root.Children.Add(new ScrollViewer
-            {
-                MaxHeight = 430,
-                Content = choices,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
-            });
+            root.Children.Add(tabs);
             var clear = new Button
             {
-                Content = "Clear binding", HorizontalAlignment = HorizontalAlignment.Left,
+                Content = "Clear binding",
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Margin = new Thickness(8, 5, 0, 4),
                 Padding = new Thickness(11, 6, 11, 6),
-                Background = Brushes.Transparent, Foreground = Brushes.White,
-                BorderThickness = new Thickness(0)
+                Background = Brushes.Transparent,
+                Foreground = Brushes.White,
+                BorderThickness = new Thickness(0),
+                IsEnabled = DeviceBinding.IsBound
             };
             clear.Click += (sender, args) =>
             {
@@ -342,17 +394,21 @@ namespace HidWizards.UCR.Views.Controls
             {
                 Child = root,
                 Background = new SolidColorBrush(Color.FromRgb(32, 32, 32)),
-                BorderBrush = Brushes.DimGray, BorderThickness = new Thickness(1),
-                Padding = new Thickness(5)
+                BorderBrush = Brushes.DimGray,
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(5),
+                Width = 470
             };
             popup.IsOpen = true;
         }
 
         private DeviceConfiguration GetSelectedDeviceConfiguration()
         {
+            if (DeviceBinding?.Profile == null) return null;
             var selected = DeviceSelectionBox?.SelectedItem as ComboBoxItemViewModel;
-            if (selected == null || DeviceBinding?.Profile == null) return null;
-            return DeviceBinding.Profile.GetDeviceConfiguration(DeviceBinding.DeviceIoType, selected.Value);
+            var configurationGuid = selected?.Value ?? DeviceBinding.DeviceConfigurationGuid;
+            var configuration = DeviceBinding.Profile.GetDeviceConfiguration(DeviceBinding.DeviceIoType, configurationGuid);
+            return configuration ?? DeviceBinding.Profile.GetPrimaryDeviceConfiguration(DeviceBinding.DeviceIoType);
         }
     }
 }

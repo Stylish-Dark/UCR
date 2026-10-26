@@ -256,7 +256,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (DeviceBinding.IsInBindMode)
                     return "●  PRESS INPUT";
                 if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Output)
-                    return "Choose output";
+                    return "Output";
                 if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Input &&
                     DeviceBindingCategory == DeviceBindingCategory.Range)
                     return "Move axis to bind";
