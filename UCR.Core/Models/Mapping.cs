@@ -353,27 +353,29 @@ namespace HidWizards.UCR.Core.Models
             }
         }
 
-        internal short EvaluateInputExpression(IList<short> values)
+        internal short EvaluateInputExpression(IList<short> values, int inputGroup = -1)
         {
             short unused;
-            return EvaluateInputSignal(values, false, out unused) ? (short)1 : (short)0;
+            return EvaluateInputSignal(values, false, out unused, inputGroup) ? (short)1 : (short)0;
         }
 
-        internal short EvaluateAnalogueInputExpression(IList<short> values)
+        internal short EvaluateAnalogueInputExpression(IList<short> values, int inputGroup = -1)
         {
             short analogue;
-            EvaluateInputSignal(values, true, out analogue);
+            EvaluateInputSignal(values, true, out analogue, inputGroup);
             return analogue;
         }
 
         // Physical directions within one logical input are alternatives rather than
         // AND terms. Remaining inputs in the same group are genuine AND gates.
-        internal short EvaluateDirectionalAxis(IList<short> values, int axis)
+        internal short EvaluateDirectionalAxis(IList<short> values, int axis, int inputGroup = -1)
         {
             if (values == null || !UseInputExpression) return 0;
             var count = Math.Min(values.Count, DeviceBindings.Count);
             foreach (var group in Enumerable.Range(0, count)
-                .GroupBy(i => DeviceBindings[i].InputExpressionGroup).OrderBy(g => g.Key))
+                .GroupBy(i => DeviceBindings[i].InputExpressionGroup)
+                .Where(group => inputGroup < 0 || group.Key == inputGroup)
+                .OrderBy(g => g.Key))
             {
                 var directions = group.Where(i => DeviceBindings[i].InputDirectionSlot > 0).ToList();
                 if (directions.Count == 0) continue;
@@ -417,7 +419,8 @@ namespace HidWizards.UCR.Core.Models
 
         // The first satisfied OR group wins. A non-negated continuous axis in that group
         // drives analogue outputs; otherwise a true group drives a full-scale axis.
-        private bool EvaluateInputSignal(IList<short> values, bool forAnalogue, out short analogue)
+        private bool EvaluateInputSignal(IList<short> values, bool forAnalogue, out short analogue,
+            int inputGroup = -1)
         {
             analogue = 0;
             if (!UseInputExpression || values == null || DeviceBindings == null || DeviceBindings.Count == 0)
@@ -426,6 +429,7 @@ namespace HidWizards.UCR.Core.Models
             var count = Math.Min(values.Count, DeviceBindings.Count);
             foreach (var group in Enumerable.Range(0, count)
                 .GroupBy(index => Math.Max(0, DeviceBindings[index].InputExpressionGroup))
+                .Where(group => inputGroup < 0 || group.Key == inputGroup)
                 .OrderBy(group => group.Key))
             {
                 if (group.Any(i => DeviceBindings[i].InputDirectionSlot > 0))
@@ -437,7 +441,7 @@ namespace HidWizards.UCR.Core.Models
                     var active = directions.Any(i => values[i] != 0);
                     if (DeviceBindings[directions[0]].InputExpressionNegated) active = !active;
                     if (!active) continue;
-                    analogue = forAnalogue ? EvaluateDirectionalAxis(values, 0) : (short)1;
+                    analogue = forAnalogue ? EvaluateDirectionalAxis(values, 0, inputGroup) : (short)1;
                     return true;
                 }
 
