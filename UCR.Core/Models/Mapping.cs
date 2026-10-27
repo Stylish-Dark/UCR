@@ -474,16 +474,17 @@ namespace HidWizards.UCR.Core.Models
             if (slots != 0 && slots != 2 && slots != 4) return false;
             if (!EnableInputExpression()) return false;
             var members = DeviceBindings.Where(b => b.InputExpressionGroup == groupIndex).ToList();
-            var first = members.FirstOrDefault(b => b.InputDirectionSlot == 1)
+            var directions = members.Where(b => b.InputDirectionSlot > 0)
+                .OrderBy(b => b.InputDirectionSlot).ToList();
+            var first = directions.FirstOrDefault(b => b.InputDirectionSlot == 1)
                 ?? members.FirstOrDefault(b => b.InputDirectionSlot == 0);
             if (first == null) return false;
 
-            foreach (var sibling in members.Where(b => b.InputDirectionSlot > 0 && b != first).ToList())
-                DeviceBindings.Remove(sibling);
             if (slots == 0)
             {
-                // Single mode is a continuous analogue source, never a leftover
-                // digital negative-direction key. Discard the incompatible key.
+                foreach (var sibling in directions.Where(b => b != first))
+                    DeviceBindings.Remove(sibling);
+                // Returning to a continuous input cannot retain a digital key.
                 if (first.InputExpressionInputKind != 3)
                 {
                     first.DeviceConfigurationGuid = Guid.Empty;
@@ -499,21 +500,39 @@ namespace HidWizards.UCR.Core.Models
                 return true;
             }
 
-            // Clear the old single-source binding without relying on a live Profile:
-            // profile-less mappings are also constructed by import and unit tests.
-            first.DeviceConfigurationGuid = Guid.Empty;
-            first.KeyType = first.KeyValue = first.KeySubValue = 0;
-            first.IsBound = false;
-            first.Block = false;
-            first.InputExpressionInputKind = 0;
-            first.InputExpressionKindConfigured = true;
-            first.DeviceBindingCategory = DeviceBindingCategory.Momentary;
-            first.InputDirectionSlot = 1;
+            // Preserve existing directional assignments when extending or reducing
+            // a two-/four-way group. Re-creating these bindings discarded working
+            // keyboard and controller assignments every time the mode changed.
+            if (directions.Count == 0)
+            {
+                // A continuous axis is incompatible with the first digital slot,
+                // but a previously bound button remains a valid first direction.
+                if (first.InputExpressionInputKind != 0)
+                {
+                    first.DeviceConfigurationGuid = Guid.Empty;
+                    first.KeyType = first.KeyValue = first.KeySubValue = 0;
+                    first.IsBound = false;
+                    first.Block = false;
+                }
+                first.InputDirectionSlot = 1;
+                first.InputExpressionInputKind = 0;
+                first.InputExpressionKindConfigured = true;
+                first.DeviceBindingCategory = DeviceBindingCategory.Momentary;
+                directions.Add(first);
+            }
 
-            var position = DeviceBindings.IndexOf(first);
+            foreach (var redundant in directions.Where(b => b.InputDirectionSlot > slots).ToList())
+                DeviceBindings.Remove(redundant);
+            var insertPosition = DeviceBindings.IndexOf(first);
             for (var slot = 2; slot <= slots; slot++)
             {
-                DeviceBindings.Insert(++position, new DeviceBinding(Update, Profile, DeviceIoType.Input)
+                var existing = directions.FirstOrDefault(b => b.InputDirectionSlot == slot);
+                if (existing != null)
+                {
+                    insertPosition = DeviceBindings.IndexOf(existing);
+                    continue;
+                }
+                DeviceBindings.Insert(++insertPosition, new DeviceBinding(Update, Profile, DeviceIoType.Input)
                 {
                     InputExpressionGroup = groupIndex,
                     InputDirectionSlot = slot,
