@@ -148,6 +148,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<InputConditionViewModel> InputConditions { get; private set; }
         public bool ButtonsEnabled => !ProfileViewModel.Profile.IsActive();
         public bool UsesSubMappings => Plugins?.Any(row => row.Plugin.InputGroupIndex >= 0) == true;
+        public string AddSubMappingTooltip => CanAddSubMapping
+            ? "Add another independent input/output sub-mapping with the same relationship."
+            : "This legacy mapping cannot be separated safely into sub-mappings without changing its input logic.";
         public bool CanAddSubMapping
         {
             get
@@ -871,6 +874,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(InputConditions));
             OnPropertyChanged(nameof(UsesSubMappings));
             OnPropertyChanged(nameof(CanAddSubMapping));
+            OnPropertyChanged(nameof(AddSubMappingTooltip));
             // Binding changes also affect the singular/plural header, even during initial load.
             _mappingRouteTokens = BuildMappingRouteTokens(MappingRouteDisplay);
             OnPropertyChanged(nameof(MappingInputTypeLabel));
@@ -1720,6 +1724,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(HasAxisOutput));
             OnPropertyChanged(nameof(UsesSubMappings));
             OnPropertyChanged(nameof(CanAddSubMapping));
+            OnPropertyChanged(nameof(AddSubMappingTooltip));
             OnPropertyChanged(nameof(DirectionalPresetsVisibility));
             OnPropertyChanged(nameof(DefinedFilterName));
             OnPropertyChanged(nameof(ReferencedFilters));
