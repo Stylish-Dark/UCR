@@ -476,7 +476,7 @@
                             Height="34" Padding="12 3" Margin="3 8 0 2"
                             HorizontalAlignment="Left" IsEnabled="{Binding CanAddSubMapping}"
                             Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
-                            ToolTip="Create another independent set of inputs and outputs with this mapping relationship"/>
+                            ToolTip="{Binding AddSubMappingTooltip}"/>
                     </StackPanel>
                 </UniformGrid>
             </Border>
