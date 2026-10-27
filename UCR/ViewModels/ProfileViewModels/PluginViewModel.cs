@@ -24,6 +24,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             OnPropertyChanged(nameof(OutputGroupLabel));
             OnPropertyChanged(nameof(SubMappingLabelVisibility));
+            OnPropertyChanged(nameof(MappingFilterControlsVisibility));
         }
         public Visibility SubMappingLabelVisibility => Plugin.InputGroupIndex >= 0
             ? Visibility.Visible : Visibility.Collapsed;
