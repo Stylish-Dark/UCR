@@ -102,6 +102,46 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void InputSubMappings_EvaluateTheirOwnGroupsIndependently()
+        {
+            var mapping = new Mapping
+            {
+                UseInputExpression = true,
+                DeviceBindings = new List<DeviceBinding>
+                {
+                    new DeviceBinding { InputExpressionGroup = 0 },
+                    new DeviceBinding { InputExpressionGroup = 1 }
+                }
+            };
+            Assert.That(mapping.EvaluateInputExpression(new short[] { 1, 0 }, 0), Is.EqualTo(1));
+            Assert.That(mapping.EvaluateInputExpression(new short[] { 1, 0 }, 1), Is.EqualTo(0));
+            Assert.That(mapping.EvaluateInputExpression(new short[] { 1, 0 }), Is.EqualTo(1));
+            Assert.That(mapping.EvaluateInputExpression(new short[] { 0, 1 }, 0), Is.EqualTo(0));
+            Assert.That(mapping.EvaluateInputExpression(new short[] { 0, 1 }, 1), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void DirectionalSubMappings_DoNotBorrowAxesFromOtherGroups()
+        {
+            var mapping = new Mapping
+            {
+                UseInputExpression = true,
+                DeviceBindings = Enumerable.Range(0, 2).SelectMany(group =>
+                    Enumerable.Range(1, 4).Select(slot => new DeviceBinding
+                    {
+                        InputExpressionGroup = group,
+                        InputDirectionSlot = slot
+                    })).ToList()
+            };
+            Assert.That(mapping.EvaluateDirectionalAxis(new short[] { 0, 1, 0, 0, 0, 0, 1, 0 }, 0, 0),
+                Is.EqualTo(short.MaxValue));
+            Assert.That(mapping.EvaluateDirectionalAxis(new short[] { 0, 1, 0, 0, 0, 0, 1, 0 }, 1, 0),
+                Is.EqualTo(0));
+            Assert.That(mapping.EvaluateDirectionalAxis(new short[] { 0, 1, 0, 0, 0, 0, 1, 0 }, 1, 1),
+                Is.EqualTo(short.MinValue));
+        }
+
+        [Test]
         public void ContinuousAxisSignal_PreservesFullAnalogueValueUnlessChordGateIsUnsatisfied()
         {
             var mapping = new Mapping
