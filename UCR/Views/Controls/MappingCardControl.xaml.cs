@@ -706,11 +706,10 @@ namespace HidWizards.UCR.Views.Controls
             if (options.Count == 0) return;
 
             var changeAll = string.Equals(button.Tag as string, "CategoryHeader", StringComparison.Ordinal);
+            // Output type is a mapping-wide relationship. The individual row menu
+            // still offers the same choices, but applies them to its entire group.
             Action<SimplePluginViewModel> apply = selected =>
-            {
-                if (changeAll) mapping.ChangeAllOutputTypes(selected.Plugin);
-                else mapping.ChangeOutputType(output, selected.Plugin);
-            };
+                mapping.ChangeAllOutputTypes(selected.Plugin);
 
             var menu = CreateDarkContextMenu(button);
             menu.Placement = PlacementMode.Bottom;
