@@ -946,6 +946,69 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return Plugins.Count > count;
         }
 
+        // Convert the old positional 2-/4-button remappers without discarding any
+        // bound keys, virtual stick destinations, inversion or filter references.
+        // This is needed only when the user explicitly adds a sub-mapping.
+        private bool UpgradeLegacyDirectionalForSubMappings()
+        {
+            if (Plugins.Count != 1 || Mapping.DeviceBindings.Count == 0) return false;
+            var old = Plugins[0];
+            var slots = old.IsFourButtonAxis ? 4 : old.IsTwoButtonAxis ? 2 : 0;
+            if (slots == 0 || Mapping.DeviceBindings.Count != slots) return false;
+            var templateType = old.Plugin.GetType().Assembly.GetType(
+                old.Plugin.GetType().Namespace + ".AxisToAxis");
+            if (templateType == null || !typeof(Plugin).IsAssignableFrom(templateType)) return false;
+            var template = (Plugin)Activator.CreateInstance(templateType);
+            var desiredOutputs = slots == 4 ? 2 : 1;
+            if (old.Plugin.Outputs.Count < desiredOutputs) return false;
+            var replacements = new List<Plugin>();
+            for (var i = 0; i < desiredOutputs; i++)
+            {
+                var next = ProfileViewModel.Profile.Context.PluginManager.GetNewPlugin(template);
+                next.SetProfile(ProfileViewModel.Profile);
+                next.Outputs[0] = old.Plugin.Outputs[i];
+                next.Filters = old.Plugin.Filters.Select(filter => new Filter
+                {
+                    Name = filter.Name, Negative = filter.Negative
+                }).ToList();
+                next.InputGroupIndex = 0;
+                replacements.Add(next);
+            }
+
+            foreach (var input in Mapping.DeviceBindings.Select((binding, index) =>
+                new { binding, index }))
+            {
+                input.binding.InputExpressionGroup = 0;
+                input.binding.InputDirectionSlot = input.index + 1;
+                input.binding.InputExpressionInputKind = 0;
+                input.binding.InputExpressionKindConfigured = true;
+                input.binding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
+            }
+            Mapping.UseInputExpression = true;
+            foreach (var input in DeviceBindings)
+            {
+                input.PropertyChanged -= SummaryBindingOnPropertyChanged;
+                input.Dispose();
+            }
+            DeviceBindings.Clear();
+            foreach (var binding in old.DeviceBindings)
+                binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
+            old.Dispose();
+            Mapping.Plugins.Clear();
+            Mapping.Plugins.AddRange(replacements);
+            Plugins.Clear();
+            foreach (var plugin in replacements)
+            {
+                var view = new PluginViewModel(this, plugin);
+                Plugins.Add(view);
+                foreach (var binding in view.DeviceBindings)
+                    SubscribeSummaryBinding(binding);
+            }
+            RebuildDirectionalEditors();
+            ProfileViewModel.Profile.Context.ContextChanged();
+            return true;
+        }
+
         // One sub-mapping owns its input condition group and one or more output
         // channels. Adding it repeats the mapping's existing relationship instead
         // of creating an unrelated output driven by every previous input.
