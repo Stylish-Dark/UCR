@@ -161,10 +161,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (!SupportsNativeInputExpression && !legacyDirectional) return false;
                 if (!Mapping.UseInputExpression && Mapping.DeviceBindings.Count != 1 &&
                     !legacyDirectional) return false;
-                var groups = Mapping.DeviceBindings.Select(binding =>
-                    Math.Max(0, binding.InputExpressionGroup)).Distinct().Count();
-                if (groups > 1 && Plugins.Any(row => row.Plugin.InputGroupIndex < 0)) return false;
-                return Mapping.Relationship != MappingRelationship.FourWay ||
+                var groups = Mapping.DeviceBindings.GroupBy(binding =>
+                    Math.Max(0, binding.InputExpressionGroup)).ToList();
+                if (groups.Count > 1 && Plugins.Any(row => row.Plugin.InputGroupIndex < 0)) return false;
+                var relationship = Mapping.Relationship;
+                var required = relationship == MappingRelationship.FourWay ? 4 :
+                    relationship == MappingRelationship.TwoWay ? 2 : 1;
+                // Every sub-mapping must have the same simple input structure.
+                // Extra AND/OR logic belongs in a separate mapping or filter.
+                if (groups.Any(group => group.Count() != required)) return false;
+                return relationship != MappingRelationship.FourWay || legacyDirectional ||
                     Plugins[0].Plugin.InputCategories.Count == 1 &&
                     Plugins[0].Plugin.InputCategories[0].Category == DeviceBindingCategory.Range;
             }
