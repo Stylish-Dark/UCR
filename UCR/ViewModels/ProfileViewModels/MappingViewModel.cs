@@ -1584,6 +1584,76 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         }
 
         // Swap only the chosen output plugin, never the mapping's shared input bindings.
+        // Axis relationship belongs to the whole mapping. Selecting a direction
+        // count changes every sub-mapping's required inputs and output channels.
+        public bool ChangeAxisRelationship(int directions)
+        {
+            if (!ButtonsEnabled || Plugins.Count == 0 ||
+                (directions != 0 && directions != 1 && directions != 2 && directions != 4))
+                return false;
+            if (!SupportsNativeInputExpression && !UpgradeLegacyDirectionalForSubMappings())
+                return false;
+            if (!Mapping.UseInputExpression && !Mapping.EnableInputExpression()) return false;
+
+            var groups = Mapping.DeviceBindings.Select(binding =>
+                Math.Max(0, binding.InputExpressionGroup)).Distinct().OrderBy(group => group).ToList();
+            if (groups.Count == 0) return false;
+            var existingByGroup = Plugins.GroupBy(row => row.Plugin.InputGroupIndex)
+                .ToDictionary(group => group.Key, group => group.ToList());
+            if (existingByGroup.ContainsKey(-1) && groups.Count != 1) return false;
+
+            var className = directions == 1 ? "ButtonToAxis" : "AxisToAxis";
+            var target = Plugins[0].Plugin.GetType().Assembly.GetType(
+                Plugins[0].Plugin.GetType().Namespace + "." + className);
+            if (target == null || !typeof(Plugin).IsAssignableFrom(target)) return false;
+            var template = (Plugin)Activator.CreateInstance(target);
+            if (!GetCompatiblePluginOptions().Any(option =>
+                option.Plugin.GetType() == target)) return false;
+            if (!ChangeAllOutputTypes(template)) return false;
+
+            // Remove only surplus output channels belonging to each group;
+            // preserve the existing first-axis destination wherever possible.
+            var requiredOutputs = directions == 4 ? 2 : 1;
+            foreach (var group in Plugins.GroupBy(row => row.Plugin.InputGroupIndex).ToList())
+                foreach (var extra in group.Skip(requiredOutputs).ToList())
+                    RemovePlugin(extra);
+
+            foreach (var group in groups)
+            {
+                var changed = directions == 1
+                    ? Mapping.SetOneWayInputMode(group)
+                    : Mapping.SetDirectionalInputMode(group, directions);
+                if (!changed) return false;
+            }
+
+            // Four-way uses X/Y channels of one joystick, each driven by the
+            // same four button slots in that input group.
+            if (directions == 4)
+            {
+                foreach (var group in groups)
+                {
+                    var inputGroup = Plugins[0].Plugin.InputGroupIndex < 0 ? -1 : group;
+                    var count = Plugins.Count(row => row.Plugin.InputGroupIndex == inputGroup);
+                    while (count < 2)
+                    {
+                        var source = Plugins.First(row => row.Plugin.InputGroupIndex == inputGroup);
+                        var before = Plugins.Count;
+                        AddPlugin(source.Plugin);
+                        if (Plugins.Count == before) return false;
+                        var added = Plugins.Last().Plugin;
+                        added.InputGroupIndex = inputGroup;
+                        foreach (var filter in source.Plugin.Filters)
+                            added.AddFilter(filter.Name, filter.Negative);
+                        count++;
+                    }
+                }
+            }
+            RebuildDirectionalEditors();
+            RefreshHeaderState();
+            ProfileViewModel.Profile.Context.ContextChanged();
+            return true;
+        }
+
         private bool _changingAllOutputTypes;
 
         public bool ChangeAllOutputTypes(Plugin replacementTemplate)
