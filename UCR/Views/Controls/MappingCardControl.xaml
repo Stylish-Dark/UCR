@@ -385,7 +385,7 @@
                                 Style="{StaticResource UcrAccentOutlineButton}"
                                 IsEnabled="{Binding ButtonsEnabled}"
                                 Click="ChangeMappingOutputCategory_OnClick"
-                                ToolTip="Choose an available button-based output type"/>
+                                ToolTip="Choose the mapping-wide output relationship"/>
                         </StackPanel>
                         <ItemsControl ItemsSource="{Binding Plugins}">
                             <ItemsControl.ItemTemplate>
