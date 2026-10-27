@@ -155,9 +155,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             get
             {
-                if (!ButtonsEnabled || Plugins == null || Plugins.Count == 0 ||
-                    !SupportsNativeInputExpression) return false;
-                if (!Mapping.UseInputExpression && Mapping.DeviceBindings.Count != 1) return false;
+                if (!ButtonsEnabled || Plugins == null || Plugins.Count == 0) return false;
+                var legacyDirectional = Plugins.Count == 1 &&
+                    (Plugins[0].IsTwoButtonAxis || Plugins[0].IsFourButtonAxis);
+                if (!SupportsNativeInputExpression && !legacyDirectional) return false;
+                if (!Mapping.UseInputExpression && Mapping.DeviceBindings.Count != 1 &&
+                    !legacyDirectional) return false;
                 var groups = Mapping.DeviceBindings.Select(binding =>
                     Math.Max(0, binding.InputExpressionGroup)).Distinct().Count();
                 if (groups > 1 && Plugins.Any(row => row.Plugin.InputGroupIndex < 0)) return false;
@@ -949,6 +952,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool AddSubMapping()
         {
             if (!CanAddSubMapping) return false;
+            if (!SupportsNativeInputExpression && !UpgradeLegacyDirectionalForSubMappings()) return false;
             if (!Mapping.UseInputExpression && !Mapping.EnableInputExpression()) return false;
 
             var groups = Mapping.DeviceBindings.Select(input =>
