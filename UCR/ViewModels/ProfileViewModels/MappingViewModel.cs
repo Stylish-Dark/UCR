@@ -899,6 +899,59 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return Plugins.Count > count;
         }
 
+        // One sub-mapping owns its input condition group and one or more output
+        // channels. Adding it repeats the mapping's existing relationship instead
+        // of creating an unrelated output driven by every previous input.
+        public bool AddSubMapping()
+        {
+            if (!ButtonsEnabled || Plugins.Count == 0) return false;
+            if (!Mapping.UseInputExpression && !Mapping.EnableInputExpression()) return false;
+
+            var groups = Mapping.DeviceBindings.Select(input =>
+                Math.Max(0, input.InputExpressionGroup)).Distinct().ToList();
+            // Migrating arbitrary legacy OR expressions requires preserving their
+            // original shared routing; never silently change their behaviour.
+            if (groups.Count != 1 && Plugins.Any(p => p.Plugin.InputGroupIndex < 0))
+                return false;
+
+            var relation = Mapping.Relationship;
+            var oldGroup = groups.Count > 0 ? groups[0] : 0;
+            var nextGroup = groups.Count > 0 ? groups.Max() + 1 : 0;
+            var template = Plugins[0].Plugin;
+            var outputCount = relation == MappingRelationship.FourWay ? 2 : 1;
+            if (outputCount == 2 && (template.InputCategories.Count != 1 ||
+                template.InputCategories[0].Category != DeviceBindingCategory.Range))
+                return false;
+
+            var binding = Mapping.AddExpressionInputToGroup(nextGroup);
+            if (binding == null) return false;
+            if (relation == MappingRelationship.TwoWay || relation == MappingRelationship.FourWay)
+                Mapping.SetDirectionalInputMode(nextGroup,
+                    relation == MappingRelationship.FourWay ? 4 : 2);
+            else if (relation == MappingRelationship.ContinuousAxis)
+            {
+                binding.InputExpressionInputKind = 3;
+                binding.InputExpressionKindConfigured = true;
+                binding.DeviceBindingCategory = DeviceBindingCategory.Range;
+            }
+
+            // Existing single-group output rows become the first sub-mapping.
+            foreach (var existing in Plugins.Where(row => row.Plugin.InputGroupIndex < 0))
+                existing.Plugin.InputGroupIndex = oldGroup;
+
+            var previousCount = Plugins.Count;
+            for (var i = 0; i < outputCount; i++)
+            {
+                AddPlugin(template);
+                if (Plugins.Count == previousCount + i) break;
+                Plugins.Last().Plugin.InputGroupIndex = nextGroup;
+            }
+            RebuildDirectionalEditors();
+            RefreshHeaderState();
+            ProfileViewModel.Profile.Context.ContextChanged();
+            return Plugins.Count == previousCount + outputCount;
+        }
+
         // Change the number of button inputs without replacing the mapping,
         // its title, first axis output or filter references.
         public bool ChangeAxisButtonMode(PluginViewModel original, bool useTwoButtons)
