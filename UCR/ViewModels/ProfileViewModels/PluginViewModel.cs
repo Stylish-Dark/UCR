@@ -17,6 +17,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public MappingViewModel MappingViewModel { get; }
         public Plugin Plugin { get; set; }
         public string OutputType => IsFourButtonAxis ? "Axis" : new SimplePluginViewModel(Plugin).OutputType;
+        public string OutputGroupLabel => Plugin.InputGroupIndex >= 0
+            ? "Sub-mapping " + (Plugin.InputGroupIndex + 1)
+            : "Shared input group";
+        public Visibility MappingFilterControlsVisibility =>
+            MappingViewModel.Plugins?.FirstOrDefault() == this
+                ? Visibility.Visible : Visibility.Collapsed;
         private System.Reflection.PropertyInfo InvertProperty => Plugin.GetType().GetProperty("Invert");
         public Visibility QuickInvertVisibility =>
             InvertProperty?.PropertyType == typeof(bool) && InvertProperty.CanWrite
@@ -174,6 +180,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             OnPropertyChanged(nameof(CanRemove));
             OnPropertyChanged(nameof(CanChangeAxisButtonMode));
+            OnPropertyChanged(nameof(MappingFilterControlsVisibility));
+            OnPropertyChanged(nameof(OutputGroupLabel));
         }
 
         internal void RefreshActiveState()
