@@ -1611,14 +1611,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 .ToDictionary(group => group.Key, group => group.ToList());
             if (existingByGroup.ContainsKey(-1) && groups.Count != 1) return false;
 
-            var className = directions == 1 ? "ButtonToAxis" : "AxisToAxis";
-            var target = Plugins[0].Plugin.GetType().Assembly.GetType(
-                Plugins[0].Plugin.GetType().Namespace + "." + className);
-            if (target == null || !typeof(Plugin).IsAssignableFrom(target)) return false;
-            var template = (Plugin)Activator.CreateInstance(target);
-            if (!GetCompatiblePluginOptions().Any(option =>
-                option.Plugin.GetType() == target)) return false;
-            if (!ChangeAllOutputTypes(template)) return false;
+            var implementation = directions == 1 ? "Button to Axis" : "Axis to Axis";
+            var template = GetCompatiblePluginOptions().FirstOrDefault(option =>
+                string.Equals(option.Name, implementation, StringComparison.OrdinalIgnoreCase))?.Plugin;
+            if (template == null || !ChangeAllOutputTypes(template)) return false;
 
             // Remove only surplus output channels belonging to each group;
             // preserve the existing first-axis destination wherever possible.
