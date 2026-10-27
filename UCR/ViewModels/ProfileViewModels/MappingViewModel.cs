@@ -563,11 +563,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 var axisTemplate = GetCompatiblePluginOptions().FirstOrDefault(option =>
                     string.Equals(option.Name, "Axis to Axis", StringComparison.OrdinalIgnoreCase))?.Plugin;
-                if (axisTemplate != null)
-                    foreach (var output in Plugins.Where(output => output.OutputType == "Axis" &&
-                        output.Plugin.InputCategories.Count == 1 &&
-                        output.Plugin.InputCategories[0].Category != DeviceBindingCategory.Range).ToList())
-                        ChangeOutputType(output, axisTemplate);
+                if (axisTemplate != null && Plugins.Any(output => output.OutputType == "Axis" &&
+                    output.Plugin.InputCategories.Count == 1 &&
+                    output.Plugin.InputCategories[0].Category != DeviceBindingCategory.Range))
+                    ChangeAllOutputTypes(axisTemplate);
             }
 
             // A joystick needs two independent analogue destinations (X and Y).
