@@ -734,8 +734,9 @@ namespace HidWizards.UCR.Views.Controls
                     Foreground = Brushes.White,
                     Background = Brushes.Transparent,
                     Padding = new Thickness(10, 6, 14, 6),
-                    IsChecked = string.Equals(output.OutputType, category.Key,
-                        StringComparison.OrdinalIgnoreCase)
+                    IsChecked = mapping.Plugins.Count > 0 && mapping.Plugins.All(row =>
+                        string.Equals(row.OutputType, category.Key,
+                            StringComparison.OrdinalIgnoreCase))
                 };
                 item.Click += (s, args) => apply(selected);
                 menu.Items.Add(item);
