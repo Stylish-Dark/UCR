@@ -69,6 +69,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public int GroupIndex { get; }
         public ObservableCollection<DeviceBindingViewModel> Inputs { get; }
         public Visibility OrLabelVisibility => GroupIndex > 0 ? Visibility.Visible : Visibility.Collapsed;
+        public string GroupSeparatorLabel { get; private set; } = "OR";
+        public void SetSubMappingLabel(bool isSubMapping)
+        {
+            GroupSeparatorLabel = isSubMapping ? "SUB-MAPPING" : "OR";
+        }
         private readonly bool _positionalFourWay;
         public ObservableCollection<DeviceBindingViewModel> DirectionalInputs
         {
@@ -893,7 +898,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var canRemoveCondition = groups.Count > 1;
             foreach (var group in groups)
             {
-                InputConditions.Add(new InputConditionViewModel(group.Key, group, canRemoveCondition));
+                var inputGroup = new InputConditionViewModel(group.Key, group, canRemoveCondition);
+                inputGroup.SetSubMappingLabel(UsesSubMappings);
+                InputConditions.Add(inputGroup);
             }
         }
 
