@@ -720,6 +720,11 @@ namespace HidWizards.UCR.Core.Models
                 .ToDictionary(item => item.group, item => item.index);
             foreach (var item in DeviceBindings)
                 item.SetInputExpressionGroup(remap[Math.Max(0, item.InputExpressionGroup)]);
+            // Input/output routing is based on these same group identifiers.
+            // Removing an earlier sub-mapping must never retarget remaining outputs.
+            foreach (var plugin in Plugins.Where(p => p.InputGroupIndex >= 0))
+                if (remap.ContainsKey(plugin.InputGroupIndex))
+                    plugin.InputGroupIndex = remap[plugin.InputGroupIndex];
         }
 
         #region Plugin
