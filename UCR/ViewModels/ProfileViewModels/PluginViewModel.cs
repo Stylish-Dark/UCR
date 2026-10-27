@@ -271,12 +271,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (result == null || string.IsNullOrWhiteSpace(result.SelectedFilter)) return;
             if (!availableNames.Any(name => string.Equals(name, result.SelectedFilter, System.StringComparison.CurrentCultureIgnoreCase))) return;
 
-            var filter = Plugin.AddFilter(result.SelectedFilter.Trim());
-            if (!Filters.Any(existing => string.Equals(existing.Name, filter.Name, System.StringComparison.CurrentCultureIgnoreCase)))
-            {
-                Filters.Add(new FilterViewModel(this, filter));
-            }
-            Logger.Info("Filter reference added: '" + filter.Name + "' to mapping " + MappingViewModel.MappingTitle);
+            var filter = MappingViewModel.AddGroupFilter(result.SelectedFilter.Trim());
+            if (filter == null) return;
+            Logger.Info("Filter reference added to all outputs: '" + filter.Name + "' in mapping " + MappingViewModel.MappingTitle);
             MappingViewModel.ProfileViewModel.RefreshFilterNames();
             MappingViewModel.RefreshFilterIndicator();
         }
@@ -285,11 +282,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (filterViewModel == null) return;
             EnsureEditorInitialized();
-            if (Plugin.RemoveFilter(filterViewModel.Filter))
+            if (MappingViewModel.RemoveGroupFilter(filterViewModel.Name))
             {
-                Logger.Info("Filter reference removed: '" + filterViewModel.Name + "' from mapping " + MappingViewModel.MappingTitle);
-                filterViewModel.Dispose();
-                Filters.Remove(filterViewModel);
+                Logger.Info("Filter reference removed from all outputs: '" + filterViewModel.Name + "' in mapping " + MappingViewModel.MappingTitle);
                 MappingViewModel.ProfileViewModel.RefreshFilterNames();
                 MappingViewModel.RefreshFilterIndicator();
             }
@@ -297,7 +292,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public void ToggleFilter(FilterViewModel filterViewModel)
         {
-            Plugin.ToggleFilter(filterViewModel.Filter);
+            MappingViewModel.SetGroupFilterNegated(filterViewModel.Name,
+                !filterViewModel.Filter.Negative);
         }
     }
 }
