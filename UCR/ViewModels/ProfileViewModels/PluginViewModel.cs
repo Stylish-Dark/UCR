@@ -20,6 +20,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public string OutputGroupLabel => Plugin.InputGroupIndex >= 0
             ? "Sub-mapping " + (Plugin.InputGroupIndex + 1)
             : "Shared input group";
+        public Visibility SubMappingLabelVisibility => Plugin.InputGroupIndex >= 0
+            ? Visibility.Visible : Visibility.Collapsed;
         public Visibility MappingFilterControlsVisibility =>
             MappingViewModel.Plugins?.FirstOrDefault() == this
                 ? Visibility.Visible : Visibility.Collapsed;
@@ -182,6 +184,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(CanChangeAxisButtonMode));
             OnPropertyChanged(nameof(MappingFilterControlsVisibility));
             OnPropertyChanged(nameof(OutputGroupLabel));
+            OnPropertyChanged(nameof(SubMappingLabelVisibility));
         }
 
         internal void RefreshActiveState()
