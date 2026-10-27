@@ -20,6 +20,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public string OutputGroupLabel => Plugin.InputGroupIndex >= 0
             ? "Sub-mapping " + (Plugin.InputGroupIndex + 1)
             : "Shared input group";
+        public void RefreshSubMappingLabel()
+        {
+            OnPropertyChanged(nameof(OutputGroupLabel));
+            OnPropertyChanged(nameof(SubMappingLabelVisibility));
+        }
         public Visibility SubMappingLabelVisibility => Plugin.InputGroupIndex >= 0
             ? Visibility.Visible : Visibility.Collapsed;
         public Visibility MappingFilterControlsVisibility =>
