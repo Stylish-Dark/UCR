@@ -292,8 +292,12 @@ namespace HidWizards.UCR.Core.Models
                     plugin.InputCategories[0].Category == DeviceBindingCategory.Range;
                 var axis = isRange ? analogueIndex++ : 0;
                 if (plugin.Filters == null || !plugin.Filters.Any(filter =>
-                    string.Equals(GetRuntimeFilterKey(filter.Name), name,
-                        StringComparison.OrdinalIgnoreCase))) continue;
+                {
+                    var runtimeKey = GetRuntimeFilterKey(filter.Name);
+                    if (IsShadowMapping && runtimeKey != null)
+                        runtimeKey = Filter.GetShadowName(runtimeKey, ShadowDeviceNumber);
+                    return string.Equals(runtimeKey, name, StringComparison.OrdinalIgnoreCase);
+                })) continue;
                 if (plugin.IsFiltered())
                 {
                     NeutralizeFilteredPlugin(plugin);
