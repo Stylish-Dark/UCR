@@ -873,7 +873,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (!ButtonsEnabled) return false;
             var options = GetCompatiblePluginOptions();
-            var currentType = Plugins.LastOrDefault()?.Plugin?.GetType();
+            // A mapping's output group determines the default for every new row.
+            // Do not inherit an accidental mixed-type override from the last row.
+            var currentType = Plugins.FirstOrDefault()?.Plugin?.GetType();
             var selected = options.FirstOrDefault(option => option.Plugin.GetType() == currentType)
                 ?? options.FirstOrDefault(option => option.OutputType == "Button")
                 ?? options.FirstOrDefault();
@@ -2106,29 +2108,32 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private string GetMappingOutputTypeLabel()
         {
-            var plugin = Mapping?.Plugins?.FirstOrDefault();
-            if (plugin == null) return "None";
+            if (Mapping?.Plugins == null || Mapping.Plugins.Count == 0) return "None";
 
-            if (!string.IsNullOrWhiteSpace(plugin.GetDefinedFilterName())) return "Filter";
-            if (plugin.OutputCategories == null || plugin.OutputCategories.Count == 0)
+            // Output type belongs to the mapping as a whole, not to its first row.
+            // Existing profiles can contain heterogeneous destinations; represent
+            // them truthfully instead of silently claiming that all rows match.
+            var types = Mapping.Plugins.Select(plugin =>
             {
-                return string.Equals(plugin.Group, "Filter", StringComparison.OrdinalIgnoreCase) ? "Filter" : "None";
-            }
+                if (!string.IsNullOrWhiteSpace(plugin.GetDefinedFilterName())) return "Filter";
+                if (plugin.OutputCategories == null || plugin.OutputCategories.Count == 0)
+                    return string.Equals(plugin.Group, "Filter", StringComparison.OrdinalIgnoreCase)
+                        ? "Filter" : "None";
 
-            var category = plugin.OutputCategories[0].Category;
-            for (var i = 1; i < plugin.OutputCategories.Count; i++)
-            {
-                if (plugin.OutputCategories[i].Category != category) return "Multiple";
-            }
+                var category = plugin.OutputCategories[0].Category;
+                if (plugin.OutputCategories.Any(output => output.Category != category))
+                    return "Multiple";
+                switch (category)
+                {
+                    case DeviceBindingCategory.Momentary: return "Button";
+                    case DeviceBindingCategory.Range: return "Axis";
+                    case DeviceBindingCategory.Event: return "Event";
+                    case DeviceBindingCategory.Delta: return "Delta";
+                    default: return "Value";
+                }
+            }).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
-            switch (category)
-            {
-                case DeviceBindingCategory.Momentary: return "Button";
-                case DeviceBindingCategory.Range: return "Axis";
-                case DeviceBindingCategory.Event: return "Event";
-                case DeviceBindingCategory.Delta: return "Delta";
-                default: return "Value";
-            }
+            return types.Count == 1 ? types[0] : "Mixed";
         }
 
         private string GetDefinedFilterName()
