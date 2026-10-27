@@ -598,6 +598,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public void SetDirectionalMode(int slots)
         {
             if (!ButtonsEnabled || !HasAxisOutput || InputConditions == null) return;
+            // Scoped sub-mappings have one relationship across every group.
+            // A directional change must not alter just the first group's inputs.
+            if (UsesSubMappings)
+            {
+                ChangeAxisRelationship(slots);
+                return;
+            }
             var group = InputConditions.FirstOrDefault()?.GroupIndex ?? 0;
             if (!Mapping.SetDirectionalInputMode(group, slots)) return;
 
