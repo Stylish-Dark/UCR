@@ -738,7 +738,38 @@ namespace HidWizards.UCR.Views.Controls
                         string.Equals(row.OutputType, category.Key,
                             StringComparison.OrdinalIgnoreCase))
                 };
-                item.Click += (s, args) => apply(selected);
+                if (string.Equals(category.Key, "Axis", StringComparison.OrdinalIgnoreCase))
+                {
+                    item.Header = "Axis";
+                    item.ToolTip = "Choose the shared input/output relationship";
+                    var choices = new[]
+                    {
+                        new { Label = "1-Way (one button)", Slots = 1,
+                            Relationship = MappingRelationship.OneWay },
+                        new { Label = "2-Way (two buttons)", Slots = 2,
+                            Relationship = MappingRelationship.TwoWay },
+                        new { Label = "4-Way (four buttons)", Slots = 4,
+                            Relationship = MappingRelationship.FourWay },
+                        new { Label = "Analogue axis", Slots = 0,
+                            Relationship = MappingRelationship.ContinuousAxis }
+                    };
+                    foreach (var choice in choices)
+                    {
+                        var slots = choice.Slots;
+                        var subItem = new MenuItem
+                        {
+                            Header = choice.Label,
+                            IsCheckable = true,
+                            IsChecked = mapping.Mapping.Relationship == choice.Relationship,
+                            Foreground = Brushes.White,
+                            Background = Brushes.Transparent,
+                            Padding = new Thickness(10, 6, 14, 6)
+                        };
+                        subItem.Click += (s, args) => mapping.ChangeAxisRelationship(slots);
+                        item.Items.Add(subItem);
+                    }
+                }
+                else item.Click += (s, args) => apply(selected);
                 menu.Items.Add(item);
             }
 
