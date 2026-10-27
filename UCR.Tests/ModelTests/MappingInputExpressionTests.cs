@@ -121,6 +121,43 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void SubMappingRuntime_RoutesButtonChangesOnlyToTheirOwnDestinations()
+        {
+            var first = new ButtonToButton { InputGroupIndex = 0 };
+            var second = new ButtonToButton { InputGroupIndex = 1 };
+            var firstValues = new List<short>();
+            var secondValues = new List<short>();
+            first.Outputs[0].OutputSink = value => firstValues.Add(value);
+            second.Outputs[0].OutputSink = value => secondValues.Add(value);
+            var mapping = new Mapping
+            {
+                UseInputExpression = true,
+                DeviceBindings = new List<DeviceBinding>
+                {
+                    new DeviceBinding { InputExpressionGroup = 0 },
+                    new DeviceBinding { InputExpressionGroup = 1 }
+                },
+                Plugins = new List<Plugin> { first, second }
+            };
+            mapping.PrepareMapping(new HidWizards.UCR.Core.Models.Subscription.FilterState(),
+                System.Guid.NewGuid());
+            mapping.DeviceBindings[0].Callback(1);
+            Assert.That(firstValues.Last(), Is.EqualTo(1));
+            Assert.That(secondValues.Last(), Is.EqualTo(0));
+
+            var firstCount = firstValues.Count;
+            mapping.DeviceBindings[1].Callback(1);
+            Assert.That(firstValues.Count, Is.EqualTo(firstCount),
+                "A second sub-mapping must not replay the first output.");
+            Assert.That(secondValues.Last(), Is.EqualTo(1));
+
+            mapping.DeviceBindings[0].Callback(0);
+            Assert.That(firstValues.Last(), Is.EqualTo(0));
+            Assert.That(secondValues.Last(), Is.EqualTo(1));
+            mapping.StopListeningForFilters();
+        }
+
+        [Test]
         public void DirectionalSubMappings_DoNotBorrowAxesFromOtherGroups()
         {
             var mapping = new Mapping
