@@ -307,13 +307,23 @@ namespace HidWizards.UCR.Core.Models
         {
             if (InputCache == null || Plugins == null) return;
             var analogueIndex = 0;
-            var directionalFourWay = DeviceBindings.Any(b => b.InputDirectionSlot >= 3);
+            var rangeIndexesByGroup = new Dictionary<int, int>();
             foreach (var plugin in Plugins)
             {
                 if (plugin.InputCategories == null) continue;
+                var group = plugin.InputGroupIndex;
                 var isRange = UseInputExpression && plugin.InputCategories.Count == 1 &&
                     plugin.InputCategories[0].Category == DeviceBindingCategory.Range;
-                var axis = isRange ? analogueIndex++ : 0;
+                var axis = 0;
+                if (isRange)
+                {
+                    if (group >= 0)
+                    {
+                        rangeIndexesByGroup.TryGetValue(group, out axis);
+                        rangeIndexesByGroup[group] = axis + 1;
+                    }
+                    else axis = analogueIndex++;
+                }
                 if (plugin.Filters == null || !plugin.Filters.Any(filter =>
                 {
                     var runtimeKey = GetRuntimeFilterKey(filter.Name);
@@ -331,11 +341,15 @@ namespace HidWizards.UCR.Core.Models
                 if (UseInputExpression)
                 {
                     if (plugin.InputCategories.Count != 1) continue;
+                    var fourWay = group >= 0
+                        ? DeviceBindings.Any(binding => binding.InputExpressionGroup == group &&
+                            binding.InputDirectionSlot >= 3)
+                        : DeviceBindings.Any(binding => binding.InputDirectionSlot >= 3);
                     var value = isRange
-                        ? (directionalFourWay
-                            ? EvaluateDirectionalAxis(InputCache, axis == 0 ? 0 : 1)
-                            : EvaluateAnalogueInputExpression(InputCache))
-                        : EvaluateInputExpression(InputCache);
+                        ? (fourWay
+                            ? EvaluateDirectionalAxis(InputCache, axis % 2, group)
+                            : EvaluateAnalogueInputExpression(InputCache, group))
+                        : EvaluateInputExpression(InputCache, group);
                     plugin.Update(new[] { value });
                 }
                 else
