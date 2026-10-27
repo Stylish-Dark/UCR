@@ -11,6 +11,37 @@ namespace HidWizards.UCR.Tests.ModelTests
     public class MappingInputExpressionTests
     {
         [Test]
+        public void OutputRelationship_DerivesFromActualDirectionalTopology()
+        {
+            var mapping = new Mapping();
+            Assert.That(mapping.Relationship, Is.EqualTo(MappingRelationship.None));
+
+            mapping.Plugins.Add(new ButtonToAxis());
+            mapping.DeviceBindings.Add(new DeviceBinding());
+            Assert.That(mapping.Relationship, Is.EqualTo(MappingRelationship.OneWay));
+
+            mapping.Plugins.Clear();
+            mapping.Plugins.Add(new AxisToAxis());
+            Assert.That(mapping.Relationship, Is.EqualTo(MappingRelationship.ContinuousAxis));
+            Assert.That(mapping.SetDirectionalInputMode(0, 2), Is.True);
+            Assert.That(mapping.Relationship, Is.EqualTo(MappingRelationship.TwoWay));
+            Assert.That(mapping.SetDirectionalInputMode(0, 4), Is.True);
+            Assert.That(mapping.Relationship, Is.EqualTo(MappingRelationship.FourWay));
+        }
+
+        [Test]
+        public void OutputRelationship_RecognisesLegacyPositionalButtonGroups()
+        {
+            var pair = new Mapping();
+            pair.Plugins.Add(new ButtonsToAxis());
+            Assert.That(pair.Relationship, Is.EqualTo(MappingRelationship.TwoWay));
+
+            var stick = new Mapping();
+            stick.Plugins.Add(new ButtonsToAxes());
+            Assert.That(stick.Relationship, Is.EqualTo(MappingRelationship.FourWay));
+        }
+
+        [Test]
         public void FourWayJoystick_OppositeDirectionsCancel()
         {
             Assert.That(ButtonsToAxes.DirectionValue(false, false), Is.EqualTo(0));
