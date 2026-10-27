@@ -478,6 +478,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             var preferredDevices = Plugins.LastOrDefault()?.Plugin?.Outputs
                 .Select(output => output.DeviceConfigurationGuid).ToList();
+            // New sub-outputs inherit the mapping's relationship. Explicitly adding
+            // a different plugin is not an escape hatch for mixed output groups.
+            if (Plugins.Count > 0 && Plugins[0].Plugin.GetType() != plugin.GetType()) return;
             var newPlugin = ProfileViewModel.Profile.Context.PluginManager.GetNewPlugin(plugin);
             if (!Mapping.AddPlugin(newPlugin)) return;
             SelectCompatibleOutputDevices(newPlugin, preferredDevices);
@@ -1398,23 +1401,35 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         }
 
         // Swap only the chosen output plugin, never the mapping's shared input bindings.
+        private bool _changingAllOutputTypes;
+
         public bool ChangeAllOutputTypes(Plugin replacementTemplate)
         {
             if (!ButtonsEnabled || replacementTemplate == null || Plugins.Count == 0) return false;
             var candidates = GetCompatiblePluginOptions();
             if (!candidates.Any(candidate => candidate.Plugin.GetType() == replacementTemplate.GetType()))
                 return false;
-            // Apply the common category to each destination. Individual output type changes
-            // remain available in the row's optional settings.
-            var success = true;
-            foreach (var output in Plugins.ToList())
-                success &= ChangeOutputType(output, replacementTemplate);
-            return success;
+            // A mapping owns one output relationship. A type change applies to its
+            // complete set of output rows, never silently creates mixed sub-mappings.
+            _changingAllOutputTypes = true;
+            try
+            {
+                foreach (var output in Plugins.ToList())
+                    if (!ChangeOutputType(output, replacementTemplate)) return false;
+                return true;
+            }
+            finally
+            {
+                _changingAllOutputTypes = false;
+            }
         }
 
         public bool ChangeOutputType(PluginViewModel original, Plugin replacementTemplate)
         {
             if (!ButtonsEnabled || original == null || replacementTemplate == null) return false;
+            // A row-level type change is safe only with one output. For grouped
+            // outputs the mapping-level type selector must change every row together.
+            if (Plugins.Count > 1 && !_changingAllOutputTypes) return false;
             var index = Plugins.IndexOf(original);
             if (index < 0 || index >= Mapping.Plugins.Count) return false;
             if (!Mapping.GetPluginList().Any(option => option.GetType() == replacementTemplate.GetType()))
