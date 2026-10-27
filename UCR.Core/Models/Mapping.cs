@@ -70,6 +70,7 @@ namespace HidWizards.UCR.Core.Models
         private List<short> InputCache { get; set; }
         private List<CallbackMultiplexer> Multiplexer { get; set; }
         private short? _lastInputExpressionValue;
+        private Dictionary<Plugin, short> _lastDigitalByPlugin = new Dictionary<Plugin, short>();
         private FilterState _subscribedFilterState;
         
 
@@ -154,6 +155,7 @@ namespace HidWizards.UCR.Core.Models
             }
 
             _lastInputExpressionValue = null;
+            _lastDigitalByPlugin.Clear();
             StopListeningForFilters();
             FilterState = filterState;
             _subscribedFilterState = filterState;
@@ -221,26 +223,46 @@ namespace HidWizards.UCR.Core.Models
                 return;
             }
 
-            // One input expression feeds heterogeneous output plugins. Momentary consumers
-            // receive its Boolean state; range consumers receive an analogue driver, or
-            // full-scale activation when the expression has only discrete conditions.
-            var digital = EvaluateInputExpression(InputCache);
-            var analogue = EvaluateAnalogueInputExpression(InputCache);
-            var digitalChanged = !_lastInputExpressionValue.HasValue ||
-                                 _lastInputExpressionValue.Value != digital;
-            _lastInputExpressionValue = digital;
+            // Each output can consume either the legacy aggregate expression or
+            // a dedicated input sub-mapping. Independent Boolean destinations
+            // must detect their own transitions, even if another group is held.
+            var legacyDigital = EvaluateInputExpression(InputCache);
+            var legacyAnalogue = EvaluateAnalogueInputExpression(InputCache);
+            var legacyChanged = !_lastInputExpressionValue.HasValue ||
+                                _lastInputExpressionValue.Value != legacyDigital;
+            _lastInputExpressionValue = legacyDigital;
 
-            var directionalFourWay = DeviceBindings.Any(b => b.InputDirectionSlot >= 3);
-            var rangeIndex = 0;
+            var globalFourWay = DeviceBindings.Any(b => b.InputDirectionSlot >= 3);
+            var legacyRangeIndex = 0;
+            var rangeIndexesByGroup = new Dictionary<int, int>();
             foreach (var plugin in Plugins)
             {
                 if (plugin.InputCategories.Count != 1) continue;
                 var isRange = plugin.InputCategories[0].Category == DeviceBindingCategory.Range;
+                var group = plugin.InputGroupIndex;
+                var digital = group >= 0 ? EvaluateInputExpression(InputCache, group) : legacyDigital;
+                var analogue = group >= 0 ? EvaluateAnalogueInputExpression(InputCache, group) : legacyAnalogue;
+                var scopedChanged = !_lastDigitalByPlugin.ContainsKey(plugin) ||
+                                    _lastDigitalByPlugin[plugin] != digital;
+                _lastDigitalByPlugin[plugin] = digital;
+
                 var outputValue = analogue;
-                if (isRange && directionalFourWay)
-                    outputValue = EvaluateDirectionalAxis(InputCache, rangeIndex++ == 0 ? 0 : 1);
-                else if (isRange)
-                    rangeIndex++;
+                if (isRange)
+                {
+                    var axisIndex = legacyRangeIndex;
+                    if (group >= 0)
+                    {
+                        rangeIndexesByGroup.TryGetValue(group, out axisIndex);
+                        rangeIndexesByGroup[group] = axisIndex + 1;
+                    }
+                    else legacyRangeIndex++;
+                    var isFourWay = group >= 0
+                        ? DeviceBindings.Any(b => b.InputExpressionGroup == group && b.InputDirectionSlot >= 3)
+                        : globalFourWay;
+                    if (isFourWay)
+                        outputValue = EvaluateDirectionalAxis(InputCache,
+                            axisIndex % 2, group);
+                }
                 if (plugin.IsFiltered())
                 {
                     NeutralizeFilteredPlugin(plugin);
@@ -248,7 +270,8 @@ namespace HidWizards.UCR.Core.Models
                 }
                 var returningFromFilter = plugin.WasBlockedByFilter;
                 plugin.WasBlockedByFilter = false;
-                if (!isRange && !digitalChanged && !returningFromFilter) continue;
+                if (!isRange && !(group >= 0 ? scopedChanged : legacyChanged) && !returningFromFilter)
+                    continue;
                 plugin.Update(new[] { isRange ? outputValue : digital });
             }
         }
