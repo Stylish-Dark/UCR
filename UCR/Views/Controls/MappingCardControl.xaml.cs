@@ -654,10 +654,6 @@ namespace HidWizards.UCR.Views.Controls
             menu.Placement = PlacementMode.Bottom;
 
             var categories = options
-                .Where(option => !string.Equals(option.Plugin.Group, "Axis",
-                    StringComparison.OrdinalIgnoreCase) &&
-                    option.Plugin.InputCategories.All(input => input.Category != DeviceBindingCategory.Range) &&
-                    option.Plugin.OutputCategories.All(output => output.Category != DeviceBindingCategory.Range))
                 .GroupBy(option => option.OutputType, StringComparer.OrdinalIgnoreCase).ToList();
             foreach (var category in categories)
             {
@@ -673,7 +669,33 @@ namespace HidWizards.UCR.Views.Controls
                     IsChecked = mapping.Plugins.All(p => string.Equals(p.OutputType,
                         category.Key, StringComparison.OrdinalIgnoreCase))
                 };
-                item.Click += (s, args) => mapping.ChangeAllOutputTypes(chosen.Plugin);
+                if (string.Equals(category.Key, "Axis", StringComparison.OrdinalIgnoreCase))
+                {
+                    item.ToolTip = "Select the directional relationship for the entire mapping";
+                    var relationships = new[]
+                    {
+                        new { Label = "1-Way (one button)", Slots = 1, Type = MappingRelationship.OneWay },
+                        new { Label = "2-Way (two buttons)", Slots = 2, Type = MappingRelationship.TwoWay },
+                        new { Label = "4-Way (four buttons)", Slots = 4, Type = MappingRelationship.FourWay },
+                        new { Label = "Analogue axis", Slots = 0, Type = MappingRelationship.ContinuousAxis }
+                    };
+                    foreach (var relationship in relationships)
+                    {
+                        var slots = relationship.Slots;
+                        var subItem = new MenuItem
+                        {
+                            Header = relationship.Label,
+                            IsCheckable = true,
+                            IsChecked = mapping.Mapping.Relationship == relationship.Type,
+                            Foreground = Brushes.White,
+                            Background = Brushes.Transparent,
+                            Padding = new Thickness(10, 6, 14, 6)
+                        };
+                        subItem.Click += (s, args) => mapping.ChangeAxisRelationship(slots);
+                        item.Items.Add(subItem);
+                    }
+                }
+                else item.Click += (s, args) => mapping.ChangeAllOutputTypes(chosen.Plugin);
                 menu.Items.Add(item);
             }
 
