@@ -756,6 +756,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public void AddCondition()
         {
             if (!ButtonsEnabled || !SupportsNativeInputExpression) return;
+            if (Plugins.Any(output => output.Plugin.InputGroupIndex >= 0))
+            {
+                AddSubMapping();
+                return;
+            }
             var binding = Mapping.AddExpressionCondition();
             AddExpressionBindingViewModel(binding);
         }
@@ -783,6 +788,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public void RemoveExpressionInput(DeviceBindingViewModel bindingViewModel)
         {
             if (!ButtonsEnabled || bindingViewModel?.DeviceBinding == null) return;
+            // Removing an individual required directional slot would corrupt its
+            // paired output. Remove the complete sub-mapping instead.
+            if (Plugins.Any(output => output.Plugin.InputGroupIndex ==
+                bindingViewModel.DeviceBinding.InputExpressionGroup)) return;
             if (!Mapping.RemoveExpressionInput(bindingViewModel.DeviceBinding)) return;
 
             RebuildDirectionalEditors();
@@ -792,6 +801,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (!ButtonsEnabled || condition == null || !condition.CanRemoveCondition) return;
             var removed = condition.Inputs.ToList();
+            var outputs = Plugins.Where(row => row.Plugin.InputGroupIndex ==
+                condition.GroupIndex).ToList();
+            if (outputs.Count == Plugins.Count) return;
+            foreach (var output in outputs) RemovePlugin(output);
             if (!Mapping.RemoveExpressionGroup(condition.GroupIndex)) return;
 
             foreach (var binding in removed)
@@ -822,7 +835,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                         ? Mapping.Plugins[0].InputCategories[i].Name
                         : "Input " + (i + 1));
                 DeviceBindings[i].InputExpressionControlsVisibility = Visibility.Collapsed;
-                DeviceBindings[i].CanRemoveExpressionInput = canRemove;
+                DeviceBindings[i].CanRemoveExpressionInput = canRemove &&
+                    !Plugins.Any(output => output.Plugin.InputGroupIndex ==
+                        DeviceBindings[i].DeviceBinding.InputExpressionGroup);
             }
 
             RebuildInputConditions();
