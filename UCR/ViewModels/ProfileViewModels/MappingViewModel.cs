@@ -157,7 +157,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 if (!ButtonsEnabled || Plugins == null || Plugins.Count == 0) return false;
                 var legacyDirectional = Plugins.Count == 1 &&
-                    (Plugins[0].IsTwoButtonAxis || Plugins[0].IsFourButtonAxis);
+                    (Plugins[0].IsTwoButtonAxis ||
+                     Plugins[0].IsFourButtonAxis && !Plugins[0].IsDPadOutput);
                 if (!SupportsNativeInputExpression && !legacyDirectional) return false;
                 if (!Mapping.UseInputExpression && Mapping.DeviceBindings.Count != 1 &&
                     !legacyDirectional) return false;
@@ -959,7 +960,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (Plugins.Count != 1 || Mapping.DeviceBindings.Count == 0) return false;
             var old = Plugins[0];
-            var slots = old.IsFourButtonAxis ? 4 : old.IsTwoButtonAxis ? 2 : 0;
+            var slots = old.IsFourButtonAxis && !old.IsDPadOutput ? 4 :
+                old.IsTwoButtonAxis ? 2 : 0;
             if (slots == 0 || Mapping.DeviceBindings.Count != slots) return false;
             var templateType = old.Plugin.GetType().Assembly.GetType(
                 old.Plugin.GetType().Namespace + ".AxisToAxis");
