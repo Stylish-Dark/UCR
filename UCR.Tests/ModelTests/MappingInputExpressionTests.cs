@@ -178,6 +178,31 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void DirectionalModeExpansion_PreservesExistingAssignedInputs()
+        {
+            var mapping = new Mapping();
+            mapping.Plugins.Add(new AxisToAxis());
+            mapping.DeviceBindings.Add(new DeviceBinding());
+            Assert.That(mapping.SetDirectionalInputMode(0, 2), Is.True);
+            var negative = mapping.DeviceBindings[0];
+            var positive = mapping.DeviceBindings[1];
+            negative.KeyValue = 87;
+            positive.KeyValue = 83;
+
+            Assert.That(mapping.SetDirectionalInputMode(0, 4), Is.True);
+            Assert.That(mapping.DeviceBindings[0], Is.SameAs(negative));
+            Assert.That(mapping.DeviceBindings[1], Is.SameAs(positive));
+            Assert.That(mapping.DeviceBindings[0].KeyValue, Is.EqualTo(87));
+            Assert.That(mapping.DeviceBindings[1].KeyValue, Is.EqualTo(83));
+            Assert.That(mapping.DeviceBindings.Count, Is.EqualTo(4));
+
+            Assert.That(mapping.SetDirectionalInputMode(0, 2), Is.True);
+            Assert.That(mapping.DeviceBindings.Count, Is.EqualTo(2));
+            Assert.That(mapping.DeviceBindings[0], Is.SameAs(negative));
+            Assert.That(mapping.DeviceBindings[1], Is.SameAs(positive));
+        }
+
+        [Test]
         public void DirectionalJoystick_PairsOpposingKeysAndGatesBothAxesWithOtherAndInputs()
         {
             var bindings = Enumerable.Range(1, 4).Select(slot => new DeviceBinding
