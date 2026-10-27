@@ -28,7 +28,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public Visibility SubMappingLabelVisibility => Plugin.InputGroupIndex >= 0
             ? Visibility.Visible : Visibility.Collapsed;
         public Visibility MappingFilterControlsVisibility =>
-            MappingViewModel.Plugins?.FirstOrDefault() == this
+            !MappingViewModel.UsesSubMappings || MappingViewModel.Plugins?.FirstOrDefault() == this
                 ? Visibility.Visible : Visibility.Collapsed;
         private System.Reflection.PropertyInfo InvertProperty => Plugin.GetType().GetProperty("Invert");
         public Visibility QuickInvertVisibility =>
@@ -287,9 +287,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (result == null || string.IsNullOrWhiteSpace(result.SelectedFilter)) return;
             if (!availableNames.Any(name => string.Equals(name, result.SelectedFilter, System.StringComparison.CurrentCultureIgnoreCase))) return;
 
-            var filter = MappingViewModel.AddGroupFilter(result.SelectedFilter.Trim());
+            var filter = MappingViewModel.UsesSubMappings
+                ? MappingViewModel.AddGroupFilter(result.SelectedFilter.Trim())
+                : Plugin.AddFilter(result.SelectedFilter.Trim());
             if (filter == null) return;
-            Logger.Info("Filter reference added to all outputs: '" + filter.Name + "' in mapping " + MappingViewModel.MappingTitle);
+            if (!MappingViewModel.UsesSubMappings &&
+                !Filters.Any(item => string.Equals(item.Name, filter.Name,
+                    StringComparison.OrdinalIgnoreCase)))
+                Filters.Add(new FilterViewModel(this, filter));
+            Logger.Info("Filter reference added: '" + filter.Name + "' in mapping " + MappingViewModel.MappingTitle);
             MappingViewModel.ProfileViewModel.RefreshFilterNames();
             MappingViewModel.RefreshFilterIndicator();
         }
@@ -298,9 +304,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (filterViewModel == null) return;
             EnsureEditorInitialized();
-            if (MappingViewModel.RemoveGroupFilter(filterViewModel.Name))
+            var groupWide = MappingViewModel.UsesSubMappings;
+            var removed = groupWide
+                ? MappingViewModel.RemoveGroupFilter(filterViewModel.Name)
+                : Plugin.RemoveFilter(filterViewModel.Filter);
+            if (removed)
             {
-                Logger.Info("Filter reference removed from all outputs: '" + filterViewModel.Name + "' in mapping " + MappingViewModel.MappingTitle);
+                Logger.Info("Filter reference removed: '" + filterViewModel.Name + "' in mapping " + MappingViewModel.MappingTitle);
+                if (!groupWide)
+                {
+                    filterViewModel.Dispose();
+                    Filters.Remove(filterViewModel);
+                }
                 MappingViewModel.ProfileViewModel.RefreshFilterNames();
                 MappingViewModel.RefreshFilterIndicator();
             }
@@ -308,8 +323,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public void ToggleFilter(FilterViewModel filterViewModel)
         {
-            MappingViewModel.SetGroupFilterNegated(filterViewModel.Name,
-                !filterViewModel.Filter.Negative);
+            if (MappingViewModel.UsesSubMappings)
+                MappingViewModel.SetGroupFilterNegated(filterViewModel.Name,
+                    !filterViewModel.Filter.Negative);
+            else Plugin.ToggleFilter(filterViewModel.Filter);
         }
     }
 }
