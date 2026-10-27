@@ -70,6 +70,7 @@ namespace HidWizards.UCR.Core.Models
         private List<short> InputCache { get; set; }
         private List<CallbackMultiplexer> Multiplexer { get; set; }
         private short? _lastInputExpressionValue;
+        private FilterState _subscribedFilterState;
         
 
         internal bool IsShadowMapping { get; set; }
@@ -153,7 +154,11 @@ namespace HidWizards.UCR.Core.Models
             }
 
             _lastInputExpressionValue = null;
+            StopListeningForFilters();
             FilterState = filterState;
+            _subscribedFilterState = filterState;
+            if (_subscribedFilterState != null)
+                _subscribedFilterState.FilterStateChangedEvent += OnFilterStateChanged;
             RuntimeScopeGuid = runtimeScopeGuid;
             Plugins.ForEach(p =>
             {
@@ -262,6 +267,58 @@ namespace HidWizards.UCR.Core.Models
                      category == DeviceBindingCategory.Range) &&
                     plugin.Outputs[i].CurrentValue != 0)
                     plugin.Outputs[i].WriteOutput(0);
+            }
+        }
+
+        internal void StopListeningForFilters()
+        {
+            if (_subscribedFilterState == null) return;
+            _subscribedFilterState.FilterStateChangedEvent -= OnFilterStateChanged;
+            _subscribedFilterState = null;
+        }
+
+        // Filter transitions affect held outputs even when no physical input moves.
+        // Refresh only affected outputs: replaying all mappings could inadvertently
+        // retrigger unrelated one-shot event outputs, such as wheel increments.
+        private void OnFilterStateChanged(string name, bool active)
+        {
+            if (InputCache == null || Plugins == null) return;
+            var analogueIndex = 0;
+            var directionalFourWay = DeviceBindings.Any(b => b.InputDirectionSlot >= 3);
+            foreach (var plugin in Plugins)
+            {
+                if (plugin.InputCategories == null) continue;
+                var isRange = UseInputExpression && plugin.InputCategories.Count == 1 &&
+                    plugin.InputCategories[0].Category == DeviceBindingCategory.Range;
+                var axis = isRange ? analogueIndex++ : 0;
+                if (plugin.Filters == null || !plugin.Filters.Any(filter =>
+                    string.Equals(GetRuntimeFilterKey(filter.Name), name,
+                        StringComparison.OrdinalIgnoreCase))) continue;
+                if (plugin.IsFiltered())
+                {
+                    NeutralizeFilteredPlugin(plugin);
+                    continue;
+                }
+                if (!plugin.WasBlockedByFilter) continue;
+                plugin.WasBlockedByFilter = false;
+                if (UseInputExpression)
+                {
+                    if (plugin.InputCategories.Count != 1) continue;
+                    var value = isRange
+                        ? (directionalFourWay
+                            ? EvaluateDirectionalAxis(InputCache, axis == 0 ? 0 : 1)
+                            : EvaluateAnalogueInputExpression(InputCache))
+                        : EvaluateInputExpression(InputCache);
+                    plugin.Update(new[] { value });
+                }
+                else
+                {
+                    var values = InputCache.ToArray();
+                    for (var i = 0; i < values.Length && i < plugin.InputCategories.Count; i++)
+                        values[i] = AdaptPositionalInput(values[i], DeviceBindings[i],
+                            plugin.InputCategories[i].Category);
+                    plugin.Update(values);
+                }
             }
         }
 
