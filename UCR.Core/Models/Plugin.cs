@@ -18,6 +18,12 @@ namespace HidWizards.UCR.Core.Models
         /* Persistence */
         public List<DeviceBinding> Outputs { get; }
         public List<Filter> Filters { get; set; }
+
+        // -1 preserves the legacy aggregate (OR) input expression. Non-negative
+        // values bind this output to one independent input sub-mapping group.
+        [XmlAttribute]
+        [System.ComponentModel.DefaultValue(-1)]
+        public int InputGroupIndex { get; set; }
         
         /* Runtime */
         internal Profile Profile { get; set; }
@@ -94,6 +100,7 @@ namespace HidWizards.UCR.Core.Models
 
         protected Plugin()
         {
+            InputGroupIndex = -1;
             Outputs = new List<DeviceBinding>();
             foreach (var _ in OutputCategories)
             {
