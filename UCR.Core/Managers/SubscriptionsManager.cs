@@ -323,6 +323,7 @@ namespace HidWizards.UCR.Core.Managers
                     success &= UnsubscribeDeviceBindingInput(state, deviceBindingSubscription);
                 }
 
+                mappingSubscription.Mapping.StopListeningForFilters();
                 foreach (var pluginSubscription in mappingSubscription.PluginSubscriptions)
                 {
                     pluginSubscription.Plugin.OnDeactivate();
