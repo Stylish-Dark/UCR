@@ -9,8 +9,52 @@ using HidWizards.UCR.Core.Models.Subscription;
 
 namespace HidWizards.UCR.Core.Models
 {
+    public enum MappingRelationship
+    {
+        None,
+        Button,
+        OneWay,
+        TwoWay,
+        FourWay,
+        ContinuousAxis,
+        Mixed,
+        Other
+    }
+
     public class Mapping
     {
+        // Relationship is derived from the effective input and output topology.
+        // It must not become a second, conflicting source of persisted truth.
+        [XmlIgnore]
+        public MappingRelationship Relationship
+        {
+            get
+            {
+                if (Plugins == null || Plugins.Count == 0) return MappingRelationship.None;
+                var categories = Plugins.SelectMany(plugin => plugin.OutputCategories)
+                    .Select(output => output.Category).Distinct().ToList();
+                if (categories.Count != 1) return MappingRelationship.Mixed;
+                if (categories[0] == DeviceBindingCategory.Momentary)
+                    return MappingRelationship.Button;
+                if (categories[0] != DeviceBindingCategory.Range)
+                    return MappingRelationship.Other;
+
+                var directionCount = DeviceBindings?.Count(binding =>
+                    binding.InputDirectionSlot > 0) ?? 0;
+                var physicalChannels = Plugins[0].InputCategories?.Count ?? 0;
+                var outputChannels = Plugins.Sum(plugin => plugin.OutputCategories.Count);
+                if (directionCount >= 4 ||
+                    directionCount == 0 && physicalChannels >= 4 && outputChannels >= 2)
+                    return MappingRelationship.FourWay;
+                if (directionCount >= 2 || directionCount == 0 && physicalChannels == 2)
+                    return MappingRelationship.TwoWay;
+                if (Plugins[0].InputCategories != null &&
+                    Plugins[0].InputCategories.All(input => input.Category == DeviceBindingCategory.Momentary))
+                    return MappingRelationship.OneWay;
+                return MappingRelationship.ContinuousAxis;
+            }
+        }
+
         /* Persistence */
         [XmlAttribute]
         public string Title { get; set; }
