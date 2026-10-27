@@ -680,6 +680,33 @@ namespace HidWizards.UCR.Core.Models
             return true;
         }
 
+        // Collapse one logical input unit to one momentary button. This is distinct
+        // from slots=0 in SetDirectionalInputMode, which means a continuous axis.
+        public bool SetOneWayInputMode(int groupIndex)
+        {
+            if (!EnableInputExpression()) return false;
+            var members = DeviceBindings.Where(binding =>
+                binding.InputExpressionGroup == groupIndex).ToList();
+            var first = members.FirstOrDefault(binding => binding.InputDirectionSlot == 1)
+                ?? members.FirstOrDefault(binding => binding.InputDirectionSlot == 0);
+            if (first == null) return false;
+            foreach (var extra in members.Where(binding => binding != first))
+                DeviceBindings.Remove(extra);
+            if (first.InputExpressionInputKind != 0)
+            {
+                first.DeviceConfigurationGuid = Guid.Empty;
+                first.KeyType = first.KeyValue = first.KeySubValue = 0;
+                first.IsBound = false;
+                first.Block = false;
+            }
+            first.InputDirectionSlot = 0;
+            first.InputExpressionInputKind = 0;
+            first.InputExpressionKindConfigured = true;
+            first.DeviceBindingCategory = DeviceBindingCategory.Momentary;
+            Profile?.Context?.ContextChanged();
+            return true;
+        }
+
         public DeviceBinding AddExpressionCondition()
         {
             if (!EnableInputExpression()) return null;
