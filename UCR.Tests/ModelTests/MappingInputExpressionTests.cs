@@ -138,7 +138,7 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.That(mapping.EvaluateDirectionalAxis(new short[] { 0, 1, 0, 0, 0, 0, 1, 0 }, 1, 0),
                 Is.EqualTo(0));
             Assert.That(mapping.EvaluateDirectionalAxis(new short[] { 0, 1, 0, 0, 0, 0, 1, 0 }, 1, 1),
-                Is.EqualTo(short.MinValue));
+                Is.EqualTo((short)-short.MaxValue));
         }
 
         [Test]
