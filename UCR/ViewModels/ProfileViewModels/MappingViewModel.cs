@@ -165,6 +165,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var groups = Mapping.DeviceBindings.GroupBy(binding =>
                     Math.Max(0, binding.InputExpressionGroup)).ToList();
                 if (groups.Count > 1 && Plugins.Any(row => row.Plugin.InputGroupIndex < 0)) return false;
+                // Never turn independently filtered legacy outputs into a shared
+                // filter group without an explicit, separate migration.
+                var filterSignatures = Plugins.Select(row => string.Join("|",
+                    row.Plugin.Filters.OrderBy(filter => filter.Name,
+                        StringComparer.OrdinalIgnoreCase).Select(filter =>
+                        filter.Name.ToLowerInvariant() + ":" + filter.Negative))).Distinct().Count();
+                if (filterSignatures > 1) return false;
                 var relationship = Mapping.Relationship;
                 var required = relationship == MappingRelationship.FourWay ? 4 :
                     relationship == MappingRelationship.TwoWay ? 2 : 1;
