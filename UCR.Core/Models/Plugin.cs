@@ -26,6 +26,8 @@ namespace HidWizards.UCR.Core.Models
         private List<PluginPropertyGroup> _pluginPropertyGroups;
         internal FilterState FilterState { get; set; }
         internal Mapping RuntimeMapping { get; set; }
+        [XmlIgnore]
+        internal bool WasBlockedByFilter { get; set; }
 
         public event Action<string, string> FilterDefinitionChanged;
 
