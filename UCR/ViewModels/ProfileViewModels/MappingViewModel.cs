@@ -959,7 +959,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 AddPlugin(template);
                 if (Plugins.Count == previousCount + i) break;
-                Plugins.Last().Plugin.InputGroupIndex = nextGroup;
+                var added = Plugins.Last().Plugin;
+                added.InputGroupIndex = nextGroup;
+                foreach (var filter in Plugins[0].Plugin.Filters)
+                    added.AddFilter(filter.Name, filter.Negative);
             }
             RebuildDirectionalEditors();
             RefreshHeaderState();
@@ -1621,6 +1624,46 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 Plugins.Add(new PluginViewModel(this, mappingPlugin));
             }
+        }
+
+        // Filter membership is mapping-wide. Each output holds its own persisted
+        // reference for compatibility with UCR's existing plugin format.
+        public Filter AddGroupFilter(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name) || Plugins.Count == 0) return null;
+            foreach (var row in Plugins)
+                row.Plugin.AddFilter(name.Trim());
+            foreach (var row in Plugins) row.ReloadFiltersFromModel();
+            RefreshFilterIndicator();
+            return Plugins[0].Plugin.Filters.FirstOrDefault(filter =>
+                string.Equals(filter.Name, name.Trim(), StringComparison.OrdinalIgnoreCase));
+        }
+
+        public bool RemoveGroupFilter(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return false;
+            var changed = false;
+            foreach (var row in Plugins)
+            {
+                foreach (var filter in row.Plugin.Filters.Where(filter =>
+                    string.Equals(filter.Name, name, StringComparison.OrdinalIgnoreCase)).ToList())
+                    changed |= row.Plugin.RemoveFilter(filter);
+            }
+            if (changed)
+            {
+                foreach (var row in Plugins) row.ReloadFiltersFromModel();
+                RefreshFilterIndicator();
+            }
+            return changed;
+        }
+
+        public void SetGroupFilterNegated(string name, bool negated)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return;
+            foreach (var row in Plugins)
+                row.Plugin.AddFilter(name, negated);
+            foreach (var row in Plugins) row.ReloadFiltersFromModel();
+            RefreshFilterIndicator();
         }
 
         public void RefreshFilterIndicator()
