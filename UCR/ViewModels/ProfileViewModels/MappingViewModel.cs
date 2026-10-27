@@ -2244,6 +2244,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 var inputs = Mapping?.Plugins?.FirstOrDefault()?.InputCategories;
                 if (inputs == null || inputs.Count == 0) return "None";
+                // The logical input side is determined by the entire mapping.
+                // In particular, a directional group has multiple button slots,
+                // even when the first plugin accepts one analogue driver.
+                if (Mapping.DeviceBindings.Any(binding => binding.InputDirectionSlot > 0))
+                    return "Buttons";
                 var kinds = inputs.Select(item => item.Category).Distinct().ToList();
                 if (kinds.Count != 1) return "Multiple";
                 switch (kinds[0])
