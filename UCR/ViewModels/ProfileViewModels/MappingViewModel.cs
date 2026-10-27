@@ -173,14 +173,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
                 if (categories.Count != 1) return "Mixed";
                 var category = categories[0];
-                // Directional relationships are defined by the shared input unit,
-                // not merely by counting virtual axis destinations.
+                // Use the model's canonical relationship; never infer directional
+                // identity from the arbitrary first virtual destination.
                 if (string.Equals(category, "Axis", StringComparison.OrdinalIgnoreCase))
                 {
-                    var directions = Mapping?.DeviceBindings?.Count(binding =>
-                        binding.InputDirectionSlot > 0) ?? 0;
-                    if (directions >= 4) return "4-Way";
-                    if (directions >= 2) return "2-Way";
+                    switch (Mapping.Relationship)
+                    {
+                        case MappingRelationship.OneWay: return "1-Way";
+                        case MappingRelationship.TwoWay: return "2-Way";
+                        case MappingRelationship.FourWay: return "4-Way";
+                    }
                 }
                 var outputs = Mapping?.Plugins?.Sum(plugin =>
                     Math.Max(1, plugin.Outputs?.Count ?? 0)) ?? 0;
