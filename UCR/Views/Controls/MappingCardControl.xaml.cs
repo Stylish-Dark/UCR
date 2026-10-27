@@ -570,7 +570,7 @@ namespace HidWizards.UCR.Views.Controls
         {
             var mapping = DataContext as MappingViewModel;
             if (mapping?.ButtonsEnabled != true) return;
-            mapping.AddDefaultOutput();
+            mapping.AddSubMapping();
         }
 
         private void ChooseInputCategory_OnClick(object sender, RoutedEventArgs e)
@@ -747,12 +747,12 @@ namespace HidWizards.UCR.Views.Controls
                 menu.Items.Add(new Separator());
                 var addOutput = new MenuItem
                 {
-                    Header = "Add another output",
+                    Header = "Add sub-mapping",
                     Foreground = Brushes.White,
                     Background = Brushes.Transparent,
                     Padding = new Thickness(10, 6, 14, 6)
                 };
-                addOutput.Click += (s, args) => mapping.AddDefaultOutput();
+                addOutput.Click += (s, args) => mapping.AddSubMapping();
                 menu.Items.Add(addOutput);
             }
             menu.IsOpen = true;
