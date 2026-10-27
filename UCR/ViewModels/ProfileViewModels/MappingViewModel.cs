@@ -1625,7 +1625,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             var replacement = ProfileViewModel.Profile.Context.PluginManager.GetNewPlugin(replacementTemplate);
             replacement.SetProfile(ProfileViewModel.Profile);
-            replacement.Filters = original.Plugin.Filters.ToList();
+            replacement.InputGroupIndex = original.Plugin.InputGroupIndex;
+            replacement.Filters = original.Plugin.Filters.Select(filter => new Filter
+            {
+                Name = filter.Name,
+                Negative = filter.Negative
+            }).ToList();
             // Preserve the actual destination when both plugins produce the same
             // output category, rather than wiping an already-bound controller axis.
             for (var position = 0; position < Math.Min(original.Plugin.Outputs.Count, replacement.Outputs.Count); position++)
