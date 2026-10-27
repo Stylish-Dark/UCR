@@ -393,6 +393,10 @@
                                     <Border Background="#292929" BorderBrush="#454545"
                                         BorderThickness="1" CornerRadius="3" Padding="7" Margin="0 0 0 5">
                                         <StackPanel>
+                                            <TextBlock Text="{Binding OutputGroupLabel}"
+                                                Visibility="{Binding SubMappingLabelVisibility}"
+                                                Foreground="#BFCBE0" FontSize="11" FontWeight="SemiBold"
+                                                Margin="2 0 0 5"/>
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" MinWidth="0"/>
@@ -424,11 +428,14 @@
                                                         ToolTip="Remove this output"/>
                                                 </StackPanel>
                                             </Grid>
-                                            <StackPanel Orientation="Horizontal" Margin="0 9 0 0">
+                                            <StackPanel Orientation="Horizontal" Margin="0 9 0 0"
+                                                Visibility="{Binding MappingFilterControlsVisibility}">
+                                                <TextBlock Text="Mapping filters" Foreground="#BABABA"
+                                                    VerticalAlignment="Center" Margin="0 0 9 0"/>
                                                 <Button Content="+ Filter" Height="29" Padding="10 2"
                                                     Click="AddOutputFilter_OnClick" IsEnabled="{Binding CanAddFilter}"
                                                     Foreground="#FFFFFF" Background="#343434" BorderBrush="#555555"
-                                                    BorderThickness="1" ToolTip="Add a filter to this output"/>
+                                                    BorderThickness="1" ToolTip="Add a filter to all sub-mappings"/>
                                                 <ItemsControl ItemsSource="{Binding Filters}" Margin="8 0 0 0">
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
