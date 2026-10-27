@@ -155,7 +155,11 @@ namespace HidWizards.UCR.Core.Models
             _lastInputExpressionValue = null;
             FilterState = filterState;
             RuntimeScopeGuid = runtimeScopeGuid;
-            Plugins.ForEach(p => p.RuntimeMapping = this);
+            Plugins.ForEach(p =>
+            {
+                p.RuntimeMapping = this;
+                p.WasBlockedByFilter = false;
+            });
         }
 
         internal Mapping GetOverridenMapping()
@@ -195,7 +199,12 @@ namespace HidWizards.UCR.Core.Models
             {
                 foreach (var plugin in Plugins)
                 {
-                    if (plugin.IsFiltered()) continue;
+                    if (plugin.IsFiltered())
+                    {
+                        NeutralizeFilteredPlugin(plugin);
+                        continue;
+                    }
+                    plugin.WasBlockedByFilter = false;
                     var values = InputCache.ToArray();
                     // Preserve positional inputs for multi-channel legacy plugins, while
                     // allowing each physical slot to bind a different signal category.
@@ -227,9 +236,32 @@ namespace HidWizards.UCR.Core.Models
                     outputValue = EvaluateDirectionalAxis(InputCache, rangeIndex++ == 0 ? 0 : 1);
                 else if (isRange)
                     rangeIndex++;
-                if (plugin.IsFiltered()) continue;
-                if (!isRange && !digitalChanged) continue;
+                if (plugin.IsFiltered())
+                {
+                    NeutralizeFilteredPlugin(plugin);
+                    continue;
+                }
+                var returningFromFilter = plugin.WasBlockedByFilter;
+                plugin.WasBlockedByFilter = false;
+                if (!isRange && !digitalChanged && !returningFromFilter) continue;
                 plugin.Update(new[] { isRange ? outputValue : digital });
+            }
+        }
+
+        // Disabling a mapping must release any held output immediately. Otherwise
+        // pressing a filter key while a button is held leaves the virtual key stuck.
+        // One-shot Event and relative Delta outputs have no neutral held state.
+        private static void NeutralizeFilteredPlugin(Plugin plugin)
+        {
+            if (plugin.WasBlockedByFilter) return;
+            plugin.WasBlockedByFilter = true;
+            for (var i = 0; i < plugin.Outputs.Count && i < plugin.OutputCategories.Count; i++)
+            {
+                var category = plugin.OutputCategories[i].Category;
+                if ((category == DeviceBindingCategory.Momentary ||
+                     category == DeviceBindingCategory.Range) &&
+                    plugin.Outputs[i].CurrentValue != 0)
+                    plugin.Outputs[i].WriteOutput(0);
             }
         }
 
