@@ -142,6 +142,22 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<InputConditionViewModel> InputConditions { get; private set; }
         public bool ButtonsEnabled => !ProfileViewModel.Profile.IsActive();
+        public bool UsesSubMappings => Plugins?.Any(row => row.Plugin.InputGroupIndex >= 0) == true;
+        public bool CanAddSubMapping
+        {
+            get
+            {
+                if (!ButtonsEnabled || Plugins == null || Plugins.Count == 0 ||
+                    !SupportsNativeInputExpression) return false;
+                if (!Mapping.UseInputExpression && Mapping.DeviceBindings.Count != 1) return false;
+                var groups = Mapping.DeviceBindings.Select(binding =>
+                    Math.Max(0, binding.InputExpressionGroup)).Distinct().Count();
+                if (groups > 1 && Plugins.Any(row => row.Plugin.InputGroupIndex < 0)) return false;
+                return Mapping.Relationship != MappingRelationship.FourWay ||
+                    Plugins[0].Plugin.InputCategories.Count == 1 &&
+                    Plugins[0].Plugin.InputCategories[0].Category == DeviceBindingCategory.Range;
+            }
+        }
         // Axis runtime/plugins remain supported for existing profiles, but their
         // experimental editor is intentionally absent until it is redesigned.
         public bool IsLegacyAxisMapping => Mapping?.Plugins?.Any(plugin =>
@@ -848,6 +864,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(UsesInputExpression));
             OnPropertyChanged(nameof(InputLogicSummary));
             OnPropertyChanged(nameof(InputConditions));
+            OnPropertyChanged(nameof(UsesSubMappings));
+            OnPropertyChanged(nameof(CanAddSubMapping));
             // Binding changes also affect the singular/plural header, even during initial load.
             _mappingRouteTokens = BuildMappingRouteTokens(MappingRouteDisplay);
             OnPropertyChanged(nameof(MappingInputTypeLabel));
@@ -919,7 +937,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         // of creating an unrelated output driven by every previous input.
         public bool AddSubMapping()
         {
-            if (!ButtonsEnabled || Plugins.Count == 0) return false;
+            if (!CanAddSubMapping) return false;
             if (!Mapping.UseInputExpression && !Mapping.EnableInputExpression()) return false;
 
             var groups = Mapping.DeviceBindings.Select(input =>
@@ -1693,6 +1711,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(MappingInputTypeLabel));
             OnPropertyChanged(nameof(MappingOutputCategoryDisplay));
             OnPropertyChanged(nameof(HasAxisOutput));
+            OnPropertyChanged(nameof(UsesSubMappings));
+            OnPropertyChanged(nameof(CanAddSubMapping));
             OnPropertyChanged(nameof(DirectionalPresetsVisibility));
             OnPropertyChanged(nameof(DefinedFilterName));
             OnPropertyChanged(nameof(ReferencedFilters));
