@@ -222,7 +222,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Margin="0 0 0 9">
-                                <TextBlock Text="OR" Visibility="{Binding OrLabelVisibility}"
+                                <TextBlock Text="{Binding GroupSeparatorLabel}" Visibility="{Binding OrLabelVisibility}"
                                     Foreground="#BBBBBB" FontWeight="SemiBold" Margin="4 2 0 6"/>
                                 <Border BorderBrush="#515151" BorderThickness="1"
                                     Background="#2C2C2C" CornerRadius="3" Padding="7">
@@ -304,8 +304,17 @@
                 </ItemsControl>
                 <Button Content="+ OR input(s)" Click="AddCondition_OnClick"
                     Height="34" HorizontalAlignment="Left" Padding="12 3" Margin="2 3 0 0"
-                    IsEnabled="{Binding ButtonsEnabled}" Foreground="#FFFFFF"
-                    Style="{StaticResource UcrAccentOutlineButton}"/>
+                    IsEnabled="{Binding ButtonsEnabled}" Foreground="#FFFFFF">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource UcrAccentOutlineButton}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding UsesSubMappings}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
             </StackPanel>
         </DataTemplate>
 
@@ -463,11 +472,11 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <Button Content="+ Add output" Click="AddPlugin_OnClick"
+                        <Button Content="+ Add sub-mapping" Click="AddPlugin_OnClick"
                             Height="34" Padding="12 3" Margin="3 8 0 2"
-                            HorizontalAlignment="Left" IsEnabled="{Binding ButtonsEnabled}"
+                            HorizontalAlignment="Left" IsEnabled="{Binding CanAddSubMapping}"
                             Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
-                            ToolTip="Add another output to this mapping"/>
+                            ToolTip="Create another independent set of inputs and outputs with this mapping relationship"/>
                     </StackPanel>
                 </UniformGrid>
             </Border>
