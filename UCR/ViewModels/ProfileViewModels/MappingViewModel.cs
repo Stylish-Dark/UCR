@@ -1860,6 +1860,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void RefreshHeaderState()
         {
+            foreach (var row in Plugins ?? new ObservableCollection<PluginViewModel>())
+                row.RefreshSubMappingLabel();
             _mappingRouteTokens = BuildMappingRouteTokens(MappingRouteDisplay);
             _mappingOutputTypeLabel = GetMappingOutputTypeLabel();
             RefreshFilterPresentationCache();
