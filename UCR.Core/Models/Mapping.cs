@@ -430,16 +430,25 @@ namespace HidWizards.UCR.Core.Models
             if (slots != 0 && slots != 2 && slots != 4) return false;
             if (!EnableInputExpression()) return false;
             var members = DeviceBindings.Where(b => b.InputExpressionGroup == groupIndex).ToList();
-            var first = members.FirstOrDefault(b => b.InputDirectionSlot == 1)
+            var directions = members.Where(b => b.InputDirectionSlot > 0)
+                .OrderBy(b => b.InputDirectionSlot).ToList();
+            var first = directions.FirstOrDefault(b => b.InputDirectionSlot == 1)
                 ?? members.FirstOrDefault(b => b.InputDirectionSlot == 0);
             if (first == null) return false;
 
-            foreach (var sibling in members.Where(b => b.InputDirectionSlot > 0 && b != first).ToList())
-                DeviceBindings.Remove(sibling);
+            // Re-selecting an existing layout must not wipe assigned controls.
+            if (slots > 0 && directions.Count == slots &&
+                Enumerable.Range(1, slots).All(slot =>
+                    directions.Count(b => b.InputDirectionSlot == slot) == 1))
+                return true;
+
             if (slots == 0)
             {
-                // Single mode is a continuous analogue source, never a leftover
-                // digital negative-direction key. Discard the incompatible key.
+                // Only an analogue axis can survive a transition to the
+                // continuous one-slot layout. No longer applicable directions
+                // are deliberately removed when the user requests this mode.
+                foreach (var sibling in directions.Where(b => b != first))
+                    DeviceBindings.Remove(sibling);
                 if (first.InputExpressionInputKind != 3)
                 {
                     first.DeviceConfigurationGuid = Guid.Empty;
@@ -455,20 +464,38 @@ namespace HidWizards.UCR.Core.Models
                 return true;
             }
 
-            // Clear the old single-source binding without relying on a live Profile:
-            // profile-less mappings are also constructed by import and unit tests.
-            first.DeviceConfigurationGuid = Guid.Empty;
-            first.KeyType = first.KeyValue = first.KeySubValue = 0;
-            first.IsBound = false;
-            first.Block = false;
-            first.InputExpressionInputKind = 0;
-            first.InputExpressionKindConfigured = true;
-            first.DeviceBindingCategory = DeviceBindingCategory.Momentary;
-            first.InputDirectionSlot = 1;
+            // When expanding 2-way to 4-way, retain BOTH existing bindings.
+            // Reuse existing slots by number, creating only missing slots.
+            // Shrinking explicitly removes only the surplus positions.
+            foreach (var sibling in directions.Where(b => b.InputDirectionSlot > slots))
+                DeviceBindings.Remove(sibling);
+            if (first.InputDirectionSlot == 0)
+            {
+                // An existing analogue source cannot be silently reinterpreted
+                // as a physical button, but an already assigned button can stay.
+                if (first.InputExpressionInputKind != 0)
+                {
+                    first.DeviceConfigurationGuid = Guid.Empty;
+                    first.KeyType = first.KeyValue = first.KeySubValue = 0;
+                    first.IsBound = false;
+                    first.Block = false;
+                }
+                first.InputExpressionInputKind = 0;
+                first.InputExpressionKindConfigured = true;
+                first.DeviceBindingCategory = DeviceBindingCategory.Momentary;
+                first.InputDirectionSlot = 1;
+            }
 
             var position = DeviceBindings.IndexOf(first);
             for (var slot = 2; slot <= slots; slot++)
             {
+                var existing = DeviceBindings.FirstOrDefault(b =>
+                    b.InputExpressionGroup == groupIndex && b.InputDirectionSlot == slot);
+                if (existing != null)
+                {
+                    position = Math.Max(position, DeviceBindings.IndexOf(existing));
+                    continue;
+                }
                 DeviceBindings.Insert(++position, new DeviceBinding(Update, Profile, DeviceIoType.Input)
                 {
                     InputExpressionGroup = groupIndex,
