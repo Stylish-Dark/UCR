@@ -2600,6 +2600,23 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 var bindings = Mapping?.DeviceBindings;
                 if (bindings == null || bindings.Count == 0) return "None";
+                // Physical capability takes precedence over stale legacy
+                // expression metadata. A keyboard cannot be described as Axis.
+                if (InputSideDeviceGuid != Guid.Empty)
+                {
+                    var profile = ProfileViewModel.Profile;
+                    var device = profile.GetDeviceConfiguration(DeviceIoType.Input,
+                        InputSideDeviceGuid);
+                    if (device?.Device != null)
+                    {
+                        var hasAxis = DeviceBindingViewModel.SupportsInputCategory(
+                            device, DeviceBindingCategory.Range, profile.Context);
+                        if (!hasAxis) return "Button";
+                        var hasButton = DeviceBindingViewModel.SupportsInputCategory(
+                            device, DeviceBindingCategory.Momentary, profile.Context);
+                        if (!hasButton) return "Axis";
+                    }
+                }
                 var kinds = bindings.Select(input => input.InputExpressionInputKind == 0
                     ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range)
                     .Distinct().ToList();
