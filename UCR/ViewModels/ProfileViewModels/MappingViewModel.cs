@@ -142,6 +142,146 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<InputConditionViewModel> InputConditions { get; private set; }
         public bool ButtonsEnabled => !ProfileViewModel.Profile.IsActive();
+        // Device selection is the first decision on each side. Type menus
+        // consult the selected device, never the other way around.
+        public IList<ComboBoxItemViewModel> InputSideDevices => GetSideDeviceOptions(DeviceIoType.Input);
+        public IList<ComboBoxItemViewModel> OutputSideDevices => GetSideDeviceOptions(DeviceIoType.Output);
+        public Guid InputSideDeviceGuid =>
+            Mapping?.DeviceBindings?.FirstOrDefault()?.DeviceConfigurationGuid ?? Guid.Empty;
+        public Guid OutputSideDeviceGuid =>
+            Mapping?.Plugins?.SelectMany(plugin => plugin.Outputs)
+                .FirstOrDefault()?.DeviceConfigurationGuid ?? Guid.Empty;
+
+        public string InputBindingLayoutLabel
+        {
+            get
+            {
+                var count = InputConditions?.FirstOrDefault()?.DirectionalInputs?.Count ?? 0;
+                return count == 4 ? "4-way" : count == 2 ? "2-way" : "1-way";
+            }
+        }
+
+        private IList<ComboBoxItemViewModel> GetSideDeviceOptions(DeviceIoType side)
+        {
+            var result = new List<ComboBoxItemViewModel>();
+            if (side == DeviceIoType.Input)
+                result.Add(new ComboBoxItemViewModel("Any input device", Guid.Empty));
+            else
+                result.Add(new ComboBoxItemViewModel("Choose output device", Guid.Empty));
+
+            var profile = ProfileViewModel.Profile;
+            foreach (var device in profile.GetDeviceConfigurationList(side))
+            {
+                if (device?.Device == null) continue;
+                result.Add(new ComboBoxItemViewModel(device.GetFullTitleForProfile(profile),
+                    device.Guid));
+            }
+            return result;
+        }
+
+        public bool InputDeviceSupports(DeviceBindingCategory category)
+        {
+            var profile = ProfileViewModel.Profile;
+            var selected = InputSideDeviceGuid;
+            var devices = profile.GetDeviceConfigurationList(DeviceIoType.Input)
+                .Where(d => d?.Device != null &&
+                    (selected == Guid.Empty || d.Guid == selected));
+            if (category == DeviceBindingCategory.Momentary)
+                return devices.Any(d => DeviceBindingViewModel.SupportsInputCategory(
+                    d, category, profile.Context) ||
+                    !DeviceBindingViewModel.SupportsInputCategory(
+                        d, DeviceBindingCategory.Range, profile.Context));
+            return devices.Any(d => DeviceBindingViewModel.SupportsInputCategory(
+                d, category, profile.Context));
+        }
+
+        public bool OutputDeviceSupports(DeviceBindingCategory category)
+        {
+            var profile = ProfileViewModel.Profile;
+            var selected = OutputSideDeviceGuid;
+            if (selected == Guid.Empty)
+                return profile.GetDeviceConfigurationList(DeviceIoType.Output).Any(d =>
+                    DeviceBindingViewModel.SupportsOutputCategory(d, category, profile.Context));
+            var device = profile.GetDeviceConfiguration(DeviceIoType.Output, selected);
+            return DeviceBindingViewModel.SupportsOutputCategory(device, category, profile.Context);
+        }
+
+        public bool ChangeInputSideDevice(Guid guid)
+        {
+            if (!ButtonsEnabled || Mapping?.DeviceBindings == null) return false;
+            var profile = ProfileViewModel.Profile;
+            var device = guid == Guid.Empty ? null :
+                profile.GetDeviceConfiguration(DeviceIoType.Input, guid);
+            if (guid != Guid.Empty && device?.Device == null) return false;
+            var supportsRange = guid != Guid.Empty &&
+                DeviceBindingViewModel.SupportsInputCategory(device,
+                    DeviceBindingCategory.Range, profile.Context);
+            var supportsButton = guid == Guid.Empty ||
+                DeviceBindingViewModel.SupportsInputCategory(device,
+                    DeviceBindingCategory.Momentary, profile.Context) || !supportsRange;
+            if (guid != Guid.Empty && !supportsRange && !supportsButton) return false;
+
+            // An incompatible source binding cannot be silently retained. A
+            // keyboard stays Button even if the previous device was an axis.
+            foreach (var input in DeviceBindings.ToList())
+            {
+                var requestedRange = input.DeviceBinding.InputExpressionInputKind != 0;
+                if (requestedRange && !supportsRange && supportsButton)
+                    input.InputExpressionInputKind = 0;
+                else if (!requestedRange && !supportsButton && supportsRange)
+                    input.InputExpressionInputKind = 3;
+                input.ChangeDeviceConfiguration(guid);
+            }
+            Mapping.InputSideType = "";
+            ProfileViewModel.Profile.Context.ContextChanged();
+            RefreshInputExpressionPresentation();
+            RefreshHeaderState();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
+        public bool ChangeOutputSideDevice(Guid guid)
+        {
+            if (!ButtonsEnabled || guid == Guid.Empty || Plugins == null || Plugins.Count == 0)
+                return false;
+            var profile = ProfileViewModel.Profile;
+            var device = profile.GetDeviceConfiguration(DeviceIoType.Output, guid);
+            if (device?.Device == null) return false;
+
+            if (Mapping.Plugins.Any(plugin => plugin.OutputCategories.Any(category =>
+                !DeviceBindingViewModel.SupportsOutputCategory(device,
+                    category.Category, profile.Context))))
+            {
+                // Select a reasonable compatible default, then expose all
+                // other available types through the adjacent type selector.
+                var candidate = GetCompatiblePluginOptions()
+                    .Where(option => option.Plugin.OutputCategories.Count > 0 &&
+                        option.Plugin.OutputCategories.All(category =>
+                            DeviceBindingViewModel.SupportsOutputCategory(device,
+                                category.Category, profile.Context)))
+                    .OrderBy(option => option.OutputType == "Button" ? 0 :
+                        option.OutputType == "Axis" ? 1 : 2)
+                    .ThenBy(option => option.Name, StringComparer.OrdinalIgnoreCase)
+                    .FirstOrDefault();
+                if (candidate == null || !ChangeAllOutputTypes(candidate.Plugin)) return false;
+            }
+
+            foreach (var output in Plugins.SelectMany(plugin => plugin.DeviceBindings).ToList())
+                output.ChangeDeviceConfiguration(guid);
+            ProfileViewModel.Profile.Context.ContextChanged();
+            RefreshHeaderState();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
+        public void RefreshSideDeviceChoices()
+        {
+            OnPropertyChanged(nameof(InputSideDevices));
+            OnPropertyChanged(nameof(OutputSideDevices));
+            OnPropertyChanged(nameof(InputSideDeviceGuid));
+            OnPropertyChanged(nameof(OutputSideDeviceGuid));
+        }
+
         // Axis runtime/plugins remain supported for existing profiles, but their
         // experimental editor is intentionally absent until it is redesigned.
         public bool IsLegacyAxisMapping => Mapping?.Plugins?.Any(plugin =>
