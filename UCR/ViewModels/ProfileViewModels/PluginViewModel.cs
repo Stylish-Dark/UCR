@@ -17,6 +17,28 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public MappingViewModel MappingViewModel { get; }
         public Plugin Plugin { get; set; }
         public string OutputType => IsFourButtonAxis ? "Axis" : new SimplePluginViewModel(Plugin).OutputType;
+        public string OutputDirectionLabel
+        {
+            get
+            {
+                var mapping = MappingViewModel.Mapping;
+                var index = MappingViewModel.Plugins?.IndexOf(this) ?? -1;
+                if (index < 0) return string.Empty;
+                if (mapping?.DirectionalButtonOutputs == true && index < 4)
+                    return new[] { "Left", "Right", "Up", "Down" }[index];
+                if (MappingViewModel.MappingOutputCategoryDisplay == "Full Joystick" && index < 2)
+                    return index == 0 ? "Left Stick - X" : "Left Stick - Y";
+                return string.Empty;
+            }
+        }
+        public Visibility OutputDirectionLabelVisibility =>
+            string.IsNullOrEmpty(OutputDirectionLabel) ? Visibility.Collapsed : Visibility.Visible;
+        public void RefreshOutputDirectionLabel()
+        {
+            OnPropertyChanged(nameof(OutputDirectionLabel));
+            OnPropertyChanged(nameof(OutputDirectionLabelVisibility));
+        }
+
         private System.Reflection.PropertyInfo InvertProperty => Plugin.GetType().GetProperty("Invert");
         public Visibility QuickInvertVisibility =>
             InvertProperty?.PropertyType == typeof(bool) && InvertProperty.CanWrite
