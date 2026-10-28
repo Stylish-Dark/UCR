@@ -328,16 +328,30 @@ namespace HidWizards.UCR.Core.Models
                 if (!group.Where(i => DeviceBindings[i].InputDirectionSlot == 0)
                     .All(i => EvaluateOrdinaryCondition(DeviceBindings[i], values[i])))
                     continue;
-                if (!directions.Any(i => DeviceBindings[i].InputDirectionSlot == slot))
+                // The first active OR group owns every output direction.
+                // Do not combine directions from different alternative sets.
+                var active = directions.Where(i =>
+                    DeviceBindings[i].InputDirectionSlot <= 4).ToList();
+                if (!active.Any(i => EvaluateDirectionPresence(DeviceBindings[i], values[i])))
                     continue;
-                var member = directions.First(i => DeviceBindings[i].InputDirectionSlot == slot);
-                // Directional analog inputs are thresholded only when consumed
-                // by a digital destination. Physical buttons retain Boolean use.
-                var binding = DeviceBindings[member];
-                var active = EvaluateOrdinaryCondition(binding, values[member]);
-                if (active) return true;
+                if (DeviceBindings[directions[0]].InputExpressionNegated)
+                    return false;
+                return active.Any(i => DeviceBindings[i].InputDirectionSlot == slot &&
+                    EvaluateDirectionPresence(DeviceBindings[i], values[i]));
             }
             return false;
+        }
+
+        private static bool EvaluateDirectionPresence(DeviceBinding binding, short raw)
+        {
+            var threshold = Math.Max(1, Math.Min(32767, binding.InputExpressionAxisThreshold));
+            switch (binding.InputExpressionInputKind)
+            {
+                case 1: return raw >= threshold;
+                case 2: return raw <= -threshold;
+                case 3: return Math.Abs((int)raw) >= threshold;
+                default: return raw != 0;
+            }
         }
 
         private static bool EvaluateOrdinaryCondition(DeviceBinding binding, short raw)
