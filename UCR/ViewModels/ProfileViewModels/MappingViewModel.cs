@@ -2307,11 +2307,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (directionalCount == 2) return "Axis (2 directions)";
                 if (Mapping?.UseInputExpression == true)
                 {
-                    var kinds = Mapping.DeviceBindings.Where(input => input.InputDirectionSlot == 0)
+                    var signalKinds = Mapping.DeviceBindings.Where(input => input.InputDirectionSlot == 0)
                         .Select(input => input.InputExpressionInputKind).Distinct().ToList();
-                    if (kinds.Count == 1)
-                        return kinds[0] == 0 ? "Button" : "Axis";
-                    if (kinds.Count > 1) return "Mixed";
+                    if (signalKinds.Count == 1)
+                        return signalKinds[0] == 0 ? "Button" : "Axis";
+                    if (signalKinds.Count > 1) return "Mixed";
                 }
                 var inputs = Mapping?.Plugins?.FirstOrDefault()?.InputCategories;
                 if (inputs == null || inputs.Count == 0) return "None";
