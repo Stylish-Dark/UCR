@@ -611,30 +611,21 @@ namespace HidWizards.UCR.Views.Controls
             // Normal choices describe the INPUT side, never the legacy
             // input-to-output plugin implementation. In particular, changing
             // the input type must not unexpectedly change the output type.
-            var commonInputs = new[]
+            foreach (var entry in new[]
             {
                 new { Label = "Button", Category = DeviceBindingCategory.Momentary },
                 new { Label = "Axis", Category = DeviceBindingCategory.Range }
-            };
-            foreach (var entry in commonInputs)
+            })
             {
                 var category = entry.Category;
-                var preferred = options.Where(option => option.Plugin.InputCategories.Count == 1 &&
-                    option.Plugin.InputCategories[0].Category == category)
-                    .OrderBy(option => option.Name == (category == DeviceBindingCategory.Momentary
-                        ? "Button to Button" : "Axis to Axis") ? 0 : 1)
-                    .ThenBy(option => option.Name, StringComparer.OrdinalIgnoreCase)
-                    .FirstOrDefault();
-                if (preferred == null) continue;
-                var selected = preferred;
                 var item = new MenuItem
                 {
                     Header = entry.Label,
                     Foreground = Brushes.White, Background = Brushes.Transparent,
                     Padding = new Thickness(10, 6, 14, 6),
-                    ToolTip = "Change the input signal type without changing its output"
+                    ToolTip = "Set the input signal type independently of the output"
                 };
-                item.Click += (s, args) => mapping.ChangeInputType(current, selected.Plugin);
+                item.Click += (s, args) => mapping.ChangeInputSignalType(category);
                 menu.Items.Add(item);
             }
 
