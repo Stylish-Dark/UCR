@@ -629,28 +629,19 @@ namespace HidWizards.UCR.Views.Controls
                 menu.Items.Add(item);
             }
 
-            var joystickInput = new MenuItem
+            // Four-way describes a binding arrangement, not a physical D-pad
+            // or a joystick-specific input category.
+            var fourWay = new MenuItem
             {
-                Header = "Full Joystick",
+                Header = "4-way",
                 Foreground = Brushes.White,
                 Background = Brushes.Transparent,
                 Padding = new Thickness(10, 6, 14, 6),
-                ToolTip = "Four directional input slots"
+                ToolTip = "Four assignable directions: any buttons, D-pad, stick or face buttons",
+                IsChecked = mapping.InputConditions?.Any(group => group.IsFourWay) == true
             };
-            joystickInput.Click += (s, args) => mapping.ChangeInputToFullJoystick();
-            menu.Items.Add(joystickInput);
-
-            var dpadInput = new MenuItem
-            {
-                Header = "D-pad",
-                Foreground = Brushes.White,
-                Background = Brushes.Transparent,
-                Padding = new Thickness(10, 6, 14, 6),
-                ToolTip = "Four independently bindable input directions",
-                IsChecked = mapping.Mapping.DirectionalInputIsDPad
-            };
-            dpadInput.Click += (s, args) => mapping.ChangeInputToDPad();
-            menu.Items.Add(dpadInput);
+            fourWay.Click += (s, args) => mapping.SetDirectionalMode(4);
+            menu.Items.Add(fourWay);
             if (menu.Items.Count > 0) menu.Items.Add(new Separator());
 
             var advanced = new MenuItem
