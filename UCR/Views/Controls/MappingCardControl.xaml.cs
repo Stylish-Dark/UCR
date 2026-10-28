@@ -656,6 +656,17 @@ namespace HidWizards.UCR.Views.Controls
                 }
                 menu.Items.Add(layouts);
             }
+            var dpadInput = new MenuItem
+            {
+                Header = "D-pad",
+                Foreground = Brushes.White,
+                Background = Brushes.Transparent,
+                Padding = new Thickness(10, 6, 14, 6),
+                ToolTip = "Four independently bindable input directions",
+                IsChecked = mapping.Mapping.DirectionalInputIsDPad
+            };
+            dpadInput.Click += (s, args) => mapping.ChangeInputToDPad();
+            menu.Items.Add(dpadInput);
             if (menu.Items.Count > 0) menu.Items.Add(new Separator());
 
             var advanced = new MenuItem
