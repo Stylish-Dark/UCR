@@ -222,6 +222,83 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Margin="0 0 0 9">
+                                <!-- Each compass is a single logical input unit. The physical bindings
+                                     are positioned in their actual directions, not as a flat list. -->
+                                <StackPanel Visibility="{Binding DirectionalVisibility}" Margin="0 0 0 8">
+                                    <StackPanel Orientation="Horizontal" Margin="2 0 0 7">
+                                        <ComboBox Width="205" Height="32" Margin="0 0 7 0"
+                                                  ItemsSource="{Binding DirectionalPrimary.Devices}"
+                                                  SelectedItem="{Binding DirectionalPrimary.SelectedDevice}"
+                                                  SelectionChanged="DirectionalDevice_OnSelectionChanged"
+                                                  ToolTip="Input device shared by these directions"
+                                                  DisplayMemberPath="Title"/>
+                                        <Button Content="⋮" Width="34" Height="32" Padding="0"
+                                                ToolTip="Directional binding presets">
+                                            <Button.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="Arrow Keys" Tag="Arrows" Click="DirectionalPreset_OnClick"/>
+                                                    <MenuItem Header="Numpad" Tag="Numpad" Click="DirectionalPreset_OnClick"/>
+                                                    <MenuItem Header="WASD" Tag="WASD" Click="DirectionalPreset_OnClick"/>
+                                                    <MenuItem Header="UHJL" Tag="UHJL" Click="DirectionalPreset_OnClick"/>
+                                                    <Separator/>
+                                                    <MenuItem Header="Controller D-pad" Tag="DPad" Click="DirectionalPreset_OnClick"/>
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
+                                        </Button>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Visibility="{Binding DirectionalPairVisibility}">
+                                        <Button DataContext="{Binding DirectionalInputs[0]}" Click="BindDirectionalSlot_OnClick"
+                                                MinWidth="115" MinHeight="38" Margin="0 0 6 0"
+                                                Content="{Binding CompactBindButtonText}" ToolTip="Negative axis direction (left or up)"/>
+                                        <Button DataContext="{Binding DirectionalInputs[1]}" Click="BindDirectionalSlot_OnClick"
+                                                MinWidth="115" MinHeight="38" Content="{Binding CompactBindButtonText}"
+                                                ToolTip="Positive axis direction (right or down)"/>
+                                    </StackPanel>
+                                    <Grid Visibility="{Binding FourWayVisibility}" HorizontalAlignment="Left">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="112"/><ColumnDefinition Width="112"/><ColumnDefinition Width="112"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Row="0" Grid.Column="1" DataContext="{Binding DirectionalInputs[0]}"
+                                                Click="BindDirectionalSlot_OnClick" MinHeight="41" Margin="3"
+                                                ToolTip="Up direction">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="↑  "/><TextBlock Text="{Binding CompactBindButtonText}"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Row="2" Grid.Column="1" DataContext="{Binding DirectionalInputs[1]}"
+                                                Click="BindDirectionalSlot_OnClick" MinHeight="41" Margin="3"
+                                                ToolTip="Down direction">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="↓  "/><TextBlock Text="{Binding CompactBindButtonText}"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Row="1" Grid.Column="0" DataContext="{Binding DirectionalInputs[2]}"
+                                                Click="BindDirectionalSlot_OnClick" MinHeight="41" Margin="3"
+                                                ToolTip="Left direction">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="←  "/><TextBlock Text="{Binding CompactBindButtonText}"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Row="1" Grid.Column="2" DataContext="{Binding DirectionalInputs[3]}"
+                                                Click="BindDirectionalSlot_OnClick" MinHeight="41" Margin="3"
+                                                ToolTip="Right direction">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="→  "/><TextBlock Text="{Binding CompactBindButtonText}"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                    <StackPanel Orientation="Horizontal" Margin="0 5 0 0">
+                                        <TextBlock Text="Block" VerticalAlignment="Center" Margin="0 0 7 0"/>
+                                        <ToggleButton IsChecked="{Binding DirectionalBlockEnabled, Mode=OneWay}"
+                                            Click="DirectionalBlock_OnClick" Width="40" Height="22" Margin="0 0 13 0"
+                                            Style="{StaticResource UcrOutputInvertSwitch}" />
+                                        <ToggleButton Content="NOT" IsChecked="{Binding DirectionalPrimary.InputExpressionNegated, Mode=OneWay}"
+                                            Click="DirectionalNot_OnClick" Width="55" Height="30"/>
+                                    </StackPanel>
+                                </StackPanel>
                                 <TextBlock Text="OR" Visibility="{Binding OrLabelVisibility}"
                                     Foreground="#BBBBBB" FontWeight="SemiBold" Margin="4 2 0 6"/>
                                 <Border BorderBrush="#515151" BorderThickness="1"
