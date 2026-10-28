@@ -24,10 +24,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var mapping = MappingViewModel.Mapping;
                 var index = MappingViewModel.Plugins?.IndexOf(this) ?? -1;
                 if (index < 0) return string.Empty;
-                if (mapping?.DirectionalButtonOutputs == true && index < 4)
-                    return new[] { "Left", "Right", "Up", "Down" }[index];
-                if (mapping?.DirectionalPairButtonOutputs == true && index < 2)
-                    return index == 0 ? "Negative direction (-)" : "Positive direction (+)";
+                if (mapping?.DirectionalButtonOutputs == true)
+                    return new[] { "Left", "Right", "Up", "Down" }[index % 4];
+                if (mapping?.DirectionalPairButtonOutputs == true)
+                    return index % 2 == 0 ? "Negative direction (-)" : "Positive direction (+)";
                 if (MappingViewModel.MappingOutputCategoryDisplay == "Full Joystick" && index < 2)
                     return index == 0 ? "X axis" : "Y axis";
                 return string.Empty;
@@ -124,7 +124,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<PluginPropertyGroupViewModel> PluginPropertyGroups { get; set; }
-        public bool CanRemove => !MappingViewModel.ProfileViewModel.Profile.IsActive() && MappingViewModel.Plugins.Count > 1;
+        public bool CanRemove
+        {
+            get
+            {
+                var mapping = MappingViewModel.Mapping;
+                var slots = mapping.DirectionalButtonOutputs ? 4 :
+                    mapping.DirectionalPairButtonOutputs ? 2 : 1;
+                return !MappingViewModel.ProfileViewModel.Profile.IsActive() &&
+                    MappingViewModel.Plugins.Count > slots;
+            }
+        }
         public bool CanAddFilter => !MappingViewModel.ProfileViewModel.Profile.IsActive();
         public ObservableCollection<FilterViewModel> Filters { get; set; }
         private bool _editorInitialized;
