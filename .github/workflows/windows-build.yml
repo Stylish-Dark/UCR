@@ -182,6 +182,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 
+      - name: Verify packaged plugin and seed a real persisted profile
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & "$env:SystemRoot\SysWOW64\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File ".\build\verify-packaged-mapping-startup.ps1" -RuntimePath ".\UCR\bin\Release"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Smoke-test actual UCR.exe cold startup
         shell: pwsh
         run: |
