@@ -629,33 +629,17 @@ namespace HidWizards.UCR.Views.Controls
                 menu.Items.Add(item);
             }
 
+            var joystickInput = new MenuItem
             {
-                // A paired or four-way layout is a binding-set configuration,
-                // not a separate implementation plugin or an output choice.
-                var layouts = new MenuItem
-                {
-                    Header = "Binding layout",
-                    Foreground = Brushes.White, Background = Brushes.Transparent,
-                    Padding = new Thickness(10, 6, 14, 6)
-                };
-                foreach (var entry in new[]
-                {
-                    new { Label = "Axis (2 directions)", Slots = 2 },
-                    new { Label = "Full Joystick (4 directions)", Slots = 4 }
-                })
-                {
-                    var slots = entry.Slots;
-                    var choice = new MenuItem
-                    {
-                        Header = entry.Label,
-                        Foreground = Brushes.White, Background = Brushes.Transparent,
-                        Padding = new Thickness(10, 6, 14, 6)
-                    };
-                    choice.Click += (s, args) => mapping.SetDirectionalMode(slots);
-                    layouts.Items.Add(choice);
-                }
-                menu.Items.Add(layouts);
-            }
+                Header = "Full Joystick",
+                Foreground = Brushes.White,
+                Background = Brushes.Transparent,
+                Padding = new Thickness(10, 6, 14, 6),
+                ToolTip = "Four directional input slots"
+            };
+            joystickInput.Click += (s, args) => mapping.SetDirectionalMode(4);
+            menu.Items.Add(joystickInput);
+
             var dpadInput = new MenuItem
             {
                 Header = "D-pad",
