@@ -147,6 +147,32 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void SignedAnalogueInput_DrivesNegativeAndPositiveOutputSlotsSeparately()
+        {
+            var mapping = new Mapping
+            {
+                UseInputExpression = true,
+                DirectionalPairButtonOutputs = true,
+                DeviceBindings = new List<DeviceBinding>
+                {
+                    new DeviceBinding
+                    {
+                        InputExpressionInputKind = 3,
+                        InputExpressionAxisThreshold = 14000,
+                        InputExpressionGroup = 0
+                    },
+                    new DeviceBinding { InputExpressionGroup = 0 }
+                }
+            };
+            Assert.IsFalse(mapping.EvaluateDirectionalButton(new short[] { -12000, 1 }, 1));
+            Assert.IsTrue(mapping.EvaluateDirectionalButton(new short[] { -16000, 1 }, 1));
+            Assert.IsFalse(mapping.EvaluateDirectionalButton(new short[] { -16000, 1 }, 2));
+            Assert.IsTrue(mapping.EvaluateDirectionalButton(new short[] { 20000, 1 }, 2));
+            Assert.IsFalse(mapping.EvaluateDirectionalButton(new short[] { 20000, 0 }, 2),
+                "An unsatisfied AND guard must suppress both analogue directions.");
+        }
+
+        [Test]
         public void DirectionalOutputSlots_ObserveEachDirectionAndRespectOrGroupOwnership()
         {
             var mapping = new Mapping
