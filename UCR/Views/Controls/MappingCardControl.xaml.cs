@@ -733,6 +733,18 @@ namespace HidWizards.UCR.Views.Controls
                 menu.Items.Add(item);
             }
 
+            var dpadChoice = new MenuItem
+            {
+                Header = "D-pad",
+                Foreground = Brushes.White,
+                Background = Brushes.Transparent,
+                Padding = new Thickness(10, 6, 14, 6),
+                ToolTip = "Four independent digital directions: Left, Right, Up, Down",
+                IsChecked = mapping.Mapping.DirectionalButtonOutputs
+            };
+            dpadChoice.Click += (s, args) => mapping.ChangeOutputToDPad();
+            menu.Items.Add(dpadChoice);
+
             if (!categories.Any(group => string.Equals(group.Key, "Button",
                     StringComparison.OrdinalIgnoreCase)) && mapping.Plugins.Count == 1)
             {
