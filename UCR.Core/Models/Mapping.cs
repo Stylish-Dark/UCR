@@ -583,8 +583,14 @@ namespace HidWizards.UCR.Core.Models
             // Preserve existing directional assignments when expanding.
             // A bound continuous axis is split into its negative and positive
             // halves without losing the physical control assignment.
-            var axisMode = first.InputExpressionInputKind != 0;
-            var splitSingleAxis = first.InputDirectionSlot == 0 &&
+            // An unassigned legacy Axis-to-Axis source may intentionally be
+            // replaced by physical buttons. Preserve the analogue category
+            // only when its axis is bound, explicitly selected, or already
+            // part of an analogue directional set.
+            var axisMode = first.InputExpressionInputKind != 0 &&
+                (first.IsBound || first.InputDirectionSlot > 0 ||
+                 string.Equals(InputSideType, "Axis", StringComparison.OrdinalIgnoreCase));
+            var splitSingleAxis = axisMode && first.InputDirectionSlot == 0 &&
                 first.InputExpressionInputKind == 3;
             var sourceDevice = first.DeviceConfigurationGuid;
             var sourceKeyType = first.KeyType;
