@@ -930,6 +930,40 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return Plugins.Count > count;
         }
 
+        // One click adds a complete destination binding set, not a single
+        // half-filled directional slot. Ordinary output types use one slot.
+        public bool AddOutputBindingSet()
+        {
+            if (!ButtonsEnabled) return false;
+            var slotCount = Mapping.DirectionalButtonOutputs ? 4 :
+                Mapping.DirectionalPairButtonOutputs ? 2 : 1;
+            var originals = Plugins.Count;
+            for (var i = 0; i < slotCount; i++)
+            {
+                if (AddDefaultOutput()) continue;
+                // Roll back any newly created, unbound slots on partial failure.
+                while (Plugins.Count > originals)
+                    RemovePlugin(Plugins.Last());
+                return false;
+            }
+            RefreshHeaderState();
+            return true;
+        }
+
+        public bool RemoveOutputBindingSet(PluginViewModel member)
+        {
+            if (!ButtonsEnabled || member == null) return false;
+            var slotCount = Mapping.DirectionalButtonOutputs ? 4 :
+                Mapping.DirectionalPairButtonOutputs ? 2 : 1;
+            var index = Plugins.IndexOf(member);
+            if (index < 0 || Plugins.Count <= slotCount) return false;
+            var start = index / slotCount * slotCount;
+            if (start + slotCount > Plugins.Count) return false;
+            foreach (var output in Plugins.Skip(start).Take(slotCount).ToList())
+                RemovePlugin(output);
+            return true;
+        }
+
         // Change the number of button inputs without replacing the mapping,
         // its title, first axis output or filter references.
         public bool ChangeAxisButtonMode(PluginViewModel original, bool useTwoButtons)
