@@ -552,14 +552,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public void SetDirectionalMode(int slots)
         {
-            if (!ButtonsEnabled || !HasAxisOutput || InputConditions == null) return;
+            if (!ButtonsEnabled || InputConditions == null) return;
             var group = InputConditions.FirstOrDefault()?.GroupIndex ?? 0;
             if (!Mapping.SetDirectionalInputMode(group, slots)) return;
 
             // The legacy Button-to-Axis plugin only receives a Boolean, so it
             // cannot represent negative/positive travel. Convert axis destinations
             // to the continuous driver before pairing their physical inputs.
-            if (slots > 0)
+            if (slots > 0 && HasAxisOutput)
             {
                 var axisTemplate = GetCompatiblePluginOptions().FirstOrDefault(option =>
                     string.Equals(option.Name, "Axis to Axis", StringComparison.OrdinalIgnoreCase))?.Plugin;
@@ -572,7 +572,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             // A joystick needs two independent analogue destinations (X and Y).
             // Do not automatically delete the user's existing outputs when switching back.
-            if (slots == 4 && Plugins.Count(p => p.OutputType == "Axis") < 2)
+            if (slots == 4 && HasAxisOutput && Plugins.Count(p => p.OutputType == "Axis") < 2)
                 AddDefaultOutput();
 
             RebuildDirectionalEditors();
@@ -2245,8 +2245,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             get
             {
                 var directionalCount = InputConditions?.FirstOrDefault()?.DirectionalInputs?.Count ?? 0;
-                if (directionalCount == 4) return "Buttons (4-way)";
-                if (directionalCount == 2) return "Buttons (2)";
+                if (directionalCount == 4) return "Full Joystick";
+                if (directionalCount == 2) return "Axis (2 directions)";
+                if (Mapping?.UseInputExpression == true)
+                {
+                    var kinds = Mapping.DeviceBindings.Where(input => input.InputDirectionSlot == 0)
+                        .Select(input => input.InputExpressionInputKind).Distinct().ToList();
+                    if (kinds.Count == 1)
+                        return kinds[0] == 0 ? "Button" : "Axis";
+                    if (kinds.Count > 1) return "Mixed";
+                }
                 var inputs = Mapping?.Plugins?.FirstOrDefault()?.InputCategories;
                 if (inputs == null || inputs.Count == 0) return "None";
                 var kinds = inputs.Select(item => item.Category).Distinct().ToList();
