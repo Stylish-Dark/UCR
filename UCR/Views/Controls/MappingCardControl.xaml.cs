@@ -775,20 +775,20 @@ namespace HidWizards.UCR.Views.Controls
                     DarkMessageBox.Show("Full Joystick needs two output axes. Remove additional outputs before changing this side type.",
                         "Cannot change output type", MessageBoxButton.OK, MessageBoxImage.Information);
             };
-            if (mapping.OutputDeviceSupports(DeviceBindingCategory.Range))
+            if (mapping.OutputDeviceSupportsControls(DeviceBindingCategory.Range, 2))
                 menu.Items.Add(joystickChoice);
 
             var dpadChoice = new MenuItem
             {
-                Header = "D-pad",
+                Header = "4-way",
                 Foreground = Brushes.White,
                 Background = Brushes.Transparent,
                 Padding = new Thickness(10, 6, 14, 6),
-                ToolTip = "Four independent digital directions: Left, Right, Up, Down",
+                ToolTip = "Four independently assignable button directions",
                 IsChecked = mapping.Mapping.DirectionalButtonOutputs
             };
             dpadChoice.Click += (s, args) => mapping.ChangeOutputToDPad();
-            if (mapping.OutputDeviceSupports(DeviceBindingCategory.Momentary))
+            if (mapping.OutputDeviceSupportsControls(DeviceBindingCategory.Momentary, 4))
                 menu.Items.Add(dpadChoice);
 
             if (!categories.Any(group => string.Equals(group.Key, "Button",
