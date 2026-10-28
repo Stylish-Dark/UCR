@@ -29,7 +29,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (mapping?.DirectionalPairButtonOutputs == true && index < 2)
                     return index == 0 ? "Negative direction (-)" : "Positive direction (+)";
                 if (MappingViewModel.MappingOutputCategoryDisplay == "Full Joystick" && index < 2)
-                    return index == 0 ? "Left Stick - X" : "Left Stick - Y";
+                    return index == 0 ? "X axis" : "Y axis";
                 return string.Empty;
             }
         }
