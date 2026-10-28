@@ -16,7 +16,7 @@ if (-not (Test-Path -LiteralPath $coreDll -PathType Leaf)) {
 # Register the library directory for any transitive dependencies.
 $handler = [System.ResolveEventHandler]{
     param($sender, $args)
-    $name = (New-Object System.Reflection.AssemblyName($args.Name)).Name + '.dll'
+    $name = ([System.Reflection.AssemblyName]::new($args.Name)).Name + '.dll'
     $candidate = Join-Path (Join-Path $runtime 'lib') $name
     if (Test-Path -LiteralPath $candidate) {
         return [System.Reflection.Assembly]::LoadFrom($candidate)
