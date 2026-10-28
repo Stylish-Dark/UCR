@@ -661,7 +661,7 @@
                         <ColumnDefinition Width="3*"/>
                         <ColumnDefinition Width="34"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="46"/>
+                        <ColumnDefinition Width="90"/>
                     </Grid.ColumnDefinitions>
 
                     <Border x:Name="MappingDragHandle" Grid.Column="0" Margin="2" CornerRadius="3" Background="#303030" Cursor="SizeAll" ToolTip="Drag to reorder"><TextBlock Text="☰" Foreground="#D0D0D0" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/></Border>
@@ -841,13 +841,19 @@
                                 Style="{StaticResource UcrMappingActionButton}" IsEnabled="{Binding ButtonsEnabled}" Click="MoveSection_OnClick">
                             <TextBlock Text="↪" FontSize="17" FontWeight="Bold" VerticalAlignment="Center"/>
                         </Button>
-                        <Button ToolTip="Remove mapping. Stop the active profile to edit." ToolTipService.ShowOnDisabled="True"
-                                Width="30" Height="30" Margin="2" Style="{StaticResource UcrDeleteCrossButton}"
-                                IsEnabled="{Binding ButtonsEnabled}" Click="Remove_OnClick"/>
+                        
 
                     </StackPanel>
                     <!-- Always-visible, dedicated expand control; card content is not a toggle. -->
-                    <Button x:Name="ExpandMappingButton" Grid.Column="5" Width="38" Height="38"
+                    <StackPanel Grid.Column="5" Orientation="Horizontal"
+                                VerticalAlignment="Center" HorizontalAlignment="Right">
+                        <Button Width="34" Height="34" Margin="0 0 5 0"
+                                Style="{StaticResource UcrDeleteCrossButton}"
+                                IsEnabled="{Binding ButtonsEnabled}"
+                                ToolTip="Delete this mapping"
+                                ToolTipService.ShowOnDisabled="True"
+                                Click="Remove_OnClick"/>
+                    <Button x:Name="ExpandMappingButton" Width="38" Height="38"
                             Margin="0 0 5 0" VerticalAlignment="Center" HorizontalAlignment="Center"
                             Padding="0" Foreground="#FFFFFF" Background="#292929"
                             BorderBrush="#696969" BorderThickness="1" Cursor="Hand" Focusable="False"
@@ -886,6 +892,7 @@
                             </Path>
                         </Grid>
                     </Button>
+                    </StackPanel>
                 </Grid>
             </Border>
 
