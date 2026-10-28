@@ -348,9 +348,10 @@ namespace HidWizards.UCR.Core.Models
                     var raw = values[driver];
                     var threshold = Math.Max(1, Math.Min(32767,
                         DeviceBindings[driver].InputExpressionAxisThreshold));
-                    if (slot == 1 && raw <= -threshold) return true;
-                    if (slot == 2 && raw >= threshold) return true;
-                    continue;
+                    if (Math.Abs((int)raw) < threshold) continue;
+                    // A signed axis active in this OR group owns both
+                    // directions, including the inactive half.
+                    return slot == 1 ? raw <= -threshold : raw >= threshold;
                 }
                 if (!group.Where(i => DeviceBindings[i].InputDirectionSlot == 0)
                     .All(i => EvaluateOrdinaryCondition(DeviceBindings[i], values[i])))
