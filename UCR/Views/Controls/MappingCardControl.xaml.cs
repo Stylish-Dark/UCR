@@ -650,6 +650,7 @@ namespace HidWizards.UCR.Views.Controls
                 };
                 item.Click += (s, args) =>
                 {
+                    if (mapping.MappingInputTypeLabel == entry.Label) return;
                     if (!mapping.ChangeInputSignalType(category))
                         DarkMessageBox.Show("This mapping has assigned directions that cannot be converted without losing bindings. Clear those directions first.",
                             "Input type cannot change", MessageBoxButton.OK, MessageBoxImage.Information);
