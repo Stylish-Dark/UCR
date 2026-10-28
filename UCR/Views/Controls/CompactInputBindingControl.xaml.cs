@@ -16,6 +16,18 @@ namespace HidWizards.UCR.Views.Controls
 {
     public partial class CompactInputBindingControl : UserControl
     {
+        // The mapping editor owns device selection at the side level.
+        // Keep the per-binding selector for other UCR views.
+        public static readonly DependencyProperty DeviceSelectorVisibilityProperty =
+            DependencyProperty.Register(nameof(DeviceSelectorVisibility), typeof(Visibility),
+                typeof(CompactInputBindingControl), new PropertyMetadata(Visibility.Visible));
+
+        public Visibility DeviceSelectorVisibility
+        {
+            get => (Visibility)GetValue(DeviceSelectorVisibilityProperty);
+            set => SetValue(DeviceSelectorVisibilityProperty, value);
+        }
+
         public static readonly DependencyProperty DeviceBindingProperty =
             DependencyProperty.Register("DeviceBinding", typeof(DeviceBinding), typeof(CompactInputBindingControl),
                 new PropertyMetadata(default(DeviceBinding)));
