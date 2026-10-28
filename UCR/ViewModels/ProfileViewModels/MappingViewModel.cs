@@ -169,6 +169,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 // Different destination categories must never be mislabelled with
                 // the type of the first output plugin.
                 if (Plugins == null || Plugins.Count == 0) return "None";
+                if (InputConditions?.Any(group => group.IsFourWay) == true &&
+                    Plugins.Count(plugin => string.Equals(plugin.OutputType, "Axis", StringComparison.OrdinalIgnoreCase)) == 2)
+                    return "Full Joystick";
                 var categories = Plugins.Select(plugin => plugin.OutputType)
                     .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
                 if (categories.Count != 1) return "Mixed";
@@ -2233,6 +2236,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             get
             {
+                var directionalCount = InputConditions?.FirstOrDefault()?.DirectionalInputs?.Count ?? 0;
+                if (directionalCount == 4) return "Buttons (4-way)";
+                if (directionalCount == 2) return "Buttons (2)";
                 var inputs = Mapping?.Plugins?.FirstOrDefault()?.InputCategories;
                 if (inputs == null || inputs.Count == 0) return "None";
                 var kinds = inputs.Select(item => item.Category).Distinct().ToList();
