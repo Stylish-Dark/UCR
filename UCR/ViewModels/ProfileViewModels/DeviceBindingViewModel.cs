@@ -257,9 +257,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     return "●  PRESS INPUT";
                 if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Output)
                     return "Output";
-                if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Input &&
-                    DeviceBindingCategory == DeviceBindingCategory.Range)
-                    return "Move axis to bind";
+                // The capture instructions belong in the tooltip, not on the binding button.
+                // A binding slot says "Bind" regardless of whether it listens for a button or axis.
                 if (string.IsNullOrWhiteSpace(label)) return label;
                 foreach (var group in new[] { "Keys", "Buttons" })
                 {
