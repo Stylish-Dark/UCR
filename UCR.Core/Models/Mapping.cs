@@ -580,46 +580,67 @@ namespace HidWizards.UCR.Core.Models
                 return true;
             }
 
-            // When expanding 2-way to 4-way, retain BOTH existing bindings.
-            // Reuse existing slots by number, creating only missing slots.
-            // Shrinking explicitly removes only the surplus positions.
-            foreach (var sibling in directions.Where(b => b.InputDirectionSlot > slots))
+            // Preserve existing directional assignments when expanding.
+            // A bound continuous axis is split into its negative and positive
+            // halves without losing the physical control assignment.
+            var axisMode = first.InputExpressionInputKind != 0;
+            var splitSingleAxis = first.InputDirectionSlot == 0 &&
+                first.InputExpressionInputKind == 3;
+            var sourceDevice = first.DeviceConfigurationGuid;
+            var sourceKeyType = first.KeyType;
+            var sourceKeyValue = first.KeyValue;
+            var sourceKeySubValue = first.KeySubValue;
+            var sourceBound = first.IsBound;
+            var analogueDestination = Plugins.Any(plugin =>
+                plugin.OutputCategories.Any(category =>
+                    category.Category == DeviceBindingCategory.Range));
+            var axisThreshold = analogueDestination ? 1 : 16384;
+
+            foreach (var sibling in directions.Where(binding => binding.InputDirectionSlot > slots))
                 DeviceBindings.Remove(sibling);
             if (first.InputDirectionSlot == 0)
             {
-                // An existing analogue source cannot be silently reinterpreted
-                // as a physical button, but an already assigned button can stay.
-                if (first.InputExpressionInputKind != 0)
+                if (!axisMode)
                 {
-                    first.DeviceConfigurationGuid = Guid.Empty;
-                    first.KeyType = first.KeyValue = first.KeySubValue = 0;
-                    first.IsBound = false;
-                    first.Block = false;
+                    first.InputExpressionInputKind = 0;
+                    first.DeviceBindingCategory = DeviceBindingCategory.Momentary;
                 }
-                first.InputExpressionInputKind = 0;
+                else if (splitSingleAxis)
+                {
+                    first.InputExpressionInputKind = 2;
+                    first.DeviceBindingCategory = DeviceBindingCategory.Range;
+                    first.InputExpressionAxisThreshold = axisThreshold;
+                }
                 first.InputExpressionKindConfigured = true;
-                first.DeviceBindingCategory = DeviceBindingCategory.Momentary;
                 first.InputDirectionSlot = 1;
             }
 
             var position = DeviceBindings.IndexOf(first);
             for (var slot = 2; slot <= slots; slot++)
             {
-                var existing = DeviceBindings.FirstOrDefault(b =>
-                    b.InputExpressionGroup == groupIndex && b.InputDirectionSlot == slot);
+                var existing = DeviceBindings.FirstOrDefault(binding =>
+                    binding.InputExpressionGroup == groupIndex && binding.InputDirectionSlot == slot);
                 if (existing != null)
                 {
                     position = Math.Max(position, DeviceBindings.IndexOf(existing));
                     continue;
                 }
+                var pairedSource = splitSingleAxis && slot == 2 && sourceBound;
                 DeviceBindings.Insert(++position, new DeviceBinding(Update, Profile, DeviceIoType.Input)
                 {
                     InputExpressionGroup = groupIndex,
                     InputDirectionSlot = slot,
-                    InputExpressionInputKind = 0,
+                    InputExpressionInputKind = axisMode ? (slot % 2 == 1 ? 2 : 1) : 0,
+                    InputExpressionAxisThreshold = axisMode ? axisThreshold : 16384,
                     InputExpressionKindConfigured = true,
-                    DeviceBindingCategory = DeviceBindingCategory.Momentary,
-                    InputExpressionNegated = first.InputExpressionNegated
+                    DeviceBindingCategory = axisMode ?
+                        DeviceBindingCategory.Range : DeviceBindingCategory.Momentary,
+                    InputExpressionNegated = first.InputExpressionNegated,
+                    DeviceConfigurationGuid = pairedSource ? sourceDevice : Guid.Empty,
+                    KeyType = pairedSource ? sourceKeyType : 0,
+                    KeyValue = pairedSource ? sourceKeyValue : 0,
+                    KeySubValue = pairedSource ? sourceKeySubValue : 0,
+                    IsBound = pairedSource
                 });
             }
             Profile?.Context?.ContextChanged();
