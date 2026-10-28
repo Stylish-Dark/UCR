@@ -322,8 +322,9 @@ namespace HidWizards.UCR.Core.Models
                 if (!group.Where(i => DeviceBindings[i].InputDirectionSlot == 0)
                     .All(i => EvaluateOrdinaryCondition(DeviceBindings[i], values[i])))
                     continue;
-                var member = directions.FirstOrDefault(i => DeviceBindings[i].InputDirectionSlot == slot);
-                if (member < 0) continue;
+                if (!directions.Any(i => DeviceBindings[i].InputDirectionSlot == slot))
+                    continue;
+                var member = directions.First(i => DeviceBindings[i].InputDirectionSlot == slot);
                 // Directional analog inputs are thresholded only when consumed
                 // by a digital destination. Physical buttons retain Boolean use.
                 var binding = DeviceBindings[member];
