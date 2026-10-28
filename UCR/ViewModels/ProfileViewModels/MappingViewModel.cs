@@ -570,7 +570,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             SetDirectionalMode(4);
             if (!Mapping.DeviceBindings.Any(binding => binding.InputDirectionSlot == 4)) return;
             Mapping.DirectionalInputIsDPad = false;
-            Mapping.InputSideType = "Full Joystick";
+            Mapping.InputSideType = "";
             ProfileViewModel.Profile.Context.ContextChanged();
             RefreshInputExpressionPresentation();
             RefreshHeaderState();
@@ -581,8 +581,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!ButtonsEnabled) return;
             SetDirectionalMode(4);
             if (!Mapping.DeviceBindings.Any(input => input.InputDirectionSlot == 4)) return;
-            Mapping.DirectionalInputIsDPad = true;
-            Mapping.InputSideType = "D-pad";
+            Mapping.DirectionalInputIsDPad = false;
+            Mapping.InputSideType = "";
             ProfileViewModel.Profile.Context.ContextChanged();
             RefreshInputExpressionPresentation();
             RefreshHeaderState();
@@ -2412,37 +2412,26 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         // Input type changes select a real remapper with the same output signature.
         // They never masquerade as output changes, and cannot silently mutate multi-output mappings.
+        // The label identifies the physical input signal, not its directional
+        // arrangement. A keyboard with four directional keys is still Button.
         public string MappingInputTypeLabel
         {
             get
             {
-                if (!string.IsNullOrWhiteSpace(Mapping?.InputSideType))
-                    return Mapping.InputSideType;
-                var directionalCount = InputConditions?.FirstOrDefault()?.DirectionalInputs?.Count ?? 0;
-                if (directionalCount == 4) return Mapping?.DirectionalInputIsDPad == true
-                    ? "D-pad" : "Full Joystick";
-                if (directionalCount == 2) return "Axis (2 directions)";
-                if (Mapping?.UseInputExpression == true)
-                {
-                    var signalKinds = Mapping.DeviceBindings.Where(input => input.InputDirectionSlot == 0)
-                        .Select(input => input.InputExpressionInputKind).Distinct().ToList();
-                    if (signalKinds.Count == 1)
-                        return signalKinds[0] == 0 ? "Button" : "Axis";
-                    if (signalKinds.Count > 1) return "Mixed";
-                }
-                var inputs = Mapping?.Plugins?.FirstOrDefault()?.InputCategories;
-                if (inputs == null || inputs.Count == 0) return "None";
-                var kinds = inputs.Select(item => item.Category).Distinct().ToList();
-                if (kinds.Count != 1) return "Multiple";
-                switch (kinds[0])
-                {
-                    case DeviceBindingCategory.Momentary:
-                        return (Mapping?.DeviceBindings?.Count ?? 0) == 1 ? "Button" : "Buttons";
-                    case DeviceBindingCategory.Range: return "Axis";
-                    case DeviceBindingCategory.Event: return "Event";
-                    case DeviceBindingCategory.Delta: return "Delta";
-                    default: return "Value";
-                }
+                var bindings = Mapping?.DeviceBindings;
+                if (bindings == null || bindings.Count == 0) return "None";
+                var kinds = bindings.Select(input => input.InputExpressionInputKind == 0
+                    ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range)
+                    .Distinct().ToList();
+                if (kinds.Count > 1) return "Mixed";
+                if (Mapping.UseInputExpression || bindings.Any(input => input.InputExpressionKindConfigured))
+                    return kinds[0] == DeviceBindingCategory.Momentary ? "Button" : "Axis";
+
+                var categories = Mapping.Plugins.FirstOrDefault()?.InputCategories;
+                if (categories == null || categories.Count == 0) return "Button";
+                var distinct = categories.Select(input => input.Category).Distinct().ToList();
+                if (distinct.Count != 1) return "Mixed";
+                return distinct[0] == DeviceBindingCategory.Range ? "Axis" : "Button";
             }
         }
 
