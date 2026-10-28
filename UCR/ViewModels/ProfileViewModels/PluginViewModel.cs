@@ -30,7 +30,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     return index % 2 == 0 ? "Negative direction (-)" : "Positive direction (+)";
                 if (MappingViewModel.MappingOutputCategoryDisplay == "Full Joystick" && index < 2)
                     return index == 0 ? "X axis" : "Y axis";
-                return string.Empty;
+                return MappingViewModel.Plugins.Count > 1
+                    ? "Output " + (index + 1) : string.Empty;
             }
         }
         public Visibility OutputDirectionLabelVisibility =>
