@@ -206,6 +206,29 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return DeviceBindingViewModel.SupportsOutputCategory(device, category, profile.Context);
         }
 
+        public bool OutputDeviceSupportsControls(DeviceBindingCategory category, int count)
+        {
+            if (count <= 0) return false;
+            var profile = ProfileViewModel.Profile;
+            var selected = profile.GetDeviceConfiguration(DeviceIoType.Output, OutputSideDeviceGuid);
+            if (selected?.Device == null) return false;
+            try
+            {
+                return FlattenBindingNodes(profile.Context.DevicesManager.GetDeviceBindingMenu(
+                        selected.Device, DeviceIoType.Output))
+                    .Where(node => node?.DeviceBindingInfo != null &&
+                        node.DeviceBindingInfo.DeviceBindingCategory == category)
+                    .Select(node => node.DeviceBindingInfo)
+                    .GroupBy(info => new { info.KeyType, info.KeyValue, info.KeySubValue })
+                    .Count() >= count;
+            }
+            catch (Exception error)
+            {
+                Logger.Warn("Unable to inspect output controls for the chosen device.", error);
+                return false;
+            }
+        }
+
         public bool ChangeInputSideDevice(Guid guid)
         {
             if (!ButtonsEnabled || Mapping?.DeviceBindings == null) return false;
@@ -334,7 +357,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (!string.IsNullOrWhiteSpace(Mapping?.OutputSideType))
                     return Mapping.OutputSideType;
                 if (Mapping?.DirectionalButtonOutputs == true && Plugins.Count >= 4)
-                    return "D-pad";
+                    return "4-way";
                 if (Mapping?.DirectionalPairButtonOutputs == true && Plugins.Count >= 2)
                     return "Button (2 directions)";
                 if (InputConditions?.Any(group => group.IsFourWay) == true &&
@@ -1706,7 +1729,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!Mapping.DeviceBindings.Any(binding => binding.InputDirectionSlot == 4))
                 return false;
             Mapping.DirectionalButtonOutputs = true;
-            Mapping.OutputSideType = "D-pad";
+            Mapping.OutputSideType = "4-way";
             ProfileViewModel.Profile.Context.ContextChanged();
             RefreshHeaderState();
             RefreshCollapsedSummary();
