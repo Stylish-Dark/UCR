@@ -161,6 +161,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             : FormatMappingRoute(MappingRoute, Mapping?.DeviceBindings?.Count ?? 0, Mapping?.Plugins?.Sum(p => p.Outputs?.Count ?? 0) ?? 0);
         public List<MappingHeaderToken> MappingRouteTokens => _mappingRouteTokens;
         public string MappingOutputTypeLabel => _mappingOutputTypeLabel;
+        public int OutputBindingColumns =>
+            Mapping?.DirectionalButtonOutputs == true ? 4 :
+            Mapping?.DirectionalPairButtonOutputs == true ||
+            MappingOutputCategoryDisplay == "Full Joystick" ? 2 : 1;
         public string MappingOutputCategoryDisplay
         {
             get
@@ -1655,6 +1659,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(MappingOutputTypeLabel));
             OnPropertyChanged(nameof(MappingInputTypeLabel));
             OnPropertyChanged(nameof(MappingOutputCategoryDisplay));
+            OnPropertyChanged(nameof(OutputBindingColumns));
             if (Plugins != null)
                 foreach (var output in Plugins) output.RefreshOutputDirectionLabel();
             OnPropertyChanged(nameof(HasAxisOutput));
