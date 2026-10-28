@@ -2609,42 +2609,38 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (!ButtonsEnabled || (category != DeviceBindingCategory.Momentary &&
                 category != DeviceBindingCategory.Range)) return false;
-            if (!Mapping.EnableInputExpression()) return false;
+            if (!InputDeviceSupports(category) || !Mapping.EnableInputExpression()) return false;
 
-            // Never erase physical directions simply because a side type is
-            // changed. Only an unassigned directional set can be collapsed
-            // into a continuous analogue source without losing user data.
-            var directions = Mapping.DeviceBindings.Where(b => b.InputDirectionSlot > 0).ToList();
-            if (directions.Count > 0)
+            // The physical signal type and the binding-set layout are separate
+            // decisions. Changing Button to Axis must not turn a 4-way input
+            // into a 1-way input, and vice versa.
+            var axis = category == DeviceBindingCategory.Range;
+            foreach (var input in Mapping.DeviceBindings)
             {
-                if (directions.Any(b => b.IsBound)) return false;
-                if (category == DeviceBindingCategory.Range)
-                {
-                    if (!Mapping.SetDirectionalInputMode(directions[0].InputExpressionGroup, 0))
-                        return false;
-                }
-                else
-                {
-                    Mapping.DirectionalInputIsDPad = false;
-                    Mapping.SetDirectionalInputMode(directions[0].InputExpressionGroup, 2);
-                }
+                var slot = input.InputDirectionSlot;
+                var desiredKind = !axis ? 0 :
+                    slot == 0 ? 3 : slot == 1 || slot == 3 ? 2 : 1;
+                input.SetInputExpressionInputKind(desiredKind);
+                if (axis && slot > 0 && HasAxisOutput)
+                    input.SetInputExpressionAxisThreshold(1);
             }
-            var kind = category == DeviceBindingCategory.Range ? 3 : 0;
-            foreach (var binding in Mapping.DeviceBindings.Where(b => b.InputDirectionSlot == 0))
-                binding.SetInputExpressionInputKind(kind);
 
-            if (category == DeviceBindingCategory.Range &&
-                Mapping.Plugins.All(p => p.OutputCategories.Count == 1 &&
-                    p.OutputCategories[0].Category == DeviceBindingCategory.Momentary))
+            if (axis && Mapping.Plugins.All(plugin =>
+                plugin.OutputCategories.Count == 1 &&
+                plugin.OutputCategories[0].Category == DeviceBindingCategory.Momentary))
             {
-                if (!EnsureOutputSlotMultiple(2)) return false;
-                Mapping.DirectionalPairButtonOutputs = true;
-                Mapping.DirectionalButtonOutputs = false;
+                var directionSlots = Mapping.DeviceBindings.Max(input => input.InputDirectionSlot);
+                var slots = directionSlots == 4 ? 4 : 2;
+                if (!EnsureOutputSlotMultiple(slots)) return false;
+                Mapping.DirectionalButtonOutputs = slots == 4;
+                Mapping.DirectionalPairButtonOutputs = slots == 2;
             }
-            else
+            else if (!axis)
+            {
                 Mapping.DirectionalPairButtonOutputs = false;
+            }
 
-            Mapping.InputSideType = category == DeviceBindingCategory.Range ? "Axis" : "Button";
+            Mapping.InputSideType = axis ? "Axis" : "Button";
             Mapping.DirectionalInputIsDPad = false;
             ProfileViewModel.Profile.Context.ContextChanged();
             RebuildDirectionalEditors();
