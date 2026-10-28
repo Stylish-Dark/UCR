@@ -594,7 +594,7 @@ namespace HidWizards.UCR.Views.Controls
         {
             var mapping = DataContext as MappingViewModel;
             if (mapping?.ButtonsEnabled != true) return;
-            mapping.AddDefaultOutput();
+            mapping.AddOutputBindingSet();
         }
 
         private void ChooseInputCategory_OnClick(object sender, RoutedEventArgs e)
@@ -848,7 +848,7 @@ namespace HidWizards.UCR.Views.Controls
                     Background = Brushes.Transparent,
                     Padding = new Thickness(10, 6, 14, 6)
                 };
-                addOutput.Click += (s, args) => mapping.AddDefaultOutput();
+                addOutput.Click += (s, args) => mapping.AddOutputBindingSet();
                 menu.Items.Add(addOutput);
             }
             menu.IsOpen = true;
@@ -1010,7 +1010,7 @@ namespace HidWizards.UCR.Views.Controls
         private void RemoveOutput_OnClick(object sender, RoutedEventArgs e)
         {
             var plugin = (sender as FrameworkElement)?.DataContext as PluginViewModel;
-            if (plugin?.CanRemove == true) plugin.Remove();
+            if (plugin?.CanRemove == true) plugin.MappingViewModel.RemoveOutputBindingSet(plugin);
         }
 
     }
