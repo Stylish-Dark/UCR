@@ -40,6 +40,16 @@ namespace HidWizards.UCR.Core.Models
         [DefaultValue(false)]
         public bool DirectionalInputIsDPad { get; set; }
 
+        // Side types are intentionally independent of the number of slots
+        // on that side; the opposing side determines each binding set's shape.
+        [XmlAttribute]
+        [DefaultValue("")]
+        public string InputSideType { get; set; } = "";
+
+        [XmlAttribute]
+        [DefaultValue("")]
+        public string OutputSideType { get; set; } = "";
+
         /* Runtime */
         private Profile Profile { get; set; }
         private List<short> InputCache { get; set; }
