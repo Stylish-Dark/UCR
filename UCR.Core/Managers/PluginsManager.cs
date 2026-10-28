@@ -5,7 +5,7 @@ using System.ComponentModel.Composition.Hosting;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using Trinet.Core.IO.Ntfs;
+using System.Runtime.InteropServices;
 using HidWizards.UCR.Core.Models;
 using NLog;
 
@@ -24,21 +24,29 @@ namespace HidWizards.UCR.Core.Managers
             Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins",
                 "UCR.Plugins", "UCR.Plugins.dll");
 
+        [DllImport("kernel32.dll", EntryPoint = "DeleteFileW",
+            CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern bool DeleteAlternateDataStream(string path);
+
         // Downloaded Windows archives can propagate Zone.Identifier to every
-        // extracted DLL. Remove it only from the bundled mapping plugin and
-        // only after the user approves repair in the startup dialog.
+        // extracted DLL. Delete ONLY the bundled plugin's download marker,
+        // after explicit user approval. Do not rely on another DLL to repair
+        // blocked DLL loading.
         public static bool TryUnblockBuiltInPlugin()
         {
-            var dll = new FileInfo(BuiltInPluginPath);
-            if (!dll.Exists) return false;
+            var dll = BuiltInPluginPath;
+            if (!File.Exists(dll)) return false;
             try
             {
-                if (!dll.AlternateDataStreamExists("Zone.Identifier")) return false;
-                return dll.DeleteAlternateDataStream("Zone.Identifier");
+                if (DeleteAlternateDataStream(dll + ":Zone.Identifier")) return true;
+                var win32 = Marshal.GetLastWin32Error();
+                if (win32 != 2 && win32 != 3)
+                    Logger.Warn("Could not remove mapping plugin download marker. Windows error: " + win32);
+                return false;
             }
             catch (Exception exception)
             {
-                Logger.Error(exception, "Unable to unblock the installed mapping plugin: " + dll.FullName);
+                Logger.Error(exception, "Unable to unblock the installed mapping plugin: " + dll);
                 return false;
             }
         }
