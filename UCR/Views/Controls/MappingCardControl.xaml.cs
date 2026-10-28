@@ -597,87 +597,113 @@ namespace HidWizards.UCR.Views.Controls
             mapping.AddOutputBindingSet();
         }
 
+        private void InputSideDevice_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var combo = sender as ComboBox;
+            var mapping = DataContext as MappingViewModel;
+            var selected = combo?.SelectedItem as ComboBoxItemViewModel;
+            if (combo?.IsLoaded != true || mapping?.ButtonsEnabled != true || selected == null) return;
+            var guid = (Guid)selected.Value;
+            if (guid == mapping.InputSideDeviceGuid) return;
+            if (!mapping.ChangeInputSideDevice(guid))
+                DarkMessageBox.Show("This input device cannot be selected for the current mapping.",
+                    "Input device unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+            mapping.RefreshSideDeviceChoices();
+        }
+
+        private void OutputSideDevice_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var combo = sender as ComboBox;
+            var mapping = DataContext as MappingViewModel;
+            var selected = combo?.SelectedItem as ComboBoxItemViewModel;
+            if (combo?.IsLoaded != true || mapping?.ButtonsEnabled != true || selected == null) return;
+            var guid = (Guid)selected.Value;
+            if (guid == mapping.OutputSideDeviceGuid) return;
+            if (!mapping.ChangeOutputSideDevice(guid))
+                DarkMessageBox.Show("This device has no compatible output type for the mapping.",
+                    "Output device unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+            mapping.RefreshSideDeviceChoices();
+        }
+
         private void ChooseInputCategory_OnClick(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
             var mapping = DataContext as MappingViewModel;
-            if (button == null || mapping?.ButtonsEnabled != true || mapping.Plugins.Count == 0) return;
-
-            var current = mapping.Plugins[0];
-            var options = mapping.GetCompatibleInputPluginOptions();
+            if (button == null || mapping?.ButtonsEnabled != true) return;
             var menu = CreateDarkContextMenu(button);
             menu.Placement = PlacementMode.Bottom;
-
-            // Normal choices describe the INPUT side, never the legacy
-            // input-to-output plugin implementation. In particular, changing
-            // the input type must not unexpectedly change the output type.
             foreach (var entry in new[]
             {
                 new { Label = "Button", Category = DeviceBindingCategory.Momentary },
                 new { Label = "Axis", Category = DeviceBindingCategory.Range }
             })
             {
+                if (!mapping.InputDeviceSupports(entry.Category)) continue;
                 var category = entry.Category;
                 var item = new MenuItem
                 {
                     Header = entry.Label,
-                    Foreground = Brushes.White, Background = Brushes.Transparent,
-                    Padding = new Thickness(10, 6, 14, 6),
-                    ToolTip = "Set the input signal type independently of the output"
-                };
-                item.Click += (s, args) => mapping.ChangeInputSignalType(category);
-                menu.Items.Add(item);
-            }
-
-            // Four-way describes a binding arrangement, not a physical D-pad
-            // or a joystick-specific input category.
-            var fourWay = new MenuItem
-            {
-                Header = "4-way",
-                Foreground = Brushes.White,
-                Background = Brushes.Transparent,
-                Padding = new Thickness(10, 6, 14, 6),
-                ToolTip = "Four assignable directions: any buttons, D-pad, stick or face buttons",
-                IsChecked = mapping.InputConditions?.Any(group => group.IsFourWay) == true
-            };
-            fourWay.Click += (s, args) => mapping.SetDirectionalMode(4);
-            menu.Items.Add(fourWay);
-            if (menu.Items.Count > 0) menu.Items.Add(new Separator());
-
-            var advanced = new MenuItem
-            {
-                Header = "Specialised remappers",
-                Foreground = Brushes.White, Background = Brushes.Transparent,
-                Padding = new Thickness(10, 6, 14, 6)
-            };
-            foreach (var option in options)
-            {
-                var selected = option;
-                var item = new MenuItem
-                {
-                    Header = selected.Name,
-                    ToolTip = selected.Description,
                     Foreground = Brushes.White,
                     Background = Brushes.Transparent,
                     Padding = new Thickness(10, 6, 14, 6),
-                    IsChecked = current.Plugin.GetType() == selected.Plugin.GetType()
+                    IsChecked = mapping.MappingInputTypeLabel == entry.Label
                 };
                 item.Click += (s, args) =>
                 {
-                    if (mapping.Plugins.Count != 1 || current.Plugin.GetType() == selected.Plugin.GetType()) return;
-                    mapping.ChangeInputType(current, selected.Plugin);
+                    if (!mapping.ChangeInputSignalType(category))
+                        DarkMessageBox.Show("This mapping has assigned directions that cannot be converted without losing bindings. Clear those directions first.",
+                            "Input type cannot change", MessageBoxButton.OK, MessageBoxImage.Information);
                 };
-                item.IsEnabled = mapping.Plugins.Count == 1;
-                advanced.Items.Add(item);
+                menu.Items.Add(item);
             }
-            if (advanced.Items.Count > 0) menu.Items.Add(advanced);
             if (menu.Items.Count == 0)
                 menu.Items.Add(new MenuItem
                 {
-                    Header = "No compatible input types",
-                    IsEnabled = false,
-                    Foreground = Brushes.LightGray
+                    Header = "Selected device has no supported input types",
+                    IsEnabled = false
                 });
+            menu.IsOpen = true;
+        }
+
+        private void ChooseInputLayout_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var mapping = DataContext as MappingViewModel;
+            if (button == null || mapping?.ButtonsEnabled != true) return;
+            var menu = CreateDarkContextMenu(button);
+            menu.Placement = PlacementMode.Bottom;
+            foreach (var entry in new[]
+            {
+                new { Label = "1-way", Slots = 0 },
+                new { Label = "2-way", Slots = 2 },
+                new { Label = "4-way", Slots = 4 }
+            })
+            {
+                var slots = entry.Slots;
+                var item = new MenuItem
+                {
+                    Header = entry.Label,
+                    Foreground = Brushes.White,
+                    Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 14, 6),
+                    IsChecked = mapping.InputBindingLayoutLabel == entry.Label
+                };
+                item.Click += (s, args) =>
+                {
+                    if (mapping.Mapping.DeviceBindings.Any(binding =>
+                        binding.InputDirectionSlot > slots && binding.IsBound))
+                    {
+                        DarkMessageBox.Show("Some directions are assigned. Clear those bindings before reducing the layout.",
+                            "Cannot reduce binding layout", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return;
+                    }
+                    var wasButton = mapping.MappingInputTypeLabel == "Button";
+                    mapping.SetDirectionalMode(slots);
+                    if (slots == 0 && wasButton)
+                        mapping.ChangeInputSignalType(DeviceBindingCategory.Momentary);
+                };
+                menu.Items.Add(item);
+            }
             menu.IsOpen = true;
         }
 
@@ -694,11 +720,25 @@ namespace HidWizards.UCR.Views.Controls
             var mapping = DataContext as MappingViewModel;
             if (button == null || mapping?.ButtonsEnabled != true || mapping.Plugins.Count == 0) return;
 
-            var options = mapping.GetCompatiblePluginOptions();
-            var analogue = mapping.Mapping.DeviceBindings.Any(input => input.InputExpressionInputKind == 3);
+            var selectedDevice = mapping.OutputSideDeviceGuid;
             var menu = CreateDarkContextMenu(button);
             menu.Placement = PlacementMode.Bottom;
-
+            if (selectedDevice == Guid.Empty)
+            {
+                menu.Items.Add(new MenuItem
+                {
+                    Header = "Select an output device first",
+                    IsEnabled = false
+                });
+                menu.IsOpen = true;
+                return;
+            }
+            var options = mapping.GetCompatiblePluginOptions()
+                .Where(option => option.Plugin.OutputCategories.Count > 0 &&
+                    option.Plugin.OutputCategories.All(category =>
+                        mapping.OutputDeviceSupports(category.Category)))
+                .ToList();
+            var analogue = mapping.Mapping.DeviceBindings.Any(input => input.InputExpressionInputKind == 3);
             var categories = options
                 .GroupBy(option => option.OutputType, StringComparer.OrdinalIgnoreCase).ToList();
             foreach (var category in categories)
@@ -734,7 +774,8 @@ namespace HidWizards.UCR.Views.Controls
                     DarkMessageBox.Show("Full Joystick needs two output axes. Remove additional outputs before changing this side type.",
                         "Cannot change output type", MessageBoxButton.OK, MessageBoxImage.Information);
             };
-            menu.Items.Add(joystickChoice);
+            if (mapping.OutputDeviceSupports(DeviceBindingCategory.Range))
+                menu.Items.Add(joystickChoice);
 
             var dpadChoice = new MenuItem
             {
@@ -746,10 +787,12 @@ namespace HidWizards.UCR.Views.Controls
                 IsChecked = mapping.Mapping.DirectionalButtonOutputs
             };
             dpadChoice.Click += (s, args) => mapping.ChangeOutputToDPad();
-            menu.Items.Add(dpadChoice);
+            if (mapping.OutputDeviceSupports(DeviceBindingCategory.Momentary))
+                menu.Items.Add(dpadChoice);
 
             if (!categories.Any(group => string.Equals(group.Key, "Button",
-                    StringComparison.OrdinalIgnoreCase)) && mapping.Plugins.Count == 1)
+                    StringComparison.OrdinalIgnoreCase)) && mapping.Plugins.Count == 1 &&
+                    mapping.OutputDeviceSupports(DeviceBindingCategory.Momentary))
             {
                 var buttonChoice = new MenuItem
                 {
