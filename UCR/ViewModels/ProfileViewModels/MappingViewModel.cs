@@ -573,8 +573,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (!ButtonsEnabled || InputConditions == null) return;
             Mapping.DirectionalInputIsDPad = false;
-            var group = InputConditions.FirstOrDefault()?.GroupIndex ?? 0;
-            if (!Mapping.SetDirectionalInputMode(group, slots)) return;
+            // Every OR alternative uses the same opposing-side slot
+            // structure. Never contract away a bound direction implicitly.
+            var groups = InputConditions.Select(c => c.GroupIndex).Distinct().ToList();
+            if (groups.Count == 0) return;
+            if (Mapping.DeviceBindings.Any(binding => binding.InputDirectionSlot > slots &&
+                binding.IsBound)) return;
+            foreach (var group in groups)
+                if (!Mapping.SetDirectionalInputMode(group, slots)) return;
 
             // The legacy Button-to-Axis plugin only receives a Boolean, so it
             // cannot represent negative/positive travel. Convert axis destinations
@@ -789,7 +795,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (!ButtonsEnabled || !SupportsNativeInputExpression) return;
             var binding = Mapping.AddExpressionCondition();
-            AddExpressionBindingViewModel(binding);
+            if (binding == null) return;
+            var slots = Mapping.DirectionalButtonOutputs ||
+                MappingOutputCategoryDisplay == "Full Joystick" ? 4 :
+                HasAxisOutput ? 2 : 0;
+            if (slots > 0 && Mapping.SetDirectionalInputMode(binding.InputExpressionGroup, slots))
+                RebuildDirectionalEditors();
+            else
+                AddExpressionBindingViewModel(binding);
         }
 
         private void AddExpressionBindingViewModel(DeviceBinding binding)
