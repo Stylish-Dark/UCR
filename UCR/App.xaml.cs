@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using HidWizards.UCR.Core;
+using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Utilities;
@@ -24,6 +25,11 @@ namespace HidWizards.UCR
     /// </summary>
     public partial class App : Application, IDisposable
     {
+        private sealed class MissingBuiltInPluginException : InvalidOperationException
+        {
+            public MissingBuiltInPluginException(string message) : base(message) { }
+        }
+
         private Context context;
         private HidGuardianClient _hidGuardianClient;
         private SingleGlobalInstance mutex;
@@ -106,6 +112,16 @@ namespace HidWizards.UCR
                     _startupStopwatch.Stop();
                     Logger.Info($"UCR startup completed in {_startupStopwatch.ElapsedMilliseconds} ms");
                     CloseSplash();
+                }
+                catch (MissingBuiltInPluginException exception)
+                {
+                    Logger.Error(exception, "UCR startup halted before loading profiles.");
+                    CloseSplash();
+                    HidWizards.UCR.Utilities.DarkMessageBox.Show(exception.Message,
+                        "UCR needs its mapping plugin", MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                    Current.Shutdown();
+                    return;
                 }
                 catch
                 {
@@ -281,9 +297,50 @@ namespace HidWizards.UCR
             Logger.Info("Importable version backup created: " + directory);
         }
 
+        private void EnsureBuiltInPluginAvailable()
+        {
+            const string required = "HidWizards.UCR.Plugins.Remapper.ButtonToButton";
+            var loaded = new PluginsManager("Plugins");
+            if (loaded.Plugins.Any(plugin => plugin.GetType().FullName == required))
+                return;
+
+            var dll = PluginsManager.BuiltInPluginPath;
+            Logger.Error("Saved profiles cannot be loaded because the built-in ButtonToButton " +
+                "plugin is unavailable. Expected file: " + dll + "; exists: " + File.Exists(dll));
+
+            if (File.Exists(dll))
+            {
+                var result = HidWizards.UCR.Utilities.DarkMessageBox.Show(
+                    "Windows may have blocked the mapping plugin DLL extracted from the " +
+                    "download. UCR can remove the download block from its bundled mapping " +
+                    "plugin and retry. Your saved profiles will not be changed.\n\n" +
+                    "Repair the installed plugin now?",
+                    "Mapping plugin unavailable", MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+                if (result == MessageBoxResult.Yes)
+                {
+                    var changed = PluginsManager.TryUnblockBuiltInPlugin();
+                    Logger.Info("Bundled plugin unblock attempted; download block removed: " + changed);
+                    loaded = new PluginsManager("Plugins");
+                    if (loaded.Plugins.Any(plugin => plugin.GetType().FullName == required))
+                        return;
+                }
+            }
+
+            throw new MissingBuiltInPluginException(
+                "UCR cannot load its built-in mapping plugin.\n\n" +
+                "Please extract the COMPLETE UCR-Release ZIP into a new folder and ensure " +
+                "this file exists and is not blocked:\n" + dll + "\n\n" +
+                "Your profiles in Documents\\UCR were not deleted or reset.");
+        }
+
         private void InitializeUcr()
         {
             RunStartupStage("Loading interface resources...", () => new ResourceLoader().Load());
+            // Loading the saved profiles MUST come after verification of the
+            // built-in remapper DLL. Otherwise a blocked downloaded DLL looks
+            // like a corrupt profile and crashes UCR before the repair prompt.
+            RunStartupStage("Checking installed mapping plugins...", EnsureBuiltInPluginAvailable);
             RunStartupStage("Initializing device providers and loading profiles...", () =>
             {
                 // Backups are important, but locked Documents folders, invalid profile titles or
