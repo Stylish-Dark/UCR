@@ -72,6 +72,23 @@
             </Setter>
         </Style>
 
+        <Style x:Key="UcrDirectionalBindingButton" TargetType="{x:Type Button}"
+               BasedOn="{StaticResource MaterialDesignRaisedButton}">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Background" Value="#0939B2"/>
+            <Setter Property="BorderBrush" Value="#2B70FF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1551D1"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.45"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <!-- A device badge is intentionally shown only when the mapping deviates from the profile's
              primary device, unless the user explicitly enables the Show all devices toggle. -->
         <DataTemplate x:Key="MappingBindingVisualTemplate">
@@ -208,7 +225,7 @@
             <ItemsControl ItemsSource="{Binding DeviceBindings}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <local:CompactInputBindingControl DataContext="{Binding}"
+                        <local:CompactInputBindingControl DeviceSelectorVisibility="Collapsed" DataContext="{Binding}"
                             DeviceBinding="{Binding DeviceBinding}" Margin="0 0 0 5"
                             HorizontalAlignment="Stretch"/>
                     </DataTemplate>
@@ -226,13 +243,7 @@
                                      are positioned in their actual directions, not as a flat list. -->
                                 <StackPanel Visibility="{Binding DirectionalVisibility}" Margin="0 0 0 8">
                                     <StackPanel Orientation="Horizontal" Margin="2 0 0 7">
-                                        <ComboBox Width="205" Height="32" Margin="0 0 7 0"
-                                                  ItemsSource="{Binding DirectionalPrimary.Devices}"
-                                                  SelectedItem="{Binding DirectionalPrimary.SelectedDevice}"
-                                                  SelectionChanged="DirectionalDevice_OnSelectionChanged"
-                                                  ToolTip="Input device shared by these directions"
-                                                  DisplayMemberPath="Title"/>
-                                        <Button Content="⋮" Width="34" Height="32" Padding="0"
+                                        <Button Content="⋮ Presets" Width="100" Height="32" Padding="5 0"
                                                 Click="OpenDirectionalPresetMenu_OnClick"
                                                 ToolTip="Directional binding presets">
                                             <Button.ContextMenu>
@@ -248,10 +259,10 @@
                                         </Button>
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" Visibility="{Binding DirectionalPairVisibility}">
-                                        <Button DataContext="{Binding DirectionalInputs[0]}" Click="BindDirectionalSlot_OnClick"
+                                        <Button DataContext="{Binding DirectionalInputs[0]}" Style="{StaticResource UcrDirectionalBindingButton}" Click="BindDirectionalSlot_OnClick"
                                                 MinWidth="115" MinHeight="38" Margin="0 0 6 0"
                                                 Content="{Binding CompactBindButtonText}" ToolTip="Negative axis direction (left or up)"/>
-                                        <Button DataContext="{Binding DirectionalInputs[1]}" Click="BindDirectionalSlot_OnClick"
+                                        <Button DataContext="{Binding DirectionalInputs[1]}" Style="{StaticResource UcrDirectionalBindingButton}" Click="BindDirectionalSlot_OnClick"
                                                 MinWidth="115" MinHeight="38" Content="{Binding CompactBindButtonText}"
                                                 ToolTip="Positive axis direction (right or down)"/>
                                     </StackPanel>
@@ -263,28 +274,28 @@
                                             <ColumnDefinition Width="112"/><ColumnDefinition Width="112"/><ColumnDefinition Width="112"/>
                                         </Grid.ColumnDefinitions>
                                         <Button Grid.Row="0" Grid.Column="1" DataContext="{Binding DirectionalInputs[0]}"
-                                                Click="BindDirectionalSlot_OnClick" MinHeight="41" Margin="3"
+                                                Style="{StaticResource UcrDirectionalBindingButton}" Click="BindDirectionalSlot_OnClick" MinHeight="41" Margin="3"
                                                 ToolTip="Up direction">
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                                 <TextBlock Text="↑  "/><TextBlock Text="{Binding CompactBindButtonText}"/>
                                             </StackPanel>
                                         </Button>
                                         <Button Grid.Row="2" Grid.Column="1" DataContext="{Binding DirectionalInputs[1]}"
-                                                Click="BindDirectionalSlot_OnClick" MinHeight="41" Margin="3"
+                                                Style="{StaticResource UcrDirectionalBindingButton}" Click="BindDirectionalSlot_OnClick" MinHeight="41" Margin="3"
                                                 ToolTip="Down direction">
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                                 <TextBlock Text="↓  "/><TextBlock Text="{Binding CompactBindButtonText}"/>
                                             </StackPanel>
                                         </Button>
                                         <Button Grid.Row="1" Grid.Column="0" DataContext="{Binding DirectionalInputs[2]}"
-                                                Click="BindDirectionalSlot_OnClick" MinHeight="41" Margin="3"
+                                                Style="{StaticResource UcrDirectionalBindingButton}" Click="BindDirectionalSlot_OnClick" MinHeight="41" Margin="3"
                                                 ToolTip="Left direction">
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                                 <TextBlock Text="←  "/><TextBlock Text="{Binding CompactBindButtonText}"/>
                                             </StackPanel>
                                         </Button>
                                         <Button Grid.Row="1" Grid.Column="2" DataContext="{Binding DirectionalInputs[3]}"
-                                                Click="BindDirectionalSlot_OnClick" MinHeight="41" Margin="3"
+                                                Style="{StaticResource UcrDirectionalBindingButton}" Click="BindDirectionalSlot_OnClick" MinHeight="41" Margin="3"
                                                 ToolTip="Right direction">
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                                 <TextBlock Text="→  "/><TextBlock Text="{Binding CompactBindButtonText}"/>
@@ -296,8 +307,10 @@
                                         <ToggleButton IsChecked="{Binding DirectionalBlockEnabled, Mode=OneWay}"
                                             Click="DirectionalBlock_OnClick" Width="40" Height="22" Margin="0 0 13 0"
                                             Style="{StaticResource UcrOutputInvertSwitch}" />
-                                        <ToggleButton Content="NOT" IsChecked="{Binding DirectionalPrimary.InputExpressionNegated, Mode=OneWay}"
-                                            Click="DirectionalNot_OnClick" Width="55" Height="30"/>
+                                        <TextBlock Text="NOT" VerticalAlignment="Center" Margin="0 0 7 0"/>
+                                        <ToggleButton IsChecked="{Binding DirectionalPrimary.InputExpressionNegated, Mode=OneWay}"
+                                            Click="DirectionalNot_OnClick" Width="40" Height="22"
+                                            Style="{StaticResource UcrOutputInvertSwitch}" ToolTip="Invert this direction condition"/>
                                     </StackPanel>
                                 </StackPanel>
                                 <TextBlock Text="OR" Visibility="{Binding OrLabelVisibility}"
@@ -314,7 +327,7 @@
                                                             <ColumnDefinition Width="Auto"/>
                                                             <ColumnDefinition Width="Auto"/>
                                                         </Grid.ColumnDefinitions>
-                                                        <local:CompactInputBindingControl Grid.Column="0"
+                                                        <local:CompactInputBindingControl DeviceSelectorVisibility="Collapsed" Grid.Column="0"
                                                             DeviceBinding="{Binding DeviceBinding}"
                                                             DataContext="{Binding}"/>
                                                         <ToggleButton Grid.Column="1" Content="NOT" Width="54" Height="30"
@@ -420,20 +433,29 @@
                         <StackPanel Orientation="Horizontal" Margin="6 0 0 5" Height="30">
                             <materialDesign:PackIcon Kind="ArrowCollapseLeft" Width="16" Height="16"
                                 Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
-                            <Button Width="30" Height="30" Margin="6 0 0 0"
-                                    Style="{StaticResource UcrDeleteCrossButton}"
-                                    IsEnabled="{Binding ButtonsEnabled}"
-                                    ToolTip="Delete this mapping"
-                                    ToolTipService.ShowOnDisabled="True"
-                                    Click="Remove_OnClick"/>
                             <TextBlock Text="INPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
                                 FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="2 2 0 10">
+                            <ComboBox Width="225" Height="34" Margin="0 0 8 0"
+                                ItemsSource="{Binding InputSideDevices}"
+                                SelectedValuePath="Value" DisplayMemberPath="Title"
+                                SelectedValue="{Binding InputSideDeviceGuid, Mode=OneWay}"
+                                IsEnabled="{Binding ButtonsEnabled}"
+                                SelectionChanged="InputSideDevice_OnSelectionChanged"
+                                ToolTip="First select the input device"/>
                             <Button Content="{Binding MappingInputTypeLabel, StringFormat={}{0} ▼}"
-                                    Height="28" Padding="8 2" Margin="12 0 0 0"
-                                    Style="{StaticResource UcrAccentOutlineButton}"
-                                    IsEnabled="{Binding ButtonsEnabled}"
-                                    Click="ChooseInputCategory_OnClick"
-                                    ToolTip="Change input type or choose a directional button arrangement"/>
+                                Height="34" Padding="10 2"
+                                IsEnabled="{Binding ButtonsEnabled}"
+                                Style="{StaticResource UcrAccentOutlineButton}"
+                                Click="ChooseInputCategory_OnClick"
+                                ToolTip="Input signal type supported by the selected device"/>
+                            <Button Content="{Binding InputBindingLayoutLabel, StringFormat={}{0} ▼}"
+                                Height="34" Padding="10 2" Margin="7 0 0 0"
+                                IsEnabled="{Binding ButtonsEnabled}"
+                                Style="{StaticResource UcrAccentOutlineButton}"
+                                Click="ChooseInputLayout_OnClick"
+                                ToolTip="Number and arrangement of directional binding slots"/>
                         </StackPanel>
                         <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch">
                             <ContentControl.Style>
@@ -467,12 +489,21 @@
                                 Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="OUTPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
                                 FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="2 2 0 10">
+                            <ComboBox Width="225" Height="34" Margin="0 0 8 0"
+                                ItemsSource="{Binding OutputSideDevices}"
+                                SelectedValuePath="Value" DisplayMemberPath="Title"
+                                SelectedValue="{Binding OutputSideDeviceGuid, Mode=OneWay}"
+                                IsEnabled="{Binding ButtonsEnabled}"
+                                SelectionChanged="OutputSideDevice_OnSelectionChanged"
+                                ToolTip="First select the output device"/>
                             <Button Content="{Binding MappingOutputCategoryDisplay, StringFormat={}{0} ▼}"
-                                Height="28" Padding="8 2" Margin="12 0 0 0"
+                                Height="34" Padding="10 2"
                                 Style="{StaticResource UcrAccentOutlineButton}"
                                 IsEnabled="{Binding ButtonsEnabled}"
                                 Click="ChangeMappingOutputCategory_OnClick"
-                                ToolTip="Choose an available button-based output type"/>
+                                ToolTip="Output types supported by the selected device"/>
                         </StackPanel>
                         <ItemsControl ItemsSource="{Binding Plugins}">
                             <ItemsControl.ItemsPanel>
