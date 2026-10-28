@@ -637,7 +637,7 @@ namespace HidWizards.UCR.Views.Controls
                 Padding = new Thickness(10, 6, 14, 6),
                 ToolTip = "Four directional input slots"
             };
-            joystickInput.Click += (s, args) => mapping.SetDirectionalMode(4);
+            joystickInput.Click += (s, args) => mapping.ChangeInputToFullJoystick();
             menu.Items.Add(joystickInput);
 
             var dpadInput = new MenuItem
