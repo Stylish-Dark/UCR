@@ -415,6 +415,8 @@
                                 </Style.Triggers>
                             </Style>
                         </StackPanel.Style>
+                        <Border Background="#252525" BorderBrush="#454545" BorderThickness="1" CornerRadius="4" Padding="8">
+                            <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="6 0 0 5" Height="30">
                             <materialDesign:PackIcon Kind="ArrowCollapseLeft" Width="16" Height="16"
                                 Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
@@ -439,6 +441,8 @@
                                 </Style>
                             </ContentControl.Style>
                         </ContentControl>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                     <StackPanel Margin="6 0 0 5">
                         <StackPanel.Style>
@@ -450,6 +454,8 @@
                                 </Style.Triggers>
                             </Style>
                         </StackPanel.Style>
+                        <Border Background="#252525" BorderBrush="#454545" BorderThickness="1" CornerRadius="4" Padding="8">
+                            <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="6 0 0 5" Height="30">
                             <materialDesign:PackIcon Kind="ArrowCollapseRight" Width="16" Height="16"
                                 Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
@@ -556,6 +562,8 @@
                             HorizontalAlignment="Left" IsEnabled="{Binding ButtonsEnabled}"
                             Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
                             ToolTip="Add another output to this mapping"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </UniformGrid>
             </Border>
