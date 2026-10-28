@@ -197,30 +197,23 @@ namespace HidWizards.UCR.Core.Models
             var directionalOutputCount = DirectionalButtonOutputs && directionalFourWay ? 4 :
                 DirectionalPairButtonOutputs ? 2 : 0;
             if (directionalOutputCount > 0 && Plugins.Count >= directionalOutputCount &&
-                Plugins.Take(directionalOutputCount).All(p => p.InputCategories.Count == 1 &&
+                Plugins.Count % directionalOutputCount == 0 &&
+                Plugins.All(p => p.InputCategories.Count == 1 &&
                     p.InputCategories[0].Category == DeviceBindingCategory.Momentary))
             {
-                if (_lastDirectionalButtonValues == null)
-                    _lastDirectionalButtonValues = new short?[4];
-                for (var direction = 1; direction <= directionalOutputCount; direction++)
-                {
-                    var plugin = Plugins[direction - 1];
-                    if (plugin.IsFiltered()) continue;
-                    var active = EvaluateDirectionalButton(InputCache, direction);
-                    var state = (short)(active ? 1 : 0);
-                    if (_lastDirectionalButtonValues[direction - 1] == state) continue;
-                    _lastDirectionalButtonValues[direction - 1] = state;
-                    plugin.Update(new[] { state });
-                }
-                // Additional independent outputs, when present, retain normal
-                // behaviour; they are not silently deleted by changing type.
-                for (var index = directionalOutputCount; index < Plugins.Count; index++)
+                if (_lastDirectionalButtonValues == null ||
+                    _lastDirectionalButtonValues.Length != Plugins.Count)
+                    _lastDirectionalButtonValues = new short?[Plugins.Count];
+                for (var index = 0; index < Plugins.Count; index++)
                 {
                     var plugin = Plugins[index];
-                    if (plugin.IsFiltered() || plugin.InputCategories.Count != 1) continue;
-                    var isRange = plugin.InputCategories[0].Category == DeviceBindingCategory.Range;
-                    if (!isRange && !digitalChanged) continue;
-                    plugin.Update(new[] { isRange ? analogue : digital });
+                    if (plugin.IsFiltered()) continue;
+                    var direction = index % directionalOutputCount + 1;
+                    var active = EvaluateDirectionalButton(InputCache, direction);
+                    var state = (short)(active ? 1 : 0);
+                    if (_lastDirectionalButtonValues[index] == state) continue;
+                    _lastDirectionalButtonValues[index] = state;
+                    plugin.Update(new[] { state });
                 }
                 return;
             }
