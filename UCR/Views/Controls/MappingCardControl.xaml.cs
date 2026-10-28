@@ -608,12 +608,46 @@ namespace HidWizards.UCR.Views.Controls
             var menu = CreateDarkContextMenu(button);
             menu.Placement = PlacementMode.Bottom;
 
+            // Normal choices describe the INPUT side, never the legacy
+            // input-to-output plugin implementation. In particular, changing
+            // the input type must not unexpectedly change the output type.
+            var commonInputs = new[]
+            {
+                new { Label = "Button", Category = DeviceBindingCategory.Momentary },
+                new { Label = "Axis", Category = DeviceBindingCategory.Range }
+            };
+            foreach (var entry in commonInputs)
+            {
+                var category = entry.Category;
+                var preferred = options.FirstOrDefault(option =>
+                    option.Plugin.InputCategories.Any(input => input.Category == category));
+                if (preferred == null) continue;
+                var selected = preferred;
+                var item = new MenuItem
+                {
+                    Header = entry.Label,
+                    Foreground = Brushes.White, Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 14, 6),
+                    ToolTip = "Change the input signal type without changing its output"
+                };
+                item.Click += (s, args) => mapping.ChangeInputType(current, selected.Plugin);
+                menu.Items.Add(item);
+            }
+
             if (mapping.HasAxisOutput)
             {
+                // A paired or four-way layout is a binding-set configuration,
+                // not a separate implementation plugin or an output choice.
+                var layouts = new MenuItem
+                {
+                    Header = "Binding layout",
+                    Foreground = Brushes.White, Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 14, 6)
+                };
                 foreach (var entry in new[]
                 {
-                    new { Label = "Buttons (2) — axis", Slots = 2 },
-                    new { Label = "Buttons (4-way) — full joystick", Slots = 4 }
+                    new { Label = "2-way (Axis)", Slots = 2 },
+                    new { Label = "4-way (Full Joystick)", Slots = 4 }
                 })
                 {
                     var slots = entry.Slots;
@@ -621,33 +655,18 @@ namespace HidWizards.UCR.Views.Controls
                     {
                         Header = entry.Label,
                         Foreground = Brushes.White, Background = Brushes.Transparent,
-                        Padding = new Thickness(10, 6, 14, 6),
-                        ToolTip = "Arrange physical button bindings as one directional input unit"
+                        Padding = new Thickness(10, 6, 14, 6)
                     };
                     choice.Click += (s, args) => mapping.SetDirectionalMode(slots);
-                    menu.Items.Add(choice);
+                    layouts.Items.Add(choice);
                 }
-                menu.Items.Add(new Separator());
+                menu.Items.Add(layouts);
             }
-            // Do not strand legacy multi-axis mappings without a route to an
-            // ordinary Button mapping. This explicit choice retains input keys.
-            if (!string.Equals(current.OutputType, "Button", StringComparison.OrdinalIgnoreCase))
-            {
-                var buttonOption = new MenuItem
-                {
-                    Header = "Button",
-                    ToolTip = "Use a button destination and keep current input assignments",
-                    Foreground = Brushes.White, Background = Brushes.Transparent,
-                    Padding = new Thickness(10, 6, 14, 6)
-                };
-                buttonOption.Click += (s, args) => mapping.ConvertToButtonMapping();
-                menu.Items.Add(buttonOption);
-                menu.Items.Add(new Separator());
-            }
+            if (menu.Items.Count > 0) menu.Items.Add(new Separator());
 
             var advanced = new MenuItem
             {
-                Header = "Advanced remappers",
+                Header = "Specialised remappers",
                 Foreground = Brushes.White, Background = Brushes.Transparent,
                 Padding = new Thickness(10, 6, 14, 6)
             };
