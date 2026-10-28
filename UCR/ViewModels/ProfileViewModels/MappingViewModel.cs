@@ -177,6 +177,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 // Different destination categories must never be mislabelled with
                 // the type of the first output plugin.
                 if (Plugins == null || Plugins.Count == 0) return "None";
+                if (!string.IsNullOrWhiteSpace(Mapping?.OutputSideType))
+                    return Mapping.OutputSideType;
                 if (Mapping?.DirectionalButtonOutputs == true && Plugins.Count >= 4)
                     return "D-pad";
                 if (Mapping?.DirectionalPairButtonOutputs == true && Plugins.Count >= 2)
@@ -562,12 +564,25 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             Plugins.Any(p => string.Equals(p.OutputType, "Axis", StringComparison.OrdinalIgnoreCase));
         public Visibility DirectionalPresetsVisibility => HasAxisOutput ? Visibility.Visible : Visibility.Collapsed;
 
+        public void ChangeInputToFullJoystick()
+        {
+            if (!ButtonsEnabled) return;
+            SetDirectionalMode(4);
+            if (!Mapping.DeviceBindings.Any(binding => binding.InputDirectionSlot == 4)) return;
+            Mapping.DirectionalInputIsDPad = false;
+            Mapping.InputSideType = "Full Joystick";
+            ProfileViewModel.Profile.Context.ContextChanged();
+            RefreshInputExpressionPresentation();
+            RefreshHeaderState();
+        }
+
         public void ChangeInputToDPad()
         {
             if (!ButtonsEnabled) return;
             SetDirectionalMode(4);
             if (!Mapping.DeviceBindings.Any(input => input.InputDirectionSlot == 4)) return;
             Mapping.DirectionalInputIsDPad = true;
+            Mapping.InputSideType = "D-pad";
             ProfileViewModel.Profile.Context.ContextChanged();
             RefreshInputExpressionPresentation();
             RefreshHeaderState();
@@ -576,7 +591,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public void SetDirectionalMode(int slots)
         {
             if (!ButtonsEnabled || InputConditions == null) return;
-            Mapping.DirectionalInputIsDPad = false;
             // Every OR alternative uses the same opposing-side slot
             // structure. Never contract away a bound direction implicitly.
             var groups = InputConditions.Select(c => c.GroupIndex).Distinct().ToList();
@@ -2390,6 +2404,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             get
             {
+                if (!string.IsNullOrWhiteSpace(Mapping?.InputSideType))
+                    return Mapping.InputSideType;
                 var directionalCount = InputConditions?.FirstOrDefault()?.DirectionalInputs?.Count ?? 0;
                 if (directionalCount == 4) return Mapping?.DirectionalInputIsDPad == true
                     ? "D-pad" : "Full Joystick";
@@ -2487,6 +2503,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             else
                 Mapping.DirectionalPairButtonOutputs = false;
 
+            Mapping.InputSideType = category == DeviceBindingCategory.Range ? "Axis" : "Button";
+            Mapping.DirectionalInputIsDPad = false;
             ProfileViewModel.Profile.Context.ContextChanged();
             RebuildDirectionalEditors();
             RefreshInputExpressionPresentation();
