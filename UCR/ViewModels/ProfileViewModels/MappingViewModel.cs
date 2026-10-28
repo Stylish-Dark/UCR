@@ -632,9 +632,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 error = "Select a controller with a D-pad in the shared device picker, or add one to this profile.";
                 return false;
             }
-            // Provider controls are ordered Up, Down, Left, Right. Logical unit
-            // slots are Left, Right, Up, Down.
-            var order = new[] { 2, 3, 0, 1 };
+            // The directional editor exposes four inputs in compass order:
+            // Up, Down, Left, Right, matching the provider's D-pad order.
+            var order = new[] { 0, 1, 2, 3 };
             for (var i = 0; i < 4; i++)
             {
                 var binding = inputs[i].DeviceBinding;
@@ -658,13 +658,23 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 error = "Choose a two-way or four-way input first.";
                 return false;
             }
-            var patterns = new Dictionary<string, string[]>
-            {
-                { "WASD", new[] { "A", "D", "W", "S" } },
-                { "Arrows", new[] { "Left", "Right", "Up", "Down" } },
-                { "Numpad", new[] { "Numpad4", "Numpad6", "Numpad8", "Numpad2" } },
-                { "UHJL", new[] { "H", "L", "U", "J" } }
-            };
+            var fourWay = inputs.Count == 4;
+            // Two-way inputs are X-/X+; four-way display order is Up/Down/Left/Right.
+            var patterns = fourWay
+                ? new Dictionary<string, string[]>
+                {
+                    { "WASD", new[] { "W", "S", "A", "D" } },
+                    { "Arrows", new[] { "Up", "Down", "Left", "Right" } },
+                    { "Numpad", new[] { "Numpad8", "Numpad2", "Numpad4", "Numpad6" } },
+                    { "UHJL", new[] { "U", "J", "H", "L" } }
+                }
+                : new Dictionary<string, string[]>
+                {
+                    { "WASD", new[] { "A", "D" } },
+                    { "Arrows", new[] { "Left", "Right" } },
+                    { "Numpad", new[] { "Numpad4", "Numpad6" } },
+                    { "UHJL", new[] { "H", "L" } }
+                };
             string[] keys;
             if (!patterns.TryGetValue(preset, out keys)) return false;
             var profile = ProfileViewModel.Profile;
