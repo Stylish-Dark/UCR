@@ -28,6 +28,12 @@ namespace HidWizards.UCR.Core.Models
         [DefaultValue(false)]
         public bool DirectionalButtonOutputs { get; set; }
 
+        // Distinguishes a four-way D-pad input from four directional stick
+        // inputs without changing their shared binding-slot structure.
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool DirectionalInputIsDPad { get; set; }
+
         /* Runtime */
         private Profile Profile { get; set; }
         private List<short> InputCache { get; set; }
