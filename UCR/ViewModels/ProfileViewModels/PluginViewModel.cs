@@ -39,6 +39,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             OnPropertyChanged(nameof(OutputDirectionLabel));
             OnPropertyChanged(nameof(OutputDirectionLabelVisibility));
+            OnPropertyChanged(nameof(RemoveBindingSetVisibility));
+            OnPropertyChanged(nameof(RemoveBindingSetToolTip));
+            OnPropertyChanged(nameof(CanRemove));
         }
 
         private System.Reflection.PropertyInfo InvertProperty => Plugin.GetType().GetProperty("Invert");
@@ -124,6 +127,22 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<PluginPropertyGroupViewModel> PluginPropertyGroups { get; set; }
+        public Visibility RemoveBindingSetVisibility
+        {
+            get
+            {
+                var mapping = MappingViewModel.Mapping;
+                var slots = mapping.DirectionalButtonOutputs ? 4 :
+                    mapping.DirectionalPairButtonOutputs ? 2 : 1;
+                var index = MappingViewModel.Plugins?.IndexOf(this) ?? -1;
+                return index >= 0 && index % slots == 0
+                    ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+        public string RemoveBindingSetToolTip =>
+            MappingViewModel.Mapping.DirectionalButtonOutputs ||
+            MappingViewModel.Mapping.DirectionalPairButtonOutputs
+                ? "Remove this binding set" : "Remove this output";
         public bool CanRemove
         {
             get
