@@ -663,7 +663,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 { "WASD", new[] { "A", "D", "W", "S" } },
                 { "Arrows", new[] { "Left", "Right", "Up", "Down" } },
                 { "Numpad", new[] { "Numpad4", "Numpad6", "Numpad8", "Numpad2" } },
-                { "UJHK", new[] { "H", "K", "U", "J" } }
+                { "UHJL", new[] { "H", "L", "U", "J" } }
             };
             string[] keys;
             if (!patterns.TryGetValue(preset, out keys)) return false;
@@ -1241,7 +1241,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 { "WASD", new[] { "W", "S", "A", "D" } },
                 { "Arrows", new[] { "Up", "Down", "Left", "Right" } },
                 { "Numpad", new[] { "Numpad8", "Numpad2", "Numpad4", "Numpad6" } },
-                { "UJHK", new[] { "U", "J", "H", "K" } }
+                { "UHJL", new[] { "U", "J", "H", "L" } }
             };
             string[] names;
             if (!presets.TryGetValue(preset ?? string.Empty, out names)) return false;
