@@ -1526,9 +1526,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (Plugins.Count != 2 || InputConditions == null || InputConditions.Count == 0)
                 return false;
             SetDirectionalMode(4);
+            if (!Mapping.DeviceBindings.Any(binding => binding.InputDirectionSlot == 4))
+                return false;
+            Mapping.OutputSideType = "Full Joystick";
+            ProfileViewModel.Profile.Context.ContextChanged();
             RefreshHeaderState();
             RefreshCollapsedSummary();
-            return Mapping.DeviceBindings.Any(binding => binding.InputDirectionSlot == 4);
+            return true;
         }
 
         // A D-pad is four individually addressed button outputs, not four
@@ -1547,6 +1551,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!Mapping.DeviceBindings.Any(binding => binding.InputDirectionSlot == 4))
                 return false;
             Mapping.DirectionalButtonOutputs = true;
+            Mapping.OutputSideType = "D-pad";
             ProfileViewModel.Profile.Context.ContextChanged();
             RefreshHeaderState();
             RefreshCollapsedSummary();
@@ -1572,6 +1577,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var slots = InputConditions?.FirstOrDefault()?.DirectionalInputs?.Count ?? 0;
                 if (slots == 2 || slots == 4) SetDirectionalMode(slots);
             }
+            if (success)
+            {
+                Mapping.OutputSideType = new SimplePluginViewModel(replacementTemplate).OutputType;
+                ProfileViewModel.Profile.Context.ContextChanged();
+                RefreshHeaderState();
+            }
             return success;
         }
 
@@ -1583,6 +1594,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!Mapping.GetPluginList().Any(option => option.GetType() == replacementTemplate.GetType()))
                 return false;
             if (original.Plugin.GetType() == replacementTemplate.GetType()) return true;
+            Mapping.OutputSideType = "";
             Mapping.DirectionalButtonOutputs = false;
             Mapping.DirectionalPairButtonOutputs = false;
             if (!Mapping.UseInputExpression &&
