@@ -552,9 +552,21 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             Plugins.Any(p => string.Equals(p.OutputType, "Axis", StringComparison.OrdinalIgnoreCase));
         public Visibility DirectionalPresetsVisibility => HasAxisOutput ? Visibility.Visible : Visibility.Collapsed;
 
+        public void ChangeInputToDPad()
+        {
+            if (!ButtonsEnabled) return;
+            SetDirectionalMode(4);
+            if (!Mapping.DeviceBindings.Any(input => input.InputDirectionSlot == 4)) return;
+            Mapping.DirectionalInputIsDPad = true;
+            ProfileViewModel.Profile.Context.ContextChanged();
+            RefreshInputExpressionPresentation();
+            RefreshHeaderState();
+        }
+
         public void SetDirectionalMode(int slots)
         {
             if (!ButtonsEnabled || InputConditions == null) return;
+            Mapping.DirectionalInputIsDPad = false;
             var group = InputConditions.FirstOrDefault()?.GroupIndex ?? 0;
             if (!Mapping.SetDirectionalInputMode(group, slots)) return;
 
@@ -2290,7 +2302,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             get
             {
                 var directionalCount = InputConditions?.FirstOrDefault()?.DirectionalInputs?.Count ?? 0;
-                if (directionalCount == 4) return "Full Joystick";
+                if (directionalCount == 4) return Mapping?.DirectionalInputIsDPad == true
+                    ? "D-pad" : "Full Joystick";
                 if (directionalCount == 2) return "Axis (2 directions)";
                 if (Mapping?.UseInputExpression == true)
                 {
