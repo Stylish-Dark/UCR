@@ -21,11 +21,19 @@ namespace HidWizards.UCR.Core.Models
         [DefaultValue(false)]
         public bool UseInputExpression { get; set; }
 
+        // Four independent button destinations, corresponding to Left, Right,
+        // Up and Down. Not inferred from output count: four ordinary buttons
+        // remain independent outputs until the user selects D-pad explicitly.
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool DirectionalButtonOutputs { get; set; }
+
         /* Runtime */
         private Profile Profile { get; set; }
         private List<short> InputCache { get; set; }
         private List<CallbackMultiplexer> Multiplexer { get; set; }
         private short? _lastInputExpressionValue;
+        private short?[] _lastDirectionalButtonValues;
         
 
         internal bool IsShadowMapping { get; set; }
@@ -109,6 +117,7 @@ namespace HidWizards.UCR.Core.Models
             }
 
             _lastInputExpressionValue = null;
+            _lastDirectionalButtonValues = new short?[4];
             FilterState = filterState;
             RuntimeScopeGuid = runtimeScopeGuid;
             Plugins.ForEach(p => p.RuntimeMapping = this);
@@ -173,6 +182,34 @@ namespace HidWizards.UCR.Core.Models
             _lastInputExpressionValue = digital;
 
             var directionalFourWay = DeviceBindings.Any(b => b.InputDirectionSlot >= 3);
+            if (DirectionalButtonOutputs && directionalFourWay && Plugins.Count >= 4 &&
+                Plugins.Take(4).All(p => p.InputCategories.Count == 1 &&
+                    p.InputCategories[0].Category == DeviceBindingCategory.Momentary))
+            {
+                if (_lastDirectionalButtonValues == null)
+                    _lastDirectionalButtonValues = new short?[4];
+                for (var direction = 1; direction <= 4; direction++)
+                {
+                    var plugin = Plugins[direction - 1];
+                    if (plugin.IsFiltered()) continue;
+                    var active = EvaluateDirectionalButton(InputCache, direction);
+                    var state = (short)(active ? 1 : 0);
+                    if (_lastDirectionalButtonValues[direction - 1] == state) continue;
+                    _lastDirectionalButtonValues[direction - 1] = state;
+                    plugin.Update(new[] { state });
+                }
+                // Additional independent outputs, when present, retain normal
+                // behaviour; they are not silently deleted by changing type.
+                for (var index = 4; index < Plugins.Count; index++)
+                {
+                    var plugin = Plugins[index];
+                    if (plugin.IsFiltered() || plugin.InputCategories.Count != 1) continue;
+                    var isRange = plugin.InputCategories[0].Category == DeviceBindingCategory.Range;
+                    if (!isRange && !digitalChanged) continue;
+                    plugin.Update(new[] { isRange ? analogue : digital });
+                }
+                return;
+            }
             var rangeIndex = 0;
             foreach (var plugin in Plugins)
             {
@@ -267,6 +304,33 @@ namespace HidWizards.UCR.Core.Models
                 return (short)Math.Max(short.MinValue, Math.Min(short.MaxValue, amount));
             }
             return 0;
+        }
+
+        // Each D-pad destination is driven only by its corresponding
+        // direction. Other inputs in the same OR group are AND guards.
+        // Values remain independently releasable when one direction changes.
+        internal bool EvaluateDirectionalButton(IList<short> values, int slot)
+        {
+            if (!UseInputExpression || values == null || slot < 1 || slot > 4) return false;
+            var count = Math.Min(values.Count, DeviceBindings.Count);
+            foreach (var group in Enumerable.Range(0, count)
+                .GroupBy(i => Math.Max(0, DeviceBindings[i].InputExpressionGroup))
+                .OrderBy(g => g.Key))
+            {
+                var directions = group.Where(i => DeviceBindings[i].InputDirectionSlot > 0).ToList();
+                if (directions.Count == 0) continue;
+                if (!group.Where(i => DeviceBindings[i].InputDirectionSlot == 0)
+                    .All(i => EvaluateOrdinaryCondition(DeviceBindings[i], values[i])))
+                    continue;
+                var member = directions.FirstOrDefault(i => DeviceBindings[i].InputDirectionSlot == slot);
+                if (member < 0) continue;
+                // Directional analog inputs are thresholded only when consumed
+                // by a digital destination. Physical buttons retain Boolean use.
+                var binding = DeviceBindings[member];
+                var active = EvaluateOrdinaryCondition(binding, values[member]);
+                if (active) return true;
+            }
+            return false;
         }
 
         private static bool EvaluateOrdinaryCondition(DeviceBinding binding, short raw)
