@@ -736,8 +736,8 @@ namespace HidWizards.UCR.Views.Controls
             }
             var options = mapping.GetCompatiblePluginOptions()
                 .Where(option => option.Plugin.OutputCategories.Count > 0 &&
-                    option.Plugin.OutputCategories.All(category =>
-                        mapping.OutputDeviceSupports(category.Category)))
+                    option.Plugin.OutputCategories.All(outputCategory =>
+                        mapping.OutputDeviceSupports(outputCategory.Category)))
                 .ToList();
             var analogue = mapping.Mapping.DeviceBindings.Any(input => input.InputExpressionInputKind == 3);
             var categories = options
