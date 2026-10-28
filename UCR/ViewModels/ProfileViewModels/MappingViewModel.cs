@@ -2290,6 +2290,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 .ToList();
         }
 
+        // The visible input type is independent of the destination plugin.
+        // Use the native expression engine rather than swapping legacy plugin
+        // implementations (which would discard unrelated assigned controls).
+        public bool ChangeInputSignalType(DeviceBindingCategory category)
+        {
+            if (!ButtonsEnabled || (category != DeviceBindingCategory.Momentary &&
+                category != DeviceBindingCategory.Range)) return false;
+            if (!Mapping.EnableInputExpression()) return false;
+            var kind = category == DeviceBindingCategory.Range ? 3 : 0;
+            foreach (var binding in Mapping.DeviceBindings.Where(b => b.InputDirectionSlot == 0))
+                binding.SetInputExpressionInputKind(kind);
+            RebuildDirectionalEditors();
+            RefreshInputExpressionPresentation();
+            RefreshHeaderState();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
         public bool ChangeInputType(PluginViewModel original, Plugin replacementTemplate)
         {
             if (!ButtonsEnabled || original == null || replacementTemplate == null ||
