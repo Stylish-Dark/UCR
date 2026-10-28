@@ -591,6 +591,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (slots == 4 && HasAxisOutput && Plugins.Count(p => p.OutputType == "Axis") < 2)
                 AddDefaultOutput();
 
+            // The opposing Button side gets one independently bindable
+            // destination per source direction; its extra slots are not
+            // separate OR groups and must not all emit the same Boolean.
+            if (Plugins.Count > 0 && Plugins.All(p => p.OutputType == "Button"))
+            {
+                var outputSlots = slots == 4 ? 4 : slots == 2 ? 2 : 1;
+                while (Plugins.Count < outputSlots)
+                    if (!AddDefaultOutput()) break;
+                Mapping.DirectionalButtonOutputs = slots == 4 && Plugins.Count >= 4;
+                Mapping.DirectionalPairButtonOutputs = slots == 2 && Plugins.Count >= 2;
+                ProfileViewModel.Profile.Context.ContextChanged();
+            }
+
             RebuildDirectionalEditors();
         }
 
@@ -1478,6 +1491,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var success = true;
             foreach (var output in Plugins.ToList())
                 success &= ChangeOutputType(output, replacementTemplate);
+            if (success && Plugins.Count > 0 && Plugins.All(p => p.OutputType == "Button"))
+            {
+                var slots = InputConditions?.FirstOrDefault()?.DirectionalInputs?.Count ?? 0;
+                if (slots == 2 || slots == 4) SetDirectionalMode(slots);
+            }
             return success;
         }
 
