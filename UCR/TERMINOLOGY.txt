@@ -1,0 +1,48 @@
+UCR TERMINOLOGY AND MAPPING RULES
+=================================
+This file is part of the build. Keep this vocabulary consistent in the UI,
+documentation, issue discussions and future development conversations.
+
+Mapping: One configured relationship between an input side and an output side.
+Mapping Group: A user-created collection of mappings. Not a binding set.
+Side: Either Input or Output, the two sides of a mapping.
+Side Type: The control/signal kind selected on a side (Button, Axis,
+           Full Joystick, D-pad, etc.). May be changed while editing.
+Binding Set: A logical set of assignable binding slots on one side.
+Binding Slot: One assignable position in a binding set, shown by an
+              interactive binding control (often blue).
+Binding: The actual physical or virtual key, button, axis, or direction
+         assigned to a binding slot.
+Input Condition: A logical requirement for an input to activate.
+OR Group: Alternative input conditions; not a binding set.
+AND: Conditions that must be satisfied together.
+NOT: Negation of a condition.
+Block: Consume/suppress a physical input when the binding applies.
+Filter: An optional processing step (deadzone, sensitivity, etc.).
+
+CORE DESIGN CONTRACT
+--------------------
+- Side type determines the number of binding slots in EACH binding set
+  on the OPPOSING side, in both directions.
+  Button -> 1 opposing slot; Axis -> 2; Full Joystick or D-pad -> 4.
+- Binding-set count is independent of slots per set.
+- Changing either side type must update opposing binding-set presentation,
+  without silently discarding previously assigned controls.
+- Input/output categories are not the same as implementation/plugin names.
+  Legacy routes and specialised plugins should remain available without
+  cluttering the normal type selectors.
+- Signal type and signal interpretation are separate concerns.
+  A stick direction can be thresholded to a digital/Boolean activation,
+  or retain a continuous analog magnitude for an analog destination.
+- Default interactions should need no manual Boolean/analog configuration.
+  Present relevant controls only; place optional thresholds, deadzones,
+  anti-deadzones, inversion, sensitivity and scaling under filters/settings.
+- A missing physical input range may be adjusted by scaling/response curve.
+  Circular-to-square conversion is a separate optional transform, not
+  interchangeable with a deadzone or with ordinary scaling.
+- Do not describe binding sets as groups or as sub-mappings.
+- Do not require users to inspect log files to understand mapping failures.
+- Preserve legacy profiles and behaviours unless a change is explicit.
+
+This terminology file is user-facing. Implementation details can have their
+own internal names, but the interface must remain coherent.
