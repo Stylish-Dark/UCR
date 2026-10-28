@@ -733,6 +733,23 @@ namespace HidWizards.UCR.Views.Controls
                 menu.Items.Add(item);
             }
 
+            var joystickChoice = new MenuItem
+            {
+                Header = "Full Joystick",
+                Foreground = Brushes.White,
+                Background = Brushes.Transparent,
+                Padding = new Thickness(10, 6, 14, 6),
+                ToolTip = "Two continuous output axes: X and Y",
+                IsChecked = mapping.MappingOutputCategoryDisplay == "Full Joystick"
+            };
+            joystickChoice.Click += (s, args) =>
+            {
+                if (!mapping.ChangeOutputToFullJoystick())
+                    DarkMessageBox.Show("Full Joystick needs two output axes. Remove additional outputs before changing this side type.",
+                        "Cannot change output type", MessageBoxButton.OK, MessageBoxImage.Information);
+            };
+            menu.Items.Add(joystickChoice);
+
             var dpadChoice = new MenuItem
             {
                 Header = "D-pad",
