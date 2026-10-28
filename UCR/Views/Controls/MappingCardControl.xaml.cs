@@ -817,7 +817,12 @@ namespace HidWizards.UCR.Views.Controls
             var output = button?.DataContext as PluginViewModel;
             var mapping = output?.MappingViewModel;
             if (mapping?.ButtonsEnabled != true) return;
-            var options = mapping.GetCompatiblePluginOptions();
+            // Per-output menus obey the side's selected output device too.
+            var options = mapping.GetCompatiblePluginOptions()
+                .Where(option => option.Plugin.OutputCategories.Count > 0 &&
+                    option.Plugin.OutputCategories.All(category =>
+                        mapping.OutputDeviceSupports(category.Category)))
+                .ToList();
             if (options.Count == 0) return;
 
             var changeAll = string.Equals(button.Tag as string, "CategoryHeader", StringComparison.Ordinal);
