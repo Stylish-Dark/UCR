@@ -619,8 +619,12 @@ namespace HidWizards.UCR.Views.Controls
             foreach (var entry in commonInputs)
             {
                 var category = entry.Category;
-                var preferred = options.FirstOrDefault(option =>
-                    option.Plugin.InputCategories.Any(input => input.Category == category));
+                var preferred = options.Where(option => option.Plugin.InputCategories.Count == 1 &&
+                    option.Plugin.InputCategories[0].Category == category)
+                    .OrderBy(option => option.Name == (category == DeviceBindingCategory.Momentary
+                        ? "Button to Button" : "Axis to Axis") ? 0 : 1)
+                    .ThenBy(option => option.Name, StringComparer.OrdinalIgnoreCase)
+                    .FirstOrDefault();
                 if (preferred == null) continue;
                 var selected = preferred;
                 var item = new MenuItem
