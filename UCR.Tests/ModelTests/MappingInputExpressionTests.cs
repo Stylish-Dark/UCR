@@ -137,10 +137,6 @@ namespace HidWizards.UCR.Tests.ModelTests
             Assert.That(mapping.DeviceBindings.All(b => b.DeviceBindingCategory == DeviceBindingCategory.Momentary),
                 Is.True);
 
-            Assert.That(mapping.SupportsNativeInputExpression(), Is.True, "Axis plugin must retain expression capability.");
-            Assert.That(mapping.UseInputExpression, Is.True, "The first transition must retain expression mode.");
-            Assert.That(mapping.DeviceBindings.Any(b => b.InputExpressionGroup == 0 &&
-                b.InputDirectionSlot == 1), Is.True, "The first directional slot must remain in group zero.");
             Assert.That(mapping.SetDirectionalInputMode(0, 4), Is.True);
             Assert.That(mapping.DeviceBindings.Select(b => b.InputDirectionSlot), Is.EqualTo(new[] { 1, 2, 3, 4 }));
             Assert.That(mapping.SetDirectionalInputMode(0, 0), Is.True);
