@@ -169,6 +169,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 // Different destination categories must never be mislabelled with
                 // the type of the first output plugin.
                 if (Plugins == null || Plugins.Count == 0) return "None";
+                if (Mapping?.DirectionalButtonOutputs == true && Plugins.Count >= 4)
+                    return "D-pad";
                 if (InputConditions?.Any(group => group.IsFourWay) == true &&
                     Plugins.Count(plugin => string.Equals(plugin.OutputType, "Axis", StringComparison.OrdinalIgnoreCase)) == 2)
                     return "Full Joystick";
@@ -1408,6 +1410,28 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return true;
         }
 
+        // A D-pad is four individually addressed button outputs, not four
+        // copies of the same OR-condition Boolean. The runtime interprets
+        // their order as Left, Right, Up, Down (X-, X+, Y-, Y+).
+        public bool ChangeOutputToDPad()
+        {
+            if (!ButtonsEnabled || Plugins == null || Plugins.Count == 0) return false;
+            var button = GetCompatiblePluginOptions().FirstOrDefault(option =>
+                string.Equals(option.Name, "Button to Button", StringComparison.OrdinalIgnoreCase));
+            if (button == null || !ChangeAllOutputTypes(button.Plugin)) return false;
+            while (Plugins.Count < 4)
+                if (!AddDefaultOutput()) return false;
+            if (InputConditions == null || InputConditions.Count == 0) return false;
+            SetDirectionalMode(4);
+            if (!Mapping.DeviceBindings.Any(binding => binding.InputDirectionSlot == 4))
+                return false;
+            Mapping.DirectionalButtonOutputs = true;
+            ProfileViewModel.Profile.Context.ContextChanged();
+            RefreshHeaderState();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
         // Swap only the chosen output plugin, never the mapping's shared input bindings.
         public bool ChangeAllOutputTypes(Plugin replacementTemplate)
         {
@@ -1415,6 +1439,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var candidates = GetCompatiblePluginOptions();
             if (!candidates.Any(candidate => candidate.Plugin.GetType() == replacementTemplate.GetType()))
                 return false;
+            Mapping.DirectionalButtonOutputs = false;
             // Apply the common category to each destination. Individual output type changes
             // remain available in the row's optional settings.
             var success = true;
@@ -1431,6 +1456,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!Mapping.GetPluginList().Any(option => option.GetType() == replacementTemplate.GetType()))
                 return false;
             if (original.Plugin.GetType() == replacementTemplate.GetType()) return true;
+            Mapping.DirectionalButtonOutputs = false;
             if (!Mapping.UseInputExpression &&
                 !original.Plugin.HasSameInputCategories(replacementTemplate) &&
                 !Mapping.EnableInputExpression())
@@ -1534,6 +1560,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             pluginViewModel.Dispose();
             Plugins.Remove(pluginViewModel);
+            if (Plugins.Count < 4) Mapping.DirectionalButtonOutputs = false;
             RefreshHeaderState();
             RefreshCollapsedSummary();
             ProfileViewModel.RefreshFilterReferenceLabels();
