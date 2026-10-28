@@ -28,6 +28,12 @@ namespace HidWizards.UCR.Core.Models
         [DefaultValue(false)]
         public bool DirectionalButtonOutputs { get; set; }
 
+        // Two opposite button destinations for one continuous axis. Four-way
+        // D-pad routing uses DirectionalButtonOutputs instead.
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool DirectionalPairButtonOutputs { get; set; }
+
         // Distinguishes a four-way D-pad input from four directional stick
         // inputs without changing their shared binding-slot structure.
         [XmlAttribute]
@@ -188,13 +194,15 @@ namespace HidWizards.UCR.Core.Models
             _lastInputExpressionValue = digital;
 
             var directionalFourWay = DeviceBindings.Any(b => b.InputDirectionSlot >= 3);
-            if (DirectionalButtonOutputs && directionalFourWay && Plugins.Count >= 4 &&
-                Plugins.Take(4).All(p => p.InputCategories.Count == 1 &&
+            var directionalOutputCount = DirectionalButtonOutputs && directionalFourWay ? 4 :
+                DirectionalPairButtonOutputs ? 2 : 0;
+            if (directionalOutputCount > 0 && Plugins.Count >= directionalOutputCount &&
+                Plugins.Take(directionalOutputCount).All(p => p.InputCategories.Count == 1 &&
                     p.InputCategories[0].Category == DeviceBindingCategory.Momentary))
             {
                 if (_lastDirectionalButtonValues == null)
                     _lastDirectionalButtonValues = new short?[4];
-                for (var direction = 1; direction <= 4; direction++)
+                for (var direction = 1; direction <= directionalOutputCount; direction++)
                 {
                     var plugin = Plugins[direction - 1];
                     if (plugin.IsFiltered()) continue;
@@ -206,7 +214,7 @@ namespace HidWizards.UCR.Core.Models
                 }
                 // Additional independent outputs, when present, retain normal
                 // behaviour; they are not silently deleted by changing type.
-                for (var index = 4; index < Plugins.Count; index++)
+                for (var index = directionalOutputCount; index < Plugins.Count; index++)
                 {
                     var plugin = Plugins[index];
                     if (plugin.IsFiltered() || plugin.InputCategories.Count != 1) continue;
@@ -324,7 +332,26 @@ namespace HidWizards.UCR.Core.Models
                 .OrderBy(g => g.Key))
             {
                 var directions = group.Where(i => DeviceBindings[i].InputDirectionSlot > 0).ToList();
-                if (directions.Count == 0) continue;
+                if (directions.Count == 0)
+                {
+                    // A physical analogue axis represents both halves of the
+                    // same input. Split its signed travel into two digital
+                    // destinations without requiring manual Boolean wiring.
+                    if (slot > 2) continue;
+                    if (!group.Any(i => DeviceBindings[i].InputExpressionInputKind == 3 &&
+                        !DeviceBindings[i].InputExpressionNegated)) continue;
+                    var driver = group.First(i => DeviceBindings[i].InputExpressionInputKind == 3 &&
+                        !DeviceBindings[i].InputExpressionNegated);
+                    if (!group.Where(i => i != driver)
+                        .All(i => EvaluateOrdinaryCondition(DeviceBindings[i], values[i])))
+                        continue;
+                    var raw = values[driver];
+                    var threshold = Math.Max(1, Math.Min(32767,
+                        DeviceBindings[driver].InputExpressionAxisThreshold));
+                    if (slot == 1 && raw <= -threshold) return true;
+                    if (slot == 2 && raw >= threshold) return true;
+                    continue;
+                }
                 if (!group.Where(i => DeviceBindings[i].InputDirectionSlot == 0)
                     .All(i => EvaluateOrdinaryCondition(DeviceBindings[i], values[i])))
                     continue;
