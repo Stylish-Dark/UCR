@@ -46,7 +46,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="62"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*" MinWidth="0"/>
             <ColumnDefinition Width="38"/>
             <!-- Auto collapses to zero for outputs, where Block is hidden.
@@ -156,6 +156,9 @@
                     ToolTip="Waiting for input: click again, right-click or press Esc to cancel">
                 <Button.Style>
                     <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                        <Setter Property="Background" Value="#0839AF"/>
+                        <Setter Property="BorderBrush" Value="#2368FF"/>
+                        <Setter Property="BorderThickness" Value="1"/>
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsCapturing}" Value="True">
                                 <Setter Property="Background" Value="#9A4D16"/>
