@@ -336,11 +336,11 @@ namespace HidWizards.UCR
 
         private void InitializeUcr()
         {
-            RunStartupStage("Loading interface resources...", () => new ResourceLoader().Load());
-            // Loading the saved profiles MUST come after verification of the
-            // built-in remapper DLL. Otherwise a blocked downloaded DLL looks
-            // like a corrupt profile and crashes UCR before the repair prompt.
+            // Check the package before resource composition or profile loading.
+            // Download-blocked DLLs must be recoverable without ever touching
+            // the user's persisted mappings or creating a false corruption error.
             RunStartupStage("Checking installed mapping plugins...", EnsureBuiltInPluginAvailable);
+            RunStartupStage("Loading interface resources...", () => new ResourceLoader().Load());
             RunStartupStage("Initializing device providers and loading profiles...", () =>
             {
                 // Backups are important, but locked Documents folders, invalid profile titles or
