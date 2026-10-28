@@ -261,9 +261,9 @@
                                     <StackPanel Orientation="Horizontal" Visibility="{Binding DirectionalPairVisibility}">
                                         <Button DataContext="{Binding DirectionalInputs[0]}" Style="{StaticResource UcrDirectionalBindingButton}" Click="BindDirectionalSlot_OnClick"
                                                 MinWidth="115" MinHeight="38" Margin="0 0 6 0"
-                                                Content="{Binding CompactBindButtonText}" ToolTip="Negative axis direction (left or up)"/>
+                                                Content="{Binding DirectionalBindLabel}" ToolTip="Negative direction"/>
                                         <Button DataContext="{Binding DirectionalInputs[1]}" Style="{StaticResource UcrDirectionalBindingButton}" Click="BindDirectionalSlot_OnClick"
-                                                MinWidth="115" MinHeight="38" Content="{Binding CompactBindButtonText}"
+                                                MinWidth="115" MinHeight="38" Content="{Binding DirectionalBindLabel}"
                                                 ToolTip="Positive axis direction (right or down)"/>
                                     </StackPanel>
                                     <Grid Visibility="{Binding FourWayVisibility}" HorizontalAlignment="Left">
@@ -330,35 +330,16 @@
                                                         <local:CompactInputBindingControl DeviceSelectorVisibility="Collapsed" Grid.Column="0"
                                                             DeviceBinding="{Binding DeviceBinding}"
                                                             DataContext="{Binding}"/>
-                                                        <ToggleButton Grid.Column="1" Content="NOT" Width="54" Height="30"
-                                                            Margin="4 0 8 0" IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
-                                                            Click="InputNegated_OnClick"
-                                                            ToolTip="Negate this Boolean input condition">
-                                                            <ToggleButton.Style>
-                                                                <Style TargetType="{x:Type ToggleButton}">
-                                                                    <Setter Property="Foreground" Value="#FFFFFF"/>
-                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
-                                                                    <Setter Property="Template">
-                                                                        <Setter.Value>
-                                                                            <ControlTemplate TargetType="{x:Type ToggleButton}">
-                                                                                <Border x:Name="NotSurface" Background="#343434"
-                                                                                    BorderBrush="{DynamicResource PrimaryHueLightBrush}"
-                                                                                    BorderThickness="1">
-                                                                                    <ContentPresenter HorizontalAlignment="Center"
-                                                                                        VerticalAlignment="Center"/>
-                                                                                </Border>
-                                                                                <ControlTemplate.Triggers>
-                                                                                    <Trigger Property="IsChecked" Value="True">
-                                                                                        <Setter TargetName="NotSurface" Property="Background" Value="#164AA7"/>
-                                                                                        <Setter TargetName="NotSurface" Property="BorderBrush" Value="#397AF0"/>
-                                                                                    </Trigger>
-                                                                                </ControlTemplate.Triggers>
-                                                                            </ControlTemplate>
-                                                                        </Setter.Value>
-                                                                    </Setter>
-                                                                </Style>
-                                                            </ToggleButton.Style>
-                                                        </ToggleButton>
+                                                        <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                                                    VerticalAlignment="Center" Margin="8 0 8 0">
+                                                            <TextBlock Text="NOT" Foreground="#DADADA"
+                                                                       VerticalAlignment="Center" Margin="0 0 6 0"/>
+                                                            <ToggleButton Width="40" Height="22"
+                                                                IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
+                                                                Click="InputNegated_OnClick"
+                                                                Style="{StaticResource UcrOutputInvertSwitch}"
+                                                                ToolTip="Negate this input condition"/>
+                                                        </StackPanel>
                                                         <Button Grid.Column="2" Click="RemoveExpressionInput_OnClick"
                                                             IsEnabled="{Binding CanRemoveExpressionInput}"
                                                             ToolTip="Remove input condition"
