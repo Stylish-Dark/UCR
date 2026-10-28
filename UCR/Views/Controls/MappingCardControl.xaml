@@ -420,6 +420,12 @@
                                 Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="INPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
                                 FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <Button Content="{Binding MappingInputTypeLabel, StringFormat={}{0} ▼}"
+                                    Height="28" Padding="8 2" Margin="12 0 0 0"
+                                    Style="{StaticResource UcrAccentOutlineButton}"
+                                    IsEnabled="{Binding ButtonsEnabled}"
+                                    Click="ChooseInputCategory_OnClick"
+                                    ToolTip="Change input type or choose a directional button arrangement"/>
                         </StackPanel>
                         <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch">
                             <ContentControl.Style>
