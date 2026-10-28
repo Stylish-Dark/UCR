@@ -1632,6 +1632,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(MappingOutputTypeLabel));
             OnPropertyChanged(nameof(MappingInputTypeLabel));
             OnPropertyChanged(nameof(MappingOutputCategoryDisplay));
+            if (Plugins != null)
+                foreach (var output in Plugins) output.RefreshOutputDirectionLabel();
             OnPropertyChanged(nameof(HasAxisOutput));
             OnPropertyChanged(nameof(DirectionalPresetsVisibility));
             OnPropertyChanged(nameof(DefinedFilterName));
