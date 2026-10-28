@@ -512,7 +512,8 @@
                                                     </StackPanel>
                                                     <Button Style="{StaticResource UcrDeleteItemButton}"
                                                         Click="RemoveOutput_OnClick" IsEnabled="{Binding CanRemove}"
-                                                        ToolTip="Remove this output"/>
+                                                        Visibility="{Binding RemoveBindingSetVisibility}"
+                                                        ToolTip="{Binding RemoveBindingSetToolTip}"/>
                                                 </StackPanel>
                                             </Grid>
                                             <StackPanel Orientation="Horizontal" Margin="0 9 0 0">
@@ -563,7 +564,7 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <Button Content="+ Add output" Click="AddPlugin_OnClick"
+                        <Button Content="{Binding AddOutputCaption}" Click="AddPlugin_OnClick"
                             Height="34" Padding="12 3" Margin="3 8 0 2"
                             HorizontalAlignment="Left" IsEnabled="{Binding ButtonsEnabled}"
                             Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
