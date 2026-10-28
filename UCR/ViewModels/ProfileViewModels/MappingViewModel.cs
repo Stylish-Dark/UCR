@@ -1410,6 +1410,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return true;
         }
 
+        // A full joystick is two continuous destinations (X and Y).
+        // Refuse an implicit destructive conversion of additional output rows.
+        public bool ChangeOutputToFullJoystick()
+        {
+            if (!ButtonsEnabled || Plugins == null || Plugins.Count == 0 ||
+                Plugins.Count > 2) return false;
+            var axis = GetCompatiblePluginOptions().FirstOrDefault(option =>
+                string.Equals(option.Name, "Axis to Axis", StringComparison.OrdinalIgnoreCase));
+            if (axis == null || !ChangeAllOutputTypes(axis.Plugin)) return false;
+            if (Plugins.Count == 1 && !AddDefaultOutput()) return false;
+            if (Plugins.Count != 2 || InputConditions == null || InputConditions.Count == 0)
+                return false;
+            SetDirectionalMode(4);
+            RefreshHeaderState();
+            RefreshCollapsedSummary();
+            return Mapping.DeviceBindings.Any(binding => binding.InputDirectionSlot == 4);
+        }
+
         // A D-pad is four individually addressed button outputs, not four
         // copies of the same OR-condition Boolean. The runtime interprets
         // their order as Left, Right, Up, Down (X-, X+, Y-, Y+).
