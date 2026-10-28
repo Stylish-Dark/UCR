@@ -348,9 +348,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     var profile = ProfileViewModel.Profile;
                     var selected = profile.GetDeviceConfiguration(DeviceIoType.Output, chosenDevice);
                     if (selected?.Device != null && Mapping.Plugins.Any(plugin =>
-                        plugin.OutputCategories.Any(category =>
+                        plugin.OutputCategories.Any(outputCategory =>
                             !DeviceBindingViewModel.SupportsOutputCategory(selected,
-                                category.Category, profile.Context))))
+                                outputCategory.Category, profile.Context))))
                         return "Choose type";
                 }
 
