@@ -26,6 +26,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (index < 0) return string.Empty;
                 if (mapping?.DirectionalButtonOutputs == true && index < 4)
                     return new[] { "Left", "Right", "Up", "Down" }[index];
+                if (mapping?.DirectionalPairButtonOutputs == true && index < 2)
+                    return index == 0 ? "Negative direction (-)" : "Positive direction (+)";
                 if (MappingViewModel.MappingOutputCategoryDisplay == "Full Joystick" && index < 2)
                     return index == 0 ? "Left Stick - X" : "Left Stick - Y";
                 return string.Empty;
