@@ -171,6 +171,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (Plugins == null || Plugins.Count == 0) return "None";
                 if (Mapping?.DirectionalButtonOutputs == true && Plugins.Count >= 4)
                     return "D-pad";
+                if (Mapping?.DirectionalPairButtonOutputs == true && Plugins.Count >= 2)
+                    return "Button (2 directions)";
                 if (InputConditions?.Any(group => group.IsFourWay) == true &&
                     Plugins.Count(plugin => string.Equals(plugin.OutputType, "Axis", StringComparison.OrdinalIgnoreCase)) == 2)
                     return "Full Joystick";
@@ -1470,6 +1472,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!candidates.Any(candidate => candidate.Plugin.GetType() == replacementTemplate.GetType()))
                 return false;
             Mapping.DirectionalButtonOutputs = false;
+            Mapping.DirectionalPairButtonOutputs = false;
             // Apply the common category to each destination. Individual output type changes
             // remain available in the row's optional settings.
             var success = true;
@@ -1487,6 +1490,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return false;
             if (original.Plugin.GetType() == replacementTemplate.GetType()) return true;
             Mapping.DirectionalButtonOutputs = false;
+            Mapping.DirectionalPairButtonOutputs = false;
             if (!Mapping.UseInputExpression &&
                 !original.Plugin.HasSameInputCategories(replacementTemplate) &&
                 !Mapping.EnableInputExpression())
@@ -1591,6 +1595,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             pluginViewModel.Dispose();
             Plugins.Remove(pluginViewModel);
             if (Plugins.Count < 4) Mapping.DirectionalButtonOutputs = false;
+            if (Plugins.Count < 2) Mapping.DirectionalPairButtonOutputs = false;
             RefreshHeaderState();
             RefreshCollapsedSummary();
             ProfileViewModel.RefreshFilterReferenceLabels();
@@ -2366,9 +2371,42 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!ButtonsEnabled || (category != DeviceBindingCategory.Momentary &&
                 category != DeviceBindingCategory.Range)) return false;
             if (!Mapping.EnableInputExpression()) return false;
+
+            // Never erase physical directions simply because a side type is
+            // changed. Only an unassigned directional set can be collapsed
+            // into a continuous analogue source without losing user data.
+            var directions = Mapping.DeviceBindings.Where(b => b.InputDirectionSlot > 0).ToList();
+            if (directions.Count > 0)
+            {
+                if (directions.Any(b => b.IsBound)) return false;
+                if (category == DeviceBindingCategory.Range)
+                {
+                    if (!Mapping.SetDirectionalInputMode(directions[0].InputExpressionGroup, 0))
+                        return false;
+                }
+                else
+                {
+                    Mapping.DirectionalInputIsDPad = false;
+                    Mapping.SetDirectionalInputMode(directions[0].InputExpressionGroup, 2);
+                }
+            }
             var kind = category == DeviceBindingCategory.Range ? 3 : 0;
             foreach (var binding in Mapping.DeviceBindings.Where(b => b.InputDirectionSlot == 0))
                 binding.SetInputExpressionInputKind(kind);
+
+            if (category == DeviceBindingCategory.Range &&
+                Mapping.Plugins.All(p => p.OutputCategories.Count == 1 &&
+                    p.OutputCategories[0].Category == DeviceBindingCategory.Momentary))
+            {
+                while (Plugins.Count < 2)
+                    if (!AddDefaultOutput()) return false;
+                Mapping.DirectionalPairButtonOutputs = true;
+                Mapping.DirectionalButtonOutputs = false;
+            }
+            else
+                Mapping.DirectionalPairButtonOutputs = false;
+
+            ProfileViewModel.Profile.Context.ContextChanged();
             RebuildDirectionalEditors();
             RefreshInputExpressionPresentation();
             RefreshHeaderState();
