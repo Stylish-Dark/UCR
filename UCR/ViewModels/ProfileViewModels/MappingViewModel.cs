@@ -601,10 +601,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (Plugins.Count > 0 && Plugins.All(p => p.OutputType == "Button"))
             {
                 var outputSlots = slots == 4 ? 4 : slots == 2 ? 2 : 1;
-                while (Plugins.Count < outputSlots)
-                    if (!AddDefaultOutput()) break;
-                Mapping.DirectionalButtonOutputs = slots == 4 && Plugins.Count >= 4;
-                Mapping.DirectionalPairButtonOutputs = slots == 2 && Plugins.Count >= 2;
+                var completedSet = EnsureOutputSlotMultiple(outputSlots);
+                Mapping.DirectionalButtonOutputs = completedSet && slots == 4;
+                Mapping.DirectionalPairButtonOutputs = completedSet && slots == 2;
                 ProfileViewModel.Profile.Context.ContextChanged();
             }
 
@@ -928,6 +927,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var count = Plugins.Count;
             AddPlugin(selected.Plugin);
             return Plugins.Count > count;
+        }
+
+        private bool EnsureOutputSlotMultiple(int slots)
+        {
+            if (slots < 1) return false;
+            while (Plugins.Count < slots || Plugins.Count % slots != 0)
+                if (!AddDefaultOutput()) return false;
+            return true;
         }
 
         // One click adds a complete destination binding set, not a single
@@ -2455,8 +2462,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 Mapping.Plugins.All(p => p.OutputCategories.Count == 1 &&
                     p.OutputCategories[0].Category == DeviceBindingCategory.Momentary))
             {
-                while (Plugins.Count < 2)
-                    if (!AddDefaultOutput()) return false;
+                if (!EnsureOutputSlotMultiple(2)) return false;
                 Mapping.DirectionalPairButtonOutputs = true;
                 Mapping.DirectionalButtonOutputs = false;
             }
