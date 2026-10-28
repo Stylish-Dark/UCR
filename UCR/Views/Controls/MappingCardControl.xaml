@@ -468,6 +468,10 @@
                                     <Border Background="#292929" BorderBrush="#454545"
                                         BorderThickness="1" CornerRadius="3" Padding="7" Margin="0 0 0 5">
                                         <StackPanel>
+                                            <TextBlock Text="{Binding OutputDirectionLabel}"
+                                                Visibility="{Binding OutputDirectionLabelVisibility}"
+                                                Foreground="#DADADA" FontWeight="SemiBold"
+                                                FontSize="12" Margin="2 0 0 7"/>
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" MinWidth="0"/>
