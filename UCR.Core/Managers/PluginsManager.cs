@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.ComponentModel.Composition.Hosting;
 using System.IO;
+using System.Linq;
+using System.Reflection;
+using Trinet.Core.IO.Ntfs;
 using HidWizards.UCR.Core.Models;
 using NLog;
 
@@ -17,27 +20,100 @@ namespace HidWizards.UCR.Core.Managers
         [ImportMany(typeof(Plugin))]
         public List<Plugin> Plugins { get; set; }
 
-        public PluginsManager(string basePath)
+        public static string BuiltInPluginPath =>
+            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins",
+                "UCR.Plugins", "UCR.Plugins.dll");
+
+        // Downloaded Windows archives can propagate Zone.Identifier to every
+        // extracted DLL. Remove it only from the bundled mapping plugin and
+        // only after the user approves repair in the startup dialog.
+        public static bool TryUnblockBuiltInPlugin()
         {
-            var catalog = new AggregateCatalog();
+            var dll = new FileInfo(BuiltInPluginPath);
+            if (!dll.Exists) return false;
             try
             {
-                foreach (var path in Directory.EnumerateDirectories(@".\" + basePath, "*", SearchOption.TopDirectoryOnly))
+                if (!dll.AlternateDataStreamExists("Zone.Identifier")) return false;
+                return dll.DeleteAlternateDataStream("Zone.Identifier");
+            }
+            catch (Exception exception)
+            {
+                Logger.Error(exception, "Unable to unblock the installed mapping plugin: " + dll.FullName);
+                return false;
+            }
+        }
+
+        public PluginsManager(string basePath)
+        {
+            Plugins = new List<Plugin>();
+            var catalog = new AggregateCatalog();
+            var directory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, basePath);
+            try
+            {
+                if (Directory.Exists(directory))
                 {
-                    var folderName = path.Remove(0, path.LastIndexOf(Path.DirectorySeparatorChar) + 1);
-                    if (File.Exists(Path.Combine(path, folderName + ".dll")))
+                    foreach (var path in Directory.EnumerateDirectories(directory, "*",
+                        SearchOption.TopDirectoryOnly))
                     {
-                        catalog.Catalogs.Add(new DirectoryCatalog(path));
+                        var name = Path.GetFileName(path);
+                        var dll = Path.Combine(path, name + ".dll");
+                        if (File.Exists(dll))
+                            catalog.Catalogs.Add(new DirectoryCatalog(path, name + ".dll"));
+                        else
+                            Logger.Warn("Mapping plugin folder has no matching DLL: " + dll);
                     }
                 }
+                else
+                    Logger.Error("Plugins directory not found: " + directory);
+
+                _Container = new CompositionContainer(catalog);
+                _Container.ComposeParts(this);
             }
-            catch (DirectoryNotFoundException e)
+            catch (Exception exception)
             {
-                Logger.Error(e, "Plugins directory not found");
+                Logger.Error(exception, "Mapping plugin composition failed in: " + directory);
             }
 
-            _Container = new CompositionContainer(catalog);
-            _Container.ComposeParts(this);
+            if (Plugins == null) Plugins = new List<Plugin>();
+
+            // The built-in plugin is essential for loading existing profiles.
+            // MEF may silently exclude an assembly when Windows has blocked it.
+            // A narrowly scoped reflection fallback avoids incorrectly
+            // treating valid saved mappings as corrupt.
+            if (!Plugins.Any(plugin => plugin.GetType().FullName ==
+                "HidWizards.UCR.Plugins.Remapper.ButtonToButton"))
+            {
+                var dll = BuiltInPluginPath;
+                if (File.Exists(dll))
+                {
+                    try
+                    {
+                        var assembly = Assembly.LoadFrom(dll);
+                        foreach (var type in assembly.GetExportedTypes().Where(type =>
+                            typeof(Plugin).IsAssignableFrom(type) &&
+                            !type.IsAbstract && type.GetConstructor(Type.EmptyTypes) != null))
+                        {
+                            if (Plugins.Any(plugin => plugin.GetType() == type)) continue;
+                            Plugins.Add((Plugin)Activator.CreateInstance(type));
+                        }
+                    }
+                    catch (ReflectionTypeLoadException exception)
+                    {
+                        Logger.Error(exception, "Bundled mapping plugin dependency failed to load: " +
+                            string.Join("; ", exception.LoaderExceptions.Where(error => error != null)
+                                .Select(error => error.Message)));
+                    }
+                    catch (Exception exception)
+                    {
+                        Logger.Error(exception, "Bundled mapping plugin could not load: " + dll);
+                    }
+                }
+                else
+                    Logger.Error("Required bundled mapping plugin is missing: " + dll);
+            }
+            Logger.Info("Mapping plugins available: " + Plugins.Count +
+                "; ButtonToButton installed: " + Plugins.Any(plugin =>
+                    plugin.GetType().FullName == "HidWizards.UCR.Plugins.Remapper.ButtonToButton"));
         }
 
         public Plugin GetNewPlugin(Plugin plugin)
