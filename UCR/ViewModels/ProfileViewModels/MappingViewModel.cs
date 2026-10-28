@@ -254,27 +254,23 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var device = profile.GetDeviceConfiguration(DeviceIoType.Output, guid);
             if (device?.Device == null) return false;
 
-            if (Mapping.Plugins.Any(plugin => plugin.OutputCategories.Any(category =>
-                !DeviceBindingViewModel.SupportsOutputCategory(device,
-                    category.Category, profile.Context))))
-            {
-                // Select a reasonable compatible default, then expose all
-                // other available types through the adjacent type selector.
-                var candidate = GetCompatiblePluginOptions()
-                    .Where(option => option.Plugin.OutputCategories.Count > 0 &&
-                        option.Plugin.OutputCategories.All(category =>
-                            DeviceBindingViewModel.SupportsOutputCategory(device,
-                                category.Category, profile.Context)))
-                    .OrderBy(option => option.OutputType == "Button" ? 0 :
-                        option.OutputType == "Axis" ? 1 : 2)
-                    .ThenBy(option => option.Name, StringComparer.OrdinalIgnoreCase)
-                    .FirstOrDefault();
-                if (candidate == null || !ChangeAllOutputTypes(candidate.Plugin)) return false;
-            }
-
+            // Device first: accept the user's selection even when the existing
+            // output type is unsupported. Clear incompatible assignments and
+            // ask for a new type; do not silently redirect to another device
+            // or choose an unrelated remapper on their behalf.
             foreach (var output in Plugins.SelectMany(plugin => plugin.DeviceBindings).ToList())
-                output.ChangeDeviceConfiguration(guid);
-            ProfileViewModel.Profile.Context.ContextChanged();
+            {
+                if (DeviceBindingViewModel.SupportsOutputCategory(
+                    device, output.DeviceBindingCategory, profile.Context))
+                    output.ChangeDeviceConfiguration(guid);
+                else
+                {
+                    output.DeviceBinding.SetDeviceConfigurationGuid(guid, false);
+                    output.RefreshDeviceList();
+                }
+            }
+            Mapping.OutputSideType = "";
+            profile.Context.ContextChanged();
             RefreshHeaderState();
             RefreshCollapsedSummary();
             return true;
@@ -323,6 +319,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 // Different destination categories must never be mislabelled with
                 // the type of the first output plugin.
                 if (Plugins == null || Plugins.Count == 0) return "None";
+                var chosenDevice = OutputSideDeviceGuid;
+                if (chosenDevice != Guid.Empty)
+                {
+                    var profile = ProfileViewModel.Profile;
+                    var selected = profile.GetDeviceConfiguration(DeviceIoType.Output, chosenDevice);
+                    if (selected?.Device != null && Mapping.Plugins.Any(plugin =>
+                        plugin.OutputCategories.Any(category =>
+                            !DeviceBindingViewModel.SupportsOutputCategory(selected,
+                                category.Category, profile.Context))))
+                        return "Choose type";
+                }
+
                 if (!string.IsNullOrWhiteSpace(Mapping?.OutputSideType))
                     return Mapping.OutputSideType;
                 if (Mapping?.DirectionalButtonOutputs == true && Plugins.Count >= 4)
