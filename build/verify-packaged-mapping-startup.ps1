@@ -27,8 +27,7 @@ $handler = [System.ResolveEventHandler]{
 try {
     [void][System.Reflection.Assembly]::LoadFrom($coreDll)
     [void][System.Reflection.Assembly]::LoadFrom($pluginDll)
-    $manager = New-Object HidWizards.UCR.Core.Managers.PluginsManager(
-        -ArgumentList @((Join-Path $runtime 'Plugins')))
+    $manager = New-Object -TypeName HidWizards.UCR.Core.Managers.PluginsManager -ArgumentList (Join-Path $runtime 'Plugins')
     $button = @($manager.Plugins | Where-Object {
         $_.GetType().FullName -eq 'HidWizards.UCR.Plugins.Remapper.ButtonToButton'
     } | Select-Object -First 1)
