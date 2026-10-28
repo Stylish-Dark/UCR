@@ -115,7 +115,7 @@ namespace HidWizards.UCR
                 }
                 catch (MissingBuiltInPluginException exception)
                 {
-                    Logger.Error(exception, "UCR startup halted before loading profiles.");
+                    Logger.Error("UCR startup halted before loading profiles.", exception);
                     CloseSplash();
                     HidWizards.UCR.Utilities.DarkMessageBox.Show(exception.Message,
                         "UCR needs its mapping plugin", MessageBoxButton.OK,
