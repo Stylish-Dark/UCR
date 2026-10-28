@@ -601,7 +601,7 @@ namespace HidWizards.UCR.Views.Controls
         {
             var button = sender as Button;
             var mapping = DataContext as MappingViewModel;
-            if (button == null || mapping?.ButtonsEnabled != true || mapping.Plugins.Count != 1) return;
+            if (button == null || mapping?.ButtonsEnabled != true || mapping.Plugins.Count == 0) return;
 
             var current = mapping.Plugins[0];
             var options = mapping.GetCompatibleInputPluginOptions();
@@ -629,7 +629,6 @@ namespace HidWizards.UCR.Views.Controls
                 menu.Items.Add(item);
             }
 
-            if (mapping.HasAxisOutput)
             {
                 // A paired or four-way layout is a binding-set configuration,
                 // not a separate implementation plugin or an output choice.
@@ -641,8 +640,8 @@ namespace HidWizards.UCR.Views.Controls
                 };
                 foreach (var entry in new[]
                 {
-                    new { Label = "2-way (Axis)", Slots = 2 },
-                    new { Label = "4-way (Full Joystick)", Slots = 4 }
+                    new { Label = "Axis (2 directions)", Slots = 2 },
+                    new { Label = "Full Joystick (4 directions)", Slots = 4 }
                 })
                 {
                     var slots = entry.Slots;
@@ -679,9 +678,10 @@ namespace HidWizards.UCR.Views.Controls
                 };
                 item.Click += (s, args) =>
                 {
-                    if (current.Plugin.GetType() == selected.Plugin.GetType()) return;
+                    if (mapping.Plugins.Count != 1 || current.Plugin.GetType() == selected.Plugin.GetType()) return;
                     mapping.ChangeInputType(current, selected.Plugin);
                 };
+                item.IsEnabled = mapping.Plugins.Count == 1;
                 advanced.Items.Add(item);
             }
             if (advanced.Items.Count > 0) menu.Items.Add(advanced);
