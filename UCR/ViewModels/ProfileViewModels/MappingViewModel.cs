@@ -229,7 +229,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (requestedRange && !supportsRange && supportsButton)
                     input.InputExpressionInputKind = 0;
                 else if (!requestedRange && !supportsButton && supportsRange)
-                    input.InputExpressionInputKind = 3;
+                {
+                    var slot = input.DeviceBinding.InputDirectionSlot;
+                    input.InputExpressionInputKind = slot == 0 ? 3 :
+                        slot == 1 || slot == 3 ? 2 : 1;
+                    if (slot > 0 && HasAxisOutput)
+                        input.InputExpressionAxisThreshold = 1;
+                }
                 input.ChangeDeviceConfiguration(guid);
             }
             Mapping.InputSideType = "";
@@ -1039,6 +1045,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             // Binding changes also affect the singular/plural header, even during initial load.
             _mappingRouteTokens = BuildMappingRouteTokens(MappingRouteDisplay);
             OnPropertyChanged(nameof(MappingInputTypeLabel));
+            OnPropertyChanged(nameof(InputBindingLayoutLabel));
             OnPropertyChanged(nameof(MappingRouteDisplay));
             OnPropertyChanged(nameof(MappingRouteTokens));
         }
@@ -1883,6 +1890,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(MappingOutputTypeLabel));
             OnPropertyChanged(nameof(MappingInputTypeLabel));
             OnPropertyChanged(nameof(MappingOutputCategoryDisplay));
+            OnPropertyChanged(nameof(InputSideDeviceGuid));
+            OnPropertyChanged(nameof(OutputSideDeviceGuid));
             OnPropertyChanged(nameof(OutputBindingColumns));
             OnPropertyChanged(nameof(AddOutputCaption));
             if (Plugins != null)
