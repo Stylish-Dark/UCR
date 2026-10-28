@@ -1468,10 +1468,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             RefreshCollapsedSummary();
             ProfileViewModel.RefreshFilterReferenceLabels();
             RefreshInputExpressionPresentation();
-            // Output selection never implicitly changes the number of inputs.
-            // A previous axis choice may have left an unwanted paired input behind.
-            if (!HasAxisOutput && Mapping.DeviceBindings.Any(input => input.InputDirectionSlot > 0))
-                RestoreBooleanInputsAfterAxis();
+            // Keep the opposite binding-set structure in sync with the
+            // destination category, but never silently discard assigned keys.
+            // An unassigned single-button input may safely become a two-way
+            // binding set when the destination becomes an axis.
+            if (HasAxisOutput && Mapping.UseInputExpression &&
+                Mapping.DeviceBindings.Count == 1 &&
+                !Mapping.DeviceBindings[0].IsBound &&
+                Mapping.DeviceBindings[0].InputDirectionSlot == 0)
+                SetDirectionalMode(2);
+            // Existing paired/4-way inputs are intentionally retained when
+            // changing away from an axis. Downgrading must be an explicit user
+            // action, not an implicit destructive conversion.
             Logger.Info("Changed output type in mapping '" + MappingTitle + "' to " + replacement.PluginName);
             return true;
         }
