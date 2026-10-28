@@ -230,6 +230,35 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void BoundAnalogueAxis_SplitsIntoSignedDirectionsWithoutDiscardingSource()
+        {
+            var mapping = new Mapping();
+            mapping.Plugins.Add(new AxisToAxis());
+            var source = new DeviceBinding
+            {
+                InputExpressionInputKind = 3,
+                InputExpressionKindConfigured = true,
+                DeviceBindingCategory = DeviceBindingCategory.Range,
+                KeyType = 1,
+                KeyValue = 2,
+                KeySubValue = 3,
+                IsBound = true
+            };
+            mapping.DeviceBindings.Add(source);
+            Assert.IsTrue(mapping.SetDirectionalInputMode(0, 2));
+            Assert.AreSame(source, mapping.DeviceBindings[0]);
+            Assert.IsTrue(mapping.DeviceBindings[0].IsBound);
+            Assert.IsTrue(mapping.DeviceBindings[1].IsBound);
+            Assert.AreEqual(2, mapping.DeviceBindings[0].InputExpressionInputKind);
+            Assert.AreEqual(1, mapping.DeviceBindings[1].InputExpressionInputKind);
+            Assert.AreEqual(source.KeyType, mapping.DeviceBindings[1].KeyType);
+            Assert.AreEqual(source.KeyValue, mapping.DeviceBindings[1].KeyValue);
+            Assert.AreEqual(source.KeySubValue, mapping.DeviceBindings[1].KeySubValue);
+            Assert.AreEqual(1, mapping.DeviceBindings[0].InputExpressionAxisThreshold);
+            Assert.AreEqual(1, mapping.DeviceBindings[1].InputExpressionAxisThreshold);
+        }
+
+        [Test]
         public void DirectionalLayoutResize_KeepsExistingBindingSlots()
         {
             var mapping = new Mapping();
