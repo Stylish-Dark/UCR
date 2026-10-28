@@ -233,6 +233,7 @@
                                                   ToolTip="Input device shared by these directions"
                                                   DisplayMemberPath="Title"/>
                                         <Button Content="⋮" Width="34" Height="32" Padding="0"
+                                                Click="OpenDirectionalPresetMenu_OnClick"
                                                 ToolTip="Directional binding presets">
                                             <Button.ContextMenu>
                                                 <ContextMenu>
