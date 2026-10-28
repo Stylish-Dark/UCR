@@ -510,6 +510,30 @@ namespace HidWizards.UCR.Views.Controls
                 input.ChangeDeviceConfiguration(selected.Value);
         }
 
+        private void OpenDirectionalPresetMenu_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            if (button?.ContextMenu == null) return;
+            button.ContextMenu.PlacementTarget = button;
+            button.ContextMenu.Placement = PlacementMode.Bottom;
+            button.ContextMenu.IsOpen = true;
+        }
+
+        private void DirectionalPreset_OnClick(object sender, RoutedEventArgs e)
+        {
+            var menuItem = sender as MenuItem;
+            var preset = menuItem?.Tag as string;
+            var mapping = DataContext as MappingViewModel;
+            if (mapping?.ButtonsEnabled != true || string.IsNullOrEmpty(preset)) return;
+            string error;
+            var applied = preset == "DPad"
+                ? mapping.ApplyDirectionalDPadPreset(out error)
+                : mapping.ApplyDirectionalKeyboardPreset(preset, out error);
+            if (!applied && !string.IsNullOrEmpty(error))
+                DarkMessageBox.Show(error, "Directional preset unavailable",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
         private void DirectionalType_OnClick(object sender, RoutedEventArgs e)
         {
             var item = sender as MenuItem;
