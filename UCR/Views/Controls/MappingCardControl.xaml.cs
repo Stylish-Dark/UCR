@@ -607,6 +607,28 @@ namespace HidWizards.UCR.Views.Controls
             var options = mapping.GetCompatibleInputPluginOptions();
             var menu = CreateDarkContextMenu(button);
             menu.Placement = PlacementMode.Bottom;
+
+            if (mapping.HasAxisOutput)
+            {
+                foreach (var entry in new[]
+                {
+                    new { Label = "Buttons (2) — axis", Slots = 2 },
+                    new { Label = "Buttons (4-way) — full joystick", Slots = 4 }
+                })
+                {
+                    var slots = entry.Slots;
+                    var choice = new MenuItem
+                    {
+                        Header = entry.Label,
+                        Foreground = Brushes.White, Background = Brushes.Transparent,
+                        Padding = new Thickness(10, 6, 14, 6),
+                        ToolTip = "Arrange physical button bindings as one directional input unit"
+                    };
+                    choice.Click += (s, args) => mapping.SetDirectionalMode(slots);
+                    menu.Items.Add(choice);
+                }
+                menu.Items.Add(new Separator());
+            }
             // Do not strand legacy multi-axis mappings without a route to an
             // ordinary Button mapping. This explicit choice retains input keys.
             if (!string.Equals(current.OutputType, "Button", StringComparison.OrdinalIgnoreCase))
@@ -678,10 +700,6 @@ namespace HidWizards.UCR.Views.Controls
             menu.Placement = PlacementMode.Bottom;
 
             var categories = options
-                .Where(option => !string.Equals(option.Plugin.Group, "Axis",
-                    StringComparison.OrdinalIgnoreCase) &&
-                    option.Plugin.InputCategories.All(input => input.Category != DeviceBindingCategory.Range) &&
-                    option.Plugin.OutputCategories.All(output => output.Category != DeviceBindingCategory.Range))
                 .GroupBy(option => option.OutputType, StringComparer.OrdinalIgnoreCase).ToList();
             foreach (var category in categories)
             {
