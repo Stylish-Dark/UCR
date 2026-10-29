@@ -256,8 +256,8 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" MinWidth="360"/>
-                    <ColumnDefinition Width="510" MinWidth="390"/>
+                    <ColumnDefinition Width="1.7*" MinWidth="0"/>
+                    <ColumnDefinition Width="*" MinWidth="0"/>
                 </Grid.ColumnDefinitions>
                 <Border Grid.Row="0" Grid.ColumnSpan="2" Padding="20 12 20 13"
                         Background="#202020" BorderBrush="#383838" BorderThickness="0 0 0 1">
