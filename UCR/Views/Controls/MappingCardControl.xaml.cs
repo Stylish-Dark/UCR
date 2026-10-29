@@ -444,7 +444,8 @@ namespace HidWizards.UCR.Views.Controls
             foreach (var node in nodes)
             {
                 if (node == null) continue;
-                if (node.DeviceBindingInfo != null) yield return node;
+                // Only terminal controls can be bound; category nodes are navigation.
+                if (node.IsBinding) yield return node;
                 foreach (var child in FlattenPickerNodes(node.ChildrenNodes)) yield return child;
             }
         }
