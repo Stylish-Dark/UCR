@@ -308,9 +308,13 @@ namespace HidWizards.UCR.Tests.UiTests
                     "The workspace must expose clickable rebinding glyphs.");
 
                 var deletion = FindVisualChildren<Button>(row)
-                    .SingleOrDefault(button => (button.ToolTip as string) == "Delete this mapping");
+                    .FirstOrDefault(button => (button.ToolTip as string) == "Delete this mapping" &&
+                        ReferenceEquals(button.Parent, toggle.Parent));
                 Assert.That(deletion, Is.Not.Null,
-                    "The delete button must appear beside the mapping chevron.");
+                    "The delete button must be in the same action group as the mapping chevron.");
+                Assert.That(((Panel)deletion.Parent).Children.IndexOf(deletion),
+                    Is.LessThan(((Panel)toggle.Parent).Children.IndexOf(toggle)),
+                    "Deletion must appear to the LEFT of the chevron.");
 
                 toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, toggle));
                 // Closing sweeps the editor upwards before committing the
