@@ -614,8 +614,10 @@ var colourButton = FindVisualChildren<Button>(row)
                 Assert.That(output.DeviceBinding, Is.Not.Null);
                 Assert.That(output.DeviceBinding.DeviceIoType,
                     Is.EqualTo(DeviceIoType.Output));
-                card.OpenUnifiedOutputPicker(editor.Plugins[0].DeviceBindings[0],
-                    new Button());
+                var picker = typeof(MappingCardControl).GetMethod("OpenUnifiedOutputPicker",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                Assert.That(picker, Is.Not.Null);
+                picker.Invoke(card, new object[] { editor.Plugins[0].DeviceBindings[0], new Button() });
                 Assert.That(editor.OutputSelectionFeedback,
                     Does.Contain("output device"),
                     "The picker must guide the user inline when no output device is selected.");
