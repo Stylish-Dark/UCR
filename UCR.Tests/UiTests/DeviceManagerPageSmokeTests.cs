@@ -547,6 +547,80 @@ var colourButton = FindVisualChildren<Button>(row)
             }
         }
 
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void SelectingNoOutputDeviceIsValidAndKeepsTheMapping()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("No destination", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var mapping = profile.AddMapping("Unassigned output");
+            profile.AddPlugin(mapping, new ButtonToButton());
+
+            var viewModel = new ProfileViewModel(profile);
+            try
+            {
+                var editor = viewModel.MappingsList.Single();
+                Assert.That(editor.ChangeOutputSideDevice(Guid.Empty), Is.True,
+                    "Choosing no output device must be a valid selection.");
+                Assert.That(editor.OutputSideDeviceGuid, Is.EqualTo(Guid.Empty));
+                Assert.That(editor.Plugins.Count, Is.EqualTo(1),
+                    "Unselecting the device must not delete the output set.");
+                Assert.That(editor.OutputBindingSets.Single().Slots.Count, Is.EqualTo(1));
+                Assert.That(editor.OutputSelectionFeedback, Is.Null,
+                    "No device is not an error and should produce no intrusive warning.");
+            }
+            finally
+            {
+                viewModel.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void OutputBindButtonWithNoSelectedDeviceUsesInlineGuidanceNotADialog()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Output click", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var mapping = profile.AddMapping("Bind an output");
+            profile.AddPlugin(mapping, new ButtonToButton());
+            var viewModel = new ProfileViewModel(profile);
+            try
+            {
+                var editor = viewModel.MappingsList.Single();
+                var card = new MappingCardControl { DataContext = editor };
+                card.Measure(new Size(1150, 950));
+                card.Arrange(new Rect(0, 0, 1150, 950));
+                card.UpdateLayout();
+                var chevron = card.FindName("ExpandMappingButton") as Button;
+                Assert.That(chevron, Is.Not.Null);
+                ((IInvokeProvider)new ButtonAutomationPeer(chevron)).Invoke();
+                PumpDispatcherFor(TimeSpan.FromMilliseconds(120));
+                card.UpdateLayout();
+                var body = card.FindName("ExpandedBodyHost") as ContentControl;
+                Assert.That(body, Is.Not.Null);
+                var output = FindVisualChildren<CompactInputBindingControl>(body)
+                    .FirstOrDefault(control => control.EnableUnifiedOutputPicker);
+                Assert.That(output, Is.Not.Null,
+                    "The blue Output button must use the unified control picker.");
+                var button = output.FindName("BindButton") as Button;
+                Assert.That(button, Is.Not.Null, "Output button must be clickable.");
+                Assert.That(output.DeviceBinding.DeviceIoType,
+                    Is.EqualTo(DeviceIoType.Output));
+                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, button));
+                Assert.That(editor.OutputSelectionFeedback,
+                    Does.Contain("output device"),
+                    "The picker must guide the user inline when no output device is selected.");
+            }
+            finally
+            {
+                viewModel.Dispose();
+            }
+        }
+
         private static void PumpDispatcherFor(TimeSpan duration)
         {
             var frame = new DispatcherFrame();
