@@ -406,8 +406,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return false;
 
             var requestedAxis = category == DeviceBindingCategory.Range;
-            var buttonInput = !Mapping.DeviceBindings.Any(binding =>
-                binding.IsBound && binding.InputExpressionInputKind != 0);
+            var buttonInput = !Mapping.DeviceBindings.Any(sourceInput =>
+                sourceInput.IsBound && sourceInput.InputExpressionInputKind != 0);
             if (requestedAxis && buttonInput && UnneededInputDirectionsAreBound(2))
             {
                 OutputSelectionFeedback =
