@@ -737,9 +737,26 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public bool ChangeOutputSideDevice(Guid guid)
         {
-            if (!ButtonsEnabled || guid == Guid.Empty || Plugins == null || Plugins.Count == 0)
+            if (!ButtonsEnabled || Plugins == null || Plugins.Count == 0)
                 return false;
             var profile = ProfileViewModel.Profile;
+            if (guid == Guid.Empty)
+            {
+                // "No output device" is a legitimate state, not an error.
+                // Clear destinations without removing any output sets, filters,
+                // or input mappings. Never put a modal dialog in its path.
+                foreach (var output in Plugins.SelectMany(plugin => plugin.DeviceBindings))
+                {
+                    output.DeviceBinding.SetDeviceConfigurationGuid(Guid.Empty, false);
+                    output.RefreshDeviceList();
+                }
+                OutputSelectionFeedback = null;
+                profile.Context.ContextChanged();
+                RefreshSideDeviceChoices();
+                RefreshHeaderState();
+                RefreshCollapsedSummary();
+                return true;
+            }
             var device = profile.GetDeviceConfiguration(DeviceIoType.Output, guid);
             if (device?.Device == null) return false;
 
