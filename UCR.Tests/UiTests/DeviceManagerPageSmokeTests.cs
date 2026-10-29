@@ -307,7 +307,15 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(rebindingButtons.Count, Is.GreaterThan(0),
                     "The workspace must expose clickable rebinding glyphs.");
 
+                var deletion = FindVisualChildren<Button>(row)
+                    .SingleOrDefault(button => (button.ToolTip as string) == "Delete this mapping");
+                Assert.That(deletion, Is.Not.Null,
+                    "The delete button must appear beside the mapping chevron.");
+
                 toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, toggle));
+                // Closing sweeps the editor upwards before committing the
+                // collapsed state. Assert after the real animation interval.
+                PumpDispatcherFor(TimeSpan.FromMilliseconds(240));
                 page.Measure(available);
                 page.Arrange(new Rect(new Point(0, 0), available));
                 page.UpdateLayout();
@@ -544,6 +552,35 @@ var colourButton = FindVisualChildren<Button>(row)
             finally
             {
                 editor.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void DeleteConfirmationDependsOnActualInputOrOutputAssignments()
+        {
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Mapping deletion", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var mapping = profile.AddMapping("Incomplete");
+            profile.AddPlugin(mapping, new ButtonToButton());
+            var viewModel = new ProfileViewModel(profile);
+            try
+            {
+                var editor = viewModel.MappingsList.Single();
+                Assert.That(MappingCardControl.RequiresDeleteConfirmation(editor), Is.False,
+                    "Empty mappings must be deleted without a confirmation dialog.");
+                var output = mapping.Plugins.Single().Outputs.Single();
+                output.SetKeyTypeValue(1, 42, 0);
+                Assert.That(MappingCardControl.RequiresDeleteConfirmation(editor), Is.True,
+                    "An assigned output is user work, even when inputs are still empty.");
+                output.SetDeviceConfigurationGuid(Guid.Empty, false);
+                Assert.That(MappingCardControl.RequiresDeleteConfirmation(editor), Is.False,
+                    "Clearing the last bound control must remove the confirmation requirement.");
+            }
+            finally
+            {
+                viewModel.Dispose();
             }
         }
 
