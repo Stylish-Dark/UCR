@@ -111,7 +111,7 @@ namespace HidWizards.UCR.Views.Controls
 
             MappingHeaderSurface.Visibility = Visibility.Visible;
             if ((DataContext as MappingViewModel)?.IsExpanded == true)
-                ShowExpandedBody();
+                ShowExpandedBody(animateCollapse);
             else
                 HideExpandedBody(animateCollapse);
         }
@@ -123,54 +123,77 @@ namespace HidWizards.UCR.Views.Controls
             var mapping = DataContext as MappingViewModel;
             if (mapping == null) return;
             mapping.IsExpanded = !mapping.IsExpanded;
-            // Also handle cases where a card has been measured but not yet loaded.
-            RefreshExpandedVisual(true);
+            // The property-change observer performs the transition once.
+            // Avoid a second refresh, which would cancel the animation.
+            if (!ReferenceEquals(mapping, _observedMapping))
+                RefreshExpandedVisual(true);
         }
 
-        // Expanding height inside a non-virtualized mappings list remeasures every
-        // card on every animation frame. Apply the state change once instead.
-        // Keep the heavy editor template lazy, so collapsed cards stay inexpensive.
-        private void ShowExpandedBody()
+        // The inspector embeds its editor in the workspace's animated row; it
+        // must not animate a second time. Standalone cards sweep their own body.
+        // Initialize heavy editor content only when it is actually expanded.
+        private void ShowExpandedBody(bool animate = false)
         {
             if (ExpandedBodyHost == null) return;
-            // Output property controls (especially Button/Axis-to-Filter's Filter name)
-            // are populated lazily. The compact inspector must initialize them too.
             var mapping = DataContext as MappingViewModel;
             if (mapping != null)
                 foreach (var plugin in mapping.Plugins)
                     plugin.EnsureEditorInitialized();
 
-            // Interrupt any closing fade if the user immediately reopens the card.
+            var alreadyVisible = ExpandedBodyHost.Visibility == Visibility.Visible;
+            ExpandedBodyHost.BeginAnimation(FrameworkElement.HeightProperty, null);
             ExpandedBodyHost.BeginAnimation(OpacityProperty, null);
             if (ExpandedBodyHost.ContentTemplate == null)
                 ExpandedBodyHost.ContentTemplate = FindResource("ExpandedMappingBodyTemplate") as DataTemplate;
 
-            ExpandedBodyHost.Height = double.NaN;
-            ExpandedBodyHost.Opacity = 1;
             ExpandedBodyHost.Visibility = Visibility.Visible;
+            ExpandedBodyHost.Opacity = 1;
+            ExpandedBodyHost.Height = double.NaN;
+            if (!animate || InspectorMode || alreadyVisible) return;
+
+            // Determine the completed height before beginning the sweep.
+            ExpandedBodyHost.Measure(new Size(Math.Max(1, ActualWidth), double.PositiveInfinity));
+            var targetHeight = ExpandedBodyHost.DesiredSize.Height;
+            if (targetHeight <= 0) return;
+            ExpandedBodyHost.Height = 0;
+            var sweep = new DoubleAnimation(0, targetHeight, TimeSpan.FromMilliseconds(190))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+            sweep.Completed += (sender, args) =>
+            {
+                if ((DataContext as MappingViewModel)?.IsExpanded == true)
+                {
+                    ExpandedBodyHost.BeginAnimation(FrameworkElement.HeightProperty, null);
+                    ExpandedBodyHost.Height = double.NaN;
+                }
+            };
+            ExpandedBodyHost.BeginAnimation(FrameworkElement.HeightProperty, sweep);
         }
 
         private void HideExpandedBody(bool animate = false)
         {
             if (ExpandedBodyHost == null) return;
-
+            ExpandedBodyHost.BeginAnimation(FrameworkElement.HeightProperty, null);
             ExpandedBodyHost.BeginAnimation(OpacityProperty, null);
-            if (animate && ExpandedBodyHost.Visibility == Visibility.Visible)
+            if (animate && !InspectorMode && ExpandedBodyHost.Visibility == Visibility.Visible)
             {
-                // A compositor-only fade keeps the panel visible while closing,
-                // without repeatedly measuring the entire non-virtualized list.
-                var fade = new DoubleAnimation(ExpandedBodyHost.Opacity, 0,
-                    TimeSpan.FromMilliseconds(125))
+                var startHeight = ExpandedBodyHost.ActualHeight;
+                if (startHeight > 0)
                 {
-                    FillBehavior = FillBehavior.Stop
-                };
-                fade.Completed += (animationSender, args) =>
-                {
-                    if ((DataContext as MappingViewModel)?.IsExpanded != true)
-                        HideExpandedBody();
-                };
-                ExpandedBodyHost.BeginAnimation(OpacityProperty, fade);
-                return;
+                    ExpandedBodyHost.Height = startHeight;
+                    var sweep = new DoubleAnimation(startHeight, 0, TimeSpan.FromMilliseconds(150))
+                    {
+                        EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+                    };
+                    sweep.Completed += (sender, args) =>
+                    {
+                        if ((DataContext as MappingViewModel)?.IsExpanded != true)
+                            HideExpandedBody(false);
+                    };
+                    ExpandedBodyHost.BeginAnimation(FrameworkElement.HeightProperty, sweep);
+                    return;
+                }
             }
 
             ExpandedBodyHost.Visibility = Visibility.Collapsed;
