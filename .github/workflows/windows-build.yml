@@ -177,8 +177,15 @@ jobs:
           # not only assemblies copied transitively by the legacy test project.
           Get-ChildItem -Path '.\UCR\bin\Release' -Filter '*.dll' -File |
             ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination '.\UCR.Tests\bin\Release' -Force }
+          # PrettyBin may relocate app dependencies from the release root.
+          # The test executable has no PrettyBin resolver, so stage RestSharp
+          # explicitly from the already-restored version pinned by UCR.csproj.
           if (-not (Test-Path '.\UCR.Tests\bin\Release\RestSharp.dll')) {
-            throw 'RestSharp runtime dependency missing from WPF test output.'
+            $restSharp = '.\packages\RestSharp.105.2.3\lib\net452\RestSharp.dll'
+            if (-not (Test-Path -LiteralPath $restSharp -PathType Leaf)) {
+              throw "RestSharp package dependency is missing: $restSharp"
+            }
+            Copy-Item -LiteralPath $restSharp -Destination '.\UCR.Tests\bin\Release\RestSharp.dll' -Force
           }
 
           $runner = ".\\packages\\NUnit.ConsoleRunner.3.9.0\\tools\\nunit3-console.exe"
