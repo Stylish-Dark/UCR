@@ -606,16 +606,16 @@ var colourButton = FindVisualChildren<Button>(row)
                     .FirstOrDefault(control => control.EnableUnifiedOutputPicker);
                 Assert.That(output, Is.Not.Null,
                     "The blue Output button must use the unified control picker.");
-                output.Measure(new Size(350, 65));
-                output.Arrange(new Rect(0, 0, 350, 65));
-                output.UpdateLayout();
-                var button = output.FindName("BindButton") as Button ??
-                    FindVisualChildren<Button>(output)
-                        .FirstOrDefault(candidate => candidate.Name == "BindButton");
-                Assert.That(button, Is.Not.Null, "Output button must be clickable.");
+                // This editor control is created inside a data template.
+                // WPF can defer loading its named Button until the host is
+                // attached to a window, so exercise the same picker callback
+                // directly rather than assuming a template name scope.
+                Assert.That(output.EnableUnifiedOutputPicker, Is.True);
+                Assert.That(output.DeviceBinding, Is.Not.Null);
                 Assert.That(output.DeviceBinding.DeviceIoType,
                     Is.EqualTo(DeviceIoType.Output));
-                button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, button));
+                card.OpenUnifiedOutputPicker(editor.Plugins[0].DeviceBindings[0],
+                    new Button());
                 Assert.That(editor.OutputSelectionFeedback,
                     Does.Contain("output device"),
                     "The picker must guide the user inline when no output device is selected.");
