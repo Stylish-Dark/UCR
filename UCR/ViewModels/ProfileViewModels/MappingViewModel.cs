@@ -174,7 +174,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 if (device?.Device == null) continue;
                 result.Add(new ComboBoxItemViewModel(device.GetFullTitleForProfile(profile),
-                    device.Guid));
+                    device.Guid, DeviceVisualCatalog.Describe(device, profile, side)));
             }
             return result;
         }
