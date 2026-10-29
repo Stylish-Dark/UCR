@@ -606,7 +606,8 @@ var colourButton = FindVisualChildren<Button>(row)
                     .FirstOrDefault(control => control.EnableUnifiedOutputPicker);
                 Assert.That(output, Is.Not.Null,
                     "The blue Output button must use the unified control picker.");
-                var button = output.FindName("BindButton") as Button;
+                var button = FindVisualChildren<Button>(output)
+                    .FirstOrDefault(candidate => candidate.Name == "BindButton");
                 Assert.That(button, Is.Not.Null, "Output button must be clickable.");
                 Assert.That(output.DeviceBinding.DeviceIoType,
                     Is.EqualTo(DeviceIoType.Output));
