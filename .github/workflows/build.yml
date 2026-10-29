@@ -553,6 +553,15 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
 
+          # WPF tests can initialize the real UCR App through a dispatcher pump.
+          # Run against the same deployed DLL closure as UCR.exe (including RestSharp),
+          # not only assemblies copied transitively by the legacy test project.
+          Get-ChildItem -Path '.\UCR\bin\Release' -Filter '*.dll' -File |
+            ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination '.\UCR.Tests\bin\Release' -Force }
+          if (-not (Test-Path '.\UCR.Tests\bin\Release\RestSharp.dll')) {
+            throw 'RestSharp runtime dependency missing from WPF test output.'
+          }
+
           $runner = '.\packages\NUnit.ConsoleRunner.3.9.0\tools\nunit3-console.exe'
           $tests = '.\UCR.Tests\bin\Release\UCR.Tests.dll'
           if (-not (Test-Path $runner)) {
