@@ -371,12 +371,10 @@ namespace HidWizards.UCR.Views.Controls
                 // be interpreted as a controller/mouse output selection.
                 if (mappingViewModel.UsesPressCaptureForQuickOutput(descriptor))
                 {
-                    await mappingViewModel.QuickBindOutputAsync(descriptor);
-                    return true;
+                    return await mappingViewModel.QuickBindOutputAsync(descriptor);
                 }
 
-                ShowQuickOutputMenu(mappingViewModel, descriptor, placementTarget);
-                return true;
+                return ShowQuickOutputMenu(mappingViewModel, descriptor, placementTarget);
             }
             catch (Exception exception)
             {
@@ -386,21 +384,20 @@ namespace HidWizards.UCR.Views.Controls
             }
         }
 
-        private static void ShowQuickOutputMenu(MappingViewModel mappingViewModel,
+        private static bool ShowQuickOutputMenu(MappingViewModel mappingViewModel,
             BindingVisualDescriptor descriptor, FrameworkElement placementTarget)
         {
             var options = mappingViewModel.GetQuickOutputBindingOptions(descriptor);
-            var menu = CreateDarkContextMenu(placementTarget);
-
             if (options.Count == 0)
             {
                 mappingViewModel.OutputSelectionFeedback =
                     mappingViewModel.OutputSideDeviceGuid == Guid.Empty
                         ? "Choose an output device before binding a destination."
                         : "No compatible output controls are available for this device.";
-                return;
+                return false;
             }
-            else
+
+            var menu = CreateDarkContextMenu(placementTarget);
             {
                 mappingViewModel.OutputSelectionFeedback = null;
                 foreach (var option in options)
@@ -439,6 +436,7 @@ namespace HidWizards.UCR.Views.Controls
             }
 
             menu.IsOpen = true;
+            return true;
         }
 
         private static System.Collections.Generic.IEnumerable<DeviceBindingNode> FlattenPickerNodes(
