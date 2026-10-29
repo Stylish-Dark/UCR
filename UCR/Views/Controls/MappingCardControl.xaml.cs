@@ -523,6 +523,23 @@ namespace HidWizards.UCR.Views.Controls
             var sticks = presets.Where(choice => !choice.IsDPad).ToList();
             if (sticks.Count > 0)
             {
+                var directionMenu = PickerItem("Stick direction");
+                foreach (var stick in sticks)
+                {
+                    var stickItem = PickerItem(stick.Destination);
+                    for (var index = 0; index < 4; index++)
+                    {
+                        var selectedStick = stick;
+                        var selectedDirection = index;
+                        var direction = PickerItem(new[] { "← Left", "→ Right",
+                            "↑ Up", "↓ Down" }[index]);
+                        direction.Click += (s, args) =>
+                            mapping.ChooseStickDirection(selectedStick, selectedDirection);
+                        stickItem.Items.Add(direction);
+                    }
+                    directionMenu.Items.Add(stickItem);
+                }
+                menu.Items.Add(directionMenu);
                 var stickMenu = PickerItem("Full joystick");
                 foreach (var choice in sticks)
                 {
