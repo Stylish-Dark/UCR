@@ -154,7 +154,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public int Columns { get; set; }
         public Visibility CaptionVisibility =>
             string.IsNullOrWhiteSpace(Caption) ? Visibility.Collapsed : Visibility.Visible;
-        public Visibility PresetVisibility { get; set; }
+        public bool IsFourWay { get; set; }
+        public bool IsFullJoystick { get; set; }
+        public Visibility FourWayVisibility => IsFourWay ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility FullJoystickVisibility => IsFullJoystick ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility OrdinaryVisibility => !IsFourWay && !IsFullJoystick ? Visibility.Visible : Visibility.Collapsed;
         public Visibility RemoveVisibility { get; set; }
         public string PresetCaption { get; set; }
     }
@@ -206,8 +210,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     Columns = fullStick ? 2 : Mapping.DirectionalButtonOutputs ? 4 :
                         Mapping.DirectionalPairButtonOutputs ? 2 : 1,
                     Caption = groupLabel,
-                    PresetVisibility = Mapping.DirectionalButtonOutputs || fullStick
-                        ? Visibility.Visible : Visibility.Collapsed,
+                    IsFourWay = Mapping.DirectionalButtonOutputs && members.Count == 4,
+                    IsFullJoystick = fullStick && members.Count == 2,
                     RemoveVisibility = multipleSets ? Visibility.Visible : Visibility.Collapsed,
                     PresetCaption = "Preset"
                 });
