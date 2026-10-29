@@ -59,6 +59,7 @@
         <ComboBox Grid.Row="0" Grid.Column="0" x:Name="DeviceSelectionBox"
                   Width="58" Height="38" Margin="0 0 4 0" Padding="0"
                   HorizontalAlignment="Left"
+                  Visibility="{Binding DeviceSelectorVisibility, RelativeSource={RelativeSource AncestorType={x:Type local:CompactInputBindingControl}}}"
                   ItemsSource="{Binding Devices}"
                   SelectedItem="{Binding SelectedDevice}"
                   IsEnabled="{Binding BindingEnabled}"
