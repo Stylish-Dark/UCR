@@ -19,6 +19,7 @@ using HidWizards.UCR.ViewModels.Presentation;
 using HidWizards.UCR.Views.Controls;
 using HidWizards.UCR.Views.Dialogs;
 using HidWizards.UCR.Views.ProfileViews;
+using HidWizards.UCR.Plugins.Remapper;
 using NUnit.Framework;
 using MaterialDesignThemes.Wpf;
 
@@ -450,6 +451,100 @@ var colourButton = FindVisualChildren<Button>(row)
             Assert.That(colourButton, Is.Not.Null,
                 "The real device row failed before its accent-colour button was created.");
             Assert.That(colourButton.ActualHeight, Is.GreaterThan(0));
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void DirectionalMappingOutputPluginsAreOneLogicalBindingSet()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Directional set", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var mapping = profile.AddMapping("WASD");
+            for (var i = 0; i < 4; i++)
+                profile.AddPlugin(mapping, new ButtonToButton());
+            mapping.DirectionalButtonOutputs = true;
+            mapping.OutputSideType = "4-way";
+
+            var profileViewModel = new ProfileViewModel(profile);
+            try
+            {
+                var editor = profileViewModel.MappingsList.Single();
+                Assert.That(editor.OutputBindingSets.Count, Is.EqualTo(1),
+                    "Four directions are one logical output Binding Set, not four output rows.");
+                Assert.That(editor.OutputBindingSets.Single().Slots.Count, Is.EqualTo(4));
+                Assert.That(editor.OutputBindingSets.Single().IsFourWay, Is.True);
+                editor.SetDirectionalMode(4);
+                Assert.That(editor.Plugins.Count, Is.EqualTo(4),
+                    "Changing input direction slots must never add output plugins.");
+                Assert.That(editor.OutputBindingSets.Count, Is.EqualTo(1));
+
+                var card = new MappingCardControl { DataContext = editor };
+                Assert.That(card.Resources["UcrSideDevicePicker"], Is.InstanceOf<Style>(),
+                    "Side selectors must use the original icon-only device-picker presentation.");
+                Assert.That(card.Resources["UcrNotButton"], Is.InstanceOf<Style>(),
+                    "NOT must look like a button, not a switch.");
+
+                card.Measure(new Size(1250, 950));
+                card.Arrange(new Rect(0, 0, 1250, 950));
+                card.UpdateLayout();
+                var chevron = card.FindName("ExpandMappingButton") as Button;
+                Assert.That(chevron, Is.Not.Null);
+                ((IInvokeProvider)new ButtonAutomationPeer(chevron)).Invoke();
+                PumpDispatcherFor(TimeSpan.FromMilliseconds(120));
+                card.UpdateLayout();
+                var body = card.FindName("ExpandedBodyHost") as ContentControl;
+                Assert.That(body, Is.Not.Null);
+                Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible));
+                Assert.That(FindVisualChildren<Button>(body).Count(button =>
+                    string.Equals(button.Content as string, "Preset",
+                        StringComparison.OrdinalIgnoreCase)), Is.GreaterThanOrEqualTo(2),
+                    "Both four-direction sides need a centre Preset button.");
+                Assert.That(FindVisualChildren<Button>(body).Any(button =>
+                    (button.Content as string)?.Contains("4-way ▼") == true), Is.False,
+                    "The separate layout selector must not return.");
+            }
+            finally
+            {
+                profileViewModel.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void OneAxisAndOneFullJoystickHaveDifferentLogicalOutputShapes()
+        {
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Logical controls", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var oneAxis = profile.AddMapping("X axis");
+            profile.AddPlugin(oneAxis, new AxisToAxis());
+            var stick = profile.AddMapping("Left stick");
+            profile.AddPlugin(stick, new AxisToAxis());
+            profile.AddPlugin(stick, new AxisToAxis());
+            stick.OutputSideType = "Full Joystick";
+
+            var editor = new ProfileViewModel(profile);
+            try
+            {
+                var one = editor.MappingsList.Single(mapping =>
+                    mapping.Mapping.Title == "X axis");
+                var full = editor.MappingsList.Single(mapping =>
+                    mapping.Mapping.Title == "Left stick");
+                Assert.That(one.OutputBindingSets.Count, Is.EqualTo(1));
+                Assert.That(one.OutputBindingSets.Single().Slots.Count, Is.EqualTo(1),
+                    "One output axis must have only one output binding.");
+                Assert.That(full.OutputBindingSets.Count, Is.EqualTo(1),
+                    "X/Y stick channels must be grouped into ONE logical joystick.");
+                Assert.That(full.OutputBindingSets.Single().IsFullJoystick, Is.True);
+                Assert.That(full.OutputBindingSets.Single().Slots.Count, Is.EqualTo(2),
+                    "The full stick retains its two internal X/Y channel bindings.");
+            }
+            finally
+            {
+                editor.Dispose();
+            }
         }
 
         private static void PumpDispatcherFor(TimeSpan duration)
