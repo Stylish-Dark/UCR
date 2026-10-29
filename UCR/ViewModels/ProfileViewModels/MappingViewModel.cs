@@ -351,19 +351,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 Mapping.DirectionalPairButtonOutputs ||
                 string.Equals(Mapping.OutputSideType, "Full Joystick",
                     StringComparison.OrdinalIgnoreCase);
-            if (!isPreviousDirectionalSet && Plugins.Skip(1).Any(plugin =>
-                plugin.Plugin.Outputs.Any(binding => binding.IsBound) ||
-                (plugin.Plugin.Filters?.Count ?? 0) > 0))
+            if (!isPreviousDirectionalSet && Plugins.Count > 1)
             {
-                error = "Other independent output bindings are assigned. Clear them before replacing all outputs with one preset.";
+                // A four-way preset must not hijack four independent outputs
+                // just because their count happens to equal four.
+                error = "This mapping has separate output sets. Remove those sets before choosing a single directional preset.";
                 return false;
             }
             if (Plugins.Count <= numberOfSlots) return true;
-            if (!isPreviousDirectionalSet)
-            {
-                error = "This mapping already has separate outputs. Remove those outputs before replacing the mapping with one control.";
-                return false;
-            }
             if (Plugins.Skip(numberOfSlots).Any(plugin =>
                 plugin.Plugin.Outputs.Any(binding => binding.IsBound) ||
                 (plugin.Plugin.Filters?.Count ?? 0) > 0))
