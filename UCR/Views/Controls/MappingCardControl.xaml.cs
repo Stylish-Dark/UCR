@@ -309,8 +309,7 @@ namespace HidWizards.UCR.Views.Controls
                 catch (Exception exception)
                 {
                     Logger.Error("Failed to start mapping-card quick input bind", exception);
-                    DarkMessageBox.Show("UCR could not start input detection for this binding. The error has been written to the log.",
-                        "Unable to bind input", MessageBoxButton.OK, MessageBoxImage.Error);
+                    mapping.InputPresetFeedback = "Input detection could not start. Details are in the log.";
                 }
             }
             else if (lane == "Output")
@@ -355,8 +354,7 @@ namespace HidWizards.UCR.Views.Controls
             catch (Exception exception)
             {
                 Logger.Error("Failed to start mapping-card quick output bind", exception);
-                DarkMessageBox.Show("UCR could not bind this output control. The error has been written to the log.",
-                    "Unable to bind output", MessageBoxButton.OK, MessageBoxImage.Error);
+                mappingViewModel.OutputSelectionFeedback = "Output binding could not start. Details are in the log.";
                 return false;
             }
         }
@@ -695,8 +693,8 @@ namespace HidWizards.UCR.Views.Controls
             catch (Exception exception)
             {
                 Logger.Error("Unable to capture directional input", exception);
-                DarkMessageBox.Show("Unable to detect this direction: " + exception.GetBaseException().Message,
-                    "Input detection unavailable", MessageBoxButton.OK, MessageBoxImage.Error);
+                (DataContext as MappingViewModel).InputPresetFeedback =
+                    "Unable to detect this input direction. Details are in the log.";
             }
         }
 
@@ -897,8 +895,7 @@ namespace HidWizards.UCR.Views.Controls
                 {
                     if (mapping.MappingInputTypeLabel == entry.Label) return;
                     if (!mapping.ChangeInputSignalType(category))
-                        DarkMessageBox.Show("This mapping has assigned directions that cannot be converted without losing bindings. Clear those directions first.",
-                            "Input type cannot change", MessageBoxButton.OK, MessageBoxImage.Information);
+                        mapping.InputPresetFeedback = "Clear the incompatible assigned directions before changing this input type.";
                 };
                 menu.Items.Add(item);
             }
@@ -939,8 +936,7 @@ namespace HidWizards.UCR.Views.Controls
                     if (mapping.Mapping.DeviceBindings.Any(binding =>
                         binding.InputDirectionSlot > slots && binding.IsBound))
                     {
-                        DarkMessageBox.Show("Some directions are assigned. Clear those bindings before reducing the layout.",
-                            "Cannot reduce binding layout", MessageBoxButton.OK, MessageBoxImage.Information);
+                        mapping.InputPresetFeedback = "Clear assigned directions before reducing the layout.";
                         return;
                     }
                     var wasButton = mapping.MappingInputTypeLabel == "Button";
@@ -1017,8 +1013,7 @@ namespace HidWizards.UCR.Views.Controls
             joystickChoice.Click += (s, args) =>
             {
                 if (!mapping.ChangeOutputToFullJoystick())
-                    DarkMessageBox.Show("Full Joystick needs two output axes. Remove additional outputs before changing this side type.",
-                        "Cannot change output type", MessageBoxButton.OK, MessageBoxImage.Information);
+                    mapping.OutputSelectionFeedback = "A full joystick requires two compatible output axes. Clear incompatible extra outputs first.";
             };
             if (mapping.OutputDeviceSupportsControls(DeviceBindingCategory.Range, 2))
                 menu.Items.Add(joystickChoice);
@@ -1176,7 +1171,7 @@ namespace HidWizards.UCR.Views.Controls
             if (mapping == null || string.IsNullOrEmpty(preset)) return;
             string error;
             if (!mapping.ApplyKeyboardAxisPreset(preset, out error) && !string.IsNullOrEmpty(error))
-                DarkMessageBox.Show(error, "Keyboard preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+                mapping.InputPresetFeedback = error;
         }
 
         private void AxisStickInputPreset_OnClick(object sender, RoutedEventArgs e)
@@ -1186,8 +1181,7 @@ namespace HidWizards.UCR.Views.Controls
             if (mapping == null || !int.TryParse((sender as Button)?.Tag as string, out index)) return;
             string error;
             if (!mapping.ApplyControllerStickInputPreset(index, out error) && !string.IsNullOrEmpty(error))
-                DarkMessageBox.Show(error, "Controller input preset unavailable", MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                mapping.InputPresetFeedback = error;
         }
 
         private void AxisControllerPreset_OnClick(object sender, RoutedEventArgs e)
@@ -1196,7 +1190,7 @@ namespace HidWizards.UCR.Views.Controls
             if (axis?.MappingViewModel == null) return;
             string error;
             if (!axis.MappingViewModel.ApplyControllerDPadPreset(out error) && !string.IsNullOrEmpty(error))
-                DarkMessageBox.Show(error, "Controller preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+                axis.MappingViewModel.OutputSelectionFeedback = error;
         }
 
         private void AxisInvertX_OnClick(object sender, RoutedEventArgs e) => SetFourWayInversion(sender, "InvertX");
