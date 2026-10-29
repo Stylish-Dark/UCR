@@ -371,17 +371,15 @@ namespace HidWizards.UCR.Views.Controls
 
             if (options.Count == 0)
             {
-                menu.Items.Add(new MenuItem
-                {
-                    Header = "No compatible controls",
-                    IsEnabled = false,
-                    Foreground = Brushes.Gray,
-                    Background = Brushes.Transparent,
-                    Padding = new Thickness(10, 6, 14, 6)
-                });
+                mappingViewModel.OutputSelectionFeedback =
+                    mappingViewModel.OutputSideDeviceGuid == Guid.Empty
+                        ? "Choose an output device before binding a destination."
+                        : "No compatible output controls are available for this device.";
+                return;
             }
             else
             {
+                mappingViewModel.OutputSelectionFeedback = null;
                 foreach (var option in options)
                 {
                     var capturedOption = option;
