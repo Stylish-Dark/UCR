@@ -1371,23 +1371,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var inputs = InputConditions?.FirstOrDefault()?.DirectionalInputs?.ToList();
             if (!ButtonsEnabled || inputs == null || inputs.Count != 4)
             {
-                error = "Choose the four-way joystick input mode first.";
+                error = "This output needs four input directions before the D-pad preset can be used.";
                 return false;
             }
             var profile = ProfileViewModel.Profile;
-            var selectedGuid = inputs[0].DeviceBinding.DeviceConfigurationGuid;
+            var selectedGuid = InputSideDeviceGuid;
             var device = profile.GetDeviceConfiguration(DeviceIoType.Input, selectedGuid);
             var dpad = FindDPadControls(device, DeviceIoType.Input);
-            if (dpad == null && selectedGuid == Guid.Empty)
-            {
-                foreach (var candidate in profile.GetDeviceConfigurationList(DeviceIoType.Input))
-                {
-                    dpad = FindDPadControls(candidate, DeviceIoType.Input);
-                    if (dpad == null) continue;
-                    device = candidate;
-                    break;
-                }
-            }
             if (device == null || dpad == null)
             {
                 error = "Select a controller with a D-pad in the shared device picker, or add one to this profile.";
@@ -1416,7 +1406,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var inputs = InputConditions?.FirstOrDefault()?.DirectionalInputs?.ToList();
             if (!ButtonsEnabled || inputs == null || inputs.Count < 2)
             {
-                error = "Choose a two-way or four-way input first.";
+                error = "Select an axis or directional output before choosing this input preset.";
                 return false;
             }
             var fourWay = inputs.Count == 4;
@@ -1439,16 +1429,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             string[] keys;
             if (!patterns.TryGetValue(preset, out keys)) return false;
             var profile = ProfileViewModel.Profile;
-            var current = profile.GetDeviceConfiguration(DeviceIoType.Input,
-                inputs[0].DeviceBinding.DeviceConfigurationGuid);
-            var keyboard = current != null &&
-                DeviceVisualCatalog.Describe(current.Device, DeviceIoType.Input).Kind == DeviceVisualKind.Keyboard
-                ? current : profile.GetDeviceConfigurationList(DeviceIoType.Input).FirstOrDefault(config =>
-                    config?.Device != null &&
-                    DeviceVisualCatalog.Describe(config.Device, DeviceIoType.Input).Kind == DeviceVisualKind.Keyboard);
-            if (keyboard == null)
+            // Presets must respect the device explicitly selected for the
+            // INPUT side. Never silently bind a different keyboard.
+            var selectedGuid = InputSideDeviceGuid;
+            var keyboard = profile.GetDeviceConfiguration(DeviceIoType.Input, selectedGuid);
+            if (selectedGuid == Guid.Empty || keyboard?.Device == null)
             {
-                error = "Add a keyboard to this profile first.";
+                error = "Select the input keyboard using its device icon first.";
+                return false;
+            }
+            if (DeviceVisualCatalog.Describe(keyboard.Device, DeviceIoType.Input).Kind !=
+                DeviceVisualKind.Keyboard)
+            {
+                error = "The selected input device is not a keyboard.";
                 return false;
             }
             var controls = FlattenBindingNodes(profile.Context.DevicesManager.GetDeviceBindingMenu(
