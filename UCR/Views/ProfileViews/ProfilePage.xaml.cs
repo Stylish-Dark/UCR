@@ -1345,12 +1345,79 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (mapping?.ButtonsEnabled == true) mapping.Rename();
         }
 
-        private void ToggleInlineMapping_OnClick(object sender, RoutedEventArgs e)
+        private void DeleteMappingRow_OnClick(object sender, RoutedEventArgs e)
         {
             e.Handled = true;
             var mapping = (sender as FrameworkElement)?.DataContext as MappingViewModel;
+            if (mapping?.ButtonsEnabled != true) return;
+            if (MappingCardControl.RequiresDeleteConfirmation(mapping) &&
+                MessageBox.Show("Delete mapping '" + mapping.MappingTitle + "'?", "Delete mapping",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                return;
+            mapping.Remove();
+        }
+
+        private void ToggleInlineMapping_OnClick(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            var button = sender as Button;
+            var mapping = button?.DataContext as MappingViewModel;
             if (mapping == null) return;
-            mapping.IsExpanded = !mapping.IsExpanded;
+
+            // The row's two action buttons share a StackPanel within the header Grid.
+            // Animate the editor itself instead of suddenly revealing its entire height.
+            var header = (button.Parent as StackPanel)?.Parent as Grid;
+            var row = header?.Parent as StackPanel;
+            var editor = row?.Children.OfType<ContentControl>().FirstOrDefault();
+            if (editor == null)
+            {
+                mapping.IsExpanded = !mapping.IsExpanded;
+                return;
+            }
+
+            editor.BeginAnimation(FrameworkElement.HeightProperty, null);
+            if (!mapping.IsExpanded)
+            {
+                mapping.IsExpanded = true;
+                editor.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (!mapping.IsExpanded || !editor.IsVisible) return;
+                    editor.Height = double.NaN;
+                    editor.Measure(new Size(Math.Max(1, editor.ActualWidth), double.PositiveInfinity));
+                    var target = editor.DesiredSize.Height;
+                    if (target <= 0) return;
+                    editor.Height = 0;
+                    var animation = new DoubleAnimation(0, target, TimeSpan.FromMilliseconds(190))
+                    {
+                        EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+                    };
+                    animation.Completed += (o, args) =>
+                    {
+                        if (mapping.IsExpanded)
+                        {
+                            editor.BeginAnimation(FrameworkElement.HeightProperty, null);
+                            editor.Height = double.NaN;
+                        }
+                    };
+                    editor.BeginAnimation(FrameworkElement.HeightProperty, animation);
+                }), DispatcherPriority.Loaded);
+            }
+            else
+            {
+                var start = editor.ActualHeight;
+                editor.Height = start;
+                var animation = new DoubleAnimation(start, 0, TimeSpan.FromMilliseconds(150))
+                {
+                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
+                };
+                animation.Completed += (o, args) =>
+                {
+                    editor.BeginAnimation(FrameworkElement.HeightProperty, null);
+                    mapping.IsExpanded = false;
+                    editor.Height = double.NaN;
+                };
+                editor.BeginAnimation(FrameworkElement.HeightProperty, animation);
+            }
         }
 
         private void MappingListView_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
