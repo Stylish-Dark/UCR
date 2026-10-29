@@ -586,6 +586,49 @@ var colourButton = FindVisualChildren<Button>(row)
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void QuickOutputSelectionBindsARealProfileDestinationAndRejectsStaleDevices()
+        {
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Output binding", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var outputDevice = new DeviceConfiguration(
+                new Device("Test output keyboard", "Core_Interception", "keyboard", 0));
+            profile.AddDeviceConfigurations(new List<DeviceConfiguration> { outputDevice }, DeviceIoType.Output);
+            var mapping = profile.AddMapping("Output picker");
+            profile.AddPlugin(mapping, new ButtonToButton());
+            var viewModel = new ProfileViewModel(profile);
+            try
+            {
+                var editor = viewModel.MappingsList.Single();
+                var output = editor.Plugins.Single().DeviceBindings.Single().DeviceBinding;
+                var descriptor = new BindingVisualDescriptor { BindingGuid = output.Guid };
+                var stale = new QuickBindingOption
+                {
+                    DeviceConfigurationGuid = Guid.NewGuid(), KeyType = 1, KeyValue = 42
+                };
+                Assert.That(editor.ApplyQuickOutputBinding(descriptor, stale), Is.False);
+                Assert.That(output.IsBound, Is.False,
+                    "A removed or unknown output device must not result in a ghost binding.");
+
+                var choice = new QuickBindingOption
+                {
+                    DeviceConfigurationGuid = outputDevice.Guid, KeyType = 1, KeyValue = 42
+                };
+                Assert.That(editor.ApplyQuickOutputBinding(descriptor, choice), Is.True,
+                    "Choosing a real output control must assign the destination.");
+                Assert.That(output.IsBound, Is.True);
+                Assert.That(output.DeviceConfigurationGuid, Is.EqualTo(outputDevice.Guid));
+                Assert.That(output.KeyValue, Is.EqualTo(42));
+                Assert.That(editor.OutputSelectionFeedback, Is.Null);
+            }
+            finally
+            {
+                viewModel.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void SelectingNoOutputDeviceIsValidAndKeepsTheMapping()
         {
             EnsureApplicationResources();
