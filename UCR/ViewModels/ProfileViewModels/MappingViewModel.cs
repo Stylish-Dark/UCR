@@ -471,6 +471,73 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return true;
         }
 
+        // A single stick direction is one output axis with a specified
+        // negative/positive endpoint, driven by ONE input condition. It is
+        // neither two physical outputs nor an entire two-axis joystick.
+        public bool ChooseStickDirection(FourWayOutputChoice choice, int direction)
+        {
+            OutputSelectionFeedback = null;
+            if (!ButtonsEnabled || choice == null || choice.IsDPad ||
+                choice.Controls?.Length != 2 || direction < 0 || direction > 3 ||
+                Plugins == null || Plugins.Count == 0) return false;
+
+            if (Mapping.DeviceBindings.Any(input => input.InputDirectionSlot > 1 && input.IsBound))
+            {
+                OutputSelectionFeedback =
+                    "This direction requires one input. Clear extra assigned input directions first.";
+                return false;
+            }
+            string reason;
+            if (!ExtraOutputsCanBeReused(1, out reason))
+            {
+                OutputSelectionFeedback = reason;
+                return false;
+            }
+
+            var template = GetCompatiblePluginOptions().FirstOrDefault(option =>
+                string.Equals(option.Name, "Button to Axis", StringComparison.OrdinalIgnoreCase))?.Plugin;
+            if (template == null)
+            {
+                OutputSelectionFeedback = "The single-direction axis driver is unavailable.";
+                return false;
+            }
+            DropUnassignedExtraOutputs(1);
+            if (!ChangeOutputType(Plugins[0], template))
+            {
+                OutputSelectionFeedback = "Unable to select the requested stick direction.";
+                return false;
+            }
+            // ChangeOutputType may have created empty paired input slots for
+            // a full axis. A signed *direction* is only one input condition.
+            if (Mapping.DeviceBindings.Any(input => input.InputDirectionSlot > 0))
+                RestoreBooleanInputsAfterAxis();
+
+            var plugin = Plugins[0].Plugin;
+            var binding = Plugins[0].DeviceBindings.FirstOrDefault()?.DeviceBinding;
+            if (binding == null) return false;
+            var info = choice.Controls[direction < 2 ? 0 : 1];
+            binding.DeviceBindingCategory = DeviceBindingCategory.Range;
+            binding.SetDeviceConfigurationGuid(choice.DeviceConfigurationGuid, false);
+            binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+
+            var pressed = plugin.GetType().GetProperty("RangePressed");
+            var released = plugin.GetType().GetProperty("Range");
+            var initialize = plugin.GetType().GetProperty("Initialize");
+            if (pressed == null || released == null) return false;
+            pressed.SetValue(plugin, direction == 0 || direction == 2 ? -100d : 100d, null);
+            released.SetValue(plugin, 0d, null);
+            if (initialize != null) initialize.SetValue(plugin, true, null);
+            Mapping.OutputSideType = choice.Destination + " " +
+                new[] { "←", "→", "↑", "↓" }[direction];
+            Mapping.DirectionalButtonOutputs = false;
+            Mapping.DirectionalPairButtonOutputs = false;
+            Plugins[0].DeviceBindings[0].RefreshDeviceList();
+            ProfileViewModel.Profile.Context.ContextChanged();
+            RefreshHeaderState();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
         private static bool KeyboardOutputKind(DeviceConfiguration device)
         {
             return device?.Device != null && DeviceVisualCatalog.Describe(
