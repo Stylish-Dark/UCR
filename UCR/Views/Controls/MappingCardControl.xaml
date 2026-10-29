@@ -408,6 +408,12 @@
                                                 Click="OpenDirectionalPresetMenu_OnClick"
                                                 ToolTip="Choose a complete input binding preset"/>
                                     </Grid>
+                                    <TextBlock Text="{Binding DataContext.InputPresetFeedback,
+                                        RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
+                                        Foreground="#FFBD83" FontSize="12" TextWrapping="Wrap"
+                                        Visibility="{Binding DataContext.InputPresetFeedbackVisibility,
+                                        RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
+                                        Margin="2 5 0 4"/>
                                     <StackPanel Orientation="Horizontal" Margin="0 5 0 0">
                                         <TextBlock Text="Block" VerticalAlignment="Center" Margin="0 0 7 0"/>
                                         <ToggleButton IsChecked="{Binding DirectionalBlockEnabled, Mode=OneWay}"
@@ -707,6 +713,9 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                        <TextBlock Text="{Binding OutputSelectionFeedback}"
+                                   Foreground="#FFBD83" FontSize="12" Margin="2 0 0 8"
+                                   TextWrapping="Wrap" Visibility="{Binding OutputFeedbackVisibility}"/>
                         <Button Content="{Binding AddOutputCaption}" Click="AddPlugin_OnClick"
                             Height="34" Padding="12 3" Margin="3 8 0 2"
                             HorizontalAlignment="Left" IsEnabled="{Binding ButtonsEnabled}"
