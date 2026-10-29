@@ -709,25 +709,55 @@ namespace HidWizards.UCR.Views.Controls
         private void OpenDirectionalPresetMenu_OnClick(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
-            if (button?.ContextMenu == null) return;
-            button.ContextMenu.PlacementTarget = button;
-            button.ContextMenu.Placement = PlacementMode.Bottom;
-            button.ContextMenu.IsOpen = true;
-        }
-
-        private void DirectionalPreset_OnClick(object sender, RoutedEventArgs e)
-        {
-            var menuItem = sender as MenuItem;
-            var preset = menuItem?.Tag as string;
             var mapping = DataContext as MappingViewModel;
-            if (mapping?.ButtonsEnabled != true || string.IsNullOrEmpty(preset)) return;
-            string error;
-            var applied = preset == "DPad"
-                ? mapping.ApplyDirectionalDPadPreset(out error)
-                : mapping.ApplyDirectionalKeyboardPreset(preset, out error);
-            if (!applied && !string.IsNullOrEmpty(error))
-                DarkMessageBox.Show(error, "Directional preset unavailable",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+            if (button == null || mapping?.ButtonsEnabled != true) return;
+            var menu = CreateDarkContextMenu(button);
+            menu.Placement = PlacementMode.Bottom;
+            var device = mapping.ProfileViewModel.Profile.GetDeviceConfiguration(
+                DeviceIoType.Input, mapping.InputSideDeviceGuid);
+            var keyboard = device?.Device != null && DeviceVisualCatalog.Describe(
+                device, mapping.ProfileViewModel.Profile, DeviceIoType.Input)
+                .Kind == DeviceVisualKind.Keyboard;
+            // One shortcut for all input slots; individual slots remain bindable.
+            foreach (var pair in new[]
+            {
+                new { Title = "WASD", Key = "WASD" },
+                new { Title = "Arrow Keys", Key = "Arrows" },
+                new { Title = "Numpad", Key = "Numpad" },
+                new { Title = "UHJL", Key = "UHJL" }
+            })
+            {
+                if (!keyboard && device != null) continue;
+                var selected = pair.Key;
+                var item = PickerItem(pair.Title);
+                item.Click += (s, args) =>
+                {
+                    string error;
+                    var applied = mapping.ApplyDirectionalKeyboardPreset(selected, out error);
+                    mapping.InputPresetFeedback = applied ? null :
+                        (error ?? "This input preset is unavailable.");
+                };
+                menu.Items.Add(item);
+            }
+            if (device == null || mapping.SelectedPresetInputHasDPad)
+            {
+                var item = PickerItem("Controller D-pad");
+                item.Click += (s, args) =>
+                {
+                    string error;
+                    var applied = mapping.ApplyDirectionalDPadPreset(out error);
+                    mapping.InputPresetFeedback = applied ? null :
+                        (error ?? "This D-pad is unavailable.");
+                };
+                menu.Items.Add(item);
+            }
+            if (menu.Items.Count == 0)
+                menu.Items.Add(new MenuItem
+                {
+                    Header = "No presets for this input device",
+                    IsEnabled = false
+                });
+            menu.IsOpen = true;
         }
 
         private void DirectionalType_OnClick(object sender, RoutedEventArgs e)
