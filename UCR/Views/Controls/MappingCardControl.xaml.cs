@@ -227,7 +227,11 @@ namespace HidWizards.UCR.Views.Controls
         public static bool RequiresDeleteConfirmation(MappingViewModel mapping)
         {
             if (mapping?.Mapping == null) return false;
-            return mapping.Mapping.DeviceBindings != null && mapping.Mapping.DeviceBindings.Any(binding => binding != null && binding.IsBound);
+            // An empty mapping is disposable without interruption. A configured
+            // source OR destination is user work worth confirming before deletion.
+            return (mapping.Mapping.DeviceBindings?.Any(binding => binding?.IsBound == true) == true) ||
+                   (mapping.Mapping.Plugins?.Any(plugin =>
+                       plugin?.Outputs?.Any(binding => binding?.IsBound == true) == true) == true);
         }
 
         private void Remove_OnClick(object sender, RoutedEventArgs e)
