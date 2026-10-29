@@ -2668,10 +2668,20 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var bindingViewModel = ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
             if (bindingViewModel?.DeviceBinding == null || !bindingViewModel.BindingEnabled) return false;
 
+            // Menu selections can outlive a device removal or profile change.
+            // Never create an apparently bound destination with no real output device.
+            var profile = ProfileViewModel.Profile;
+            if (profile.GetDeviceConfiguration(DeviceIoType.Output, option.DeviceConfigurationGuid)?.Device == null)
+            {
+                OutputSelectionFeedback = "Choose an available output device before binding a destination.";
+                return false;
+            }
+
             var binding = bindingViewModel.DeviceBinding;
             binding.DeviceBindingCategory = bindingViewModel.DeviceBindingCategory;
             binding.SetDeviceConfigurationGuid(option.DeviceConfigurationGuid);
             binding.SetKeyTypeValue(option.KeyType, option.KeyValue, option.KeySubValue);
+            OutputSelectionFeedback = null;
             bindingViewModel.RefreshDeviceList();
             RefreshCollapsedSummary();
             return true;
