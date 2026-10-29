@@ -398,41 +398,39 @@ namespace HidWizards.UCR.Views.Controls
             }
 
             var menu = CreateDarkContextMenu(placementTarget);
+            mappingViewModel.OutputSelectionFeedback = null;
+            foreach (var option in options)
             {
-                mappingViewModel.OutputSelectionFeedback = null;
-                foreach (var option in options)
+                var capturedOption = option;
+                var header = new StackPanel { Orientation = Orientation.Horizontal };
+                var visual = capturedOption.Visual;
+                header.Children.Add(new ControlGlyphControl
                 {
-                    var capturedOption = option;
-                    var header = new StackPanel { Orientation = Orientation.Horizontal };
-                    var visual = capturedOption.Visual;
-                    header.Children.Add(new ControlGlyphControl
-                    {
-                        Width = 46,
-                        Height = 27,
-                        Margin = new Thickness(0, 0, 8, 0),
-                        Kind = visual?.ControlKind ?? ControlVisualKind.Unknown,
-                        AccentBrush = visual?.ControlBrush ?? Brushes.Gray,
-                        Label = visual?.ControlLabel ?? "?"
-                    });
-                    header.Children.Add(new TextBlock
-                    {
-                        Text = capturedOption.Title,
-                        VerticalAlignment = VerticalAlignment.Center,
-                        Foreground = Brushes.White
-                    });
+                    Width = 46,
+                    Height = 27,
+                    Margin = new Thickness(0, 0, 8, 0),
+                    Kind = visual?.ControlKind ?? ControlVisualKind.Unknown,
+                    AccentBrush = visual?.ControlBrush ?? Brushes.Gray,
+                    Label = visual?.ControlLabel ?? "?"
+                });
+                header.Children.Add(new TextBlock
+                {
+                    Text = capturedOption.Title,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Foreground = Brushes.White
+                });
 
-                    var item = new MenuItem
-                    {
-                        Header = header,
-                        ToolTip = visual?.ToolTip,
-                        Foreground = Brushes.White,
-                        Background = Brushes.Transparent,
-                        Padding = new Thickness(8, 4, 12, 4)
-                    };
-                    item.Click += (clickSender, clickArgs) =>
-                        mappingViewModel.ApplyQuickOutputBinding(descriptor, capturedOption);
-                    menu.Items.Add(item);
-                }
+                var item = new MenuItem
+                {
+                    Header = header,
+                    ToolTip = visual?.ToolTip,
+                    Foreground = Brushes.White,
+                    Background = Brushes.Transparent,
+                    Padding = new Thickness(8, 4, 12, 4)
+                };
+                item.Click += (clickSender, clickArgs) =>
+                    mappingViewModel.ApplyQuickOutputBinding(descriptor, capturedOption);
+                menu.Items.Add(item);
             }
 
             menu.IsOpen = true;
