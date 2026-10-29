@@ -250,11 +250,11 @@ namespace HidWizards.UCR.Views.Controls
             catch (Exception exception)
             {
                 Logger.Error("Unable to start control detection", exception);
-                var reason = exception.GetBaseException()?.Message ?? exception.Message;
-                HidWizards.UCR.Utilities.DarkMessageBox.Show(
-                    "Unable to start detection for the selected device. " + reason +
-                    "\n\nChoose the control from the menu instead, or check that the input device is connected.",
-                    "Control detection unavailable", MessageBoxButton.OK, MessageBoxImage.Error);
+                var mapping = FindAncestor<MappingCardControl>(this)?.DataContext
+                    as MappingViewModel;
+                if (mapping != null)
+                    mapping.InputPresetFeedback =
+                        "Input detection could not start. Check the input device or use the binding menu.";
             }
         }
 
