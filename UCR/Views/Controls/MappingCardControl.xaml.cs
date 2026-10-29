@@ -849,8 +849,9 @@ namespace HidWizards.UCR.Views.Controls
             var guid = (Guid)selected.Value;
             if (guid == mapping.InputSideDeviceGuid) return;
             if (!mapping.ChangeInputSideDevice(guid))
-                DarkMessageBox.Show("This input device cannot be selected for the current mapping.",
-                    "Input device unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+                mapping.InputPresetFeedback = "This input device is unavailable for the current mapping.";
+            else
+                mapping.InputPresetFeedback = null;
             mapping.RefreshSideDeviceChoices();
         }
 
@@ -863,8 +864,9 @@ namespace HidWizards.UCR.Views.Controls
             var guid = (Guid)selected.Value;
             if (guid == mapping.OutputSideDeviceGuid) return;
             if (!mapping.ChangeOutputSideDevice(guid))
-                DarkMessageBox.Show("This device has no compatible output type for the mapping.",
-                    "Output device unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+                mapping.OutputSelectionFeedback = "This output device is unavailable.";
+            else
+                mapping.OutputSelectionFeedback = null;
             mapping.RefreshSideDeviceChoices();
         }
 
