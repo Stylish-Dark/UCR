@@ -29,6 +29,17 @@ namespace HidWizards.UCR.Tests.UiTests
     [NonParallelizable]
     internal class DeviceManagerPageSmokeTests
     {
+        // WPF schedules OnStartup as soon as an Application is constructed.
+        // These unit tests need App.xaml resources, not a second live UCR
+        // instance, hardware initialization or a real startup window.
+        private sealed class ResourceOnlyApp : App
+        {
+            protected override void OnStartup(StartupEventArgs e)
+            {
+                // Intentionally suppress the production startup lifecycle.
+            }
+        }
+
         private sealed class FakeDevicePageViewModel
         {
             public IList<DeviceManagerItemViewModel> Devices { get; }
@@ -734,7 +745,7 @@ var colourButton = FindVisualChildren<Button>(row)
         private static void EnsureApplicationResources()
         {
             if (Application.Current != null) return;
-            var app = new App();
+            var app = new ResourceOnlyApp();
             app.InitializeComponent();
         }
     }
