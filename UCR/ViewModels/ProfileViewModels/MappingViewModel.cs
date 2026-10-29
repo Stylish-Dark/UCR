@@ -870,22 +870,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                         ChangeOutputType(output, axisTemplate);
             }
 
-            // A joystick needs two independent analogue destinations (X and Y).
-            // Do not automatically delete the user's existing outputs when switching back.
-            if (slots == 4 && HasAxisOutput && Plugins.Count(p => p.OutputType == "Axis") < 2)
-                AddDefaultOutput();
-
-            // The opposing Button side gets one independently bindable
-            // destination per source direction; its extra slots are not
-            // separate OR groups and must not all emit the same Boolean.
-            if (Plugins.Count > 0 && Plugins.All(p => p.OutputType == "Button"))
-            {
-                var outputSlots = slots == 4 ? 4 : slots == 2 ? 2 : 1;
-                var completedSet = EnsureOutputSlotMultiple(outputSlots);
-                Mapping.DirectionalButtonOutputs = completedSet && slots == 4;
-                Mapping.DirectionalPairButtonOutputs = completedSet && slots == 2;
-                ProfileViewModel.Profile.Context.ContextChanged();
-            }
+            // The OUTPUT selection alone determines how many destinations
+            // exist. Four input directions must never fabricate four outputs.
+            // A single axis stays ONE physical output binding; a full stick is
+            // only a grouped X/Y output when explicitly selected.
 
             RebuildDirectionalEditors();
         }
