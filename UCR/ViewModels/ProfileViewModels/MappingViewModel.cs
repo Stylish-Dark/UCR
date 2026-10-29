@@ -347,11 +347,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private bool ExtraOutputsCanBeReused(int numberOfSlots, out string error)
         {
             error = null;
-            if (Plugins.Count <= numberOfSlots) return true;
             var isPreviousDirectionalSet = Mapping.DirectionalButtonOutputs ||
                 Mapping.DirectionalPairButtonOutputs ||
                 string.Equals(Mapping.OutputSideType, "Full Joystick",
                     StringComparison.OrdinalIgnoreCase);
+            if (!isPreviousDirectionalSet && Plugins.Skip(1).Any(plugin =>
+                plugin.Plugin.Outputs.Any(binding => binding.IsBound) ||
+                (plugin.Plugin.Filters?.Count ?? 0) > 0))
+            {
+                error = "Other independent output bindings are assigned. Clear them before replacing all outputs with one preset.";
+                return false;
+            }
+            if (Plugins.Count <= numberOfSlots) return true;
             if (!isPreviousDirectionalSet)
             {
                 error = "This mapping already has separate outputs. Remove those outputs before replacing the mapping with one control.";
@@ -414,6 +421,20 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     "This axis uses two input directions. Clear the extra assigned directions before switching.";
                 return false;
             }
+            if (!requestedAxis && UnneededInputDirectionsAreBound(1))
+            {
+                OutputSelectionFeedback =
+                    "This button uses one input slot. Clear the extra assigned directions before changing the output.";
+                return false;
+            }
+            if (!requestedAxis && Mapping.DeviceBindings.Any(input =>
+                input.InputDirectionSlot > 0 && input.IsBound &&
+                input.InputExpressionInputKind != 0))
+            {
+                OutputSelectionFeedback =
+                    "This source contains an assigned analogue direction. Choose a single input control before changing to a button.";
+                return false;
+            }
 
             var template = FindOutputPlugin(category);
             if (template == null)
@@ -458,8 +479,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (requestedAxis && buttonInput)
                 SetDirectionalMode(2);
             else if (!requestedAxis &&
-                Mapping.DeviceBindings.Any(input => input.InputDirectionSlot > 0) &&
-                Mapping.DeviceBindings.All(input => !input.IsBound))
+                Mapping.DeviceBindings.Any(input => input.InputDirectionSlot > 0))
                 RestoreBooleanInputsAfterAxis();
 
             Mapping.DirectionalButtonOutputs = false;
