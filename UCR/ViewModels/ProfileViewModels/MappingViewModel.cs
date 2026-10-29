@@ -706,8 +706,74 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool CanMoveDown => ButtonsEnabled && ProfileViewModel.CanMoveMapping(this, 1);
         public string MappingRoute => Mapping != null && Mapping.Plugins.Count > 0 ? Mapping.Plugins[0].PluginName : "No plugin";
         public string MappingRouteDisplay => SupportsNativeInputExpression
-            ? "Inputs → " + ((Plugins?.Count ?? 0) > 1 ? "Outputs" : MappingOutputCategoryDisplay)
-            : FormatMappingRoute(MappingRoute, Mapping?.DeviceBindings?.Count ?? 0, Mapping?.Plugins?.Sum(p => p.Outputs?.Count ?? 0) ?? 0);
+            ? CollapsedInputSetName() + " → " + CollapsedOutputSetName()
+            : FormatMappingRoute(MappingRoute, Mapping?.DeviceBindings?.Count ?? 0,
+                Mapping?.Plugins?.Sum(p => p.Outputs?.Count ?? 0) ?? 0);
+
+        private static bool MatchesBoundKey(DeviceBinding binding, string expected)
+        {
+            if (binding?.IsBound != true) return false;
+            try
+            {
+                var boundName = binding.BoundName();
+                var leaf = boundName.Split(new[] { '\\', '/', ':', '>' },
+                    StringSplitOptions.RemoveEmptyEntries).LastOrDefault()?.Trim() ?? "";
+                var requested = NormalizeAxisPresetKey(expected);
+                var actual = NormalizeAxisPresetKey(leaf);
+                return MatchesKeyName(leaf, expected) ||
+                    actual == "KEY" + requested || actual == "NUM" + requested ||
+                    (actual.StartsWith("KEY") && actual.Substring(3) == requested);
+            }
+            catch { return false; }
+        }
+
+        private string CollapsedInputSetName()
+        {
+            var directions = Mapping?.DeviceBindings?.Where(input =>
+                input.InputExpressionGroup == 0 && input.InputDirectionSlot > 0).ToList();
+            if (directions?.Count != 4) return "Inputs";
+            var ordered = new[] { 3, 4, 1, 2 }
+                .Select(slot => directions.FirstOrDefault(input => input.InputDirectionSlot == slot))
+                .ToArray();
+            if (ordered.Any(input => input == null)) return "Inputs";
+            foreach (var preset in new[]
+            {
+                new { Name = "WASD", Keys = new[] { "W", "S", "A", "D" } },
+                new { Name = "Arrow Keys", Keys = new[] { "Up", "Down", "Left", "Right" } },
+                new { Name = "Numpad", Keys = new[] { "Numpad8", "Numpad2", "Numpad4", "Numpad6" } },
+                new { Name = "UHJL", Keys = new[] { "U", "J", "H", "L" } }
+            })
+                if (Enumerable.Range(0, 4).All(index =>
+                    MatchesBoundKey(ordered[index], preset.Keys[index])))
+                    return preset.Name;
+            return "Inputs";
+        }
+
+        private string CollapsedOutputSetName()
+        {
+            if (Mapping?.DirectionalButtonOutputs == true && Plugins?.Count >= 4)
+            {
+                var outputs = Plugins.Take(4)
+                    .Select(plugin => plugin.Plugin.Outputs.FirstOrDefault()).ToArray();
+                foreach (var preset in OutputKeyboardPatterns)
+                    if (Enumerable.Range(0, 4).All(index =>
+                        MatchesBoundKey(outputs[index], preset.Value[index])))
+                        return preset.Key;
+                return string.Equals(Mapping.OutputSideType, "D-pad",
+                    StringComparison.OrdinalIgnoreCase) ? "D-pad" : "4-way";
+            }
+            if (string.Equals(Mapping?.OutputSideType,
+                "Full Joystick", StringComparison.OrdinalIgnoreCase))
+            {
+                var first = Plugins?.FirstOrDefault()?.Plugin.Outputs.FirstOrDefault();
+                if (first?.IsBound == true)
+                    return first.KeyValue == 0 ? "Left joystick" :
+                        first.KeyValue == 2 ? "Right joystick" : "Full joystick";
+                return "Full joystick";
+            }
+            if ((Plugins?.Count ?? 0) > 1) return "Outputs";
+            return MappingOutputCategoryDisplay;
+        }
         public List<MappingHeaderToken> MappingRouteTokens => _mappingRouteTokens;
         public string MappingOutputTypeLabel => _mappingOutputTypeLabel;
         public string AddOutputCaption =>
@@ -961,11 +1027,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             _collapsedInputVisuals = BuildCollapsedInputVisuals();
             _collapsedInputRows = BuildCollapsedInputRows();
             _collapsedOutputVisuals = BuildCollapsedOutputVisuals();
-            _collapsedOutputRows = _collapsedOutputVisuals.Select(visual =>
-                new CollapsedConditionVisualRow
-                {
-                    Visuals = new List<BindingVisualDescriptor> { visual }
-                }).ToList();
+            _collapsedOutputRows = BuildCollapsedOutputRows();
+            _mappingRouteTokens = BuildMappingRouteTokens(MappingRouteDisplay);
+            OnPropertyChanged(nameof(MappingRouteTokens));
+            OnPropertyChanged(nameof(MappingRouteDisplay));
 
             OnPropertyChanged(nameof(CollapsedSummary));
             OnPropertyChanged(nameof(CollapsedInputVisuals));
@@ -2704,7 +2769,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     var visual = DescribeCollapsedBinding(bindings[i]);
                     if (i > 0 && bindings[i].DeviceBinding.InputDirectionSlot > 0 &&
                         bindings[i - 1].DeviceBinding.InputDirectionSlot > 0)
-                        visual.JoinSymbol = "∨";
+                        visual.JoinSymbol = "·";
                     visuals.Add(visual);
                 }
                 // Four independent directions are one visual row, not an AND
@@ -2758,6 +2823,37 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 result.Add(DeviceVisualCatalog.DescribeBinding(null, DeviceBindingCategory.Momentary, ProfileViewModel.Profile));
             }
             return result;
+        }
+
+        private List<CollapsedConditionVisualRow> BuildCollapsedOutputRows()
+        {
+            var rows = new List<CollapsedConditionVisualRow>();
+            // A preset is one logical output Binding Set even though UCR's
+            // underlying engine addresses its four directions separately.
+            foreach (var set in OutputBindingSets)
+            {
+                var visuals = set.Slots.Select(slot => DescribeCollapsedBinding(slot.Binding)).ToList();
+                if (visuals.Count > 0)
+                    rows.Add(new CollapsedConditionVisualRow { Visuals = visuals });
+                else if (set.Primary?.Plugin?.Group == "Filter")
+                {
+                    var name = set.Primary.Plugin.GetDefinedFilterName();
+                    rows.Add(new CollapsedConditionVisualRow
+                    {
+                        Visuals = new List<BindingVisualDescriptor>
+                        {
+                            DeviceVisualCatalog.Filter(string.IsNullOrWhiteSpace(name)
+                                ? "Set filter name" : name)
+                        }
+                    });
+                }
+            }
+            if (rows.Count == 0)
+                rows.Add(new CollapsedConditionVisualRow
+                {
+                    Visuals = BuildCollapsedOutputVisuals()
+                });
+            return rows;
         }
 
         private List<BindingVisualDescriptor> BuildCollapsedOutputVisuals()
