@@ -133,6 +133,32 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             StartsAlternative ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    // A binding set is a UI grouping, NOT a separate mapping. Four button
+    // destinations or the X/Y channels of a joystick live inside one set.
+    public sealed class OutputBindingSlotViewModel
+    {
+        public PluginViewModel Plugin { get; set; }
+        public DeviceBindingViewModel Binding { get; set; }
+        public string Direction { get; set; }
+        public Visibility DirectionVisibility =>
+            string.IsNullOrEmpty(Direction) ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    public sealed class OutputBindingSetViewModel
+    {
+        public int Index { get; set; }
+        public List<PluginViewModel> Members { get; set; }
+        public List<OutputBindingSlotViewModel> Slots { get; set; }
+        public PluginViewModel Primary => Members.FirstOrDefault();
+        public string Caption { get; set; }
+        public int Columns { get; set; }
+        public Visibility CaptionVisibility =>
+            string.IsNullOrWhiteSpace(Caption) ? Visibility.Collapsed : Visibility.Visible;
+        public Visibility PresetVisibility { get; set; }
+        public Visibility RemoveVisibility { get; set; }
+        public string PresetCaption { get; set; }
+    }
+
     public class MappingViewModel : INotifyPropertyChanged, IDisposable
     {
         public string MappingTitle => Mapping.FullTitle;
@@ -141,6 +167,54 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<PluginViewModel> Plugins { get; set; }
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<InputConditionViewModel> InputConditions { get; private set; }
+        public List<OutputBindingSetViewModel> OutputBindingSets => BuildOutputBindingSets();
+        private List<OutputBindingSetViewModel> BuildOutputBindingSets()
+        {
+            var result = new List<OutputBindingSetViewModel>();
+            if (Plugins == null || Plugins.Count == 0) return result;
+            var fullStick = string.Equals(Mapping.OutputSideType,
+                "Full Joystick", StringComparison.OrdinalIgnoreCase);
+            var count = Mapping.DirectionalButtonOutputs ? 4 :
+                Mapping.DirectionalPairButtonOutputs || fullStick ? 2 : 1;
+            for (var start = 0; start < Plugins.Count; start += count)
+            {
+                var members = Plugins.Skip(start).Take(count).ToList();
+                var slots = new List<OutputBindingSlotViewModel>();
+                for (var i = 0; i < members.Count; i++)
+                {
+                    var label = Mapping.DirectionalButtonOutputs
+                        ? new[] { "Left", "Right", "Up", "Down" }[i] :
+                        fullStick ? (i == 0 ? "X" : "Y") :
+                        Mapping.DirectionalPairButtonOutputs
+                            ? (i == 0 ? "−" : "+") : "";
+                    foreach (var binding in members[i].DeviceBindings)
+                        slots.Add(new OutputBindingSlotViewModel
+                        {
+                            Plugin = members[i], Binding = binding, Direction = label
+                        });
+                }
+                var multipleSets = Plugins.Count > count;
+                var groupLabel = fullStick ? "Full joystick" :
+                    Mapping.DirectionalButtonOutputs ? "4-way" :
+                    Mapping.DirectionalPairButtonOutputs ? "Two directions" :
+                    multipleSets ? "Output " + (start + 1) : "";
+                result.Add(new OutputBindingSetViewModel
+                {
+                    Index = start / count,
+                    Members = members,
+                    Slots = slots,
+                    Columns = fullStick ? 2 : Mapping.DirectionalButtonOutputs ? 4 :
+                        Mapping.DirectionalPairButtonOutputs ? 2 : 1,
+                    Caption = groupLabel,
+                    PresetVisibility = Mapping.DirectionalButtonOutputs || fullStick
+                        ? Visibility.Visible : Visibility.Collapsed,
+                    RemoveVisibility = multipleSets ? Visibility.Visible : Visibility.Collapsed,
+                    PresetCaption = "Preset"
+                });
+            }
+            return result;
+        }
+
         public bool ButtonsEnabled => !ProfileViewModel.Profile.IsActive();
         // Device selection is the first decision on each side. Type menus
         // consult the selected device, never the other way around.
@@ -588,6 +662,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(CollapsedInputRows));
             OnPropertyChanged(nameof(CollapsedOutputRows));
             OnPropertyChanged(nameof(CollapsedOutputVisuals));
+            OnPropertyChanged(nameof(OutputBindingSets));
             OnPropertyChanged(nameof(InputLogicSummary));
         }
 
@@ -1924,6 +1999,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(InputSideDeviceGuid));
             OnPropertyChanged(nameof(OutputSideDeviceGuid));
             OnPropertyChanged(nameof(OutputBindingColumns));
+            OnPropertyChanged(nameof(OutputBindingSets));
             OnPropertyChanged(nameof(AddOutputCaption));
             if (Plugins != null)
                 foreach (var output in Plugins) output.RefreshOutputDirectionLabel();
