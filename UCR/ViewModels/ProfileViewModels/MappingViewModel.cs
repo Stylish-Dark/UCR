@@ -213,7 +213,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     IsFourWay = Mapping.DirectionalButtonOutputs && members.Count == 4,
                     IsFullJoystick = fullStick && members.Count == 2,
                     RemoveVisibility = multipleSets ? Visibility.Visible : Visibility.Collapsed,
-                    PresetCaption = "Preset"
+                    PresetCaption = fullStick && members.Count == 2
+                        ? (members[0].Plugin.Outputs.FirstOrDefault()?.IsBound == true
+                            ? (members[0].Plugin.Outputs[0].KeyValue == 0
+                                ? "Left joystick" : members[0].Plugin.Outputs[0].KeyValue == 2
+                                    ? "Right joystick" : "Full joystick")
+                            : "Choose joystick") : "Preset"
                 });
             }
             return result;
@@ -306,6 +311,22 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return false;
             }
         }
+
+        private string _inputPresetFeedback;
+        public string InputPresetFeedback
+        {
+            get => _inputPresetFeedback;
+            set
+            {
+                if (_inputPresetFeedback == value) return;
+                _inputPresetFeedback = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(InputPresetFeedbackVisibility));
+            }
+        }
+        public Visibility InputPresetFeedbackVisibility =>
+            string.IsNullOrWhiteSpace(InputPresetFeedback)
+                ? Visibility.Collapsed : Visibility.Visible;
 
         private string _outputSelectionFeedback;
         public string OutputSelectionFeedback
