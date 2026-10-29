@@ -72,6 +72,89 @@
             </Setter>
         </Style>
 
+        <!-- Restore the original compact device-symbol picker on each side.
+             The selected device is an icon; the dropdown shows glyph and name. -->
+        <Style x:Key="UcrSideDevicePicker" TargetType="{x:Type ComboBox}">
+            <Setter Property="Width" Value="58"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="ToolTip" Value="{Binding SelectedItem.Title, RelativeSource={RelativeSource Self}}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ComboBox}">
+                        <Grid SnapsToDevicePixels="True">
+                            <Border x:Name="DeviceSurface" CornerRadius="3" Background="#292929"
+                                    BorderBrush="{DynamicResource PrimaryHueLightBrush}" BorderThickness="2">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="15"/>
+                                    </Grid.ColumnDefinitions>
+                                    <local:DeviceSymbolControl Grid.Column="0" IsHitTestVisible="False"
+                                        SymbolText="{Binding SelectedItem.Visual.SymbolText, RelativeSource={RelativeSource TemplatedParent}}"
+                                        Foreground="{Binding SelectedItem.Visual.BadgeTextBrush, RelativeSource={RelativeSource TemplatedParent}}"
+                                        GlyphSize="31" Width="33" Height="32"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <materialDesign:PackIcon Grid.Column="1" Kind="ChevronDown"
+                                        Width="13" Height="13" Foreground="#CACACA" IsHitTestVisible="False"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <ToggleButton Grid.ColumnSpan="2" Focusable="False"
+                                        IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                                        <ToggleButton.Template>
+                                            <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                                <Border Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </ToggleButton.Template>
+                                    </ToggleButton>
+                                </Grid>
+                            </Border>
+                            <Popup x:Name="PART_Popup" Placement="Bottom"
+                                   PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True" Focusable="False" StaysOpen="False"
+                                   PopupAnimation="Fade">
+                                <Border MinWidth="245" MaxWidth="350" Background="#262626"
+                                        BorderBrush="{DynamicResource PrimaryHueLightBrush}"
+                                        BorderThickness="1" Padding="3">
+                                    <ScrollViewer MaxHeight="300" CanContentScroll="True"
+                                                  VerticalScrollBarVisibility="Auto">
+                                        <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="DeviceSurface" Property="Background" Value="#383838"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="DeviceSurface" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ItemTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <Grid MinWidth="218" Margin="6 2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="39"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <local:DeviceSymbolControl Grid.Column="0" SymbolText="{Binding Visual.SymbolText}"
+                                Foreground="{Binding Visual.BadgeTextBrush}" GlyphSize="27"
+                                Width="35" Height="29" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="#FFFFFF"
+                                FontSize="13" VerticalAlignment="Center"
+                                TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}"/>
+                        </Grid>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="UcrDirectionalBindingButton" TargetType="{x:Type Button}"
                BasedOn="{StaticResource MaterialDesignRaisedButton}">
             <Setter Property="Foreground" Value="#FFFFFF"/>
@@ -418,13 +501,11 @@
                                 FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="2 2 0 10">
-                            <ComboBox Width="225" Height="34" Margin="0 0 8 0"
-                                ItemsSource="{Binding InputSideDevices}"
-                                SelectedValuePath="Value" DisplayMemberPath="Title"
+                            <ComboBox Style="{StaticResource UcrSideDevicePicker}" Margin="0 0 9 0"
+                                ItemsSource="{Binding InputSideDevices}" SelectedValuePath="Value"
                                 SelectedValue="{Binding InputSideDeviceGuid, Mode=OneWay}"
                                 IsEnabled="{Binding ButtonsEnabled}"
-                                SelectionChanged="InputSideDevice_OnSelectionChanged"
-                                ToolTip="First select the input device"/>
+                                SelectionChanged="InputSideDevice_OnSelectionChanged"/>
                             <Button Content="{Binding MappingInputTypeLabel, StringFormat={}{0} ▼}"
                                 Height="34" Padding="10 2"
                                 IsEnabled="{Binding ButtonsEnabled}"
@@ -472,13 +553,11 @@
                                 FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="2 2 0 10">
-                            <ComboBox Width="225" Height="34" Margin="0 0 8 0"
-                                ItemsSource="{Binding OutputSideDevices}"
-                                SelectedValuePath="Value" DisplayMemberPath="Title"
+                            <ComboBox Style="{StaticResource UcrSideDevicePicker}" Margin="0 0 9 0"
+                                ItemsSource="{Binding OutputSideDevices}" SelectedValuePath="Value"
                                 SelectedValue="{Binding OutputSideDeviceGuid, Mode=OneWay}"
                                 IsEnabled="{Binding ButtonsEnabled}"
-                                SelectionChanged="OutputSideDevice_OnSelectionChanged"
-                                ToolTip="First select the output device"/>
+                                SelectionChanged="OutputSideDevice_OnSelectionChanged"/>
                             <Button Content="{Binding MappingOutputCategoryDisplay, StringFormat={}{0} ▼}"
                                 Height="34" Padding="10 2"
                                 Style="{StaticResource UcrAccentOutlineButton}"
