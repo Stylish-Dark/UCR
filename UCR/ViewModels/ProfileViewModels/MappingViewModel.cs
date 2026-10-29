@@ -307,6 +307,291 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+        private string _outputSelectionFeedback;
+        public string OutputSelectionFeedback
+        {
+            get => _outputSelectionFeedback;
+            set
+            {
+                if (_outputSelectionFeedback == value) return;
+                _outputSelectionFeedback = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(OutputFeedbackVisibility));
+            }
+        }
+        public Visibility OutputFeedbackVisibility =>
+            string.IsNullOrWhiteSpace(OutputSelectionFeedback)
+                ? Visibility.Collapsed : Visibility.Visible;
+
+        private bool ExtraOutputsCanBeReused(int numberOfSlots, out string error)
+        {
+            error = null;
+            if (Plugins.Count <= numberOfSlots) return true;
+            var isPreviousDirectionalSet = Mapping.DirectionalButtonOutputs ||
+                Mapping.DirectionalPairButtonOutputs ||
+                string.Equals(Mapping.OutputSideType, "Full Joystick",
+                    StringComparison.OrdinalIgnoreCase);
+            if (!isPreviousDirectionalSet)
+            {
+                error = "This mapping already has separate outputs. Remove those outputs before replacing the mapping with one control.";
+                return false;
+            }
+            if (Plugins.Skip(numberOfSlots).Any(plugin =>
+                plugin.Plugin.Outputs.Any(binding => binding.IsBound) ||
+                (plugin.Plugin.Filters?.Count ?? 0) > 0))
+            {
+                error = "Some extra output bindings are assigned. Clear them before reducing this set.";
+                return false;
+            }
+            return true;
+        }
+
+        private void DropUnassignedExtraOutputs(int numberOfSlots)
+        {
+            while (Plugins.Count > numberOfSlots)
+                RemovePlugin(Plugins.Last());
+        }
+
+        private bool UnneededInputDirectionsAreBound(int slots)
+        {
+            return Mapping.DeviceBindings.Any(binding =>
+                binding.InputDirectionSlot > slots && binding.IsBound);
+        }
+
+        private Plugin FindOutputPlugin(DeviceBindingCategory category)
+        {
+            var outputName = category == DeviceBindingCategory.Range ? "Axis to Axis" :
+                category == DeviceBindingCategory.Momentary ? "Button to Button" : null;
+            if (outputName == null) return null;
+            return GetCompatiblePluginOptions()
+                .FirstOrDefault(option => string.Equals(option.Name, outputName,
+                    StringComparison.OrdinalIgnoreCase))?.Plugin;
+        }
+
+        // The output picker selects the physical control directly. A matching
+        // implementation is selected internally, never by a second type menu.
+        public bool ChooseSingleOutputControl(DeviceBindingViewModel original,
+            DeviceBindingCategory category, Guid deviceGuid, DeviceBindingInfo info)
+        {
+            OutputSelectionFeedback = null;
+            if (!ButtonsEnabled || original == null || info == null) return false;
+            var member = Plugins.FirstOrDefault(plugin =>
+                plugin.DeviceBindings.Contains(original));
+            if (member == null) return false;
+            var profile = ProfileViewModel.Profile;
+            var device = profile.GetDeviceConfiguration(DeviceIoType.Output, deviceGuid);
+            if (device?.Device == null ||
+                !DeviceBindingViewModel.SupportsOutputCategory(device, category, profile.Context))
+                return false;
+
+            var requestedAxis = category == DeviceBindingCategory.Range;
+            var buttonInput = !Mapping.DeviceBindings.Any(binding =>
+                binding.IsBound && binding.InputExpressionInputKind != 0);
+            if (requestedAxis && buttonInput && UnneededInputDirectionsAreBound(2))
+            {
+                OutputSelectionFeedback =
+                    "This axis uses two input directions. Clear the extra assigned directions before switching.";
+                return false;
+            }
+
+            var template = FindOutputPlugin(category);
+            if (template == null)
+            {
+                OutputSelectionFeedback = "No compatible mapping implementation was found for this control.";
+                return false;
+            }
+
+            // Switching from an old four-output auto layout to one axis must
+            // remove only unused extra placeholders, never assigned outputs.
+            var selectedIndex = Plugins.IndexOf(member);
+            var previousGroup = Mapping.DirectionalButtonOutputs ||
+                Mapping.DirectionalPairButtonOutputs ||
+                string.Equals(Mapping.OutputSideType, "Full Joystick",
+                    StringComparison.OrdinalIgnoreCase);
+            if (previousGroup)
+            {
+                string reason;
+                if (!ExtraOutputsCanBeReused(1, out reason))
+                {
+                    OutputSelectionFeedback = reason;
+                    return false;
+                }
+                DropUnassignedExtraOutputs(1);
+                selectedIndex = 0;
+            }
+
+            if (selectedIndex >= Plugins.Count ||
+                !ChangeOutputType(Plugins[selectedIndex], template))
+            {
+                OutputSelectionFeedback = "This output control is not compatible with the current mapping.";
+                return false;
+            }
+            var chosen = Plugins[selectedIndex];
+            if (chosen.DeviceBindings.Count != 1) return false;
+            var binding = chosen.DeviceBindings[0].DeviceBinding;
+            binding.DeviceBindingCategory = category;
+            binding.SetDeviceConfigurationGuid(deviceGuid, false);
+            binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+            chosen.DeviceBindings[0].RefreshDeviceList();
+
+            if (requestedAxis && buttonInput)
+                SetDirectionalMode(2);
+            else if (!requestedAxis &&
+                Mapping.DeviceBindings.Any(input => input.InputDirectionSlot > 0) &&
+                Mapping.DeviceBindings.All(input => !input.IsBound))
+                RestoreBooleanInputsAfterAxis();
+
+            Mapping.DirectionalButtonOutputs = false;
+            Mapping.DirectionalPairButtonOutputs = false;
+            Mapping.OutputSideType = requestedAxis ? "Axis" : "Button";
+            profile.Context.ContextChanged();
+            RefreshHeaderState();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
+        private static bool KeyboardOutputKind(DeviceConfiguration device)
+        {
+            return device?.Device != null && DeviceVisualCatalog.Describe(
+                device.Device, DeviceIoType.Output).Kind == DeviceVisualKind.Keyboard;
+        }
+
+        private static readonly Dictionary<string, string[]> OutputKeyboardPatterns =
+            new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "WASD", new[] { "A", "D", "W", "S" } },
+                { "Arrow Keys", new[] { "Left", "Right", "Up", "Down" } },
+                { "Numpad", new[] { "Numpad4", "Numpad6", "Numpad8", "Numpad2" } },
+                { "UHJL", new[] { "H", "L", "U", "J" } }
+            };
+
+        private static bool MatchesKeyName(string actual, string expected)
+        {
+            var name = NormalizeAxisPresetKey(actual);
+            var aliases = expected.StartsWith("Numpad", StringComparison.OrdinalIgnoreCase)
+                ? new[] { expected, expected.Replace("Numpad", "Num"),
+                    expected.Replace("Numpad", "Keypad") } : new[] { expected };
+            return aliases.Any(alias =>
+                string.Equals(name, NormalizeAxisPresetKey(alias),
+                    StringComparison.OrdinalIgnoreCase));
+        }
+
+        public bool ApplyOutputKeyboardPreset(string preset)
+        {
+            OutputSelectionFeedback = null;
+            string[] keys;
+            if (!OutputKeyboardPatterns.TryGetValue(preset ?? "", out keys)) return false;
+            var profile = ProfileViewModel.Profile;
+            var device = profile.GetDeviceConfiguration(DeviceIoType.Output, OutputSideDeviceGuid);
+            if (!KeyboardOutputKind(device))
+            {
+                OutputSelectionFeedback = "Choose an output keyboard first.";
+                return false;
+            }
+
+            // Resolve EVERY key before mutating the mapping. A missing key
+            // cannot result in a half-applied four-direction preset.
+            var nodes = FlattenBindingNodes(profile.Context.DevicesManager.GetDeviceBindingMenu(
+                device.Device, DeviceIoType.Output))
+                .Where(node => node?.DeviceBindingInfo != null &&
+                    node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary).ToList();
+            var controls = keys.Select(key => nodes.FirstOrDefault(node =>
+                MatchesKeyName(node.Title, key))?.DeviceBindingInfo).ToArray();
+            if (controls.Any(control => control == null))
+            {
+                OutputSelectionFeedback = "Some keys in this preset are unavailable on the selected keyboard.";
+                return false;
+            }
+            return ApplyFourButtonOutputSet(device.Guid, controls, preset);
+        }
+
+        public bool ApplyOutputDPadPreset(FourWayOutputChoice choice)
+        {
+            OutputSelectionFeedback = null;
+            if (choice == null || !choice.IsDPad || choice.Controls?.Length != 4)
+                return false;
+            // The returned D-pad controls are Up, Down, Left, Right.
+            // Runtime output channels are Left, Right, Up, Down.
+            var ordered = new[] { choice.Controls[2], choice.Controls[3],
+                choice.Controls[0], choice.Controls[1] };
+            return ApplyFourButtonOutputSet(choice.DeviceConfigurationGuid, ordered, "D-pad");
+        }
+
+        private bool ApplyFourButtonOutputSet(Guid deviceGuid,
+            DeviceBindingInfo[] controls, string title)
+        {
+            if (!ButtonsEnabled || controls?.Length != 4) return false;
+            string reason;
+            if (!ExtraOutputsCanBeReused(4, out reason))
+            {
+                OutputSelectionFeedback = reason;
+                return false;
+            }
+            if (Plugins.Count == 0) return false;
+            var template = FindOutputPlugin(DeviceBindingCategory.Momentary);
+            if (template == null) return false;
+            if (!ChangeAllOutputTypes(template)) return false;
+
+            // A single four-direction group consists of four output channels.
+            while (Plugins.Count < 4)
+                if (!AddDefaultOutput()) return false;
+            DropUnassignedExtraOutputs(4);
+            Mapping.OutputSideType = title == "D-pad" ? "D-pad" : "4-way";
+            Mapping.DirectionalButtonOutputs = true;
+            Mapping.DirectionalPairButtonOutputs = false;
+            SetDirectionalMode(4);
+            for (var i = 0; i < 4; i++)
+            {
+                var output = Plugins[i].DeviceBindings[0];
+                var info = controls[i];
+                output.DeviceBinding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
+                output.DeviceBinding.SetDeviceConfigurationGuid(deviceGuid, false);
+                output.DeviceBinding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                output.RefreshDeviceList();
+            }
+            ProfileViewModel.Profile.Context.ContextChanged();
+            RefreshHeaderState();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
+        public bool ApplyFullJoystickOutput(FourWayOutputChoice choice)
+        {
+            OutputSelectionFeedback = null;
+            if (!ButtonsEnabled || choice?.IsDPad != false ||
+                choice.Controls?.Length != 2) return false;
+            string reason;
+            if (!ExtraOutputsCanBeReused(2, out reason))
+            {
+                OutputSelectionFeedback = reason;
+                return false;
+            }
+            var template = FindOutputPlugin(DeviceBindingCategory.Range);
+            if (template == null || Plugins.Count == 0) return false;
+            if (!ChangeAllOutputTypes(template)) return false;
+            while (Plugins.Count < 2)
+                if (!AddDefaultOutput()) return false;
+            DropUnassignedExtraOutputs(2);
+            Mapping.OutputSideType = "Full Joystick";
+            Mapping.DirectionalButtonOutputs = false;
+            Mapping.DirectionalPairButtonOutputs = false;
+            SetDirectionalMode(4);
+            for (var i = 0; i < 2; i++)
+            {
+                var output = Plugins[i].DeviceBindings[0];
+                var info = choice.Controls[i];
+                output.DeviceBinding.DeviceBindingCategory = DeviceBindingCategory.Range;
+                output.DeviceBinding.SetDeviceConfigurationGuid(choice.DeviceConfigurationGuid, false);
+                output.DeviceBinding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                output.RefreshDeviceList();
+            }
+            Mapping.OutputSideType = "Full Joystick";
+            ProfileViewModel.Profile.Context.ContextChanged();
+            RefreshHeaderState();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
         public bool ChangeInputSideDevice(Guid guid)
         {
             if (!ButtonsEnabled || Mapping?.DeviceBindings == null) return false;
