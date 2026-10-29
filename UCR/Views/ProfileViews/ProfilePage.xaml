@@ -884,7 +884,7 @@
                                                                     <ColumnDefinition Width="1.05*" MinWidth="0"/>
                                                                     <ColumnDefinition Width="44"/>
                                                                     <ColumnDefinition Width="1.05*" MinWidth="0"/>
-                                                                    <ColumnDefinition Width="30"/>
+                                                                    <ColumnDefinition Width="76"/>
                                                                 </Grid.ColumnDefinitions>
                                                                 <StackPanel Grid.Column="0" VerticalAlignment="Center"
                                                                             Margin="3 0 8 0">
@@ -1038,7 +1038,9 @@
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
                                                                 </ItemsControl>
-                                                                <Button Grid.Column="4" Width="36" Height="38" Padding="0" Background="#303030" BorderBrush="#626262" BorderThickness="1" Focusable="False" Cursor="Hand"
+                                                                <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                                    <Button Width="34" Height="34" Margin="0 0 5 0" Style="{StaticResource UcrDeleteCrossButton}" IsEnabled="{Binding ButtonsEnabled}" ToolTip="Delete this mapping" ToolTipService.ShowOnDisabled="True" Click="DeleteMappingRow_OnClick"/>
+                                                                    <Button Width="36" Height="38" Padding="0" Background="#303030" BorderBrush="#626262" BorderThickness="1" Focusable="False" Cursor="Hand"
                                                                         ToolTip="Expand or collapse mapping Inputs and Outputs" Click="ToggleInlineMapping_OnClick">
                                                                     <Button.Template><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Button.Template>
                                                                     <Grid Width="23" Height="23" IsHitTestVisible="False">
@@ -1047,8 +1049,9 @@
                                                                         </Path>
                                                                     </Grid>
                                                                 </Button>
+                                                                </StackPanel>
                                                             </Grid>
-                                                                <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch">
+                                                                <ContentControl x:Name="InlineMappingEditor" Content="{Binding}" HorizontalContentAlignment="Stretch" ClipToBounds="True">
                                                                     <ContentControl.Style>
                                                                         <Style TargetType="{x:Type ContentControl}">
                                                                             <Setter Property="Visibility" Value="Collapsed"/>
