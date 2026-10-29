@@ -18,6 +18,18 @@ namespace HidWizards.UCR.Views.Controls
     {
         // The mapping editor owns device selection at the side level.
         // Keep the per-binding selector for other UCR views.
+        // Expanded mapping cards use the same output binding to select the
+        // control TYPE and destination in one action, not two separate menus.
+        public static readonly DependencyProperty EnableUnifiedOutputPickerProperty =
+            DependencyProperty.Register(nameof(EnableUnifiedOutputPicker), typeof(bool),
+                typeof(CompactInputBindingControl), new PropertyMetadata(false));
+
+        public bool EnableUnifiedOutputPicker
+        {
+            get => (bool)GetValue(EnableUnifiedOutputPickerProperty);
+            set => SetValue(EnableUnifiedOutputPickerProperty, value);
+        }
+
         public static readonly DependencyProperty DeviceSelectorVisibilityProperty =
             DependencyProperty.Register(nameof(DeviceSelectorVisibility), typeof(Visibility),
                 typeof(CompactInputBindingControl), new PropertyMetadata(Visibility.Visible));
@@ -79,6 +91,17 @@ namespace HidWizards.UCR.Views.Controls
                 // A chosen device => listen to that device only.
                 StartPressCapture();
                 return;
+            }
+
+            if (EnableUnifiedOutputPicker)
+            {
+                var mappingCard = FindAncestor<MappingCardControl>(this);
+                if (mappingCard != null)
+                {
+                    mappingCard.OpenUnifiedOutputPicker(DataContext as DeviceBindingViewModel,
+                        BindButton);
+                    return;
+                }
             }
 
             // Keyboard outputs use pressed-key capture; controllers retain the
