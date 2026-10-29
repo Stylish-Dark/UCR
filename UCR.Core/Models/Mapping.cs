@@ -642,7 +642,8 @@ namespace HidWizards.UCR.Core.Models
                     DeviceBindingCategory = axisMode ?
                         DeviceBindingCategory.Range : DeviceBindingCategory.Momentary,
                     InputExpressionNegated = first.InputExpressionNegated,
-                    DeviceConfigurationGuid = pairedSource ? sourceDevice : Guid.Empty,
+                    // All directions of the same Binding Set follow the explicitly chosen input device.
+                    DeviceConfigurationGuid = sourceDevice,
                     KeyType = pairedSource ? sourceKeyType : 0,
                     KeyValue = pairedSource ? sourceKeyValue : 0,
                     KeySubValue = pairedSource ? sourceKeySubValue : 0,
