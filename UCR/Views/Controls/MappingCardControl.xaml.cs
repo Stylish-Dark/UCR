@@ -433,6 +433,12 @@ namespace HidWizards.UCR.Views.Controls
                 menu.Items.Add(item);
             }
 
+            menu.Closed += (sender, args) =>
+            {
+                if (ReferenceEquals(placementTarget.ContextMenu, menu))
+                    placementTarget.ContextMenu = null;
+            };
+            placementTarget.ContextMenu = menu;
             menu.IsOpen = true;
             return true;
         }
