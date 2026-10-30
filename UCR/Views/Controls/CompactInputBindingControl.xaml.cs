@@ -103,37 +103,33 @@ namespace HidWizards.UCR.Views.Controls
                 return;
             }
 
-            if (EnableUnifiedOutputPicker)
-            {
-                var mappingCard = FindAncestor<MappingCardControl>(this);
-                if (mappingCard != null)
-                {
-                    mappingCard.OpenUnifiedOutputPicker(DataContext as DeviceBindingViewModel,
-                        BindButton);
-                    return;
-                }
+            await OpenOutputSelectionAsync(BindButton);
+        }
 
-                // Reparenting during an inline editor transition must not make
-                // the primary Output action silently inert.
-                ShowOutputPicker(BindButton);
+        // Both visible Output actions use one dispatch path. The unified picker
+        // owns mapping-editor selection; legacy controls retain their own popup.
+        private async System.Threading.Tasks.Task OpenOutputSelectionAsync(FrameworkElement target)
+        {
+            var binding = DataContext as DeviceBindingViewModel;
+            var card = FindAncestor<MappingCardControl>(this);
+            if (EnableUnifiedOutputPicker && card != null)
+            {
+                card.OpenUnifiedOutputPicker(binding, target);
                 return;
             }
 
-            // Keyboard outputs use pressed-key capture; controllers retain the
-            // graphical picker with trigger and axis-specific choices.
-            var configuration = GetSelectedDeviceConfiguration();
-            if (DeviceVisualCatalog.Describe(configuration, DeviceBinding.Profile, DeviceIoType.Output).Kind ==
-                DeviceVisualKind.Keyboard)
+            if (!EnableUnifiedOutputPicker && card != null && binding != null)
             {
-                var mappingCard = FindAncestor<MappingCardControl>(this);
-                var bindingViewModel = DataContext as DeviceBindingViewModel;
-                if (mappingCard != null && bindingViewModel != null)
+                var configuration = GetSelectedDeviceConfiguration();
+                if (DeviceVisualCatalog.Describe(configuration, DeviceBinding.Profile,
+                    DeviceIoType.Output).Kind == DeviceVisualKind.Keyboard)
                 {
-                    await mappingCard.OpenQuickOutputPickerAsync(bindingViewModel, BindButton);
+                    await card.OpenQuickOutputPickerAsync(binding, target);
                     return;
                 }
             }
-            ShowOutputPicker(BindButton);
+
+            ShowOutputPicker(target);
         }
 
         private void BindButton_OnPreviewMouseLeftButtonDown(object sender,
@@ -159,16 +155,7 @@ namespace HidWizards.UCR.Views.Controls
             BringIntoView();
             if (DeviceBinding?.DeviceIoType == DeviceIoType.Output)
             {
-                if (EnableUnifiedOutputPicker)
-                {
-                    var mappingCard = FindAncestor<MappingCardControl>(this);
-                    if (mappingCard != null)
-                    {
-                        mappingCard.OpenUnifiedOutputPicker(DataContext as DeviceBindingViewModel, MenuButton);
-                        return;
-                    }
-                }
-                ShowOutputPicker(MenuButton);
+                _ = OpenOutputSelectionAsync(MenuButton);
                 return;
             }
             BuildContextMenu();
