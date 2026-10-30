@@ -385,6 +385,21 @@ namespace HidWizards.UCR.Tests.UiTests
                     "A long mapping group must not instantiate every offscreen row.");
                 TestContext.Progress.WriteLine("PERF mapping rows=" + rows.Items.Count +
                     " realized=" + realized + " firstLayoutMs=" + layoutTimer.ElapsedMilliseconds);
+
+                // Final release gate: a row that initially has no container
+                // must become selectable and visible when explicitly requested.
+                var lastIndex = rows.Items.Count - 1;
+                Assert.That(rows.ItemContainerGenerator.ContainerFromIndex(lastIndex), Is.Null,
+                    "The distant row should initially be virtualized.");
+                var distantMapping = rows.Items[lastIndex];
+                rows.ScrollIntoView(distantMapping);
+                page.UpdateLayout();
+                var distantContainer = rows.ItemContainerGenerator.ContainerFromItem(distantMapping) as ListViewItem;
+                Assert.That(distantContainer, Is.Not.Null,
+                    "Scrolling to a virtualized mapping must create its row.");
+                rows.SelectedItem = distantMapping;
+                Assert.That(rows.SelectedItem, Is.SameAs(distantMapping),
+                    "Selection must work after recycling offscreen mapping containers.");
             }
             finally
             {
