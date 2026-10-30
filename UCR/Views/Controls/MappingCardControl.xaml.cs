@@ -192,15 +192,7 @@ namespace HidWizards.UCR.Views.Controls
             ExpandedBodyHost.ContentTemplate = null;
         }
 
-        private void MoveUp_OnClick(object sender, RoutedEventArgs e)
-        {
-            (DataContext as MappingViewModel)?.MoveUp();
-        }
 
-        private void MoveDown_OnClick(object sender, RoutedEventArgs e)
-        {
-            (DataContext as MappingViewModel)?.MoveDown();
-        }
 
         private void MoveSection_OnClick(object sender, RoutedEventArgs e)
         {
@@ -401,15 +393,7 @@ namespace HidWizards.UCR.Views.Controls
             };
         }
 
-        private void AddAndInput_OnClick(object sender, RoutedEventArgs e)
-        {
-            (DataContext as MappingViewModel)?.AddAndInput();
-        }
 
-        private void AddOrInput_OnClick(object sender, RoutedEventArgs e)
-        {
-            (DataContext as MappingViewModel)?.AddOrInput();
-        }
 
         private void AddInputToCondition_OnClick(object sender, RoutedEventArgs e)
         {
@@ -533,15 +517,6 @@ namespace HidWizards.UCR.Views.Controls
             menu.IsOpen = true;
         }
 
-        private void DirectionalType_OnClick(object sender, RoutedEventArgs e)
-        {
-            var item = sender as MenuItem;
-            var button = (item?.Parent as ContextMenu)?.PlacementTarget as Button;
-            var input = button?.DataContext as DeviceBindingViewModel ?? item?.DataContext as DeviceBindingViewModel;
-            int kind;
-            if (input == null || !int.TryParse(item?.Tag as string, out kind)) return;
-            input.InputExpressionInputKind = kind;
-        }
 
         private void DirectionalNot_OnClick(object sender, RoutedEventArgs e)
         {
@@ -574,12 +549,6 @@ namespace HidWizards.UCR.Views.Controls
             }
         }
 
-        private void RemoveDirectionalUnit_OnClick(object sender, RoutedEventArgs e)
-        {
-            var group = (sender as FrameworkElement)?.DataContext as InputConditionViewModel;
-            if (group == null) return;
-            (DataContext as MappingViewModel)?.SetDirectionalMode(0);
-        }
 
         private void InputNegated_OnClick(object sender, RoutedEventArgs e)
         {
@@ -626,255 +595,10 @@ namespace HidWizards.UCR.Views.Controls
             mapping.RefreshSideDeviceChoices();
         }
 
-        private void ChooseInputCategory_OnClick(object sender, RoutedEventArgs e)
-        {
-            var button = sender as Button;
-            var mapping = DataContext as MappingViewModel;
-            if (button == null || mapping?.ButtonsEnabled != true) return;
-            var menu = CreateDarkContextMenu(button);
-            menu.Placement = PlacementMode.Bottom;
-            foreach (var entry in new[]
-            {
-                new { Label = "Button", Category = DeviceBindingCategory.Momentary },
-                new { Label = "Axis", Category = DeviceBindingCategory.Range }
-            })
-            {
-                if (!mapping.InputDeviceSupports(entry.Category)) continue;
-                var category = entry.Category;
-                var item = new MenuItem
-                {
-                    Header = entry.Label,
-                    Foreground = Brushes.White,
-                    Background = Brushes.Transparent,
-                    Padding = new Thickness(10, 6, 14, 6),
-                    IsChecked = mapping.MappingInputTypeLabel == entry.Label
-                };
-                item.Click += (s, args) =>
-                {
-                    if (mapping.MappingInputTypeLabel == entry.Label) return;
-                    if (!mapping.ChangeInputSignalType(category))
-                        mapping.InputPresetFeedback = "Clear the incompatible assigned directions before changing this input type.";
-                };
-                menu.Items.Add(item);
-            }
-            if (menu.Items.Count == 0)
-                menu.Items.Add(new MenuItem
-                {
-                    Header = "Selected device has no supported input types",
-                    IsEnabled = false
-                });
-            menu.IsOpen = true;
-        }
 
-        private void ChooseInputLayout_OnClick(object sender, RoutedEventArgs e)
-        {
-            var button = sender as Button;
-            var mapping = DataContext as MappingViewModel;
-            if (button == null || mapping?.ButtonsEnabled != true) return;
-            var menu = CreateDarkContextMenu(button);
-            menu.Placement = PlacementMode.Bottom;
-            foreach (var entry in new[]
-            {
-                new { Label = "1-way", Slots = 0 },
-                new { Label = "2-way", Slots = 2 },
-                new { Label = "4-way", Slots = 4 }
-            })
-            {
-                var slots = entry.Slots;
-                var item = new MenuItem
-                {
-                    Header = entry.Label,
-                    Foreground = Brushes.White,
-                    Background = Brushes.Transparent,
-                    Padding = new Thickness(10, 6, 14, 6),
-                    IsChecked = mapping.InputBindingLayoutLabel == entry.Label
-                };
-                item.Click += (s, args) =>
-                {
-                    if (mapping.Mapping.DeviceBindings.Any(binding =>
-                        binding.InputDirectionSlot > slots && binding.IsBound))
-                    {
-                        mapping.InputPresetFeedback = "Clear assigned directions before reducing the layout.";
-                        return;
-                    }
-                    var wasButton = mapping.MappingInputTypeLabel == "Button";
-                    mapping.SetDirectionalMode(slots);
-                    if (slots == 0 && wasButton)
-                        mapping.ChangeInputSignalType(DeviceBindingCategory.Momentary);
-                };
-                menu.Items.Add(item);
-            }
-            menu.IsOpen = true;
-        }
 
-        private void ConvertLegacyToButton_OnClick(object sender, RoutedEventArgs e)
-        {
-            var mapping = DataContext as MappingViewModel;
-            if (mapping?.ButtonsEnabled == true)
-                mapping.ConvertToButtonMapping();
-        }
 
-        private void ChangeMappingOutputCategory_OnClick(object sender, RoutedEventArgs e)
-        {
-            var button = sender as Button;
-            var mapping = DataContext as MappingViewModel;
-            if (button == null || mapping?.ButtonsEnabled != true || mapping.Plugins.Count == 0) return;
 
-            var selectedDevice = mapping.OutputSideDeviceGuid;
-            var menu = CreateDarkContextMenu(button);
-            menu.Placement = PlacementMode.Bottom;
-            if (selectedDevice == Guid.Empty)
-            {
-                menu.Items.Add(new MenuItem
-                {
-                    Header = "Select an output device first",
-                    IsEnabled = false
-                });
-                menu.IsOpen = true;
-                return;
-            }
-            var options = mapping.GetCompatiblePluginOptions()
-                .Where(option => option.Plugin.OutputCategories.Count > 0 &&
-                    option.Plugin.OutputCategories.All(outputCategory =>
-                        mapping.OutputDeviceSupports(outputCategory.Category)))
-                .ToList();
-            var analogue = mapping.Mapping.DeviceBindings.Any(input => input.InputExpressionInputKind == 3);
-            var categories = options
-                .GroupBy(option => option.OutputType, StringComparer.OrdinalIgnoreCase).ToList();
-            foreach (var category in categories)
-            {
-                if (!IsPrimaryOutputCategory(category.Key)) continue;
-                var chosen = PreferredOutputImplementation(category, analogue);
-                if (chosen == null) continue;
-                var item = new MenuItem
-                {
-                    Header = category.Key,
-                    Foreground = Brushes.White, Background = Brushes.Transparent,
-                    Padding = new Thickness(10, 6, 14, 6),
-                    ToolTip = "Set every destination to " + category.Key,
-                    IsChecked = mapping.Plugins.All(p => string.Equals(p.OutputType,
-                        category.Key, StringComparison.OrdinalIgnoreCase))
-                };
-                item.Click += (s, args) => mapping.ChangeAllOutputTypes(chosen.Plugin);
-                menu.Items.Add(item);
-            }
-
-            var joystickChoice = new MenuItem
-            {
-                Header = "Full Joystick",
-                Foreground = Brushes.White,
-                Background = Brushes.Transparent,
-                Padding = new Thickness(10, 6, 14, 6),
-                ToolTip = "Two continuous output axes: X and Y",
-                IsChecked = mapping.MappingOutputCategoryDisplay == "Full Joystick"
-            };
-            joystickChoice.Click += (s, args) =>
-            {
-                if (!mapping.ChangeOutputToFullJoystick())
-                    mapping.OutputSelectionFeedback = "A full joystick requires two compatible output axes. Clear incompatible extra outputs first.";
-            };
-            if (mapping.OutputDeviceSupportsControls(DeviceBindingCategory.Range, 2))
-                menu.Items.Add(joystickChoice);
-
-            var dpadChoice = new MenuItem
-            {
-                Header = "4-way",
-                Foreground = Brushes.White,
-                Background = Brushes.Transparent,
-                Padding = new Thickness(10, 6, 14, 6),
-                ToolTip = "Four independently assignable button directions",
-                IsChecked = mapping.Mapping.DirectionalButtonOutputs
-            };
-            dpadChoice.Click += (s, args) => mapping.ChangeOutputToDPad();
-            if (mapping.OutputDeviceSupportsControls(DeviceBindingCategory.Momentary, 4))
-                menu.Items.Add(dpadChoice);
-
-            if (!categories.Any(group => string.Equals(group.Key, "Button",
-                    StringComparison.OrdinalIgnoreCase)) && mapping.Plugins.Count == 1 &&
-                    mapping.OutputDeviceSupports(DeviceBindingCategory.Momentary))
-            {
-                var buttonChoice = new MenuItem
-                {
-                    Header = "Button",
-                    Foreground = Brushes.White, Background = Brushes.Transparent,
-                    Padding = new Thickness(10, 6, 14, 6),
-                    ToolTip = "Switch to a button output while preserving existing physical input assignments"
-                };
-                buttonChoice.Click += (s, args) => mapping.ConvertToButtonMapping();
-                menu.Items.Insert(0, buttonChoice);
-            }
-
-            if (menu.Items.Count == 0)
-                menu.Items.Add(new MenuItem { Header = "No compatible output types", IsEnabled = false });
-            menu.IsOpen = true;
-        }
-
-        private void ChangeOutputType_OnClick(object sender, RoutedEventArgs e)
-        {
-            var button = sender as Button;
-            var output = button?.DataContext as PluginViewModel;
-            var mapping = output?.MappingViewModel;
-            if (mapping?.ButtonsEnabled != true) return;
-            // Per-output menus obey the side's selected output device too.
-            var options = mapping.GetCompatiblePluginOptions()
-                .Where(option => option.Plugin.OutputCategories.Count > 0 &&
-                    option.Plugin.OutputCategories.All(category =>
-                        mapping.OutputDeviceSupports(category.Category)))
-                .ToList();
-            if (options.Count == 0) return;
-
-            var changeAll = string.Equals(button.Tag as string, "CategoryHeader", StringComparison.Ordinal);
-            Action<SimplePluginViewModel> apply = selected =>
-            {
-                if (changeAll) mapping.ChangeAllOutputTypes(selected.Plugin);
-                else mapping.ChangeOutputType(output, selected.Plugin);
-            };
-
-            var menu = CreateDarkContextMenu(button);
-            menu.Placement = PlacementMode.Bottom;
-
-            // A mapping no longer has an input-to-output plugin identity. Expose one
-            // destination category at the surface, not a duplicate menu entry for
-            // every old 'Button to ...' and 'Axis to ...' implementation.
-            var categories = options.GroupBy(option => option.OutputType,
-                StringComparer.OrdinalIgnoreCase).ToList();
-            var analogueInput = mapping.Mapping.DeviceBindings.Any(input =>
-                input.InputExpressionInputKind == 3);
-            foreach (var category in categories)
-            {
-                if (!IsPrimaryOutputCategory(category.Key)) continue;
-                var preferred = PreferredOutputImplementation(category, analogueInput);
-                if (preferred == null) continue;
-                var selected = preferred;
-                var item = new MenuItem
-                {
-                    Header = category.Key,
-                    ToolTip = selected.Description,
-                    Foreground = Brushes.White,
-                    Background = Brushes.Transparent,
-                    Padding = new Thickness(10, 6, 14, 6),
-                    IsChecked = string.Equals(output.OutputType, category.Key,
-                        StringComparison.OrdinalIgnoreCase)
-                };
-                item.Click += (s, args) => apply(selected);
-                menu.Items.Add(item);
-            }
-
-            if (changeAll)
-            {
-                menu.Items.Add(new Separator());
-                var addOutput = new MenuItem
-                {
-                    Header = "Add another output",
-                    Foreground = Brushes.White,
-                    Background = Brushes.Transparent,
-                    Padding = new Thickness(10, 6, 14, 6)
-                };
-                addOutput.Click += (s, args) => mapping.AddOutputBindingSet();
-                menu.Items.Add(addOutput);
-            }
-            menu.IsOpen = true;
-        }
 
         private static bool IsPrimaryOutputCategory(string category)
         {
@@ -907,11 +631,6 @@ namespace HidWizards.UCR.Views.Controls
                     .First();
         }
 
-        private void AxisFourButtons_OnClick(object sender, RoutedEventArgs e)
-        {
-            var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
-            RequestAxisInputMode(axis, 4);
-        }
 
         private void RequestAxisInputMode(PluginViewModel axis, int buttonCount)
         {
@@ -922,37 +641,10 @@ namespace HidWizards.UCR.Views.Controls
             axis.MappingViewModel.ChangeAxisInputMode(axis, buttonCount);
         }
 
-        private void AxisKeyboardPreset_OnClick(object sender, RoutedEventArgs e)
-        {
-            var mapping = ((sender as Button)?.DataContext as PluginViewModel)?.MappingViewModel;
-            var preset = (sender as Button)?.Tag as string;
-            if (mapping == null || string.IsNullOrEmpty(preset)) return;
-            string error;
-            if (!mapping.ApplyKeyboardAxisPreset(preset, out error) && !string.IsNullOrEmpty(error))
-                mapping.InputPresetFeedback = error;
-        }
 
-        private void AxisStickInputPreset_OnClick(object sender, RoutedEventArgs e)
-        {
-            var mapping = DataContext as MappingViewModel;
-            int index;
-            if (mapping == null || !int.TryParse((sender as Button)?.Tag as string, out index)) return;
-            string error;
-            if (!mapping.ApplyControllerStickInputPreset(index, out error) && !string.IsNullOrEmpty(error))
-                mapping.InputPresetFeedback = error;
-        }
 
-        private void AxisControllerPreset_OnClick(object sender, RoutedEventArgs e)
-        {
-            var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
-            if (axis?.MappingViewModel == null) return;
-            string error;
-            if (!axis.MappingViewModel.ApplyControllerDPadPreset(out error) && !string.IsNullOrEmpty(error))
-                axis.MappingViewModel.OutputSelectionFeedback = error;
-        }
 
-        private void AxisInvertX_OnClick(object sender, RoutedEventArgs e) => SetFourWayInversion(sender, "InvertX");
-        private void AxisInvertY_OnClick(object sender, RoutedEventArgs e) => SetFourWayInversion(sender, "InvertY");
+
 
         private static void SetFourWayInversion(object sender, string propertyName)
         {
@@ -965,53 +657,8 @@ namespace HidWizards.UCR.Views.Controls
             axis.Plugin.ContextChanged();
         }
 
-        private void FourWayOutput_OnClick(object sender, RoutedEventArgs e)
-        {
-            var button = sender as Button;
-            var axis = button?.DataContext as PluginViewModel;
-            if (axis?.IsFourButtonAxis != true || axis.MappingViewModel?.ButtonsEnabled != true) return;
 
-            // The output device and whole D-pad/stick destination are one choice.
-            // Do not require a second device dropdown or another submenu click.
-            var options = axis.MappingViewModel.GetFourWayOutputChoices();
-            var menu = CreateDarkContextMenu(button);
-            menu.Placement = PlacementMode.Bottom;
-            var hasMultipleDevices = options.Select(option => option.DeviceConfigurationGuid)
-                .Distinct().Count() > 1;
-            foreach (var option in options)
-            {
-                var chosen = option;
-                var item = new MenuItem
-                {
-                    Header = hasMultipleDevices
-                        ? option.Destination + "  —  " + option.DeviceTitle
-                        : option.Destination,
-                    Foreground = Brushes.White,
-                    Background = Brushes.Transparent,
-                    Padding = new Thickness(10, 6, 12, 6)
-                };
-                item.Click += (s, args) => axis.MappingViewModel.ApplyFourWayOutput(axis, chosen);
-                menu.Items.Add(item);
-            }
-            if (options.Count == 0) menu.Items.Add(new MenuItem
-            {
-                Header = "No compatible controller outputs in this profile",
-                IsEnabled = false, Foreground = Brushes.LightGray
-            });
-            menu.IsOpen = true;
-        }
 
-        private void AxisOneButton_OnClick(object sender, RoutedEventArgs e)
-        {
-            var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
-            RequestAxisInputMode(axis, 1);
-        }
-
-        private void AxisTwoButtons_OnClick(object sender, RoutedEventArgs e)
-        {
-            var axis = (sender as FrameworkElement)?.DataContext as PluginViewModel;
-            RequestAxisInputMode(axis, 2);
-        }
 
         private void AddOutputFilter_OnClick(object sender, RoutedEventArgs e)
         {
@@ -1028,11 +675,6 @@ namespace HidWizards.UCR.Views.Controls
             ((sender as FrameworkElement)?.DataContext as FilterViewModel)?.RemoveFilter();
         }
 
-        private void RemoveOutput_OnClick(object sender, RoutedEventArgs e)
-        {
-            var plugin = (sender as FrameworkElement)?.DataContext as PluginViewModel;
-            if (plugin?.CanRemove == true) plugin.MappingViewModel.RemoveOutputBindingSet(plugin);
-        }
 
     }
 }
