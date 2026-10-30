@@ -110,27 +110,8 @@ namespace HidWizards.UCR.Views.Controls
                 menu.Items.Add(item);
             }
 
-            menu.Closed += (sender, args) =>
-            {
-                if (ReferenceEquals(placementTarget.ContextMenu, menu))
-                    placementTarget.ContextMenu = null;
-            };
-            placementTarget.ContextMenu = menu;
-            menu.IsOpen = true;
+            OutputPickerInfrastructure.OpenMenu(placementTarget, menu);
             return true;
-        }
-
-        private static System.Collections.Generic.IEnumerable<DeviceBindingNode> FlattenPickerNodes(
-            System.Collections.Generic.IEnumerable<DeviceBindingNode> nodes)
-        {
-            if (nodes == null) yield break;
-            foreach (var node in nodes)
-            {
-                if (node == null) continue;
-                // Only terminal controls can be bound; category nodes are navigation.
-                if (node.IsBinding && node.DeviceBindingInfo != null) yield return node;
-                foreach (var child in FlattenPickerNodes(node.ChildrenNodes)) yield return child;
-            }
         }
 
         private static MenuItem PickerItem(string label)
@@ -177,7 +158,7 @@ namespace HidWizards.UCR.Views.Controls
             System.Collections.Generic.List<DeviceBindingNode> choices;
             try
             {
-                choices = FlattenPickerNodes(profile.Context.DevicesManager.GetDeviceBindingMenu(
+                choices = OutputPickerInfrastructure.BindingControls(profile.Context.DevicesManager.GetDeviceBindingMenu(
                     device.Device, DeviceIoType.Output)).ToList();
             }
             catch (Exception error)
@@ -264,13 +245,7 @@ namespace HidWizards.UCR.Views.Controls
             // An unattached ContextMenu can be immediately dismissed by the
             // opening click on the underlying raised Button. Own it through
             // the actual button, just as the working mapping action menus do.
-            menu.Closed += (sender, args) =>
-            {
-                if (ReferenceEquals(target.ContextMenu, menu))
-                    target.ContextMenu = null;
-            };
-            target.ContextMenu = menu;
-            menu.IsOpen = true;
+            OutputPickerInfrastructure.OpenMenu(target, menu);
         }
 
         private static MenuItem BuildOutputPresetPicker(MappingViewModel mapping, bool keyboard,
