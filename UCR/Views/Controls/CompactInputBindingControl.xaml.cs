@@ -282,16 +282,6 @@ namespace HidWizards.UCR.Views.Controls
             return null;
         }
 
-        private static IEnumerable<DeviceBindingNode> FlattenControls(IEnumerable<DeviceBindingNode> nodes)
-        {
-            foreach (var node in nodes ?? Enumerable.Empty<DeviceBindingNode>())
-            {
-                if (node == null) continue;
-                if (node.IsBinding && node.DeviceBindingInfo != null) yield return node;
-                foreach (var child in FlattenControls(node.ChildrenNodes)) yield return child;
-            }
-        }
-
         // Output selection is divided into buttons and directionals, backed by the
         // selected device's actual provider descriptors (not hard-coded key IDs).
         private void ShowOutputPicker(FrameworkElement target)
@@ -314,7 +304,7 @@ namespace HidWizards.UCR.Views.Controls
             // A single button input must not silently bind an entire continuous axis.
             // Only discrete output controls are offered until directional-axis mappings
             // have explicit negative and positive input slots.
-            var controls = FlattenControls(nodes)
+            var controls = OutputPickerInfrastructure.BindingControls(nodes)
                 .Where(node => node.DeviceBindingInfo != null &&
                     node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary)
                 .ToList();
