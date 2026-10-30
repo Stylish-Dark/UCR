@@ -982,17 +982,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             return null;
         }
 
-        private void AddInspectorOrInput_OnClick(object sender, RoutedEventArgs e)
-        {
-            if (ProfileViewModel?.SelectedMapping?.ButtonsEnabled != true) return;
-            ProfileViewModel.SelectedMapping.AddCondition();
-        }
 
-        private void AddInspectorOutput_OnClick(object sender, RoutedEventArgs e)
-        {
-            if (ProfileViewModel?.SelectedMapping?.ButtonsEnabled != true) return;
-            ProfileViewModel.SelectedMapping.AddDefaultOutput();
-        }
 
         private void AddFilter_OnClick(object sender, RoutedEventArgs e)
         {
@@ -1014,10 +1004,6 @@ namespace HidWizards.UCR.Views.ProfileViews
             menu.IsOpen = true;
         }
 
-        private async void CreateButtonFilter_OnClick(object sender, RoutedEventArgs e)
-        {
-            await CreateNamedFilterAsync("Button to Filter");
-        }
 
         private async System.Threading.Tasks.Task CreateNamedFilterAsync(string pluginName)
         {
@@ -1188,13 +1174,6 @@ namespace HidWizards.UCR.Views.ProfileViews
             }
         }
 
-        private void DeleteSelectedMapping_OnClick(object sender, RoutedEventArgs e)
-        {
-            var mapping = ProfileViewModel.SelectedMapping;
-            if (mapping?.ButtonsEnabled != true) return;
-            if (MappingCardControl.RequiresDeleteConfirmation(mapping) && MessageBox.Show("Delete mapping '" + mapping.MappingTitle + "'?", "Delete mapping", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-            mapping.Remove();
-        }
 
         private void WorkspaceAddMapping_OnClick(object sender, RoutedEventArgs e)
         {
