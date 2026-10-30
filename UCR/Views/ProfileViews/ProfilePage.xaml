@@ -1079,7 +1079,6 @@
                         </ItemsControl>
                     </ScrollViewer>
                 </Grid>
-            <Grid x:Name="SelectedMappingInspector" Grid.Row="1" Grid.Column="1" Visibility="Collapsed" IsHitTestVisible="False" Width="0"/>
             </Grid>
         </materialDesign:DialogHost>
 
