@@ -491,6 +491,12 @@ var colourButton = FindVisualChildren<Button>(row)
                 var editor = profileViewModel.MappingsList.Single();
                 Assert.That(editor.OutputBindingSets.Count, Is.EqualTo(1),
                     "Four directions are one logical output Binding Set, not four output rows.");
+                Assert.That(editor.OutputBindingSets, Is.SameAs(editor.OutputBindingSets),
+                    "WPF repeated layout reads should not rebuild output binding set groups.");
+                var previousGroups = editor.OutputBindingSets;
+                editor.RefreshCollapsedSummary();
+                Assert.That(editor.OutputBindingSets, Is.Not.SameAs(previousGroups),
+                    "Editing the mapping must invalidate cached output presentation.");
                 Assert.That(editor.OutputBindingSets.Single().Slots.Count, Is.EqualTo(4));
                 Assert.That(editor.OutputBindingSets.Single().IsFourWay, Is.True);
                 editor.SetDirectionalMode(4);
