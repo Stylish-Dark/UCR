@@ -24,6 +24,14 @@ namespace HidWizards.UCR.Views.ProfileViews
 {
     public partial class ProfilePage : UserControl, IDisposable
     {
+        // The virtualized section ListView owns a single ScrollViewer.
+        // Cache it after the template is realized so dragging does not walk
+        // the visual tree on every mouse-move event.
+        private ScrollViewer _mappingSectionsScrollViewer;
+        private ScrollViewer MappingSectionsScrollViewer =>
+            _mappingSectionsScrollViewer ??
+            (_mappingSectionsScrollViewer = MappingSectionsItemsControl == null
+                ? null : FindVisualChild<ScrollViewer>(MappingSectionsItemsControl));
         public Guid ProfileGuid => Profile.Guid;
         private Context Context { get; }
         internal Profile Profile { get; }
@@ -203,7 +211,7 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void MappingSectionsScrollViewer_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
-            ScrollViewerWithMouseWheel(sender as ScrollViewer, e);
+            ScrollViewerWithMouseWheel(MappingSectionsScrollViewer, e);
         }
 
         private static void ScrollViewerWithMouseWheel(ScrollViewer viewer, MouseWheelEventArgs e)
