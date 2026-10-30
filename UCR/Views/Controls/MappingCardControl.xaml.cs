@@ -156,19 +156,14 @@ namespace HidWizards.UCR.Views.Controls
             var targetHeight = ExpandedBodyHost.DesiredSize.Height;
             if (targetHeight <= 0) return;
             ExpandedBodyHost.Height = 0;
-            var sweep = new DoubleAnimation(0, targetHeight, TimeSpan.FromMilliseconds(190))
-            {
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-            };
-            sweep.Completed += (sender, args) =>
+            MappingEditorAnimation.AnimateHeight(ExpandedBodyHost, 0, targetHeight, true, (sender, args) =>
             {
                 if ((DataContext as MappingViewModel)?.IsExpanded == true)
                 {
                     ExpandedBodyHost.BeginAnimation(FrameworkElement.HeightProperty, null);
                     ExpandedBodyHost.Height = double.NaN;
                 }
-            };
-            ExpandedBodyHost.BeginAnimation(FrameworkElement.HeightProperty, sweep);
+            });
         }
 
         private void HideExpandedBody(bool animate = false)
@@ -182,16 +177,11 @@ namespace HidWizards.UCR.Views.Controls
                 if (startHeight > 0)
                 {
                     ExpandedBodyHost.Height = startHeight;
-                    var sweep = new DoubleAnimation(startHeight, 0, TimeSpan.FromMilliseconds(150))
-                    {
-                        EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
-                    };
-                    sweep.Completed += (sender, args) =>
+                    MappingEditorAnimation.AnimateHeight(ExpandedBodyHost, startHeight, 0, false, (sender, args) =>
                     {
                         if ((DataContext as MappingViewModel)?.IsExpanded != true)
                             HideExpandedBody(false);
-                    };
-                    ExpandedBodyHost.BeginAnimation(FrameworkElement.HeightProperty, sweep);
+                    });
                     return;
                 }
             }
