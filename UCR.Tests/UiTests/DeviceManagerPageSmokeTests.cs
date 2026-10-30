@@ -361,7 +361,7 @@ namespace HidWizards.UCR.Tests.UiTests
             var context = new Context();
             var profile = context.ProfilesManager.CreateProfile("Virtualization test", null, null);
             context.ProfilesManager.AddProfile(profile);
-            for (var index = 0; index < 50; index++)
+            for (var index = 0; index < 200; index++)
                 profile.AddMapping("Row " + index);
 
             var page = new ProfilePage(context, profile, embedded: true);
@@ -376,8 +376,8 @@ namespace HidWizards.UCR.Tests.UiTests
                 layoutTimer.Stop();
 
                 var rows = FindVisualChildren<ListView>(page)
-                    .FirstOrDefault(list => list.Name == "MappingRowsList" && list.Items.Count >= 50);
-                Assert.That(rows, Is.Not.Null, "Expected an expanded group with fifty mappings.");
+                    .FirstOrDefault(list => list.Name == "MappingRowsList" && list.Items.Count >= 200);
+                Assert.That(rows, Is.Not.Null, "Expected an expanded group with two hundred mappings.");
                 Assert.That(rows.ActualHeight, Is.LessThanOrEqualTo(rows.MaxHeight + 1));
                 var realized = Enumerable.Range(0, rows.Items.Count)
                     .Count(index => rows.ItemContainerGenerator.ContainerFromIndex(index) != null);
