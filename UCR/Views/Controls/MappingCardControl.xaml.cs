@@ -573,7 +573,20 @@ namespace HidWizards.UCR.Views.Controls
             var presetMenu = BuildOutputPresetPicker(mapping, keyboard, presets);
             if (presetMenu.Items.Count > 0) menu.Items.Add(presetMenu);
             if (menu.Items.Count == 0)
-                menu.Items.Add(new MenuItem { Header = "No compatible output controls", IsEnabled = false });
+            {
+                mapping.OutputSelectionFeedback = "No compatible output controls are available on this device.";
+                return;
+            }
+
+            // An unattached ContextMenu can be immediately dismissed by the
+            // opening click on the underlying raised Button. Own it through
+            // the actual button, just as the working mapping action menus do.
+            menu.Closed += (sender, args) =>
+            {
+                if (ReferenceEquals(target.ContextMenu, menu))
+                    target.ContextMenu = null;
+            };
+            target.ContextMenu = menu;
             menu.IsOpen = true;
         }
 
