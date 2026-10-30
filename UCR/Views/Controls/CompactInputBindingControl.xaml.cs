@@ -148,14 +148,14 @@ namespace HidWizards.UCR.Views.Controls
             e.Handled = true;
         }
 
-        private void MenuButton_OnClick(object sender, RoutedEventArgs e)
+        private async void MenuButton_OnClick(object sender, RoutedEventArgs e)
         {
             // Reveal the whole binding row before opening its options. Otherwise a
             // partly scrolled-off row leaves Block/NOT underneath the fixed footer.
             BringIntoView();
             if (DeviceBinding?.DeviceIoType == DeviceIoType.Output)
             {
-                _ = OpenOutputSelectionAsync(MenuButton);
+                await OpenOutputSelectionAsync(MenuButton);
                 return;
             }
             BuildContextMenu();
