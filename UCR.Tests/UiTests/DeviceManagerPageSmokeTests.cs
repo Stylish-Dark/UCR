@@ -274,6 +274,8 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(toggle, Is.Not.Null);
                 Assert.That(toggle.Content, Is.InstanceOf<Grid>());
                 var collapsedHeight = row.ActualHeight;
+                Assert.That(FindVisualChildren<MappingCardControl>(row).Any(), Is.False,
+                    "Collapsed rows must not instantiate the heavyweight mapping editor.");
 
                 toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, toggle));
                 page.Measure(available);
