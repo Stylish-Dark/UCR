@@ -326,6 +326,11 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(mapping.IsExpanded, Is.True);
                 Assert.That(double.IsNaN(editorHost.Height), Is.False,
                     "The inline editor should be animated through an explicit height.");
+                toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, toggle));
+                Assert.That(mapping.IsExpanded, Is.True,
+                    "A second click during collapse should reverse it rather than queue another collapse.");
+                Assert.That(editorHost.Tag, Is.Null,
+                    "A reversed collapse must clear the pending closing marker.");
                 Assert.That(toggle.Content, Is.InstanceOf<Grid>());
             }
             finally
