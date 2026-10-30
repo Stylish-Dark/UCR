@@ -264,6 +264,12 @@ namespace HidWizards.UCR.Tests.UiTests
                 var rows = FindVisualChildren<ListView>(page)
                     .SingleOrDefault(list => list.Name == "MappingRowsList");
                 Assert.That(rows, Is.Not.Null);
+                Assert.That(VirtualizingPanel.GetIsVirtualizing(rows), Is.True,
+                    "Every mapping group must virtualize its own long row list.");
+                Assert.That(VirtualizingPanel.GetVirtualizationMode(rows), Is.EqualTo(VirtualizationMode.Recycling));
+                Assert.That(rows.MaxHeight, Is.GreaterThan(0).And.LessThan(1000),
+                    "Nested mapping lists require a bounded viewport to virtualize.");
+                Assert.That(ScrollViewer.GetCanContentScroll(rows), Is.True);
                 var row = rows.ItemContainerGenerator.ContainerFromIndex(0) as ListViewItem;
                 Assert.That(row, Is.Not.Null);
                 var mapping = row.DataContext as MappingViewModel;
