@@ -1152,9 +1152,7 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void ShowInspectorTab(int index)
         {
-            if (_disposed || SidebarGrid == null || SelectedMappingInspector == null
-                || ProfileOptionsHost == null) return;
-            SelectedMappingInspector.Visibility = Visibility.Collapsed;
+            if (_disposed || SidebarGrid == null || ProfileOptionsHost == null) return;
             SidebarGrid.Visibility = Visibility.Collapsed;
             ProfileOptionsHost.Visibility = Visibility.Visible;
             DockedDevicesNotice.Visibility = Visibility.Collapsed;
@@ -1186,7 +1184,6 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (section == "Add mapping")
             {
                 SidebarGrid.Visibility = Visibility.Visible;
-                SelectedMappingInspector.Visibility = Visibility.Collapsed;
                 MappingToolboxPanel.Visibility = Visibility.Visible;
             }
         }
