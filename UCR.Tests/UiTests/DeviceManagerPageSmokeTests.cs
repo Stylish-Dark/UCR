@@ -369,9 +369,11 @@ namespace HidWizards.UCR.Tests.UiTests
             {
                 page.SuspendEmbeddedVisuals();
                 var size = new Size(1440, 960);
+                var layoutTimer = System.Diagnostics.Stopwatch.StartNew();
                 page.Measure(size);
                 page.Arrange(new Rect(new Point(0, 0), size));
                 page.UpdateLayout();
+                layoutTimer.Stop();
 
                 var rows = FindVisualChildren<ListView>(page)
                     .FirstOrDefault(list => list.Name == "MappingRowsList" && list.Items.Count >= 50);
@@ -381,6 +383,8 @@ namespace HidWizards.UCR.Tests.UiTests
                     .Count(index => rows.ItemContainerGenerator.ContainerFromIndex(index) != null);
                 Assert.That(realized, Is.LessThan(rows.Items.Count),
                     "A long mapping group must not instantiate every offscreen row.");
+                TestContext.Progress.WriteLine("PERF mapping rows=" + rows.Items.Count +
+                    " realized=" + realized + " firstLayoutMs=" + layoutTimer.ElapsedMilliseconds);
             }
             finally
             {
