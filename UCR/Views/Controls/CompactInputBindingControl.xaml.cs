@@ -153,7 +153,8 @@ namespace HidWizards.UCR.Views.Controls
             // Reveal the whole binding row before opening its options. Otherwise a
             // partly scrolled-off row leaves Block/NOT underneath the fixed footer.
             BringIntoView();
-            if (DeviceBinding?.DeviceIoType == DeviceIoType.Output)
+            var activeBinding = (DataContext as DeviceBindingViewModel)?.DeviceBinding ?? DeviceBinding;
+            if (activeBinding?.DeviceIoType == DeviceIoType.Output)
             {
                 await OpenOutputSelectionAsync(MenuButton);
                 return;
