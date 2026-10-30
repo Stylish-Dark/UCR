@@ -1372,9 +1372,13 @@ namespace HidWizards.UCR.Views.ProfileViews
                 return;
             }
 
+            // A second click during collapse reverses the transition rather
+            // than waiting for the old completion callback to fire.
+            var reversingCollapse = Equals(editor.Tag, "MappingClosing");
             editor.BeginAnimation(FrameworkElement.HeightProperty, null);
-            if (!mapping.IsExpanded)
+            if (!mapping.IsExpanded || reversingCollapse)
             {
+                editor.Tag = null;
                 mapping.IsExpanded = true;
                 editor.Dispatcher.BeginInvoke(new Action(() =>
                 {
@@ -1401,6 +1405,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             }
             else
             {
+                editor.Tag = "MappingClosing";
                 var start = editor.ActualHeight;
                 editor.Height = start;
                 var animation = new DoubleAnimation(start, 0, TimeSpan.FromMilliseconds(150))
@@ -1409,6 +1414,8 @@ namespace HidWizards.UCR.Views.ProfileViews
                 };
                 animation.Completed += (o, args) =>
                 {
+                    if (!Equals(editor.Tag, "MappingClosing")) return;
+                    editor.Tag = null;
                     editor.BeginAnimation(FrameworkElement.HeightProperty, null);
                     mapping.IsExpanded = false;
                     editor.Height = double.NaN;
