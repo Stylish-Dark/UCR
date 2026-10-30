@@ -237,6 +237,41 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void LongMappingGroupVirtualizesUnseenRows()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Virtualization test", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            for (var index = 0; index < 50; index++)
+                profile.AddMapping("Row " + index);
+
+            var page = new ProfilePage(context, profile, embedded: true);
+            try
+            {
+                page.SuspendEmbeddedVisuals();
+                var size = new Size(1440, 960);
+                page.Measure(size);
+                page.Arrange(new Rect(new Point(0, 0), size));
+                page.UpdateLayout();
+
+                var rows = FindVisualChildren<ListView>(page)
+                    .FirstOrDefault(list => list.Name == "MappingRowsList" && list.Items.Count >= 50);
+                Assert.That(rows, Is.Not.Null, "Expected an expanded group with fifty mappings.");
+                Assert.That(rows.ActualHeight, Is.LessThanOrEqualTo(rows.MaxHeight + 1));
+                var realized = Enumerable.Range(0, rows.Items.Count)
+                    .Count(index => rows.ItemContainerGenerator.ContainerFromIndex(index) != null);
+                Assert.That(realized, Is.LessThan(rows.Items.Count),
+                    "A long mapping group must not instantiate every offscreen row.");
+            }
+            finally
+            {
+                page.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void ActualProfileWorkspaceMappingChevronExpandsInputsAndOutputsBelowItsOwnRow()
         {
             EnsureApplicationResources();
