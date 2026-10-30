@@ -79,7 +79,17 @@ namespace HidWizards.UCR.Views.Controls
 
         private async void BindButton_OnClick(object sender, RoutedEventArgs e)
         {
-            if (DeviceBinding == null) return;
+            // DataTemplates can realize their binding view-model before the
+            // separate DeviceBinding dependency property is populated. The
+            // button must operate on the actual row binding, never silently exit.
+            var currentBinding = (DataContext as DeviceBindingViewModel)?.DeviceBinding;
+            if (currentBinding != null && !ReferenceEquals(DeviceBinding, currentBinding))
+                DeviceBinding = currentBinding;
+            if (DeviceBinding == null)
+            {
+                Logger.Warn("Output/input button has no backing device binding.");
+                return;
+            }
             if (DeviceBinding.IsInBindMode)
             {
                 DeviceBinding.CancelBindMode();
