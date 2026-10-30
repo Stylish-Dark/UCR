@@ -102,6 +102,11 @@ namespace HidWizards.UCR.Views.Controls
                         BindButton);
                     return;
                 }
+
+                // Reparenting during an inline editor transition must not make
+                // the primary Output action silently inert.
+                ShowOutputPicker(BindButton);
+                return;
             }
 
             // Keyboard outputs use pressed-key capture; controllers retain the
