@@ -728,8 +728,11 @@ var colourButton = FindVisualChildren<Button>(row)
 
                 var body = card.FindName("ExpandedBodyHost") as ContentControl;
                 Assert.That(body, Is.Not.Null);
+                // Hidden four-way templates can be realized even for a
+                // one-output mapping; only choose the active row's real binding.
                 var output = FindVisualChildren<CompactInputBindingControl>(body)
-                    .FirstOrDefault(control => (control.Tag as string) == "Output");
+                    .FirstOrDefault(control => (control.Tag as string) == "Output" &&
+                        control.DataContext is DeviceBindingViewModel);
                 Assert.That(output, Is.Not.Null, "The expanded Outputs section must create a real clickable binding control.");
                 var click = output.FindName("BindButton") as Button;
                 Assert.That(click, Is.Not.Null);
