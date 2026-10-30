@@ -703,6 +703,48 @@ var colourButton = FindVisualChildren<Button>(row)
             }
         }
 
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void OutputButtonIsWiredToUnifiedPickerOnTheVisibleExpandedMapping()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Output click regression", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var mapping = profile.AddMapping("Output controls");
+            profile.AddPlugin(mapping, new ButtonToButton());
+            var viewModel = new ProfileViewModel(profile);
+            try
+            {
+                var editor = viewModel.MappingsList.Single();
+                var card = new MappingCardControl { DataContext = editor };
+                card.Measure(new Size(1200, 1000));
+                card.Arrange(new Rect(0, 0, 1200, 1000));
+                card.UpdateLayout();
+                var chevron = card.FindName("ExpandMappingButton") as Button;
+                Assert.That(chevron, Is.Not.Null);
+                chevron.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, chevron));
+                card.UpdateLayout();
+
+                var body = card.FindName("ExpandedBodyHost") as ContentControl;
+                Assert.That(body, Is.Not.Null);
+                var output = FindVisualChildren<CompactInputBindingControl>(body)
+                    .FirstOrDefault(control => (control.Tag as string) == "Output");
+                Assert.That(output, Is.Not.Null, "The expanded Outputs section must create a real clickable binding control.");
+                var click = output.FindName("BindButton") as Button;
+                Assert.That(click, Is.Not.Null);
+                Assert.That(click.IsEnabled, Is.True);
+                click.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, click));
+                Assert.That(editor.OutputSelectionFeedback,
+                    Does.Contain("output device"),
+                    "Clicking the visible OUTPUT button must reach the picker, not silently do nothing.");
+            }
+            finally
+            {
+                viewModel.Dispose();
+            }
+        }
+
         private static void PumpDispatcherFor(TimeSpan duration)
         {
             var frame = new DispatcherFrame();
