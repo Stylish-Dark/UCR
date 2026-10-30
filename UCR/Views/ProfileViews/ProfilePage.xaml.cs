@@ -527,6 +527,10 @@ namespace HidWizards.UCR.Views.ProfileViews
             var mapping = container?.DataContext as MappingViewModel;
             if (mapping == null || mapping.IsExpanded || !list.Items.Contains(mapping)) return;
 
+            // Direct reorder animates all sibling rows and therefore requires
+            // their containers. Materialize them only while a drag is pending.
+            VirtualizingPanel.SetIsVirtualizing(list, false);
+            list.UpdateLayout();
             _mappingDragListView = list;
             _mappingDragStart = e.GetPosition(list);
             _mappingDragSource = mapping;
@@ -902,6 +906,8 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void ResetPendingMappingDrag()
         {
+            if (_mappingDragListView != null)
+                VirtualizingPanel.SetIsVirtualizing(_mappingDragListView, true);
             _mappingDragStart = null;
             _mappingDragSource = null;
             _mappingDragOriginalIndex = -1;
@@ -910,7 +916,11 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void AutoScrollMappingList()
         {
-            var scrollViewer = MappingSectionsScrollViewer;
+            // Scroll the active row viewport first. The outer section list is
+            // only used when the pointer moves beyond that viewport.
+            var inner = _mappingDragListView == null ? null :
+                FindVisualChild<ScrollViewer>(_mappingDragListView);
+            var scrollViewer = inner?.ScrollableHeight > 0 ? inner : MappingSectionsScrollViewer;
             if (scrollViewer == null || scrollViewer.ScrollableHeight <= 0) return;
 
             var pointer = Mouse.GetPosition(scrollViewer);
