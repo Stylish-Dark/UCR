@@ -973,9 +973,19 @@ namespace HidWizards.UCR.Views.ProfileViews
         private void ScrollMappingIntoView(MappingViewModel mapping)
         {
             if (mapping == null) return;
+            // Find the owning section from the view model, not by recursively
+            // walking every realized control. Section virtualization means an
+            // offscreen section may not have any controls to find yet.
+            var section = ProfileViewModel.MappingSections?
+                .FirstOrDefault(candidate => candidate.Mappings.Contains(mapping));
+            if (section == null) return;
+            MappingSectionsItemsControl.ScrollIntoView(section);
             MappingSectionsItemsControl.UpdateLayout();
-            var list = FindVisualChildren<ListView>(MappingSectionsItemsControl)
-                .FirstOrDefault(candidate => candidate.Items.Contains(mapping));
+
+            var container = MappingSectionsItemsControl.ItemContainerGenerator
+                .ContainerFromItem(section) as DependencyObject;
+            var list = FindVisualChildren<ListView>(container)
+                .FirstOrDefault(candidate => candidate.Name == "MappingRowsList");
             if (list == null) return;
             list.ScrollIntoView(mapping);
             list.UpdateLayout();
@@ -985,6 +995,7 @@ namespace HidWizards.UCR.Views.ProfileViews
         private void ScrollSectionIntoView(MappingGroupViewModel section)
         {
             if (section == null) return;
+            MappingSectionsItemsControl.ScrollIntoView(section);
             MappingSectionsItemsControl.UpdateLayout();
             (MappingSectionsItemsControl.ItemContainerGenerator.ContainerFromItem(section) as FrameworkElement)?.BringIntoView();
         }
