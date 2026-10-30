@@ -144,6 +144,15 @@ namespace HidWizards.UCR.Views.Controls
             BringIntoView();
             if (DeviceBinding?.DeviceIoType == DeviceIoType.Output)
             {
+                if (EnableUnifiedOutputPicker)
+                {
+                    var mappingCard = FindAncestor<MappingCardControl>(this);
+                    if (mappingCard != null)
+                    {
+                        mappingCard.OpenUnifiedOutputPicker(DataContext as DeviceBindingViewModel, MenuButton);
+                        return;
+                    }
+                }
                 ShowOutputPicker(MenuButton);
                 return;
             }
