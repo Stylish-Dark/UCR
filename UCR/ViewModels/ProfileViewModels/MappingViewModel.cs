@@ -171,7 +171,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<PluginViewModel> Plugins { get; set; }
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<InputConditionViewModel> InputConditions { get; private set; }
-        public List<OutputBindingSetViewModel> OutputBindingSets => BuildOutputBindingSets();
+        // Stable between actual mapping changes: WPF requests this property repeatedly
+        // while measuring and animating a row. Rebuilding every time allocates
+        // new groups, slots, and lists throughout layout passes.
+        private List<OutputBindingSetViewModel> _outputBindingSets;
+        public List<OutputBindingSetViewModel> OutputBindingSets =>
+            _outputBindingSets ?? (_outputBindingSets = BuildOutputBindingSets());
 
         public bool ButtonsEnabled => !ProfileViewModel.Profile.IsActive();
         // Device selection is the first decision on each side. Type menus
@@ -1071,6 +1076,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public void RefreshCollapsedSummary()
         {
+            _outputBindingSets = null;
             _collapsedSummary = BuildCollapsedSummary();
             _collapsedInputVisuals = BuildCollapsedInputVisuals();
             _collapsedInputRows = BuildCollapsedInputRows();
@@ -2403,6 +2409,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(InputSideDeviceGuid));
             OnPropertyChanged(nameof(OutputSideDeviceGuid));
             OnPropertyChanged(nameof(OutputBindingColumns));
+            _outputBindingSets = null;
             OnPropertyChanged(nameof(OutputBindingSets));
             OnPropertyChanged(nameof(AddOutputCaption));
             if (Plugins != null)
