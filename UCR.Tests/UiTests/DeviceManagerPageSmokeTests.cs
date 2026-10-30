@@ -734,6 +734,17 @@ var colourButton = FindVisualChildren<Button>(row)
                 var click = output.FindName("BindButton") as Button;
                 Assert.That(click, Is.Not.Null);
                 Assert.That(click.IsEnabled, Is.True);
+                Assert.That(output.DataContext, Is.InstanceOf<DeviceBindingViewModel>(),
+                    "The output row must have its binding view-model.");
+                var bound = ((DeviceBindingViewModel)output.DataContext).DeviceBinding;
+                Assert.That(bound, Is.Not.Null);
+                Assert.That(bound.DeviceIoType, Is.EqualTo(DeviceIoType.Output),
+                    "The Output control must point at an output, not an input.");
+                Assert.That(output.EnableUnifiedOutputPicker, Is.True);
+                DependencyObject ancestor = output;
+                while (ancestor != null && !(ancestor is MappingCardControl))
+                    ancestor = VisualTreeHelper.GetParent(ancestor);
+                Assert.That(ancestor, Is.SameAs(card), "The Output click must resolve its mapping-card parent.");
                 click.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, click));
                 Assert.That(editor.OutputSelectionFeedback,
                     Does.Contain("output device"),
