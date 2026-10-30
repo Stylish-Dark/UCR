@@ -147,6 +147,7 @@
     </Compile>
     <Compile Include="Views\Controls\MappingEditorAnimation.cs" />
     <Compile Include="Views\Controls\MappingCardControl.OutputPicker.cs" />
+    <Compile Include="Views\Controls\OutputPickerInfrastructure.cs" />
     <Compile Include="Views\Controls\MappingCardControl.xaml.cs">
       <DependentUpon>MappingCardControl.xaml</DependentUpon>
     </Compile>
