@@ -254,6 +254,13 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.Arrange(new Rect(new Point(0, 0), available));
                 page.UpdateLayout();
 
+                var sectionList = FindVisualChildren<ListView>(page)
+                    .SingleOrDefault(list => list.Name == "MappingSectionsItemsControl");
+                Assert.That(sectionList, Is.Not.Null);
+                Assert.That(VirtualizingPanel.GetIsVirtualizing(sectionList), Is.True,
+                    "Offscreen mapping sections should not all be realized.");
+                Assert.That(ScrollViewer.GetCanContentScroll(sectionList), Is.True,
+                    "The section list must own logical scrolling for WPF virtualization.");
                 var rows = FindVisualChildren<ListView>(page)
                     .SingleOrDefault(list => list.Name == "MappingRowsList");
                 Assert.That(rows, Is.Not.Null);
