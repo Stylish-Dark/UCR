@@ -1392,11 +1392,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                     if (target <= 0) return;
                     var from = reversingCollapse ? Math.Min(Math.Max(0, resumeHeight), target) : 0;
                     editor.Height = from;
-                    var animation = new DoubleAnimation(from, target, TimeSpan.FromMilliseconds(190))
-                    {
-                        EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-                    };
-                    animation.Completed += (o, args) =>
+                    MappingEditorAnimation.AnimateHeight(editor, from, target, true, (o, args) =>
                     {
                         // A stale opening callback must never cancel a newer close.
                         if (mapping.IsExpanded && !Equals(editor.Tag, "MappingClosing"))
@@ -1404,8 +1400,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                             editor.BeginAnimation(FrameworkElement.HeightProperty, null);
                             editor.Height = double.NaN;
                         }
-                    };
-                    editor.BeginAnimation(FrameworkElement.HeightProperty, animation);
+                    });
                 }), DispatcherPriority.Loaded);
             }
             else
@@ -1422,19 +1417,14 @@ namespace HidWizards.UCR.Views.ProfileViews
                     return;
                 }
                 editor.Height = start;
-                var animation = new DoubleAnimation(start, 0, TimeSpan.FromMilliseconds(150))
-                {
-                    EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn }
-                };
-                animation.Completed += (o, args) =>
+                MappingEditorAnimation.AnimateHeight(editor, start, 0, false, (o, args) =>
                 {
                     if (!Equals(editor.Tag, "MappingClosing")) return;
                     editor.Tag = null;
                     editor.BeginAnimation(FrameworkElement.HeightProperty, null);
                     mapping.IsExpanded = false;
                     editor.Height = double.NaN;
-                };
-                editor.BeginAnimation(FrameworkElement.HeightProperty, animation);
+                });
             }
         }
 
