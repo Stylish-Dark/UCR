@@ -1412,6 +1412,15 @@ namespace HidWizards.UCR.Views.ProfileViews
             {
                 editor.Tag = "MappingClosing";
                 var start = editor.ActualHeight;
+                if (start <= 0)
+                {
+                    // Nothing is visible to animate; avoid retaining a closing
+                    // marker and an expanded model waiting on a zero-height clock.
+                    editor.Tag = null;
+                    mapping.IsExpanded = false;
+                    editor.Height = double.NaN;
+                    return;
+                }
                 editor.Height = start;
                 var animation = new DoubleAnimation(start, 0, TimeSpan.FromMilliseconds(150))
                 {
