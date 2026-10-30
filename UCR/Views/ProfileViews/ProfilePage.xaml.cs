@@ -1375,6 +1375,9 @@ namespace HidWizards.UCR.Views.ProfileViews
             // A second click during collapse reverses the transition rather
             // than waiting for the old completion callback to fire.
             var reversingCollapse = Equals(editor.Tag, "MappingClosing");
+            // Capture the live animated height BEFORE cancelling the old clock.
+            // Otherwise rapid re-expansion jumps back to zero and appears to snap.
+            var resumeHeight = reversingCollapse ? editor.ActualHeight : 0;
             editor.BeginAnimation(FrameworkElement.HeightProperty, null);
             if (!mapping.IsExpanded || reversingCollapse)
             {
@@ -1387,14 +1390,16 @@ namespace HidWizards.UCR.Views.ProfileViews
                     editor.Measure(new Size(Math.Max(1, editor.ActualWidth), double.PositiveInfinity));
                     var target = editor.DesiredSize.Height;
                     if (target <= 0) return;
-                    editor.Height = 0;
-                    var animation = new DoubleAnimation(0, target, TimeSpan.FromMilliseconds(190))
+                    var from = reversingCollapse ? Math.Min(Math.Max(0, resumeHeight), target) : 0;
+                    editor.Height = from;
+                    var animation = new DoubleAnimation(from, target, TimeSpan.FromMilliseconds(190))
                     {
                         EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
                     };
                     animation.Completed += (o, args) =>
                     {
-                        if (mapping.IsExpanded)
+                        // A stale opening callback must never cancel a newer close.
+                        if (mapping.IsExpanded && !Equals(editor.Tag, "MappingClosing"))
                         {
                             editor.BeginAnimation(FrameworkElement.HeightProperty, null);
                             editor.Height = double.NaN;
