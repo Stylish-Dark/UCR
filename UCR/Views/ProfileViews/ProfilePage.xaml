@@ -1051,21 +1051,24 @@
                                                                 </StackPanel>
                                                             </Grid>
                                                                 <ContentControl x:Name="InlineMappingEditor" Content="{Binding}" HorizontalContentAlignment="Stretch" ClipToBounds="True">
+                                                                    <ContentControl.Resources>
+                                                                        <DataTemplate x:Key="InlineMappingEditorTemplate">
+                                                                            <controls:MappingCardControl InspectorMode="True" InlineWorkspaceMode="True"/>
+                                                                        </DataTemplate>
+                                                                    </ContentControl.Resources>
                                                                     <ContentControl.Style>
                                                                         <Style TargetType="{x:Type ContentControl}">
                                                                             <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            <!-- Do not construct every expensive editor for collapsed rows. -->
+                                                                            <Setter Property="ContentTemplate" Value="{x:Null}"/>
                                                                             <Style.Triggers>
                                                                                 <DataTrigger Binding="{Binding IsExpanded}" Value="True">
                                                                                     <Setter Property="Visibility" Value="Visible"/>
+                                                                                    <Setter Property="ContentTemplate" Value="{StaticResource InlineMappingEditorTemplate}"/>
                                                                                 </DataTrigger>
                                                                             </Style.Triggers>
                                                                         </Style>
                                                                     </ContentControl.Style>
-                                                                    <ContentControl.ContentTemplate>
-                                                                        <DataTemplate>
-                                                                            <controls:MappingCardControl InspectorMode="True" InlineWorkspaceMode="True"/>
-                                                                        </DataTemplate>
-                                                                    </ContentControl.ContentTemplate>
                                                                 </ContentControl>
                                                             </StackPanel>
                                                         </Border>
