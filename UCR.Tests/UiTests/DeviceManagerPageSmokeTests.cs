@@ -784,7 +784,7 @@ var colourButton = FindVisualChildren<Button>(row)
 
         [Test]
         [Apartment(ApartmentState.STA)]
-        public void OutputButtonIsWiredToUnifiedPickerOnTheVisibleExpandedMapping()
+        public void OutputButtonPreservesTwoColumnPickerRatherThanQuickBindMenu()
         {
             EnsureApplicationResources();
             var context = new Context();
@@ -827,10 +827,14 @@ var colourButton = FindVisualChildren<Button>(row)
                 while (ancestor != null && !(ancestor is MappingCardControl))
                     ancestor = VisualTreeHelper.GetParent(ancestor);
                 Assert.That(ancestor, Is.SameAs(card), "The Output click must resolve its mapping-card parent.");
+                // With no output device configured, the two-column picker has no
+                // options to display. It must not fall back to the unified glyph
+                // quick-bind menu or alter the mapping implicitly.
                 click.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, click));
-                Assert.That(editor.OutputSelectionFeedback,
-                    Does.Contain("output device"),
-                    "Clicking the visible OUTPUT button must reach the picker, not silently do nothing.");
+                Assert.That(editor.OutputSelectionFeedback, Is.Null,
+                    "The primary Output button must not invoke the quick-bind menu.");
+                Assert.That(bound.IsBound, Is.False,
+                    "No output destination may be silently substituted.");
             }
             finally
             {
