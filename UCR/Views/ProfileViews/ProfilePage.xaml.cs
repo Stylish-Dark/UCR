@@ -1500,7 +1500,9 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private static void StartInlineMappingOpenAnimation(ContentControl editor, MappingViewModel mapping, double resumeHeight)
         {
-            if (!mapping.IsExpanded || !editor.IsVisible) return;
+            // IsVisible can still be false until the IsExpanded binding is
+            // applied on the next WPF layout pass. Start the clock NOW.
+            if (!mapping.IsExpanded) return;
 
             // The last real open height remains valid after WPF collapses the
             // editor. Prefer it to DesiredSize, which becomes zero while
