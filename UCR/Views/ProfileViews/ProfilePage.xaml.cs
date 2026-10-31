@@ -1421,30 +1421,30 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (!mapping.IsExpanded || reversingCollapse)
             {
                 editor.Tag = null;
-                // Materialize only on the first open; retain the editor across closes.
-                // Recreating its visual tree on every chevron click causes a new layout stall.
-                if (editor.ContentTemplate == null)
-                    editor.ContentTemplate = editor.FindResource("InlineMappingEditorTemplate") as DataTemplate;
-                mapping.IsExpanded = true;
-                editor.Dispatcher.BeginInvoke(new Action(() =>
+                // A retained editor can animate immediately from its already measured size.
+                // First-time template creation is deferred until after the click has returned,
+                // allowing the chevron to acknowledge the input without blocking on WPF layout.
+                var firstOpen = editor.ContentTemplate == null;
+                if (!firstOpen)
                 {
-                    if (!mapping.IsExpanded || !editor.IsVisible) return;
-                    editor.Height = double.NaN;
-                    editor.Measure(new Size(Math.Max(1, editor.ActualWidth), double.PositiveInfinity));
-                    var target = editor.DesiredSize.Height;
-                    if (target <= 0) return;
-                    var from = reversingCollapse ? Math.Min(Math.Max(0, resumeHeight), target) : 0;
-                    editor.Height = from;
-                    MappingEditorAnimation.AnimateHeight(editor, from, target, true, (o, args) =>
+                    mapping.IsExpanded = true;
+                    StartInlineMappingOpenAnimation(editor, mapping, reversingCollapse ? resumeHeight : 0);
+                }
+                else
+                {
+                    mapping.IsExpanded = true;
+                    editor.Height = 0;
+                    editor.Dispatcher.BeginInvoke(new Action(() =>
                     {
-                        // A stale opening callback must never cancel a newer close.
-                        if (mapping.IsExpanded && !Equals(editor.Tag, "MappingClosing"))
+                        if (!mapping.IsExpanded || Equals(editor.Tag, "MappingClosing")) return;
+                        editor.ContentTemplate = editor.FindResource("InlineMappingEditorTemplate") as DataTemplate;
+                        editor.Dispatcher.BeginInvoke(new Action(() =>
                         {
-                            editor.BeginAnimation(FrameworkElement.HeightProperty, null);
-                            editor.Height = double.NaN;
-                        }
-                    });
-                }), DispatcherPriority.Loaded);
+                            if (mapping.IsExpanded && !Equals(editor.Tag, "MappingClosing"))
+                                StartInlineMappingOpenAnimation(editor, mapping, 0);
+                        }), DispatcherPriority.Loaded);
+                    }), DispatcherPriority.Background);
+                }
             }
             else
             {
@@ -1469,6 +1469,36 @@ namespace HidWizards.UCR.Views.ProfileViews
                     editor.Height = double.NaN;
                 });
             }
+        }
+
+        private static void StartInlineMappingOpenAnimation(ContentControl editor, MappingViewModel mapping, double resumeHeight)
+        {
+            if (!mapping.IsExpanded || !editor.IsVisible) return;
+            // Let WPF use the layout pass already completed for the retained editor.
+            // Measuring against infinite height here forces the entire nested editor to
+            // synchronously relayout on every chevron click.
+            var target = editor.DesiredSize.Height;
+            if (target <= 0)
+            {
+                editor.UpdateLayout();
+                target = editor.DesiredSize.Height;
+            }
+            if (target <= 0)
+            {
+                editor.Height = double.NaN;
+                return;
+            }
+
+            var from = Math.Min(Math.Max(0, resumeHeight), target);
+            editor.Height = from;
+            MappingEditorAnimation.AnimateHeight(editor, from, target, true, (o, args) =>
+            {
+                if (mapping.IsExpanded && !Equals(editor.Tag, "MappingClosing"))
+                {
+                    editor.BeginAnimation(FrameworkElement.HeightProperty, null);
+                    editor.Height = double.NaN;
+                }
+            });
         }
 
         private void MappingListView_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
