@@ -1432,18 +1432,16 @@ namespace HidWizards.UCR.Views.ProfileViews
                 }
                 else
                 {
+                    // Establish the expanded state on the click itself so the mapping
+                    // row participates in the very next layout pass. Deferring template
+                    // assignment left the card visually collapsed after the click.
+                    editor.ContentTemplate = editor.FindResource("InlineMappingEditorTemplate") as DataTemplate;
                     mapping.IsExpanded = true;
-                    editor.Height = 0;
                     editor.Dispatcher.BeginInvoke(new Action(() =>
                     {
-                        if (!mapping.IsExpanded || Equals(editor.Tag, "MappingClosing")) return;
-                        editor.ContentTemplate = editor.FindResource("InlineMappingEditorTemplate") as DataTemplate;
-                        editor.Dispatcher.BeginInvoke(new Action(() =>
-                        {
-                            if (mapping.IsExpanded && !Equals(editor.Tag, "MappingClosing"))
-                                StartInlineMappingOpenAnimation(editor, mapping, 0);
-                        }), DispatcherPriority.Loaded);
-                    }), DispatcherPriority.Background);
+                        if (mapping.IsExpanded && !Equals(editor.Tag, "MappingClosing"))
+                            StartInlineMappingOpenAnimation(editor, mapping, 0);
+                    }), DispatcherPriority.Loaded);
                 }
             }
             else
