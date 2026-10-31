@@ -1445,7 +1445,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                 // A retained editor can animate immediately from its already measured size.
                 // First-time template creation is deferred until after the click has returned,
                 // allowing the chevron to acknowledge the input without blocking on WPF layout.
-                var firstOpen = editor.ContentTemplate == null;
+                var firstOpen = (double)editor.GetValue(CachedInlineEditorHeightProperty) <= 0;
                 if (!firstOpen)
                 {
                     mapping.IsExpanded = true;
@@ -1459,7 +1459,8 @@ namespace HidWizards.UCR.Views.ProfileViews
                     // Establish the expanded state on the click itself so the mapping
                     // row participates in the very next layout pass. Deferring template
                     // assignment left the card visually collapsed after the click.
-                    editor.ContentTemplate = editor.FindResource("InlineMappingEditorTemplate") as DataTemplate;
+                    if (editor.ContentTemplate == null)
+                        editor.ContentTemplate = editor.FindResource("InlineMappingEditorTemplate") as DataTemplate;
                     mapping.IsExpanded = true;
                     editor.Dispatcher.BeginInvoke(new Action(() =>
                     {
@@ -1539,11 +1540,24 @@ namespace HidWizards.UCR.Views.ProfileViews
         {
             var mapping = (sender as FrameworkElement)?.DataContext as MappingViewModel;
             if (mapping == null || mapping.IsExpanded) return;
+            var button = sender as Button;
             Dispatcher.BeginInvoke(new Action(() =>
             {
-                if (mapping.IsExpanded || _disposed) return;
+                if (mapping.IsExpanded || _disposed || button == null) return;
                 foreach (var plugin in mapping.Plugins)
                     plugin.EnsureEditorInitialized();
+
+                // Realize the card's template while the row is still collapsed.
+                // Applying its ContentPresenter template creates the expensive
+                // visual tree ahead of the click without occupying row height.
+                var header = (button.Parent as StackPanel)?.Parent as Grid;
+                var row = header?.Parent as StackPanel;
+                var editor = row?.Children.OfType<ContentControl>().FirstOrDefault();
+                if (editor == null || editor.ContentTemplate != null) return;
+                editor.ContentTemplate = editor.FindResource("InlineMappingEditorTemplate") as DataTemplate;
+                editor.ApplyTemplate();
+                var presenter = FindVisualChild<ContentPresenter>(editor);
+                presenter?.ApplyTemplate();
             }), DispatcherPriority.Background);
         }
 
