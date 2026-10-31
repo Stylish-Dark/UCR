@@ -17,6 +17,34 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public MappingViewModel MappingViewModel { get; }
         public Plugin Plugin { get; set; }
         public string OutputType => IsFourButtonAxis ? "Axis" : new SimplePluginViewModel(Plugin).OutputType;
+        public string OutputDirectionLabel
+        {
+            get
+            {
+                var mapping = MappingViewModel.Mapping;
+                var index = MappingViewModel.Plugins?.IndexOf(this) ?? -1;
+                if (index < 0) return string.Empty;
+                if (mapping?.DirectionalButtonOutputs == true)
+                    return new[] { "Left", "Right", "Up", "Down" }[index % 4];
+                if (mapping?.DirectionalPairButtonOutputs == true)
+                    return index % 2 == 0 ? "Negative direction (-)" : "Positive direction (+)";
+                if (MappingViewModel.MappingOutputCategoryDisplay == "Full Joystick" && index < 2)
+                    return index == 0 ? "X axis" : "Y axis";
+                return MappingViewModel.Plugins.Count > 1
+                    ? "Output " + (index + 1) : string.Empty;
+            }
+        }
+        public Visibility OutputDirectionLabelVisibility =>
+            string.IsNullOrEmpty(OutputDirectionLabel) ? Visibility.Collapsed : Visibility.Visible;
+        public void RefreshOutputDirectionLabel()
+        {
+            OnPropertyChanged(nameof(OutputDirectionLabel));
+            OnPropertyChanged(nameof(OutputDirectionLabelVisibility));
+            OnPropertyChanged(nameof(RemoveBindingSetVisibility));
+            OnPropertyChanged(nameof(RemoveBindingSetToolTip));
+            OnPropertyChanged(nameof(CanRemove));
+        }
+
         private System.Reflection.PropertyInfo InvertProperty => Plugin.GetType().GetProperty("Invert");
         public Visibility QuickInvertVisibility =>
             InvertProperty?.PropertyType == typeof(bool) && InvertProperty.CanWrite
@@ -100,7 +128,33 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<PluginPropertyGroupViewModel> PluginPropertyGroups { get; set; }
-        public bool CanRemove => !MappingViewModel.ProfileViewModel.Profile.IsActive() && MappingViewModel.Plugins.Count > 1;
+        public Visibility RemoveBindingSetVisibility
+        {
+            get
+            {
+                var mapping = MappingViewModel.Mapping;
+                var slots = mapping.DirectionalButtonOutputs ? 4 :
+                    mapping.DirectionalPairButtonOutputs ? 2 : 1;
+                var index = MappingViewModel.Plugins?.IndexOf(this) ?? -1;
+                return index >= 0 && index % slots == 0
+                    ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+        public string RemoveBindingSetToolTip =>
+            MappingViewModel.Mapping.DirectionalButtonOutputs ||
+            MappingViewModel.Mapping.DirectionalPairButtonOutputs
+                ? "Remove this binding set" : "Remove this output";
+        public bool CanRemove
+        {
+            get
+            {
+                var mapping = MappingViewModel.Mapping;
+                var slots = mapping.DirectionalButtonOutputs ? 4 :
+                    mapping.DirectionalPairButtonOutputs ? 2 : 1;
+                return !MappingViewModel.ProfileViewModel.Profile.IsActive() &&
+                    MappingViewModel.Plugins.Count > slots;
+            }
+        }
         public bool CanAddFilter => !MappingViewModel.ProfileViewModel.Profile.IsActive();
         public ObservableCollection<FilterViewModel> Filters { get; set; }
         private bool _editorInitialized;

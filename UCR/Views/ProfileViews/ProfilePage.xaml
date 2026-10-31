@@ -256,8 +256,8 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" MinWidth="360"/>
-                    <ColumnDefinition Width="510" MinWidth="390"/>
+                    <ColumnDefinition Width="1.7*" MinWidth="0"/>
+                    <ColumnDefinition Width="*" MinWidth="0"/>
                 </Grid.ColumnDefinitions>
                 <Border Grid.Row="0" Grid.ColumnSpan="2" Padding="20 12 20 13"
                         Background="#202020" BorderBrush="#383838" BorderThickness="0 0 0 1">
@@ -269,8 +269,8 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Real, mutually exclusive tabs remain visible in the right inspector.
-                     Selection changes the pane below, never the entire workspace. -->
+                <!-- Retained inspector selection state; the tabs themselves are hidden
+                     while the workspace uses docked profile options and filters. -->
                 <TabControl x:Name="InspectorTabs" Grid.Row="0" Grid.Column="1"
                             Height="38" VerticalAlignment="Center" HorizontalAlignment="Right" Visibility="Collapsed"
                             Margin="0 0 12 0" SelectedIndex="1"
@@ -317,7 +317,6 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     <ContentControl x:Name="ProfileOptionsHost" Grid.Row="0" HorizontalContentAlignment="Stretch"/>
-                    <ContentControl x:Name="RightDevicesHost" Grid.Row="1" Visibility="Collapsed" HorizontalContentAlignment="Stretch"/>
                     <ContentControl x:Name="RightFiltersHost" Grid.Row="1" MaxHeight="225" HorizontalContentAlignment="Stretch"/>
                 </Grid>
                 <!-- Device management remains in the bottom-left sidebar; the
@@ -714,12 +713,29 @@
                                  ToolTip="Filter mappings by name"
                                  TextChanged="WorkspaceSearch_OnTextChanged"/>
                     </StackPanel>
-                    <ScrollViewer Grid.Row="3" x:Name="MappingSectionsScrollViewer"
-                                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                                  CanContentScroll="False" Padding="0 1 0 4"
-                                  PreviewMouseWheel="MappingSectionsScrollViewer_OnPreviewMouseWheel">
-                        <ItemsControl x:Name="MappingSectionsItemsControl" ItemsSource="{Binding MappingSections}">
-                            <ItemsControl.ItemTemplate>
+                    <!-- The SECTION list now owns scrolling; the old outer ScrollViewer
+                         prevented WPF from virtualizing even offscreen sections. -->
+                    <ListView Grid.Row="3" x:Name="MappingSectionsItemsControl"
+                              ItemsSource="{Binding MappingSections}" SelectionMode="Single"
+                              Background="Transparent" BorderThickness="0" Padding="0 1 0 4"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                              ScrollViewer.CanContentScroll="True"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling"
+                              VirtualizingPanel.ScrollUnit="Pixel"
+                              PreviewMouseWheel="MappingSectionsScrollViewer_OnPreviewMouseWheel">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="{x:Type ListViewItem}">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="Margin" Value="0"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Focusable" Value="False"/>
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
                                 <DataTemplate>
                                     <Border Margin="4 2 6 9" Background="#1C1C1C" BorderBrush="#343434" BorderThickness="1" CornerRadius="5">
                                         <Grid>
@@ -840,8 +856,13 @@
                                                       Background="Transparent" BorderThickness="0"
                                                       Visibility="{Binding IsExpanded, Converter={StaticResource MappingSectionVisibilityConverter}}"
                                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                                      ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                                                      HorizontalContentAlignment="Stretch" VirtualizingPanel.IsVirtualizing="False"
+                                                      ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                      ScrollViewer.CanContentScroll="True"
+                                                      MaxHeight="680"
+                                                      VirtualizingPanel.IsVirtualizing="True"
+                                                      VirtualizingPanel.VirtualizationMode="Recycling"
+                                                      VirtualizingPanel.ScrollUnit="Pixel"
+                                                      HorizontalContentAlignment="Stretch"
                                                       PreviewMouseLeftButtonDown="MappingListView_OnPreviewMouseLeftButtonDown"
                                                       PreviewMouseLeftButtonUp="MappingListView_OnPreviewMouseLeftButtonUp"
                                                       PreviewMouseMove="MappingListView_OnPreviewMouseMove"
@@ -884,7 +905,7 @@
                                                                     <ColumnDefinition Width="1.05*" MinWidth="0"/>
                                                                     <ColumnDefinition Width="44"/>
                                                                     <ColumnDefinition Width="1.05*" MinWidth="0"/>
-                                                                    <ColumnDefinition Width="30"/>
+                                                                    <ColumnDefinition Width="76"/>
                                                                 </Grid.ColumnDefinitions>
                                                                 <StackPanel Grid.Column="0" VerticalAlignment="Center"
                                                                             Margin="3 0 8 0">
@@ -1038,7 +1059,9 @@
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
                                                                 </ItemsControl>
-                                                                <Button Grid.Column="4" Width="36" Height="38" Padding="0" Background="#303030" BorderBrush="#626262" BorderThickness="1" Focusable="False" Cursor="Hand"
+                                                                <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                                    <Button Width="34" Height="34" Margin="0 0 5 0" Padding="0" Background="#292929" BorderBrush="#696969" BorderThickness="1" IsEnabled="{Binding ButtonsEnabled}" ToolTip="Delete this mapping" ToolTipService.ShowOnDisabled="True" Click="DeleteMappingRow_OnClick"><materialDesign:PackIcon Kind="Delete" Width="17" Height="17" Foreground="#D6D6D6"/></Button>
+                                                                    <Button Width="36" Height="38" Padding="0" Background="#303030" BorderBrush="#626262" BorderThickness="1" Focusable="False" Cursor="Hand"
                                                                         ToolTip="Expand or collapse mapping Inputs and Outputs" Click="ToggleInlineMapping_OnClick">
                                                                     <Button.Template><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Button.Template>
                                                                     <Grid Width="23" Height="23" IsHitTestVisible="False">
@@ -1047,11 +1070,20 @@
                                                                         </Path>
                                                                     </Grid>
                                                                 </Button>
+                                                                </StackPanel>
                                                             </Grid>
-                                                                <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch">
+                                                                <ContentControl x:Name="InlineMappingEditor" Content="{Binding}" HorizontalContentAlignment="Stretch" ClipToBounds="True">
+                                                                    <ContentControl.Resources>
+                                                                        <DataTemplate x:Key="InlineMappingEditorTemplate">
+                                                                            <controls:MappingCardControl InspectorMode="True" InlineWorkspaceMode="True"/>
+                                                                        </DataTemplate>
+                                                                    </ContentControl.Resources>
                                                                     <ContentControl.Style>
                                                                         <Style TargetType="{x:Type ContentControl}">
                                                                             <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            <!-- The editor template is assigned on first expansion in code,
+                                                                                 then retained across subsequent collapses. -->
+                                                                            <Setter Property="ContentTemplate" Value="{x:Null}"/>
                                                                             <Style.Triggers>
                                                                                 <DataTrigger Binding="{Binding IsExpanded}" Value="True">
                                                                                     <Setter Property="Visibility" Value="Visible"/>
@@ -1059,11 +1091,6 @@
                                                                             </Style.Triggers>
                                                                         </Style>
                                                                     </ContentControl.Style>
-                                                                    <ContentControl.ContentTemplate>
-                                                                        <DataTemplate>
-                                                                            <controls:MappingCardControl InspectorMode="True" InlineWorkspaceMode="True"/>
-                                                                        </DataTemplate>
-                                                                    </ContentControl.ContentTemplate>
                                                                 </ContentControl>
                                                             </StackPanel>
                                                         </Border>
@@ -1073,11 +1100,9 @@
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                        </ListView.ItemTemplate>
+                    </ListView>
                 </Grid>
-            <Grid x:Name="SelectedMappingInspector" Grid.Row="1" Grid.Column="1" Visibility="Collapsed" IsHitTestVisible="False" Width="0"/>
             </Grid>
         </materialDesign:DialogHost>
 

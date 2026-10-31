@@ -129,6 +129,7 @@
     <Compile Include="ViewModels\ProfileViewModels\PluginToolboxViewModel.cs" />
     <Compile Include="ViewModels\ProfileViewModels\PluginViewModel.cs" />
     <Compile Include="ViewModels\ProfileViewModels\MappingViewModel.cs" />
+    <Compile Include="ViewModels\ProfileViewModels\MappingViewModel.OutputBindingSets.cs" />
     <Compile Include="ViewModels\ProfileViewModels\MappingGroupViewModel.cs" />
     <Compile Include="ViewModels\ProfileViewModels\ProfileViewModel.cs" />
     <Compile Include="ViewModels\ProfileViewModels\SimplePluginViewModel.cs" />
@@ -144,6 +145,9 @@
     <Compile Include="Views\Controls\DeviceSelectControl.xaml.cs">
       <DependentUpon>DeviceSelectControl.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Views\Controls\MappingEditorAnimation.cs" />
+    <Compile Include="Views\Controls\MappingCardControl.OutputPicker.cs" />
+    <Compile Include="Views\Controls\OutputPickerInfrastructure.cs" />
     <Compile Include="Views\Controls\MappingCardControl.xaml.cs">
       <DependentUpon>MappingCardControl.xaml</DependentUpon>
     </Compile>
@@ -406,6 +410,9 @@
   <ItemGroup>
     <Resource Include="UCR.ico" />
     <Content Include="Assets\Fonts\DeviceSymbols-v7.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TERMINOLOGY.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Assets\Glyphs\control-labels.ini">

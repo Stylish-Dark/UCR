@@ -147,6 +147,139 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void SignedAnalogueInput_DrivesNegativeAndPositiveOutputSlotsSeparately()
+        {
+            var mapping = new Mapping
+            {
+                UseInputExpression = true,
+                DirectionalPairButtonOutputs = true,
+                DeviceBindings = new List<DeviceBinding>
+                {
+                    new DeviceBinding
+                    {
+                        InputExpressionInputKind = 3,
+                        InputExpressionAxisThreshold = 14000,
+                        InputExpressionGroup = 0
+                    },
+                    new DeviceBinding { InputExpressionGroup = 0 }
+                }
+            };
+            Assert.IsFalse(mapping.EvaluateDirectionalButton(new short[] { -12000, 1 }, 1));
+            Assert.IsTrue(mapping.EvaluateDirectionalButton(new short[] { -16000, 1 }, 1));
+            Assert.IsFalse(mapping.EvaluateDirectionalButton(new short[] { -16000, 1 }, 2));
+            Assert.IsTrue(mapping.EvaluateDirectionalButton(new short[] { 20000, 1 }, 2));
+            Assert.IsFalse(mapping.EvaluateDirectionalButton(new short[] { 20000, 0 }, 2),
+                "An unsatisfied AND guard must suppress both analogue directions.");
+        }
+
+        [Test]
+        public void DirectionalOutputSlots_ObserveEachDirectionAndRespectOrGroupOwnership()
+        {
+            var mapping = new Mapping
+            {
+                UseInputExpression = true,
+                DirectionalButtonOutputs = true,
+                DeviceBindings = new List<DeviceBinding>
+                {
+                    new DeviceBinding { InputDirectionSlot = 1, InputExpressionGroup = 0 },
+                    new DeviceBinding { InputDirectionSlot = 2, InputExpressionGroup = 0 },
+                    new DeviceBinding { InputDirectionSlot = 3, InputExpressionGroup = 0 },
+                    new DeviceBinding { InputDirectionSlot = 4, InputExpressionGroup = 0 },
+                    new DeviceBinding { InputExpressionGroup = 0 },
+                    new DeviceBinding { InputDirectionSlot = 1, InputExpressionGroup = 1 },
+                    new DeviceBinding { InputDirectionSlot = 2, InputExpressionGroup = 1 },
+                    new DeviceBinding { InputDirectionSlot = 3, InputExpressionGroup = 1 },
+                    new DeviceBinding { InputDirectionSlot = 4, InputExpressionGroup = 1 }
+                }
+            };
+            var input = new short[] { 0, 0, 1, 0, 1, 0, 1, 0, 0 };
+            Assert.IsTrue(mapping.EvaluateDirectionalButton(input, 3));
+            Assert.IsFalse(mapping.EvaluateDirectionalButton(input, 2),
+                "An active first group must not combine with a direction from another group.");
+            input[4] = 0;
+            Assert.IsTrue(mapping.EvaluateDirectionalButton(input, 2));
+            Assert.IsFalse(mapping.EvaluateDirectionalButton(input, 3));
+        }
+
+        [Test]
+        public void DirectionalOutputSlots_ApplyPerDirectionAxisThresholds()
+        {
+            var mapping = new Mapping
+            {
+                UseInputExpression = true,
+                DeviceBindings = new List<DeviceBinding>
+                {
+                    new DeviceBinding
+                    {
+                        InputDirectionSlot = 1,
+                        InputExpressionInputKind = 2,
+                        InputExpressionAxisThreshold = 13000
+                    },
+                    new DeviceBinding
+                    {
+                        InputDirectionSlot = 2,
+                        InputExpressionInputKind = 1,
+                        InputExpressionAxisThreshold = 18000
+                    }
+                }
+            };
+            Assert.IsFalse(mapping.EvaluateDirectionalButton(new short[] { -12000, 0 }, 1));
+            Assert.IsTrue(mapping.EvaluateDirectionalButton(new short[] { -20000, 0 }, 1));
+            Assert.IsFalse(mapping.EvaluateDirectionalButton(new short[] { -20000, 0 }, 2));
+            Assert.IsTrue(mapping.EvaluateDirectionalButton(new short[] { 0, 20000 }, 2));
+        }
+
+        [Test]
+        public void BoundAnalogueAxis_SplitsIntoSignedDirectionsWithoutDiscardingSource()
+        {
+            var mapping = new Mapping();
+            mapping.Plugins.Add(new AxisToAxis());
+            var source = new DeviceBinding
+            {
+                InputExpressionInputKind = 3,
+                InputExpressionKindConfigured = true,
+                DeviceBindingCategory = DeviceBindingCategory.Range,
+                KeyType = 1,
+                KeyValue = 2,
+                KeySubValue = 3,
+                IsBound = true
+            };
+            mapping.DeviceBindings.Add(source);
+            Assert.IsTrue(mapping.SetDirectionalInputMode(0, 2));
+            Assert.AreSame(source, mapping.DeviceBindings[0]);
+            Assert.IsTrue(mapping.DeviceBindings[0].IsBound);
+            Assert.IsTrue(mapping.DeviceBindings[1].IsBound);
+            Assert.AreEqual(2, mapping.DeviceBindings[0].InputExpressionInputKind);
+            Assert.AreEqual(1, mapping.DeviceBindings[1].InputExpressionInputKind);
+            Assert.AreEqual(source.KeyType, mapping.DeviceBindings[1].KeyType);
+            Assert.AreEqual(source.KeyValue, mapping.DeviceBindings[1].KeyValue);
+            Assert.AreEqual(source.KeySubValue, mapping.DeviceBindings[1].KeySubValue);
+            Assert.AreEqual(1, mapping.DeviceBindings[0].InputExpressionAxisThreshold);
+            Assert.AreEqual(1, mapping.DeviceBindings[1].InputExpressionAxisThreshold);
+        }
+
+        [Test]
+        public void DirectionalLayoutResize_KeepsExistingBindingSlots()
+        {
+            var mapping = new Mapping();
+            mapping.Plugins.Add(new AxisToAxis());
+            var negative = new DeviceBinding();
+            mapping.DeviceBindings.Add(negative);
+            Assert.IsTrue(mapping.SetDirectionalInputMode(0, 2));
+            var positive = mapping.DeviceBindings[1];
+            negative.InputExpressionAxisThreshold = 19000;
+            positive.InputExpressionAxisThreshold = 21000;
+            Assert.IsTrue(mapping.SetDirectionalInputMode(0, 4));
+            Assert.AreSame(negative, mapping.DeviceBindings[0]);
+            Assert.AreSame(positive, mapping.DeviceBindings[1]);
+            Assert.AreEqual(19000, mapping.DeviceBindings[0].InputExpressionAxisThreshold);
+            Assert.AreEqual(21000, mapping.DeviceBindings[1].InputExpressionAxisThreshold);
+            Assert.IsTrue(mapping.SetDirectionalInputMode(0, 4));
+            Assert.AreSame(negative, mapping.DeviceBindings[0]);
+            Assert.AreSame(positive, mapping.DeviceBindings[1]);
+        }
+
+        [Test]
         public void DirectionalJoystick_PairsOpposingKeysAndGatesBothAxesWithOtherAndInputs()
         {
             var bindings = Enumerable.Range(1, 4).Select(slot => new DeviceBinding

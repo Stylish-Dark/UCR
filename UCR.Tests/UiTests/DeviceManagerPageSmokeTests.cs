@@ -19,6 +19,7 @@ using HidWizards.UCR.ViewModels.Presentation;
 using HidWizards.UCR.Views.Controls;
 using HidWizards.UCR.Views.Dialogs;
 using HidWizards.UCR.Views.ProfileViews;
+using HidWizards.UCR.Plugins.Remapper;
 using NUnit.Framework;
 using MaterialDesignThemes.Wpf;
 
@@ -253,9 +254,22 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.Arrange(new Rect(new Point(0, 0), available));
                 page.UpdateLayout();
 
+                var sectionList = FindVisualChildren<ListView>(page)
+                    .SingleOrDefault(list => list.Name == "MappingSectionsItemsControl");
+                Assert.That(sectionList, Is.Not.Null);
+                Assert.That(VirtualizingPanel.GetIsVirtualizing(sectionList), Is.True,
+                    "Offscreen mapping sections should not all be realized.");
+                Assert.That(ScrollViewer.GetCanContentScroll(sectionList), Is.True,
+                    "The section list must own logical scrolling for WPF virtualization.");
                 var rows = FindVisualChildren<ListView>(page)
                     .SingleOrDefault(list => list.Name == "MappingRowsList");
                 Assert.That(rows, Is.Not.Null);
+                Assert.That(VirtualizingPanel.GetIsVirtualizing(rows), Is.True,
+                    "Every mapping group must virtualize its own long row list.");
+                Assert.That(VirtualizingPanel.GetVirtualizationMode(rows), Is.EqualTo(VirtualizationMode.Recycling));
+                Assert.That(rows.MaxHeight, Is.GreaterThan(0).And.LessThan(1000),
+                    "Nested mapping lists require a bounded viewport to virtualize.");
+                Assert.That(ScrollViewer.GetCanContentScroll(rows), Is.True);
                 var row = rows.ItemContainerGenerator.ContainerFromIndex(0) as ListViewItem;
                 Assert.That(row, Is.Not.Null);
                 var mapping = row.DataContext as MappingViewModel;
@@ -273,6 +287,8 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(toggle, Is.Not.Null);
                 Assert.That(toggle.Content, Is.InstanceOf<Grid>());
                 var collapsedHeight = row.ActualHeight;
+                Assert.That(FindVisualChildren<MappingCardControl>(row).Any(), Is.False,
+                    "Collapsed rows must not instantiate the heavyweight mapping editor.");
 
                 toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, toggle));
                 page.Measure(available);
@@ -306,13 +322,84 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(rebindingButtons.Count, Is.GreaterThan(0),
                     "The workspace must expose clickable rebinding glyphs.");
 
+                var deletion = FindVisualChildren<Button>(row)
+                    .FirstOrDefault(button => (button.ToolTip as string) == "Delete this mapping" &&
+                        ReferenceEquals(button.Parent, toggle.Parent));
+                Assert.That(deletion, Is.Not.Null,
+                    "The delete button must be in the same action group as the mapping chevron.");
+                Assert.That(((Panel)deletion.Parent).Children.IndexOf(deletion),
+                    Is.LessThan(((Panel)toggle.Parent).Children.IndexOf(toggle)),
+                    "Deletion must appear to the LEFT of the chevron.");
+
+                var editorHost = FindVisualChildren<ContentControl>(row)
+                    .FirstOrDefault(control => control.Name == "InlineMappingEditor");
+                Assert.That(editorHost, Is.Not.Null);
                 toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, toggle));
-                page.Measure(available);
-                page.Arrange(new Rect(new Point(0, 0), available));
-                page.UpdateLayout();
-                Assert.That(mapping.IsExpanded, Is.False);
+                // The state stays expanded while the height sweeps closed.
+                // Do not pump the real application's startup dispatcher in this
+                // headless layout test: other tests cover completed transitions.
+                Assert.That(mapping.IsExpanded, Is.True);
+                Assert.That(double.IsNaN(editorHost.Height), Is.False,
+                    "The inline editor should be animated through an explicit height.");
+                toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, toggle));
+                Assert.That(mapping.IsExpanded, Is.True,
+                    "A second click during collapse should reverse it rather than queue another collapse.");
+                Assert.That(editorHost.Tag, Is.Null,
+                    "A reversed collapse must clear the pending closing marker.");
                 Assert.That(toggle.Content, Is.InstanceOf<Grid>());
-                Assert.That(row.ActualHeight, Is.LessThan(collapsedHeight + 2));
+                VerifyLongMappingGroupVirtualizesUnseenRows();
+            }
+            finally
+            {
+                page.Dispose();
+            }
+        }
+
+        private void VerifyLongMappingGroupVirtualizesUnseenRows()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Virtualization test", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            for (var index = 0; index < 200; index++)
+                profile.AddMapping("Row " + index);
+
+            var page = new ProfilePage(context, profile, embedded: true);
+            try
+            {
+                page.SuspendEmbeddedVisuals();
+                var size = new Size(1440, 960);
+                var layoutTimer = System.Diagnostics.Stopwatch.StartNew();
+                page.Measure(size);
+                page.Arrange(new Rect(new Point(0, 0), size));
+                page.UpdateLayout();
+                layoutTimer.Stop();
+
+                var rows = FindVisualChildren<ListView>(page)
+                    .FirstOrDefault(list => list.Name == "MappingRowsList" && list.Items.Count >= 200);
+                Assert.That(rows, Is.Not.Null, "Expected an expanded group with two hundred mappings.");
+                Assert.That(rows.ActualHeight, Is.LessThanOrEqualTo(rows.MaxHeight + 1));
+                var realized = Enumerable.Range(0, rows.Items.Count)
+                    .Count(index => rows.ItemContainerGenerator.ContainerFromIndex(index) != null);
+                Assert.That(realized, Is.LessThan(rows.Items.Count),
+                    "A long mapping group must not instantiate every offscreen row.");
+                TestContext.Progress.WriteLine("PERF mapping rows=" + rows.Items.Count +
+                    " realized=" + realized + " firstLayoutMs=" + layoutTimer.ElapsedMilliseconds);
+
+                // Final release gate: a row that initially has no container
+                // must become selectable and visible when explicitly requested.
+                var lastIndex = rows.Items.Count - 1;
+                Assert.That(rows.ItemContainerGenerator.ContainerFromIndex(lastIndex), Is.Null,
+                    "The distant row should initially be virtualized.");
+                var distantMapping = rows.Items[lastIndex];
+                rows.ScrollIntoView(distantMapping);
+                page.UpdateLayout();
+                var distantContainer = rows.ItemContainerGenerator.ContainerFromItem(distantMapping) as ListViewItem;
+                Assert.That(distantContainer, Is.Not.Null,
+                    "Scrolling to a virtualized mapping must create its row.");
+                rows.SelectedItem = distantMapping;
+                Assert.That(rows.SelectedItem, Is.SameAs(distantMapping),
+                    "Selection must work after recycling offscreen mapping containers.");
             }
             finally
             {
@@ -450,6 +537,309 @@ var colourButton = FindVisualChildren<Button>(row)
             Assert.That(colourButton, Is.Not.Null,
                 "The real device row failed before its accent-colour button was created.");
             Assert.That(colourButton.ActualHeight, Is.GreaterThan(0));
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void DirectionalMappingOutputPluginsAreOneLogicalBindingSet()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Directional set", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var mapping = profile.AddMapping("WASD");
+            for (var i = 0; i < 4; i++)
+                profile.AddPlugin(mapping, new ButtonToButton());
+            mapping.DirectionalButtonOutputs = true;
+            mapping.OutputSideType = "4-way";
+
+            var profileViewModel = new ProfileViewModel(profile);
+            try
+            {
+                var editor = profileViewModel.MappingsList.Single();
+                Assert.That(editor.OutputBindingSets.Count, Is.EqualTo(1),
+                    "Four directions are one logical output Binding Set, not four output rows.");
+                Assert.That(editor.OutputBindingSets, Is.SameAs(editor.OutputBindingSets),
+                    "WPF repeated layout reads should not rebuild output binding set groups.");
+                var previousGroups = editor.OutputBindingSets;
+                editor.RefreshCollapsedSummary();
+                Assert.That(editor.OutputBindingSets, Is.Not.SameAs(previousGroups),
+                    "Editing the mapping must invalidate cached output presentation.");
+                Assert.That(editor.OutputBindingSets.Single().Slots.Count, Is.EqualTo(4));
+                Assert.That(editor.OutputBindingSets.Single().IsFourWay, Is.True);
+                editor.SetDirectionalMode(4);
+                Assert.That(editor.Plugins.Count, Is.EqualTo(4),
+                    "Changing input direction slots must never add output plugins.");
+                Assert.That(editor.OutputBindingSets.Count, Is.EqualTo(1));
+
+                var card = new MappingCardControl { DataContext = editor };
+                Assert.That(card.Resources["UcrSideDevicePicker"], Is.InstanceOf<Style>(),
+                    "Side selectors must use the original icon-only device-picker presentation.");
+                Assert.That(card.Resources["UcrNotButton"], Is.InstanceOf<Style>(),
+                    "NOT must look like a button, not a switch.");
+
+                card.Measure(new Size(1250, 950));
+                card.Arrange(new Rect(0, 0, 1250, 950));
+                card.UpdateLayout();
+                var chevron = card.FindName("ExpandMappingButton") as Button;
+                Assert.That(chevron, Is.Not.Null);
+                ((IInvokeProvider)new ButtonAutomationPeer(chevron)).Invoke();
+                PumpDispatcherFor(TimeSpan.FromMilliseconds(120));
+                card.UpdateLayout();
+                var body = card.FindName("ExpandedBodyHost") as ContentControl;
+                Assert.That(body, Is.Not.Null);
+                Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible));
+                Assert.That(FindVisualChildren<Button>(body).Count(button =>
+                    string.Equals(button.Content as string, "Preset",
+                        StringComparison.OrdinalIgnoreCase)), Is.GreaterThanOrEqualTo(2),
+                    "Both four-direction sides need a centre Preset button.");
+                Assert.That(FindVisualChildren<Button>(body).Any(button =>
+                    (button.Content as string)?.Contains("4-way ▼") == true), Is.False,
+                    "The separate layout selector must not return.");
+            }
+            finally
+            {
+                profileViewModel.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void OneAxisAndOneFullJoystickHaveDifferentLogicalOutputShapes()
+        {
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Logical controls", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var oneAxis = profile.AddMapping("X axis");
+            profile.AddPlugin(oneAxis, new AxisToAxis());
+            var stick = profile.AddMapping("Left stick");
+            profile.AddPlugin(stick, new AxisToAxis());
+            profile.AddPlugin(stick, new AxisToAxis());
+            stick.OutputSideType = "Full Joystick";
+
+            var editor = new ProfileViewModel(profile);
+            try
+            {
+                var one = editor.MappingsList.Single(mapping =>
+                    mapping.Mapping.Title == "X axis");
+                var full = editor.MappingsList.Single(mapping =>
+                    mapping.Mapping.Title == "Left stick");
+                Assert.That(one.OutputBindingSets.Count, Is.EqualTo(1));
+                Assert.That(one.OutputBindingSets.Single().Slots.Count, Is.EqualTo(1),
+                    "One output axis must have only one output binding.");
+                Assert.That(full.OutputBindingSets.Count, Is.EqualTo(1),
+                    "X/Y stick channels must be grouped into ONE logical joystick.");
+                Assert.That(full.OutputBindingSets.Single().IsFullJoystick, Is.True);
+                Assert.That(full.OutputBindingSets.Single().Slots.Count, Is.EqualTo(2),
+                    "The full stick retains its two internal X/Y channel bindings.");
+            }
+            finally
+            {
+                editor.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void DeleteConfirmationDependsOnActualInputOrOutputAssignments()
+        {
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Mapping deletion", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var mapping = profile.AddMapping("Incomplete");
+            profile.AddPlugin(mapping, new ButtonToButton());
+            var viewModel = new ProfileViewModel(profile);
+            try
+            {
+                var editor = viewModel.MappingsList.Single();
+                Assert.That(MappingCardControl.RequiresDeleteConfirmation(editor), Is.False,
+                    "Empty mappings must be deleted without a confirmation dialog.");
+                var output = mapping.Plugins.Single().Outputs.Single();
+                output.SetKeyTypeValue(1, 42, 0);
+                Assert.That(MappingCardControl.RequiresDeleteConfirmation(editor), Is.True,
+                    "An assigned output is user work, even when inputs are still empty.");
+                output.SetDeviceConfigurationGuid(Guid.Empty, false);
+                Assert.That(MappingCardControl.RequiresDeleteConfirmation(editor), Is.False,
+                    "Clearing the last bound control must remove the confirmation requirement.");
+            }
+            finally
+            {
+                viewModel.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void QuickOutputSelectionBindsARealProfileDestinationAndRejectsStaleDevices()
+        {
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Output binding", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var outputDevice = new DeviceConfiguration(
+                new Device("Test output keyboard", "Core_Interception", "keyboard", 0));
+            profile.AddDeviceConfigurations(new List<DeviceConfiguration> { outputDevice }, DeviceIoType.Output);
+            var mapping = profile.AddMapping("Output picker");
+            profile.AddPlugin(mapping, new ButtonToButton());
+            var viewModel = new ProfileViewModel(profile);
+            try
+            {
+                var editor = viewModel.MappingsList.Single();
+                var output = editor.Plugins.Single().DeviceBindings.Single().DeviceBinding;
+                var descriptor = new BindingVisualDescriptor { BindingGuid = output.Guid };
+                var stale = new QuickBindingOption
+                {
+                    DeviceConfigurationGuid = Guid.NewGuid(), KeyType = 1, KeyValue = 42
+                };
+                Assert.That(editor.ApplyQuickOutputBinding(descriptor, stale), Is.False);
+                Assert.That(output.IsBound, Is.False,
+                    "A removed or unknown output device must not result in a ghost binding.");
+
+                var choice = new QuickBindingOption
+                {
+                    DeviceConfigurationGuid = outputDevice.Guid, KeyType = 1, KeyValue = 42
+                };
+                Assert.That(editor.ApplyQuickOutputBinding(descriptor, choice), Is.True,
+                    "Choosing a real output control must assign the destination.");
+                Assert.That(output.IsBound, Is.True);
+                Assert.That(output.DeviceConfigurationGuid, Is.EqualTo(outputDevice.Guid));
+                Assert.That(output.KeyValue, Is.EqualTo(42));
+                Assert.That(editor.OutputSelectionFeedback, Is.Null);
+            }
+            finally
+            {
+                viewModel.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void SelectingNoOutputDeviceIsValidAndKeepsTheMapping()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("No destination", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var mapping = profile.AddMapping("Unassigned output");
+            profile.AddPlugin(mapping, new ButtonToButton());
+
+            var viewModel = new ProfileViewModel(profile);
+            try
+            {
+                var editor = viewModel.MappingsList.Single();
+                Assert.That(editor.ChangeOutputSideDevice(Guid.Empty), Is.True,
+                    "Choosing no output device must be a valid selection.");
+                Assert.That(editor.OutputSideDeviceGuid, Is.EqualTo(Guid.Empty));
+                Assert.That(editor.Plugins.Count, Is.EqualTo(1),
+                    "Unselecting the device must not delete the output set.");
+                Assert.That(editor.OutputBindingSets.Single().Slots.Count, Is.EqualTo(1));
+                Assert.That(editor.OutputSelectionFeedback, Is.Null,
+                    "No device is not an error and should produce no intrusive warning.");
+            }
+            finally
+            {
+                viewModel.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void OutputBindButtonWithNoSelectedDeviceUsesInlineGuidanceNotADialog()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Output click", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var mapping = profile.AddMapping("Bind an output");
+            profile.AddPlugin(mapping, new ButtonToButton());
+            var viewModel = new ProfileViewModel(profile);
+            try
+            {
+                var editor = viewModel.MappingsList.Single();
+                var card = new MappingCardControl { DataContext = editor };
+                card.Measure(new Size(1150, 950));
+                card.Arrange(new Rect(0, 0, 1150, 950));
+                card.UpdateLayout();
+                var chevron = card.FindName("ExpandMappingButton") as Button;
+                Assert.That(chevron, Is.Not.Null);
+                ((IInvokeProvider)new ButtonAutomationPeer(chevron)).Invoke();
+                PumpDispatcherFor(TimeSpan.FromMilliseconds(120));
+                card.UpdateLayout();
+                // Headless WPF tests do not reliably realize nested output
+                // DataTemplates without a Window host. Verify the real
+                // output picker callback and its no-device code path.
+                Assert.That(editor.OutputBindingSets.Single().Slots.Count, Is.EqualTo(1));
+                var picker = typeof(MappingCardControl).GetMethod("OpenUnifiedOutputPicker",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                Assert.That(picker, Is.Not.Null);
+                picker.Invoke(card, new object[] { editor.Plugins[0].DeviceBindings[0], new Button() });
+                Assert.That(editor.OutputSelectionFeedback,
+                    Does.Contain("output device"),
+                    "The picker must guide the user inline when no output device is selected.");
+            }
+            finally
+            {
+                viewModel.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void OutputButtonPreservesTwoColumnPickerRatherThanQuickBindMenu()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Output click regression", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var mapping = profile.AddMapping("Output controls");
+            profile.AddPlugin(mapping, new ButtonToButton());
+            var viewModel = new ProfileViewModel(profile);
+            try
+            {
+                var editor = viewModel.MappingsList.Single();
+                var card = new MappingCardControl { DataContext = editor };
+                card.Measure(new Size(1200, 1000));
+                card.Arrange(new Rect(0, 0, 1200, 1000));
+                card.UpdateLayout();
+                var chevron = card.FindName("ExpandMappingButton") as Button;
+                Assert.That(chevron, Is.Not.Null);
+                chevron.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, chevron));
+                card.UpdateLayout();
+
+                var body = card.FindName("ExpandedBodyHost") as ContentControl;
+                Assert.That(body, Is.Not.Null);
+                // Hidden four-way templates can be realized even for a
+                // one-output mapping; only choose the active row's real binding.
+                var output = FindVisualChildren<CompactInputBindingControl>(body)
+                    .FirstOrDefault(control => (control.Tag as string) == "Output" &&
+                        control.DataContext is DeviceBindingViewModel);
+                Assert.That(output, Is.Not.Null, "The expanded Outputs section must create a real clickable binding control.");
+                var click = output.FindName("BindButton") as Button;
+                Assert.That(click, Is.Not.Null);
+                Assert.That(click.IsEnabled, Is.True);
+                Assert.That(output.DataContext, Is.InstanceOf<DeviceBindingViewModel>(),
+                    "The output row must have its binding view-model.");
+                var bound = ((DeviceBindingViewModel)output.DataContext).DeviceBinding;
+                Assert.That(bound, Is.Not.Null);
+                Assert.That(bound.DeviceIoType, Is.EqualTo(DeviceIoType.Output),
+                    "The Output control must point at an output, not an input.");
+                Assert.That(output.EnableUnifiedOutputPicker, Is.True);
+                DependencyObject ancestor = output;
+                while (ancestor != null && !(ancestor is MappingCardControl))
+                    ancestor = VisualTreeHelper.GetParent(ancestor);
+                Assert.That(ancestor, Is.SameAs(card), "The Output click must resolve its mapping-card parent.");
+                // With no output device configured, the two-column picker has no
+                // options to display. It must not fall back to the unified glyph
+                // quick-bind menu or alter the mapping implicitly.
+                click.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, click));
+                Assert.That(editor.OutputSelectionFeedback, Is.Null,
+                    "The primary Output button must not invoke the quick-bind menu.");
+                Assert.That(bound.IsBound, Is.False,
+                    "No output destination may be silently substituted.");
+            }
+            finally
+            {
+                viewModel.Dispose();
+            }
         }
 
         private static void PumpDispatcherFor(TimeSpan duration)

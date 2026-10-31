@@ -24,6 +24,14 @@ namespace HidWizards.UCR.Views.ProfileViews
 {
     public partial class ProfilePage : UserControl, IDisposable
     {
+        // The virtualized section ListView owns a single ScrollViewer.
+        // Cache it after the template is realized so dragging does not walk
+        // the visual tree on every mouse-move event.
+        private ScrollViewer _mappingSectionsScrollViewer;
+        private ScrollViewer MappingSectionsScrollViewer =>
+            _mappingSectionsScrollViewer ??
+            (_mappingSectionsScrollViewer = MappingSectionsItemsControl == null
+                ? null : FindVisualChild<ScrollViewer>(MappingSectionsItemsControl));
         public Guid ProfileGuid => Profile.Guid;
         private Context Context { get; }
         internal Profile Profile { get; }
@@ -203,7 +211,52 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void MappingSectionsScrollViewer_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
-            ScrollViewerWithMouseWheel(sender as ScrollViewer, e);
+            if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control) return;
+
+            // The pointer should scroll the mapping list beneath it; the outer
+            // section viewport is the fallback when that list cannot scroll.
+            var list = FindVisualAncestor<ListView>(e.OriginalSource as DependencyObject);
+            var inner = list?.Name == "MappingRowsList"
+                ? FindVisualChild<ScrollViewer>(list) : null;
+            var viewer = inner != null && inner.ScrollableHeight > 0
+                ? inner : MappingSectionsScrollViewer;
+            if (viewer == null || viewer.ScrollableHeight <= 0) return;
+
+            // Wheel deltas must accumulate against the intended destination.
+            // Starting each wheel event from the current animated offset made rapid
+            // scrolling repeatedly restart a short journey and feel almost stationary.
+            var current = viewer.VerticalOffset;
+            var pending = (double)viewer.GetValue(MappingScrollTargetProperty);
+            if (double.IsNaN(pending) || Math.Abs(pending - current) > 600)
+                pending = current;
+            var step = Math.Abs(e.Delta) * 1.25; // 150 pixels per standard notch
+            var target = Math.Max(0, Math.Min(viewer.ScrollableHeight,
+                pending + (e.Delta < 0 ? step : -step)));
+            viewer.SetValue(MappingScrollTargetProperty, target);
+            // Start from the actual visible position, not the previous target.
+            viewer.BeginAnimation(MappingScrollOffsetProperty, null);
+            viewer.SetValue(MappingScrollOffsetProperty, current);
+            var animation = new DoubleAnimation(current, target,
+                TimeSpan.FromMilliseconds(100))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+            viewer.BeginAnimation(MappingScrollOffsetProperty, animation);
+            e.Handled = true;
+        }
+
+        private static readonly DependencyProperty MappingScrollTargetProperty =
+            DependencyProperty.RegisterAttached("MappingScrollTarget", typeof(double),
+                typeof(ProfilePage), new PropertyMetadata(double.NaN));
+
+        private static readonly DependencyProperty MappingScrollOffsetProperty =
+            DependencyProperty.RegisterAttached("MappingScrollOffset", typeof(double),
+                typeof(ProfilePage), new PropertyMetadata(0.0, OnMappingScrollOffsetChanged));
+
+        private static void OnMappingScrollOffsetChanged(DependencyObject source,
+            DependencyPropertyChangedEventArgs args)
+        {
+            (source as ScrollViewer)?.ScrollToVerticalOffset((double)args.NewValue);
         }
 
         private static void ScrollViewerWithMouseWheel(ScrollViewer viewer, MouseWheelEventArgs e)
@@ -211,7 +264,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control) return;
             if (viewer == null || viewer.ScrollableHeight <= 0) return;
 
-            var step = Math.Max(24.0, Math.Min(72.0, Math.Abs(e.Delta) / 2.2));
+            var step = Math.Abs(e.Delta) * 1.25;
             viewer.ScrollToVerticalOffset(viewer.VerticalOffset + (e.Delta < 0 ? step : -step));
             e.Handled = true;
         }
@@ -519,6 +572,10 @@ namespace HidWizards.UCR.Views.ProfileViews
             var mapping = container?.DataContext as MappingViewModel;
             if (mapping == null || mapping.IsExpanded || !list.Items.Contains(mapping)) return;
 
+            // Direct reorder animates all sibling rows and therefore requires
+            // their containers. Materialize them only while a drag is pending.
+            VirtualizingPanel.SetIsVirtualizing(list, false);
+            list.UpdateLayout();
             _mappingDragListView = list;
             _mappingDragStart = e.GetPosition(list);
             _mappingDragSource = mapping;
@@ -894,6 +951,8 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void ResetPendingMappingDrag()
         {
+            if (_mappingDragListView != null)
+                VirtualizingPanel.SetIsVirtualizing(_mappingDragListView, true);
             _mappingDragStart = null;
             _mappingDragSource = null;
             _mappingDragOriginalIndex = -1;
@@ -902,7 +961,11 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void AutoScrollMappingList()
         {
-            var scrollViewer = MappingSectionsScrollViewer;
+            // Scroll the active row viewport first. The outer section list is
+            // only used when the pointer moves beyond that viewport.
+            var inner = _mappingDragListView == null ? null :
+                FindVisualChild<ScrollViewer>(_mappingDragListView);
+            var scrollViewer = inner?.ScrollableHeight > 0 ? inner : MappingSectionsScrollViewer;
             if (scrollViewer == null || scrollViewer.ScrollableHeight <= 0) return;
 
             var pointer = Mouse.GetPosition(scrollViewer);
@@ -955,9 +1018,19 @@ namespace HidWizards.UCR.Views.ProfileViews
         private void ScrollMappingIntoView(MappingViewModel mapping)
         {
             if (mapping == null) return;
+            // Find the owning section from the view model, not by recursively
+            // walking every realized control. Section virtualization means an
+            // offscreen section may not have any controls to find yet.
+            var section = ProfileViewModel.MappingSections?
+                .FirstOrDefault(candidate => candidate.Mappings.Contains(mapping));
+            if (section == null) return;
+            MappingSectionsItemsControl.ScrollIntoView(section);
             MappingSectionsItemsControl.UpdateLayout();
-            var list = FindVisualChildren<ListView>(MappingSectionsItemsControl)
-                .FirstOrDefault(candidate => candidate.Items.Contains(mapping));
+
+            var container = MappingSectionsItemsControl.ItemContainerGenerator
+                .ContainerFromItem(section) as DependencyObject;
+            var list = FindVisualChildren<ListView>(container)
+                .FirstOrDefault(candidate => candidate.Name == "MappingRowsList");
             if (list == null) return;
             list.ScrollIntoView(mapping);
             list.UpdateLayout();
@@ -967,6 +1040,7 @@ namespace HidWizards.UCR.Views.ProfileViews
         private void ScrollSectionIntoView(MappingGroupViewModel section)
         {
             if (section == null) return;
+            MappingSectionsItemsControl.ScrollIntoView(section);
             MappingSectionsItemsControl.UpdateLayout();
             (MappingSectionsItemsControl.ItemContainerGenerator.ContainerFromItem(section) as FrameworkElement)?.BringIntoView();
         }
@@ -982,17 +1056,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             return null;
         }
 
-        private void AddInspectorOrInput_OnClick(object sender, RoutedEventArgs e)
-        {
-            if (ProfileViewModel?.SelectedMapping?.ButtonsEnabled != true) return;
-            ProfileViewModel.SelectedMapping.AddCondition();
-        }
 
-        private void AddInspectorOutput_OnClick(object sender, RoutedEventArgs e)
-        {
-            if (ProfileViewModel?.SelectedMapping?.ButtonsEnabled != true) return;
-            ProfileViewModel.SelectedMapping.AddDefaultOutput();
-        }
 
         private void AddFilter_OnClick(object sender, RoutedEventArgs e)
         {
@@ -1014,10 +1078,6 @@ namespace HidWizards.UCR.Views.ProfileViews
             menu.IsOpen = true;
         }
 
-        private async void CreateButtonFilter_OnClick(object sender, RoutedEventArgs e)
-        {
-            await CreateNamedFilterAsync("Button to Filter");
-        }
 
         private async System.Threading.Tasks.Task CreateNamedFilterAsync(string pluginName)
         {
@@ -1152,9 +1212,7 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void ShowInspectorTab(int index)
         {
-            if (_disposed || SidebarGrid == null || SelectedMappingInspector == null
-                || ProfileOptionsHost == null) return;
-            SelectedMappingInspector.Visibility = Visibility.Collapsed;
+            if (_disposed || SidebarGrid == null || ProfileOptionsHost == null) return;
             SidebarGrid.Visibility = Visibility.Collapsed;
             ProfileOptionsHost.Visibility = Visibility.Visible;
             DockedDevicesNotice.Visibility = Visibility.Collapsed;
@@ -1186,18 +1244,10 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (section == "Add mapping")
             {
                 SidebarGrid.Visibility = Visibility.Visible;
-                SelectedMappingInspector.Visibility = Visibility.Collapsed;
                 MappingToolboxPanel.Visibility = Visibility.Visible;
             }
         }
 
-        private void DeleteSelectedMapping_OnClick(object sender, RoutedEventArgs e)
-        {
-            var mapping = ProfileViewModel.SelectedMapping;
-            if (mapping?.ButtonsEnabled != true) return;
-            if (MappingCardControl.RequiresDeleteConfirmation(mapping) && MessageBox.Show("Delete mapping '" + mapping.MappingTitle + "'?", "Delete mapping", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-            mapping.Remove();
-        }
 
         private void WorkspaceAddMapping_OnClick(object sender, RoutedEventArgs e)
         {
@@ -1345,12 +1395,122 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (mapping?.ButtonsEnabled == true) mapping.Rename();
         }
 
-        private void ToggleInlineMapping_OnClick(object sender, RoutedEventArgs e)
+        private void DeleteMappingRow_OnClick(object sender, RoutedEventArgs e)
         {
             e.Handled = true;
             var mapping = (sender as FrameworkElement)?.DataContext as MappingViewModel;
+            if (mapping?.ButtonsEnabled != true) return;
+            if (MappingCardControl.RequiresDeleteConfirmation(mapping) &&
+                MessageBox.Show("Delete mapping '" + mapping.MappingTitle + "'?", "Delete mapping",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                return;
+            mapping.Remove();
+        }
+
+        private void ToggleInlineMapping_OnClick(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            var button = sender as Button;
+            var mapping = button?.DataContext as MappingViewModel;
             if (mapping == null) return;
-            mapping.IsExpanded = !mapping.IsExpanded;
+
+            // The row's two action buttons share a StackPanel within the header Grid.
+            // Animate the editor itself instead of suddenly revealing its entire height.
+            var header = (button.Parent as StackPanel)?.Parent as Grid;
+            var row = header?.Parent as StackPanel;
+            var editor = row?.Children.OfType<ContentControl>().FirstOrDefault();
+            if (editor == null)
+            {
+                mapping.IsExpanded = !mapping.IsExpanded;
+                return;
+            }
+
+            // A second click during collapse reverses the transition rather
+            // than waiting for the old completion callback to fire.
+            var reversingCollapse = Equals(editor.Tag, "MappingClosing");
+            // Capture the live animated height BEFORE cancelling the old clock.
+            // Otherwise rapid re-expansion jumps back to zero and appears to snap.
+            var resumeHeight = reversingCollapse ? editor.ActualHeight : 0;
+            editor.BeginAnimation(FrameworkElement.HeightProperty, null);
+            if (!mapping.IsExpanded || reversingCollapse)
+            {
+                editor.Tag = null;
+                // A retained editor can animate immediately from its already measured size.
+                // First-time template creation is deferred until after the click has returned,
+                // allowing the chevron to acknowledge the input without blocking on WPF layout.
+                var firstOpen = editor.ContentTemplate == null;
+                if (!firstOpen)
+                {
+                    mapping.IsExpanded = true;
+                    StartInlineMappingOpenAnimation(editor, mapping, reversingCollapse ? resumeHeight : 0);
+                }
+                else
+                {
+                    // Establish the expanded state on the click itself so the mapping
+                    // row participates in the very next layout pass. Deferring template
+                    // assignment left the card visually collapsed after the click.
+                    editor.ContentTemplate = editor.FindResource("InlineMappingEditorTemplate") as DataTemplate;
+                    mapping.IsExpanded = true;
+                    editor.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        if (mapping.IsExpanded && !Equals(editor.Tag, "MappingClosing"))
+                            StartInlineMappingOpenAnimation(editor, mapping, 0);
+                    }), DispatcherPriority.Loaded);
+                }
+            }
+            else
+            {
+                editor.Tag = "MappingClosing";
+                var start = editor.ActualHeight;
+                if (start <= 0)
+                {
+                    // Nothing is visible to animate; avoid retaining a closing
+                    // marker and an expanded model waiting on a zero-height clock.
+                    editor.Tag = null;
+                    mapping.IsExpanded = false;
+                    editor.Height = double.NaN;
+                    return;
+                }
+                editor.Height = start;
+                MappingEditorAnimation.AnimateHeight(editor, start, 0, false, (o, args) =>
+                {
+                    if (!Equals(editor.Tag, "MappingClosing")) return;
+                    editor.Tag = null;
+                    editor.BeginAnimation(FrameworkElement.HeightProperty, null);
+                    mapping.IsExpanded = false;
+                    editor.Height = double.NaN;
+                });
+            }
+        }
+
+        private static void StartInlineMappingOpenAnimation(ContentControl editor, MappingViewModel mapping, double resumeHeight)
+        {
+            if (!mapping.IsExpanded || !editor.IsVisible) return;
+            // Let WPF use the layout pass already completed for the retained editor.
+            // Measuring against infinite height here forces the entire nested editor to
+            // synchronously relayout on every chevron click.
+            var target = editor.DesiredSize.Height;
+            if (target <= 0)
+            {
+                editor.UpdateLayout();
+                target = editor.DesiredSize.Height;
+            }
+            if (target <= 0)
+            {
+                editor.Height = double.NaN;
+                return;
+            }
+
+            var from = Math.Min(Math.Max(0, resumeHeight), target);
+            editor.Height = from;
+            MappingEditorAnimation.AnimateHeight(editor, from, target, true, (o, args) =>
+            {
+                if (mapping.IsExpanded && !Equals(editor.Tag, "MappingClosing"))
+                {
+                    editor.BeginAnimation(FrameworkElement.HeightProperty, null);
+                    editor.Height = double.NaN;
+                }
+            });
         }
 
         private void MappingListView_OnSelectionChanged(object sender, SelectionChangedEventArgs e)

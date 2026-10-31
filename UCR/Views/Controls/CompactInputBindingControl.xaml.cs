@@ -16,6 +16,30 @@ namespace HidWizards.UCR.Views.Controls
 {
     public partial class CompactInputBindingControl : UserControl
     {
+        // The mapping editor owns device selection at the side level.
+        // Keep the per-binding selector for other UCR views.
+        // Expanded mapping cards use the same output binding to select the
+        // control TYPE and destination in one action, not two separate menus.
+        public static readonly DependencyProperty EnableUnifiedOutputPickerProperty =
+            DependencyProperty.Register(nameof(EnableUnifiedOutputPicker), typeof(bool),
+                typeof(CompactInputBindingControl), new PropertyMetadata(false));
+
+        public bool EnableUnifiedOutputPicker
+        {
+            get => (bool)GetValue(EnableUnifiedOutputPickerProperty);
+            set => SetValue(EnableUnifiedOutputPickerProperty, value);
+        }
+
+        public static readonly DependencyProperty DeviceSelectorVisibilityProperty =
+            DependencyProperty.Register(nameof(DeviceSelectorVisibility), typeof(Visibility),
+                typeof(CompactInputBindingControl), new PropertyMetadata(Visibility.Visible));
+
+        public Visibility DeviceSelectorVisibility
+        {
+            get => (Visibility)GetValue(DeviceSelectorVisibilityProperty);
+            set => SetValue(DeviceSelectorVisibilityProperty, value);
+        }
+
         public static readonly DependencyProperty DeviceBindingProperty =
             DependencyProperty.Register("DeviceBinding", typeof(DeviceBinding), typeof(CompactInputBindingControl),
                 new PropertyMetadata(default(DeviceBinding)));
@@ -55,7 +79,17 @@ namespace HidWizards.UCR.Views.Controls
 
         private async void BindButton_OnClick(object sender, RoutedEventArgs e)
         {
-            if (DeviceBinding == null) return;
+            // DataTemplates can realize their binding view-model before the
+            // separate DeviceBinding dependency property is populated. The
+            // button must operate on the actual row binding, never silently exit.
+            var currentBinding = (DataContext as DeviceBindingViewModel)?.DeviceBinding;
+            if (currentBinding != null && !ReferenceEquals(DeviceBinding, currentBinding))
+                DeviceBinding = currentBinding;
+            if (DeviceBinding == null)
+            {
+                Logger.Warn("Output/input button has no backing device binding.");
+                return;
+            }
             if (DeviceBinding.IsInBindMode)
             {
                 DeviceBinding.CancelBindMode();
@@ -69,21 +103,38 @@ namespace HidWizards.UCR.Views.Controls
                 return;
             }
 
-            // Keyboard outputs use pressed-key capture; controllers retain the
-            // graphical picker with trigger and axis-specific choices.
-            var configuration = GetSelectedDeviceConfiguration();
-            if (DeviceVisualCatalog.Describe(configuration, DeviceBinding.Profile, DeviceIoType.Output).Kind ==
-                DeviceVisualKind.Keyboard)
+            // Main Output binding uses the two-column Buttons/Directionals picker.
+            // Do not route this button through the ellipsis or quick-bind menu.
+            ShowOutputPicker(BindButton);
+        }
+
+        // Both visible Output actions use one dispatch path. The unified picker
+        // owns mapping-editor selection; legacy controls retain their own popup.
+        private async System.Threading.Tasks.Task OpenOutputSelectionAsync(FrameworkElement target)
+        {
+            var binding = DataContext as DeviceBindingViewModel;
+            var card = FindAncestor<MappingCardControl>(this);
+            if (EnableUnifiedOutputPicker && card != null)
             {
-                var mappingCard = FindAncestor<MappingCardControl>(this);
-                var bindingViewModel = DataContext as DeviceBindingViewModel;
-                if (mappingCard != null && bindingViewModel != null)
+                // The main Output action and the header quick-bind glyph must
+                // use the same device-aware picker and binding application path.
+                if (binding != null)
+                    await card.OpenQuickOutputPickerAsync(binding, target);
+                return;
+            }
+
+            if (!EnableUnifiedOutputPicker && card != null && binding != null)
+            {
+                var configuration = GetSelectedDeviceConfiguration();
+                if (DeviceVisualCatalog.Describe(configuration, DeviceBinding.Profile,
+                    DeviceIoType.Output).Kind == DeviceVisualKind.Keyboard)
                 {
-                    await mappingCard.OpenQuickOutputPickerAsync(bindingViewModel, BindButton);
+                    await card.OpenQuickOutputPickerAsync(binding, target);
                     return;
                 }
             }
-            ShowOutputPicker(BindButton);
+
+            ShowOutputPicker(target);
         }
 
         private void BindButton_OnPreviewMouseLeftButtonDown(object sender,
@@ -107,11 +158,9 @@ namespace HidWizards.UCR.Views.Controls
             // Reveal the whole binding row before opening its options. Otherwise a
             // partly scrolled-off row leaves Block/NOT underneath the fixed footer.
             BringIntoView();
-            if (DeviceBinding?.DeviceIoType == DeviceIoType.Output)
-            {
-                ShowOutputPicker(MenuButton);
-                return;
-            }
+            var activeBinding = (DataContext as DeviceBindingViewModel)?.DeviceBinding ?? DeviceBinding;
+            // The ellipsis retains the original hierarchical binding menu.
+            // Output's two-column visual picker belongs exclusively to the main button.
             BuildContextMenu();
             Ddl.PlacementTarget = MenuButton;
             // The inspector has a docked footer and a constrained scroll viewport.
@@ -215,11 +264,11 @@ namespace HidWizards.UCR.Views.Controls
             catch (Exception exception)
             {
                 Logger.Error("Unable to start control detection", exception);
-                var reason = exception.GetBaseException()?.Message ?? exception.Message;
-                HidWizards.UCR.Utilities.DarkMessageBox.Show(
-                    "Unable to start detection for the selected device. " + reason +
-                    "\n\nChoose the control from the menu instead, or check that the input device is connected.",
-                    "Control detection unavailable", MessageBoxButton.OK, MessageBoxImage.Error);
+                var mapping = FindAncestor<MappingCardControl>(this)?.DataContext
+                    as MappingViewModel;
+                if (mapping != null)
+                    mapping.InputPresetFeedback =
+                        "Input detection could not start. Check the input device or use the binding menu.";
             }
         }
 
@@ -233,16 +282,6 @@ namespace HidWizards.UCR.Views.Controls
                 current = System.Windows.Media.VisualTreeHelper.GetParent(current);
             }
             return null;
-        }
-
-        private static IEnumerable<DeviceBindingNode> FlattenControls(IEnumerable<DeviceBindingNode> nodes)
-        {
-            foreach (var node in nodes ?? Enumerable.Empty<DeviceBindingNode>())
-            {
-                if (node == null) continue;
-                if (node.IsBinding && node.DeviceBindingInfo != null) yield return node;
-                foreach (var child in FlattenControls(node.ChildrenNodes)) yield return child;
-            }
         }
 
         // Output selection is divided into buttons and directionals, backed by the
@@ -267,7 +306,7 @@ namespace HidWizards.UCR.Views.Controls
             // A single button input must not silently bind an entire continuous axis.
             // Only discrete output controls are offered until directional-axis mappings
             // have explicit negative and positive input slots.
-            var controls = FlattenControls(nodes)
+            var controls = OutputPickerInfrastructure.BindingControls(nodes)
                 .Where(node => node.DeviceBindingInfo != null &&
                     node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary)
                 .ToList();

@@ -72,6 +72,135 @@
             </Setter>
         </Style>
 
+        <!-- Restore the original compact device-symbol picker on each side.
+             The selected device is an icon; the dropdown shows glyph and name. -->
+        <Style x:Key="UcrSideDevicePicker" TargetType="{x:Type ComboBox}">
+            <Setter Property="Width" Value="58"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="ToolTip" Value="{Binding SelectedItem.Title, RelativeSource={RelativeSource Self}}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ComboBox}">
+                        <Grid SnapsToDevicePixels="True">
+                            <Border x:Name="DeviceSurface" CornerRadius="3" Background="#292929"
+                                    BorderBrush="{DynamicResource PrimaryHueLightBrush}" BorderThickness="2">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="15"/>
+                                    </Grid.ColumnDefinitions>
+                                    <local:DeviceSymbolControl Grid.Column="0" IsHitTestVisible="False"
+                                        SymbolText="{Binding SelectedItem.Visual.SymbolText, RelativeSource={RelativeSource TemplatedParent}}"
+                                        Foreground="{Binding SelectedItem.Visual.BadgeTextBrush, RelativeSource={RelativeSource TemplatedParent}}"
+                                        GlyphSize="31" Width="33" Height="32"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <materialDesign:PackIcon Grid.Column="1" Kind="ChevronDown"
+                                        Width="13" Height="13" Foreground="#CACACA" IsHitTestVisible="False"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <ToggleButton Grid.ColumnSpan="2" Focusable="False"
+                                        IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+                                        <ToggleButton.Template>
+                                            <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                                <Border Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </ToggleButton.Template>
+                                    </ToggleButton>
+                                </Grid>
+                            </Border>
+                            <Popup x:Name="PART_Popup" Placement="Bottom"
+                                   PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True" Focusable="False" StaysOpen="False"
+                                   PopupAnimation="Fade">
+                                <Border MinWidth="245" MaxWidth="350" Background="#262626"
+                                        BorderBrush="{DynamicResource PrimaryHueLightBrush}"
+                                        BorderThickness="1" Padding="3">
+                                    <ScrollViewer MaxHeight="300" CanContentScroll="True"
+                                                  VerticalScrollBarVisibility="Auto">
+                                        <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="DeviceSurface" Property="Background" Value="#383838"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="DeviceSurface" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ItemTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <Grid MinWidth="218" Margin="6 2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="39"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <local:DeviceSymbolControl Grid.Column="0" SymbolText="{Binding Visual.SymbolText}"
+                                Foreground="{Binding Visual.BadgeTextBrush}" GlyphSize="27"
+                                Width="35" Height="29" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="#FFFFFF"
+                                FontSize="13" VerticalAlignment="Center"
+                                TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}"/>
+                        </Grid>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="UcrNotButton" TargetType="{x:Type ToggleButton}">
+            <Setter Property="Content" Value="NOT"/>
+            <Setter Property="Width" Value="55"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ToggleButton}">
+                        <Border x:Name="NotSurface" Background="#343434"
+                                BorderBrush="{DynamicResource PrimaryHueLightBrush}"
+                                BorderThickness="1" CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="NotSurface" Property="Background" Value="#164AA7"/>
+                                <Setter TargetName="NotSurface" Property="BorderBrush" Value="#397AF0"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="NotSurface" Property="BorderBrush" Value="#83AFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="UcrDirectionalBindingButton" TargetType="{x:Type Button}"
+               BasedOn="{StaticResource MaterialDesignRaisedButton}">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Background" Value="#0939B2"/>
+            <Setter Property="BorderBrush" Value="#2B70FF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1551D1"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.45"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <!-- A device badge is intentionally shown only when the mapping deviates from the profile's
              primary device, unless the user explicitly enables the Show all devices toggle. -->
         <DataTemplate x:Key="MappingBindingVisualTemplate">
@@ -208,7 +337,7 @@
             <ItemsControl ItemsSource="{Binding DeviceBindings}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <local:CompactInputBindingControl DataContext="{Binding}"
+                        <local:CompactInputBindingControl DeviceSelectorVisibility="Collapsed" DataContext="{Binding}"
                             DeviceBinding="{Binding DeviceBinding}" Margin="0 0 0 5"
                             HorizontalAlignment="Stretch"/>
                     </DataTemplate>
@@ -222,6 +351,79 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Margin="0 0 0 9">
+                                <!-- Each compass is a single logical input unit. The physical bindings
+                                     are positioned in their actual directions, not as a flat list. -->
+                                <StackPanel Visibility="{Binding DirectionalVisibility}" Margin="0 0 0 8">
+                                    <StackPanel Orientation="Horizontal" Visibility="{Binding DirectionalPairVisibility}"
+                                                HorizontalAlignment="Left">
+                                        <Button DataContext="{Binding DirectionalInputs[0]}" Style="{StaticResource UcrDirectionalBindingButton}" Click="BindDirectionalSlot_OnClick"
+                                                MinWidth="110" MinHeight="38" Margin="0 0 6 0"
+                                                Content="{Binding DirectionalBindLabel}" ToolTip="Negative direction"/>
+                                        <Button Content="Preset" Width="75" MinHeight="38" Padding="6 2" Margin="0 0 6 0"
+                                                Style="{StaticResource UcrAccentOutlineButton}"
+                                                Click="OpenDirectionalPresetMenu_OnClick"
+                                                ToolTip="Choose a complete input binding preset"/>
+                                        <Button DataContext="{Binding DirectionalInputs[1]}" Style="{StaticResource UcrDirectionalBindingButton}" Click="BindDirectionalSlot_OnClick"
+                                                MinWidth="110" MinHeight="38" Content="{Binding DirectionalBindLabel}"
+                                                ToolTip="Positive direction"/>
+                                    </StackPanel>
+                                    <Grid Visibility="{Binding FourWayVisibility}" HorizontalAlignment="Left">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="112"/><ColumnDefinition Width="112"/><ColumnDefinition Width="112"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Row="0" Grid.Column="1" DataContext="{Binding DirectionalInputs[0]}"
+                                                Style="{StaticResource UcrDirectionalBindingButton}" Click="BindDirectionalSlot_OnClick" MinHeight="41" Margin="3"
+                                                ToolTip="Up direction">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="↑  "/><TextBlock Text="{Binding CompactBindButtonText}"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Row="2" Grid.Column="1" DataContext="{Binding DirectionalInputs[1]}"
+                                                Style="{StaticResource UcrDirectionalBindingButton}" Click="BindDirectionalSlot_OnClick" MinHeight="41" Margin="3"
+                                                ToolTip="Down direction">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="↓  "/><TextBlock Text="{Binding CompactBindButtonText}"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Row="1" Grid.Column="0" DataContext="{Binding DirectionalInputs[2]}"
+                                                Style="{StaticResource UcrDirectionalBindingButton}" Click="BindDirectionalSlot_OnClick" MinHeight="41" Margin="3"
+                                                ToolTip="Left direction">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="←  "/><TextBlock Text="{Binding CompactBindButtonText}"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Row="1" Grid.Column="2" DataContext="{Binding DirectionalInputs[3]}"
+                                                Style="{StaticResource UcrDirectionalBindingButton}" Click="BindDirectionalSlot_OnClick" MinHeight="41" Margin="3"
+                                                ToolTip="Right direction">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="→  "/><TextBlock Text="{Binding CompactBindButtonText}"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Row="1" Grid.Column="1" Content="Preset"
+                                                Width="96" MinHeight="38" Padding="5 2" Margin="3"
+                                                Style="{StaticResource UcrAccentOutlineButton}"
+                                                Click="OpenDirectionalPresetMenu_OnClick"
+                                                ToolTip="Choose a complete input binding preset"/>
+                                    </Grid>
+                                    <TextBlock Text="{Binding DataContext.InputPresetFeedback,
+                                        RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
+                                        Foreground="#FFBD83" FontSize="12" TextWrapping="Wrap"
+                                        Visibility="{Binding DataContext.InputPresetFeedbackVisibility,
+                                        RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
+                                        Margin="2 5 0 4"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0 5 0 0">
+                                        <TextBlock Text="Block" VerticalAlignment="Center" Margin="0 0 7 0"/>
+                                        <ToggleButton IsChecked="{Binding DirectionalBlockEnabled, Mode=OneWay}"
+                                            Click="DirectionalBlock_OnClick" Width="40" Height="22" Margin="0 0 13 0"
+                                            Style="{StaticResource UcrOutputInvertSwitch}" />
+                                        <ToggleButton IsChecked="{Binding DirectionalPrimary.InputExpressionNegated, Mode=OneWay}"
+                                            Click="DirectionalNot_OnClick" Margin="0 0 0 0"
+                                            Style="{StaticResource UcrNotButton}" ToolTip="Negate the input condition"/>
+                                    </StackPanel>
+                                </StackPanel>
                                 <TextBlock Text="OR" Visibility="{Binding OrLabelVisibility}"
                                     Foreground="#BBBBBB" FontWeight="SemiBold" Margin="4 2 0 6"/>
                                 <Border BorderBrush="#515151" BorderThickness="1"
@@ -236,38 +438,16 @@
                                                             <ColumnDefinition Width="Auto"/>
                                                             <ColumnDefinition Width="Auto"/>
                                                         </Grid.ColumnDefinitions>
-                                                        <local:CompactInputBindingControl Grid.Column="0"
+                                                        <local:CompactInputBindingControl DeviceSelectorVisibility="Collapsed" Grid.Column="0"
                                                             DeviceBinding="{Binding DeviceBinding}"
                                                             DataContext="{Binding}"/>
-                                                        <ToggleButton Grid.Column="1" Content="NOT" Width="54" Height="30"
-                                                            Margin="4 0 8 0" IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
-                                                            Click="InputNegated_OnClick"
-                                                            ToolTip="Negate this Boolean input condition">
-                                                            <ToggleButton.Style>
-                                                                <Style TargetType="{x:Type ToggleButton}">
-                                                                    <Setter Property="Foreground" Value="#FFFFFF"/>
-                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
-                                                                    <Setter Property="Template">
-                                                                        <Setter.Value>
-                                                                            <ControlTemplate TargetType="{x:Type ToggleButton}">
-                                                                                <Border x:Name="NotSurface" Background="#343434"
-                                                                                    BorderBrush="{DynamicResource PrimaryHueLightBrush}"
-                                                                                    BorderThickness="1">
-                                                                                    <ContentPresenter HorizontalAlignment="Center"
-                                                                                        VerticalAlignment="Center"/>
-                                                                                </Border>
-                                                                                <ControlTemplate.Triggers>
-                                                                                    <Trigger Property="IsChecked" Value="True">
-                                                                                        <Setter TargetName="NotSurface" Property="Background" Value="#164AA7"/>
-                                                                                        <Setter TargetName="NotSurface" Property="BorderBrush" Value="#397AF0"/>
-                                                                                    </Trigger>
-                                                                                </ControlTemplate.Triggers>
-                                                                            </ControlTemplate>
-                                                                        </Setter.Value>
-                                                                    </Setter>
-                                                                </Style>
-                                                            </ToggleButton.Style>
-                                                        </ToggleButton>
+                                                        <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                                                    VerticalAlignment="Center" Margin="8 0 8 0">
+                                                            <ToggleButton IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
+                                                                Click="InputNegated_OnClick"
+                                                                Style="{StaticResource UcrNotButton}"
+                                                                ToolTip="Negate this input condition"/>
+                                                        </StackPanel>
                                                         <Button Grid.Column="2" Click="RemoveExpressionInput_OnClick"
                                                             IsEnabled="{Binding CanRemoveExpressionInput}"
                                                             ToolTip="Remove input condition"
@@ -337,11 +517,20 @@
                                 </Style.Triggers>
                             </Style>
                         </StackPanel.Style>
+                        <Border Background="#252525" BorderBrush="#454545" BorderThickness="1" CornerRadius="4" Padding="8">
+                            <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="6 0 0 5" Height="30">
                             <materialDesign:PackIcon Kind="ArrowCollapseLeft" Width="16" Height="16"
                                 Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="INPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
                                 FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="2 2 0 10">
+                            <ComboBox Style="{StaticResource UcrSideDevicePicker}" Margin="0 0 9 0"
+                                ItemsSource="{Binding InputSideDevices}" SelectedValuePath="Value"
+                                SelectedValue="{Binding InputSideDeviceGuid, Mode=OneWay}"
+                                IsEnabled="{Binding ButtonsEnabled}"
+                                SelectionChanged="InputSideDevice_OnSelectionChanged"/>
                         </StackPanel>
                         <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch">
                             <ContentControl.Style>
@@ -355,6 +544,8 @@
                                 </Style>
                             </ContentControl.Style>
                         </ContentControl>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                     <StackPanel Margin="6 0 0 5">
                         <StackPanel.Style>
@@ -366,61 +557,122 @@
                                 </Style.Triggers>
                             </Style>
                         </StackPanel.Style>
+                        <Border Background="#252525" BorderBrush="#454545" BorderThickness="1" CornerRadius="4" Padding="8">
+                            <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="6 0 0 5" Height="30">
                             <materialDesign:PackIcon Kind="ArrowCollapseRight" Width="16" Height="16"
                                 Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="OUTPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
                                 FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            <Button Content="{Binding MappingOutputCategoryDisplay, StringFormat={}{0} ▼}"
-                                Height="28" Padding="8 2" Margin="12 0 0 0"
-                                Style="{StaticResource UcrAccentOutlineButton}"
-                                IsEnabled="{Binding ButtonsEnabled}"
-                                Click="ChangeMappingOutputCategory_OnClick"
-                                ToolTip="Choose an available button-based output type"/>
                         </StackPanel>
-                        <ItemsControl ItemsSource="{Binding Plugins}">
+                        <StackPanel Orientation="Horizontal" Margin="2 2 0 10">
+                            <ComboBox Style="{StaticResource UcrSideDevicePicker}" Margin="0 0 9 0"
+                                ItemsSource="{Binding OutputSideDevices}" SelectedValuePath="Value"
+                                SelectedValue="{Binding OutputSideDeviceGuid, Mode=OneWay}"
+                                IsEnabled="{Binding ButtonsEnabled}"
+                                SelectionChanged="OutputSideDevice_OnSelectionChanged"/>
+                        </StackPanel>
+                        <ItemsControl ItemsSource="{Binding OutputBindingSets}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Background="#292929" BorderBrush="#454545"
-                                        BorderThickness="1" CornerRadius="3" Padding="7" Margin="0 0 0 5">
+                                            BorderThickness="1" CornerRadius="4" Padding="9" Margin="0 0 0 7">
                                         <StackPanel>
-                                            <Grid>
+                                            <Grid Margin="0 0 0 5">
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*" MinWidth="0"/>
+                                                    <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
-                                                <ItemsControl Grid.Column="0" ItemsSource="{Binding DeviceBindings}">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <local:CompactInputBindingControl
-                                                                DeviceBinding="{Binding DeviceBinding}"
-                                                                DataContext="{Binding}" Tag="Output"
-                                                                HorizontalAlignment="Stretch"/>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                                <StackPanel Grid.Column="1" Orientation="Horizontal"
-                                                    VerticalAlignment="Center" Margin="8 0 0 0">
-                                                    <StackPanel Orientation="Horizontal"
-                                                        Visibility="{Binding QuickInvertVisibility}"
-                                                        VerticalAlignment="Center" Margin="0 0 9 0">
-                                                        <TextBlock Text="Invert" Foreground="#D8D8D8"
-                                                            VerticalAlignment="Center" Margin="0 0 6 0"/>
-                                                        <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
-                                                            IsChecked="{Binding QuickInvert, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                            ToolTip="Invert this output"/>
-                                                    </StackPanel>
-                                                    <Button Style="{StaticResource UcrDeleteItemButton}"
-                                                        Click="RemoveOutput_OnClick" IsEnabled="{Binding CanRemove}"
-                                                        ToolTip="Remove this output"/>
-                                                </StackPanel>
+                                                <TextBlock Grid.Column="0" Text="{Binding Caption}" Foreground="#DADADA"
+                                                    FontSize="12" FontWeight="SemiBold"
+                                                    Visibility="{Binding CaptionVisibility}" VerticalAlignment="Center"/>
+                                                <Button Grid.Column="1" Style="{StaticResource UcrDeleteItemButton}"
+                                                    Click="RemoveOutputSet_OnClick"
+                                                    Visibility="{Binding RemoveVisibility}"
+                                                    ToolTip="Remove this complete output Binding Set"/>
                                             </Grid>
-                                            <StackPanel Orientation="Horizontal" Margin="0 9 0 0">
-                                                <Button Content="+ Filter" Height="29" Padding="10 2"
-                                                    Click="AddOutputFilter_OnClick" IsEnabled="{Binding CanAddFilter}"
-                                                    Foreground="#FFFFFF" Background="#343434" BorderBrush="#555555"
-                                                    BorderThickness="1" ToolTip="Add a filter to this output"/>
-                                                <ItemsControl ItemsSource="{Binding Filters}" Margin="8 0 0 0">
+                                            <!-- One logical full joystick. The X/Y channels stay
+                                                 internal, rather than looking like two outputs. -->
+                                            <Button Content="{Binding PresetCaption}" Height="39"
+                                                Style="{StaticResource UcrDirectionalBindingButton}"
+                                                Visibility="{Binding FullJoystickVisibility}"
+                                                Click="OpenOutputPreset_OnClick"
+                                                ToolTip="Choose the joystick, including both X and Y axes"/>
+                                            <!-- Four buttons are one complete four-way output set.
+                                                 The Preset control occupies its centre. -->
+                                            <Grid Visibility="{Binding FourWayVisibility}" HorizontalAlignment="Left">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="110"/>
+                                                    <ColumnDefinition Width="110"/>
+                                                    <ColumnDefinition Width="110"/>
+                                                </Grid.ColumnDefinitions>
+                                                <local:CompactInputBindingControl Grid.Row="0" Grid.Column="1"
+                                                    DeviceSelectorVisibility="Collapsed" EnableUnifiedOutputPicker="True"
+                                                    DataContext="{Binding Slots[2].Binding}"
+                                                    DeviceBinding="{Binding Slots[2].Binding.DeviceBinding}" Tag="Output"
+                                                    Margin="3" HorizontalAlignment="Stretch"/>
+                                                <local:CompactInputBindingControl Grid.Row="1" Grid.Column="0"
+                                                    DeviceSelectorVisibility="Collapsed" EnableUnifiedOutputPicker="True"
+                                                    DataContext="{Binding Slots[0].Binding}"
+                                                    DeviceBinding="{Binding Slots[0].Binding.DeviceBinding}" Tag="Output"
+                                                    Margin="3" HorizontalAlignment="Stretch"/>
+                                                <local:CompactInputBindingControl Grid.Row="1" Grid.Column="2"
+                                                    DeviceSelectorVisibility="Collapsed" EnableUnifiedOutputPicker="True"
+                                                    DataContext="{Binding Slots[1].Binding}"
+                                                    DeviceBinding="{Binding Slots[1].Binding.DeviceBinding}" Tag="Output"
+                                                    Margin="3" HorizontalAlignment="Stretch"/>
+                                                <local:CompactInputBindingControl Grid.Row="2" Grid.Column="1"
+                                                    DeviceSelectorVisibility="Collapsed" EnableUnifiedOutputPicker="True"
+                                                    DataContext="{Binding Slots[3].Binding}"
+                                                    DeviceBinding="{Binding Slots[3].Binding.DeviceBinding}" Tag="Output"
+                                                    Margin="3" HorizontalAlignment="Stretch"/>
+                                                <Button Grid.Row="1" Grid.Column="1"
+                                                        Content="Preset" Height="38" Margin="3"
+                                                        Style="{StaticResource UcrAccentOutlineButton}"
+                                                        Click="OpenOutputPreset_OnClick"
+                                                        ToolTip="Choose WASD, Arrow Keys, Numpad, or a controller D-pad"/>
+                                            </Grid>
+                                            <ItemsControl ItemsSource="{Binding Slots}"
+                                                Visibility="{Binding OrdinaryVisibility}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <UniformGrid Columns="{Binding DataContext.Columns,
+                                                            RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Margin="0 0 5 5">
+                                                            <TextBlock Text="{Binding Direction}" Foreground="#DADADA"
+                                                                Visibility="{Binding DirectionVisibility}"
+                                                                FontSize="12" Margin="2 0 0 5"/>
+                                                            <local:CompactInputBindingControl
+                                                                DeviceSelectorVisibility="Collapsed"
+                                                                EnableUnifiedOutputPicker="True"
+                                                                DeviceBinding="{Binding Binding.DeviceBinding}"
+                                                                DataContext="{Binding Binding}" Tag="Output"/>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <StackPanel DataContext="{Binding Primary}" Margin="0 6 0 0">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <ToggleButton Content="Invert"
+                                                        Visibility="{Binding QuickInvertVisibility}"
+                                                        Style="{StaticResource UcrNotButton}"
+                                                        IsChecked="{Binding QuickInvert, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                        ToolTip="Invert this output"/>
+                                                    <Button Content="+ Filter" Height="29" Padding="10 2"
+                                                        Click="AddOutputFilter_OnClick" IsEnabled="{Binding CanAddFilter}"
+                                                        Foreground="#FFFFFF" Background="#343434" BorderBrush="#555555"
+                                                        BorderThickness="1" ToolTip="Add a filter"/>
+                                                </StackPanel>
+                                                <ItemsControl ItemsSource="{Binding Filters}" Margin="0 5 0 0">
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
                                                     </ItemsControl.ItemsPanel>
@@ -430,44 +682,47 @@
                                                                 <Button Content="{Binding Name}" Click="ToggleOutputFilter_OnClick"
                                                                     Height="29" Padding="8 1" IsEnabled="{Binding IsEnabled}"
                                                                     Foreground="#FFFFFF" Background="#353535"
-                                                                    BorderBrush="#5C5C5C" BorderThickness="1"
-                                                                    ToolTip="Toggle filter inversion"/>
+                                                                    BorderBrush="#5C5C5C" BorderThickness="1"/>
                                                                 <Button Content="×" Click="RemoveOutputFilter_OnClick"
                                                                     Height="29" Width="26" Padding="0"
                                                                     IsEnabled="{Binding IsEnabled}"
-                                                                    Foreground="#FF6868" FontSize="18"
-                                                                    Background="#353535" BorderBrush="#5C5C5C"
-                                                                    BorderThickness="1" ToolTip="Remove filter"/>
+                                                                    Foreground="#FF6868" Background="#353535"
+                                                                    BorderBrush="#5C5C5C" BorderThickness="1"/>
                                                             </StackPanel>
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
+                                                <Expander Header="Settings" Margin="0 6 0 0"
+                                                    Visibility="{Binding InlineSettingsVisibility}"
+                                                    Foreground="#D0D0D0">
+                                                    <ItemsControl ItemsSource="{Binding InlinePropertyGroups}" Margin="6 4">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <StackPanel Visibility="{Binding ShowPropertyList}">
+                                                                    <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold"
+                                                                        Foreground="#DADADA" Margin="0 2 0 1"/>
+                                                                    <plugin:PluginPropertyListControl DataContext="{Binding}"/>
+                                                                </StackPanel>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </Expander>
                                             </StackPanel>
-                                            <Expander Header="Settings" Margin="0 6 0 0"
-                                                Visibility="{Binding InlineSettingsVisibility}"
-                                                Foreground="#D0D0D0">
-                                                <ItemsControl ItemsSource="{Binding InlinePropertyGroups}" Margin="6 4">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <StackPanel Visibility="{Binding ShowPropertyList}">
-                                                                <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold"
-                                                                    Foreground="#DADADA" Margin="0 2 0 1"/>
-                                                                <plugin:PluginPropertyListControl DataContext="{Binding}"/>
-                                                            </StackPanel>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                            </Expander>
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <Button Content="+ Add output" Click="AddPlugin_OnClick"
+                        <TextBlock Text="{Binding OutputSelectionFeedback}"
+                                   Foreground="#FFBD83" FontSize="12" Margin="2 0 0 8"
+                                   TextWrapping="Wrap" Visibility="{Binding OutputFeedbackVisibility}"/>
+                        <Button Content="{Binding AddOutputCaption}" Click="AddPlugin_OnClick"
                             Height="34" Padding="12 3" Margin="3 8 0 2"
                             HorizontalAlignment="Left" IsEnabled="{Binding ButtonsEnabled}"
                             Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
                             ToolTip="Add another output to this mapping"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </UniformGrid>
             </Border>
@@ -521,7 +776,7 @@
                         <ColumnDefinition Width="3*"/>
                         <ColumnDefinition Width="34"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="46"/>
+                        <ColumnDefinition Width="90"/>
                     </Grid.ColumnDefinitions>
 
                     <Border x:Name="MappingDragHandle" Grid.Column="0" Margin="2" CornerRadius="3" Background="#303030" Cursor="SizeAll" ToolTip="Drag to reorder"><TextBlock Text="☰" Foreground="#D0D0D0" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/></Border>
@@ -701,13 +956,19 @@
                                 Style="{StaticResource UcrMappingActionButton}" IsEnabled="{Binding ButtonsEnabled}" Click="MoveSection_OnClick">
                             <TextBlock Text="↪" FontSize="17" FontWeight="Bold" VerticalAlignment="Center"/>
                         </Button>
-                        <Button ToolTip="Remove mapping. Stop the active profile to edit." ToolTipService.ShowOnDisabled="True"
-                                Width="30" Height="30" Margin="2" Style="{StaticResource UcrDeleteCrossButton}"
-                                IsEnabled="{Binding ButtonsEnabled}" Click="Remove_OnClick"/>
+                        
 
                     </StackPanel>
                     <!-- Always-visible, dedicated expand control; card content is not a toggle. -->
-                    <Button x:Name="ExpandMappingButton" Grid.Column="5" Width="38" Height="38"
+                    <StackPanel Grid.Column="5" Orientation="Horizontal"
+                                VerticalAlignment="Center" HorizontalAlignment="Right">
+                        <Button Width="34" Height="34" Margin="0 0 5 0"
+                                Style="{StaticResource UcrDeleteCrossButton}"
+                                IsEnabled="{Binding ButtonsEnabled}"
+                                ToolTip="Delete this mapping"
+                                ToolTipService.ShowOnDisabled="True"
+                                Click="Remove_OnClick"/>
+                    <Button x:Name="ExpandMappingButton" Width="38" Height="38"
                             Margin="0 0 5 0" VerticalAlignment="Center" HorizontalAlignment="Center"
                             Padding="0" Foreground="#FFFFFF" Background="#292929"
                             BorderBrush="#696969" BorderThickness="1" Cursor="Hand" Focusable="False"
@@ -746,6 +1007,7 @@
                             </Path>
                         </Grid>
                     </Button>
+                    </StackPanel>
                 </Grid>
             </Border>
 

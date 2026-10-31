@@ -21,11 +21,41 @@ namespace HidWizards.UCR.Core.Models
         [DefaultValue(false)]
         public bool UseInputExpression { get; set; }
 
+        // Four independent button destinations, corresponding to Left, Right,
+        // Up and Down. Not inferred from output count: four ordinary buttons
+        // remain independent outputs until the user selects D-pad explicitly.
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool DirectionalButtonOutputs { get; set; }
+
+        // Two opposite button destinations for one continuous axis. Four-way
+        // D-pad routing uses DirectionalButtonOutputs instead.
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool DirectionalPairButtonOutputs { get; set; }
+
+        // Distinguishes a four-way D-pad input from four directional stick
+        // inputs without changing their shared binding-slot structure.
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool DirectionalInputIsDPad { get; set; }
+
+        // Side types are intentionally independent of the number of slots
+        // on that side; the opposing side determines each binding set's shape.
+        [XmlAttribute]
+        [DefaultValue("")]
+        public string InputSideType { get; set; } = "";
+
+        [XmlAttribute]
+        [DefaultValue("")]
+        public string OutputSideType { get; set; } = "";
+
         /* Runtime */
         private Profile Profile { get; set; }
         private List<short> InputCache { get; set; }
         private List<CallbackMultiplexer> Multiplexer { get; set; }
         private short? _lastInputExpressionValue;
+        private short?[] _lastDirectionalButtonValues;
         
 
         internal bool IsShadowMapping { get; set; }
@@ -109,6 +139,7 @@ namespace HidWizards.UCR.Core.Models
             }
 
             _lastInputExpressionValue = null;
+            _lastDirectionalButtonValues = new short?[4];
             FilterState = filterState;
             RuntimeScopeGuid = runtimeScopeGuid;
             Plugins.ForEach(p => p.RuntimeMapping = this);
@@ -173,6 +204,29 @@ namespace HidWizards.UCR.Core.Models
             _lastInputExpressionValue = digital;
 
             var directionalFourWay = DeviceBindings.Any(b => b.InputDirectionSlot >= 3);
+            var directionalOutputCount = DirectionalButtonOutputs && directionalFourWay ? 4 :
+                DirectionalPairButtonOutputs ? 2 : 0;
+            if (directionalOutputCount > 0 && Plugins.Count >= directionalOutputCount &&
+                Plugins.Count % directionalOutputCount == 0 &&
+                Plugins.All(p => p.InputCategories.Count == 1 &&
+                    p.InputCategories[0].Category == DeviceBindingCategory.Momentary))
+            {
+                if (_lastDirectionalButtonValues == null ||
+                    _lastDirectionalButtonValues.Length != Plugins.Count)
+                    _lastDirectionalButtonValues = new short?[Plugins.Count];
+                for (var index = 0; index < Plugins.Count; index++)
+                {
+                    var plugin = Plugins[index];
+                    if (plugin.IsFiltered()) continue;
+                    var direction = index % directionalOutputCount + 1;
+                    var active = EvaluateDirectionalButton(InputCache, direction);
+                    var state = (short)(active ? 1 : 0);
+                    if (_lastDirectionalButtonValues[index] == state) continue;
+                    _lastDirectionalButtonValues[index] = state;
+                    plugin.Update(new[] { state });
+                }
+                return;
+            }
             var rangeIndex = 0;
             foreach (var plugin in Plugins)
             {
@@ -267,6 +321,68 @@ namespace HidWizards.UCR.Core.Models
                 return (short)Math.Max(short.MinValue, Math.Min(short.MaxValue, amount));
             }
             return 0;
+        }
+
+        // Each D-pad destination is driven only by its corresponding
+        // direction. Other inputs in the same OR group are AND guards.
+        // Values remain independently releasable when one direction changes.
+        internal bool EvaluateDirectionalButton(IList<short> values, int slot)
+        {
+            if (!UseInputExpression || values == null || slot < 1 || slot > 4) return false;
+            var count = Math.Min(values.Count, DeviceBindings.Count);
+            foreach (var group in Enumerable.Range(0, count)
+                .GroupBy(i => Math.Max(0, DeviceBindings[i].InputExpressionGroup))
+                .OrderBy(g => g.Key))
+            {
+                var directions = group.Where(i => DeviceBindings[i].InputDirectionSlot > 0).ToList();
+                if (directions.Count == 0)
+                {
+                    // A physical analogue axis represents both halves of the
+                    // same input. Split its signed travel into two digital
+                    // destinations without requiring manual Boolean wiring.
+                    if (slot > 2) continue;
+                    if (!group.Any(i => DeviceBindings[i].InputExpressionInputKind == 3 &&
+                        !DeviceBindings[i].InputExpressionNegated)) continue;
+                    var driver = group.First(i => DeviceBindings[i].InputExpressionInputKind == 3 &&
+                        !DeviceBindings[i].InputExpressionNegated);
+                    if (!group.Where(i => i != driver)
+                        .All(i => EvaluateOrdinaryCondition(DeviceBindings[i], values[i])))
+                        continue;
+                    var raw = values[driver];
+                    var threshold = Math.Max(1, Math.Min(32767,
+                        DeviceBindings[driver].InputExpressionAxisThreshold));
+                    if (Math.Abs((int)raw) < threshold) continue;
+                    // A signed axis active in this OR group owns both
+                    // directions, including the inactive half.
+                    return slot == 1 ? raw <= -threshold : raw >= threshold;
+                }
+                if (!group.Where(i => DeviceBindings[i].InputDirectionSlot == 0)
+                    .All(i => EvaluateOrdinaryCondition(DeviceBindings[i], values[i])))
+                    continue;
+                // The first active OR group owns every output direction.
+                // Do not combine directions from different alternative sets.
+                var active = directions.Where(i =>
+                    DeviceBindings[i].InputDirectionSlot <= 4).ToList();
+                if (!active.Any(i => EvaluateDirectionPresence(DeviceBindings[i], values[i])))
+                    continue;
+                if (DeviceBindings[directions[0]].InputExpressionNegated)
+                    return false;
+                return active.Any(i => DeviceBindings[i].InputDirectionSlot == slot &&
+                    EvaluateDirectionPresence(DeviceBindings[i], values[i]));
+            }
+            return false;
+        }
+
+        private static bool EvaluateDirectionPresence(DeviceBinding binding, short raw)
+        {
+            var threshold = Math.Max(1, Math.Min(32767, binding.InputExpressionAxisThreshold));
+            switch (binding.InputExpressionInputKind)
+            {
+                case 1: return raw >= threshold;
+                case 2: return raw <= -threshold;
+                case 3: return Math.Abs((int)raw) >= threshold;
+                default: return raw != 0;
+            }
         }
 
         private static bool EvaluateOrdinaryCondition(DeviceBinding binding, short raw)
@@ -430,16 +546,25 @@ namespace HidWizards.UCR.Core.Models
             if (slots != 0 && slots != 2 && slots != 4) return false;
             if (!EnableInputExpression()) return false;
             var members = DeviceBindings.Where(b => b.InputExpressionGroup == groupIndex).ToList();
-            var first = members.FirstOrDefault(b => b.InputDirectionSlot == 1)
+            var directions = members.Where(b => b.InputDirectionSlot > 0)
+                .OrderBy(b => b.InputDirectionSlot).ToList();
+            var first = directions.FirstOrDefault(b => b.InputDirectionSlot == 1)
                 ?? members.FirstOrDefault(b => b.InputDirectionSlot == 0);
             if (first == null) return false;
 
-            foreach (var sibling in members.Where(b => b.InputDirectionSlot > 0 && b != first).ToList())
-                DeviceBindings.Remove(sibling);
+            // Re-selecting an existing layout must not wipe assigned controls.
+            if (slots > 0 && directions.Count == slots &&
+                Enumerable.Range(1, slots).All(slot =>
+                    directions.Count(b => b.InputDirectionSlot == slot) == 1))
+                return true;
+
             if (slots == 0)
             {
-                // Single mode is a continuous analogue source, never a leftover
-                // digital negative-direction key. Discard the incompatible key.
+                // Only an analogue axis can survive a transition to the
+                // continuous one-slot layout. No longer applicable directions
+                // are deliberately removed when the user requests this mode.
+                foreach (var sibling in directions.Where(b => b != first))
+                    DeviceBindings.Remove(sibling);
                 if (first.InputExpressionInputKind != 3)
                 {
                     first.DeviceConfigurationGuid = Guid.Empty;
@@ -455,28 +580,74 @@ namespace HidWizards.UCR.Core.Models
                 return true;
             }
 
-            // Clear the old single-source binding without relying on a live Profile:
-            // profile-less mappings are also constructed by import and unit tests.
-            first.DeviceConfigurationGuid = Guid.Empty;
-            first.KeyType = first.KeyValue = first.KeySubValue = 0;
-            first.IsBound = false;
-            first.Block = false;
-            first.InputExpressionInputKind = 0;
-            first.InputExpressionKindConfigured = true;
-            first.DeviceBindingCategory = DeviceBindingCategory.Momentary;
-            first.InputDirectionSlot = 1;
+            // Preserve existing directional assignments when expanding.
+            // A bound continuous axis is split into its negative and positive
+            // halves without losing the physical control assignment.
+            // An unassigned legacy Axis-to-Axis source may intentionally be
+            // replaced by physical buttons. Preserve the analogue category
+            // only when its axis is bound, explicitly selected, or already
+            // part of an analogue directional set.
+            var axisMode = first.InputExpressionInputKind != 0 &&
+                (first.IsBound || first.InputDirectionSlot > 0 ||
+                 string.Equals(InputSideType, "Axis", StringComparison.OrdinalIgnoreCase));
+            var splitSingleAxis = axisMode && first.InputDirectionSlot == 0 &&
+                first.InputExpressionInputKind == 3;
+            var sourceDevice = first.DeviceConfigurationGuid;
+            var sourceKeyType = first.KeyType;
+            var sourceKeyValue = first.KeyValue;
+            var sourceKeySubValue = first.KeySubValue;
+            var sourceBound = first.IsBound;
+            var analogueDestination = Plugins.Any(plugin =>
+                plugin.OutputCategories.Any(category =>
+                    category.Category == DeviceBindingCategory.Range));
+            var axisThreshold = analogueDestination ? 1 : 16384;
+
+            foreach (var sibling in directions.Where(binding => binding.InputDirectionSlot > slots))
+                DeviceBindings.Remove(sibling);
+            if (first.InputDirectionSlot == 0)
+            {
+                if (!axisMode)
+                {
+                    first.InputExpressionInputKind = 0;
+                    first.DeviceBindingCategory = DeviceBindingCategory.Momentary;
+                }
+                else if (splitSingleAxis)
+                {
+                    first.InputExpressionInputKind = 2;
+                    first.DeviceBindingCategory = DeviceBindingCategory.Range;
+                    first.InputExpressionAxisThreshold = axisThreshold;
+                }
+                first.InputExpressionKindConfigured = true;
+                first.InputDirectionSlot = 1;
+            }
 
             var position = DeviceBindings.IndexOf(first);
             for (var slot = 2; slot <= slots; slot++)
             {
+                var existing = DeviceBindings.FirstOrDefault(binding =>
+                    binding.InputExpressionGroup == groupIndex && binding.InputDirectionSlot == slot);
+                if (existing != null)
+                {
+                    position = Math.Max(position, DeviceBindings.IndexOf(existing));
+                    continue;
+                }
+                var pairedSource = splitSingleAxis && slot == 2 && sourceBound;
                 DeviceBindings.Insert(++position, new DeviceBinding(Update, Profile, DeviceIoType.Input)
                 {
                     InputExpressionGroup = groupIndex,
                     InputDirectionSlot = slot,
-                    InputExpressionInputKind = 0,
+                    InputExpressionInputKind = axisMode ? (slot % 2 == 1 ? 2 : 1) : 0,
+                    InputExpressionAxisThreshold = axisMode ? axisThreshold : 16384,
                     InputExpressionKindConfigured = true,
-                    DeviceBindingCategory = DeviceBindingCategory.Momentary,
-                    InputExpressionNegated = first.InputExpressionNegated
+                    DeviceBindingCategory = axisMode ?
+                        DeviceBindingCategory.Range : DeviceBindingCategory.Momentary,
+                    InputExpressionNegated = first.InputExpressionNegated,
+                    // All directions of the same Binding Set follow the explicitly chosen input device.
+                    DeviceConfigurationGuid = sourceDevice,
+                    KeyType = pairedSource ? sourceKeyType : 0,
+                    KeyValue = pairedSource ? sourceKeyValue : 0,
+                    KeySubValue = pairedSource ? sourceKeySubValue : 0,
+                    IsBound = pairedSource
                 });
             }
             Profile?.Context?.ContextChanged();
