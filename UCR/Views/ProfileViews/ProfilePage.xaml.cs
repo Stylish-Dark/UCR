@@ -1456,16 +1456,18 @@ namespace HidWizards.UCR.Views.ProfileViews
                 }
                 else
                 {
-                    // Establish the expanded state on the click itself so the mapping
-                    // row participates in the very next layout pass. Deferring template
-                    // assignment left the card visually collapsed after the click.
+                    // A cold editor cannot have an accurate target height yet.
+                    // Show it on the click's next layout, not after a 200 ms
+                    // delayed sweep that retracts an already laid-out editor.
+                    // Hover pre-measurement covers the usual pointer path.
                     if (editor.ContentTemplate == null)
                         editor.ContentTemplate = editor.FindResource("InlineMappingEditorTemplate") as DataTemplate;
                     mapping.IsExpanded = true;
+                    editor.Height = double.NaN;
                     editor.Dispatcher.BeginInvoke(new Action(() =>
                     {
-                        if (mapping.IsExpanded && !Equals(editor.Tag, "MappingClosing"))
-                            StartInlineMappingOpenAnimation(editor, mapping, 0);
+                        if (mapping.IsExpanded && editor.ActualHeight > 0)
+                            editor.SetValue(CachedInlineEditorHeightProperty, editor.ActualHeight);
                     }), DispatcherPriority.Loaded);
                 }
             }
@@ -1557,7 +1559,22 @@ namespace HidWizards.UCR.Views.ProfileViews
                 editor.ContentTemplate = editor.FindResource("InlineMappingEditorTemplate") as DataTemplate;
                 editor.ApplyTemplate();
                 var presenter = FindVisualChild<ContentPresenter>(editor);
-                presenter?.ApplyTemplate();
+                if (presenter == null) return;
+                presenter.ApplyTemplate();
+                // Measure the already-created inner presenter, not its collapsed
+                // outer host: the latter always reports a zero desired height.
+                // This is pre-work on hover, never on the chevron click.
+                try
+                {
+                    var width = Math.Max(1, row.ActualWidth);
+                    presenter.Measure(new Size(width, double.PositiveInfinity));
+                    if (presenter.DesiredSize.Height > 0)
+                        editor.SetValue(CachedInlineEditorHeightProperty, presenter.DesiredSize.Height);
+                }
+                catch (Exception exception)
+                {
+                    Logger.Warn("Could not premeasure a mapping editor.", exception);
+                }
             }), DispatcherPriority.Background);
         }
 
