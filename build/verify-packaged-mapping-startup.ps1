@@ -60,3 +60,6 @@ try {
 finally {
     [AppDomain]::CurrentDomain.remove_AssemblyResolve($handler)
 }
+# Return an explicit successful process status after the verification and cleanup.
+# Real exceptions still terminate the script before reaching this line.
+exit 0
