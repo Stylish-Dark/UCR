@@ -1511,12 +1511,10 @@ namespace HidWizards.UCR.Views.ProfileViews
                 // The first realization has no size yet. Let the normal layout
                 // pass establish it; don't synchronously measure hundreds of
                 // nested input/output controls inside the click handler.
+                // The control can be expanding into an unrealized template.
+                // Leave it naturally sized rather than spin another dispatcher
+                // callback or introduce a visible snap.
                 editor.Height = double.NaN;
-                editor.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    if (mapping.IsExpanded && !Equals(editor.Tag, "MappingClosing"))
-                        StartInlineMappingOpenAnimation(editor, mapping, resumeHeight);
-                }), DispatcherPriority.Loaded);
                 return;
             }
 
