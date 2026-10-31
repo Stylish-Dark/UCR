@@ -12,11 +12,11 @@ namespace HidWizards.UCR.Views.Controls
         {
             if (target == null) return;
             var animation = new DoubleAnimation(from, to,
-                TimeSpan.FromMilliseconds(expanding ? 200 : 165))
+                TimeSpan.FromMilliseconds(expanding ? 125 : 105))
             {
                 EasingFunction = new QuadraticEase
                 {
-                    EasingMode = expanding ? EasingMode.EaseOut : EasingMode.EaseIn
+                    EasingMode = EasingMode.EaseOut
                 }
             };
             if (completed != null) animation.Completed += completed;

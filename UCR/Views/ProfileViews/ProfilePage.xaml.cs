@@ -27,6 +27,13 @@ namespace HidWizards.UCR.Views.ProfileViews
         // The virtualized section ListView owns a single ScrollViewer.
         // Cache it after the template is realized so dragging does not walk
         // the visual tree on every mouse-move event.
+        // Retain each realized editor's measured open height. A collapsed WPF
+        // element reports zero DesiredSize; re-measuring the entire nested card
+        // on every chevron click was delaying and then snapping the animation.
+        private static readonly DependencyProperty CachedInlineEditorHeightProperty =
+            DependencyProperty.RegisterAttached("CachedInlineEditorHeight", typeof(double),
+                typeof(ProfilePage), new PropertyMetadata(0d));
+
         private ScrollViewer _mappingSectionsScrollViewer;
         private ScrollViewer MappingSectionsScrollViewer =>
             _mappingSectionsScrollViewer ??
@@ -1438,23 +1445,29 @@ namespace HidWizards.UCR.Views.ProfileViews
                 // A retained editor can animate immediately from its already measured size.
                 // First-time template creation is deferred until after the click has returned,
                 // allowing the chevron to acknowledge the input without blocking on WPF layout.
-                var firstOpen = editor.ContentTemplate == null;
+                var firstOpen = (double)editor.GetValue(CachedInlineEditorHeightProperty) <= 0;
                 if (!firstOpen)
                 {
                     mapping.IsExpanded = true;
+                    // Cached height is available from the previous expansion.
+                    // Start the transition in the click handler, not after a
+                    // dispatcher/layout pass.
                     StartInlineMappingOpenAnimation(editor, mapping, reversingCollapse ? resumeHeight : 0);
                 }
                 else
                 {
-                    // Establish the expanded state on the click itself so the mapping
-                    // row participates in the very next layout pass. Deferring template
-                    // assignment left the card visually collapsed after the click.
-                    editor.ContentTemplate = editor.FindResource("InlineMappingEditorTemplate") as DataTemplate;
+                    // A cold editor cannot have an accurate target height yet.
+                    // Show it on the click's next layout, not after a 200 ms
+                    // delayed sweep that retracts an already laid-out editor.
+                    // Hover pre-measurement covers the usual pointer path.
+                    if (editor.ContentTemplate == null)
+                        editor.ContentTemplate = editor.FindResource("InlineMappingEditorTemplate") as DataTemplate;
                     mapping.IsExpanded = true;
+                    editor.Height = double.NaN;
                     editor.Dispatcher.BeginInvoke(new Action(() =>
                     {
-                        if (mapping.IsExpanded && !Equals(editor.Tag, "MappingClosing"))
-                            StartInlineMappingOpenAnimation(editor, mapping, 0);
+                        if (mapping.IsExpanded && editor.ActualHeight > 0)
+                            editor.SetValue(CachedInlineEditorHeightProperty, editor.ActualHeight);
                     }), DispatcherPriority.Loaded);
                 }
             }
@@ -1462,6 +1475,8 @@ namespace HidWizards.UCR.Views.ProfileViews
             {
                 editor.Tag = "MappingClosing";
                 var start = editor.ActualHeight;
+                if (start > 0)
+                    editor.SetValue(CachedInlineEditorHeightProperty, start);
                 if (start <= 0)
                 {
                     // Nothing is visible to animate; avoid retaining a closing
@@ -1485,22 +1500,30 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private static void StartInlineMappingOpenAnimation(ContentControl editor, MappingViewModel mapping, double resumeHeight)
         {
-            if (!mapping.IsExpanded || !editor.IsVisible) return;
-            // Let WPF use the layout pass already completed for the retained editor.
-            // Measuring against infinite height here forces the entire nested editor to
-            // synchronously relayout on every chevron click.
-            var target = editor.DesiredSize.Height;
+            // IsVisible can still be false until the IsExpanded binding is
+            // applied on the next WPF layout pass. Start the clock NOW.
+            if (!mapping.IsExpanded) return;
+
+            // The last real open height remains valid after WPF collapses the
+            // editor. Prefer it to DesiredSize, which becomes zero while
+            // collapsed. Never force UpdateLayout on a chevron click.
+            var target = (double)editor.GetValue(CachedInlineEditorHeightProperty);
             if (target <= 0)
-            {
-                editor.UpdateLayout();
                 target = editor.DesiredSize.Height;
-            }
+
             if (target <= 0)
             {
+                // The first realization has no size yet. Let the normal layout
+                // pass establish it; don't synchronously measure hundreds of
+                // nested input/output controls inside the click handler.
+                // The control can be expanding into an unrealized template.
+                // Leave it naturally sized rather than spin another dispatcher
+                // callback or introduce a visible snap.
                 editor.Height = double.NaN;
                 return;
             }
 
+            editor.SetValue(CachedInlineEditorHeightProperty, target);
             var from = Math.Min(Math.Max(0, resumeHeight), target);
             editor.Height = from;
             MappingEditorAnimation.AnimateHeight(editor, from, target, true, (o, args) =>
@@ -1509,8 +1532,52 @@ namespace HidWizards.UCR.Views.ProfileViews
                 {
                     editor.BeginAnimation(FrameworkElement.HeightProperty, null);
                     editor.Height = double.NaN;
+                    if (editor.ActualHeight > 0)
+                        editor.SetValue(CachedInlineEditorHeightProperty, editor.ActualHeight);
                 }
             });
+        }
+
+        // Prime only the mapping about to be opened, while the pointer is
+        // approaching its chevron. Never materialize offscreen mapping cards.
+        private void WarmInlineMapping_OnMouseEnter(object sender, MouseEventArgs e)
+        {
+            var mapping = (sender as FrameworkElement)?.DataContext as MappingViewModel;
+            if (mapping == null || mapping.IsExpanded) return;
+            var button = sender as Button;
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (mapping.IsExpanded || _disposed || button == null) return;
+                foreach (var plugin in mapping.Plugins)
+                    plugin.EnsureEditorInitialized();
+
+                // Realize the card's template while the row is still collapsed.
+                // Applying its ContentPresenter template creates the expensive
+                // visual tree ahead of the click without occupying row height.
+                var header = (button.Parent as StackPanel)?.Parent as Grid;
+                var row = header?.Parent as StackPanel;
+                var editor = row?.Children.OfType<ContentControl>().FirstOrDefault();
+                if (editor == null || editor.ContentTemplate != null) return;
+                editor.ContentTemplate = editor.FindResource("InlineMappingEditorTemplate") as DataTemplate;
+                editor.ApplyTemplate();
+                var presenter = FindVisualChild<ContentPresenter>(editor);
+                if (presenter == null) return;
+                presenter.ApplyTemplate();
+                // Measure the already-created inner presenter, not its collapsed
+                // outer host: the latter always reports a zero desired height.
+                // This is pre-work on hover, never on the chevron click.
+                try
+                {
+                    var width = Math.Max(1, row.ActualWidth);
+                    presenter.Measure(new Size(width, double.PositiveInfinity));
+                    if (presenter.DesiredSize.Height > 0)
+                        editor.SetValue(CachedInlineEditorHeightProperty, presenter.DesiredSize.Height);
+                }
+                catch (Exception exception)
+                {
+                    Logger.Warn("Could not premeasure a mapping editor.", exception);
+                }
+            }), DispatcherPriority.Background);
         }
 
         private void MappingListView_OnSelectionChanged(object sender, SelectionChangedEventArgs e)

@@ -159,7 +159,10 @@ namespace HidWizards.UCR.Views.Controls
             // partly scrolled-off row leaves Block/NOT underneath the fixed footer.
             BringIntoView();
             var activeBinding = (DataContext as DeviceBindingViewModel)?.DeviceBinding ?? DeviceBinding;
-            // The ellipsis retains the original hierarchical binding menu.
+            if (activeBinding != null && !ReferenceEquals(DeviceBinding, activeBinding))
+                DeviceBinding = activeBinding;
+            // The ellipsis retains the hierarchical binding menu, including
+            // output categories and nested keyboard groups.
             // Output's two-column visual picker belongs exclusively to the main button.
             BuildContextMenu();
             Ddl.PlacementTarget = MenuButton;
@@ -179,21 +182,39 @@ namespace HidWizards.UCR.Views.Controls
             {
                 var nodes = configuration.Device.GetDeviceBindingMenu(
                     DeviceBinding.Profile.Context, DeviceBinding.DeviceIoType);
-                foreach (var node in nodes)
+                if (DeviceBinding.DeviceIoType == DeviceIoType.Output)
                 {
-                    // Expand only the keyboard's top-level "Keys" folder into
-                    // the same categories offered by the legacy binding editor.
-                    if (IsKeyboardRoot(node))
+                    // Don't use the *current* binding category to discard other
+                    // valid output families. The menu is a selector for the
+                    // destination type as well as for the destination control.
+                    foreach (var category in new[]
                     {
-                        foreach (var categoryNode in DeviceBindingControl.BuildKeyboardCategories(node.ChildrenNodes))
+                        new { Kind = DeviceBindingCategory.Momentary, Label = "Buttons" },
+                        new { Kind = DeviceBindingCategory.Range, Label = "Axes" }
+                    })
+                    {
+                        // Outside mapping cards there is no route converter.
+                        // Keep the legacy binding category there rather than
+                        // assigning an incompatible physical output.
+                        var mapping = FindAncestor<MappingCardControl>(this)?.DataContext as MappingViewModel;
+                        if (mapping == null && category.Kind != DeviceBinding.DeviceBindingCategory)
+                            continue;
+
+                        var section = new MenuItem
                         {
-                            var categoryItem = BuildMenuItem(categoryNode, configuration.Guid);
-                            if (categoryItem != null) Ddl.Items.Add(categoryItem);
-                        }
-                        continue;
+                            Header = category.Label,
+                            Foreground = Brushes.White
+                        };
+                        AddBindingMenuNodes(section.Items, nodes, configuration.Guid, category.Kind);
+                        if (section.Items.Count > 0)
+                            Ddl.Items.Add(section);
                     }
-                    var item = BuildMenuItem(node, configuration.Guid);
-                    if (item != null) Ddl.Items.Add(item);
+                }
+                else
+                {
+                    AddBindingMenuNodes(Ddl.Items, nodes, configuration.Guid,
+                        (DataContext as DeviceBindingViewModel)?.DeviceBindingCategory ??
+                        DeviceBinding.DeviceBindingCategory);
                 }
             }
 
@@ -202,7 +223,7 @@ namespace HidWizards.UCR.Views.Controls
             var clearItem = new MenuItem
             {
                 Header = "Clear binding",
-                Foreground = System.Windows.Media.Brushes.White
+                Foreground = Brushes.White
             };
             clearItem.IsEnabled = DeviceBinding?.IsBound == true;
             clearItem.Click += (clickSender, clickArgs) => DeviceBinding?.ClearBinding();
@@ -216,38 +237,78 @@ namespace HidWizards.UCR.Views.Controls
                    string.Equals(node.Title, "Keys", StringComparison.OrdinalIgnoreCase);
         }
 
-        private MenuItem BuildMenuItem(DeviceBindingNode node, Guid configurationGuid)
+        private void AddBindingMenuNodes(ItemCollection items,
+            IEnumerable<DeviceBindingNode> nodes, Guid configurationGuid,
+            DeviceBindingCategory? category)
+        {
+            if (nodes == null) return;
+            foreach (var node in nodes)
+            {
+                if (node == null) continue;
+                // The provider may nest "Keys" below a device/folder node.
+                // Always preserve the familiar Letters, Number row, Function
+                // keys, Numpad, etc. categories at that level.
+                if (IsKeyboardRoot(node))
+                {
+                    AddBindingMenuNodes(items,
+                        DeviceBindingControl.BuildKeyboardCategories(node.ChildrenNodes),
+                        configurationGuid, category);
+                    continue;
+                }
+
+                var item = BuildMenuItem(node, configurationGuid, category);
+                if (item != null) items.Add(item);
+            }
+        }
+
+        private MenuItem BuildMenuItem(DeviceBindingNode node, Guid configurationGuid,
+            DeviceBindingCategory? category)
         {
             if (node == null) return null;
 
             var item = new MenuItem
             {
                 Header = node.Title,
-                Foreground = System.Windows.Media.Brushes.White
+                Foreground = Brushes.White
             };
 
             if (node.IsBinding)
             {
                 var info = node.DeviceBindingInfo;
-                if (info == null || info.DeviceBindingCategory !=
-                    (DataContext as DeviceBindingViewModel)?.DeviceBindingCategory) return null;
-                // The ellipsis is a text-only nested menu, not a second visual picker.
+                if (info == null || (category.HasValue &&
+                    info.DeviceBindingCategory != category.Value)) return null;
+
                 item.ToolTip = "Assign " + node.Title;
                 item.Click += (sender, args) =>
                 {
-                    DeviceBinding.SetDeviceConfigurationGuid(configurationGuid);
-                    DeviceBinding.DeviceBindingCategory = info.DeviceBindingCategory;
-                    DeviceBinding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                    var binding = (DataContext as DeviceBindingViewModel)?.DeviceBinding;
+                    if (binding == null) return;
+
+                    if (binding.DeviceIoType == DeviceIoType.Output)
+                    {
+                        var mapping = FindAncestor<MappingCardControl>(this)?.DataContext
+                            as MappingViewModel;
+                        var viewModel = DataContext as DeviceBindingViewModel;
+                        if (mapping != null)
+                        {
+                            // Route type changes through the existing mapping
+                            // conversion/validation path, never just change the
+                            // physical axis key on a button-only plugin.
+                            mapping.ChooseSingleOutputControl(viewModel,
+                                info.DeviceBindingCategory, configurationGuid, info);
+                            return;
+                        }
+                    }
+
+                    binding.SetDeviceConfigurationGuid(configurationGuid);
+                    binding.DeviceBindingCategory = info.DeviceBindingCategory;
+                    binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
                 };
                 return item;
             }
 
-            foreach (var child in node.ChildrenNodes ?? new System.Collections.Generic.List<DeviceBindingNode>())
-            {
-                var childItem = BuildMenuItem(child, configurationGuid);
-                if (childItem != null) item.Items.Add(childItem);
-            }
-
+            AddBindingMenuNodes(item.Items, node.ChildrenNodes,
+                configurationGuid, category);
             return item.Items.Count == 0 ? null : item;
         }
 
