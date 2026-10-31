@@ -114,7 +114,10 @@ namespace HidWizards.UCR.Views.Controls
             var card = FindAncestor<MappingCardControl>(this);
             if (EnableUnifiedOutputPicker && card != null)
             {
-                card.OpenUnifiedOutputPicker(binding, target);
+                // The main Output action and the header quick-bind glyph must
+                // use the same device-aware picker and binding application path.
+                if (binding != null)
+                    await card.OpenQuickOutputPickerAsync(binding, target);
                 return;
             }
 
