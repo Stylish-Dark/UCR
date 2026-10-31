@@ -1081,12 +1081,12 @@
                                                                     <ContentControl.Style>
                                                                         <Style TargetType="{x:Type ContentControl}">
                                                                             <Setter Property="Visibility" Value="Collapsed"/>
-                                                                            <!-- Do not construct every expensive editor for collapsed rows. -->
+                                                                            <!-- The editor template is assigned on first expansion in code,
+                                                                                 then retained across subsequent collapses. -->
                                                                             <Setter Property="ContentTemplate" Value="{x:Null}"/>
                                                                             <Style.Triggers>
                                                                                 <DataTrigger Binding="{Binding IsExpanded}" Value="True">
                                                                                     <Setter Property="Visibility" Value="Visible"/>
-                                                                                    <Setter Property="ContentTemplate" Value="{StaticResource InlineMappingEditorTemplate}"/>
                                                                                 </DataTrigger>
                                                                             </Style.Triggers>
                                                                         </Style>
