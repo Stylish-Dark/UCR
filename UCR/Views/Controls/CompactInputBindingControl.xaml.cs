@@ -103,7 +103,9 @@ namespace HidWizards.UCR.Views.Controls
                 return;
             }
 
-            await OpenOutputSelectionAsync(BindButton);
+            // Main Output binding uses the two-column Buttons/Directionals picker.
+            // Do not route this button through the ellipsis or quick-bind menu.
+            ShowOutputPicker(BindButton);
         }
 
         // Both visible Output actions use one dispatch path. The unified picker
@@ -151,17 +153,14 @@ namespace HidWizards.UCR.Views.Controls
             e.Handled = true;
         }
 
-        private async void MenuButton_OnClick(object sender, RoutedEventArgs e)
+        private void MenuButton_OnClick(object sender, RoutedEventArgs e)
         {
             // Reveal the whole binding row before opening its options. Otherwise a
             // partly scrolled-off row leaves Block/NOT underneath the fixed footer.
             BringIntoView();
             var activeBinding = (DataContext as DeviceBindingViewModel)?.DeviceBinding ?? DeviceBinding;
-            if (activeBinding?.DeviceIoType == DeviceIoType.Output)
-            {
-                await OpenOutputSelectionAsync(MenuButton);
-                return;
-            }
+            // The ellipsis retains the original hierarchical binding menu.
+            // Output's two-column visual picker belongs exclusively to the main button.
             BuildContextMenu();
             Ddl.PlacementTarget = MenuButton;
             // The inspector has a docked footer and a constrained scroll viewport.
