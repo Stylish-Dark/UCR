@@ -1421,6 +1421,10 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (!mapping.IsExpanded || reversingCollapse)
             {
                 editor.Tag = null;
+                // Materialize only on the first open; retain the editor across closes.
+                // Recreating its visual tree on every chevron click causes a new layout stall.
+                if (editor.ContentTemplate == null)
+                    editor.ContentTemplate = editor.FindResource("InlineMappingEditorTemplate") as DataTemplate;
                 mapping.IsExpanded = true;
                 editor.Dispatcher.BeginInvoke(new Action(() =>
                 {
