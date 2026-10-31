@@ -222,18 +222,32 @@ namespace HidWizards.UCR.Views.ProfileViews
                 ? inner : MappingSectionsScrollViewer;
             if (viewer == null || viewer.ScrollableHeight <= 0) return;
 
-            var step = Math.Max(24.0, Math.Min(72.0, Math.Abs(e.Delta) / 2.2));
+            // Wheel deltas must accumulate against the intended destination.
+            // Starting each wheel event from the current animated offset made rapid
+            // scrolling repeatedly restart a short journey and feel almost stationary.
+            var current = viewer.VerticalOffset;
+            var pending = (double)viewer.GetValue(MappingScrollTargetProperty);
+            if (double.IsNaN(pending) || Math.Abs(pending - current) > 600)
+                pending = current;
+            var step = Math.Abs(e.Delta) * 1.25; // 150 pixels per standard notch
             var target = Math.Max(0, Math.Min(viewer.ScrollableHeight,
-                viewer.VerticalOffset + (e.Delta < 0 ? step : -step)));
-            viewer.SetValue(MappingScrollOffsetProperty, viewer.VerticalOffset);
-            var animation = new DoubleAnimation(viewer.VerticalOffset, target,
-                TimeSpan.FromMilliseconds(115))
+                pending + (e.Delta < 0 ? step : -step)));
+            viewer.SetValue(MappingScrollTargetProperty, target);
+            // Start from the actual visible position, not the previous target.
+            viewer.BeginAnimation(MappingScrollOffsetProperty, null);
+            viewer.SetValue(MappingScrollOffsetProperty, current);
+            var animation = new DoubleAnimation(current, target,
+                TimeSpan.FromMilliseconds(100))
             {
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
             };
             viewer.BeginAnimation(MappingScrollOffsetProperty, animation);
             e.Handled = true;
         }
+
+        private static readonly DependencyProperty MappingScrollTargetProperty =
+            DependencyProperty.RegisterAttached("MappingScrollTarget", typeof(double),
+                typeof(ProfilePage), new PropertyMetadata(double.NaN));
 
         private static readonly DependencyProperty MappingScrollOffsetProperty =
             DependencyProperty.RegisterAttached("MappingScrollOffset", typeof(double),
@@ -250,7 +264,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control) return;
             if (viewer == null || viewer.ScrollableHeight <= 0) return;
 
-            var step = Math.Max(24.0, Math.Min(72.0, Math.Abs(e.Delta) / 2.2));
+            var step = Math.Abs(e.Delta) * 1.25;
             viewer.ScrollToVerticalOffset(viewer.VerticalOffset + (e.Delta < 0 ? step : -step));
             e.Handled = true;
         }
