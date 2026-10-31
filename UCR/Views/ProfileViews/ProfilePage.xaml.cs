@@ -211,7 +211,38 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void MappingSectionsScrollViewer_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
-            ScrollViewerWithMouseWheel(MappingSectionsScrollViewer, e);
+            if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control) return;
+
+            // The pointer should scroll the mapping list beneath it; the outer
+            // section viewport is the fallback when that list cannot scroll.
+            var list = FindVisualAncestor<ListView>(e.OriginalSource as DependencyObject);
+            var inner = list?.Name == "MappingRowsList"
+                ? FindVisualChild<ScrollViewer>(list) : null;
+            var viewer = inner != null && inner.ScrollableHeight > 0
+                ? inner : MappingSectionsScrollViewer;
+            if (viewer == null || viewer.ScrollableHeight <= 0) return;
+
+            var step = Math.Max(24.0, Math.Min(72.0, Math.Abs(e.Delta) / 2.2));
+            var target = Math.Max(0, Math.Min(viewer.ScrollableHeight,
+                viewer.VerticalOffset + (e.Delta < 0 ? step : -step)));
+            viewer.SetValue(MappingScrollOffsetProperty, viewer.VerticalOffset);
+            var animation = new DoubleAnimation(viewer.VerticalOffset, target,
+                TimeSpan.FromMilliseconds(115))
+            {
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            };
+            viewer.BeginAnimation(MappingScrollOffsetProperty, animation);
+            e.Handled = true;
+        }
+
+        private static readonly DependencyProperty MappingScrollOffsetProperty =
+            DependencyProperty.RegisterAttached("MappingScrollOffset", typeof(double),
+                typeof(ProfilePage), new PropertyMetadata(0.0, OnMappingScrollOffsetChanged));
+
+        private static void OnMappingScrollOffsetChanged(DependencyObject source,
+            DependencyPropertyChangedEventArgs args)
+        {
+            (source as ScrollViewer)?.ScrollToVerticalOffset((double)args.NewValue);
         }
 
         private static void ScrollViewerWithMouseWheel(ScrollViewer viewer, MouseWheelEventArgs e)
