@@ -1469,8 +1469,13 @@ namespace HidWizards.UCR.Views.ProfileViews
                     editor.Dispatcher.BeginInvoke(new Action(() =>
                     {
                         if (!mapping.IsExpanded || Equals(editor.Tag, "MappingClosing")) return;
+                        // An explicit Height=0 constrains DesiredSize to zero.
+                        // Temporarily measure at natural height within this same
+                        // dispatcher callback, then restore zero before animating.
+                        editor.Height = double.NaN;
                         editor.Measure(new Size(Math.Max(1, editor.ActualWidth), double.PositiveInfinity));
                         var measuredHeight = editor.DesiredSize.Height;
+                        editor.Height = 0;
                         if (measuredHeight <= 0)
                         {
                             editor.Height = double.NaN;
