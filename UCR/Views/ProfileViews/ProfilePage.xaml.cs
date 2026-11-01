@@ -1462,12 +1462,22 @@ namespace HidWizards.UCR.Views.ProfileViews
                     // Hover pre-measurement covers the usual pointer path.
                     if (editor.ContentTemplate == null)
                         editor.ContentTemplate = editor.FindResource("InlineMappingEditorTemplate") as DataTemplate;
+                    // Keep the first realization at zero height until the
+                    // template can be measured, rather than flashing fully open.
+                    editor.Height = 0;
                     mapping.IsExpanded = true;
-                    editor.Height = double.NaN;
                     editor.Dispatcher.BeginInvoke(new Action(() =>
                     {
-                        if (mapping.IsExpanded && editor.ActualHeight > 0)
-                            editor.SetValue(CachedInlineEditorHeightProperty, editor.ActualHeight);
+                        if (!mapping.IsExpanded || Equals(editor.Tag, "MappingClosing")) return;
+                        editor.Measure(new Size(Math.Max(1, editor.ActualWidth), double.PositiveInfinity));
+                        var measuredHeight = editor.DesiredSize.Height;
+                        if (measuredHeight <= 0)
+                        {
+                            editor.Height = double.NaN;
+                            return;
+                        }
+                        editor.SetValue(CachedInlineEditorHeightProperty, measuredHeight);
+                        StartInlineMappingOpenAnimation(editor, mapping, 0);
                     }), DispatcherPriority.Loaded);
                 }
             }
