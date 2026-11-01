@@ -20,7 +20,12 @@ namespace HidWizards.UCR.Views.Controls
 
         private void RemoveDevice_OnClick(object sender, RoutedEventArgs e)
         {
-             GetViewModel().RemoveDevice(GetSelectedDevice());
+            var viewModel = GetViewModel();
+            if (viewModel == null) return;
+            viewModel.RemoveDevice(GetSelectedDevice());
+            // Removing the selected row fires SelectionChanged with null;
+            // explicitly restore the remaining valid row in the list as well.
+            DeviceList.SelectedItem = viewModel.SelectedDeviceConfiguration;
         }
 
         private void DeviceList_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
