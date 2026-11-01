@@ -181,7 +181,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 item.InputGroupName = "No input device";
                 item.InputGroupVisual = DeviceVisualCatalog.Describe((Device)null, DeviceIoType.Input);
             }
-            else if (inputs.Count == 1)
+            else if (inputs.Count > 0)
             {
                 // Group headings identify the actual device, not a profile-configuration label.
                 // Prefer the persistent friendly alias and keep the raw hardware title in the tooltip.
@@ -191,15 +191,9 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                                       ?? "Input device";
                 item.InputGroupVisual = DeviceVisualCatalog.Describe(inputs[0], profile, DeviceIoType.Input);
             }
-            else
-            {
-                item.InputGroupName = "Multiple input devices";
-                item.InputGroupVisual = DeviceVisualCatalog.Describe(inputs[0], profile, DeviceIoType.Input);
-            }
-
             item.InputGroup = new ProfileInputGroupKey
             {
-                IdentityKey = BuildInputGroupIdentity(inputs),
+                IdentityKey = BuildInputGroupIdentity(inputs.Take(1).ToList()),
                 Name = item.InputGroupName,
                 Visual = item.InputGroupVisual
             };
