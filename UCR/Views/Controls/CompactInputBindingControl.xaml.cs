@@ -376,13 +376,19 @@ namespace HidWizards.UCR.Views.Controls
 
             var nodes = DeviceBinding.Profile.Context.DevicesManager.GetDeviceBindingMenu(
                 config.Device, DeviceIoType.Output);
-            // A single button input must not silently bind an entire continuous axis.
-            // Only discrete output controls are offered until directional-axis mappings
-            // have explicit negative and positive input slots.
+            // Triggers are analogue at the device layer but belong in the
+            // user-facing Buttons category for selection.
             var controls = OutputPickerInfrastructure.BindingControls(nodes)
                 .Where(node => node.DeviceBindingInfo != null &&
-                    node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary)
-                .ToList();
+                    (node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary ||
+                     (node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Range &&
+                      (node.Title ?? "").IndexOf("trigger", StringComparison.OrdinalIgnoreCase) >= 0)))
+                .OrderBy(node => {
+                    var title = (node.Title ?? "").ToLowerInvariant();
+                    if (title == "lt" || title.Contains("left trigger")) return 1;
+                    if (title == "rt" || title.Contains("right trigger")) return 3;
+                    return 0;
+                }).ToList();
             var buttons = new WrapPanel { Width = 440 };
             var directionals = new WrapPanel { Width = 440 };
 
@@ -406,13 +412,14 @@ namespace HidWizards.UCR.Views.Controls
                 if (visual.ControlKind == ControlVisualKind.StickAxis) continue;
                 var title = node.Title ?? "";
                 var lower = title.ToLowerInvariant();
-                bool isDirectional = visual.ControlKind == ControlVisualKind.StickAxis ||
+                bool isTrigger = lower.Contains("trigger") || lower == "lt" || lower == "rt";
+                bool isDirectional = !isTrigger && (visual.ControlKind == ControlVisualKind.StickAxis ||
                     lower.Contains("d-pad") || lower.Contains("dpad") ||
                     lower.Contains("hat") || lower.Contains("pov") ||
                     lower.Contains("axis") || lower.Contains("stick") ||
                     lower == "up" || lower == "down" || lower == "left" || lower == "right" ||
                     lower.Contains("north") || lower.Contains("south") ||
-                    lower.Contains("east") || lower.Contains("west");
+                    lower.Contains("east") || lower.Contains("west"));
                 var row = new StackPanel { Orientation = Orientation.Horizontal };
                 row.Children.Add(new ControlGlyphControl
                 {
@@ -448,12 +455,58 @@ namespace HidWizards.UCR.Views.Controls
                 var selectedInfo = info;
                 choice.Click += (sender, args) =>
                 {
-                    DeviceBinding.DeviceBindingCategory = selectedInfo.DeviceBindingCategory;
-                    DeviceBinding.SetDeviceConfigurationGuid(config.Guid);
-                    DeviceBinding.SetKeyTypeValue(selectedInfo.KeyType, selectedInfo.KeyValue, selectedInfo.KeySubValue);
+                    var mapping = FindAncestor<MappingCardControl>(this)?.DataContext as MappingViewModel;
+                    var viewModel = DataContext as DeviceBindingViewModel;
+                    if (mapping != null && viewModel != null)
+                    {
+                        if (!mapping.ChooseSingleOutputControl(viewModel,
+                            selectedInfo.DeviceBindingCategory, config.Guid, selectedInfo))
+                            return;
+                    }
+                    else
+                    {
+                        DeviceBinding.DeviceBindingCategory = selectedInfo.DeviceBindingCategory;
+                        DeviceBinding.SetDeviceConfigurationGuid(config.Guid);
+                        DeviceBinding.SetKeyTypeValue(selectedInfo.KeyType, selectedInfo.KeyValue, selectedInfo.KeySubValue);
+                    }
                     popup.IsOpen = false;
                 };
                 (isDirectional ? directionals : buttons).Children.Add(choice);
+            }
+
+            // One-click individual left-stick directions, using the mapping's
+            // established signed-axis route rather than binding raw axis keys.
+            var parentMapping = FindAncestor<MappingCardControl>(this)?.DataContext as MappingViewModel;
+            if (parentMapping != null)
+            {
+                var leftStick = parentMapping.GetFourWayOutputChoices()
+                    .FirstOrDefault(option => !option.IsDPad &&
+                        option.DeviceConfigurationGuid == config.Guid &&
+                        string.Equals(option.Destination, "Left stick", StringComparison.OrdinalIgnoreCase));
+                if (leftStick != null)
+                {
+                    var names = new[] { "Left stick left", "Left stick right",
+                        "Left stick up", "Left stick down" };
+                    for (var index = 0; index < names.Length; index++)
+                    {
+                        var directionIndex = index;
+                        var choice = new Button
+                        {
+                            Content = names[index], Width = 212, MinHeight = 46,
+                            Margin = new Thickness(3), Padding = new Thickness(8, 4, 5, 4),
+                            HorizontalContentAlignment = HorizontalAlignment.Left,
+                            Background = new SolidColorBrush(Color.FromRgb(43, 43, 43)),
+                            Foreground = Brushes.White, BorderBrush = Brushes.DimGray,
+                            BorderThickness = new Thickness(1)
+                        };
+                        choice.Click += (sender, args) =>
+                        {
+                            if (parentMapping.ChooseStickDirection(leftStick, directionIndex))
+                                popup.IsOpen = false;
+                        };
+                        directionals.Children.Add(choice);
+                    }
+                }
             }
 
             var tabs = new TabControl { Background = Brushes.Transparent };
