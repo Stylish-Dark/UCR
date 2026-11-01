@@ -1348,15 +1348,15 @@ namespace HidWizards.UCR.Views.ProfileViews
             e.Handled = true;
             var button = sender as Button;
             var descriptor = button?.DataContext as BindingVisualDescriptor;
-            var mapping = MappingForWorkspaceGlyph(button);
+            var mapping = button?.Tag as MappingViewModel ?? MappingForWorkspaceGlyph(button);
             if (mapping == null || descriptor == null || !mapping.ButtonsEnabled) return;
             try
             {
                 var selected = mapping.ResolveCollapsedBinding(descriptor, DeviceIoType.Input)?.DeviceBinding;
                 if (selected?.IsInBindMode == true)
                     selected.CancelBindMode();
-                else
-                    mapping.QuickBindInput(descriptor);
+                else if (!mapping.QuickBindInput(descriptor))
+                    Logger.Warn("Workspace input quick-bind did not enter detection mode.");
             }
             catch (Exception exception)
             {
@@ -1380,7 +1380,7 @@ namespace HidWizards.UCR.Views.ProfileViews
         {
             var button = sender as Button;
             var descriptor = button?.DataContext as BindingVisualDescriptor;
-            var mapping = MappingForWorkspaceGlyph(button);
+            var mapping = button?.Tag as MappingViewModel ?? MappingForWorkspaceGlyph(button);
             var binding = mapping?.ResolveCollapsedBinding(descriptor, DeviceIoType.Input)?.DeviceBinding;
             if (binding?.IsInBindMode != true) return;
             binding.CancelBindMode();
