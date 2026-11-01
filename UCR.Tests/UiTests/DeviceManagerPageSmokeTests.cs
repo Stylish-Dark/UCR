@@ -291,9 +291,6 @@ namespace HidWizards.UCR.Tests.UiTests
                     "Collapsed rows must not instantiate the heavyweight mapping editor.");
 
                 toggle.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, toggle));
-                // First-time editor realization is deliberately deferred until
-                // Loaded; let WPF perform that layout before asserting geometry.
-                page.Dispatcher.Invoke(new Action(() => { }), DispatcherPriority.ApplicationIdle);
                 page.Measure(available);
                 page.Arrange(new Rect(new Point(0, 0), available));
                 page.UpdateLayout();
