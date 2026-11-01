@@ -382,13 +382,34 @@ namespace HidWizards.UCR.Views.Controls
                 .Where(node => node.DeviceBindingInfo != null &&
                     (node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary ||
                      (node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Range &&
-                      (node.Title ?? "").IndexOf("trigger", StringComparison.OrdinalIgnoreCase) >= 0)))
-                .OrderBy(node => {
-                    var title = (node.Title ?? "").ToLowerInvariant();
-                    if (title == "lt" || title.Contains("left trigger")) return 1;
-                    if (title == "rt" || title.Contains("right trigger")) return 3;
-                    return 0;
-                }).ToList();
+                      ((node.Title ?? "").IndexOf("trigger", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                       string.Equals(node.Title, "LT", StringComparison.OrdinalIgnoreCase) ||
+                       string.Equals(node.Title, "RT", StringComparison.OrdinalIgnoreCase)))))
+                .ToList();
+            // Present LT directly after LB and RT directly after RB.
+            foreach (var side in new[] { "L", "R" })
+            {
+                var trigger = controls.FirstOrDefault(node =>
+                    string.Equals(node.Title, side + "T", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(node.Title, side == "L" ? "Left Trigger" : "Right Trigger",
+                        StringComparison.OrdinalIgnoreCase));
+                if (trigger == null) continue;
+                var shoulderIndex = controls.FindIndex(node =>
+                    string.Equals(node.Title, side + "B", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(node.Title, side == "L" ? "Left Shoulder" : "Right Shoulder",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(node.Title, side == "L" ? "Left Bumper" : "Right Bumper",
+                        StringComparison.OrdinalIgnoreCase));
+                if (shoulderIndex < 0) continue;
+                controls.Remove(trigger);
+                shoulderIndex = controls.FindIndex(node =>
+                    string.Equals(node.Title, side + "B", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(node.Title, side == "L" ? "Left Shoulder" : "Right Shoulder",
+                        StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(node.Title, side == "L" ? "Left Bumper" : "Right Bumper",
+                        StringComparison.OrdinalIgnoreCase));
+                controls.Insert(shoulderIndex + 1, trigger);
+            }
             var buttons = new WrapPanel { Width = 440 };
             var directionals = new WrapPanel { Width = 440 };
 
