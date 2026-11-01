@@ -153,6 +153,10 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             var wasPrimary = deviceItem.IsPrimary;
             _profile.RemoveDeviceConfiguration(deviceItem.DeviceConfiguration);
             Devices.Remove(deviceItem);
+            // Never retain a removed device as the selection: its detail view
+            // otherwise remains bound to a configuration that no longer exists.
+            if (ReferenceEquals(SelectedDeviceConfiguration, deviceItem))
+                SelectedDeviceConfiguration = Devices.FirstOrDefault();
 
             if (wasPrimary)
             {
