@@ -83,7 +83,7 @@ namespace HidWizards.UCR.Views.Controls
                     DrawFilter(dc, b, accent);
                     break;
                 case ControlVisualKind.DeviceUnavailable:
-                    DrawDeviceUnavailable(dc, b, accent);
+                    DrawUnknown(dc, b, accent);
                     break;
                 case ControlVisualKind.Unbound:
                     DrawUnbound(dc, b, accent);
