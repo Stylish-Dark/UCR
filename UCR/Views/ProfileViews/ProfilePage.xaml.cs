@@ -421,7 +421,9 @@ namespace HidWizards.UCR.Views.ProfileViews
         private void RemoveProfileInputDevice_OnClick(object sender, RoutedEventArgs e)
         {
             var viewModel = ProfileViewModel.InputDeviceControlViewModel;
-            viewModel?.RemoveDevice(viewModel.SelectedDeviceConfiguration);
+            if (viewModel == null) return;
+            viewModel.RemoveDevice(viewModel.SelectedDeviceConfiguration);
+            InputProfileDeviceList.SelectedItem = viewModel.SelectedDeviceConfiguration;
         }
 
         private void ManageProfileInputDevice_OnClick(object sender, RoutedEventArgs e)
