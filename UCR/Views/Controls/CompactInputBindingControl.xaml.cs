@@ -256,6 +256,18 @@ namespace HidWizards.UCR.Views.Controls
                     continue;
                 }
 
+                // Avoid a redundant provider "Buttons > Buttons" or "Axes > Axes" tier.
+                // Keep other provider submenus (including keyboard categories) intact.
+                if (DeviceBinding?.DeviceIoType == DeviceIoType.Output &&
+                    !node.IsBinding && category.HasValue &&
+                    (category.Value == DeviceBindingCategory.Momentary
+                        ? string.Equals(node.Title, "Buttons", StringComparison.OrdinalIgnoreCase)
+                        : string.Equals(node.Title, "Axes", StringComparison.OrdinalIgnoreCase)))
+                {
+                    AddBindingMenuNodes(items, node.ChildrenNodes, configurationGuid, category);
+                    continue;
+                }
+
                 var item = BuildMenuItem(node, configurationGuid, category);
                 if (item != null) items.Add(item);
             }
