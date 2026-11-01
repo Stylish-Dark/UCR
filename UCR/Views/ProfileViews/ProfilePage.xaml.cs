@@ -1466,7 +1466,9 @@ namespace HidWizards.UCR.Views.ProfileViews
                         editor.ContentTemplate = editor.FindResource("InlineMappingEditorTemplate") as DataTemplate;
                     // Keep the first realization at zero height until the
                     // template can be measured, rather than flashing fully open.
-                    editor.Height = 0;
+                    // One device-independent pixel keeps the row realized and
+                    // hit-testable while the full target is measured asynchronously.
+                    editor.Height = 1;
                     mapping.IsExpanded = true;
                     editor.Dispatcher.BeginInvoke(new Action(() =>
                     {
