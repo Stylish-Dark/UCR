@@ -1462,8 +1462,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                     // Show it on the click's next layout, not after a 200 ms
                     // delayed sweep that retracts an already laid-out editor.
                     // Hover pre-measurement covers the usual pointer path.
-                    if (editor.ContentTemplate == null)
-                        editor.ContentTemplate = editor.FindResource("InlineMappingEditorTemplate") as DataTemplate;
+                    editor.ContentTemplate = editor.FindResource("InlineMappingEditorTemplate") as DataTemplate;
                     // Keep the first realization at zero height until the
                     // template can be measured, rather than flashing fully open.
                     // One device-independent pixel keeps the row realized and
