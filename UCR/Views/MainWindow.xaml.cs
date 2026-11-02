@@ -62,8 +62,6 @@ namespace HidWizards.UCR.Views
             DataContext = _dashboardViewModel;
             Context = context;
             InitializeComponent();
-            try { Context.InitializeEditHistory(); }
-            catch (Exception exception) { Logger.Warn("Undo history is unavailable for this session.", exception); }
             InitializeTrayIcon();
             _autoProfileMonitor = new AutoProfileMonitor(context);
             Loaded += MainWindow_OnWorkspaceLoaded;
@@ -106,12 +104,6 @@ namespace HidWizards.UCR.Views
 
         private void MainWindow_OnPreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (Keyboard.Modifiers == ModifierKeys.Control && (e.Key == Key.Z || e.Key == Key.Y))
-            {
-                ReplayEditHistory(e.Key == Key.Z);
-                e.Handled = true;
-                return;
-            }
             if (AppearancePopup.IsOpen && e.Key == Key.Escape)
             {
                 AppearancePopup.IsOpen = false;
@@ -234,39 +226,6 @@ namespace HidWizards.UCR.Views
             }
             foreach (var child in item.Items ?? Enumerable.Empty<ProfileItem>())
                 MeasureProfileTitles(child, ref longest);
-        }
-
-        private void ReplayEditHistory(bool undo)
-        {
-            if (Context.ActiveProfiles.Count > 0)
-            {
-                DarkMessageBox.Show("Stop the active profile before undoing or redoing configuration changes.",
-                    "Stop profile first", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-            if (undo ? !Context.CanUndo : !Context.CanRedo) return;
-            var selectedId = _dashboardViewModel.SelectedProfileItem?.Id ?? Guid.Empty;
-            try
-            {
-                CloseNavigationPage(false);
-                ClearEmbeddedProfileCache();
-                _dashboardViewModel.SelectedProfileItem = null;
-                if (!(undo ? Context.Undo() : Context.Redo())) return;
-                ReloadProfileTree();
-                var selected = _dashboardViewModel.ProfileList.FirstOrDefault(item => item.Id == selectedId)
-                    ?? _dashboardViewModel.ProfileList.FirstOrDefault();
-                _dashboardViewModel.SelectedProfileItem = selected;
-                WorkspaceTabs.SelectedIndex = 0;
-                OpenSelectedProfileEditor();
-            }
-            catch (Exception exception)
-            {
-                Logger.Error("Could not restore configuration edit history.", exception);
-                ReloadProfileTree();
-                OpenSelectedProfileEditor();
-                DarkMessageBox.Show("Undo/redo could not be completed; the error has been logged.",
-                    "Undo/redo failed", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
         }
 
         private void ProfileTree_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
