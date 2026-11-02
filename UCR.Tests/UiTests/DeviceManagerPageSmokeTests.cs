@@ -380,6 +380,8 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(duplicated, Is.Not.Null);
                 Assert.That(duplicated.Mappings.Count, Is.EqualTo(1));
                 Assert.That(duplicated.Enabled, Is.False);
+                Assert.That(duplicated.BlockInputs, Is.True,
+                    "Copied group must preserve the original group-level blocking preference.");
                 viewModel.CopyMappingGroup(main);
                 var pasted = viewModel.PasteMappingGroup();
                 Assert.That(pasted, Is.Not.Null);
