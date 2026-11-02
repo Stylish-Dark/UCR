@@ -284,9 +284,13 @@ namespace HidWizards.UCR.Core
             if (mapping != null)
             {
                 foreach (var item in mapping.Plugins ?? new List<Plugin>())
-                {
                     CollectClonePluginTypes(item, result);
-                }
+                // Dormant representations can contain plugin implementations no
+                // longer present in the active route. Include them when cloning.
+                foreach (var bank in mapping.InactiveOutputRepresentations ??
+                    new List<DirectionalOutputBank>())
+                    foreach (var item in bank.Plugins ?? new List<Plugin>())
+                        CollectClonePluginTypes(item, result);
                 return;
             }
 
