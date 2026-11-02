@@ -445,7 +445,7 @@ namespace HidWizards.UCR.Views.Controls
                 buttons.Children.Insert(buttons.Children.IndexOf(shoulder) + 1, trigger);
             }
 
-            var tabs = new TabControl { Background = Brushes.Transparent };
+            var tabs = new TabControl { Background = Brushes.Transparent, MinHeight = 365 };
             foreach (var category in new[] {
                 new { Title = "Buttons", Items = buttons },
                 new { Title = "Directions", Items = directionals },
@@ -465,6 +465,8 @@ namespace HidWizards.UCR.Views.Controls
                     Content = new ScrollViewer
                     {
                         Content = category.Items,
+                        Height = 340,
+                        MinHeight = 340,
                         MaxHeight = 340,
                         HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
                         VerticalScrollBarVisibility = ScrollBarVisibility.Auto
