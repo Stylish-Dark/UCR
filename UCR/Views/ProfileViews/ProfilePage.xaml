@@ -802,11 +802,6 @@
                                                                       ToolTip="Block all mapped physical inputs in this group when the provider supports blocking"/>
                                                         <Button Width="27" Height="27" Padding="3" Margin="1 0"
                                                                 ToolTip="Rename group" IsEnabled="{Binding CanEdit}" Click="RenameMappingGroup_OnClick">
-                                                            <Button.Style>
-                                                                <Style TargetType="Button" BasedOn="{StaticResource UcrProfileActionButton}">
-                                                                    <Style.Triggers><DataTrigger Binding="{Binding IsMain}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
-                                                                </Style>
-                                                            </Button.Style>
                                                             <materialDesign:PackIcon Kind="Pencil" Width="15" Height="15"/>
                                                         </Button>
                                                         <Button Width="27" Height="27" Padding="3" Margin="1 0" ToolTip="Duplicate group"
