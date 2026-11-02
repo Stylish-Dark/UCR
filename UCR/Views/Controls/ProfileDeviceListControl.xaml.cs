@@ -15,7 +15,7 @@ namespace HidWizards.UCR.Views.Controls
 
         private void AddDevice_OnClick(object sender, RoutedEventArgs e)
         {
-            GetViewModel().AddDevices();
+            GetViewModel()?.AddDevices();
         }
 
         private void RemoveDevice_OnClick(object sender, RoutedEventArgs e)
