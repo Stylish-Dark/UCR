@@ -1217,6 +1217,9 @@ namespace HidWizards.UCR.Views.ProfileViews
                     return;
                 }
                 mapping.AddPlugin(buttonTemplate.Plugin);
+                // A fresh mapping must not inherit a controller merely because it is primary.
+                foreach (var output in mapping.Plugins.SelectMany(plugin => plugin.Plugin.Outputs))
+                    output.SetDeviceConfigurationGuid(Guid.Empty, false);
             }
             ProfileViewModel.SelectedMapping = mapping;
             mapping.IsExpanded = true;
