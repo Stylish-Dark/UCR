@@ -758,6 +758,22 @@ namespace HidWizards.UCR.Views.Controls
             menu.IsOpen = true;
         }
 
+        internal bool SwitchOutputBindingToFilter(DeviceBindingViewModel binding)
+        {
+            var mapping = DataContext as MappingViewModel;
+            if (mapping?.ButtonsEnabled != true || binding?.DeviceBinding == null) return false;
+            var current = mapping.Plugins.FirstOrDefault(plugin =>
+                plugin.DeviceBindings.Any(item => ReferenceEquals(item.DeviceBinding, binding.DeviceBinding)));
+            if (current == null) return false;
+            var analogue = mapping.Mapping.DeviceBindings.Any(input => input.InputExpressionInputKind == 3);
+            var filter = mapping.GetCompatiblePluginOptions().FirstOrDefault(option =>
+                string.Equals(option.Name, analogue ? "Axis to Filter" : "Button to Filter",
+                    StringComparison.OrdinalIgnoreCase)) ??
+                mapping.GetCompatiblePluginOptions().FirstOrDefault(option =>
+                    string.Equals(option.OutputType, "Filter", StringComparison.OrdinalIgnoreCase));
+            return filter != null && mapping.ChangeOutputType(current, filter.Plugin);
+        }
+
         private static bool IsPrimaryOutputCategory(string category)
         {
             return category == "Button" || category == "Axis" ||
