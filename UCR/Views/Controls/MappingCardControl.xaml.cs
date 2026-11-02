@@ -758,6 +758,62 @@ namespace HidWizards.UCR.Views.Controls
             menu.IsOpen = true;
         }
 
+        internal bool ApplyOutputControlChoice(DeviceBindingViewModel binding, Guid deviceGuid,
+            DeviceBindingInfo selectedControl, int direction = 0)
+        {
+            var mapping = DataContext as MappingViewModel;
+            if (mapping?.ButtonsEnabled != true || binding?.DeviceBinding == null || selectedControl == null)
+                return false;
+
+            var original = mapping.Plugins.FirstOrDefault(plugin =>
+                plugin.DeviceBindings.Any(item => ReferenceEquals(item.DeviceBinding, binding.DeviceBinding)));
+            if (original == null) return false;
+            var index = mapping.Plugins.IndexOf(original);
+            var requested = selectedControl.DeviceBindingCategory;
+            var existing = original.Plugin.Outputs.FirstOrDefault()?.DeviceBindingCategory;
+            if (existing != requested)
+            {
+                var analogue = mapping.Mapping.DeviceBindings.Any(input => input.InputExpressionInputKind == 3);
+                var preferredName = requested == DeviceBindingCategory.Range
+                    ? (analogue ? "Axis to Axis" : "Button to Axis")
+                    : requested == DeviceBindingCategory.Momentary
+                        ? (analogue ? "Axis to Button" : "Button to Button") : null;
+                if (preferredName == null) return false;
+                var replacement = mapping.GetCompatiblePluginOptions().FirstOrDefault(option =>
+                    string.Equals(option.Name, preferredName, StringComparison.OrdinalIgnoreCase));
+                if (replacement == null || !mapping.ChangeOutputType(original, replacement.Plugin)) return false;
+            }
+
+            if (index < 0 || index >= mapping.Plugins.Count) return false;
+            var destinationPlugin = mapping.Plugins[index];
+            var destination = destinationPlugin.DeviceBindings.FirstOrDefault(item =>
+                item.DeviceBinding?.DeviceIoType == DeviceIoType.Output);
+            if (destination?.DeviceBinding == null) return false;
+            destination.DeviceBinding.DeviceBindingCategory = requested;
+            destination.DeviceBinding.SetDeviceConfigurationGuid(deviceGuid);
+            destination.DeviceBinding.SetKeyTypeValue(selectedControl.KeyType,
+                selectedControl.KeyValue, selectedControl.KeySubValue);
+
+            // A button maps to a signed analogue extreme for the chosen stick direction.
+            // Neutral is restored when released; a full axis choice remains unrestricted.
+            var pressed = destinationPlugin.Plugin.GetType().GetProperty("RangePressed");
+            var released = destinationPlugin.Plugin.GetType().GetProperty("Range");
+            if (pressed != null && pressed.PropertyType == typeof(double) && direction != 0)
+            {
+                pressed.SetValue(destinationPlugin.Plugin, direction < 0 ? -100.0 : 100.0, null);
+                if (released != null && released.PropertyType == typeof(double))
+                    released.SetValue(destinationPlugin.Plugin, 0.0, null);
+            }
+            else if (direction != 0)
+            {
+                var invert = destinationPlugin.Plugin.GetType().GetProperty("Invert");
+                if (invert != null && invert.PropertyType == typeof(bool))
+                    invert.SetValue(destinationPlugin.Plugin, direction < 0, null);
+            }
+            mapping.ProfileViewModel.Profile.Context.ContextChanged();
+            return true;
+        }
+
         internal bool SwitchOutputBindingToFilter(DeviceBindingViewModel binding)
         {
             var mapping = DataContext as MappingViewModel;
