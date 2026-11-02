@@ -490,6 +490,19 @@
                 <Setter Property="BorderBrush" Value="#3A3A3A"/>
                 <Setter Property="BorderThickness" Value="1"/>
                 <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsSelectedMapping}" Value="True">
+                        <Setter Property="BorderBrush" Value="#78A5FF"/>
+                        <Setter Property="BorderThickness" Value="2.5"/>
+                        <Setter Property="Background" Value="#202735"/>
+                    </DataTrigger>
+                    <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                            <Condition Binding="{Binding IsSelectedMapping}" Value="True"/>
+                            <Condition Binding="{Binding IsExpanded}" Value="True"/>
+                        </MultiDataTrigger.Conditions>
+                        <Setter Property="BorderBrush" Value="#78A5FF"/>
+                        <Setter Property="BorderThickness" Value="2.5"/>
+                    </MultiDataTrigger>
                     <DataTrigger Binding="{Binding IsExpanded}" Value="True">
                         <Setter Property="BorderBrush" Value="#5579BE"/>
                         <Setter Property="BorderThickness" Value="2"/>
