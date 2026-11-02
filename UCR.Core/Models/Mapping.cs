@@ -9,6 +9,18 @@ using HidWizards.UCR.Core.Models.Subscription;
 
 namespace HidWizards.UCR.Core.Models
 {
+    public class DirectionalInputBank
+    {
+        public int Representation { get; set; }
+        public List<DeviceBinding> Bindings { get; set; } = new List<DeviceBinding>();
+    }
+
+    public class DirectionalOutputBank
+    {
+        public int Representation { get; set; }
+        public List<Plugin> Plugins { get; set; } = new List<Plugin>();
+    }
+
     public class Mapping
     {
         /* Persistence */
@@ -30,6 +42,26 @@ namespace HidWizards.UCR.Core.Models
         [XmlAttribute]
         [DefaultValue(0)]
         public int OutputRepresentation { get; set; }
+        public List<DirectionalInputBank> InactiveInputRepresentations { get; set; } =
+            new List<DirectionalInputBank>();
+        public List<DirectionalOutputBank> InactiveOutputRepresentations { get; set; } =
+            new List<DirectionalOutputBank>();
+
+        [XmlIgnore]
+        public int EffectiveInputRepresentation => InputRepresentation != 0
+            ? InputRepresentation : EffectiveDirectionalCapacity == 4 &&
+                DeviceBindings?.Count == 2 &&
+                DeviceBindings.All(b => b.InputExpressionInputKind == 3) ? 1
+            : DeviceBindings?.Any(b => b.InputExpressionInputKind == 3) == true ? 2 : 3;
+        [XmlIgnore]
+        public int EffectiveOutputRepresentation => OutputRepresentation != 0
+            ? OutputRepresentation : EffectiveDirectionalCapacity == 4 &&
+                Plugins?.Count == 2 &&
+                Plugins.All(p => p.OutputCategories.All(c =>
+                    c.Category == DeviceBindingCategory.Range)) ? 1
+            : Plugins?.Any(p => p.OutputCategories.Any(c =>
+                c.Category == DeviceBindingCategory.Range)) == true ? 2 : 3;
+
 
         public int EffectiveDirectionalCapacity
         {
@@ -706,6 +738,15 @@ namespace HidWizards.UCR.Core.Models
             {
                 plugin.PostLoad(context, profile);
             }
+            foreach (var bank in InactiveInputRepresentations ?? new List<DirectionalInputBank>())
+                foreach (var binding in bank.Bindings ?? new List<DeviceBinding>())
+                {
+                    binding.Profile = profile;
+                    binding.DeviceIoType = DeviceIoType.Input;
+                }
+            foreach (var bank in InactiveOutputRepresentations ?? new List<DirectionalOutputBank>())
+                foreach (var plugin in bank.Plugins ?? new List<Plugin>())
+                    plugin.PostLoad(context, profile);
         }
     }
 }
