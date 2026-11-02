@@ -439,6 +439,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     deviceConfiguration.Guid,
                     DeviceVisualCatalog.Describe(deviceConfiguration, DeviceBinding.Profile, DeviceBinding.DeviceIoType)));
             }
+            // Filter is an output operation, not a physical device. Its entry is
+            // handled by the output editor instead of assigning a device GUID.
+            if (DeviceBinding.DeviceIoType == DeviceIoType.Output)
+                Devices.Add(new ComboBoxItemViewModel("Filter", Guid.Empty));
 
             _deviceListLoaded = true;
             _deviceListDirty = false;
