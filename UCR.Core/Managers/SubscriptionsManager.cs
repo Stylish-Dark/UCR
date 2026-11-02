@@ -370,7 +370,8 @@ namespace HidWizards.UCR.Core.Managers
             }
 
             var scopedOutputs = profileOutputDevices.ToList();
-            state.AddMappings(profile, profile.Mappings ?? new List<Mapping>(), runtimeScopeGuid, scopedOutputs);
+            if (profile.MainMappingsEnabled)
+                state.AddMappings(profile, profile.Mappings ?? new List<Mapping>(), runtimeScopeGuid, scopedOutputs);
             foreach (var group in profile.MappingGroups ?? new List<MappingGroup>())
             {
                 if (group == null || !group.Enabled) continue;
