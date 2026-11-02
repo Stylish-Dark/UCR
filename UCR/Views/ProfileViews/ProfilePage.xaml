@@ -573,6 +573,13 @@
                                                                 LineHeight="17" MaxHeight="34"
                                                                 TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                                     <StackPanel Grid.Column="3" Orientation="Horizontal">
+                                                        <TextBlock Text="Block inputs" VerticalAlignment="Center" FontSize="11"
+                                                                   Margin="0 0 5 0" Foreground="#C8C8C8"/>
+                                                        <ToggleButton Style="{StaticResource CompactBlockSwitch}"
+                                                                      VerticalAlignment="Center" Margin="0 0 9 0"
+                                                                      IsChecked="{Binding BlockInputs, Mode=TwoWay}"
+                                                                      IsEnabled="{Binding CanEdit}"
+                                                                      ToolTip="Block all mapped physical inputs in this group when the provider supports blocking"/>
                                                         <CheckBox IsChecked="{Binding ExclusiveMode, Mode=TwoWay}"
                                                                   IsEnabled="{Binding CanUseExclusiveMode}" Margin="4 0 3 0"
                                                                   VerticalAlignment="Center"
