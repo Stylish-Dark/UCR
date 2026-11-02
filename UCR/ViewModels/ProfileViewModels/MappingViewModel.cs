@@ -158,6 +158,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ? "Full Stick" : Mapping.EffectiveOutputRepresentation == 2 ? "Axes" : "Buttons";
         public Visibility TypedDirectionalVisibility => IsTypedDirectionalMapping
             ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility LegacyOutputAddVisibility => IsTypedDirectionalMapping
+            ? Visibility.Collapsed : Visibility.Visible;
         public int InputDirectionalSlotCount => Mapping.RequiredBindingSlots(
             DirectionalCapacity, Mapping.EffectiveInputRepresentation);
         public int OutputDirectionalSlotCount => Mapping.RequiredBindingSlots(
@@ -227,6 +229,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(InputDirectionalGroupTitle));
             OnPropertyChanged(nameof(OutputDirectionalGroupTitle));
             OnPropertyChanged(nameof(TypedDirectionalVisibility));
+            OnPropertyChanged(nameof(LegacyOutputAddVisibility));
             RefreshInputExpressionPresentation();
             RefreshCollapsedSummary();
             return true;
