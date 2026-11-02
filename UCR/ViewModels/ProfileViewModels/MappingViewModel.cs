@@ -1659,7 +1659,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             try
             {
                 binding.DeviceBindingCategory = bindingViewModel.DeviceBindingCategory;
-                binding.EnterBindMode();
+                binding.EnterBindMode(autoDetectInputCategory: true);
                 if (!binding.IsInBindMode) StopQuickInputDetection();
                 return binding.IsInBindMode;
             }
