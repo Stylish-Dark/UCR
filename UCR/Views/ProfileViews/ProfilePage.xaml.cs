@@ -446,7 +446,7 @@ namespace HidWizards.UCR.Views.ProfileViews
         private async void RenameMappingGroup_OnClick(object sender, RoutedEventArgs e)
         {
             var section = (sender as FrameworkElement)?.DataContext as MappingGroupViewModel;
-            if (section == null || section.IsMain || Profile.IsActive()) return;
+            if (section == null || Profile.IsActive()) return;
 
             var dialog = new StringDialog("Rename mapping group", "Group name", section.Title);
             var result = (bool?)await DialogHost.Show(dialog, ProfileViewModel.ProfileDialogIdentifier);
