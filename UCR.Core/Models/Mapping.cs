@@ -291,24 +291,38 @@ namespace HidWizards.UCR.Core.Models
                 DeviceBindings.Count < requiredInput || Plugins.Count < requiredOutput)
                 return;
 
+            var channelValues = ComputeDirectionalChannelValues(InputCache, DeviceBindings,
+                capacity, inputType, outputType);
+            for (var index = 0; index < Math.Min(Plugins.Count, channelValues.Count); index++)
+            {
+                var plugin = Plugins[index];
+                if (plugin.IsFiltered()) continue;
+                plugin.Update(new[] { channelValues[index] });
+            }
+        }
+
+        internal static List<short> ComputeDirectionalChannelValues(
+            IList<short> inputValues, IList<DeviceBinding> inputBindings,
+            int capacity, int inputType, int outputType)
+        {
             short x = 0, y = 0;
             if (capacity == 1)
-                x = ReadDirectionalSource(0, inputType == 3);
+                x = ReadDirectionalSource(inputValues, inputBindings, 0, inputType == 3);
             else if (inputType == 3)
             {
                 // Two opposed digital directions form each logical axis.
                 x = (short)Math.Max(short.MinValue, Math.Min(short.MaxValue,
-                    (ReadDirectionalSource(1, true) != 0 ? short.MaxValue : 0) -
-                    (ReadDirectionalSource(0, true) != 0 ? short.MaxValue : 0)));
+                    (ReadDirectionalSource(inputValues, inputBindings, 1, true) != 0 ? short.MaxValue : 0) -
+                    (ReadDirectionalSource(inputValues, inputBindings, 0, true) != 0 ? short.MaxValue : 0)));
                 if (capacity == 4)
                     y = (short)Math.Max(short.MinValue, Math.Min(short.MaxValue,
-                        (ReadDirectionalSource(3, true) != 0 ? short.MaxValue : 0) -
-                        (ReadDirectionalSource(2, true) != 0 ? short.MaxValue : 0)));
+                        (ReadDirectionalSource(inputValues, inputBindings, 3, true) != 0 ? short.MaxValue : 0) -
+                        (ReadDirectionalSource(inputValues, inputBindings, 2, true) != 0 ? short.MaxValue : 0)));
             }
             else
             {
-                x = ReadDirectionalSource(0, false);
-                if (capacity == 4) y = ReadDirectionalSource(1, false);
+                x = ReadDirectionalSource(inputValues, inputBindings, 0, false);
+                if (capacity == 4) y = ReadDirectionalSource(inputValues, inputBindings, 1, false);
             }
 
             var threshold = short.MaxValue / 4;
@@ -330,20 +344,16 @@ namespace HidWizards.UCR.Core.Models
                 channelValues.Add(x);
                 if (capacity == 4) channelValues.Add(y);
             }
-            for (var index = 0; index < Math.Min(Plugins.Count, channelValues.Count); index++)
-            {
-                var plugin = Plugins[index];
-                if (plugin.IsFiltered()) continue;
-                plugin.Update(new[] { channelValues[index] });
-            }
+            return channelValues;
         }
 
-        private short ReadDirectionalSource(int index, bool digital)
+        private static short ReadDirectionalSource(IList<short> inputValues,
+            IList<DeviceBinding> inputBindings, int index, bool digital)
         {
-            if (index < 0 || index >= InputCache.Count || index >= DeviceBindings.Count)
+            if (index < 0 || index >= inputValues.Count || index >= inputBindings.Count)
                 return 0;
-            var value = InputCache[index];
-            var source = DeviceBindings[index];
+            var value = inputValues[index];
+            var source = inputBindings[index];
             if (!digital)
             {
                 // A digitally captured control can still drive a positive
