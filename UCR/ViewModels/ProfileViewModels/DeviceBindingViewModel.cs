@@ -260,9 +260,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     return "●  PRESS INPUT";
                 if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Output)
                     return "Output";
-                if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Input &&
-                    DeviceBindingCategory == DeviceBindingCategory.Range)
-                    return "Move axis to bind";
+                // A new mapping has no configured physical input type yet.
+                // Never present the axis-specific instruction before binding.
+                if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Input)
+                    return "Bind";
                 if (string.IsNullOrWhiteSpace(label)) return label;
                 foreach (var group in new[] { "Keys", "Buttons" })
                 {
