@@ -144,12 +144,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             MappingsList = new ObservableCollection<MappingViewModel>();
             MappingSections = new ObservableCollection<MappingGroupViewModel>();
 
-            var main = new MappingGroupViewModel(this, null, true);
-            MappingSections.Add(main);
-            SelectedMappingSection = main;
-            foreach (var profileMapping in profile.Mappings ?? new List<Mapping>())
+            if (profile.MainGroupVisible)
             {
-                AddMapping(profileMapping, main, false);
+                var main = new MappingGroupViewModel(this, null, true);
+                MappingSections.Add(main);
+                SelectedMappingSection = main;
+                foreach (var profileMapping in profile.Mappings ?? new List<Mapping>())
+                    AddMapping(profileMapping, main, false);
             }
 
             foreach (var group in profile.MappingGroups ?? new List<MappingGroup>())
@@ -171,7 +172,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (Profile.IsActive()) return null;
             var main = MappingSections?.FirstOrDefault(section => section.IsMain);
-            return AddMapping(Profile.AddMapping(title), main);
+            if (main != null) return AddMapping(Profile.AddMapping(title), main);
+            var target = SelectedMappingSection ?? MappingSections?.FirstOrDefault();
+            if (target == null) target = AddMappingGroup("New group");
+            return target?.Model != null ? AddMapping(target.Model.AddMapping(title), target) : null;
         }
 
         public MappingViewModel AddMappingToSelectedSection(string title)
@@ -304,8 +308,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public bool RemoveMappingGroup(MappingGroupViewModel section)
         {
-            if (section == null || section.IsMain || section.Model == null || Profile.IsActive()) return false;
-            if (!Profile.RemoveMappingGroup(section.Model)) return false;
+            if (section == null || Profile.IsActive()) return false;
+            if (section.IsMain)
+            {
+                Profile.Mappings.Clear();
+                Profile.MainGroupVisible = false;
+                Profile.Context?.ContextChanged();
+            }
+            else if (section.Model == null || !Profile.RemoveMappingGroup(section.Model)) return false;
             foreach (var mapping in section.Mappings.ToList())
             {
                 mapping.Dispose();
@@ -313,7 +323,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             MappingSections.Remove(section);
             if (ReferenceEquals(SelectedMappingSection, section))
-                SelectedMappingSection = MappingSections.FirstOrDefault(candidate => candidate.IsMain);
+                SelectedMappingSection = MappingSections.FirstOrDefault();
             RefreshMappingPositions();
             RefreshFilterReferenceLabels();
             return true;
