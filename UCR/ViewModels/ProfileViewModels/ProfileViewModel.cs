@@ -282,6 +282,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 Title = Profile.MainGroupTitle ?? "Main",
                 Enabled = Profile.MainMappingsEnabled,
+                BlockInputs = Profile.MainBlockInputs,
                 Mappings = (Profile.Mappings ?? new List<Mapping>()).ToList()
             };
         }
