@@ -151,8 +151,9 @@ namespace HidWizards.UCR.Views.Controls
             var menu = new ContextMenu
             {
                 PlacementTarget = target,
-                Placement = PlacementMode.MousePoint,
-                Background = Brushes.DarkSlateGray,
+                Placement = PlacementMode.Top,
+                Style = target.TryFindResource("MaterialDesignContextMenu") as Style,
+                Background = new SolidColorBrush(Color.FromRgb(0x24, 0x24, 0x24)),
                 Foreground = Brushes.White
             };
             PopulateInputMenu(menu, viewModel?.DeviceBinding, viewModel);
