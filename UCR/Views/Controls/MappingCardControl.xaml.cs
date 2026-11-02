@@ -368,20 +368,6 @@ namespace HidWizards.UCR.Views.Controls
             (DataContext as MappingViewModel)?.AddOrInput();
         }
 
-        private void GroupBlock_OnClick(object sender, RoutedEventArgs e)
-        {
-            var group = (sender as FrameworkElement)?.DataContext as InputConditionViewModel;
-            var mapping = DataContext as MappingViewModel;
-            if (group == null || mapping?.ButtonsEnabled != true) return;
-            var enabled = (sender as ToggleButton)?.IsChecked == true;
-            foreach (var input in group.Inputs)
-            {
-                var binding = input?.DeviceBinding;
-                if (binding == null) continue;
-                binding.SetBlock(enabled && binding.IsBound && binding.IsBlockable());
-            }
-        }
-
         private void AddInputToCondition_OnClick(object sender, RoutedEventArgs e)
         {
             var condition = (sender as FrameworkElement)?.DataContext as InputConditionViewModel;
