@@ -439,6 +439,53 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void OutputSelectionCanReplaceButtonWithAxisWithoutLosingDestination()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Output category conversion", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var outputDevice = new DeviceConfiguration(
+                new Device("X360 Controller", "Core_ViGEm", "xb360", 0));
+            profile.AddDeviceConfigurations(new List<DeviceConfiguration> { outputDevice },
+                DeviceIoType.Output);
+            profile.AddMapping("Output");
+            var vm = new ProfileViewModel(profile);
+            try
+            {
+                var mapping = vm.MappingsList.Single();
+                mapping.AddPlugin(mapping.GetCompatiblePluginOptions()
+                    .First(option => option.Name == "Button to Button").Plugin);
+                var original = mapping.Plugins.Single().DeviceBindings.First(binding =>
+                    binding.DeviceBinding.DeviceIoType == DeviceIoType.Output);
+                var control = new MappingCardControl { DataContext = mapping };
+                var axis = new HidWizards.UCR.Core.Models.Binding.DeviceBindingInfo
+                {
+                    DeviceBindingCategory = HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Range,
+                    KeyType = 3, KeyValue = 0, KeySubValue = 0
+                };
+                var method = typeof(MappingCardControl).GetMethod("ApplyOutputControlChoice",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                Assert.That(method, Is.Not.Null);
+                var applied = (bool)method.Invoke(control,
+                    new object[] { original, outputDevice.Guid, axis, 0 });
+                Assert.That(applied, Is.True, "Choosing a controller axis must actually apply.");
+                Assert.That(mapping.Plugins.Single().OutputType, Is.EqualTo("Axis"));
+                var destination = mapping.Plugins.Single().DeviceBindings.First(binding =>
+                    binding.DeviceBinding.DeviceIoType == DeviceIoType.Output).DeviceBinding;
+                Assert.That(destination.DeviceConfigurationGuid, Is.EqualTo(outputDevice.Guid),
+                    "Switching output category must retain the selected controller.");
+                Assert.That(destination.IsBound, Is.True);
+                Assert.That(destination.DeviceBindingCategory, Is.EqualTo(axis.DeviceBindingCategory));
+            }
+            finally
+            {
+                vm.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void MappingBindingVisualTemplateUsesARealClickableButton()
         {
             EnsureApplicationResources();
