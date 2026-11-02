@@ -260,11 +260,37 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     var isButton = representation == 3 || capacity == 1;
                     var previousIndex = isButton && capacity > 1 && previous.Count == 1
                         ? (index == 1 ? 0 : -1) : index;
+                    var derivedAxisDirection = false;
+                    if (isButton && capacity > 1 && previous.Count == capacity / 2 &&
+                        previous[index / 2].IsBound &&
+                        previous[index / 2].DeviceBindingCategory == DeviceBindingCategory.Range)
+                    {
+                        // Preserve an existing stick/axis by exposing its two
+                        // signs as distinct digital-direction slots.
+                        previousIndex = index / 2;
+                        derivedAxisDirection = true;
+                    }
+                    else if (!isButton && capacity > 1 && previous.Count == capacity)
+                    {
+                        // Recombine opposing captures of the SAME physical axis.
+                        // Unrelated buttons cannot be promoted into one axis.
+                        var negative = previous[index * 2];
+                        var positive = previous[index * 2 + 1];
+                        if (negative.IsBound && positive.IsBound &&
+                            negative.DeviceBindingCategory == DeviceBindingCategory.Range &&
+                            positive.DeviceBindingCategory == DeviceBindingCategory.Range &&
+                            negative.DeviceConfigurationGuid == positive.DeviceConfigurationGuid &&
+                            negative.KeyType == positive.KeyType &&
+                            negative.KeyValue == positive.KeyValue &&
+                            negative.KeySubValue == positive.KeySubValue)
+                            previousIndex = index * 2;
+                    }
                     var compatible = previousIndex >= 0 && previousIndex < previous.Count &&
                         previous[previousIndex].IsBound &&
-                        (isButton
-                            ? previous[previousIndex].DeviceBindingCategory == DeviceBindingCategory.Momentary
-                            : previous[previousIndex].DeviceBindingCategory == DeviceBindingCategory.Range);
+                        (derivedAxisDirection ||
+                            (isButton
+                                ? previous[previousIndex].DeviceBindingCategory == DeviceBindingCategory.Momentary
+                                : previous[previousIndex].DeviceBindingCategory == DeviceBindingCategory.Range));
                     DeviceBinding input;
                     if (compatible)
                     {
@@ -274,10 +300,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     }
                     else
                         input = new DeviceBinding(Mapping.Update, profile, DeviceIoType.Input);
-                    input.InputExpressionInputKind = isButton ? 0 : 3;
+                    input.InputExpressionInputKind = derivedAxisDirection
+                        ? (index % 2 == 0 ? 2 : 1) : isButton ? 0 : 3;
                     input.InputExpressionKindConfigured = true;
-                    input.DeviceBindingCategory = isButton
-                        ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
+                    input.DeviceBindingCategory = derivedAxisDirection
+                        ? DeviceBindingCategory.Range
+                        : isButton ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
                     input.InputExpressionGroup = 0;
                     input.InputDirectionSlot = isButton && capacity > 1 ? index + 1 : 0;
                     next.Add(input);
