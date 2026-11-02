@@ -344,7 +344,13 @@ namespace HidWizards.UCR.Core.Models
                 return 0;
             var value = InputCache[index];
             var source = DeviceBindings[index];
-            if (!digital) return value;
+            if (!digital)
+            {
+                // A digitally captured control can still drive a positive
+                // analogue direction; use full travel, not the raw 0/1 value.
+                return source.InputExpressionInputKind == 0
+                    ? (short)(value != 0 ? short.MaxValue : 0) : value;
+            }
             return AdaptPositionalInput(value, source, DeviceBindingCategory.Momentary) != 0
                 ? (short)1 : (short)0;
         }
