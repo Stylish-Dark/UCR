@@ -813,7 +813,6 @@
                                                         </Button>
                                                         <Button Width="27" Height="27" Padding="3" Margin="1 0" ToolTip="Delete group"
                                                                 IsEnabled="{Binding CanEdit}" Click="RemoveMappingGroup_OnClick">
-                                            </Button.Style>
                                                             <materialDesign:PackIcon Kind="Delete" Width="15" Height="15" Foreground="#FF8B8B"/>
                                                         </Button>
                                                     </StackPanel>
