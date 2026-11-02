@@ -350,7 +350,7 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
-        public void MappingChevronReallyOpensAndClosesInlineEditorWithoutExpanderHeader()
+        public void MappingCardIsEditorOnlyWithoutASecondHeader()
         {
             EnsureApplicationResources();
 
@@ -363,46 +363,34 @@ namespace HidWizards.UCR.Tests.UiTests
             try
             {
                 var mapping = profileViewModel.MappingsList.Single();
-                var card = new MappingCardControl { DataContext = mapping };
+                // This is how the actual workspace instantiates the editor.
+                var card = new MappingCardControl
+                {
+                    InspectorMode = true,
+                    InlineWorkspaceMode = true,
+                    DataContext = mapping
+                };
                 card.Measure(new Size(900, 600));
                 card.Arrange(new Rect(0, 0, 900, 600));
                 card.UpdateLayout();
 
-                var chevron = card.FindName("ExpandMappingButton") as Button;
-                var header = card.FindName("MappingHeaderSurface") as Border;
+                Assert.That(card.FindName("MappingHeaderSurface"), Is.Null,
+                    "The collapsed mapping header must exist only in ProfilePage.xaml.");
+                Assert.That(card.FindName("ExpandMappingButton"), Is.Null,
+                    "The editor must never carry a second mapping chevron.");
+                Assert.That(FindVisualChildren<Button>(card).Any(button =>
+                    (button.ToolTip as string)?.StartsWith("Remove mapping.") == true), Is.False,
+                    "Only the workspace row may expose the mapping-delete action.");
+
                 var body = card.FindName("ExpandedBodyHost") as ContentControl;
-                Assert.That(chevron, Is.Not.Null, "The mapping must expose a dedicated clickable chevron.");
-                Assert.That(header, Is.Not.Null);
                 Assert.That(body, Is.Not.Null);
-                Assert.That(card.FindName("MappingExpander"), Is.Null,
-                    "The header must not remain wrapped in a clickable WPF Expander.");
-                Assert.That(chevron.Content, Is.InstanceOf<Grid>());
-                var chevronIcon = ((Grid)chevron.Content).Children.OfType<System.Windows.Shapes.Path>().Single();
-                Assert.That(chevronIcon.Data, Is.Not.Null);
-                Assert.That(chevron.Width, Is.GreaterThanOrEqualTo(38));
-                Assert.That(chevron.BorderThickness.Left, Is.GreaterThan(0));
-                Assert.That(mapping.IsExpanded, Is.False);
-                Assert.That(body.Visibility, Is.EqualTo(Visibility.Collapsed));
-
-                // Actual WPF button automation, not direct invocation of the private handler.
-                ((IInvokeProvider)new ButtonAutomationPeer(chevron)).Invoke();
-                card.UpdateLayout();
-                PumpDispatcherFor(TimeSpan.FromMilliseconds(100));
-
-                Assert.That(mapping.IsExpanded, Is.True);
-                Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible));
-                Assert.That(body.ContentTemplate, Is.Not.Null);
-                Assert.That(((RotateTransform)chevronIcon.RenderTransform).Angle, Is.EqualTo(180));
-                Assert.That(body.ActualHeight, Is.GreaterThan(0));
-
-                ((IInvokeProvider)new ButtonAutomationPeer(chevron)).Invoke();
-                PumpDispatcherFor(TimeSpan.FromMilliseconds(40));
-                Assert.That(mapping.IsExpanded, Is.False);
                 Assert.That(body.Visibility, Is.EqualTo(Visibility.Visible),
-                    "Closing should preserve the existing short fade instead of snapping away.");
-                PumpDispatcherFor(TimeSpan.FromMilliseconds(250));
-                Assert.That(body.Visibility, Is.EqualTo(Visibility.Collapsed));
-                Assert.That(((RotateTransform)chevronIcon.RenderTransform).Angle, Is.EqualTo(0));
+                    "The embedded editor must still display its inputs and outputs.");
+                Assert.That(body.ContentTemplate, Is.Not.Null);
+                Assert.That(body.ActualHeight, Is.GreaterThan(0));
+                var headings = FindVisualChildren<TextBlock>(body).Select(t => t.Text).ToList();
+                Assert.That(headings, Does.Contain("INPUTS"));
+                Assert.That(headings, Does.Contain("OUTPUTS"));
             }
             finally
             {
