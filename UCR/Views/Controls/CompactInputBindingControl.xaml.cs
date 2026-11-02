@@ -198,12 +198,13 @@ namespace HidWizards.UCR.Views.Controls
             if (node.IsBinding)
             {
                 var info = node.DeviceBindingInfo;
-                if (info == null || info.DeviceBindingCategory !=
-                    (DataContext as DeviceBindingViewModel)?.DeviceBindingCategory) return null;
+                if (info == null) return null;
                 // The ellipsis is a text-only nested menu, not a second visual picker.
                 item.ToolTip = "Assign " + node.Title;
                 item.Click += (sender, args) =>
                 {
+                    if (DeviceBinding.DeviceIoType == DeviceIoType.Input)
+                        DeviceBinding.SetInputExpressionInputKind(info.DeviceBindingCategory == DeviceBindingCategory.Range ? 3 : 0);
                     DeviceBinding.SetDeviceConfigurationGuid(configurationGuid);
                     DeviceBinding.DeviceBindingCategory = info.DeviceBindingCategory;
                     DeviceBinding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
@@ -228,7 +229,7 @@ namespace HidWizards.UCR.Views.Controls
                 var category = (DataContext as DeviceBindingViewModel)?.DeviceBindingCategory
                     ?? DeviceBinding.DeviceBindingCategory;
                 DeviceBinding.DeviceBindingCategory = category;
-                DeviceBinding.EnterBindMode();
+                DeviceBinding.EnterBindMode(autoDetectInputCategory: DeviceBinding.DeviceIoType == DeviceIoType.Input);
             }
             catch (Exception exception)
             {
