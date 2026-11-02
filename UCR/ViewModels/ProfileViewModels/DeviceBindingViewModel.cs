@@ -17,6 +17,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 {
     public class DeviceBindingViewModel : INotifyPropertyChanged, IDisposable
     {
+        // A UI-only selector choice; never a physical device configuration ID.
+        public static readonly Guid FilterOutputChoiceGuid =
+            new Guid("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF");
         private string _deviceBindingName;
         public string DeviceBindingName
         {
@@ -442,7 +445,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             // Filter is an output operation, not a physical device. Its entry is
             // handled by the output editor instead of assigning a device GUID.
             if (DeviceBinding.DeviceIoType == DeviceIoType.Output)
-                Devices.Add(new ComboBoxItemViewModel("Filter", Guid.Empty));
+                Devices.Add(new ComboBoxItemViewModel("Filter", FilterOutputChoiceGuid));
 
             _deviceListLoaded = true;
             _deviceListDirty = false;
@@ -547,8 +550,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 else
                 {
                     var primaryGuid = DeviceBinding.Profile.GetPrimaryDeviceConfiguration(DeviceBinding.DeviceIoType)?.Guid;
-                    selectedDevice = Devices.FirstOrDefault(item => item.Value == primaryGuid) ?? Devices[0];
-                    if (!DeviceBinding.IsBound && selectedDevice.Value != Guid.Empty)
+                    selectedDevice = Devices.FirstOrDefault(item => item.Value == primaryGuid &&
+                        item.Value != FilterOutputChoiceGuid) ??
+                        Devices.FirstOrDefault(item => item.Value != FilterOutputChoiceGuid);
+                    if (!DeviceBinding.IsBound && selectedDevice != null && selectedDevice.Value != Guid.Empty)
                         DeviceBinding.SetDeviceConfigurationGuid(selectedDevice.Value, false);
                 }
             }
