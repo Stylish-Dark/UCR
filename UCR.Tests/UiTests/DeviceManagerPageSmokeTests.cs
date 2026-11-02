@@ -411,6 +411,46 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void MappingDeleteButtonRemainsVisibleImmediatelyBeforeChevron()
+        {
+            EnsureApplicationResources();
+
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Header button layout", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            profile.AddMapping("Mapping");
+            var viewModel = new ProfileViewModel(profile);
+            try
+            {
+                var card = new MappingCardControl
+                {
+                    DataContext = viewModel.MappingsList.Single()
+                };
+                card.Measure(new Size(450, 100));
+                card.Arrange(new Rect(0, 0, 450, 100));
+                card.UpdateLayout();
+
+                var delete = FindVisualChildren<Button>(card).FirstOrDefault(button =>
+                    (button.ToolTip as string)?.StartsWith("Remove mapping.") == true);
+                var chevron = card.FindName("ExpandMappingButton") as Button;
+                Assert.That(delete, Is.Not.Null, "Mapping deletion must remain in the card header.");
+                Assert.That(chevron, Is.Not.Null);
+                Assert.That(delete.ActualWidth, Is.GreaterThanOrEqualTo(28));
+                var deleteX = delete.TransformToAncestor(card).Transform(new Point()).X;
+                var chevronX = chevron.TransformToAncestor(card).Transform(new Point()).X;
+                Assert.That(deleteX + delete.ActualWidth, Is.LessThan(chevronX + 1),
+                    "Delete must appear immediately left of the expand chevron.");
+                Assert.That(chevronX + chevron.ActualWidth, Is.LessThanOrEqualTo(card.ActualWidth + 1),
+                    "Neither header control may be clipped by the right edge.");
+            }
+            finally
+            {
+                viewModel.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void ProfileDeviceCardsHideProviderAndWrapWithinSidebar()
         {
             EnsureApplicationResources();
