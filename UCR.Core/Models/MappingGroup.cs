@@ -39,6 +39,10 @@ namespace HidWizards.UCR.Core.Models
             }
         }
 
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool BlockInputs { get; set; }
+
         public List<Mapping> Mappings { get; set; }
 
         [XmlIgnore]
