@@ -242,8 +242,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public bool RenameMappingGroup(MappingGroupViewModel section, string title)
         {
-            if (section == null || section.IsMain || section.Model == null || Profile.IsActive()) return false;
-            if (!section.Model.Rename(title)) return false;
+            if (section == null || Profile.IsActive() || string.IsNullOrWhiteSpace(title)) return false;
+            if (section.IsMain)
+            {
+                Profile.MainGroupTitle = title.Trim();
+                Profile.Context?.ContextChanged();
+            }
+            else if (section.Model == null || !section.Model.Rename(title)) return false;
             section.RefreshTitle();
             return true;
         }
@@ -271,7 +276,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             return new MappingGroup
             {
-                Title = "Main",
+                Title = Profile.MainGroupTitle ?? "Main",
                 Enabled = Profile.MainMappingsEnabled,
                 Mappings = (Profile.Mappings ?? new List<Mapping>()).ToList()
             };
