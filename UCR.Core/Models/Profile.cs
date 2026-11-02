@@ -37,6 +37,9 @@ namespace HidWizards.UCR.Core.Models
         [XmlAttribute]
         [DefaultValue("Main")]
         public string MainGroupTitle { get; set; } = "Main";
+        [XmlAttribute]
+        [DefaultValue(true)]
+        public bool MainGroupVisible { get; set; } = true;
 
         public List<DeviceConfiguration> InputDeviceConfigurations { get; set; }
         public List<DeviceConfiguration> OutputDeviceConfigurations { get; set; }
@@ -800,6 +803,7 @@ namespace HidWizards.UCR.Core.Models
             MainMappingsEnabled = snapshot.MainMappingsEnabled;
             MainBlockInputs = snapshot.MainBlockInputs;
             MainGroupTitle = snapshot.MainGroupTitle;
+            MainGroupVisible = snapshot.MainGroupVisible;
             InputDeviceConfigurations = snapshot.InputDeviceConfigurations ?? new List<DeviceConfiguration>();
             OutputDeviceConfigurations = snapshot.OutputDeviceConfigurations ?? new List<DeviceConfiguration>();
             BlockUnmappedInputEnabledOverrides = snapshot.BlockUnmappedInputEnabledOverrides ?? new List<Guid>();
