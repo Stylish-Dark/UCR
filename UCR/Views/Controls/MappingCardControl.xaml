@@ -540,6 +540,7 @@
                         <ColumnDefinition Width="3*"/>
                         <ColumnDefinition Width="34"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="40"/>
                         <ColumnDefinition Width="46"/>
                     </Grid.ColumnDefinitions>
 
@@ -720,13 +721,15 @@
                                 Style="{StaticResource UcrMappingActionButton}" IsEnabled="{Binding ButtonsEnabled}" Click="MoveSection_OnClick">
                             <TextBlock Text="↪" FontSize="17" FontWeight="Bold" VerticalAlignment="Center"/>
                         </Button>
-                        <Button ToolTip="Remove mapping. Stop the active profile to edit." ToolTipService.ShowOnDisabled="True"
-                                Width="30" Height="30" Margin="2" Style="{StaticResource UcrDeleteCrossButton}"
-                                IsEnabled="{Binding ButtonsEnabled}" Click="Remove_OnClick"/>
 
                     </StackPanel>
+                    <Button Grid.Column="5" ToolTip="Remove mapping. Stop the active profile to edit."
+                            ToolTipService.ShowOnDisabled="True" Width="30" Height="30"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Style="{StaticResource UcrDeleteCrossButton}"
+                            IsEnabled="{Binding ButtonsEnabled}" Click="Remove_OnClick"/>
                     <!-- Always-visible, dedicated expand control; card content is not a toggle. -->
-                    <Button x:Name="ExpandMappingButton" Grid.Column="5" Width="38" Height="38"
+                    <Button x:Name="ExpandMappingButton" Grid.Column="6" Width="38" Height="38"
                             Margin="0 0 5 0" VerticalAlignment="Center" HorizontalAlignment="Center"
                             Padding="0" Foreground="#FFFFFF" Background="#292929"
                             BorderBrush="#696969" BorderThickness="1" Cursor="Hand" Focusable="False"
