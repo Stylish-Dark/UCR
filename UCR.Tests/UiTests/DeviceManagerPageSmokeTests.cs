@@ -313,6 +313,33 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(mapping.IsExpanded, Is.False);
                 Assert.That(toggle.Content, Is.InstanceOf<Grid>());
                 Assert.That(row.ActualHeight, Is.LessThan(collapsedHeight + 2));
+                // Verify the ACTUAL collapsed workspace row; MappingCardControl
+                // is a separate expanded-only editor and is not this header.
+                Button remove = null;
+                foreach (var width in new[] { 1440d, 1100d })
+                {
+                    var viewport = new Size(width, 900);
+                    page.Measure(viewport);
+                    page.Arrange(new Rect(new Point(0, 0), viewport));
+                    page.UpdateLayout();
+                    remove = FindVisualChildren<Button>(row).SingleOrDefault(button =>
+                        (button.ToolTip as string)?.StartsWith("Remove mapping.") == true);
+                    var collapsedChevron = FindVisualChildren<Button>(row).SingleOrDefault(button =>
+                        (button.ToolTip as string) == "Expand or collapse mapping Inputs and Outputs");
+                    Assert.That(remove, Is.Not.Null, "The visible collapsed row must expose Delete.");
+                    Assert.That(collapsedChevron, Is.Not.Null);
+                    Assert.That(remove.ActualWidth, Is.GreaterThanOrEqualTo(28));
+                    Assert.That(collapsedChevron.ActualWidth, Is.GreaterThanOrEqualTo(36));
+                    var removeX = remove.TransformToAncestor(row).Transform(new Point()).X;
+                    var chevronX = collapsedChevron.TransformToAncestor(row).Transform(new Point()).X;
+                    Assert.That(removeX + remove.ActualWidth, Is.LessThanOrEqualTo(chevronX + 1),
+                        "Delete must sit directly left of the mapping chevron.");
+                    Assert.That(chevronX + collapsedChevron.ActualWidth, Is.LessThanOrEqualTo(row.ActualWidth + 1),
+                        "Chevron must remain within the mapping row's right edge.");
+                }
+                remove.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, remove));
+                Assert.That(profile.Mappings.Count, Is.EqualTo(0),
+                    "The collapsed-row Delete button must actually remove the mapping.");
             }
             finally
             {
@@ -406,65 +433,6 @@ namespace HidWizards.UCR.Tests.UiTests
             finally
             {
                 profileViewModel.Dispose();
-            }
-        }
-
-        [Test]
-        [Apartment(ApartmentState.STA)]
-        public void MappingDeleteButtonRemainsVisibleImmediatelyBeforeChevron()
-        {
-            EnsureApplicationResources();
-
-            var context = new Context();
-            var profile = context.ProfilesManager.CreateProfile("Header button layout", null, null);
-            context.ProfilesManager.AddProfile(profile);
-            profile.AddMapping("Mapping");
-
-            var page = new ProfilePage(context, profile, embedded: true);
-            try
-            {
-                page.SuspendEmbeddedVisuals();
-                Button delete = null;
-                foreach (var width in new[] { 1440d, 1100d })
-                {
-                    var available = new Size(width, 900);
-                    page.Measure(available);
-                    page.Arrange(new Rect(new Point(0, 0), available));
-                    page.UpdateLayout();
-
-                    var rows = FindVisualChildren<ListView>(page)
-                        .SingleOrDefault(list => list.Name == "MappingRowsList");
-                    Assert.That(rows, Is.Not.Null);
-                    var row = rows.ItemContainerGenerator.ContainerFromIndex(0) as ListViewItem;
-                    Assert.That(row, Is.Not.Null);
-
-                    // Check the COLLAPSED workspace row, not MappingCardControl,
-                    // which only materializes below the row after expansion.
-                    delete = FindVisualChildren<Button>(row)
-                        .SingleOrDefault(button => (button.ToolTip as string)?.StartsWith("Remove mapping.") == true);
-                    var chevron = FindVisualChildren<Button>(row)
-                        .SingleOrDefault(button => (button.ToolTip as string) ==
-                            "Expand or collapse mapping Inputs and Outputs");
-                    Assert.That(delete, Is.Not.Null, "Collapsed mapping row must have a remove button.");
-                    Assert.That(chevron, Is.Not.Null);
-                    Assert.That(delete.ActualWidth, Is.GreaterThanOrEqualTo(28));
-                    Assert.That(chevron.ActualWidth, Is.GreaterThanOrEqualTo(36));
-                    var deleteX = delete.TransformToAncestor(row).Transform(new Point()).X;
-                    var chevronX = chevron.TransformToAncestor(row).Transform(new Point()).X;
-                    Assert.That(deleteX + delete.ActualWidth, Is.LessThanOrEqualTo(chevronX + 1),
-                        "Delete must be directly to the left of the collapsed-row chevron.");
-                    Assert.That(chevronX + chevron.ActualWidth, Is.LessThanOrEqualTo(row.ActualWidth + 1),
-                        "The chevron must not extend past the mapping row's right edge.");
-                }
-
-                // Exercise the real row click handler on an unbound mapping:
-                // removal must work without involving the expanded editor.
-                delete.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, delete));
-                Assert.That(profile.Mappings.Count, Is.EqualTo(0));
-            }
-            finally
-            {
-                page.Dispose();
             }
         }
 
