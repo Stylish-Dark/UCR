@@ -99,32 +99,15 @@ namespace HidWizards.UCR.Views.Controls
             RefreshExpandedVisual(true);
         }
 
+        // ProfilePage.xaml owns the only mapping header. This control contains
+        // the editor; the workspace decides when to show or hide it.
         private void RefreshExpandedVisual(bool animateCollapse)
         {
-            if (MappingHeaderSurface == null || ExpandedBodyHost == null) return;
-            if (InspectorMode)
-            {
-                MappingHeaderSurface.Visibility = Visibility.Collapsed;
-                ShowExpandedBody();
-                return;
-            }
-
-            MappingHeaderSurface.Visibility = Visibility.Visible;
-            if ((DataContext as MappingViewModel)?.IsExpanded == true)
+            if (ExpandedBodyHost == null) return;
+            if (InspectorMode || (DataContext as MappingViewModel)?.IsExpanded == true)
                 ShowExpandedBody();
             else
                 HideExpandedBody(animateCollapse);
-        }
-
-        private void ExpandMappingButton_OnClick(object sender, RoutedEventArgs e)
-        {
-            e.Handled = true;
-            if (InspectorMode) return;
-            var mapping = DataContext as MappingViewModel;
-            if (mapping == null) return;
-            mapping.IsExpanded = !mapping.IsExpanded;
-            // Also handle cases where a card has been measured but not yet loaded.
-            RefreshExpandedVisual(true);
         }
 
         // Expanding height inside a non-virtualized mappings list remeasures every
@@ -189,67 +172,10 @@ namespace HidWizards.UCR.Views.Controls
             (DataContext as MappingViewModel)?.MoveDown();
         }
 
-        private void MoveSection_OnClick(object sender, RoutedEventArgs e)
-        {
-            var mappingViewModel = DataContext as MappingViewModel;
-            var button = sender as Button;
-            if (mappingViewModel == null || button == null || !mappingViewModel.ButtonsEnabled) return;
-
-            var profileViewModel = mappingViewModel.ProfileViewModel;
-            var currentSection = profileViewModel.GetMappingSection(mappingViewModel);
-            var menu = CreateDarkContextMenu(button);
-            menu.Placement = PlacementMode.Bottom;
-
-            foreach (var section in profileViewModel.MappingSections)
-            {
-                var capturedSection = section;
-                var item = new MenuItem
-                {
-                    Header = (ReferenceEquals(currentSection, capturedSection) ? "✓  " : string.Empty) + capturedSection.Title,
-                    IsEnabled = !ReferenceEquals(currentSection, capturedSection),
-                    Foreground = Brushes.White,
-                    Background = Brushes.Transparent,
-                    Padding = new Thickness(10, 6, 14, 6)
-                };
-                item.Click += (clickSender, clickArgs) =>
-                    profileViewModel.MoveMappingToSection(mappingViewModel, capturedSection);
-                menu.Items.Add(item);
-            }
-
-            menu.Closed += (closedSender, closedArgs) =>
-            {
-                if (ReferenceEquals(button.ContextMenu, menu)) button.ContextMenu = null;
-            };
-            button.ContextMenu = menu;
-            menu.IsOpen = true;
-        }
-
         public static bool RequiresDeleteConfirmation(MappingViewModel mapping)
         {
             if (mapping?.Mapping == null) return false;
             return mapping.Mapping.DeviceBindings != null && mapping.Mapping.DeviceBindings.Any(binding => binding != null && binding.IsBound);
-        }
-
-        private void Remove_OnClick(object sender, RoutedEventArgs e)
-        {
-            var mappingViewModel = DataContext as MappingViewModel;
-            if (mappingViewModel == null) return;
-            if (RequiresDeleteConfirmation(mappingViewModel) && MessageBox.Show("Delete mapping '" + mappingViewModel.MappingTitle + "'?", "Delete mapping", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-            mappingViewModel.Remove();
-        }
-
-        private void Rename_OnClick(object sender, RoutedEventArgs e)
-        {
-            var mappingViewModel = DataContext as MappingViewModel;
-            mappingViewModel?.Rename();
-        }
-
-        private void RenameHeader_OnMouseRightButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            var mappingViewModel = DataContext as MappingViewModel;
-            if (mappingViewModel == null || !mappingViewModel.ButtonsEnabled) return;
-            e.Handled = true;
-            mappingViewModel.Rename();
         }
 
         // Every visible binding glyph is a Button in MappingBindingVisualTemplate.
