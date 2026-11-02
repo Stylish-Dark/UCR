@@ -758,6 +758,66 @@ namespace HidWizards.UCR.Views.Controls
             menu.IsOpen = true;
         }
 
+        private void FilterDestinationSelector_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var output = button?.DataContext as PluginViewModel;
+            var mapping = output?.MappingViewModel;
+            if (button == null || mapping?.ButtonsEnabled != true ||
+                !string.Equals(output.OutputType, "Filter", StringComparison.OrdinalIgnoreCase)) return;
+
+            var profile = mapping.ProfileViewModel.Profile;
+            var menu = CreateDarkContextMenu(button);
+            menu.Placement = PlacementMode.Bottom;
+            menu.Items.Add(new MenuItem
+            {
+                Header = "Filter", IsChecked = true, IsEnabled = false,
+                Foreground = Brushes.White, Background = Brushes.Transparent,
+                Padding = new Thickness(10, 6, 14, 6)
+            });
+
+            var analogue = mapping.Mapping.DeviceBindings.Any(input => input.InputExpressionInputKind == 3);
+            var options = mapping.GetCompatiblePluginOptions();
+            foreach (var configuration in profile.GetDeviceConfigurationList(DeviceIoType.Output)
+                         .Where(item => item?.Device != null))
+            {
+                var supportsButton = DeviceBindingViewModel.SupportsOutputCategory(configuration,
+                    DeviceBindingCategory.Momentary, profile.Context);
+                var supportsAxis = DeviceBindingViewModel.SupportsOutputCategory(configuration,
+                    DeviceBindingCategory.Range, profile.Context);
+                if (!supportsButton && !supportsAxis) continue;
+
+                var name = supportsButton ? (analogue ? "Axis to Button" : "Button to Button")
+                                          : (analogue ? "Axis to Axis" : "Button to Axis");
+                var candidate = options.FirstOrDefault(option =>
+                    string.Equals(option.Name, name, StringComparison.OrdinalIgnoreCase));
+                if (candidate == null) continue;
+                var selectedConfiguration = configuration;
+                var selectedTemplate = candidate.Plugin;
+                var item = new MenuItem
+                {
+                    Header = configuration.GetFullTitleForProfile(profile),
+                    Foreground = Brushes.White, Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 14, 6)
+                };
+                item.Click += (s, args) => Dispatcher.BeginInvoke((Action)(() =>
+                {
+                    var index = mapping.Plugins.IndexOf(output);
+                    if (index < 0 || !mapping.ChangeOutputType(output, selectedTemplate)) return;
+                    var next = mapping.Plugins[index].DeviceBindings.FirstOrDefault(binding =>
+                        binding.DeviceBinding?.DeviceIoType == DeviceIoType.Output);
+                    if (next?.DeviceBinding == null) return;
+                    next.DeviceBinding.SetDeviceConfigurationGuid(selectedConfiguration.Guid);
+                    next.RefreshDeviceList();
+                    profile.Context.ContextChanged();
+                }), System.Windows.Threading.DispatcherPriority.Background);
+                menu.Items.Add(item);
+            }
+            if (menu.Items.Count == 1)
+                menu.Items.Add(new MenuItem { Header = "No compatible output devices", IsEnabled = false });
+            menu.IsOpen = true;
+        }
+
         internal bool ApplyOutputControlChoice(DeviceBindingViewModel binding, Guid deviceGuid,
             DeviceBindingInfo selectedControl, int direction = 0)
         {
