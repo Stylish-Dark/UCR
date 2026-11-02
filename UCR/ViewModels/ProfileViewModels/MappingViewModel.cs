@@ -1642,6 +1642,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var bindingViewModel = ResolveCollapsedBinding(descriptor, DeviceIoType.Input);
             if (bindingViewModel?.DeviceBinding == null || !bindingViewModel.BindingEnabled) return false;
 
+            // The collapsed row is interactive before its editor exists. Initialise
+            // the same device list the expanded editor loads before capture.
+            bindingViewModel.EnsureDeviceListLoaded();
             StopQuickInputDetection();
             var binding = bindingViewModel.DeviceBinding;
             var bindingManager = binding.Profile?.Context?.BindingManager;
