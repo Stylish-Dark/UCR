@@ -245,8 +245,7 @@ namespace HidWizards.UCR.Views.Controls
             }
         }
 
-        // Output selection is divided into buttons and directionals, backed by the
-        // selected device's actual provider descriptors (not hard-coded key IDs).
+        // Output controls come directly from the selected device's provider descriptors.
         private void ShowOutputPicker(FrameworkElement target)
         {
             if (_outputPicker != null) _outputPicker.IsOpen = false;
@@ -264,15 +263,14 @@ namespace HidWizards.UCR.Views.Controls
 
             var nodes = DeviceBinding.Profile.Context.DevicesManager.GetDeviceBindingMenu(
                 config.Device, DeviceIoType.Output);
-            // A single button input must not silently bind an entire continuous axis.
-            // Only discrete output controls are offered until directional-axis mappings
-            // have explicit negative and positive input slots.
             var controls = FlattenControls(nodes)
                 .Where(node => node.DeviceBindingInfo != null &&
-                    node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary)
+                    (node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary ||
+                     node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Range))
                 .ToList();
             var buttons = new WrapPanel { Width = 440 };
             var directionals = new WrapPanel { Width = 440 };
+            var axes = new WrapPanel { Width = 440 };
 
             foreach (var node in controls)
             {
@@ -291,7 +289,6 @@ namespace HidWizards.UCR.Views.Controls
                 };
                 var visual = DeviceVisualCatalog.DescribeBinding(
                     temporary, info.DeviceBindingCategory, DeviceBinding.Profile);
-                if (visual.ControlKind == ControlVisualKind.StickAxis) continue;
                 var title = node.Title ?? "";
                 var lower = title.ToLowerInvariant();
                 bool isDirectional = visual.ControlKind == ControlVisualKind.StickAxis ||
@@ -341,13 +338,21 @@ namespace HidWizards.UCR.Views.Controls
                     DeviceBinding.SetKeyTypeValue(selectedInfo.KeyType, selectedInfo.KeyValue, selectedInfo.KeySubValue);
                     popup.IsOpen = false;
                 };
-                (isDirectional ? directionals : buttons).Children.Add(choice);
+                var isTrigger = lower.Contains("trigger") || lower == "lt" || lower == "rt" ||
+                                lower.Contains("l2") || lower.Contains("r2");
+                if (isTrigger || info.DeviceBindingCategory == DeviceBindingCategory.Momentary && !isDirectional)
+                    buttons.Children.Add(choice);
+                else if (info.DeviceBindingCategory == DeviceBindingCategory.Range)
+                    axes.Children.Add(choice);
+                else
+                    directionals.Children.Add(choice);
             }
 
             var tabs = new TabControl { Background = Brushes.Transparent };
             foreach (var category in new[] {
                 new { Title = "Buttons", Items = buttons },
-                new { Title = "Directionals", Items = directionals }
+                new { Title = "Directions", Items = directionals },
+                new { Title = "Axes", Items = axes }
             })
             {
                 if (category.Items.Children.Count == 0)
