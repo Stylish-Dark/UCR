@@ -358,6 +358,46 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void MainMappingGroupCanBeDisabledBlockedCopiedAndDuplicated()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Group parity", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            profile.AddMapping("Root mapping");
+            var viewModel = new ProfileViewModel(profile);
+            try
+            {
+                var main = viewModel.MappingSections.Single(section => section.IsMain);
+                main.Enabled = false;
+                Assert.That(profile.MainMappingsEnabled, Is.False,
+                    "Main must be deselectable just like an ordinary group.");
+                main.BlockInputs = true;
+                Assert.That(profile.MainBlockInputs, Is.True,
+                    "The group Block option must persist for Main.");
+
+                var duplicated = viewModel.DuplicateMappingGroup(main);
+                Assert.That(duplicated, Is.Not.Null);
+                Assert.That(duplicated.Mappings.Count, Is.EqualTo(1));
+                Assert.That(duplicated.Enabled, Is.False);
+                viewModel.CopyMappingGroup(main);
+                var pasted = viewModel.PasteMappingGroup();
+                Assert.That(pasted, Is.Not.Null);
+                Assert.That(pasted.Mappings.Count, Is.EqualTo(1));
+                Assert.That(main.Mappings.Count, Is.EqualTo(1),
+                    "Copying Main must leave its original mappings intact.");
+                Assert.That(typeof(Context).GetMethod("Undo"), Is.Null,
+                    "Undo/redo restoration must remain removed.");
+                Assert.That(typeof(Context).GetMethod("Redo"), Is.Null);
+            }
+            finally
+            {
+                viewModel.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void MappingCardIsEditorOnlyWithoutASecondHeader()
         {
             EnsureApplicationResources();
