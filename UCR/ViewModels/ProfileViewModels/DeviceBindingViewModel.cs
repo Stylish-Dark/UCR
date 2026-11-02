@@ -669,6 +669,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             CurrentValue = deviceBinding.CurrentValue;
 
+            if (string.Equals(propertyChangedEventArgs.PropertyName,
+                nameof(DeviceBinding.InputExpressionInputKind), StringComparison.Ordinal))
+            {
+                // Automatic capture can change the physical input category without
+                // going through the editor's type selector. Synchronise both views.
+                DeviceBindingCategory = deviceBinding.InputExpressionInputKind == 0
+                    ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
+                RefreshDeviceList();
+                OnPropertyChanged(nameof(InputExpressionInputKind));
+                OnPropertyChanged(nameof(DeviceBindingCategory));
+                OnPropertyChanged(nameof(InputTypeDetailsVisibility));
+            }
+
             if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.IsInBindMode), StringComparison.Ordinal))
             {
                 var bindingManager = deviceBinding.Profile?.Context?.BindingManager;
