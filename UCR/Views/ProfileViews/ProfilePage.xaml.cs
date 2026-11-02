@@ -1204,6 +1204,12 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (!ProfileViewModel.CanEditProfile) return;
             var mapping = ProfileViewModel.AddMappingToSelectedSection(ProfileViewModel.GetNextMappingTitle());
             if (mapping == null) return;
+            if (!mapping.AddDefaultOutput())
+            {
+                mapping.Remove();
+                Logger.Warn("Cannot create mapping: no output implementation is available.");
+                return;
+            }
             ProfileViewModel.SelectedMapping = mapping;
             mapping.IsExpanded = true;
             ShowWorkspaceInspector();
