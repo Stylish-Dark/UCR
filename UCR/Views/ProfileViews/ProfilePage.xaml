@@ -552,7 +552,12 @@
                                              ItemsSource="{Binding InputDeviceControlViewModel.Devices}"
                                              SelectedItem="{Binding InputDeviceControlViewModel.SelectedDeviceConfiguration, Mode=TwoWay}"
                                              BorderThickness="0" Background="Transparent" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                                        <ListBox.ItemTemplate>
+                                        <ListBox.ItemContainerStyle>
+                                             <Style TargetType="{x:Type ListBoxItem}">
+                                                 <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                             </Style>
+                                         </ListBox.ItemContainerStyle>
+                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
                                                 <Grid Margin="1 2">
                                                     <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="48"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
