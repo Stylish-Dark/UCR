@@ -358,6 +358,24 @@ namespace HidWizards.UCR.Views.Controls
             };
         }
 
+        private void InputRepresentation_OnClick(object sender, RoutedEventArgs e)
+        {
+            var vm = DataContext as MappingViewModel;
+            int value;
+            if (vm == null || !int.TryParse((sender as FrameworkElement)?.Tag as string, out value))
+                return;
+            vm.SetInputRepresentation(value);
+        }
+
+        private void OutputRepresentation_OnClick(object sender, RoutedEventArgs e)
+        {
+            var vm = DataContext as MappingViewModel;
+            int value;
+            if (vm == null || !int.TryParse((sender as FrameworkElement)?.Tag as string, out value))
+                return;
+            vm.SetOutputRepresentation(value);
+        }
+
         private void AddAndInput_OnClick(object sender, RoutedEventArgs e)
         {
             (DataContext as MappingViewModel)?.AddAndInput();
