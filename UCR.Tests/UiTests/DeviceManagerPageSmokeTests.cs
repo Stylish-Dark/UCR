@@ -411,6 +411,57 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void ProfileDeviceCardsHideProviderAndWrapWithinSidebar()
+        {
+            EnsureApplicationResources();
+
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Device card layout", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var configuration = new DeviceConfiguration(new Device(
+                "M: Logitech USB Receiver With An Extended Name", "Core_Interception", "kbd", 0));
+            profile.AddDeviceConfigurations(new List<DeviceConfiguration> { configuration }, DeviceIoType.Input);
+            var viewModel = new ProfileDeviceListControlViewModel(profile,
+                new List<DeviceConfiguration> { configuration }, DeviceIoType.Input);
+            try
+            {
+                var control = new ProfileDeviceListControl
+                {
+                    Title = "Input devices",
+                    DataContext = viewModel
+                };
+                control.Measure(new Size(300, 400));
+                control.Arrange(new Rect(0, 0, 300, 400));
+                control.UpdateLayout();
+
+                var list = control.FindName("DeviceList") as ListView;
+                Assert.That(list, Is.Not.Null);
+                Assert.That(ScrollViewer.GetHorizontalScrollBarVisibility(list),
+                    Is.EqualTo(ScrollBarVisibility.Disabled),
+                    "The actual profile device list must not produce a horizontal scrollbar.");
+                var row = list.ItemContainerGenerator.ContainerFromIndex(0) as ListViewItem;
+                Assert.That(row, Is.Not.Null, "The profile device row must materialize.");
+                var labels = FindVisualChildren<TextBlock>(row).ToList();
+                Assert.That(labels.Any(label => label.Text != null &&
+                    label.Text.Contains("Core_Interception")), Is.False,
+                    "Provider identifiers must not appear below the device names.");
+                var deviceLabel = labels.FirstOrDefault(label =>
+                    label.Text != null && label.Text.Contains("Logitech"));
+                Assert.That(deviceLabel, Is.Not.Null);
+                Assert.That(deviceLabel.TextWrapping, Is.EqualTo(TextWrapping.Wrap));
+                Assert.That(deviceLabel.MaxHeight, Is.LessThanOrEqualTo(38));
+                Assert.That(FindVisualChildren<Button>(row).Any(button =>
+                    (button.ToolTip as string)?.Contains("primary") == true), Is.True,
+                    "The existing primary-device selector must remain available.");
+            }
+            finally
+            {
+                viewModel.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void DeviceManagerPageMaterializesRealDeviceRowAndColourButton()
         {
             EnsureApplicationResources();
