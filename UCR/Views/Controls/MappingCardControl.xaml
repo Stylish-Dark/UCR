@@ -396,6 +396,16 @@
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
+                                                <!-- Replaces the physical-device selector when this output is a filter.
+                                                     It occupies the same destination slot; no extra selection tier. -->
+                                                <Button Grid.Column="0" Content="F   Filter ▼"
+                                                        Width="140" Height="36" HorizontalAlignment="Left"
+                                                        Margin="0 0 0 5" Padding="8 3"
+                                                        Foreground="#FFFFFF" Background="#303030"
+                                                        BorderBrush="#666666" BorderThickness="1"
+                                                        Visibility="{Binding FilterDestinationSelectorVisibility}"
+                                                        Click="FilterDestinationSelector_OnClick"
+                                                        ToolTip="Change this output to a physical device or keep Filter"/>
                                                 <StackPanel Grid.Column="1" Orientation="Horizontal"
                                                     VerticalAlignment="Center" Margin="8 0 0 0">
                                                     <StackPanel Orientation="Horizontal"
