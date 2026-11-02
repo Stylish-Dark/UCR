@@ -137,6 +137,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
     {
         public string MappingTitle => Mapping.FullTitle;
         public ProfileViewModel ProfileViewModel { get; }
+        public bool IsSelectedMapping => ReferenceEquals(ProfileViewModel.SelectedMapping, this);
+        public void RefreshSelectionHighlight() => OnPropertyChanged(nameof(IsSelectedMapping));
         public Mapping Mapping { get; set; }
         public ObservableCollection<PluginViewModel> Plugins { get; set; }
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
