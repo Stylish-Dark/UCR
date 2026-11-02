@@ -774,6 +774,15 @@ namespace HidWizards.UCR.Views.Controls
             if (original == null) return false;
             var index = mapping.Plugins.IndexOf(original);
             var requested = selectedControl.DeviceBindingCategory;
+            if (mapping.IsTypedDirectionalMapping)
+            {
+                // The representation selector owns the physical output type.
+                // An individual picker must not silently replace one channel's
+                // plugin and invalidate the selected directional topology.
+                var expected = mapping.Mapping.EffectiveOutputRepresentation == 3
+                    ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
+                if (requested != expected) return false;
+            }
             var existing = original.Plugin.Outputs.FirstOrDefault()?.DeviceBindingCategory;
             if (existing != requested)
             {
