@@ -435,8 +435,9 @@ namespace HidWizards.UCR.Core.Managers
                     return value != 0;
                 case DeviceBindingCategory.Range:
                     var wideVal = Functions.WideAbs(value);
-                    return Constants.AxisMaxValue * 0.4 < wideVal
-                        && Constants.AxisMaxValue * 0.6 > wideVal;
+                    // A stick pushed fully to its stop is a valid capture too.
+                    // Ignore the near-centre noise without rejecting strong movement.
+                    return wideVal > Constants.AxisMaxValue * 0.4;
                 default:
                     return false;
             }
