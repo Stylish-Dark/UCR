@@ -317,12 +317,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 Profile.Context?.ContextChanged();
             }
             else if (section.Model == null || !Profile.RemoveMappingGroup(section.Model)) return false;
+            var selectedWasRemoved = section.Mappings.Contains(SelectedMapping);
             foreach (var mapping in section.Mappings.ToList())
             {
                 mapping.Dispose();
                 MappingsList.Remove(mapping);
             }
             MappingSections.Remove(section);
+            if (selectedWasRemoved) SelectedMapping = MappingsList.FirstOrDefault();
             if (ReferenceEquals(SelectedMappingSection, section))
                 SelectedMappingSection = MappingSections.FirstOrDefault();
             RefreshMappingPositions();
