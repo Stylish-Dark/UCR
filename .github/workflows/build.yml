@@ -584,10 +584,16 @@ jobs:
 
           # WPF theme resources are owned by the dispatcher that creates App.
           # Isolate device-row materialization in a fresh NUnit process.
-          & $runner $tests --noresult --workers=0 --where "test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton"
+          & $runner $tests --noresult --workers=0 --where "test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton && test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DirectionalTypeSelectorsRenderIndependentlyAndRestoreBindingBanks"
           if ($LASTEXITCODE -ne 0) { throw "Main UCR tests failed: $LASTEXITCODE" }
           & $runner $tests --noresult --workers=0 --where "test == HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton"
           if ($LASTEXITCODE -ne 0) { throw "Isolated device-row UI test failed: $LASTEXITCODE" }
+          & $runner $tests --noresult --workers=0 --where "test == HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DirectionalTypeSelectorsRenderIndependentlyAndRestoreBindingBanks"
+          if ($LASTEXITCODE -ne 0) { throw "Directional type WPF test failed: $LASTEXITCODE" }
+          if (-not (Test-Path -LiteralPath 'UCR-directional-preview.png')) {
+            throw 'Directional WPF preview was not rendered.'
+          }
+          Write-Host 'Verified actual WPF directional editor rendering.'
 
 
       - name: Upload rendered directional editor preview
