@@ -528,7 +528,8 @@
                                 <ScrollViewer.Resources>
                                     <Style TargetType="{x:Type ScrollBar}" BasedOn="{StaticResource UcrSlimVerticalScrollBar}"/>
                                 </ScrollViewer.Resources>
-                                <StackPanel VerticalAlignment="Top">
+                                <StackPanel VerticalAlignment="Top" HorizontalAlignment="Left"
+                                            Width="{Binding ViewportWidth, ElementName=ProfileDevicesScrollViewer}">
                                     <Grid Margin="8 7 8 2">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                         <TextBlock Text="INPUT" FontSize="10.5" FontWeight="SemiBold" Opacity="0.68" VerticalAlignment="Center"/>
@@ -620,7 +621,12 @@
                                                  ItemsSource="{Binding OutputDeviceControlViewModel.Devices}"
                                                  SelectedItem="{Binding OutputDeviceControlViewModel.SelectedDeviceConfiguration, Mode=TwoWay}"
                                                  BorderThickness="0" Background="Transparent" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                                            <ListBox.ItemTemplate>
+   <ListBox.ItemContainerStyle>
+                                             <Style TargetType="{x:Type ListBoxItem}">
+                                                 <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                             </Style>
+                                         </ListBox.ItemContainerStyle>
+                                         <ListBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <Grid Margin="1 2">
                                                         <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="48"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
