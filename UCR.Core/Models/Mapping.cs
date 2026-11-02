@@ -226,6 +226,12 @@ namespace HidWizards.UCR.Core.Models
 
         public void Update(short value)
         {
+            if ((InputRepresentation != 0 || OutputRepresentation != 0) &&
+                DirectionalCapacity > 0 && Plugins.Count > 0)
+            {
+                UpdateDirectionalRouting();
+                return;
+            }
             if (!UseInputExpression)
             {
                 foreach (var plugin in Plugins)
@@ -266,6 +272,78 @@ namespace HidWizards.UCR.Core.Models
                 if (!isRange && !digitalChanged) continue;
                 plugin.Update(new[] { isRange ? outputValue : digital });
             }
+        }
+
+        // Directional routing is based on capacity and physical signal values,
+        // not on the labels or number of controls visible in the editor.
+        private void UpdateDirectionalRouting()
+        {
+            if (InputCache == null || DeviceBindings == null) return;
+            var capacity = EffectiveDirectionalCapacity;
+            var inputType = EffectiveInputRepresentation;
+            var outputType = EffectiveOutputRepresentation;
+            var requiredInput = RequiredBindingSlots(capacity, inputType);
+            var requiredOutput = RequiredBindingSlots(capacity, outputType);
+            if (requiredInput == 0 || requiredOutput == 0 ||
+                DeviceBindings.Count < requiredInput || Plugins.Count < requiredOutput)
+                return;
+
+            short x = 0, y = 0;
+            if (capacity == 1)
+                x = ReadDirectionalSource(0, inputType == 3);
+            else if (inputType == 3)
+            {
+                // Two opposed digital directions form each logical axis.
+                x = (short)Math.Max(short.MinValue, Math.Min(short.MaxValue,
+                    (ReadDirectionalSource(1, true) != 0 ? short.MaxValue : 0) -
+                    (ReadDirectionalSource(0, true) != 0 ? short.MaxValue : 0)));
+                if (capacity == 4)
+                    y = (short)Math.Max(short.MinValue, Math.Min(short.MaxValue,
+                        (ReadDirectionalSource(3, true) != 0 ? short.MaxValue : 0) -
+                        (ReadDirectionalSource(2, true) != 0 ? short.MaxValue : 0)));
+            }
+            else
+            {
+                x = ReadDirectionalSource(0, false);
+                if (capacity == 4) y = ReadDirectionalSource(1, false);
+            }
+
+            var threshold = short.MaxValue / 4;
+            var channelValues = new List<short>();
+            if (outputType == 3 && capacity > 1)
+            {
+                channelValues.Add(x < -threshold ? (short)1 : (short)0);
+                channelValues.Add(x > threshold ? (short)1 : (short)0);
+                if (capacity == 4)
+                {
+                    channelValues.Add(y < -threshold ? (short)1 : (short)0);
+                    channelValues.Add(y > threshold ? (short)1 : (short)0);
+                }
+            }
+            else if (outputType == 3)
+                channelValues.Add(x != 0 ? (short)1 : (short)0);
+            else
+            {
+                channelValues.Add(x);
+                if (capacity == 4) channelValues.Add(y);
+            }
+            for (var index = 0; index < Math.Min(Plugins.Count, channelValues.Count); index++)
+            {
+                var plugin = Plugins[index];
+                if (plugin.IsFiltered()) continue;
+                plugin.Update(new[] { channelValues[index] });
+            }
+        }
+
+        private short ReadDirectionalSource(int index, bool digital)
+        {
+            if (index < 0 || index >= InputCache.Count || index >= DeviceBindings.Count)
+                return 0;
+            var value = InputCache[index];
+            var source = DeviceBindings[index];
+            if (!digital) return value;
+            return AdaptPositionalInput(value, source, DeviceBindingCategory.Momentary) != 0
+                ? (short)1 : (short)0;
         }
 
         internal static short AdaptPositionalInput(short value, DeviceBinding binding,
