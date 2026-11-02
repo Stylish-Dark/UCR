@@ -158,6 +158,14 @@ namespace HidWizards.UCR.Tests.UiTests
             Assert.That(glyph.ActualHeight, Is.GreaterThanOrEqualTo(30));
             Assert.That(glyph.ActualWidth, Is.LessThan(selector.ActualWidth),
                 "The selected glyph must fit beside its dedicated dropdown arrow.");
+            var bindButton = control.FindName("BindButton") as Button;
+            var ellipsis = control.FindName("MenuButton") as Button;
+            Assert.That(bindButton, Is.Not.Null);
+            Assert.That(ellipsis, Is.Not.Null);
+            Assert.That(ellipsis.Width, Is.EqualTo(28),
+                "The vertical ellipsis should not take unnecessary horizontal space.");
+            Assert.That(bindButton.Padding.Left + bindButton.Padding.Right, Is.EqualTo(0),
+                "Do not clip the Bind label with Material Design's default button padding.");
 
             var popup = selector.Template.FindName("PART_Popup", selector)
                 as System.Windows.Controls.Primitives.Popup;
@@ -418,6 +426,12 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(input, Is.Not.Null);
                 Assert.That(mapping.QuickBindInput(descriptor), Is.True);
                 Assert.That(input.DeviceBinding.IsInBindMode, Is.True);
+                var autoCategory = typeof(HidWizards.UCR.Core.Managers.BindingManager).GetField(
+                    "_autoDetectInputCategory",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                Assert.That(autoCategory, Is.Not.Null);
+                Assert.That((bool)autoCategory.GetValue(context.BindingManager), Is.True,
+                    "A collapsed input must accept button and axis controls in the same capture.");
                 input.DeviceBinding.CancelBindMode();
 
                 input.InputExpressionInputKind = 3;
