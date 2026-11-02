@@ -227,6 +227,15 @@
                                 <Border BorderBrush="#515151" BorderThickness="1"
                                     Background="#2C2C2C" CornerRadius="3" Padding="7">
                                     <StackPanel>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                                    Margin="0 0 0 5" ToolTip="Block all physical inputs in this condition group">
+                                            <TextBlock Text="Block group" Foreground="#E2E2E2"
+                                                       VerticalAlignment="Center" Margin="0 0 7 0"/>
+                                            <ToggleButton Style="{StaticResource CompactBlockSwitch}"
+                                                          IsChecked="{Binding GroupBlockEnabled, Mode=OneWay}"
+                                                          IsEnabled="{Binding GroupCanBlock}"
+                                                          Click="GroupBlock_OnClick"/>
+                                        </StackPanel>
                                         <ItemsControl ItemsSource="{Binding OrdinaryInputs}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
@@ -236,7 +245,7 @@
                                                             <ColumnDefinition Width="Auto"/>
                                                             <ColumnDefinition Width="Auto"/>
                                                         </Grid.ColumnDefinitions>
-                                                        <local:CompactInputBindingControl Grid.Column="0"
+                                                        <local:CompactInputBindingControl Grid.Column="0" ShowIndividualBlock="False"
                                                             DeviceBinding="{Binding DeviceBinding}"
                                                             DataContext="{Binding}"/>
                                                         <ToggleButton Grid.Column="1" Content="NOT" Width="54" Height="30"
