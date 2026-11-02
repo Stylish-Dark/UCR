@@ -92,6 +92,9 @@ namespace HidWizards.UCR.Core.Models
                 throw new ArgumentOutOfRangeException(nameof(representation));
             if (capacity == 1) return 1;
             if (representation == 3) return capacity;
+            // A full stick is one *logical* control but physically requires two
+            // separately bound axes. The editor groups them as one stick.
+            if (representation == 1 && capacity == 4) return 2;
             if (representation == 2) return capacity / 2;
             return 1;
         }
