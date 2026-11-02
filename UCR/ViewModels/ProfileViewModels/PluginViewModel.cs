@@ -17,6 +17,26 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public MappingViewModel MappingViewModel { get; }
         public Plugin Plugin { get; set; }
         public string OutputType => IsFourButtonAxis ? "Axis" : new SimplePluginViewModel(Plugin).OutputType;
+        public Visibility DirectionalSlotVisibility => MappingViewModel.IsTypedDirectionalMapping
+            ? Visibility.Visible : Visibility.Collapsed;
+        public string DirectionalSlotLabel
+        {
+            get
+            {
+                var index = MappingViewModel.Plugins.IndexOf(this);
+                var capacity = MappingViewModel.DirectionalCapacity;
+                var representation = MappingViewModel.Mapping.EffectiveOutputRepresentation;
+                if (capacity == 4 && representation == 3)
+                    return new[] { "Left", "Right", "Up", "Down" }
+                        [Math.Min(3, Math.Max(0, index))];
+                if (capacity == 2 && representation == 3)
+                    return index == 0 ? "Negative" : "Positive";
+                if (capacity == 4 && representation != 3)
+                    return index == 0 ? "X axis" : "Y axis";
+                return representation == 3 ? "Button" : "Axis";
+            }
+        }
+
         public Visibility FilterDestinationSelectorVisibility =>
             string.Equals(OutputType, "Filter", StringComparison.OrdinalIgnoreCase)
                 ? Visibility.Visible : Visibility.Collapsed;
@@ -103,7 +123,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<PluginPropertyGroupViewModel> PluginPropertyGroups { get; set; }
-        public bool CanRemove => !MappingViewModel.ProfileViewModel.Profile.IsActive() && MappingViewModel.Plugins.Count > 1;
+        public bool CanRemove => !MappingViewModel.ProfileViewModel.Profile.IsActive() && !MappingViewModel.IsTypedDirectionalMapping && MappingViewModel.Plugins.Count > 1;
         public bool CanAddFilter => !MappingViewModel.ProfileViewModel.Profile.IsActive();
         public ObservableCollection<FilterViewModel> Filters { get; set; }
         private bool _editorInitialized;
