@@ -794,6 +794,8 @@ namespace HidWizards.UCR.Core.Models
             ChildProfiles = snapshot.ChildProfiles ?? new List<Profile>();
             Mappings = snapshot.Mappings ?? new List<Mapping>();
             MappingGroups = snapshot.MappingGroups ?? new List<MappingGroup>();
+            MainMappingsEnabled = snapshot.MainMappingsEnabled;
+            MainBlockInputs = snapshot.MainBlockInputs;
             InputDeviceConfigurations = snapshot.InputDeviceConfigurations ?? new List<DeviceConfiguration>();
             OutputDeviceConfigurations = snapshot.OutputDeviceConfigurations ?? new List<DeviceConfiguration>();
             BlockUnmappedInputEnabledOverrides = snapshot.BlockUnmappedInputEnabledOverrides ?? new List<Guid>();
