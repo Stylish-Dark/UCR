@@ -364,7 +364,7 @@ namespace HidWizards.UCR.Views.Controls
                 if (info.DeviceBindingCategory == DeviceBindingCategory.Range &&
                     (axis == "LX" || axis == "LY" || axis == "RX" || axis == "RY"))
                 {
-                    var stick = axis.StartsWith("L", StringComparison.Ordinal) ? "Left stick" : "Right stick";
+                    var stick = axis.StartsWith("L", StringComparison.Ordinal) ? "Left Stick" : "Right Stick";
                     var horizontal = axis.EndsWith("X", StringComparison.Ordinal);
                     foreach (var direction in new[] {
                         new { Name = horizontal ? "Left" : "Up", Sign = -1 },
@@ -398,6 +398,20 @@ namespace HidWizards.UCR.Views.Controls
                         directionals.Children.Add(directional);
                     }
                 }
+            }
+
+            // Keep the eight stick directions in compass order, ahead of raw axes.
+            var nextPosition = 0;
+            foreach (var stickName in new[] { "Left Stick", "Right Stick" })
+            foreach (var directionName in new[] { "Up", "Down", "Left", "Right" })
+            {
+                var title = stickName + " " + directionName;
+                var item = directionals.Children.OfType<Button>()
+                    .FirstOrDefault(button => string.Equals(button.Content as string, title,
+                        StringComparison.Ordinal));
+                if (item == null) continue;
+                directionals.Children.Remove(item);
+                directionals.Children.Insert(nextPosition++, item);
             }
 
             var tabs = new TabControl { Background = Brushes.Transparent };
