@@ -9,6 +9,18 @@ namespace HidWizards.UCR.ViewModels.Dashboard
     public class DeviceItem : INotifyPropertyChanged
     {
         public string Title => DeviceConfiguration.GetFullTitleForProfile(Profile);
+        // Sidebar device lists show the device name, not the underlying driver.
+        public string SidebarTitle
+        {
+            get
+            {
+                var full = Title ?? string.Empty;
+                var cleaned = System.Text.RegularExpressions.Regex.Replace(full,
+                    @"\s*[\(\[]?\s*Core[_ ]Interception\s*[\)\]]?\s*", " ",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim(' ', '-', ':');
+                return string.IsNullOrWhiteSpace(cleaned) ? full : cleaned;
+            }
+        }
         public string ProviderName => DeviceConfiguration.Device.ProviderName;
         public DeviceVisualDescriptor Visual => DeviceVisualCatalog.Describe(DeviceConfiguration, Profile, DeviceIoType);
         public bool IsInput => DeviceIoType == DeviceIoType.Input;
@@ -62,6 +74,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public void TitleChanged()
         {
             OnPropertyChanged(nameof(Title));
+            OnPropertyChanged(nameof(SidebarTitle));
             OnPropertyChanged(nameof(Visual));
         }
 
