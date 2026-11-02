@@ -26,7 +26,7 @@
                 </Setter>
             </Style>
             <DataTemplate x:Key="DeviceTemplate" DataType="{x:Type dashboard:DeviceItem}">
-                <Grid Margin="4 3">
+                <Grid Margin="4 3" MaxWidth="{Binding ActualWidth, ElementName=DeviceList}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="24"/>
                         <ColumnDefinition Width="50"/>
@@ -52,10 +52,9 @@
                     </Button>
 <ContentControl Grid.Column="1" Content="{Binding Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
                                     Width="48" Height="30" Margin="0 0 6 0" VerticalAlignment="Center"/>
-                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="Medium" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Margin="0 1 0 0" Text="{Binding ProviderName}" FontSize="12.5" Opacity="0.50" TextTrimming="CharacterEllipsis"/>
-                    </StackPanel>
+                    <TextBlock Grid.Column="2" Text="{Binding SidebarTitle}" FontSize="15" FontWeight="Medium"
+                               VerticalAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                               LineStackingStrategy="BlockLineHeight" LineHeight="19" MaxHeight="38"/>
                 </Grid>
             </DataTemplate>
             <Style x:Key="EmptyDeviceTrigger" TargetType="{x:Type ListView}" BasedOn="{StaticResource MaterialDesignListView}">
@@ -113,6 +112,8 @@
                                                   ItemsSource="{Binding Devices}" Grid.IsSharedSizeScope="True"
                                                   ItemTemplate="{StaticResource DeviceTemplate}"
                                                   Style="{StaticResource EmptyDeviceTrigger}"
+                                                  HorizontalContentAlignment="Stretch"
+                                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                                   SelectionChanged="DeviceList_OnSelectionChanged"/>
         </Grid>
     </materialDesign:Card>
