@@ -286,6 +286,7 @@ namespace HidWizards.UCR.Core.Managers
             public string DeviceHandle { get; set; }
             public int DeviceInstance { get; set; }
             public short Value { get; set; }
+            public DeviceBindingCategory Category { get; set; }
         }
 
         private void InputChanged(ProviderDescriptor providerDescriptor, DeviceDescriptor deviceDescriptor, BindingReport bindingReport, short value)
@@ -405,6 +406,12 @@ namespace HidWizards.UCR.Core.Managers
                 Logger.Debug($"Bind input accepted: provider={pendingInput.ProviderName}, handle={pendingInput.DeviceHandle}, instance={pendingInput.DeviceInstance}, type={pendingInput.KeyType}, index={pendingInput.KeyValue}, subIndex={pendingInput.KeySubValue}, value={pendingInput.Value}");
                 // Only an unselected input can detect across devices. Always bind to
                 // the exact device that supplied the accepted control.
+                if (_autoDetectInputCategory)
+                {
+                    pendingInput.Binding.SetInputExpressionInputKind(
+                        pendingInput.Category == DeviceBindingCategory.Range ? 3 : 0);
+                    pendingInput.Binding.DeviceBindingCategory = pendingInput.Category;
+                }
                 pendingInput.Binding.SetDeviceConfigurationGuid(pendingInput.DeviceConfigurationGuid);
                 pendingInput.Binding.SetKeyTypeValue(pendingInput.KeyType, pendingInput.KeyValue, pendingInput.KeySubValue);
                 EndBindMode();
