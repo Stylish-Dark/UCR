@@ -20,8 +20,6 @@ namespace HidWizards.UCR.Views.Controls
             DependencyProperty.Register("DeviceBinding", typeof(DeviceBinding), typeof(CompactInputBindingControl),
                 new PropertyMetadata(default(DeviceBinding)));
 
-        public bool ShowIndividualBlock { get; set; } = true;
-
         private bool _loaded;
         private Popup _outputPicker;
 
