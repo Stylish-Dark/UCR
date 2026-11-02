@@ -135,6 +135,47 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
     public class MappingViewModel : INotifyPropertyChanged, IDisposable
     {
+        // Independent presentation choices. The legacy runtime remains unchanged
+        // until a structurally compatible directional route is available.
+        public int DirectionalCapacity => Mapping.EffectiveDirectionalCapacity;
+        public int InputRepresentation => Mapping.InputRepresentation;
+        public int OutputRepresentation => Mapping.OutputRepresentation;
+        public int InputDirectionalSlotCount => Mapping.RequiredBindingSlots(
+            DirectionalCapacity, InputRepresentation);
+        public int OutputDirectionalSlotCount => Mapping.RequiredBindingSlots(
+            DirectionalCapacity, OutputRepresentation);
+
+        public bool SetInputRepresentation(int value)
+        {
+            return SetRepresentation(value, true);
+        }
+
+        public bool SetOutputRepresentation(int value)
+        {
+            return SetRepresentation(value, false);
+        }
+
+        private bool SetRepresentation(int value, bool inputSide)
+        {
+            if (!ButtonsEnabled || value < 1 || value > 3) return false;
+            if (inputSide && Mapping.InputRepresentation == value ||
+                !inputSide && Mapping.OutputRepresentation == value) return true;
+            // Never run the legacy destructive type conversions from here.
+            // Each choice remains independently persisted even when no matching
+            // physical bindings have yet been assigned.
+            if (Mapping.DirectionalCapacity == 0)
+                Mapping.DirectionalCapacity = Mapping.EffectiveDirectionalCapacity;
+            if (inputSide) Mapping.InputRepresentation = value;
+            else Mapping.OutputRepresentation = value;
+            ProfileViewModel.Profile.Context.ContextChanged();
+            OnPropertyChanged(nameof(DirectionalCapacity));
+            OnPropertyChanged(nameof(InputRepresentation));
+            OnPropertyChanged(nameof(OutputRepresentation));
+            OnPropertyChanged(nameof(InputDirectionalSlotCount));
+            OnPropertyChanged(nameof(OutputDirectionalSlotCount));
+            return true;
+        }
+
         public string MappingTitle => Mapping.FullTitle;
         public ProfileViewModel ProfileViewModel { get; }
         public bool IsSelectedMapping => ReferenceEquals(ProfileViewModel.SelectedMapping, this);
