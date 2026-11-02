@@ -412,6 +412,115 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void DirectionalTypeSelectorsRenderIndependentlyAndRestoreBindingBanks()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            context.PluginManager.Plugins = new List<Plugin>
+            {
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton(),
+                new HidWizards.UCR.Plugins.Remapper.AxisToAxis()
+            };
+            var profile = context.ProfilesManager.CreateProfile("Typed directional", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var model = profile.AddMapping("Full stick to buttons");
+            model.AddPlugin(new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+            var original = model.DeviceBindings.Single();
+            original.IsBound = true;
+            original.KeyType = 9;
+            original.KeyValue = 42;
+
+            var vm = new ProfileViewModel(profile);
+            try
+            {
+                var mapping = vm.MappingsList.Single();
+                Assert.That(mapping.SetInputRepresentation(1), Is.True);
+                Assert.That(model.DirectionalCapacity, Is.EqualTo(4));
+                Assert.That(model.DeviceBindings.Count, Is.EqualTo(2),
+                    "One full stick has two physical axis channels.");
+                Assert.That(model.Plugins.Count, Is.EqualTo(4),
+                    "A full stick represented by buttons needs four destinations.");
+                Assert.That(mapping.OutputIsButton, Is.True,
+                    "Changing the input type must not change the output's visible type.");
+                Assert.That(mapping.SetOutputRepresentation(2), Is.True);
+                Assert.That(model.DeviceBindings.Count, Is.EqualTo(2),
+                    "Changing the output type must leave the input untouched.");
+                Assert.That(model.Plugins.Count, Is.EqualTo(2));
+                Assert.That(mapping.InputIsFullStick, Is.True);
+
+                var savedAxis = model.DeviceBindings[0];
+                savedAxis.IsBound = true;
+                savedAxis.KeyValue = 271;
+
+                Assert.That(mapping.SetInputRepresentation(3), Is.True);
+                Assert.That(model.DeviceBindings.Count, Is.EqualTo(4));
+                Assert.That(model.InactiveInputRepresentations.Any(
+                    bank => bank.Representation == 1 &&
+                        bank.Bindings.Any(binding => binding.KeyValue == 271)), Is.True);
+                Assert.That(mapping.SetInputRepresentation(1), Is.True);
+                Assert.That(model.DeviceBindings[0].KeyValue, Is.EqualTo(271),
+                    "Restoring Full Stick must recover its previous axis assignment.");
+                Assert.That(mapping.OutputIsAxis, Is.True);
+                Assert.That(mapping.SetOutputRepresentation(3), Is.True);
+                Assert.That(model.Plugins.Count, Is.EqualTo(4));
+                Assert.That(mapping.SetOutputRepresentation(2), Is.True);
+                Assert.That(model.Plugins.Count, Is.EqualTo(2));
+
+                Assert.That(model.InactiveInputRepresentations.Any(
+                    bank => bank.Representation == 0 &&
+                        bank.Bindings.Any(binding => binding.KeyValue == 42)), Is.True,
+                    "The original legacy input must remain preserved.");
+
+                Assert.That(mapping.SetOutputRepresentation(3), Is.True);
+                var card = new MappingCardControl
+                {
+                    InspectorMode = true,
+                    InlineWorkspaceMode = true,
+                    DataContext = mapping
+                };
+                card.Measure(new Size(1050, 1100));
+                card.Arrange(new Rect(0, 0, 1050, 1100));
+                card.UpdateLayout();
+
+                var selectors = FindVisualChildren<RadioButton>(card)
+                    .Where(button => (button.ToolTip as string)?.EndsWith(" input") == true ||
+                                     (button.ToolTip as string)?.EndsWith(" output") == true)
+                    .ToList();
+                Assert.That(selectors.Count, Is.EqualTo(6),
+                    "Each side must expose the independent three-type selector.");
+                Assert.That(selectors.Count(button => button.IsChecked == true), Is.EqualTo(2),
+                    "Exactly one representation must be selected on each side.");
+
+                var axisOutput = selectors.Single(button =>
+                    (button.ToolTip as string) == "Axis output");
+                axisOutput.IsChecked = true;
+                axisOutput.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, axisOutput));
+                Assert.That(model.OutputRepresentation, Is.EqualTo(2));
+                Assert.That(mapping.InputIsFullStick, Is.True,
+                    "Clicking Output Axis must not change Input Full Stick.");
+
+                mapping.SetOutputRepresentation(3);
+                card.Measure(new Size(1050, 1100));
+                card.Arrange(new Rect(0, 0, 1050, 1100));
+                card.UpdateLayout();
+                var screenshot = System.IO.Path.Combine(
+                    Environment.GetEnvironmentVariable("GITHUB_WORKSPACE") ??
+                    System.IO.Path.GetTempPath(), "UCR-directional-preview.png");
+                var bitmap = new RenderTargetBitmap(1050, 1100, 96, 96, PixelFormats.Pbgra32);
+                bitmap.Render(card);
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                using (var file = System.IO.File.Create(screenshot)) encoder.Save(file);
+                TestContext.WriteLine("Rendered WPF typed editor: " + screenshot);
+            }
+            finally
+            {
+                vm.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void MappingCardIsEditorOnlyWithoutASecondHeader()
         {
             EnsureApplicationResources();
