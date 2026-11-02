@@ -136,6 +136,20 @@
                         <local:DeviceSymbolControl Grid.Column="0" SymbolText="{Binding Visual.SymbolText}"
                             Foreground="{Binding Visual.BadgeTextBrush}" GlyphSize="27"
                             Width="35" Height="29" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="F" FontSize="19" FontWeight="Bold"
+                                   Foreground="#B8C5B8" TextAlignment="Center"
+                                   VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Title}" Value="Filter">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                         <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="#FFFFFF"
                             FontSize="13" VerticalAlignment="Center"
                             TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}"/>
