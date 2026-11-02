@@ -408,8 +408,15 @@ namespace HidWizards.UCR.Core.Managers
                 // the exact device that supplied the accepted control.
                 if (_autoDetectInputCategory)
                 {
-                    pendingInput.Binding.SetInputExpressionInputKind(
-                        pendingInput.Category == DeviceBindingCategory.Range ? 3 : 0);
+                    // A digital direction captured from an analogue control
+                    // must retain the sign of the movement. Otherwise moving
+                    // either way activates BOTH opposing button slots.
+                    var detectedKind = pendingInput.Category == DeviceBindingCategory.Range
+                        ? pendingInput.Binding.InputDirectionSlot > 0
+                            ? (pendingInput.Value < 0 ? 2 : 1)
+                            : 3
+                        : 0;
+                    pendingInput.Binding.SetInputExpressionInputKind(detectedKind);
                     pendingInput.Binding.DeviceBindingCategory = pendingInput.Category;
                 }
                 pendingInput.Binding.SetDeviceConfigurationGuid(pendingInput.DeviceConfigurationGuid);
