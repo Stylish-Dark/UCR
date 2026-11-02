@@ -146,10 +146,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool OutputIsFullStick => Mapping.EffectiveOutputRepresentation == 1;
         public bool OutputIsAxis => Mapping.EffectiveOutputRepresentation == 2;
         public bool OutputIsButton => Mapping.EffectiveOutputRepresentation == 3;
+        public bool IsTypedDirectionalMapping => Mapping.InputRepresentation != 0 ||
+            Mapping.OutputRepresentation != 0;
+        public bool IsFullStickInput => IsTypedDirectionalMapping &&
+            DirectionalCapacity == 4 && Mapping.EffectiveInputRepresentation == 1;
+        public bool IsFullStickOutput => IsTypedDirectionalMapping &&
+            DirectionalCapacity == 4 && Mapping.EffectiveOutputRepresentation == 1;
         public int InputDirectionalSlotCount => Mapping.RequiredBindingSlots(
-            DirectionalCapacity, InputRepresentation);
+            DirectionalCapacity, Mapping.EffectiveInputRepresentation);
         public int OutputDirectionalSlotCount => Mapping.RequiredBindingSlots(
-            DirectionalCapacity, OutputRepresentation);
+            DirectionalCapacity, Mapping.EffectiveOutputRepresentation);
 
         public bool SetInputRepresentation(int value)
         {
@@ -209,6 +215,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(OutputIsButton));
             OnPropertyChanged(nameof(InputDirectionalSlotCount));
             OnPropertyChanged(nameof(OutputDirectionalSlotCount));
+            OnPropertyChanged(nameof(IsTypedDirectionalMapping));
+            OnPropertyChanged(nameof(IsFullStickInput));
+            OnPropertyChanged(nameof(IsFullStickOutput));
             RefreshInputExpressionPresentation();
             RefreshCollapsedSummary();
             return true;
@@ -741,6 +750,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             RefreshCollapsedSummary();
         }
 
+        private string GetDirectionalInputSlotLabel(int index)
+        {
+            if (!IsTypedDirectionalMapping) return "Input " + (index + 1);
+            var representation = Mapping.EffectiveInputRepresentation;
+            if (DirectionalCapacity == 4 && representation != 3)
+                return index == 0 ? "X axis" : "Y axis";
+            if (DirectionalCapacity == 4)
+                return new[] { "Left", "Right", "Up", "Down" }[Math.Min(3, index)];
+            if (DirectionalCapacity == 2 && representation == 3)
+                return index == 0 ? "Negative" : "Positive";
+            return representation == 3 ? "Button" : "Axis";
+        }
+
         private void PopulateDeviceBindingsViewModels()
         {
             if (Mapping.Plugins.Count == 0) return;
@@ -752,7 +774,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 {
                     DeviceBindings.Add(new DeviceBindingViewModel(Mapping.DeviceBindings[i])
                     {
-                        DeviceBindingName = "Input " + (i + 1),
+                        DeviceBindingName = GetDirectionalInputSlotLabel(i),
                         ExpressionMapping = Mapping,
                         DeviceBindingCategory = Mapping.DeviceBindings[i].InputExpressionInputKind == 0 ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range
                     });
