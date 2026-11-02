@@ -31,11 +31,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public bool Enabled
         {
-            get => IsMain || (Model?.Enabled ?? false);
+            get => IsMain ? _profileViewModel.Profile.MainMappingsEnabled : (Model?.Enabled ?? false);
             set
             {
-                if (IsMain || Model == null || !CanEdit || Model.Enabled == value) return;
-                Model.Enabled = value;
+                if (!CanEdit || Enabled == value) return;
+                if (IsMain)
+                {
+                    _profileViewModel.Profile.MainMappingsEnabled = value;
+                    _profileViewModel.Profile.Context?.ContextChanged();
+                }
+                else if (Model != null) Model.Enabled = value;
                 OnPropertyChanged();
             }
         }
