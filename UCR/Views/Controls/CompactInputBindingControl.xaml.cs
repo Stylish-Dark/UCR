@@ -48,6 +48,13 @@ namespace HidWizards.UCR.Views.Controls
             var selected = DeviceSelectionBox.SelectedItem as ComboBoxItemViewModel;
             var viewModel = DataContext as DeviceBindingViewModel;
             if (selected == null || viewModel == null) return;
+            // Binding refresh/replacement can raise SelectionChanged while a
+            // dropdown is merely being rebuilt. Never convert that placeholder
+            // into an instruction to clear a real output destination.
+            if (viewModel.DeviceBinding?.DeviceIoType == DeviceIoType.Output &&
+                selected.Value == Guid.Empty) return;
+            if (viewModel.DeviceBinding != null &&
+                selected.Value == viewModel.DeviceBinding.DeviceConfigurationGuid) return;
 
             if (viewModel.DeviceBinding?.DeviceIoType == DeviceIoType.Output &&
                 selected.Value == DeviceBindingViewModel.FilterOutputChoiceGuid)
@@ -348,10 +355,10 @@ namespace HidWizards.UCR.Views.Controls
                     var bindingVm = DataContext as DeviceBindingViewModel;
                     if (card != null && bindingVm != null)
                     {
-                        popup.IsOpen = false;
-                        Dispatcher.BeginInvoke((Action)(() =>
-                            card.ApplyOutputControlChoice(bindingVm, config.Guid, selectedInfo)),
-                            System.Windows.Threading.DispatcherPriority.Background);
+                        // Apply before closing. Replacing the output plug-in can
+                        // invalidate the old binding view-model during a deferred callback.
+                        if (card.ApplyOutputControlChoice(bindingVm, config.Guid, selectedInfo))
+                            popup.IsOpen = false;
                     }
                 };
                 var isTrigger = visual.ControlKind == ControlVisualKind.Trigger ||
@@ -400,10 +407,8 @@ namespace HidWizards.UCR.Views.Controls
                             var bindingVm = DataContext as DeviceBindingViewModel;
                             if (card != null && bindingVm != null)
                             {
-                                popup.IsOpen = false;
-                                Dispatcher.BeginInvoke((Action)(() =>
-                                    card.ApplyOutputControlChoice(bindingVm, config.Guid, selectedInfo, selectedSign)),
-                                    System.Windows.Threading.DispatcherPriority.Background);
+                                if (card.ApplyOutputControlChoice(bindingVm, config.Guid, selectedInfo, selectedSign))
+                                    popup.IsOpen = false;
                             }
                         };
                         directionals.Children.Add(directional);
