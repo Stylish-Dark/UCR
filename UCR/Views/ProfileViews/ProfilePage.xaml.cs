@@ -1204,7 +1204,9 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (!ProfileViewModel.CanEditProfile) return;
             var mapping = ProfileViewModel.AddMappingToSelectedSection(ProfileViewModel.GetNextMappingTitle());
             if (mapping == null) return;
-            if (!mapping.AddDefaultOutput())
+            // Profile.AddMapping already supplies its initial mapping implementation.
+            // Do not manufacture a second output or preselect an axis mode.
+            if (mapping.Plugins.Count == 0 && !mapping.AddDefaultOutput())
             {
                 mapping.Remove();
                 Logger.Warn("Cannot create mapping: no output implementation is available.");
