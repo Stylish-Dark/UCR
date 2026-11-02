@@ -400,6 +400,45 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void CollapsedMappingCanStartButtonAndAxisCaptureWithoutOpeningEditor()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Quick input", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            profile.AddMapping("Capture");
+            var vm = new ProfileViewModel(profile);
+            try
+            {
+                var mapping = vm.MappingsList.Single();
+                var template = mapping.GetCompatiblePluginOptions()
+                    .First(option => option.Name == "Button to Button");
+                mapping.AddPlugin(template.Plugin);
+                Assert.That(mapping.IsExpanded, Is.False);
+                var descriptor = mapping.CollapsedInputRows.SelectMany(row => row.Visuals).First();
+                var input = mapping.ResolveCollapsedBinding(descriptor, DeviceIoType.Input);
+                Assert.That(input, Is.Not.Null);
+                Assert.That(mapping.QuickBindInput(descriptor), Is.True);
+                Assert.That(input.DeviceBinding.IsInBindMode, Is.True);
+                input.DeviceBinding.CancelBindMode();
+
+                input.InputExpressionInputKind = 3;
+                Assert.That(input.InputExpressionInputKind, Is.EqualTo(3));
+                Assert.That(input.DeviceBindingCategory, Is.EqualTo(
+                    HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Range));
+                Assert.That(mapping.QuickBindInput(descriptor), Is.True);
+                Assert.That(input.DeviceBinding.IsInBindMode, Is.True);
+                input.DeviceBinding.CancelBindMode();
+                Assert.That(mapping.IsExpanded, Is.False);
+            }
+            finally
+            {
+                vm.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void MappingBindingVisualTemplateUsesARealClickableButton()
         {
             EnsureApplicationResources();
