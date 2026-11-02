@@ -441,6 +441,12 @@ namespace HidWizards.UCR.Tests.UiTests
         {
             EnsureApplicationResources();
             var context = new Context();
+            context.PluginManager.Plugins = new List<Plugin>
+            {
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton(),
+                new HidWizards.UCR.Plugins.Remapper.ButtonToAxis(),
+                new HidWizards.UCR.Plugins.Remapper.AxisToAxis()
+            };
             var profile = context.ProfilesManager.CreateProfile("Output category conversion", null, null);
             context.ProfilesManager.AddProfile(profile);
             var outputDevice = new DeviceConfiguration(
