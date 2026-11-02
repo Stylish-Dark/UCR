@@ -1645,6 +1645,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             // The collapsed row is interactive before its editor exists. Initialise
             // the same device list the expanded editor loads before capture.
             bindingViewModel.EnsureDeviceListLoaded();
+            // Button and analogue captures share a logical input expression.
+            // Without this, an axis can bind but the old button-only plugin
+            // will never evaluate its continuous/threshold source correctly.
+            if (Mapping.SupportsNativeInputExpression())
+                Mapping.EnableInputExpression();
             StopQuickInputDetection();
             var binding = bindingViewModel.DeviceBinding;
             var bindingManager = binding.Profile?.Context?.BindingManager;
