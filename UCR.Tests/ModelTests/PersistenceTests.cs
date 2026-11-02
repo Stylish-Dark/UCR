@@ -591,6 +591,76 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void DirectionalRepresentationsAndDormantAssignmentsSurviveJsonSaveReload()
+        {
+            var types = new List<Type> { typeof(ButtonToButton), typeof(AxisToAxis) };
+            var context = NewContext();
+            var profile = context.ProfilesManager.CreateProfile("Directional banks", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var mapping = profile.AddMapping("Stick to buttons");
+            profile.AddPlugin(mapping, new AxisToAxis());
+            mapping.DirectionalCapacity = 4;
+            mapping.InputRepresentation = 3;
+            mapping.OutputRepresentation = 2;
+            mapping.UseInputExpression = true;
+            mapping.DeviceBindings[0].InputExpressionInputKind = 0;
+            mapping.DeviceBindings[0].KeyValue = 14;
+            mapping.DeviceBindings[0].IsBound = true;
+            mapping.InactiveInputRepresentations = new List<DirectionalInputBank>
+            {
+                new DirectionalInputBank
+                {
+                    Representation = 1,
+                    Bindings = new List<DeviceBinding>
+                    {
+                        new DeviceBinding
+                        {
+                            InputExpressionInputKind = 3, KeyValue = 270, IsBound = true
+                        },
+                        new DeviceBinding
+                        {
+                            InputExpressionInputKind = 3, KeyValue = 271, IsBound = true
+                        }
+                    }
+                }
+            };
+            mapping.InactiveOutputRepresentations = new List<DirectionalOutputBank>
+            {
+                new DirectionalOutputBank
+                {
+                    Representation = 3,
+                    Plugins = new List<Plugin>
+                    {
+                        new ButtonToButton(), new ButtonToButton(),
+                        new ButtonToButton(), new ButtonToButton()
+                    }
+                }
+            };
+            mapping.InactiveOutputRepresentations[0].Plugins[1].Outputs[0].KeyValue = 58;
+            mapping.InactiveOutputRepresentations[0].Plugins[1].Outputs[0].IsBound = true;
+            context.SaveContext(types);
+
+            var loaded = Reload(types);
+            var restored = loaded.Profiles.Single().Mappings.Single();
+            Assert.That(restored.DirectionalCapacity, Is.EqualTo(4));
+            Assert.That(restored.InputRepresentation, Is.EqualTo(3));
+            Assert.That(restored.OutputRepresentation, Is.EqualTo(2));
+            Assert.That(restored.InactiveInputRepresentations.Single().Bindings[0].KeyValue,
+                Is.EqualTo(270));
+            Assert.That(restored.InactiveInputRepresentations.Single().Bindings[1].KeyValue,
+                Is.EqualTo(271));
+            Assert.That(restored.InactiveOutputRepresentations.Single().Plugins.Count,
+                Is.EqualTo(4));
+            Assert.That(restored.InactiveOutputRepresentations.Single().Plugins[1].Outputs[0].KeyValue,
+                Is.EqualTo(58));
+            restored.InactiveInputRepresentations[0].Bindings[0].KeyValue = 272;
+            loaded.SaveContext(types);
+            var second = Reload(types).Profiles.Single().Mappings.Single();
+            Assert.That(second.InactiveInputRepresentations.Single().Bindings[0].KeyValue,
+                Is.EqualTo(272));
+        }
+
+        [Test]
         public void BoundOutputValuesRemainIntactAcrossRepeatedJsonLoadsAndSaves()
         {
             var types = new List<Type> { typeof(ButtonToButton) };
