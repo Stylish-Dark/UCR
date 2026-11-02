@@ -419,33 +419,52 @@ namespace HidWizards.UCR.Tests.UiTests
             var profile = context.ProfilesManager.CreateProfile("Header button layout", null, null);
             context.ProfilesManager.AddProfile(profile);
             profile.AddMapping("Mapping");
-            var viewModel = new ProfileViewModel(profile);
+
+            var page = new ProfilePage(context, profile, embedded: true);
             try
             {
-                var card = new MappingCardControl
+                page.SuspendEmbeddedVisuals();
+                Button delete = null;
+                foreach (var width in new[] { 1440d, 1100d })
                 {
-                    DataContext = viewModel.MappingsList.Single()
-                };
-                card.Measure(new Size(450, 100));
-                card.Arrange(new Rect(0, 0, 450, 100));
-                card.UpdateLayout();
+                    var available = new Size(width, 900);
+                    page.Measure(available);
+                    page.Arrange(new Rect(new Point(0, 0), available));
+                    page.UpdateLayout();
 
-                var delete = FindVisualChildren<Button>(card).FirstOrDefault(button =>
-                    (button.ToolTip as string)?.StartsWith("Remove mapping.") == true);
-                var chevron = card.FindName("ExpandMappingButton") as Button;
-                Assert.That(delete, Is.Not.Null, "Mapping deletion must remain in the card header.");
-                Assert.That(chevron, Is.Not.Null);
-                Assert.That(delete.ActualWidth, Is.GreaterThanOrEqualTo(28));
-                var deleteX = delete.TransformToAncestor(card).Transform(new Point()).X;
-                var chevronX = chevron.TransformToAncestor(card).Transform(new Point()).X;
-                Assert.That(deleteX + delete.ActualWidth, Is.LessThan(chevronX + 1),
-                    "Delete must appear immediately left of the expand chevron.");
-                Assert.That(chevronX + chevron.ActualWidth, Is.LessThanOrEqualTo(card.ActualWidth + 1),
-                    "Neither header control may be clipped by the right edge.");
+                    var rows = FindVisualChildren<ListView>(page)
+                        .SingleOrDefault(list => list.Name == "MappingRowsList");
+                    Assert.That(rows, Is.Not.Null);
+                    var row = rows.ItemContainerGenerator.ContainerFromIndex(0) as ListViewItem;
+                    Assert.That(row, Is.Not.Null);
+
+                    // Check the COLLAPSED workspace row, not MappingCardControl,
+                    // which only materializes below the row after expansion.
+                    delete = FindVisualChildren<Button>(row)
+                        .SingleOrDefault(button => (button.ToolTip as string)?.StartsWith("Remove mapping.") == true);
+                    var chevron = FindVisualChildren<Button>(row)
+                        .SingleOrDefault(button => (button.ToolTip as string) ==
+                            "Expand or collapse mapping Inputs and Outputs");
+                    Assert.That(delete, Is.Not.Null, "Collapsed mapping row must have a remove button.");
+                    Assert.That(chevron, Is.Not.Null);
+                    Assert.That(delete.ActualWidth, Is.GreaterThanOrEqualTo(28));
+                    Assert.That(chevron.ActualWidth, Is.GreaterThanOrEqualTo(36));
+                    var deleteX = delete.TransformToAncestor(row).Transform(new Point()).X;
+                    var chevronX = chevron.TransformToAncestor(row).Transform(new Point()).X;
+                    Assert.That(deleteX + delete.ActualWidth, Is.LessThanOrEqualTo(chevronX + 1),
+                        "Delete must be directly to the left of the collapsed-row chevron.");
+                    Assert.That(chevronX + chevron.ActualWidth, Is.LessThanOrEqualTo(row.ActualWidth + 1),
+                        "The chevron must not extend past the mapping row's right edge.");
+                }
+
+                // Exercise the real row click handler on an unbound mapping:
+                // removal must work without involving the expanded editor.
+                delete.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, delete));
+                Assert.That(profile.Mappings.Count, Is.EqualTo(0));
             }
             finally
             {
-                viewModel.Dispose();
+                page.Dispose();
             }
         }
 
