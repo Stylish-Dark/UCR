@@ -1201,7 +1201,13 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void WorkspaceAddMapping_OnClick(object sender, RoutedEventArgs e)
         {
-            ShowWorkspaceToolbox("Add mapping");
+            if (!ProfileViewModel.CanEditProfile) return;
+            var mapping = ProfileViewModel.AddMappingToSelectedSection(ProfileViewModel.GetNextMappingTitle());
+            if (mapping == null) return;
+            ProfileViewModel.SelectedMapping = mapping;
+            mapping.IsExpanded = true;
+            ShowWorkspaceInspector();
+            Dispatcher.BeginInvoke((Action)(() => ScrollMappingIntoView(mapping)), DispatcherPriority.Background);
         }
 
         private void WorkspaceMore_OnClick(object sender, RoutedEventArgs e)
