@@ -173,7 +173,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 if (Mapping.InputRepresentation == value && !capacityIncreased) return true;
                 if (!SwitchDirectionalInputs(value)) return false;
-                if (capacityIncreased)
+                if (capacityIncreased || Mapping.Plugins.Count !=
+                    Mapping.RequiredBindingSlots(Mapping.EffectiveDirectionalCapacity,
+                        Mapping.EffectiveOutputRepresentation))
                 {
                     var otherType = Mapping.EffectiveOutputRepresentation;
                     var previousChoice = Mapping.OutputRepresentation;
@@ -185,7 +187,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 if (Mapping.OutputRepresentation == value && !capacityIncreased) return true;
                 if (!SwitchDirectionalOutputs(value)) return false;
-                if (capacityIncreased)
+                if (capacityIncreased || Mapping.DeviceBindings.Count !=
+                    Mapping.RequiredBindingSlots(Mapping.EffectiveDirectionalCapacity,
+                        Mapping.EffectiveInputRepresentation))
                 {
                     var otherType = Mapping.EffectiveInputRepresentation;
                     var previousChoice = Mapping.InputRepresentation;
