@@ -16,7 +16,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             {
                 var full = Title ?? string.Empty;
                 var cleaned = System.Text.RegularExpressions.Regex.Replace(full,
-                    @"\s*[\(\[]?\s*Core[_ ]Interception\s*[\)\]]?\s*", " ",
+                    @"\s*[\(\[]?\s*Core[_ ](?:Interception|ViGEm)\s*[\)\]]?\s*", " ",
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim(' ', '-', ':');
                 return string.IsNullOrWhiteSpace(cleaned) ? full : cleaned;
             }
