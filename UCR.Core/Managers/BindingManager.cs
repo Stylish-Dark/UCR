@@ -45,6 +45,7 @@ namespace HidWizards.UCR.Core.Managers
         private readonly Dispatcher _dispatcher;
         private bool bindmodeActive;
         private bool bindCommitPending;
+        private bool _autoDetectInputCategory;
         private DateTime bindAcceptAfterUtc = DateTime.MaxValue;
 
         public bool IsBindModeActive
@@ -74,7 +75,7 @@ namespace HidWizards.UCR.Core.Managers
             return selectedDeviceGuid == Guid.Empty || selectedDeviceGuid == candidateDeviceGuid;
         }
 
-        public void BeginBindMode(DeviceBinding deviceBinding)
+        public void BeginBindMode(DeviceBinding deviceBinding, bool autoDetectInputCategory = false)
         {
             if (deviceBinding == null) throw new ArgumentNullException(nameof(deviceBinding));
 
@@ -82,7 +83,7 @@ namespace HidWizards.UCR.Core.Managers
             // INotifyPropertyChanged mutations are serialized back onto that dispatcher.
             if (!_dispatcher.CheckAccess())
             {
-                _dispatcher.BeginInvoke(new Action(() => BeginBindMode(deviceBinding)), DispatcherPriority.Input);
+                _dispatcher.BeginInvoke(new Action(() => BeginBindMode(deviceBinding, autoDetectInputCategory)), DispatcherPriority.Input);
                 return;
             }
 
@@ -96,6 +97,7 @@ namespace HidWizards.UCR.Core.Managers
             lock (bindmodeLock)
             {
                 _deviceBinding = deviceBinding;
+                _autoDetectInputCategory = autoDetectInputCategory && deviceBinding.DeviceIoType == DeviceIoType.Input;
                 _deviceConfigurationList = new List<DeviceConfiguration>();
                 _bindModeRuntimeDevices = new Dictionary<Guid, Device>();
                 _escapeInputs = new Dictionary<Guid, List<DeviceBindingInfo>>();
@@ -120,7 +122,7 @@ namespace HidWizards.UCR.Core.Managers
                     }
 
                     Logger.Debug($"Bind mode enabling detection: provider={runtimeDevice.ProviderName}, handle={runtimeDevice.DeviceHandle}, instance={runtimeDevice.DeviceNumber}, configuration={deviceConfiguration.Guid}");
-                    if (deviceBinding.DeviceBindingCategory == DeviceBindingCategory.Momentary)
+                    if (deviceBinding.DeviceBindingCategory == DeviceBindingCategory.Momentary || _autoDetectInputCategory)
                     {
                         try
                         {
@@ -215,6 +217,7 @@ namespace HidWizards.UCR.Core.Managers
                 if (!bindmodeActive) return;
 
                 bindmodeActive = false;
+                _autoDetectInputCategory = false;
                 bindCommitPending = false;
                 bindAcceptAfterUtc = DateTime.MaxValue;
                 endingBinding = _deviceBinding;
@@ -322,7 +325,9 @@ namespace HidWizards.UCR.Core.Managers
                 if (!bindmodeActive || bindCommitPending || _deviceBinding == null || bindingReport == null) return null;
 
                 var category = DeviceBinding.MapCategory(bindingReport.Category);
-                if (!category.Equals(_deviceBinding.DeviceBindingCategory) || !IsInputValid(bindingReport.Category, value))
+                if ((!_autoDetectInputCategory && !category.Equals(_deviceBinding.DeviceBindingCategory)) ||
+                    (_autoDetectInputCategory && category != DeviceBindingCategory.Momentary && category != DeviceBindingCategory.Range) ||
+                    !IsInputValid(bindingReport.Category, value))
                     return null;
 
                 var deviceConfiguration = FindDeviceConfiguration(providerDescriptor, deviceDescriptor);
@@ -362,7 +367,8 @@ namespace HidWizards.UCR.Core.Managers
                     ProviderName = providerDescriptor?.ProviderName,
                     DeviceHandle = deviceDescriptor.DeviceHandle,
                     DeviceInstance = deviceDescriptor.DeviceInstance,
-                    Value = value
+                    Value = value,
+                    Category = category
                 };
             }
         }
