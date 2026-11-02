@@ -563,7 +563,8 @@
 <ContentControl Grid.Column="1" Content="{Binding Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
                                                                     Width="44" Height="28" VerticalAlignment="Center"/>
                                                     <TextBlock Grid.Column="2" Text="{Binding SidebarTitle}" Margin="6 0 0 0"
-                                                                FontSize="12.5" TextWrapping="Wrap" MaxLines="2"
+                                                                FontSize="12.5" TextWrapping="Wrap" LineStackingStrategy="BlockLineHeight"
+                                                                LineHeight="17" MaxHeight="34"
                                                                 TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                                     <StackPanel Grid.Column="3" Orientation="Horizontal">
                                                         <CheckBox IsChecked="{Binding ExclusiveMode, Mode=TwoWay}"
@@ -631,7 +632,8 @@
 <ContentControl Grid.Column="1" Content="{Binding Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
                                                                     Width="44" Height="28" VerticalAlignment="Center"/>
                                                     <TextBlock Grid.Column="2" Text="{Binding SidebarTitle}" Margin="6 0 0 0"
-                                                                FontSize="12.5" TextWrapping="Wrap" MaxLines="2"
+                                                                FontSize="12.5" TextWrapping="Wrap" LineStackingStrategy="BlockLineHeight"
+                                                                LineHeight="17" MaxHeight="34"
                                                                 TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                                     </Grid>
                                                 </DataTemplate>
