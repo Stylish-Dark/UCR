@@ -590,6 +590,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Isolated device-row UI test failed: $LASTEXITCODE" }
 
 
+      - name: Upload rendered directional editor preview
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: UCR-Directional-UI-Preview
+          path: UCR-directional-preview.png
+          if-no-files-found: warn
+
       - name: Smoke-test actual UCR.exe cold startup
         shell: pwsh
         run: |
