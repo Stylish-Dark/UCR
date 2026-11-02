@@ -104,6 +104,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 : Inputs.Where(b => b.DeviceBinding.InputDirectionSlot == 0));
         public DeviceBindingViewModel DirectionalPrimary => DirectionalInputs.FirstOrDefault();
         public bool DirectionalBlockEnabled => DirectionalInputs.Any(input => input.DeviceBinding.Block);
+        public bool GroupBlockEnabled => Inputs.Any(input => input.DeviceBinding.Block);
+        public bool GroupCanBlock => Inputs.Any(input => input.DeviceBinding.IsBound &&
+            input.DeviceBinding.IsBlockable());
         public Visibility DirectionalVisibility => DirectionalPrimary == null ? Visibility.Collapsed : Visibility.Visible;
         public Visibility DirectionalPairVisibility =>
             DirectionalPrimary != null && !IsFourWay ? Visibility.Visible : Visibility.Collapsed;
