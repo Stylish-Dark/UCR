@@ -43,7 +43,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             set
             {
                 if (ReferenceEquals(_selectedMapping, value)) return;
+                var previous = _selectedMapping;
                 _selectedMapping = value;
+                previous?.RefreshSelectionHighlight();
+                _selectedMapping?.RefreshSelectionHighlight();
                 OnPropertyChanged();
             }
         }
