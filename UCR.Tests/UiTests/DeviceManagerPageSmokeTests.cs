@@ -323,7 +323,8 @@ namespace HidWizards.UCR.Tests.UiTests
                     page.Arrange(new Rect(new Point(0, 0), viewport));
                     page.UpdateLayout();
                     remove = FindVisualChildren<Button>(row).SingleOrDefault(button =>
-                        (button.ToolTip as string)?.StartsWith("Remove mapping.") == true);
+                        (button.ToolTip as string)?.StartsWith("Remove mapping.") == true &&
+                        Grid.GetColumn(button) == 4);
                     var collapsedChevron = FindVisualChildren<Button>(row).SingleOrDefault(button =>
                         (button.ToolTip as string) == "Expand or collapse mapping Inputs and Outputs");
                     Assert.That(remove, Is.Not.Null, "The visible collapsed row must expose Delete.");
