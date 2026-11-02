@@ -342,10 +342,11 @@ namespace HidWizards.UCR.Views.Controls
                 var selectedInfo = info;
                 choice.Click += (sender, args) =>
                 {
-                    DeviceBinding.DeviceBindingCategory = selectedInfo.DeviceBindingCategory;
-                    DeviceBinding.SetDeviceConfigurationGuid(config.Guid);
-                    DeviceBinding.SetKeyTypeValue(selectedInfo.KeyType, selectedInfo.KeyValue, selectedInfo.KeySubValue);
-                    popup.IsOpen = false;
+                    var card = FindAncestor<MappingCardControl>(this);
+                    var bindingVm = DataContext as DeviceBindingViewModel;
+                    if (card != null && bindingVm != null &&
+                        card.ApplyOutputControlChoice(bindingVm, config.Guid, selectedInfo))
+                        popup.IsOpen = false;
                 };
                 var isTrigger = lower.Contains("trigger") || lower == "lt" || lower == "rt" ||
                                 lower.Contains("l2") || lower.Contains("r2");
@@ -355,6 +356,48 @@ namespace HidWizards.UCR.Views.Controls
                     axes.Children.Add(choice);
                 else
                     directionals.Children.Add(choice);
+
+                // Each stick axis also offers its two signed directions. A selected
+                // direction configures the same underlying range axis, with an
+                // appropriate signed output value, rather than inventing HID buttons.
+                var axis = visual.ControlLabel;
+                if (info.DeviceBindingCategory == DeviceBindingCategory.Range &&
+                    (axis == "LX" || axis == "LY" || axis == "RX" || axis == "RY"))
+                {
+                    var stick = axis.StartsWith("L", StringComparison.Ordinal) ? "Left stick" : "Right stick";
+                    var horizontal = axis.EndsWith("X", StringComparison.Ordinal);
+                    foreach (var direction in new[] {
+                        new { Name = horizontal ? "Left" : "Up", Sign = -1 },
+                        new { Name = horizontal ? "Right" : "Down", Sign = 1 }
+                    })
+                    {
+                        var selectedSign = direction.Sign;
+                        var label = stick + " " + direction.Name;
+                        var directional = new Button
+                        {
+                            Content = label,
+                            Width = 212,
+                            MinHeight = 46,
+                            HorizontalContentAlignment = HorizontalAlignment.Left,
+                            Margin = new Thickness(3),
+                            Padding = new Thickness(8, 4, 5, 4),
+                            Background = new SolidColorBrush(Color.FromRgb(43, 43, 43)),
+                            Foreground = Brushes.White,
+                            BorderBrush = Brushes.DimGray,
+                            BorderThickness = new Thickness(1),
+                            ToolTip = label
+                        };
+                        directional.Click += (sender, args) =>
+                        {
+                            var card = FindAncestor<MappingCardControl>(this);
+                            var bindingVm = DataContext as DeviceBindingViewModel;
+                            if (card != null && bindingVm != null &&
+                                card.ApplyOutputControlChoice(bindingVm, config.Guid, selectedInfo, selectedSign))
+                                popup.IsOpen = false;
+                        };
+                        directionals.Children.Add(directional);
+                    }
+                }
             }
 
             var tabs = new TabControl { Background = Brushes.Transparent };
