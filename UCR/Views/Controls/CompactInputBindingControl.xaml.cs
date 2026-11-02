@@ -296,12 +296,20 @@ namespace HidWizards.UCR.Views.Controls
             };
             _outputPicker = popup;
 
+            var mapping = FindAncestor<MappingCardControl>(this)?.DataContext
+                as MappingViewModel;
+            DeviceBindingCategory? typedCategory = mapping?.IsTypedDirectionalMapping == true
+                ? (mapping.Mapping.EffectiveOutputRepresentation == 3
+                    ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range)
+                : (DeviceBindingCategory?)null;
             var nodes = DeviceBinding.Profile.Context.DevicesManager.GetDeviceBindingMenu(
                 config.Device, DeviceIoType.Output);
             var controls = FlattenControls(nodes)
                 .Where(node => node.DeviceBindingInfo != null &&
                     (node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary ||
-                     node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Range))
+                     node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Range) &&
+                    (!typedCategory.HasValue ||
+                     node.DeviceBindingInfo.DeviceBindingCategory == typedCategory.Value))
                 .ToList();
             var buttons = new WrapPanel { Width = 440 };
             var directionals = new WrapPanel { Width = 440 };
@@ -481,7 +489,8 @@ namespace HidWizards.UCR.Views.Controls
                 foreach (var item in new[] { lb, rb, lt, rt }) buttons.Children.Insert(index++, item);
             }
 
-            var tabs = new TabControl { Background = Brushes.Transparent, MinHeight = 365 };
+            var tabs = new TabControl { Background = Brushes.Transparent, MinHeight = 365,
+                SelectedIndex = typedCategory == DeviceBindingCategory.Range ? 2 : 0 };
             foreach (var category in new[] {
                 new { Title = "Buttons", Items = buttons },
                 new { Title = "Directions", Items = directionals },
