@@ -17,6 +17,53 @@ namespace HidWizards.UCR.Core.Models
         public List<DeviceBinding> DeviceBindings { get; set; }
         public List<Plugin> Plugins { get; set; }
 
+        // The directional structure is independent of its input and output
+        // presentation. Zero capacity preserves the legacy inferred structure.
+        [XmlAttribute]
+        [DefaultValue(0)]
+        public int DirectionalCapacity { get; set; }
+
+        [XmlAttribute]
+        [DefaultValue(0)]
+        public int InputRepresentation { get; set; }
+
+        [XmlAttribute]
+        [DefaultValue(0)]
+        public int OutputRepresentation { get; set; }
+
+        public int EffectiveDirectionalCapacity
+        {
+            get
+            {
+                if (DirectionalCapacity == 1 || DirectionalCapacity == 2 ||
+                    DirectionalCapacity == 4) return DirectionalCapacity;
+                var directions = DeviceBindings?.Count(binding => binding.InputDirectionSlot > 0) ?? 0;
+                if (directions >= 4) return 4;
+                if (directions >= 2) return 2;
+                var axisCount = Plugins?.Sum(plugin => plugin.OutputCategories?.Count(category =>
+                    category.Category == DeviceBindingCategory.Range) ?? 0) ?? 0;
+                if (axisCount >= 2) return 4;
+                if (axisCount == 1 || DeviceBindings?.Any(binding =>
+                    binding.InputExpressionInputKind == 3) == true) return 2;
+                return 1;
+            }
+        }
+
+        public static int RequiredBindingSlots(int capacity, int representation)
+        {
+            // Representations: 0 = legacy, 1 = Full Stick, 2 = Axis, 3 = Button.
+            // A digital representation has one binding per direction.
+            if (capacity != 1 && capacity != 2 && capacity != 4)
+                throw new ArgumentOutOfRangeException(nameof(capacity));
+            if (representation == 0) return 0;
+            if (representation < 1 || representation > 3)
+                throw new ArgumentOutOfRangeException(nameof(representation));
+            if (capacity == 1) return 1;
+            if (representation == 3) return capacity;
+            if (representation == 2) return capacity / 2;
+            return 1;
+        }
+
         [XmlAttribute]
         [DefaultValue(false)]
         public bool UseInputExpression { get; set; }
