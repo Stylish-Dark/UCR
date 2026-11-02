@@ -773,15 +773,6 @@
                                                               IsChecked="{Binding Enabled, Mode=TwoWay}" IsEnabled="{Binding CanEdit}"
                                                               ToolTip="Include this group when the profile runs. Stop the running profile to change it."
                                                               ToolTipService.ShowOnDisabled="True">
-                                                        <CheckBox.Style>
-                                                            <Style TargetType="CheckBox" BasedOn="{StaticResource MaterialDesignCheckBox}">
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding IsMain}" Value="True">
-                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </CheckBox.Style>
                                                     </CheckBox>
 
                                                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
@@ -799,17 +790,6 @@
                                                         </materialDesign:PackIcon>
                                                         <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                         <TextBlock Text="{Binding Mappings.Count, StringFormat={}  {0}}" Margin="4 0 0 0" FontSize="12" Opacity="0.45" VerticalAlignment="Center"/>
-                                                        <Border Margin="8 0 0 0" Padding="5 1" CornerRadius="7" Background="#252525" BorderBrush="#484848" BorderThickness="1">
-                                                            <Border.Style>
-                                                                <Style TargetType="Border">
-                                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding IsMain}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </Border.Style>
-                                                            <TextBlock Text="ALWAYS" FontSize="8.5" FontWeight="Bold" Opacity="0.65"/>
-                                                        </Border>
                                                     </StackPanel>
 
                                                     <StackPanel Grid.Column="3" Orientation="Horizontal">
@@ -824,19 +804,9 @@
                                                         </Button>
                                                         <Button Width="27" Height="27" Padding="3" Margin="1 0" ToolTip="Duplicate group"
                                                                 IsEnabled="{Binding CanEdit}" Click="DuplicateMappingGroup_OnClick">
-                                                            <Button.Style>
-                                                                <Style TargetType="Button" BasedOn="{StaticResource UcrProfileActionButton}">
-                                                                    <Style.Triggers><DataTrigger Binding="{Binding IsMain}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
-                                                                </Style>
-                                                            </Button.Style>
                                                             <materialDesign:PackIcon Kind="ContentCopy" Width="15" Height="15"/>
                                                         </Button>
                                                         <Button Width="27" Height="27" Padding="3" Margin="1 0" ToolTip="Copy group" Click="CopyMappingGroup_OnClick">
-                                                            <Button.Style>
-                                                                <Style TargetType="Button" BasedOn="{StaticResource UcrProfileActionButton}">
-                                                                    <Style.Triggers><DataTrigger Binding="{Binding IsMain}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
-                                                                </Style>
-                                                            </Button.Style>
                                                             <materialDesign:PackIcon Kind="ContentDuplicate" Width="15" Height="15"/>
                                                         </Button>
                                                         <Button Width="27" Height="27" Padding="3" Margin="1 0" ToolTip="Delete group"
