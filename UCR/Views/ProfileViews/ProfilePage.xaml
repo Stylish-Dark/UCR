@@ -550,7 +550,7 @@
                                     <ListBox x:Name="InputProfileDeviceList" Margin="6 0 6 4"
                                              ItemsSource="{Binding InputDeviceControlViewModel.Devices}"
                                              SelectedItem="{Binding InputDeviceControlViewModel.SelectedDeviceConfiguration, Mode=TwoWay}"
-                                             BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                                             BorderThickness="0" Background="Transparent" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
                                                 <Grid Margin="1 2">
@@ -562,7 +562,9 @@
                                                     </Button>
 <ContentControl Grid.Column="1" Content="{Binding Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
                                                                     Width="44" Height="28" VerticalAlignment="Center"/>
-                                                    <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding SidebarTitle}" Margin="6 0 0 0"
+                                                                FontSize="12.5" TextWrapping="Wrap" MaxLines="2"
+                                                                TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                                     <StackPanel Grid.Column="3" Orientation="Horizontal">
                                                         <CheckBox IsChecked="{Binding ExclusiveMode, Mode=TwoWay}"
                                                                   IsEnabled="{Binding CanUseExclusiveMode}" Margin="4 0 3 0"
@@ -616,7 +618,7 @@
                                         <ListBox Grid.Row="1" x:Name="OutputProfileDeviceList" Margin="-2 2 -2 0"
                                                  ItemsSource="{Binding OutputDeviceControlViewModel.Devices}"
                                                  SelectedItem="{Binding OutputDeviceControlViewModel.SelectedDeviceConfiguration, Mode=TwoWay}"
-                                                 BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                                                 BorderThickness="0" Background="Transparent" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
                                             <ListBox.ItemTemplate>
                                                 <DataTemplate>
                                                     <Grid Margin="1 2">
@@ -628,7 +630,9 @@
                                                         </Button>
 <ContentControl Grid.Column="1" Content="{Binding Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
                                                                     Width="44" Height="28" VerticalAlignment="Center"/>
-                                                    <TextBlock Grid.Column="2" Text="{Binding Title}" Margin="6 0 0 0" FontSize="12.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding SidebarTitle}" Margin="6 0 0 0"
+                                                                FontSize="12.5" TextWrapping="Wrap" MaxLines="2"
+                                                                TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                                     </Grid>
                                                 </DataTemplate>
                                             </ListBox.ItemTemplate>
