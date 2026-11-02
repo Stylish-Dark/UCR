@@ -1204,13 +1204,19 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (!ProfileViewModel.CanEditProfile) return;
             var mapping = ProfileViewModel.AddMappingToSelectedSection(ProfileViewModel.GetNextMappingTitle());
             if (mapping == null) return;
-            // Profile.AddMapping already supplies its initial mapping implementation.
-            // Do not manufacture a second output or preselect an axis mode.
-            if (mapping.Plugins.Count == 0 && !mapping.AddDefaultOutput())
+            // A new mapping starts as one neutral button route, not an axis,
+            // joystick or multiple preconfigured outputs.
+            if (mapping.Plugins.Count == 0)
             {
-                mapping.Remove();
-                Logger.Warn("Cannot create mapping: no output implementation is available.");
-                return;
+                var buttonTemplate = mapping.GetCompatiblePluginOptions().FirstOrDefault(option =>
+                    string.Equals(option.Name, "Button to Button", StringComparison.OrdinalIgnoreCase));
+                if (buttonTemplate == null)
+                {
+                    mapping.Remove();
+                    Logger.Warn("Cannot create mapping: Button to Button implementation unavailable.");
+                    return;
+                }
+                mapping.AddPlugin(buttonTemplate.Plugin);
             }
             ProfileViewModel.SelectedMapping = mapping;
             mapping.IsExpanded = true;
