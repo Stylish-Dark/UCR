@@ -1368,6 +1368,18 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (mapping?.ButtonsEnabled == true) mapping.Rename();
         }
 
+        private void RemoveMappingRow_OnClick(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            var mapping = (sender as FrameworkElement)?.DataContext as MappingViewModel;
+            if (mapping == null || !mapping.ButtonsEnabled) return;
+            if (MappingCardControl.RequiresDeleteConfirmation(mapping) &&
+                MessageBox.Show("Delete mapping '" + mapping.MappingTitle + "'?", "Delete mapping",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                return;
+            mapping.Remove();
+        }
+
         private void ToggleInlineMapping_OnClick(object sender, RoutedEventArgs e)
         {
             e.Handled = true;
