@@ -49,7 +49,16 @@ namespace HidWizards.UCR.Views.Controls
             var viewModel = DataContext as DeviceBindingViewModel;
             if (selected == null || viewModel == null) return;
 
-            viewModel.ChangeDeviceConfiguration(selected.Value);
+            if (viewModel.DeviceBinding?.DeviceIoType == DeviceIoType.Output &&
+                selected.Value == Guid.Empty && string.Equals(selected.Title, "Filter", StringComparison.Ordinal))
+            {
+                var card = FindAncestor<MappingCardControl>(this);
+                card?.SwitchOutputBindingToFilter(viewModel);
+            }
+            else
+            {
+                viewModel.ChangeDeviceConfiguration(selected.Value);
+            }
             if (_outputPicker != null) _outputPicker.IsOpen = false;
         }
 
