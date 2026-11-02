@@ -347,7 +347,8 @@ namespace HidWizards.UCR.Views.Controls
                         card.ApplyOutputControlChoice(bindingVm, config.Guid, selectedInfo))
                         popup.IsOpen = false;
                 };
-                var isTrigger = lower.Contains("trigger") || lower == "lt" || lower == "rt" ||
+                var isTrigger = visual.ControlKind == ControlVisualKind.Trigger ||
+                                lower.Contains("trigger") || lower == "lt" || lower == "rt" ||
                                 lower.Contains("l2") || lower.Contains("r2");
                 if (isTrigger || info.DeviceBindingCategory == DeviceBindingCategory.Momentary && !isDirectional)
                     buttons.Children.Add(choice);
