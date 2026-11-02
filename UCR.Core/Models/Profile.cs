@@ -27,6 +27,10 @@ namespace HidWizards.UCR.Core.Models
         public List<Profile> ChildProfiles { get; set; }
         public List<Mapping> Mappings { get; set; }
         public List<MappingGroup> MappingGroups { get; set; }
+        // Main remains the legacy root collection, but is a normal enableable group.
+        [XmlAttribute]
+        [DefaultValue(true)]
+        public bool MainMappingsEnabled { get; set; } = true;
 
         public List<DeviceConfiguration> InputDeviceConfigurations { get; set; }
         public List<DeviceConfiguration> OutputDeviceConfigurations { get; set; }
