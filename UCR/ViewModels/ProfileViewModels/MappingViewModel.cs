@@ -140,12 +140,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public int DirectionalCapacity => Mapping.EffectiveDirectionalCapacity;
         public int InputRepresentation => Mapping.InputRepresentation;
         public int OutputRepresentation => Mapping.OutputRepresentation;
-        public bool InputIsFullStick => InputRepresentation == 1;
-        public bool InputIsAxis => InputRepresentation == 2;
-        public bool InputIsButton => InputRepresentation == 3;
-        public bool OutputIsFullStick => OutputRepresentation == 1;
-        public bool OutputIsAxis => OutputRepresentation == 2;
-        public bool OutputIsButton => OutputRepresentation == 3;
+        public bool InputIsFullStick => Mapping.EffectiveInputRepresentation == 1;
+        public bool InputIsAxis => Mapping.EffectiveInputRepresentation == 2;
+        public bool InputIsButton => Mapping.EffectiveInputRepresentation == 3;
+        public bool OutputIsFullStick => Mapping.EffectiveOutputRepresentation == 1;
+        public bool OutputIsAxis => Mapping.EffectiveOutputRepresentation == 2;
+        public bool OutputIsButton => Mapping.EffectiveOutputRepresentation == 3;
         public int InputDirectionalSlotCount => Mapping.RequiredBindingSlots(
             DirectionalCapacity, InputRepresentation);
         public int OutputDirectionalSlotCount => Mapping.RequiredBindingSlots(
@@ -164,17 +164,34 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private bool SetRepresentation(int value, bool inputSide)
         {
             if (!ButtonsEnabled || value < 1 || value > 3) return false;
-            if (Mapping.DirectionalCapacity == 0)
-                Mapping.DirectionalCapacity = Mapping.EffectiveDirectionalCapacity;
+            var previousCapacity = Mapping.EffectiveDirectionalCapacity;
+            var requiredCapacity = value == 1 ? 4 : value == 2 ? 2 : 1;
+            var capacityIncreased = requiredCapacity > previousCapacity;
+            if (Mapping.DirectionalCapacity == 0 || capacityIncreased)
+                Mapping.DirectionalCapacity = Math.Max(previousCapacity, requiredCapacity);
             if (inputSide)
             {
-                if (Mapping.InputRepresentation == value) return true;
+                if (Mapping.InputRepresentation == value && !capacityIncreased) return true;
                 if (!SwitchDirectionalInputs(value)) return false;
+                if (capacityIncreased)
+                {
+                    var otherType = Mapping.EffectiveOutputRepresentation;
+                    var previousChoice = Mapping.OutputRepresentation;
+                    if (!SwitchDirectionalOutputs(otherType)) return false;
+                    Mapping.OutputRepresentation = previousChoice;
+                }
             }
             else
             {
-                if (Mapping.OutputRepresentation == value) return true;
+                if (Mapping.OutputRepresentation == value && !capacityIncreased) return true;
                 if (!SwitchDirectionalOutputs(value)) return false;
+                if (capacityIncreased)
+                {
+                    var otherType = Mapping.EffectiveInputRepresentation;
+                    var previousChoice = Mapping.InputRepresentation;
+                    if (!SwitchDirectionalInputs(otherType)) return false;
+                    Mapping.InputRepresentation = previousChoice;
+                }
             }
             ProfileViewModel.Profile.Context.ContextChanged();
             OnPropertyChanged(nameof(DirectionalCapacity));
@@ -217,14 +234,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 for (var index = 0; index < required; index++)
                 {
                     var isButton = representation == 3 || capacity == 1;
-                    var compatible = index < previous.Count && previous[index].IsBound &&
+                    var previousIndex = isButton && capacity > 1 && previous.Count == 1
+                        ? (index == 1 ? 0 : -1) : index;
+                    var compatible = previousIndex >= 0 && previousIndex < previous.Count &&
+                        previous[previousIndex].IsBound &&
                         (isButton
-                            ? previous[index].DeviceBindingCategory == DeviceBindingCategory.Momentary
-                            : previous[index].DeviceBindingCategory == DeviceBindingCategory.Range);
+                            ? previous[previousIndex].DeviceBindingCategory == DeviceBindingCategory.Momentary
+                            : previous[previousIndex].DeviceBindingCategory == DeviceBindingCategory.Range);
                     DeviceBinding input;
                     if (compatible)
                     {
-                        input = HidWizards.UCR.Core.Context.DeepXmlClone(previous[index]);
+                        input = HidWizards.UCR.Core.Context.DeepXmlClone(previous[previousIndex]);
                         input.Profile = profile;
                         input.DeviceIoType = DeviceIoType.Input;
                     }
@@ -248,6 +268,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             });
             Mapping.DeviceBindings = next;
             Mapping.InputRepresentation = representation;
+            Mapping.UseInputExpression = true;
             RebuildDirectionalEditors();
             return true;
         }
@@ -282,7 +303,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 {
                     var plugin = profile.Context.PluginManager.GetNewPlugin(template);
                     plugin.SetProfile(profile);
-                    var previousPlugin = index < previous.Count ? previous[index] : null;
+                    var previousIndex = isButton && required > 1 && previous.Count == 1
+                        ? (index == 1 ? 0 : -1) : index;
+                    var previousPlugin = previousIndex >= 0 && previousIndex < previous.Count
+                        ? previous[previousIndex] : null;
                     if (previousPlugin != null)
                     {
                         plugin.Filters = previousPlugin.Filters.ToList();
