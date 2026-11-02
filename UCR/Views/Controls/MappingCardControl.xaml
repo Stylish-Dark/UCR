@@ -26,6 +26,33 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="DirectionalTypeChoice" TargetType="{x:Type RadioButton}">
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Margin" Value="1 0"/>
+            <Setter Property="Foreground" Value="#D8D8D8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="17"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type RadioButton}">
+                        <Border x:Name="Surface" Background="#303030" CornerRadius="3"
+                                BorderBrush="#565656" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="#164AA7"/>
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="#3984F4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="UcrMappingDeleteButton" TargetType="{x:Type ButtonBase}" BasedOn="{StaticResource UcrMappingActionButton}">
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
@@ -342,6 +369,21 @@
                                 Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="INPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
                                 FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                        Margin="6 0 0 0">
+                                <RadioButton Content="✣" GroupName="InputDirectionalType" Tag="1"
+                                             ToolTip="Full Stick input" Click="InputRepresentation_OnClick"
+                                             IsChecked="{Binding InputIsFullStick, Mode=OneWay}"
+                                             Style="{StaticResource DirectionalTypeChoice}"/>
+                                <RadioButton Content="↔" GroupName="InputDirectionalType" Tag="2"
+                                             ToolTip="Axis input" Click="InputRepresentation_OnClick"
+                                             IsChecked="{Binding InputIsAxis, Mode=OneWay}"
+                                             Style="{StaticResource DirectionalTypeChoice}"/>
+                                <RadioButton Content="●" GroupName="InputDirectionalType" Tag="3"
+                                             ToolTip="Button input" Click="InputRepresentation_OnClick"
+                                             IsChecked="{Binding InputIsButton, Mode=OneWay}"
+                                             Style="{StaticResource DirectionalTypeChoice}"/>
+                            </StackPanel>
                         </StackPanel>
                         <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch">
                             <ContentControl.Style>
@@ -371,6 +413,21 @@
                                 Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="OUTPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
                                 FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                        Margin="6 0 0 0">
+                                <RadioButton Content="✣" GroupName="OutputDirectionalType" Tag="1"
+                                             ToolTip="Full Stick output" Click="OutputRepresentation_OnClick"
+                                             IsChecked="{Binding OutputIsFullStick, Mode=OneWay}"
+                                             Style="{StaticResource DirectionalTypeChoice}"/>
+                                <RadioButton Content="↔" GroupName="OutputDirectionalType" Tag="2"
+                                             ToolTip="Axis output" Click="OutputRepresentation_OnClick"
+                                             IsChecked="{Binding OutputIsAxis, Mode=OneWay}"
+                                             Style="{StaticResource DirectionalTypeChoice}"/>
+                                <RadioButton Content="●" GroupName="OutputDirectionalType" Tag="3"
+                                             ToolTip="Button output" Click="OutputRepresentation_OnClick"
+                                             IsChecked="{Binding OutputIsButton, Mode=OneWay}"
+                                             Style="{StaticResource DirectionalTypeChoice}"/>
+                            </StackPanel>
 
                         </StackPanel>
                         <ItemsControl ItemsSource="{Binding Plugins}">
