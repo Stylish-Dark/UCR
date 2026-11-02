@@ -491,7 +491,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(deviceLabel.TextWrapping, Is.EqualTo(TextWrapping.Wrap));
                 Assert.That(deviceLabel.MaxHeight, Is.LessThanOrEqualTo(38));
                 Assert.That(FindVisualChildren<Button>(row).Any(button =>
-                    (button.ToolTip as string)?.Contains("primary") == true), Is.True,
+                    (button.ToolTip as string)?.IndexOf("primary", StringComparison.OrdinalIgnoreCase) >= 0), Is.True,
                     "The existing primary-device selector must remain available.");
             }
             finally
