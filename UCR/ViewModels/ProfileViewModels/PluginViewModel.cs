@@ -17,6 +17,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public MappingViewModel MappingViewModel { get; }
         public Plugin Plugin { get; set; }
         public string OutputType => IsFourButtonAxis ? "Axis" : new SimplePluginViewModel(Plugin).OutputType;
+        public Visibility FilterDestinationSelectorVisibility =>
+            string.Equals(OutputType, "Filter", StringComparison.OrdinalIgnoreCase)
+                ? Visibility.Visible : Visibility.Collapsed;
         private System.Reflection.PropertyInfo InvertProperty => Plugin.GetType().GetProperty("Invert");
         public Visibility QuickInvertVisibility =>
             InvertProperty?.PropertyType == typeof(bool) && InvertProperty.CanWrite
