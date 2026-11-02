@@ -798,18 +798,19 @@ namespace HidWizards.UCR.Views.Controls
             // Neutral is restored when released; a full axis choice remains unrestricted.
             var pressed = destinationPlugin.Plugin.GetType().GetProperty("RangePressed");
             var released = destinationPlugin.Plugin.GetType().GetProperty("Range");
-            if (pressed != null && pressed.PropertyType == typeof(double) && direction != 0)
+            if (pressed != null && pressed.PropertyType == typeof(double))
             {
                 pressed.SetValue(destinationPlugin.Plugin, direction < 0 ? -100.0 : 100.0, null);
                 if (released != null && released.PropertyType == typeof(double))
                     released.SetValue(destinationPlugin.Plugin, 0.0, null);
             }
-            else if (direction != 0)
+            else
             {
                 var invert = destinationPlugin.Plugin.GetType().GetProperty("Invert");
                 if (invert != null && invert.PropertyType == typeof(bool))
                     invert.SetValue(destinationPlugin.Plugin, direction < 0, null);
             }
+            destination.RefreshDeviceList();
             mapping.ProfileViewModel.Profile.Context.ContextChanged();
             return true;
         }
