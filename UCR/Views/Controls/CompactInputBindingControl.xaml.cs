@@ -282,7 +282,6 @@ namespace HidWizards.UCR.Views.Controls
                 .ToList();
             var buttons = new WrapPanel { Width = 440 };
             var directionals = new WrapPanel { Width = 440 };
-            var axes = new WrapPanel { Width = 440 };
 
             foreach (var node in controls)
             {
@@ -355,8 +354,6 @@ namespace HidWizards.UCR.Views.Controls
                                 lower.Contains("l2") || lower.Contains("r2");
                 if (isTrigger || info.DeviceBindingCategory == DeviceBindingCategory.Momentary && !isDirectional)
                     buttons.Children.Add(choice);
-                else if (info.DeviceBindingCategory == DeviceBindingCategory.Range)
-                    axes.Children.Add(choice);
                 else
                     directionals.Children.Add(choice);
 
@@ -406,8 +403,7 @@ namespace HidWizards.UCR.Views.Controls
             var tabs = new TabControl { Background = Brushes.Transparent };
             foreach (var category in new[] {
                 new { Title = "Buttons", Items = buttons },
-                new { Title = "Directions", Items = directionals },
-                new { Title = "Axes", Items = axes }
+                new { Title = "Directions", Items = directionals }
             })
             {
                 if (category.Items.Children.Count == 0)
