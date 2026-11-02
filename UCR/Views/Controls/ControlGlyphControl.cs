@@ -423,11 +423,6 @@ namespace HidWizards.UCR.Views.Controls
             dc.DrawLine(Pen(accent, 1.2), new Point(b.Left + b.Width * 0.84, cableY - 3),
                 new Point(b.Left + b.Width * 0.84, cableY + 3));
 
-            var unavailable = new SolidColorBrush(Color.FromRgb(220, 92, 92));
-            unavailable.Freeze();
-            dc.DrawLine(Pen(unavailable, 1.8),
-                new Point(b.Left + b.Width * 0.12, b.Bottom - b.Height * 0.12),
-                new Point(b.Right - b.Width * 0.08, b.Top + b.Height * 0.12));
         }
 
         private static void DrawUnbound(DrawingContext dc, Rect b, Brush accent)
