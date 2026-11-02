@@ -469,7 +469,7 @@ namespace HidWizards.UCR.Views.ProfileViews
         private void CopyMappingGroup_OnClick(object sender, RoutedEventArgs e)
         {
             var section = (sender as FrameworkElement)?.DataContext as MappingGroupViewModel;
-            if (section == null || section.IsMain) return;
+            if (section == null) return;
             ProfileViewModel.CopyMappingGroup(section);
             Logger.Info("Mapping group copied: " + section.Title);
         }
