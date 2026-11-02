@@ -408,23 +408,6 @@ namespace HidWizards.UCR.Views.Controls
                 Math.Max(8, b.Height * 0.48), FontWeights.Bold);
         }
 
-        private static void DrawDeviceUnavailable(DrawingContext dc, Rect b, Brush accent)
-        {
-            var device = new Rect(b.Left + b.Width * 0.12, b.Top + b.Height * 0.22,
-                b.Width * 0.48, b.Height * 0.56);
-            dc.DrawRoundedRectangle(null, Pen(accent, 1.35), device, 2.2, 2.2);
-
-            var cableY = b.Top + b.Height * 0.5;
-            var cableStart = device.Right + b.Width * 0.05;
-            dc.DrawLine(Pen(accent, 1.35), new Point(cableStart, cableY),
-                new Point(b.Left + b.Width * 0.78, cableY));
-            dc.DrawLine(Pen(accent, 1.2), new Point(b.Left + b.Width * 0.78, cableY - 3),
-                new Point(b.Left + b.Width * 0.78, cableY + 3));
-            dc.DrawLine(Pen(accent, 1.2), new Point(b.Left + b.Width * 0.84, cableY - 3),
-                new Point(b.Left + b.Width * 0.84, cableY + 3));
-
-        }
-
         private static void DrawUnbound(DrawingContext dc, Rect b, Brush accent)
         {
             var rect = new Rect(b.Left + 2, b.Top + 3, Math.Max(1, b.Width - 4), Math.Max(1, b.Height - 6));
