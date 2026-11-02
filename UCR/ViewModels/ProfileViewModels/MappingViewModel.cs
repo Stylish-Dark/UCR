@@ -424,6 +424,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (_rebuildingDirectionalEditors) return;
             var changed = sender as DeviceBindingViewModel;
+            // Newly captured inputs inherit the mapping group's blocking policy.
+            // Blocking is not a per-input decision in the editor.
+            if (changed?.DeviceBinding?.IsBound == true &&
+                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.BindButtonText),
+                    StringComparison.Ordinal))
+            {
+                var section = ProfileViewModel.MappingSections?.FirstOrDefault(group =>
+                    group.Mappings.Contains(this));
+                if (section?.BlockInputs == true && !changed.DeviceBinding.Block &&
+                    changed.DeviceBinding.IsBlockable())
+                    changed.DeviceBinding.SetBlock(true);
+            }
             if (changed?.DeviceBinding?.InputDirectionSlot > 0 &&
                 changed.DeviceBinding.IsBound &&
                 string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.BindButtonText), StringComparison.Ordinal))
