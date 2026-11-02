@@ -1349,35 +1349,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                 return;
             }
 
-            // The collapsed header must expose the same input kinds as the editor,
-            // without making users expand a mapping to capture analogue controls.
-            var menu = new ContextMenu
-            {
-                PlacementTarget = button,
-                Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint
-            };
-            foreach (var item in new[]
-            {
-                new { Title = "Button", Kind = 0 },
-                new { Title = "Axis positive direction", Kind = 1 },
-                new { Title = "Axis negative direction", Kind = 2 },
-                new { Title = "Full axis", Kind = 3 }
-            })
-            {
-                var kind = item.Kind;
-                var option = new MenuItem
-                {
-                    Header = item.Title,
-                    IsChecked = binding.InputExpressionInputKind == kind
-                };
-                option.Click += (s, args) =>
-                {
-                    binding.InputExpressionInputKind = kind;
-                    if (binding.InputExpressionInputKind == kind)
-                        mapping.QuickBindInput(descriptor);
-                };
-                menu.Items.Add(option);
-            }
+            var menu = CompactInputBindingControl.CreateInputOptionsMenu(binding, button);
             menu.IsOpen = true;
             e.Handled = true;
         }
