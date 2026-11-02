@@ -140,6 +140,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public int DirectionalCapacity => Mapping.EffectiveDirectionalCapacity;
         public int InputRepresentation => Mapping.InputRepresentation;
         public int OutputRepresentation => Mapping.OutputRepresentation;
+        public bool InputIsFullStick => InputRepresentation == 1;
+        public bool InputIsAxis => InputRepresentation == 2;
+        public bool InputIsButton => InputRepresentation == 3;
+        public bool OutputIsFullStick => OutputRepresentation == 1;
+        public bool OutputIsAxis => OutputRepresentation == 2;
+        public bool OutputIsButton => OutputRepresentation == 3;
         public int InputDirectionalSlotCount => Mapping.RequiredBindingSlots(
             DirectionalCapacity, InputRepresentation);
         public int OutputDirectionalSlotCount => Mapping.RequiredBindingSlots(
@@ -171,6 +177,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(DirectionalCapacity));
             OnPropertyChanged(nameof(InputRepresentation));
             OnPropertyChanged(nameof(OutputRepresentation));
+            OnPropertyChanged(nameof(InputIsFullStick));
+            OnPropertyChanged(nameof(InputIsAxis));
+            OnPropertyChanged(nameof(InputIsButton));
+            OnPropertyChanged(nameof(OutputIsFullStick));
+            OnPropertyChanged(nameof(OutputIsAxis));
+            OnPropertyChanged(nameof(OutputIsButton));
             OnPropertyChanged(nameof(InputDirectionalSlotCount));
             OnPropertyChanged(nameof(OutputDirectionalSlotCount));
             return true;
