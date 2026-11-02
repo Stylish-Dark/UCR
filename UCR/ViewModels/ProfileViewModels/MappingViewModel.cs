@@ -192,9 +192,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                         Mapping.EffectiveOutputRepresentation))
                 {
                     var otherType = Mapping.EffectiveOutputRepresentation;
-                    var previousChoice = Mapping.OutputRepresentation;
+                    // Materialise the inferred representation without changing
+                    // the visible choice; keep the original legacy output bank.
                     if (!SwitchDirectionalOutputs(otherType)) return false;
-                    Mapping.OutputRepresentation = previousChoice;
                 }
             }
             else
@@ -206,9 +206,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                         Mapping.EffectiveInputRepresentation))
                 {
                     var otherType = Mapping.EffectiveInputRepresentation;
-                    var previousChoice = Mapping.InputRepresentation;
+                    // Keep the old input representation in its legacy bank.
                     if (!SwitchDirectionalInputs(otherType)) return false;
-                    Mapping.InputRepresentation = previousChoice;
                 }
             }
             ProfileViewModel.Profile.Context.ContextChanged();
