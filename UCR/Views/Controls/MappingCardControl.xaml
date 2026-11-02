@@ -371,12 +371,9 @@
                                 Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="OUTPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
                                 FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            <Button Content="{Binding MappingOutputCategoryDisplay, StringFormat={}{0} ▼}"
-                                Height="28" Padding="8 2" Margin="12 0 0 0"
-                                Style="{StaticResource UcrAccentOutlineButton}"
-                                IsEnabled="{Binding ButtonsEnabled}"
-                                Click="ChangeMappingOutputCategory_OnClick"
-                                ToolTip="Choose an available button-based output type"/>
+                            <TextBlock Text="{Binding MappingOutputCategoryDisplay}"
+                                Margin="12 0 0 0" Foreground="#AFAFAF" FontSize="12"
+                                VerticalAlignment="Center"/>
                         </StackPanel>
                         <ItemsControl ItemsSource="{Binding Plugins}">
                             <ItemsControl.ItemTemplate>
