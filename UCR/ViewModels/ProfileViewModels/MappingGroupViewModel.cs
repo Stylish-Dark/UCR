@@ -45,6 +45,30 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+        public bool BlockInputs
+        {
+            get => IsMain ? _profileViewModel.Profile.MainBlockInputs : Model?.BlockInputs == true;
+            set
+            {
+                if (!CanEdit || BlockInputs == value) return;
+                if (IsMain) _profileViewModel.Profile.MainBlockInputs = value;
+                else if (Model != null) Model.BlockInputs = value;
+                ApplyBlockingToMappings();
+                _profileViewModel.Profile.Context?.ContextChanged();
+                OnPropertyChanged();
+            }
+        }
+
+        internal void ApplyBlockingToMappings()
+        {
+            foreach (var mapping in Mappings)
+                foreach (var input in mapping.Mapping.DeviceBindings)
+                {
+                    if (!input.IsBound) continue;
+                    input.SetBlock(BlockInputs && input.IsBlockable());
+                }
+        }
+
         internal MappingGroupViewModel(ProfileViewModel profileViewModel, MappingGroup model, bool isMain)
         {
             _profileViewModel = profileViewModel;
