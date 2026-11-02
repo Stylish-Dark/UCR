@@ -183,7 +183,7 @@
                 <TextBlock Text="{Binding CompactBindButtonText}"
                            TextTrimming="CharacterEllipsis"
                            TextAlignment="Center" VerticalAlignment="Center"
-                           TextWrapping="NoWrap" Margin="1 0"/>
+                           TextWrapping="Wrap" MaxHeight="36" Margin="1 0"/>
             </Button>
             <ProgressBar Height="3" Margin="8 0 8 2" VerticalAlignment="Bottom"
                          Minimum="0" Maximum="100" Value="{Binding PreviewValue, Mode=OneWay}"
