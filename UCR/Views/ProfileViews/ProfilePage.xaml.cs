@@ -485,7 +485,7 @@ namespace HidWizards.UCR.Views.ProfileViews
         private void RemoveMappingGroup_OnClick(object sender, RoutedEventArgs e)
         {
             var section = (sender as FrameworkElement)?.DataContext as MappingGroupViewModel;
-            if (section == null || section.IsMain || Profile.IsActive()) return;
+            if (section == null || Profile.IsActive()) return;
 
             if (section.Mappings.Count > 0)
             {
