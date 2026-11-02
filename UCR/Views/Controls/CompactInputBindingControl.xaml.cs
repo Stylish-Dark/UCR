@@ -467,6 +467,20 @@ namespace HidWizards.UCR.Views.Controls
                 buttons.Children.Insert(buttons.Children.IndexOf(shoulder) + 1, trigger);
             }
 
+            // WrapPanel arranges in row-major pairs. Keep the controller buttons
+            // together as LB/RB on one row and LT/RT on the next.
+            var orderedButtons = buttons.Children.OfType<Button>().ToList();
+            var lb = orderedButtons.FirstOrDefault(x => string.Equals(x.ToolTip as string, "LB", StringComparison.OrdinalIgnoreCase));
+            var rb = orderedButtons.FirstOrDefault(x => string.Equals(x.ToolTip as string, "RB", StringComparison.OrdinalIgnoreCase));
+            var lt = orderedButtons.FirstOrDefault(x => string.Equals(x.ToolTip as string, "LT", StringComparison.OrdinalIgnoreCase));
+            var rt = orderedButtons.FirstOrDefault(x => string.Equals(x.ToolTip as string, "RT", StringComparison.OrdinalIgnoreCase));
+            if (lb != null && rb != null && lt != null && rt != null)
+            {
+                var index = buttons.Children.IndexOf(lb);
+                foreach (var item in new[] { lb, rb, lt, rt }) buttons.Children.Remove(item);
+                foreach (var item in new[] { lb, rb, lt, rt }) buttons.Children.Insert(index++, item);
+            }
+
             var tabs = new TabControl { Background = Brushes.Transparent, MinHeight = 365 };
             foreach (var category in new[] {
                 new { Title = "Buttons", Items = buttons },
