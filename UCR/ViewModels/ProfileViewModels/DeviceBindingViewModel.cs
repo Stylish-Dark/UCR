@@ -436,6 +436,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             Devices = new ObservableCollection<ComboBoxItemViewModel>();
             if (DeviceBinding.DeviceIoType == DeviceIoType.Input)
                 Devices.Add(new ComboBoxItemViewModel("Any input device", Guid.Empty));
+            else
+                Devices.Add(new ComboBoxItemViewModel("Choose output device", Guid.Empty));
             foreach (var deviceConfiguration in deviceConfigurationList)
             {
                 Devices.Add(new ComboBoxItemViewModel(
@@ -550,12 +552,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 }
                 else
                 {
-                    var primaryGuid = DeviceBinding.Profile.GetPrimaryDeviceConfiguration(DeviceBinding.DeviceIoType)?.Guid;
-                    selectedDevice = Devices.FirstOrDefault(item => item.Value == primaryGuid &&
-                        item.Value != FilterOutputChoiceGuid) ??
-                        Devices.FirstOrDefault(item => item.Value != FilterOutputChoiceGuid);
-                    if (!DeviceBinding.IsBound && selectedDevice != null && selectedDevice.Value != Guid.Empty)
-                        DeviceBinding.SetDeviceConfigurationGuid(selectedDevice.Value, false);
+                    // Empty output bindings must remain explicitly unselected.
+                    selectedDevice = Devices.FirstOrDefault(item => item.Value == Guid.Empty);
                 }
             }
 
