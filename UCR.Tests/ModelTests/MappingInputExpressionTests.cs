@@ -10,6 +10,114 @@ namespace HidWizards.UCR.Tests.ModelTests
     [TestFixture]
     public class MappingInputExpressionTests
     {
+        [TestCase(1, 3, 3, 1, 1)]
+        [TestCase(2, 3, 2, 2, 1)]
+        [TestCase(4, 3, 3, 4, 4)]
+        [TestCase(4, 2, 1, 2, 2)]
+        [TestCase(4, 1, 3, 2, 4)]
+        public void DirectionalSlotLayoutUsesCapacityAndRepresentation(
+            int capacity, int inputRepresentation, int outputRepresentation,
+            int expectedInputs, int expectedOutputs)
+        {
+            Assert.That(Mapping.RequiredBindingSlots(capacity, inputRepresentation),
+                Is.EqualTo(expectedInputs));
+            Assert.That(Mapping.RequiredBindingSlots(capacity, outputRepresentation),
+                Is.EqualTo(expectedOutputs));
+        }
+
+        [Test]
+        public void FullStickAxisButtonConversionsPreserveBothVectorComponents()
+        {
+            var analogueInputs = new[]
+            {
+                new DeviceBinding { InputExpressionInputKind = 3 },
+                new DeviceBinding { InputExpressionInputKind = 3 }
+            };
+            var xy = Mapping.ComputeDirectionalChannelValues(
+                new short[] { 23000, -19000 }, analogueInputs, 4, 1, 2);
+            Assert.That(xy, Is.EqualTo(new short[] { 23000, -19000 }));
+
+            var fourButtons = Mapping.ComputeDirectionalChannelValues(
+                new short[] { 23000, -19000 }, analogueInputs, 4, 1, 3);
+            Assert.That(fourButtons, Is.EqualTo(new short[] { 0, 1, 1, 0 }));
+
+            var buttonInputs = Enumerable.Range(0, 4)
+                .Select(_ => new DeviceBinding { InputExpressionInputKind = 0 }).ToArray();
+            var axes = Mapping.ComputeDirectionalChannelValues(
+                new short[] { 0, 1, 1, 0 }, buttonInputs, 4, 3, 2);
+            Assert.That(axes, Is.EqualTo(new short[] { short.MaxValue, -short.MaxValue }));
+
+            var stick = Mapping.ComputeDirectionalChannelValues(
+                new short[] { 0, 1, 1, 0 }, buttonInputs, 4, 3, 1);
+            Assert.That(stick, Is.EqualTo(axes));
+        }
+
+        [Test]
+        public void SingleAxisAndOpposedButtonRepresentationsWorkBothDirections()
+        {
+            var signed = Mapping.ComputeDirectionalChannelValues(
+                new short[] { -24000 },
+                new[] { new DeviceBinding { InputExpressionInputKind = 3 } },
+                2, 2, 3);
+            Assert.That(signed, Is.EqualTo(new short[] { 1, 0 }));
+
+            var negative = Mapping.ComputeDirectionalChannelValues(
+                new short[] { 1, 0 },
+                new[]
+                {
+                    new DeviceBinding { InputExpressionInputKind = 0 },
+                    new DeviceBinding { InputExpressionInputKind = 0 }
+                },
+                2, 3, 2);
+            Assert.That(negative, Is.EqualTo(new short[] { -short.MaxValue }));
+
+            var digital = Mapping.ComputeDirectionalChannelValues(
+                new short[] { 1 },
+                new[] { new DeviceBinding { InputExpressionInputKind = 0 } },
+                1, 3, 3);
+            Assert.That(digital, Is.EqualTo(new short[] { 1 }));
+        }
+
+        [Test]
+        public void InactiveDirectionalOutputBanksSurviveXmlCloneWithDistinctPluginTypes()
+        {
+            var mapping = new Mapping
+            {
+                DirectionalCapacity = 4,
+                InputRepresentation = 3,
+                OutputRepresentation = 2,
+                Plugins = new List<Plugin> { new AxisToAxis(), new AxisToAxis() },
+                InactiveOutputRepresentations = new List<DirectionalOutputBank>
+                {
+                    new DirectionalOutputBank
+                    {
+                        Representation = 3,
+                        Plugins = new List<Plugin> { new ButtonToButton(), new ButtonToButton() }
+                    }
+                },
+                InactiveInputRepresentations = new List<DirectionalInputBank>
+                {
+                    new DirectionalInputBank
+                    {
+                        Representation = 1,
+                        Bindings = new List<DeviceBinding>
+                        {
+                            new DeviceBinding { InputExpressionInputKind = 3 },
+                            new DeviceBinding { InputExpressionInputKind = 3 }
+                        }
+                    }
+                }
+            };
+            var clone = HidWizards.UCR.Core.Context.DeepXmlClone(mapping);
+            Assert.That(clone.DirectionalCapacity, Is.EqualTo(4));
+            Assert.That(clone.InputRepresentation, Is.EqualTo(3));
+            Assert.That(clone.OutputRepresentation, Is.EqualTo(2));
+            Assert.That(clone.InactiveOutputRepresentations.Single().Plugins.Count, Is.EqualTo(2));
+            Assert.That(clone.InactiveOutputRepresentations.Single().Plugins[0],
+                Is.InstanceOf<ButtonToButton>());
+            Assert.That(clone.InactiveInputRepresentations.Single().Bindings.Count, Is.EqualTo(2));
+        }
+
         [Test]
         public void FourWayJoystick_OppositeDirectionsCancel()
         {
