@@ -389,8 +389,8 @@
                                              ToolTip="Button input" Click="InputRepresentation_OnClick"
                                              IsChecked="{Binding InputIsButton, Mode=OneWay}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
-                            </Grid>
-                        </StackPanel>
+                            </StackPanel>
+                        </Grid>
                         <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch">
                             <ContentControl.Style>
                                 <Style TargetType="{x:Type ContentControl}">
@@ -439,9 +439,9 @@
                                              ToolTip="Button output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsButton, Mode=OneWay}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
-                            </Grid>
+                            </StackPanel>
 
-                        </StackPanel>
+                        </Grid>
                         <ItemsControl ItemsSource="{Binding Plugins}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
