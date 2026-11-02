@@ -140,42 +140,63 @@ namespace HidWizards.UCR.Views.Controls
 
         private void BuildContextMenu()
         {
-            if (Ddl == null) return;
-            Ddl.Items.Clear();
+            PopulateInputMenu(Ddl, DeviceBinding, DataContext as DeviceBindingViewModel);
+        }
 
-            var configuration = GetSelectedDeviceConfiguration();
-            if (configuration?.Device != null && DeviceBinding?.Profile?.Context != null)
+        // The collapsed mapping glyph and the editor ellipsis use exactly the
+        // same menu implementation. No second set of input-kind choices.
+        internal static ContextMenu CreateInputOptionsMenu(DeviceBindingViewModel viewModel,
+            FrameworkElement target)
+        {
+            var menu = new ContextMenu
             {
-                var nodes = configuration.Device.GetDeviceBindingMenu(
-                    DeviceBinding.Profile.Context, DeviceBinding.DeviceIoType);
-                foreach (var node in nodes)
+                PlacementTarget = target,
+                Placement = PlacementMode.MousePoint,
+                Background = Brushes.DarkSlateGray,
+                Foreground = Brushes.White
+            };
+            PopulateInputMenu(menu, viewModel?.DeviceBinding, viewModel);
+            return menu;
+        }
+
+        private static void PopulateInputMenu(ContextMenu menu, DeviceBinding binding,
+            DeviceBindingViewModel viewModel)
+        {
+            if (menu == null) return;
+            menu.Items.Clear();
+            var profile = binding?.Profile;
+            if (profile != null)
+            {
+                var configuration = profile.GetDeviceConfiguration(DeviceIoType.Input,
+                    binding.DeviceConfigurationGuid)
+                    ?? profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input);
+                if (configuration?.Device != null)
                 {
-                    // Expand only the keyboard's top-level "Keys" folder into
-                    // the same categories offered by the legacy binding editor.
-                    if (IsKeyboardRoot(node))
+                    var nodes = configuration.Device.GetDeviceBindingMenu(profile.Context,
+                        DeviceIoType.Input);
+                    foreach (var node in nodes)
                     {
-                        foreach (var categoryNode in DeviceBindingControl.BuildKeyboardCategories(node.ChildrenNodes))
+                        if (IsKeyboardRoot(node))
                         {
-                            var categoryItem = BuildMenuItem(categoryNode, configuration.Guid);
-                            if (categoryItem != null) Ddl.Items.Add(categoryItem);
+                            foreach (var group in DeviceBindingControl.BuildKeyboardCategories(node.ChildrenNodes))
+                            {
+                                var item = BuildInputMenuItem(group, configuration.Guid, binding);
+                                if (item != null) menu.Items.Add(item);
+                            }
                         }
-                        continue;
+                        else
+                        {
+                            var item = BuildInputMenuItem(node, configuration.Guid, binding);
+                            if (item != null) menu.Items.Add(item);
+                        }
                     }
-                    var item = BuildMenuItem(node, configuration.Guid);
-                    if (item != null) Ddl.Items.Add(item);
                 }
             }
-
-            if (Ddl.Items.Count > 0) Ddl.Items.Add(new Separator());
-
-            var clearItem = new MenuItem
-            {
-                Header = "Clear binding",
-                Foreground = System.Windows.Media.Brushes.White
-            };
-            clearItem.IsEnabled = DeviceBinding?.IsBound == true;
-            clearItem.Click += (clickSender, clickArgs) => DeviceBinding?.ClearBinding();
-            Ddl.Items.Add(clearItem);
+            if (menu.Items.Count > 0) menu.Items.Add(new Separator());
+            var clear = new MenuItem { Header = "Clear binding", Foreground = Brushes.White,
+                IsEnabled = binding?.IsBound == true };
+            clear.Click += (s, e) => binding?.ClearBinding();
+            menu.Items.Add(clear);
         }
 
         private static bool IsKeyboardRoot(DeviceBindingNode node)
@@ -185,39 +206,31 @@ namespace HidWizards.UCR.Views.Controls
                    string.Equals(node.Title, "Keys", StringComparison.OrdinalIgnoreCase);
         }
 
-        private MenuItem BuildMenuItem(DeviceBindingNode node, Guid configurationGuid)
+        private static MenuItem BuildInputMenuItem(DeviceBindingNode node, Guid configurationGuid,
+            DeviceBinding binding)
         {
             if (node == null) return null;
-
-            var item = new MenuItem
-            {
-                Header = node.Title,
-                Foreground = System.Windows.Media.Brushes.White
-            };
-
+            var item = new MenuItem { Header = node.Title, Foreground = Brushes.White };
             if (node.IsBinding)
             {
                 var info = node.DeviceBindingInfo;
                 if (info == null) return null;
-                // The ellipsis is a text-only nested menu, not a second visual picker.
                 item.ToolTip = "Assign " + node.Title;
                 item.Click += (sender, args) =>
                 {
-                    if (DeviceBinding.DeviceIoType == DeviceIoType.Input)
-                        DeviceBinding.SetInputExpressionInputKind(info.DeviceBindingCategory == DeviceBindingCategory.Range ? 3 : 0);
-                    DeviceBinding.SetDeviceConfigurationGuid(configurationGuid);
-                    DeviceBinding.DeviceBindingCategory = info.DeviceBindingCategory;
-                    DeviceBinding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                    binding.SetInputExpressionInputKind(
+                        info.DeviceBindingCategory == DeviceBindingCategory.Range ? 3 : 0);
+                    binding.SetDeviceConfigurationGuid(configurationGuid);
+                    binding.DeviceBindingCategory = info.DeviceBindingCategory;
+                    binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
                 };
                 return item;
             }
-
-            foreach (var child in node.ChildrenNodes ?? new System.Collections.Generic.List<DeviceBindingNode>())
+            foreach (var child in node.ChildrenNodes ?? new List<DeviceBindingNode>())
             {
-                var childItem = BuildMenuItem(child, configurationGuid);
+                var childItem = BuildInputMenuItem(child, configurationGuid, binding);
                 if (childItem != null) item.Items.Add(childItem);
             }
-
             return item.Items.Count == 0 ? null : item;
         }
 
