@@ -281,6 +281,7 @@ namespace HidWizards.UCR.Views.Controls
                 .ToList();
             var buttons = new WrapPanel { Width = 440 };
             var directionals = new WrapPanel { Width = 440 };
+            var axes = new WrapPanel { Width = 440 };
 
             foreach (var node in controls)
             {
@@ -358,6 +359,8 @@ namespace HidWizards.UCR.Views.Controls
                                 lower.Contains("l2") || lower.Contains("r2");
                 if (isTrigger || info.DeviceBindingCategory == DeviceBindingCategory.Momentary && !isDirectional)
                     buttons.Children.Add(choice);
+                else if (info.DeviceBindingCategory == DeviceBindingCategory.Range)
+                    axes.Children.Add(choice);
                 else
                     directionals.Children.Add(choice);
 
@@ -408,7 +411,7 @@ namespace HidWizards.UCR.Views.Controls
                 }
             }
 
-            // Keep the eight stick directions in compass order, ahead of raw axes.
+            // Keep the eight stick directions in compass order.
             var nextPosition = 0;
             foreach (var stickName in new[] { "Left Stick", "Right Stick" })
             foreach (var directionName in new[] { "Up", "Down", "Left", "Right" })
@@ -422,10 +425,31 @@ namespace HidWizards.UCR.Views.Controls
                 directionals.Children.Insert(nextPosition++, item);
             }
 
+            // Place the analogue triggers beneath their respective shoulder buttons.
+            foreach (var side in new[] { "L", "R" })
+            {
+                var trigger = buttons.Children.OfType<Button>().FirstOrDefault(button =>
+                    button.ToolTip is string title &&
+                    (title.Equals(side == "L" ? "Left Trigger" : "Right Trigger", StringComparison.OrdinalIgnoreCase) ||
+                     title.Equals(side == "L" ? "LT" : "RT", StringComparison.OrdinalIgnoreCase) ||
+                     title.Equals(side == "L" ? "L2" : "R2", StringComparison.OrdinalIgnoreCase)));
+                if (trigger == null) continue;
+                var shoulder = buttons.Children.OfType<Button>().FirstOrDefault(button =>
+                    button.ToolTip is string title &&
+                    (title.Equals(side == "L" ? "Left Button" : "Right Button", StringComparison.OrdinalIgnoreCase) ||
+                     title.Equals(side == "L" ? "LB" : "RB", StringComparison.OrdinalIgnoreCase) ||
+                     title.Equals(side == "L" ? "L1" : "R1", StringComparison.OrdinalIgnoreCase) ||
+                     title.Equals(side == "L" ? "Left Bumper" : "Right Bumper", StringComparison.OrdinalIgnoreCase)));
+                if (shoulder == null) continue;
+                buttons.Children.Remove(trigger);
+                buttons.Children.Insert(buttons.Children.IndexOf(shoulder) + 1, trigger);
+            }
+
             var tabs = new TabControl { Background = Brushes.Transparent };
             foreach (var category in new[] {
                 new { Title = "Buttons", Items = buttons },
-                new { Title = "Directions", Items = directionals }
+                new { Title = "Directions", Items = directionals },
+                new { Title = "Axes", Items = axes }
             })
             {
                 if (category.Items.Children.Count == 0)
