@@ -164,15 +164,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private bool SetRepresentation(int value, bool inputSide)
         {
             if (!ButtonsEnabled || value < 1 || value > 3) return false;
-            if (inputSide && Mapping.InputRepresentation == value ||
-                !inputSide && Mapping.OutputRepresentation == value) return true;
-            // Never run the legacy destructive type conversions from here.
-            // Each choice remains independently persisted even when no matching
-            // physical bindings have yet been assigned.
             if (Mapping.DirectionalCapacity == 0)
                 Mapping.DirectionalCapacity = Mapping.EffectiveDirectionalCapacity;
-            if (inputSide) Mapping.InputRepresentation = value;
-            else Mapping.OutputRepresentation = value;
+            if (inputSide)
+            {
+                if (Mapping.InputRepresentation == value) return true;
+                if (!SwitchDirectionalInputs(value)) return false;
+            }
+            else
+            {
+                if (Mapping.OutputRepresentation == value) return true;
+                if (!SwitchDirectionalOutputs(value)) return false;
+            }
             ProfileViewModel.Profile.Context.ContextChanged();
             OnPropertyChanged(nameof(DirectionalCapacity));
             OnPropertyChanged(nameof(InputRepresentation));
@@ -185,6 +188,149 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(OutputIsButton));
             OnPropertyChanged(nameof(InputDirectionalSlotCount));
             OnPropertyChanged(nameof(OutputDirectionalSlotCount));
+            RefreshInputExpressionPresentation();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
+        private bool SwitchDirectionalInputs(int representation)
+        {
+            var profile = ProfileViewModel.Profile;
+            var capacity = Mapping.EffectiveDirectionalCapacity;
+            var required = Mapping.RequiredBindingSlots(capacity, representation);
+            if (required < 1) return false;
+            if (Mapping.InactiveInputRepresentations == null)
+                Mapping.InactiveInputRepresentations = new List<DirectionalInputBank>();
+            var bank = Mapping.InactiveInputRepresentations.FirstOrDefault(item =>
+                item.Representation == representation);
+            var previous = Mapping.DeviceBindings.ToList();
+            var priorType = Mapping.InputRepresentation;
+            List<DeviceBinding> next;
+            if (bank != null)
+            {
+                next = bank.Bindings;
+                Mapping.InactiveInputRepresentations.Remove(bank);
+            }
+            else
+            {
+                next = new List<DeviceBinding>();
+                for (var index = 0; index < required; index++)
+                {
+                    var isButton = representation == 3 || capacity == 1;
+                    var compatible = index < previous.Count && previous[index].IsBound &&
+                        (isButton
+                            ? previous[index].DeviceBindingCategory == DeviceBindingCategory.Momentary
+                            : previous[index].DeviceBindingCategory == DeviceBindingCategory.Range);
+                    DeviceBinding input;
+                    if (compatible)
+                    {
+                        input = HidWizards.UCR.Core.Context.DeepXmlClone(previous[index]);
+                        input.Profile = profile;
+                        input.DeviceIoType = DeviceIoType.Input;
+                    }
+                    else
+                        input = new DeviceBinding(Mapping.Update, profile, DeviceIoType.Input);
+                    input.InputExpressionInputKind = isButton ? 0 : 3;
+                    input.InputExpressionKindConfigured = true;
+                    input.DeviceBindingCategory = isButton
+                        ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
+                    input.InputExpressionGroup = 0;
+                    input.InputDirectionSlot = isButton && capacity > 1 ? index + 1 : 0;
+                    next.Add(input);
+                }
+            }
+            Mapping.InactiveInputRepresentations.RemoveAll(item =>
+                item.Representation == priorType);
+            Mapping.InactiveInputRepresentations.Add(new DirectionalInputBank
+            {
+                Representation = priorType,
+                Bindings = previous
+            });
+            Mapping.DeviceBindings = next;
+            Mapping.InputRepresentation = representation;
+            RebuildDirectionalEditors();
+            return true;
+        }
+
+        private bool SwitchDirectionalOutputs(int representation)
+        {
+            var profile = ProfileViewModel.Profile;
+            var required = Mapping.RequiredBindingSlots(Mapping.EffectiveDirectionalCapacity,
+                representation);
+            if (required < 1) return false;
+            if (Mapping.InactiveOutputRepresentations == null)
+                Mapping.InactiveOutputRepresentations = new List<DirectionalOutputBank>();
+            var bank = Mapping.InactiveOutputRepresentations.FirstOrDefault(item =>
+                item.Representation == representation);
+            var previous = Mapping.Plugins.ToList();
+            var priorType = Mapping.OutputRepresentation;
+            List<Plugin> next;
+            if (bank != null)
+            {
+                next = bank.Plugins;
+                Mapping.InactiveOutputRepresentations.Remove(bank);
+            }
+            else
+            {
+                var isButton = representation == 3 || Mapping.EffectiveDirectionalCapacity == 1;
+                var pluginName = isButton ? "Button to Button" : "Axis to Axis";
+                var template = profile.Context.GetPlugins().FirstOrDefault(item =>
+                    string.Equals(item.PluginName, pluginName, StringComparison.OrdinalIgnoreCase));
+                if (template == null) return false;
+                next = new List<Plugin>();
+                for (var index = 0; index < required; index++)
+                {
+                    var plugin = profile.Context.PluginManager.GetNewPlugin(template);
+                    plugin.SetProfile(profile);
+                    var previousPlugin = index < previous.Count ? previous[index] : null;
+                    if (previousPlugin != null)
+                    {
+                        plugin.Filters = previousPlugin.Filters.ToList();
+                        if (previousPlugin.Outputs.Count > 0 && plugin.Outputs.Count > 0 &&
+                            previousPlugin.OutputCategories[0].Category ==
+                                plugin.OutputCategories[0].Category &&
+                            previousPlugin.Outputs[0].IsBound)
+                        {
+                            var source = previousPlugin.Outputs[0];
+                            plugin.Outputs[0].SetDeviceConfigurationGuid(
+                                source.DeviceConfigurationGuid, false);
+                            plugin.Outputs[0].SetKeyTypeValue(
+                                source.KeyType, source.KeyValue, source.KeySubValue);
+                        }
+                        SelectCompatibleOutputDevices(plugin,
+                            previousPlugin.Outputs.Select(output =>
+                                output.DeviceConfigurationGuid).ToList());
+                    }
+                    next.Add(plugin);
+                }
+            }
+
+            Mapping.InactiveOutputRepresentations.RemoveAll(item =>
+                item.Representation == priorType);
+            Mapping.InactiveOutputRepresentations.Add(new DirectionalOutputBank
+            {
+                Representation = priorType,
+                Plugins = previous
+            });
+            foreach (var vm in Plugins.ToList())
+            {
+                foreach (var input in vm.DeviceBindings)
+                    input.PropertyChanged -= SummaryBindingOnPropertyChanged;
+                vm.Dispose();
+            }
+            Plugins.Clear();
+            Mapping.Plugins = next;
+            Mapping.OutputRepresentation = representation;
+            foreach (var plugin in next)
+            {
+                plugin.SetProfile(profile);
+                var vm = new PluginViewModel(this, plugin);
+                Plugins.Add(vm);
+                foreach (var binding in vm.DeviceBindings)
+                    SubscribeSummaryBinding(binding);
+            }
+            RefreshHeaderState();
+            ProfileViewModel.RefreshFilterReferenceLabels();
             return true;
         }
 
