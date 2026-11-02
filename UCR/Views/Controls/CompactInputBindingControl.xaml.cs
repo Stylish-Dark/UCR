@@ -52,9 +52,6 @@ namespace HidWizards.UCR.Views.Controls
             if (viewModel.DeviceBinding?.DeviceIoType == DeviceIoType.Output &&
                 selected.Value == DeviceBindingViewModel.FilterOutputChoiceGuid)
             {
-                // Ignore selection changes caused by collection refreshes. Choosing
-                // Filter must be an explicit user action in the open device list.
-                if (!DeviceSelectionBox.IsDropDownOpen) return;
                 var card = FindAncestor<MappingCardControl>(this);
                 card?.SwitchOutputBindingToFilter(viewModel);
             }
