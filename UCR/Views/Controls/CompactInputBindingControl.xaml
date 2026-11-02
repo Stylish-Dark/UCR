@@ -215,17 +215,8 @@
         <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Vertical"
                     Width="62" Margin="4 0 0 2"
                     HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Visibility="{Binding ShowBlock}"
                     ToolTip="Block the original physical input (where the provider supports it)">
-        <StackPanel.Style>
-            <Style TargetType="StackPanel">
-                <Setter Property="Visibility" Value="{Binding ShowBlock}"/>
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding ShowIndividualBlock, RelativeSource={RelativeSource AncestorType={x:Type local:CompactInputBindingControl}}}" Value="False">
-                        <Setter Property="Visibility" Value="Collapsed"/>
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
-        </StackPanel.Style>
         <TextBlock Text="Block" Foreground="#E2E2E2" FontSize="11" Margin="0 0 0 4"
                    HorizontalAlignment="Center" TextWrapping="NoWrap"/>
         <ToggleButton HorizontalAlignment="Center" VerticalAlignment="Center"
