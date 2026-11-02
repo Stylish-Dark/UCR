@@ -386,6 +386,18 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(pasted.Mappings.Count, Is.EqualTo(1));
                 Assert.That(main.Mappings.Count, Is.EqualTo(1),
                     "Copying Main must leave its original mappings intact.");
+                Assert.That(viewModel.RenameMappingGroup(main, "Renamed Main"), Is.True);
+                Assert.That(main.Title, Is.EqualTo("Renamed Main"));
+                Assert.That(profile.MainGroupTitle, Is.EqualTo("Renamed Main"));
+                Assert.That(viewModel.RemoveMappingGroup(main), Is.True);
+                Assert.That(profile.MainGroupVisible, Is.False);
+                Assert.That(profile.Mappings, Is.Empty);
+                Assert.That(viewModel.MappingSections.Any(section => section.IsMain), Is.False);
+                var newMapping = viewModel.AddMapping("After deleting Main");
+                Assert.That(newMapping, Is.Not.Null,
+                    "Adding mappings after deleting Main must still target a real group.");
+                Assert.That(viewModel.MappingSections.Any(section =>
+                    section.Mappings.Contains(newMapping)), Is.True);
                 Assert.That(typeof(Context).GetMethod("Undo"), Is.Null,
                     "Undo/redo restoration must remain removed.");
                 Assert.That(typeof(Context).GetMethod("Redo"), Is.Null);
