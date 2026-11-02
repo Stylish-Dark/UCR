@@ -48,7 +48,7 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="62"/>
             <ColumnDefinition Width="*" MinWidth="0"/>
-            <ColumnDefinition Width="38"/>
+            <ColumnDefinition Width="29"/>
             <!-- Auto collapses to zero for outputs, where Block is hidden.
                  A fixed 92px column previously stole space from Choose output. -->
             <ColumnDefinition Width="Auto"/>
@@ -158,8 +158,8 @@
             </ComboBox.ItemTemplate>
         </ComboBox>
 
-        <Grid Grid.Row="0" Grid.Column="1" Margin="0 0 4 0" ClipToBounds="True">
-            <Button x:Name="BindButton" MinHeight="32" MinWidth="0"
+        <Grid Grid.Row="0" Grid.Column="1" Margin="0" ClipToBounds="True">
+            <Button x:Name="BindButton" MinHeight="32" MinWidth="0" Padding="0"
                     IsEnabled="{Binding CanBindCurrentDevice}"
                     Click="BindButton_OnClick"
                     PreviewMouseLeftButtonDown="BindButton_OnPreviewMouseLeftButtonDown"
@@ -183,7 +183,7 @@
                 <TextBlock Text="{Binding CompactBindButtonText}"
                            TextTrimming="CharacterEllipsis"
                            TextAlignment="Center" VerticalAlignment="Center"
-                           TextWrapping="NoWrap" Margin="4 0"/>
+                           TextWrapping="NoWrap" Margin="1 0"/>
             </Button>
             <ProgressBar Height="3" Margin="8 0 8 2" VerticalAlignment="Bottom"
                          Minimum="0" Maximum="100" Value="{Binding PreviewValue, Mode=OneWay}"
@@ -201,7 +201,7 @@
             </ProgressBar>
         </Grid>
 
-        <Button Grid.Row="0" Grid.Column="2" x:Name="MenuButton" Margin="4 0 0 0" Width="32" MinHeight="32" Padding="0"
+        <Button Grid.Row="0" Grid.Column="2" x:Name="MenuButton" Margin="1 0 0 0" Width="28" MinHeight="32" Padding="0"
                 IsEnabled="{Binding BindingEnabled}" Click="MenuButton_OnClick"
                 Style="{StaticResource MaterialDesignRaisedButton}" Foreground="#FFFFFF"
                 ToolTip="Binding options">
