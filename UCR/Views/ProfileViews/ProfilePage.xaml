@@ -901,7 +901,8 @@
                                                                     <ColumnDefinition Width="1.05*" MinWidth="0"/>
                                                                     <ColumnDefinition Width="44"/>
                                                                     <ColumnDefinition Width="1.05*" MinWidth="0"/>
-                                                                    <ColumnDefinition Width="30"/>
+                                                                    <ColumnDefinition Width="40"/>
+                                                                    <ColumnDefinition Width="44"/>
                                                                 </Grid.ColumnDefinitions>
                                                                 <StackPanel Grid.Column="0" VerticalAlignment="Center"
                                                                             Margin="3 0 8 0">
@@ -1055,7 +1056,16 @@
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
                                                                 </ItemsControl>
-                                                                <Button Grid.Column="4" Width="36" Height="38" Padding="0" Background="#303030" BorderBrush="#626262" BorderThickness="1" Focusable="False" Cursor="Hand"
+                                                                <Button Grid.Column="4" Width="30" Height="30"
+                                                                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                        Style="{StaticResource UcrDeleteCrossButton}"
+                                                                        IsEnabled="{Binding ButtonsEnabled}"
+                                                                        ToolTip="Remove mapping. Stop the active profile to edit."
+                                                                        ToolTipService.ShowOnDisabled="True"
+                                                                        Click="RemoveMappingRow_OnClick"/>
+                                                                <Button Grid.Column="5" Width="36" Height="38" Padding="0"
+                                                                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                        Background="#303030" BorderBrush="#626262" BorderThickness="1" Focusable="False" Cursor="Hand"
                                                                         ToolTip="Expand or collapse mapping Inputs and Outputs" Click="ToggleInlineMapping_OnClick">
                                                                     <Button.Template><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Button.Template>
                                                                     <Grid Width="23" Height="23" IsHitTestVisible="False">
