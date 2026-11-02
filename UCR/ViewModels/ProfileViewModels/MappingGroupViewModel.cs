@@ -14,7 +14,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public MappingGroup Model { get; }
         public bool IsMain { get; }
         public ObservableCollection<MappingViewModel> Mappings { get; } = new ObservableCollection<MappingViewModel>();
-        public string Title => IsMain ? "Main" : Model?.Title ?? "Group";
+        public string Title => IsMain ? (_profileViewModel.Profile.MainGroupTitle ?? "Main") : Model?.Title ?? "Group";
         public bool CanEdit => !_profileViewModel.Profile.IsActive();
 
         private bool _isExpanded = true;
