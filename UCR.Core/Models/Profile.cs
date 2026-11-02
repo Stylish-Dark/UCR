@@ -31,6 +31,9 @@ namespace HidWizards.UCR.Core.Models
         [XmlAttribute]
         [DefaultValue(true)]
         public bool MainMappingsEnabled { get; set; } = true;
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool MainBlockInputs { get; set; }
 
         public List<DeviceConfiguration> InputDeviceConfigurations { get; set; }
         public List<DeviceConfiguration> OutputDeviceConfigurations { get; set; }
