@@ -353,9 +353,9 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
             if (deviceDescriptor.Kind == DeviceVisualKind.Unavailable)
             {
-                result.ControlKind = ControlVisualKind.DeviceUnavailable;
+                result.ControlKind = ControlVisualKind.Unbound;
                 result.ControlBrush = NeutralBrush;
-                result.ControlLabel = string.Empty;
+                result.ControlLabel = "?";
                 return result;
             }
 
