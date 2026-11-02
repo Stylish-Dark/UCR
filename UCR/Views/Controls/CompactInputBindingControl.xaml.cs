@@ -53,7 +53,9 @@ namespace HidWizards.UCR.Views.Controls
                 selected.Value == DeviceBindingViewModel.FilterOutputChoiceGuid)
             {
                 var card = FindAncestor<MappingCardControl>(this);
-                card?.SwitchOutputBindingToFilter(viewModel);
+                if (card != null)
+                    Dispatcher.BeginInvoke((Action)(() => card.SwitchOutputBindingToFilter(viewModel)),
+                        System.Windows.Threading.DispatcherPriority.Background);
             }
             else
             {
@@ -343,9 +345,13 @@ namespace HidWizards.UCR.Views.Controls
                 {
                     var card = FindAncestor<MappingCardControl>(this);
                     var bindingVm = DataContext as DeviceBindingViewModel;
-                    if (card != null && bindingVm != null &&
-                        card.ApplyOutputControlChoice(bindingVm, config.Guid, selectedInfo))
+                    if (card != null && bindingVm != null)
+                    {
                         popup.IsOpen = false;
+                        Dispatcher.BeginInvoke((Action)(() =>
+                            card.ApplyOutputControlChoice(bindingVm, config.Guid, selectedInfo)),
+                            System.Windows.Threading.DispatcherPriority.Background);
+                    }
                 };
                 var isTrigger = visual.ControlKind == ControlVisualKind.Trigger ||
                                 lower.Contains("trigger") || lower == "lt" || lower == "rt" ||
@@ -389,9 +395,13 @@ namespace HidWizards.UCR.Views.Controls
                         {
                             var card = FindAncestor<MappingCardControl>(this);
                             var bindingVm = DataContext as DeviceBindingViewModel;
-                            if (card != null && bindingVm != null &&
-                                card.ApplyOutputControlChoice(bindingVm, config.Guid, selectedInfo, selectedSign))
+                            if (card != null && bindingVm != null)
+                            {
                                 popup.IsOpen = false;
+                                Dispatcher.BeginInvoke((Action)(() =>
+                                    card.ApplyOutputControlChoice(bindingVm, config.Guid, selectedInfo, selectedSign)),
+                                    System.Windows.Threading.DispatcherPriority.Background);
+                            }
                         };
                         directionals.Children.Add(directional);
                     }
