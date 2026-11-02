@@ -406,14 +406,12 @@ namespace HidWizards.UCR.Tests.UiTests
             var context = new Context();
             var profile = context.ProfilesManager.CreateProfile("Quick input", null, null);
             context.ProfilesManager.AddProfile(profile);
-            profile.AddMapping("Capture");
+            profile.AddMapping("Capture").AddPlugin(
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
             var vm = new ProfileViewModel(profile);
             try
             {
                 var mapping = vm.MappingsList.Single();
-                var template = mapping.GetCompatiblePluginOptions()
-                    .First(option => option.Name == "Button to Button");
-                mapping.AddPlugin(template.Plugin);
                 Assert.That(mapping.IsExpanded, Is.False);
                 var descriptor = mapping.CollapsedInputRows.SelectMany(row => row.Visuals).First();
                 var input = mapping.ResolveCollapsedBinding(descriptor, DeviceIoType.Input);
@@ -449,13 +447,12 @@ namespace HidWizards.UCR.Tests.UiTests
                 new Device("X360 Controller", "Core_ViGEm", "xb360", 0));
             profile.AddDeviceConfigurations(new List<DeviceConfiguration> { outputDevice },
                 DeviceIoType.Output);
-            profile.AddMapping("Output");
+            profile.AddMapping("Output").AddPlugin(
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
             var vm = new ProfileViewModel(profile);
             try
             {
                 var mapping = vm.MappingsList.Single();
-                mapping.AddPlugin(mapping.GetCompatiblePluginOptions()
-                    .First(option => option.Name == "Button to Button").Plugin);
                 var original = mapping.Plugins.Single().DeviceBindings.First(binding =>
                     binding.DeviceBinding.DeviceIoType == DeviceIoType.Output);
                 var control = new MappingCardControl { DataContext = mapping };
