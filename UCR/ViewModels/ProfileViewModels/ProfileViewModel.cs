@@ -250,17 +250,31 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public MappingGroupViewModel DuplicateMappingGroup(MappingGroupViewModel section)
         {
-            if (section == null || section.IsMain || section.Model == null || Profile.IsActive()) return null;
-            var copy = Profile.CopyMappingGroup(section.Model);
+            if (section == null || Profile.IsActive()) return null;
+            var source = section.IsMain ? SnapshotMainMappingGroup() : section.Model;
+            if (source == null) return null;
+            var copy = Profile.CopyMappingGroup(source);
             return AddSection(copy);
         }
 
         public void CopyMappingGroup(MappingGroupViewModel section)
         {
-            if (section == null || section.IsMain || section.Model == null) return;
-            _copiedMappingGroup = HidWizards.UCR.Core.Context.DeepXmlClone<MappingGroup>(section.Model);
+            if (section == null) return;
+            var source = section.IsMain ? SnapshotMainMappingGroup() : section.Model;
+            if (source == null) return;
+            _copiedMappingGroup = HidWizards.UCR.Core.Context.DeepXmlClone<MappingGroup>(source);
             _copiedMappingGroupSourceProfile = Profile;
             OnPropertyChanged(nameof(CanPasteMappingGroup));
+        }
+
+        private MappingGroup SnapshotMainMappingGroup()
+        {
+            return new MappingGroup
+            {
+                Title = "Main",
+                Enabled = Profile.MainMappingsEnabled,
+                Mappings = (Profile.Mappings ?? new List<Mapping>()).ToList()
+            };
         }
 
         public MappingGroupViewModel PasteMappingGroup()
