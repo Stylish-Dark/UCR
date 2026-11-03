@@ -32,13 +32,29 @@ namespace HidWizards.UCR.Views.Controls
             set => SetValue(MenuOnLeftProperty, value);
         }
 
+        // Directional button pairs have half a pane per binding. Keep the
+        // existing device / options / blocking actions, but compact their chrome
+        // so the binding itself remains usable at ordinary window widths.
+        public static readonly DependencyProperty CompactDirectionalProperty =
+            DependencyProperty.Register(nameof(CompactDirectional), typeof(bool),
+                typeof(CompactInputBindingControl),
+                new PropertyMetadata(false, (owner, args) =>
+                    ((CompactInputBindingControl)owner).UpdateMenuPosition()));
+
+        public bool CompactDirectional
+        {
+            get => (bool)GetValue(CompactDirectionalProperty);
+            set => SetValue(CompactDirectionalProperty, value);
+        }
+
         private void UpdateMenuPosition()
         {
             if (BindingGrid == null || MenuButton == null || DeviceSelectionBox == null)
                 return;
             var left = MenuOnLeft;
-            BindingGrid.ColumnDefinitions[0].Width = new GridLength(left ? 29 : 62);
-            BindingGrid.ColumnDefinitions[2].Width = new GridLength(left ? 62 : 29);
+            var deviceColumnWidth = CompactDirectional ? 48 : 62;
+            BindingGrid.ColumnDefinitions[0].Width = new GridLength(left ? 29 : deviceColumnWidth);
+            BindingGrid.ColumnDefinitions[2].Width = new GridLength(left ? deviceColumnWidth : 29);
             Grid.SetColumn(MenuButton, left ? 0 : 2);
             Grid.SetColumn(DeviceSelectionBox, left ? 2 : 0);
             // The binding button remains in the original flexible centre column,
