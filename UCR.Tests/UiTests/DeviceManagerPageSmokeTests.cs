@@ -434,6 +434,20 @@ namespace HidWizards.UCR.Tests.UiTests
             try
             {
                 var mapping = vm.MappingsList.Single();
+                // Grow an existing axis mapping into a full stick. The old
+                // one-axis bank must remain recoverable, but may not be
+                // incorrectly restored as the two-axis active bank.
+                Assert.That(mapping.SetInputRepresentation(2), Is.True);
+                Assert.That(model.DeviceBindings.Count, Is.EqualTo(1));
+                Assert.That(mapping.SetInputRepresentation(3), Is.True);
+                Assert.That(model.DeviceBindings.Count, Is.EqualTo(2));
+                Assert.That(mapping.SetInputRepresentation(1), Is.True);
+                Assert.That(model.DirectionalCapacity, Is.EqualTo(4));
+                Assert.That(model.InactiveInputRepresentations.Any(bank =>
+                    bank.Representation == 2 && bank.Bindings.Count == 1), Is.True);
+                Assert.That(mapping.SetInputRepresentation(2), Is.True);
+                Assert.That(model.DeviceBindings.Count, Is.EqualTo(2),
+                    "The capacity-2 bank cannot masquerade as a full-stick axis pair.");
                 Assert.That(mapping.SetInputRepresentation(1), Is.True);
                 Assert.That(model.DirectionalCapacity, Is.EqualTo(4));
                 Assert.That(model.DeviceBindings.Count, Is.EqualTo(2),
