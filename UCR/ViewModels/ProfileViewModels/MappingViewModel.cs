@@ -247,13 +247,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var previous = Mapping.DeviceBindings.ToList();
             var priorType = Mapping.InputRepresentation;
             List<DeviceBinding> next;
-            if (bank != null)
+            if (bank != null && bank.Bindings != null && bank.Bindings.Count == required)
             {
                 next = bank.Bindings;
                 Mapping.InactiveInputRepresentations.Remove(bank);
             }
             else
             {
+                // A bank saved at axis capacity cannot be reused unmodified at
+                // full-stick capacity. Keep that bank intact; materialise enough
+                // slots for the new capacity instead of leaving a dead mapping.
                 next = new List<DeviceBinding>();
                 for (var index = 0; index < required; index++)
                 {
@@ -338,13 +341,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var previous = Mapping.Plugins.ToList();
             var priorType = Mapping.OutputRepresentation;
             List<Plugin> next;
-            if (bank != null)
+            if (bank != null && bank.Plugins != null && bank.Plugins.Count == required)
             {
                 next = bank.Plugins;
                 Mapping.InactiveOutputRepresentations.Remove(bank);
             }
             else
             {
+                // As above, capacity changes require a complete destination bank.
                 var isButton = representation == 3 || Mapping.EffectiveDirectionalCapacity == 1;
                 var pluginName = isButton ? "Button to Button" : "Axis to Axis";
                 var template = profile.Context.GetPlugins().FirstOrDefault(item =>
