@@ -2266,7 +2266,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return true;
         }
 
-        private static bool MatchesControlLeafName(string controlTitle, string name)
+        internal static bool MatchesControlLeafName(string controlTitle, string name)
         {
             var normalized = NormalizeAxisPresetKey(name);
             if (NormalizeAxisPresetKey(controlTitle) == normalized) return true;
