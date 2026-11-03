@@ -62,6 +62,7 @@
                   ItemsSource="{Binding Devices}"
                   SelectedItem="{Binding SelectedDevice}"
                   IsEnabled="{Binding BindingEnabled}"
+                  DropDownOpened="DeviceSelectionBox_OnDropDownOpened"
                   SelectionChanged="DeviceSelectionBox_OnSelectionChanged"
                   ToolTip="{Binding SelectedDevice.Title}">
             <ComboBox.Template>
