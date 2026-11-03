@@ -1858,6 +1858,49 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 .ToArray();
         }
 
+        public bool ApplyTypedFourWayOutput(FourWayOutputChoice choice)
+        {
+            if (!ButtonsEnabled || choice?.Controls == null ||
+                choice.Controls.Length != (choice.IsDPad ? 4 : 2)) return false;
+            var profile = ProfileViewModel.Profile;
+            var device = profile.GetDeviceConfiguration(DeviceIoType.Output,
+                choice.DeviceConfigurationGuid);
+            if (device?.Device == null) return false;
+            if (!IsCompoundOutput && !SetOutputRepresentation(1)) return false;
+
+            var previousDigital = Mapping.CompoundDigitalOutput;
+            var required = choice.IsDPad ? 4 : 2;
+            Mapping.CompoundDigitalOutput = choice.IsDPad;
+            if (Mapping.Plugins.Count != required && !SwitchDirectionalOutputs(1))
+            {
+                Mapping.CompoundDigitalOutput = previousDigital;
+                return false;
+            }
+
+            // The runtime digital channel order is Left/Right/Up/Down.
+            // Provider D-pad menus expose Up/Down/Left/Right.
+            var order = choice.IsDPad ? new[] { 2, 3, 0, 1 } : new[] { 0, 1 };
+            for (var i = 0; i < required; i++)
+            {
+                var plugin = Plugins[i];
+                var output = plugin.DeviceBindings.FirstOrDefault(binding =>
+                    binding.DeviceBinding.DeviceIoType == DeviceIoType.Output);
+                if (output?.DeviceBinding == null) return false;
+                var info = choice.Controls[order[i]];
+                output.DeviceBinding.DeviceBindingCategory = info.DeviceBindingCategory;
+                output.DeviceBinding.SetDeviceConfigurationGuid(device.Guid, false);
+                output.DeviceBinding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                output.RefreshDeviceList();
+            }
+
+            profile.Context.ContextChanged();
+            OnPropertyChanged(nameof(OutputDirectionalSlotCount));
+            OnPropertyChanged(nameof(CompoundOutputSummary));
+            RefreshDirectionalAvailability();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
         public bool ApplyFourWayOutput(PluginViewModel axis, FourWayOutputChoice choice)
         {
             if (!ButtonsEnabled || axis?.IsFourButtonAxis != true || choice?.Controls == null ||
