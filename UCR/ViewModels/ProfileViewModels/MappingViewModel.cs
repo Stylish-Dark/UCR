@@ -940,10 +940,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool ApplyDirectionalDPadPreset(out string error)
         {
             error = null;
-            var inputs = InputConditions?.FirstOrDefault()?.DirectionalInputs?.ToList();
-            if (!ButtonsEnabled || inputs == null || inputs.Count != 4)
+            if (!IsCompoundInput || DirectionalCapacity != 4)
             {
-                error = "Choose the four-way joystick input mode first.";
+                error = "Choose 4-Way input first.";
+                return false;
+            }
+            if (!EnsureCompoundDigitalSlots(out error)) return false;
+            var inputs = DeviceBindings.OrderBy(input =>
+                input.DeviceBinding.InputDirectionSlot).ToList();
+            if (inputs.Count != 4)
+            {
+                error = "The 4-Way binding does not contain four directions.";
                 return false;
             }
             var profile = ProfileViewModel.Profile;
