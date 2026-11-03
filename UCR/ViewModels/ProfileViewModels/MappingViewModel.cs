@@ -508,6 +508,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 {
                     var plugin = profile.Context.PluginManager.GetNewPlugin(template);
                     plugin.SetProfile(profile);
+                    for (var outputIndex = 0; outputIndex < Math.Min(plugin.Outputs.Count,
+                        plugin.OutputCategories.Count); outputIndex++)
+                        plugin.Outputs[outputIndex].DeviceBindingCategory =
+                            plugin.OutputCategories[outputIndex].Category;
                     var previousIndex = isButton && required > 1 && previous.Count == 1
                         ? (index == 1 ? 0 : -1) : index;
                     var previousPlugin = previousIndex >= 0 && previousIndex < previous.Count
