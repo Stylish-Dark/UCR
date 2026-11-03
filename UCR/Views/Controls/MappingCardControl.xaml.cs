@@ -982,6 +982,45 @@ namespace HidWizards.UCR.Views.Controls
             RequestAxisInputMode(axis, 2);
         }
 
+        private void CompoundBlock_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mapping = DataContext as MappingViewModel;
+            if (mapping?.CanBlockCompound != true) return;
+            mapping.SetCompoundBlockEnabled((sender as ToggleButton)?.IsChecked == true);
+        }
+
+        private void AddMappingFilter_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mapping = DataContext as MappingViewModel;
+            var button = sender as Button;
+            if (mapping?.ButtonsEnabled != true || button == null) return;
+            var outputs = mapping.Plugins.Where(plugin => plugin.CanAddFilter).ToList();
+            if (outputs.Count == 0) return;
+            if (outputs.Count == 1)
+            {
+                outputs[0].AddFilter();
+                return;
+            }
+
+            // One mapping-level action; select the output receiving the filter.
+            // Filters remain attached to their existing output plugin internally.
+            var menu = new ContextMenu
+            {
+                PlacementTarget = button,
+                Placement = PlacementMode.Bottom
+            };
+            for (var index = 0; index < outputs.Count; index++)
+            {
+                var output = outputs[index];
+                var name = string.IsNullOrWhiteSpace(output.DirectionalSlotLabel)
+                    ? "Output " + (index + 1) : output.DirectionalSlotLabel;
+                var item = new MenuItem { Header = name };
+                item.Click += (source, args) => output.AddFilter();
+                menu.Items.Add(item);
+            }
+            menu.IsOpen = true;
+        }
+
         private void AddOutputFilter_OnClick(object sender, RoutedEventArgs e)
         {
             ((sender as FrameworkElement)?.DataContext as PluginViewModel)?.AddFilter();
