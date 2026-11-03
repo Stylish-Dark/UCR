@@ -1162,30 +1162,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 error = "Stop the profile before editing a stick preset.";
                 return false;
             }
-            var previousDigital = Mapping.CompoundDigitalInput;
-            Mapping.CompoundDigitalInput = false;
-            if (!IsFullStickInput || Mapping.DeviceBindings
-                    .GroupBy(input => input.InputExpressionGroup)
-                    .Any(set => set.Count() != 2))
+            var original = Mapping.DeviceBindings.FirstOrDefault(binding =>
+                binding.InputExpressionGroup == groupIndex);
+            if (original == null)
             {
-                if (!SetInputRepresentation(1) ||
-                    !SwitchDirectionalInputs(1))
-                {
-                    Mapping.CompoundDigitalInput = previousDigital;
-                    error = "Unable to prepare a 4-Way analogue stick binding.";
-                    return false;
-                }
-            }
-
-            var profile = ProfileViewModel.Profile;
-            var group = DeviceBindings.Where(binding =>
-                binding.DeviceBinding.InputExpressionGroup == groupIndex).ToList();
-            if (group.Count != 2)
-            {
-                error = "This OR set does not contain both stick axes.";
+                error = "This input OR set no longer exists.";
                 return false;
             }
-            var preferred = group[0].DeviceBinding.DeviceConfigurationGuid;
+            var profile = ProfileViewModel.Profile;
+            var preferred = original.DeviceConfigurationGuid;
             var primary = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input)?.Guid;
             var candidates = new List<Tuple<DeviceConfiguration, DeviceBindingInfo[]>>();
             foreach (var device in profile.GetDeviceConfigurationList(DeviceIoType.Input))
@@ -1214,6 +1199,22 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (chosen == null)
             {
                 error = "No configured controller exposes this stick's two axes.";
+                return false;
+            }
+            // A missing stick must not change the logical input representation.
+            var previousDigital = Mapping.CompoundDigitalInput;
+            Mapping.CompoundDigitalInput = false;
+            if (!SetInputRepresentation(1))
+            {
+                Mapping.CompoundDigitalInput = previousDigital;
+                error = "Unable to prepare a 4-Way analogue stick binding.";
+                return false;
+            }
+            var group = DeviceBindings.Where(binding =>
+                binding.DeviceBinding.InputExpressionGroup == groupIndex).ToList();
+            if (group.Count != 2)
+            {
+                error = "This OR set does not contain both stick axes.";
                 return false;
             }
             for (var i = 0; i < 2; i++)
