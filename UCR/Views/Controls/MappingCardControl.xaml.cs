@@ -495,9 +495,19 @@ namespace HidWizards.UCR.Views.Controls
         {
             var group = (sender as FrameworkElement)?.DataContext as InputConditionViewModel;
             var mapping = DataContext as MappingViewModel;
-            if (group?.DirectionalPrimary == null || mapping?.ButtonsEnabled != true) return;
+            if (group == null || mapping?.ButtonsEnabled != true) return;
             var enabled = (sender as ToggleButton)?.IsChecked == true;
-            if (group.DirectionalPrimary.DeviceBinding.InputDirectionSlot > 0)
+            if (mapping.IsTypedDirectionalMapping)
+            {
+                foreach (var input in group.Inputs)
+                {
+                    var binding = input.DeviceBinding;
+                    binding.SetBlock(enabled && binding.IsBound && binding.IsBlockable());
+                }
+                group.RefreshCompoundSummary();
+                return;
+            }
+            if (group.DirectionalPrimary?.DeviceBinding?.InputDirectionSlot > 0)
             {
                 mapping.SetDirectionalBlocked(group.DirectionalPrimary, enabled);
             }
@@ -1007,7 +1017,8 @@ namespace HidWizards.UCR.Views.Controls
             var button = sender as Button;
             if (mapping?.IsCompoundInput != true || button == null) return;
             var menu = CreateDarkContextMenu(button);
-            foreach (var input in mapping.DeviceBindings)
+            var group = button.DataContext as InputConditionViewModel;
+            foreach (var input in group?.Inputs ?? mapping.DeviceBindings)
             {
                 var binding = input;
                 var label = binding.DeviceBindingName;
@@ -1039,21 +1050,22 @@ namespace HidWizards.UCR.Views.Controls
             var mapping = DataContext as MappingViewModel;
             var button = sender as Button;
             if (mapping?.ButtonsEnabled != true || button == null) return;
+            var groupIndex = (button.DataContext as InputConditionViewModel)?.GroupIndex ?? 0;
             var menu = CreateDarkContextMenu(button);
-            foreach (var preset in new[] { "WASD", "Arrows", "Numpad", "UJHK" })
+            foreach (var preset in new[] { "WASD", "Arrows", "Numpad", "UHJK" })
             {
                 var name = preset;
                 var item = new MenuItem { Header = name };
-                item.Click += (source, args) => ApplyCompoundPreset(mapping, name);
+                item.Click += (source, args) => ApplyCompoundPreset(mapping, name, groupIndex);
                 menu.Items.Add(item);
             }
-            if (mapping.DirectionalCapacity == 4)
+            // A D-pad preset can promote a Button pair or Axis to 4-Way.
             {
                 var dpad = new MenuItem { Header = "Controller D-pad" };
                 dpad.Click += (source, args) =>
                 {
                     string error;
-                    if (!mapping.ApplyDirectionalDPadPreset(out error))
+                    if (!mapping.ApplyDirectionalDPadPreset(out error, groupIndex))
                         DarkMessageBox.Show(error ?? "D-pad preset could not be applied.",
                             "Binding preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
                 };
@@ -1062,10 +1074,10 @@ namespace HidWizards.UCR.Views.Controls
             foreach (var saved in mapping.ProfileViewModel.Profile.CompoundBindingPresets ??
                 new System.Collections.Generic.List<CompoundBindingPreset>())
             {
-                if (saved.Capacity != mapping.DirectionalCapacity) continue;
+                if (saved.Capacity != 4 && saved.Capacity != mapping.DirectionalCapacity) continue;
                 var name = saved.Name;
                 var item = new MenuItem { Header = name };
-                item.Click += (source, args) => ApplyCompoundPreset(mapping, name);
+                item.Click += (source, args) => ApplyCompoundPreset(mapping, name, groupIndex);
                 menu.Items.Add(item);
             }
             menu.Items.Add(new Separator());
@@ -1104,7 +1116,7 @@ namespace HidWizards.UCR.Views.Controls
                 saveButton.Click += (clicked, clickArgs) =>
                 {
                     string error;
-                    if (!mapping.SaveCompoundKeyboardPreset(textBox.Text, out error))
+                    if (!mapping.SaveCompoundKeyboardPreset(textBox.Text, out error, groupIndex))
                     {
                         DarkMessageBox.Show(error, "Cannot save preset", MessageBoxButton.OK,
                             MessageBoxImage.Information);
@@ -1120,10 +1132,11 @@ namespace HidWizards.UCR.Views.Controls
             menu.IsOpen = true;
         }
 
-        private static void ApplyCompoundPreset(MappingViewModel mapping, string name)
+        private static void ApplyCompoundPreset(MappingViewModel mapping, string name,
+            int groupIndex)
         {
             string error;
-            if (!mapping.ApplyDirectionalKeyboardPreset(name, out error))
+            if (!mapping.ApplyDirectionalKeyboardPreset(name, out error, groupIndex))
                 DarkMessageBox.Show(error ?? "Preset could not be applied.",
                     "Binding preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
         }
