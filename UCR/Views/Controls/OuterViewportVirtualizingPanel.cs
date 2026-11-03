@@ -28,6 +28,8 @@ namespace HidWizards.UCR.Views.Controls
         private readonly Dictionary<int, UIElement> _realized = new Dictionary<int, UIElement>();
         private ScrollViewer _outerViewer;
         private double _lastWidth;
+        private bool _itemsDirty = true;
+        private int _lastItemCount = -1;
 
         public OuterViewportVirtualizingPanel()
         {
@@ -66,6 +68,7 @@ namespace HidWizards.UCR.Views.Controls
         protected override void OnItemsChanged(object sender, ItemsChangedEventArgs args)
         {
             base.OnItemsChanged(sender, args);
+            _itemsDirty = true;
             InvalidateMeasure();
         }
 
@@ -110,9 +113,16 @@ namespace HidWizards.UCR.Views.Controls
                 if (index >= 0) _realized[index] = child;
             }
 
-            var valid = new HashSet<object>(items.Cast<object>());
-            foreach (var obsolete in _heights.Keys.Where(item => !valid.Contains(item)).ToList())
-                _heights.Remove(obsolete);
+            // Device events and scrolling only move the viewport; don't allocate
+            // an index of every mapping just to prune unchanged height-cache keys.
+            if (_itemsDirty || _lastItemCount != items.Count)
+            {
+                var valid = new HashSet<object>(items.Cast<object>());
+                foreach (var obsolete in _heights.Keys.Where(item => !valid.Contains(item)).ToList())
+                    _heights.Remove(obsolete);
+                _lastItemCount = items.Count;
+                _itemsDirty = false;
+            }
         }
 
         private void RemoveOutside(int first, int last)
