@@ -2085,10 +2085,45 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return DeviceVisualCatalog.DescribeBinding(candidate,
                     DeviceBindingCategory.Momentary, profile).ControlKind == ControlVisualKind.DPad;
             }).ToList();
-            if (!Enumerable.Range(0, 4).All(index => dpad.Any(node => node.DeviceBindingInfo.KeyValue == index)))
+            // Some DirectInput/POV providers use arbitrary key values. Prefer
+            // complete named four-direction sets from the same hat/D-pad instead
+            // of assuming every provider numbers directions 0..3.
+            var named = dpad.Select(node => new
+            {
+                Node = node,
+                Direction = Regex.Match(node.Title ?? string.Empty,
+                    @"(?:^|[\\s,;:/_-])(Up|Down|Left|Right|North|South|West|East)$",
+                    RegexOptions.IgnoreCase),
+                Prefix = Regex.Replace(node.Title ?? string.Empty,
+                    @"(?:[\\s,;:/_-])?(?:Up|Down|Left|Right|North|South|West|East)$",
+                    string.Empty, RegexOptions.IgnoreCase).Trim()
+            }).Where(item => item.Direction.Success)
+                .Select(item => new
+                {
+                    item.Node,
+                    item.Prefix,
+                    Direction = item.Direction.Groups[1].Value.ToLowerInvariant()
+                }).GroupBy(item => item.Prefix, StringComparer.OrdinalIgnoreCase);
+            foreach (var hat in named)
+            {
+                var aliases = new[]
+                {
+                    new[] { "up", "north" }, new[] { "down", "south" },
+                    new[] { "left", "west" }, new[] { "right", "east" }
+                };
+                var four = aliases.Select(names => hat.FirstOrDefault(item =>
+                    names.Contains(item.Direction))?.Node?.DeviceBindingInfo).ToArray();
+                if (four.All(info => info != null)) return four;
+            }
+
+            // The original controller convention encodes Up, Right, Down, Left
+            // as key values 0..3. Retain it for providers with generic labels.
+            if (!Enumerable.Range(0, 4).All(index =>
+                dpad.Any(node => node.DeviceBindingInfo.KeyValue == index)))
                 return null;
             return new[] { 0, 2, 3, 1 }
-                .Select(index => dpad.First(node => node.DeviceBindingInfo.KeyValue == index).DeviceBindingInfo)
+                .Select(index => dpad.First(node =>
+                    node.DeviceBindingInfo.KeyValue == index).DeviceBindingInfo)
                 .ToArray();
         }
 
