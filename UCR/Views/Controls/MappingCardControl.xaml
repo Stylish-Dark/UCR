@@ -569,7 +569,7 @@
                             </Border.Style>
                             <StackPanel>
                                 <TextBlock Text="{Binding OutputDirectionalGroupTitle}"
-                                           Visibility="{Binding TypedDirectionalVisibility}"
+                                           Visibility="{Binding IsCompoundOutput, Converter={StaticResource CompoundVisibilityConverter}}"
                                            FontSize="12" FontWeight="SemiBold" Foreground="#D0D0D0"
                                            Margin="4 1 0 7"/>
                                 <!-- 4-Way remains one logical destination even when
