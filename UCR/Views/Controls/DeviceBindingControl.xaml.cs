@@ -76,6 +76,15 @@ namespace HidWizards.UCR.Views.Controls
 
             foreach (var deviceBindingNode in deviceBindingNodes)
             {
+                // The provider already names individual POV controls (POV1, POV2, ...).
+                // Do not add a redundant outer "POV" submenu around them.
+                if (IsRedundantPovGroup(deviceBindingNode))
+                {
+                    foreach (var povMenu in BuildMenu(deviceBindingNode.ChildrenNodes, deviceConfigurationGuid))
+                        menuList.Add(povMenu);
+                    continue;
+                }
+
                 if (IsKeyboardKeyGroup(deviceBindingNode))
                 {
                     foreach (var categoryMenu in BuildMenu(BuildKeyboardCategories(deviceBindingNode.ChildrenNodes), deviceConfigurationGuid))
@@ -105,6 +114,19 @@ namespace HidWizards.UCR.Views.Controls
             }
 
             return menuList;
+        }
+
+        private static bool IsRedundantPovGroup(DeviceBindingNode node)
+        {
+            return node != null &&
+                   string.Equals(node.Title, "POV", StringComparison.OrdinalIgnoreCase) &&
+                   node.ChildrenNodes != null &&
+                   node.ChildrenNodes.Count > 0 &&
+                   node.ChildrenNodes.All(child => child != null &&
+                       child.Title != null &&
+                       child.Title.StartsWith("POV", StringComparison.OrdinalIgnoreCase) &&
+                       child.Title.Length > 3 &&
+                       child.Title.Substring(3).All(char.IsDigit));
         }
 
         private static bool IsKeyboardKeyGroup(DeviceBindingNode node)
