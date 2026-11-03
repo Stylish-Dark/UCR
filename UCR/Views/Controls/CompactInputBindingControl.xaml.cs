@@ -63,7 +63,7 @@ namespace HidWizards.UCR.Views.Controls
             if (!_loaded) return;
             var selected = DeviceSelectionBox.SelectedItem as ComboBoxItemViewModel;
             var viewModel = DataContext as DeviceBindingViewModel;
-            if (selected == null || viewModel == null) return;
+            if (selected == null || viewModel == null || viewModel.IsRefreshingDeviceChoices) return;
             // Binding refresh/replacement can raise SelectionChanged while a
             // dropdown is merely being rebuilt. Never convert that placeholder
             // into an instruction to clear a real output destination.
