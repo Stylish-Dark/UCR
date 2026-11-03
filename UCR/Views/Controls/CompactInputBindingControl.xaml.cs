@@ -334,18 +334,14 @@ namespace HidWizards.UCR.Views.Controls
 
             var mapping = FindAncestor<MappingCardControl>(this)?.DataContext
                 as MappingViewModel;
-            DeviceBindingCategory? typedCategory = mapping?.IsTypedDirectionalMapping == true
-                ? (mapping.Mapping.EffectiveOutputRepresentation == 3
-                    ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range)
-                : (DeviceBindingCategory?)null;
+            // Every output control remains selectable. Picking another category
+            // automatically updates the mapping's inferred representation.
             var nodes = config.Device.GetDeviceBindingMenu(DeviceBinding.Profile.Context,
                 DeviceIoType.Output);
             var controls = FlattenControls(nodes)
                 .Where(node => node.DeviceBindingInfo != null &&
                     (node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary ||
-                     node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Range) &&
-                    (!typedCategory.HasValue ||
-                     node.DeviceBindingInfo.DeviceBindingCategory == typedCategory.Value))
+                     node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Range))
                 .ToList();
             var buttons = new WrapPanel { Width = 440 };
             var directionals = new WrapPanel { Width = 440 };
