@@ -1977,8 +1977,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var profile = ProfileViewModel.Profile;
             foreach (var device in profile.GetDeviceConfigurationList(DeviceIoType.Output))
             {
-                if (device?.Device == null || !string.Equals(device.Device.ProviderName,
-                    "Core_ViGEm", StringComparison.OrdinalIgnoreCase)) continue;
+                if (device?.Device == null) continue;
                 var nodes = FlattenBindingNodes(device.Device.GetDeviceBindingMenu(profile.Context, DeviceIoType.Output))
                     .Where(node => node?.DeviceBindingInfo != null).ToList();
                 var axes = nodes.Where(node => node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Range &&
