@@ -99,7 +99,10 @@ namespace HidWizards.UCR.Views.Controls
 
         private void ObservedMappingOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName != nameof(MappingViewModel.IsExpanded)) return;
+            if (InspectorMode || e.PropertyName != nameof(MappingViewModel.IsExpanded)) return;
+            // The inline workspace owns expansion and destroys this inspector's
+            // template on collapse. Reacting here would redundantly rebuild its
+            // already-open body just before the entire control is unloaded.
             if (!Dispatcher.CheckAccess())
             {
                 Dispatcher.BeginInvoke(new Action(() => RefreshExpandedVisual(true)));
@@ -132,6 +135,11 @@ namespace HidWizards.UCR.Views.Controls
                 foreach (var plugin in mapping.Plugins)
                     plugin.EnsureFilterInitialized();
 
+            // An inspector whose body is already open has nothing to initialise.
+            // Avoid restarting animations and forcing layout on every WPF load event.
+            if (ExpandedBodyHost.Visibility == Visibility.Visible &&
+                ExpandedBodyHost.ContentTemplate != null && ExpandedBodyHost.Opacity >= 1)
+                return;
             // Interrupt any closing fade if the user immediately reopens the card.
             ExpandedBodyHost.BeginAnimation(OpacityProperty, null);
             if (ExpandedBodyHost.ContentTemplate == null)
