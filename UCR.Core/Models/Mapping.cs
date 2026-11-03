@@ -44,11 +44,18 @@ namespace HidWizards.UCR.Core.Models
         [DefaultValue(false)]
         public bool CompoundDigitalInput { get; set; }
         [XmlIgnore]
-        public int RequiredInputBindingSlots => CompoundDigitalInput &&
+        // Directional slots are counted within each OR set. The total may
+        // contain multiple independently bound alternatives.
+        public int RequiredInputBindingSlotsPerGroup => CompoundDigitalInput &&
             (EffectiveInputRepresentation == 1 || EffectiveInputRepresentation == 2) &&
             EffectiveDirectionalCapacity > 1
                 ? EffectiveDirectionalCapacity
                 : RequiredBindingSlots(EffectiveDirectionalCapacity, EffectiveInputRepresentation);
+
+        [XmlIgnore]
+        public int RequiredInputBindingSlots => RequiredInputBindingSlotsPerGroup *
+            Math.Max(1, DeviceBindings?.Select(binding =>
+                Math.Max(0, binding.InputExpressionGroup)).Distinct().Count() ?? 1);
 
         [XmlAttribute]
         [DefaultValue(0)]
@@ -290,25 +297,50 @@ namespace HidWizards.UCR.Core.Models
 
         // Directional routing is based on capacity and physical signal values,
         // not on the labels or number of controls visible in the editor.
+        // Each OR group represents one complete directional source. Never combine
+        // X from one group with Y from another or ignore later OR sets.
         private void UpdateDirectionalRouting()
         {
-            if (InputCache == null || DeviceBindings == null) return;
+            if (InputCache == null || DeviceBindings == null || Plugins == null) return;
             var capacity = EffectiveDirectionalCapacity;
-            var inputType = EffectiveInputRepresentation;
+            var inputType = CompoundDigitalInput ? 3 : EffectiveInputRepresentation;
             var outputType = EffectiveOutputRepresentation;
-            var requiredInput = RequiredInputBindingSlots;
+            var slotsPerGroup = RequiredInputBindingSlotsPerGroup;
             var requiredOutput = RequiredBindingSlots(capacity, outputType);
-            if (requiredInput == 0 || requiredOutput == 0 ||
-                DeviceBindings.Count < requiredInput || Plugins.Count < requiredOutput)
-                return;
+            if (slotsPerGroup == 0 || requiredOutput == 0 ||
+                Plugins.Count < requiredOutput) return;
 
-            var channelValues = ComputeDirectionalChannelValues(InputCache, DeviceBindings,
-                capacity, CompoundDigitalInput ? 3 : inputType, outputType);
-            for (var index = 0; index < Math.Min(Plugins.Count, channelValues.Count); index++)
+            var count = Math.Min(InputCache.Count, DeviceBindings.Count);
+            var alternatives = Enumerable.Range(0, count)
+                .GroupBy(index => Math.Max(0, DeviceBindings[index].InputExpressionGroup))
+                .OrderBy(group => group.Key);
+
+            List<short> selected = null;
+            foreach (var alternative in alternatives)
+            {
+                var positions = alternative.OrderBy(index =>
+                    DeviceBindings[index].InputDirectionSlot > 0
+                        ? DeviceBindings[index].InputDirectionSlot : index + 1).ToList();
+                if (positions.Count < slotsPerGroup) continue;
+                var values = positions.Take(slotsPerGroup).Select(index => InputCache[index]).ToList();
+                var bindings = positions.Take(slotsPerGroup)
+                    .Select(index => DeviceBindings[index]).ToList();
+                var channels = ComputeDirectionalChannelValues(values, bindings,
+                    capacity, inputType, outputType);
+
+                // Neutral sources do not shadow later OR alternatives.
+                if (channels.All(channel => channel == 0)) continue;
+                selected = channels;
+                break;
+            }
+            if (selected == null)
+                selected = Enumerable.Repeat((short)0, requiredOutput).ToList();
+
+            for (var index = 0; index < Math.Min(Plugins.Count, selected.Count); index++)
             {
                 var plugin = Plugins[index];
                 if (plugin.IsFiltered()) continue;
-                plugin.Update(new[] { channelValues[index] });
+                plugin.Update(new[] { selected[index] });
             }
         }
 
