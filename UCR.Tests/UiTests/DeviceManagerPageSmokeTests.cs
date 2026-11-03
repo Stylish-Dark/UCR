@@ -503,6 +503,13 @@ namespace HidWizards.UCR.Tests.UiTests
                 card.Measure(new Size(1050, 1100));
                 card.Arrange(new Rect(0, 0, 1050, 1100));
                 card.UpdateLayout();
+                var slotLabels = FindVisualChildren<TextBlock>(card)
+                    .Select(text => text.Text).ToList();
+                Assert.That(slotLabels, Does.Contain("X axis"),
+                    "The full-stick editor must identify its first axis, not generic Input.");
+                Assert.That(slotLabels, Does.Contain("Y axis"),
+                    "The full-stick editor must identify its second axis.");
+
                 var screenshot = System.IO.Path.Combine(
                     Environment.GetEnvironmentVariable("GITHUB_WORKSPACE") ??
                     System.IO.Path.GetTempPath(), "UCR-directional-preview.png");
