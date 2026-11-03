@@ -64,8 +64,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public BindingVisualDescriptor Visual { get; set; }
     }
 
-    public sealed class InputConditionViewModel
+    public sealed class InputConditionViewModel : INotifyPropertyChanged
     {
+        private readonly MappingViewModel _owner;
+        public bool IsTypedDirectional => _owner?.IsTypedDirectionalMapping == true;
+        public bool IsCompound => IsTypedDirectional && _owner.IsCompoundInput;
+        public bool IsButtonPair => IsTypedDirectional && !IsCompound;
+        public Visibility CompoundVisibility => IsCompound ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility ButtonPairVisibility => IsButtonPair ? Visibility.Visible : Visibility.Collapsed;
+        public string CompoundSummary => !IsCompound ? string.Empty :
+            string.Join("  /  ", Inputs.Select(input => input.DeviceBinding.IsBound
+                ? input.CompactBindButtonText : "—"));
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        public void RefreshCompoundSummary()
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompoundSummary)));
+        }
+
         public int GroupIndex { get; }
         public ObservableCollection<DeviceBindingViewModel> Inputs { get; }
         public Visibility OrLabelVisibility => GroupIndex > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -92,8 +108,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool CanRemoveCondition { get; }
 
         public InputConditionViewModel(int groupIndex, IEnumerable<DeviceBindingViewModel> inputs,
-            bool canRemoveCondition, bool positionalFourWay = false)
+            bool canRemoveCondition, bool positionalFourWay = false,
+            MappingViewModel owner = null)
         {
+            _owner = owner;
             GroupIndex = groupIndex;
             _positionalFourWay = positionalFourWay;
             Inputs = new ObservableCollection<DeviceBindingViewModel>(inputs ?? Enumerable.Empty<DeviceBindingViewModel>());
@@ -811,6 +829,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(CompoundBlockEnabled));
             OnPropertyChanged(nameof(CanBlockCompound));
             OnPropertyChanged(nameof(CompoundBindingSummary));
+            foreach (var group in InputConditions)
+                group.RefreshCompoundSummary();
             RefreshCollapsedSummary();
         }
 
@@ -912,7 +932,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         // routes consume the same group/compass editor.
         public InputConditionViewModel FourWayInputGroup =>
             Plugins?.Count == 1 && Plugins[0].IsFourButtonAxis && DeviceBindings?.Count == 4
-                ? new InputConditionViewModel(0, DeviceBindings, false, positionalFourWay: true) : null;
+                ? new InputConditionViewModel(0, DeviceBindings, false, positionalFourWay: true,
+                    owner: this) : null;
 
         public bool HasAxisOutput => Plugins != null &&
             Plugins.Any(p => string.Equals(p.OutputType, "Axis", StringComparison.OrdinalIgnoreCase));
@@ -1381,7 +1402,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             if (!UsesInputExpression)
             {
-                InputConditions.Add(new InputConditionViewModel(0, DeviceBindings.Take(1), false));
+                InputConditions.Add(new InputConditionViewModel(0, DeviceBindings.Take(1), false,
+                    owner: this));
                 return;
             }
 
@@ -1393,7 +1415,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var canRemoveCondition = groups.Count > 1;
             foreach (var group in groups)
             {
-                InputConditions.Add(new InputConditionViewModel(group.Key, group, canRemoveCondition));
+                InputConditions.Add(new InputConditionViewModel(group.Key, group, canRemoveCondition,
+                    owner: this));
             }
         }
 
