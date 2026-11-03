@@ -143,19 +143,25 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             PopulateDeviceBindingsViewModels();
         }
 
+        // Preserve the existing public contract for callers that request the entire
+        // editor, but let the mapping-card's closed Settings section defer its controls.
         public void EnsureEditorInitialized()
+        {
+            EnsureFilterInitialized();
+            EnsureSettingsInitialized();
+        }
+
+        public void EnsureFilterInitialized()
         {
             if (_editorInitialized || _disposed) return;
             _editorInitialized = true;
-            // Filter references are visible in the editor even when Settings is closed.
-            // Property controls are not: don't allocate and bind them until expanded.
             PopulateFilterViewModels();
             OnPropertyChanged(nameof(InlineSettingsVisibility));
         }
 
         public void EnsureSettingsInitialized()
         {
-            EnsureEditorInitialized();
+            EnsureFilterInitialized();
             if (_settingsInitialized || _disposed) return;
             _settingsInitialized = true;
             PopulatePluginProperties();
