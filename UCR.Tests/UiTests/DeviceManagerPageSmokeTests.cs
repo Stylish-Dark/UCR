@@ -1000,8 +1000,14 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(4),
                     "Each OR alternative must merge to two analogue axes in 4-Way capacity.");
                 Assert.That(mapping.SetInputRepresentation(1), Is.True);
+                Assert.That(mapping.Mapping.CompoundDigitalInput, Is.True,
+                    "Returning to 4-Way restores the previous digital compound preset.");
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(8));
+                string analogueError;
+                Assert.That(mapping.UseAnalogueCompoundInput(out analogueError), Is.True,
+                    analogueError);
                 Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(4),
-                    "Returning to analogue 4-Way must restore two compound axes per OR group.");
+                    "Explicitly choosing analogue 4-Way must restore two axis bindings per OR group.");
                 Assert.That(mapping.Mapping.DeviceBindings.GroupBy(binding =>
                     binding.InputExpressionGroup).All(group => group.Count() == 2), Is.True);
                 var savedAnalogue = Context.DeepXmlClone(mapping.Mapping);
