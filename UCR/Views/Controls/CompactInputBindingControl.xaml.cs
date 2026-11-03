@@ -548,7 +548,7 @@ namespace HidWizards.UCR.Views.Controls
             }
 
             var tabs = new TabControl { Background = Brushes.Transparent, MinHeight = 365,
-                SelectedIndex = typedCategory == DeviceBindingCategory.Range ? 2 : 0 };
+                SelectedIndex = DeviceBinding.DeviceBindingCategory == DeviceBindingCategory.Range ? 2 : 0 };
             foreach (var category in new[] {
                 new { Title = "Buttons", Items = buttons },
                 new { Title = "Directions", Items = directionals },
