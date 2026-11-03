@@ -747,6 +747,90 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void WasdPresetBindsOnlyItsOrGroupAndSurvivesAxisRoundTrip()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            context.PluginManager.Plugins = new List<Plugin>
+            {
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton(),
+                new HidWizards.UCR.Plugins.Remapper.AxisToAxis()
+            };
+            var profile = context.ProfilesManager.CreateProfile("Directional keyboard alternatives",
+                null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var keyboard = new Device(new DeviceCache
+            {
+                Title = "Keyboard",
+                ProviderName = "Core_Interception",
+                DeviceHandle = "keyboard",
+                DeviceBindingMenu = new List<HidWizards.UCR.Core.Models.Binding.DeviceBindingNode>
+                {
+                    new HidWizards.UCR.Core.Models.Binding.DeviceBindingNode
+                    {
+                        Title = "Keys",
+                        ChildrenNodes = new[] { "A", "D", "W", "S" }
+                            .Select((key, index) => new HidWizards.UCR.Core.Models.Binding.DeviceBindingNode
+                            {
+                                Title = "Keys," + key,
+                                DeviceBindingInfo = new HidWizards.UCR.Core.Models.Binding.DeviceBindingInfo
+                                {
+                                    DeviceBindingCategory = HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary,
+                                    KeyType = 1, KeyValue = index + 10
+                                }
+                            }).ToList()
+                    }
+                }
+            });
+            profile.AddDeviceConfigurations(new List<DeviceConfiguration>
+            {
+                new DeviceConfiguration(keyboard)
+            }, DeviceIoType.Input);
+            profile.AddMapping("Keyboard alternatives")
+                .AddPlugin(new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+            var vm = new ProfileViewModel(profile);
+            try
+            {
+                var mapping = vm.MappingsList.Single();
+                Assert.That(mapping.SetOutputRepresentation(2), Is.True);
+                mapping.AddOrInput();
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(4));
+                string error;
+                Assert.That(mapping.ApplyDirectionalKeyboardPreset("WASD", out error, 1),
+                    Is.True, error);
+                Assert.That(mapping.Mapping.EffectiveInputRepresentation, Is.EqualTo(1));
+                Assert.That(mapping.Mapping.CompoundDigitalInput, Is.True);
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(8));
+                var firstSet = mapping.Mapping.DeviceBindings
+                    .Where(binding => binding.InputExpressionGroup == 0).ToList();
+                var secondSet = mapping.Mapping.DeviceBindings
+                    .Where(binding => binding.InputExpressionGroup == 1)
+                    .OrderBy(binding => binding.InputDirectionSlot).ToList();
+                Assert.That(firstSet.All(binding => !binding.IsBound), Is.True,
+                    "Applying a preset to one OR set must not bind another set.");
+                Assert.That(secondSet.Select(binding => binding.KeyValue),
+                    Is.EqualTo(new[] { 10, 11, 12, 13 }));
+                Assert.That(mapping.SetInputRepresentation(2), Is.True);
+                Assert.That(mapping.Mapping.CompoundDigitalInput, Is.False);
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(4));
+                Assert.That(mapping.SetInputRepresentation(1), Is.True);
+                Assert.That(mapping.Mapping.CompoundDigitalInput, Is.True,
+                    "Returning to 4-Way should restore the previous compound preset.");
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(8));
+                Assert.That(mapping.Mapping.DeviceBindings
+                    .Where(binding => binding.InputExpressionGroup == 1)
+                    .OrderBy(binding => binding.InputDirectionSlot)
+                    .Select(binding => binding.KeyValue),
+                    Is.EqualTo(new[] { 10, 11, 12, 13 }));
+            }
+            finally
+            {
+                vm.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void OutputSelectionCanReplaceButtonWithAxisWithoutLosingDestination()
         {
             EnsureApplicationResources();
