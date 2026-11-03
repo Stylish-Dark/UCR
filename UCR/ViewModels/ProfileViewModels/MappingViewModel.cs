@@ -1115,8 +1115,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 error = "Add a keyboard to this profile first.";
                 return false;
             }
-            var controls = FlattenBindingNodes(profile.Context.DevicesManager.GetDeviceBindingMenu(
-                keyboard.Device, DeviceIoType.Input)).Where(node => node.DeviceBindingInfo != null &&
+            var controls = FlattenBindingNodes(keyboard.Device.GetDeviceBindingMenu(profile.Context, DeviceIoType.Input)).Where(node => node.DeviceBindingInfo != null &&
                 node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary).ToList();
             var selections = new List<DeviceBindingNode>();
             foreach (var name in keys.Take(inputs.Count))
@@ -1180,8 +1179,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 error = "A keyboard preset requires all directions on the same keyboard.";
                 return false;
             }
-            var controls = FlattenBindingNodes(profile.Context.DevicesManager.GetDeviceBindingMenu(
-                keyboard.Device, DeviceIoType.Input)).Where(node => node.DeviceBindingInfo != null).ToList();
+            var controls = FlattenBindingNodes(keyboard.Device.GetDeviceBindingMenu(profile.Context, DeviceIoType.Input)).Where(node => node.DeviceBindingInfo != null).ToList();
             var names = new List<string>();
             foreach (var input in inputs)
             {
@@ -1496,8 +1494,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var kind = DeviceVisualCatalog.Describe(device, profile, DeviceIoType.Input).Kind;
                 if (kind == DeviceVisualKind.Keyboard || kind == DeviceVisualKind.Mouse ||
                     kind == DeviceVisualKind.Unavailable || kind == DeviceVisualKind.Unknown) continue;
-                var axes = FlattenBindingNodes(profile.Context.DevicesManager.GetDeviceBindingMenu(
-                    device.Device, DeviceIoType.Input)).Where(node => node?.DeviceBindingInfo != null &&
+                var axes = FlattenBindingNodes(device.Device.GetDeviceBindingMenu(profile.Context, DeviceIoType.Input)).Where(node => node?.DeviceBindingInfo != null &&
                     node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Range).ToList();
                 var pair = axes.GroupBy(node => node.DeviceBindingInfo.KeyType).FirstOrDefault(group =>
                     group.Any(node => node.DeviceBindingInfo.KeyValue == axisIndex) &&
@@ -1584,8 +1581,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 if (device?.Device == null || !string.Equals(device.Device.ProviderName,
                     "Core_ViGEm", StringComparison.OrdinalIgnoreCase)) continue;
-                var nodes = FlattenBindingNodes(profile.Context.DevicesManager.GetDeviceBindingMenu(
-                    device.Device, DeviceIoType.Output))
+                var nodes = FlattenBindingNodes(device.Device.GetDeviceBindingMenu(profile.Context, DeviceIoType.Output))
                     .Where(node => node?.DeviceBindingInfo != null).ToList();
                 var axes = nodes.Where(node => node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Range &&
                     node.DeviceBindingInfo.KeyValue >= 0 && node.DeviceBindingInfo.KeyValue <= 3)
@@ -1624,8 +1620,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             var profile = ProfileViewModel.Profile;
             if (device?.Device == null) return null;
-            var nodes = FlattenBindingNodes(profile.Context.DevicesManager.GetDeviceBindingMenu(
-                device.Device, ioType)).Where(node => node?.DeviceBindingInfo != null &&
+            var nodes = FlattenBindingNodes(device.Device.GetDeviceBindingMenu(profile.Context, ioType)).Where(node => node?.DeviceBindingInfo != null &&
                     node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary).ToList();
             var dpad = nodes.Where(node =>
             {
@@ -1764,8 +1759,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return false;
             }
 
-            var keys = FlattenBindingNodes(profile.Context.DevicesManager.GetDeviceBindingMenu(
-                    keyboard.Device, DeviceIoType.Input))
+            var keys = FlattenBindingNodes(keyboard.Device.GetDeviceBindingMenu(profile.Context, DeviceIoType.Input))
                 .Where(node => node.DeviceBindingInfo != null &&
                     node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary)
                 .ToList();
@@ -2239,8 +2233,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var configuration = ResolveQuickOutputConfiguration(bindingViewModel);
             if (configuration?.Device == null) return result;
 
-            var menu = ProfileViewModel.Profile.Context.DevicesManager.GetDeviceBindingMenu(
-                configuration.Device, DeviceIoType.Output);
+            var menu = configuration.Device.GetDeviceBindingMenu(ProfileViewModel.Profile.Context, DeviceIoType.Output);
             foreach (var node in FlattenBindingNodes(menu))
             {
                 if (node?.DeviceBindingInfo == null ||
@@ -2375,8 +2368,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             // A press on an input device is only a selector. Resolve the same named control on the
             // already-selected output device, then bind that output control. The input device itself
             // is deliberately ignored here and can never replace the output-device configuration.
-            var outputNode = FlattenBindingNodes(ProfileViewModel.Profile.Context.DevicesManager.GetDeviceBindingMenu(
-                    outputConfiguration.Device, DeviceIoType.Output))
+            var outputNode = FlattenBindingNodes(outputConfiguration.Device.GetDeviceBindingMenu(ProfileViewModel.Profile.Context, DeviceIoType.Output))
                 .FirstOrDefault(node => node?.DeviceBindingInfo != null &&
                                         node.DeviceBindingInfo.DeviceBindingCategory == bindingViewModel.DeviceBindingCategory &&
                                         string.Equals(node.Title, detected.ControlTitle, StringComparison.CurrentCultureIgnoreCase));
