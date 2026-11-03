@@ -1305,17 +1305,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool ApplyDirectionalDPadPreset(out string error, int groupIndex = 0)
         {
             error = null;
-            if (!EnsureCompoundDigitalSlots(out error, fourWay: true)) return false;
-            var inputs = DeviceBindings.Where(input =>
-                input.DeviceBinding.InputExpressionGroup == groupIndex)
-                .OrderBy(input => input.DeviceBinding.InputDirectionSlot).ToList();
-            if (inputs.Count != 4)
+            if (!ButtonsEnabled) return false;
+            var original = Mapping.DeviceBindings.FirstOrDefault(binding =>
+                binding.InputExpressionGroup == groupIndex);
+            if (original == null)
             {
-                error = "The 4-Way binding does not contain four directions.";
+                error = "This input OR set no longer exists.";
                 return false;
             }
             var profile = ProfileViewModel.Profile;
-            var selectedGuid = inputs[0].DeviceBinding.DeviceConfigurationGuid;
+            var selectedGuid = original.DeviceConfigurationGuid;
             var device = profile.GetDeviceConfiguration(DeviceIoType.Input, selectedGuid);
             var dpad = FindDPadControls(device, DeviceIoType.Input);
             if (dpad == null && selectedGuid == Guid.Empty)
@@ -1331,6 +1330,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (device == null || dpad == null)
             {
                 error = "Select a controller with a D-pad in the shared device picker, or add one to this profile.";
+                return false;
+            }
+
+            // Never convert existing bindings until the requested D-pad exists.
+            if (!EnsureCompoundDigitalSlots(out error, fourWay: true)) return false;
+            var inputs = DeviceBindings.Where(input =>
+                input.DeviceBinding.InputExpressionGroup == groupIndex)
+                .OrderBy(input => input.DeviceBinding.InputDirectionSlot).ToList();
+            if (inputs.Count != 4)
+            {
+                error = "The 4-Way binding does not contain four directions.";
                 return false;
             }
             // Provider controls are ordered Up, Down, Left, Right. Logical unit
