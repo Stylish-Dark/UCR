@@ -368,7 +368,46 @@
                             </StackPanel>
                         </StackPanel>
                     </Grid>
+                    <!-- Compound bindings have one visible assignment, not one row per direction. -->
+                    <Grid Margin="3 4 3 3">
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsCompoundInput}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" MinWidth="0"/>
+                            <ColumnDefinition Width="40"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Content="{Binding CompoundBindingSummary}"
+                                Click="CompoundBindingsMenu_OnClick"
+                                ToolTip="Choose or edit the compound binding"
+                                HorizontalContentAlignment="Center"
+                                Height="38" Foreground="#FFFFFF"
+                                Background="#0939A5" BorderBrush="#1250D3"
+                                FontWeight="SemiBold" Padding="8 3"/>
+                        <Button Grid.Column="1" Content="⋮" FontSize="20"
+                                Click="CompoundBindingsMenu_OnClick"
+                                ToolTip="Compound binding options"
+                                Height="38" Margin="3 0 0 0" Padding="0"
+                                Foreground="#FFFFFF" Background="#0939A5"
+                                BorderBrush="#1250D3"/>
+                    </Grid>
                     <ItemsControl ItemsSource="{Binding DeviceBindings}">
+                        <ItemsControl.Style>
+                            <Style TargetType="ItemsControl">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsCompoundInput}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ItemsControl.Style>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Grid Margin="0 0 0 5">
