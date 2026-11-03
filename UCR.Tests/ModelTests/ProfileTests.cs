@@ -508,6 +508,36 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void MappingEditorKeepsDeviceMenusUnpopulatedUntilRequested()
+        {
+            _profile.AddPlugin(_mapping, new ButtonToButton());
+            var viewModel = new ProfileViewModel(_profile);
+            try
+            {
+                var mapping = viewModel.MappingsList.Single();
+                var input = mapping.DeviceBindings.Single();
+                var output = mapping.Plugins.Single().DeviceBindings.Single();
+
+                Assert.That(input.Devices, Is.Empty,
+                    "Mapping construction must not enumerate input dropdown choices.");
+                Assert.That(output.Devices, Is.Empty,
+                    "Mapping construction must not enumerate output dropdown choices.");
+
+                input.EnsureSelectedDevicePreviewLoaded();
+                output.EnsureSelectedDevicePreviewLoaded();
+
+                Assert.That(input.Devices.Count, Is.EqualTo(1));
+                Assert.That(output.Devices.Count, Is.EqualTo(1));
+                Assert.That(input.SelectedDevice.Value, Is.EqualTo(Guid.Empty));
+                Assert.That(output.SelectedDevice.Value, Is.EqualTo(Guid.Empty));
+            }
+            finally
+            {
+                viewModel.Dispose();
+            }
+        }
+
+        [Test]
         public void AxisPressAndReleaseSettingsAreAvailableInCompactInspector()
         {
             _profile.AddPlugin(_mapping, new ButtonToAxis());
