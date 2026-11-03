@@ -237,6 +237,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         // Physical assignments are authoritative. A representation is an expected
         // shape, not a restriction that prevents choosing a different control.
+        private bool _preferCapturedDirectionalBinding;
+
         public bool InferInputTypeFromAssignment(DeviceBinding input)
         {
             if (!ButtonsEnabled || input?.IsBound != true ||
@@ -252,12 +254,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             if (IsTypedDirectionalMapping)
             {
-                if (physical == DeviceBindingCategory.Range &&
-                    Mapping.EffectiveInputRepresentation == 3)
-                    return SetInputRepresentation(2);
-                if (physical == DeviceBindingCategory.Momentary &&
-                    Mapping.EffectiveInputRepresentation == 2)
-                    return SetInputRepresentation(3);
+                var requested = physical == DeviceBindingCategory.Range &&
+                    Mapping.EffectiveInputRepresentation == 3 ? 2 :
+                    physical == DeviceBindingCategory.Momentary &&
+                    Mapping.EffectiveInputRepresentation == 2 ? 3 : 0;
+                if (requested != 0)
+                {
+                    _preferCapturedDirectionalBinding = true;
+                    try { return SetInputRepresentation(requested); }
+                    finally { _preferCapturedDirectionalBinding = false; }
+                }
             }
             RefreshDirectionalAvailability();
             return false;
@@ -385,7 +391,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     .All(group => group.Count() == perGroup));
 
             List<DeviceBinding> next;
-            if (bank != null)
+            if (bank != null && !_preferCapturedDirectionalBinding)
             {
                 next = bank.Bindings;
                 Mapping.InactiveInputRepresentations.Remove(bank);
