@@ -25,6 +25,46 @@ namespace HidWizards.UCR.Tests.ModelTests
                 Is.EqualTo(expectedOutputs));
         }
 
+        [Test]
+        public void DigitalCompoundBindingUsesFourDirectionalSlotsAndCorrectVector()
+        {
+            var mapping = new Mapping
+            {
+                DirectionalCapacity = 4,
+                InputRepresentation = 1,
+                OutputRepresentation = 1,
+                CompoundDigitalInput = true
+            };
+            Assert.That(mapping.RequiredInputBindingSlots, Is.EqualTo(4));
+            var keys = Enumerable.Range(0, 4).Select(index => new DeviceBinding
+            {
+                InputExpressionInputKind = 0, InputDirectionSlot = index + 1
+            }).ToArray();
+            // WASD slots: A=Left, D=Right, W=Up, S=Down.
+            var vector = Mapping.ComputeDirectionalChannelValues(
+                new short[] { 0, 1, 1, 0 }, keys, 4, 3, 1);
+            Assert.That(vector, Is.EqualTo(new short[] { short.MaxValue, -short.MaxValue }));
+        }
+
+        [Test]
+        public void DigitalCompoundAxisUsesTwoOpposingButtons()
+        {
+            var mapping = new Mapping
+            {
+                DirectionalCapacity = 2,
+                InputRepresentation = 2,
+                CompoundDigitalInput = true
+            };
+            Assert.That(mapping.RequiredInputBindingSlots, Is.EqualTo(2));
+            var keys = Enumerable.Range(0, 2).Select(index => new DeviceBinding
+            {
+                InputExpressionInputKind = 0, InputDirectionSlot = index + 1
+            }).ToArray();
+            var vector = Mapping.ComputeDirectionalChannelValues(
+                new short[] { 1, 0 }, keys, 2, 3, 2);
+            Assert.That(vector, Is.EqualTo(new short[] { short.MinValue + 1 }));
+        }
+
         [TestCase(1, 1)]
         [TestCase(1, 2)]
         [TestCase(1, 3)]
