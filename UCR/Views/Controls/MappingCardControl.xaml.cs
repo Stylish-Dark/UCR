@@ -364,7 +364,8 @@ namespace HidWizards.UCR.Views.Controls
             int value;
             if (vm == null || !int.TryParse((sender as FrameworkElement)?.Tag as string, out value))
                 return;
-            vm.SetInputRepresentation(value);
+            if (!vm.SetInputRepresentation(value))
+                (sender as RadioButton)?.GetBindingExpression(ToggleButton.IsCheckedProperty)?.UpdateTarget();
         }
 
         private void OutputRepresentation_OnClick(object sender, RoutedEventArgs e)
@@ -373,7 +374,8 @@ namespace HidWizards.UCR.Views.Controls
             int value;
             if (vm == null || !int.TryParse((sender as FrameworkElement)?.Tag as string, out value))
                 return;
-            vm.SetOutputRepresentation(value);
+            if (!vm.SetOutputRepresentation(value))
+                (sender as RadioButton)?.GetBindingExpression(ToggleButton.IsCheckedProperty)?.UpdateTarget();
         }
 
         private void AddAndInput_OnClick(object sender, RoutedEventArgs e)
