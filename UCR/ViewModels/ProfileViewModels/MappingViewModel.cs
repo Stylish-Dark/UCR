@@ -143,6 +143,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool InputIsFullStick => Mapping.EffectiveInputRepresentation == 1;
         public bool InputIsAxis => Mapping.EffectiveInputRepresentation == 2;
         public bool InputIsButton => Mapping.EffectiveInputRepresentation == 3;
+        public bool IsCompoundInput => IsTypedDirectionalMapping && Mapping.EffectiveInputRepresentation != 3;
+        public bool CompoundBlockEnabled => IsCompoundInput &&
+            Mapping.DeviceBindings.Any(binding => binding.IsBound && binding.Block);
+        public bool CanBlockCompound => ButtonsEnabled && IsCompoundInput &&
+            Mapping.DeviceBindings.Any(binding => binding.IsBound && binding.IsBlockable());
         public bool OutputIsFullStick => Mapping.EffectiveOutputRepresentation == 1;
         public bool OutputIsAxis => Mapping.EffectiveOutputRepresentation == 2;
         public bool OutputIsButton => Mapping.EffectiveOutputRepresentation == 3;
@@ -217,6 +222,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(InputIsFullStick));
             OnPropertyChanged(nameof(InputIsAxis));
             OnPropertyChanged(nameof(InputIsButton));
+            OnPropertyChanged(nameof(IsCompoundInput));
+            OnPropertyChanged(nameof(CompoundBlockEnabled));
+            OnPropertyChanged(nameof(CanBlockCompound));
             OnPropertyChanged(nameof(OutputIsFullStick));
             OnPropertyChanged(nameof(OutputIsAxis));
             OnPropertyChanged(nameof(OutputIsButton));
@@ -751,6 +759,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return;
             }
 
+            OnPropertyChanged(nameof(CompoundBlockEnabled));
+            OnPropertyChanged(nameof(CanBlockCompound));
             RefreshInputExpressionPresentation();
             RefreshPresetAvailability();
             RefreshCollapsedSummary();
@@ -1020,6 +1030,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             foreach (var input in inputs) input.RefreshDeviceList();
             RefreshCollapsedSummary();
             return true;
+        }
+
+        public void SetCompoundBlockEnabled(bool blocked)
+        {
+            if (!CanBlockCompound) return;
+            foreach (var binding in Mapping.DeviceBindings)
+                binding.SetBlock(blocked && binding.IsBound && binding.IsBlockable());
+            OnPropertyChanged(nameof(CompoundBlockEnabled));
+            RefreshCollapsedSummary();
         }
 
         public void SetDirectionalBlocked(DeviceBindingViewModel source, bool blocked)
