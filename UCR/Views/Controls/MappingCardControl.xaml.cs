@@ -805,12 +805,18 @@ namespace HidWizards.UCR.Views.Controls
             var requested = selectedControl.DeviceBindingCategory;
             if (mapping.IsTypedDirectionalMapping)
             {
-                // The representation selector owns the physical output type.
-                // An individual picker must not silently replace one channel's
-                // plugin and invalidate the selected directional topology.
                 var expected = mapping.Mapping.EffectiveOutputRepresentation == 3
                     ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
-                if (requested != expected) return false;
+                if (requested != expected)
+                {
+                    // The actual control wins over the selected expectation.
+                    // Reconfigure the output representation before binding it.
+                    var newType = requested == DeviceBindingCategory.Range ? 2 :
+                        requested == DeviceBindingCategory.Momentary ? 3 : 0;
+                    if (newType == 0 || !mapping.SetOutputRepresentation(newType)) return false;
+                    index = Math.Min(index, mapping.Plugins.Count - 1);
+                    original = mapping.Plugins[index];
+                }
             }
             var existing = original.Plugin.Outputs.FirstOrDefault()?.DeviceBindingCategory;
             if (existing != requested)
@@ -853,6 +859,7 @@ namespace HidWizards.UCR.Views.Controls
                     invert.SetValue(destinationPlugin.Plugin, direction < 0, null);
             }
             destination.RefreshDeviceList();
+            mapping.InferOutputTypeFromAssignment(requested);
             mapping.ProfileViewModel.Profile.Context.ContextChanged();
             return true;
         }
