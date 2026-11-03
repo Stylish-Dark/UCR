@@ -95,7 +95,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<DeviceBindingViewModel> DirectionalInputs => _directionalInputs;
         public ObservableCollection<DeviceBindingViewModel> OrdinaryInputs => _ordinaryInputs;
         public DeviceBindingViewModel DirectionalPrimary => DirectionalInputs.FirstOrDefault();
-        public bool DirectionalBlockEnabled => DirectionalInputs.Any(input => input.DeviceBinding.Block);
+        public bool DirectionalBlockEnabled => Inputs.Any(input => input.DeviceBinding.Block);
         public Visibility DirectionalVisibility => DirectionalPrimary == null ? Visibility.Collapsed : Visibility.Visible;
         public Visibility DirectionalPairVisibility =>
             DirectionalPrimary != null && !IsFourWay ? Visibility.Visible : Visibility.Collapsed;
@@ -103,7 +103,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool HasDirectionalInputs => DirectionalPrimary != null;
         public bool IsFourWay => DirectionalInputs.Count == 4;
         public int DirectionalColumns => IsFourWay ? 4 : 2;
-        public string DirectionalModeLabel => IsFourWay ? "4-way joystick" : "Axis";
+        public int ButtonPairColumns => Inputs.Count <= 1 ? 1 : 2;
+        public string DirectionalModeLabel => IsTypedDirectional
+            ? _owner.InputDirectionalGroupTitle : IsFourWay ? "4-way joystick" : "Axis";
 
         public bool CanRemoveCondition { get; }
 
