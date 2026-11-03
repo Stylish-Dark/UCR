@@ -652,6 +652,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (_disposed) return;
 
             OnPropertyChanged(nameof(ButtonsEnabled));
+            OnPropertyChanged(nameof(CanBlockCompound));
+            OnPropertyChanged(nameof(CompoundBlockEnabled));
             OnPropertyChanged(nameof(CanMoveUp));
             OnPropertyChanged(nameof(CanMoveDown));
             foreach (var binding in DeviceBindings) binding.RefreshActiveState();
@@ -740,6 +742,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     member.IsBlockable())
                     member.SetBlock(true);
             }
+            if (IsCompoundInput && changed?.DeviceBinding?.IsBound == true &&
+                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.BindButtonText),
+                    StringComparison.Ordinal) &&
+                Mapping.DeviceBindings.Any(other =>
+                    other != changed.DeviceBinding && other.IsBound && other.Block) &&
+                changed.DeviceBinding.IsBlockable())
+                changed.DeviceBinding.SetBlock(true);
+
+            OnPropertyChanged(nameof(CompoundBlockEnabled));
+            OnPropertyChanged(nameof(CanBlockCompound));
             // Avoid rebuilding every mapping glyph for duplicate label changes
             // and unrelated UI-only binding presentation notifications.
             if (string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.CompactBindButtonText), StringComparison.Ordinal) ||
