@@ -338,8 +338,8 @@ namespace HidWizards.UCR.Views.Controls
                 ? (mapping.Mapping.EffectiveOutputRepresentation == 3
                     ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range)
                 : (DeviceBindingCategory?)null;
-            var nodes = DeviceBinding.Profile.Context.DevicesManager.GetDeviceBindingMenu(
-                config.Device, DeviceIoType.Output);
+            var nodes = config.Device.GetDeviceBindingMenu(DeviceBinding.Profile.Context,
+                DeviceIoType.Output);
             var controls = FlattenControls(nodes)
                 .Where(node => node.DeviceBindingInfo != null &&
                     (node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary ||
