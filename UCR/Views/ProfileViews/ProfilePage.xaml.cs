@@ -572,9 +572,17 @@ namespace HidWizards.UCR.Views.ProfileViews
             var list = _mappingDragListView;
             if (source == null || list == null || source.IsExpanded || Profile.IsActive()) return false;
 
+            // Dragging needs every row's exact slot position for its existing
+            // live-reorder animation. Temporarily realize all rows only during drag.
+            VirtualizingPanel.SetIsVirtualizing(list, false);
+            FindVisualChild<OuterViewportVirtualizingPanel>(list)?.InvalidateMeasure();
             list.UpdateLayout();
             var sourceContainer = list.ItemContainerGenerator.ContainerFromItem(source) as ListViewItem;
-            if (sourceContainer == null || sourceContainer.ActualWidth <= 0 || sourceContainer.ActualHeight <= 0) return false;
+            if (sourceContainer == null || sourceContainer.ActualWidth <= 0 || sourceContainer.ActualHeight <= 0)
+            {
+                RestoreMappingVirtualization(list);
+                return false;
+            }
 
             _mappingDragSlots.Clear();
             _mappingDragMappings = list.Items.OfType<MappingViewModel>().ToList();
@@ -584,6 +592,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                 if (container == null || container.ActualHeight <= 0)
                 {
                     RestoreMappingDragVisuals();
+                    RestoreMappingVirtualization(list);
                     Logger.Warn("Unable to prepare mapping reorder because a mapping card container is unavailable.");
                     return false;
                 }
@@ -608,6 +617,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (!_mappingDragSlots.TryGetValue(source, out sourceSlot))
             {
                 RestoreMappingDragVisuals();
+                RestoreMappingVirtualization(list);
                 return false;
             }
 
@@ -622,6 +632,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                 {
                     RestoreMappingDragVisuals();
                     Logger.Warn("Unable to capture mouse for live mapping reorder: " + source.MappingTitle);
+                    RestoreMappingVirtualization(list);
                     return false;
                 }
 
@@ -892,8 +903,16 @@ namespace HidWizards.UCR.Views.ProfileViews
             _mappingDragGrabOffsetY = 0;
         }
 
+        private static void RestoreMappingVirtualization(ListView list)
+        {
+            if (list == null) return;
+            VirtualizingPanel.SetIsVirtualizing(list, true);
+            FindVisualChild<OuterViewportVirtualizingPanel>(list)?.InvalidateMeasure();
+        }
+
         private void ResetPendingMappingDrag()
         {
+            RestoreMappingVirtualization(_mappingDragListView);
             _mappingDragStart = null;
             _mappingDragSource = null;
             _mappingDragOriginalIndex = -1;
@@ -959,7 +978,11 @@ namespace HidWizards.UCR.Views.ProfileViews
             var list = FindVisualChildren<ListView>(MappingSectionsItemsControl)
                 .FirstOrDefault(candidate => candidate.Items.Contains(mapping));
             if (list == null) return;
-            list.ScrollIntoView(mapping);
+            var panel = FindVisualChild<OuterViewportVirtualizingPanel>(list);
+            if (panel != null)
+                panel.BringMappingIntoView(mapping);
+            else
+                list.ScrollIntoView(mapping);
             list.UpdateLayout();
             (list.ItemContainerGenerator.ContainerFromItem(mapping) as FrameworkElement)?.BringIntoView();
         }
