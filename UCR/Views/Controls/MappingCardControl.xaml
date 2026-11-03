@@ -571,7 +571,42 @@
                                            Visibility="{Binding TypedDirectionalVisibility}"
                                            FontSize="12" FontWeight="SemiBold" Foreground="#D0D0D0"
                                            Margin="4 1 0 7"/>
+                                <!-- 4-Way remains one logical destination even when
+                                     implemented as two axes or four D-pad buttons. -->
+                                <Border Background="#292929" BorderBrush="#454545"
+                                        BorderThickness="1" CornerRadius="3" Padding="7"
+                                        Margin="0 0 0 5"
+                                        Visibility="{Binding IsCompoundOutput, Converter={StaticResource CompoundVisibilityConverter}}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" MinWidth="0"/>
+                                            <ColumnDefinition Width="40"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Column="0" Height="38"
+                                                Content="{Binding CompoundOutputSummary}"
+                                                Click="CompoundOutput_OnClick"
+                                                HorizontalContentAlignment="Center"
+                                                FontWeight="SemiBold" Foreground="#FFFFFF"
+                                                Background="#0939A5" BorderBrush="#1250D3"
+                                                ToolTip="Choose a complete 4-Way output destination"/>
+                                        <Button Grid.Column="1" Content="⋮" FontSize="20"
+                                                Click="CompoundOutput_OnClick"
+                                                Height="38" Margin="3 0 0 0"
+                                                Padding="0" Foreground="#FFFFFF"
+                                                Background="#0939A5" BorderBrush="#1250D3"
+                                                ToolTip="4-Way output destination options"/>
+                                    </Grid>
+                                </Border>
                         <ItemsControl ItemsSource="{Binding Plugins}">
+                            <ItemsControl.Style>
+                                <Style TargetType="{x:Type ItemsControl}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsCompoundOutput}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ItemsControl.Style>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Background="#292929" BorderBrush="#454545"
