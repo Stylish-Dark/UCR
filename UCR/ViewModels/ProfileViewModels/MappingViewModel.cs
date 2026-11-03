@@ -722,67 +722,86 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void SummaryBindingOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (_rebuildingDirectionalEditors) return;
+            if (_rebuildingDirectionalEditors || e == null) return;
+            var property = e.PropertyName;
             var changed = sender as DeviceBindingViewModel;
-            // Newly captured inputs inherit the mapping group's blocking policy.
-            // Blocking is not a per-input decision in the editor.
-            if (changed?.DeviceBinding?.IsBound == true &&
-                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.BindButtonText),
-                    StringComparison.Ordinal))
+
+            // Dropdown population, preview updates and editor cosmetics do not change
+            // the logical route. Previously each notification could rebuild input
+            // condition groups, route tokens, glyph collections and preset detection.
+            // This became especially expensive when all mapping editors loaded together.
+            if (property == nameof(DeviceBindingViewModel.CompactBindButtonText))
             {
+                OnPropertyChanged(nameof(CompoundBindingSummary));
+                return;
+            }
+            switch (property)
+            {
+                case nameof(DeviceBindingViewModel.Devices):
+                case nameof(DeviceBindingViewModel.SelectedDevice):
+                case nameof(DeviceBindingViewModel.BindingEnabled):
+                case nameof(DeviceBindingViewModel.CanBindCurrentDevice):
+                case nameof(DeviceBindingViewModel.BlockAvailability):
+                case nameof(DeviceBindingViewModel.ShowBlock):
+                case nameof(DeviceBindingViewModel.CanBlock):
+                case nameof(DeviceBindingViewModel.ShowBindMode):
+                case nameof(DeviceBindingViewModel.ShowPreview):
+                case nameof(DeviceBindingViewModel.ShowButtonPreview):
+                case nameof(DeviceBindingViewModel.IsCapturing):
+                case nameof(DeviceBindingViewModel.BindModeProgress):
+                case nameof(DeviceBindingViewModel.CurrentValue):
+                case nameof(DeviceBindingViewModel.PreviewValue):
+                case nameof(DeviceBindingViewModel.DeviceBindingName):
+                case nameof(DeviceBindingViewModel.InputExpressionControlsVisibility):
+                case nameof(DeviceBindingViewModel.CanRemoveExpressionInput):
+                case nameof(DeviceBindingViewModel.InputTypeDetailsVisibility):
+                case nameof(DeviceBindingViewModel.AxisConditionVisibility):
+                case nameof(DeviceBindingViewModel.ThresholdConditionVisibility):
+                case nameof(DeviceBindingViewModel.AxisThresholdPercent):
+                case nameof(DeviceBindingViewModel.InputExpressionAxisThreshold):
+                case nameof(DeviceBindingViewModel.DirectionalBindLabel):
+                    return;
+            }
+
+            var boundLabelChanged = property == nameof(DeviceBindingViewModel.BindButtonText);
+            if (boundLabelChanged && changed?.DeviceBinding?.IsBound == true)
+            {
+                // Preserve the group/compound blocking policy for newly captured keys.
                 var section = ProfileViewModel.MappingSections?.FirstOrDefault(group =>
                     group.Mappings.Contains(this));
                 if (section?.BlockInputs == true && !changed.DeviceBinding.Block &&
                     changed.DeviceBinding.IsBlockable())
                     changed.DeviceBinding.SetBlock(true);
-            }
-            if (changed?.DeviceBinding?.InputDirectionSlot > 0 &&
-                changed.DeviceBinding.IsBound &&
-                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.BindButtonText), StringComparison.Ordinal))
-            {
-                // The single visible Block toggle represents every direction. When
-                // another slot is captured later, honour the unit's existing setting.
+
                 var member = changed.DeviceBinding;
-                if (!member.Block && Mapping.DeviceBindings.Any(other =>
-                    other != member && other.InputDirectionSlot > 0 &&
-                    other.InputExpressionGroup == member.InputExpressionGroup && other.Block) &&
+                if (member.InputDirectionSlot > 0 && !member.Block &&
+                    Mapping.DeviceBindings.Any(other =>
+                        other != member && other.InputDirectionSlot > 0 &&
+                        other.InputExpressionGroup == member.InputExpressionGroup &&
+                        other.Block) && member.IsBlockable())
+                    member.SetBlock(true);
+
+                if (IsCompoundInput && !member.Block &&
+                    Mapping.DeviceBindings.Any(other =>
+                        other != member && other.IsBound && other.Block) &&
                     member.IsBlockable())
                     member.SetBlock(true);
             }
-            if (IsCompoundInput && changed?.DeviceBinding?.IsBound == true &&
-                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.BindButtonText),
-                    StringComparison.Ordinal) &&
-                Mapping.DeviceBindings.Any(other =>
-                    other != changed.DeviceBinding && other.IsBound && other.Block) &&
-                changed.DeviceBinding.IsBlockable())
-                changed.DeviceBinding.SetBlock(true);
 
-            OnPropertyChanged(nameof(CompoundBlockEnabled));
-            OnPropertyChanged(nameof(CanBlockCompound));
-            // Avoid rebuilding every mapping glyph for duplicate label changes
-            // and unrelated UI-only binding presentation notifications.
-            if (string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.CompactBindButtonText), StringComparison.Ordinal) ||
-                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.IsCapturing), StringComparison.Ordinal) ||
-                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.ShowBlock), StringComparison.Ordinal) ||
-                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.CanBlock), StringComparison.Ordinal) ||
-                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.ShowBindMode), StringComparison.Ordinal))
-                return;
-            // Countdown/preview animation is deliberately high-frequency and does not change the
-            // collapsed route summary. Rebuilding all glyph descriptors on every progress tick was
-            // needless WPF churn while the user was trying to press the input we were listening for.
-            if (string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.BindModeProgress), StringComparison.Ordinal) ||
-                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.CurrentValue), StringComparison.Ordinal) ||
-                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.PreviewValue), StringComparison.Ordinal) ||
-                string.Equals(e.PropertyName, nameof(DeviceBindingViewModel.ShowButtonPreview), StringComparison.Ordinal))
-            {
-                return;
-            }
+            var structural = property == nameof(DeviceBindingViewModel.InputExpressionInputKind) ||
+                             property == nameof(DeviceBindingViewModel.InputExpressionGroupLabel) ||
+                             property == nameof(DeviceBindingViewModel.DeviceBindingCategory);
+
+            // A binding-name change or Block switch requires new glyphs, not a
+            // destruction/reconstruction of every OR/input condition in the mapping.
+            if (structural)
+                RefreshInputExpressionPresentation();
+            if (structural || boundLabelChanged)
+                RefreshPresetAvailability();
 
             OnPropertyChanged(nameof(CompoundBlockEnabled));
             OnPropertyChanged(nameof(CanBlockCompound));
             OnPropertyChanged(nameof(CompoundBindingSummary));
-            RefreshInputExpressionPresentation();
-            RefreshPresetAvailability();
             RefreshCollapsedSummary();
         }
 
