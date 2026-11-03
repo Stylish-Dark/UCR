@@ -290,7 +290,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Input)
                     return "Bind";
                 if (string.IsNullOrWhiteSpace(label)) return label;
-                foreach (var group in new[] { "Keys", "Buttons" })
+                // The device picker already identifies the device and the binding
+                // menu owns category names. In a compact slot, show the control:
+                // "Axes, LS X+" -> "LS X+", "Buttons, A" -> "A". Preserve
+                // meaningful multi-part control names such as "POV 1, Up".
+                foreach (var group in new[] { "Keys", "Buttons", "Axes", "Axis", "Buttons / Axes" })
                 {
                     if (!label.StartsWith(group, StringComparison.OrdinalIgnoreCase)) continue;
                     var suffix = label.Substring(group.Length);
