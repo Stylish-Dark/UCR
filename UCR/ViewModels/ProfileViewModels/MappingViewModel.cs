@@ -650,8 +650,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             SubscribeSummaryBindings();
             RefreshHeaderState();
             RefreshCollapsedSummary();
-            foreach (var condition in InputConditions)
-                condition.DirectionalPrimary?.EnsureDeviceListLoaded();
             // Saved mappings are never converted just because their editor loads.
             // Fresh axis destinations receive pairing when the user adds/selects them.
         }
@@ -955,8 +953,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 PopulateDeviceBindingsViewModels();
                 OnPropertyChanged(nameof(CompoundBindingSummary));
                 foreach (var binding in DeviceBindings.ToList()) SubscribeSummaryBinding(binding);
-                foreach (var group in InputConditions.ToList())
-                    group.DirectionalPrimary?.EnsureDeviceListLoaded();
                 RefreshHeaderState();
                 RefreshCollapsedSummary();
             }
@@ -1327,8 +1323,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
 
             RebuildInputConditions();
-            if (Plugins?.Count == 1 && Plugins[0].IsFourButtonAxis)
-                DeviceBindings.FirstOrDefault()?.EnsureDeviceListLoaded();
             OnPropertyChanged(nameof(FourWayInputGroup));
             OnPropertyChanged(nameof(SupportsNativeInputExpression));
             OnPropertyChanged(nameof(UsesInputExpression));
