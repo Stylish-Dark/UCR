@@ -778,6 +778,26 @@ namespace HidWizards.UCR.Tests.UiTests
                     "Switching output category must retain the selected controller.");
                 Assert.That(destination.IsBound, Is.True);
                 Assert.That(destination.DeviceBindingCategory, Is.EqualTo(axis.DeviceBindingCategory));
+                Assert.That(mapping.Mapping.DirectionalCapacity, Is.EqualTo(2));
+                Assert.That(mapping.Mapping.EffectiveOutputRepresentation, Is.EqualTo(2));
+                Assert.That(mapping.Mapping.EffectiveInputRepresentation, Is.EqualTo(3));
+                Assert.That(mapping.DeviceBindings.Count, Is.EqualTo(2),
+                    "One Axis output requires an opposing Button input pair.");
+                Assert.That(mapping.CanChooseInputButton, Is.True);
+                Assert.That(mapping.CanChooseInputAxis, Is.True);
+                Assert.That(mapping.CanChooseInputFourWay, Is.False,
+                    "4-Way must remain unavailable until a four-direction capability exists.");
+                Assert.That(mapping.SetInputRepresentation(2), Is.True);
+                Assert.That(mapping.DeviceBindings.Count, Is.EqualTo(1),
+                    "Selecting Axis merges the opposing pair into one compound slot.");
+                mapping.AddOrInput();
+                Assert.That(mapping.DeviceBindings.Count, Is.EqualTo(2),
+                    "A second OR alternative in Axis mode must be a whole compound slot.");
+                Assert.That(mapping.DeviceBindings.Select(input =>
+                    input.DeviceBinding.InputExpressionGroup).Distinct().Count(), Is.EqualTo(2));
+                Assert.That(mapping.SetInputRepresentation(3), Is.True);
+                Assert.That(mapping.DeviceBindings.Count, Is.EqualTo(4),
+                    "Switching back to Button restores one opposing pair per OR set.");
             }
             finally
             {
