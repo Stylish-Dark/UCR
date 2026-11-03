@@ -319,6 +319,25 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 Mapping.DirectionalCapacity = Math.Max(previousCapacity, requiredCapacity);
             if (inputSide)
             {
+                if (value == 1 && !Mapping.CompoundDigitalInput &&
+                    Mapping.EffectiveDirectionalCapacity == 4)
+                {
+                    // Returning to a previously configured 4-Way input restores
+                    // the saved compound keyboard/D-pad unit, not a fresh pair of
+                    // empty analogue axes. Analogue 4-Way banks still retain the
+                    // normal two-channel structure.
+                    var groupCount = Math.Max(1, Mapping.DeviceBindings
+                        .Select(binding => Math.Max(0, binding.InputExpressionGroup))
+                        .Distinct().Count());
+                    var hasSavedDigitalFourWay = Mapping.InactiveInputRepresentations?
+                        .Any(bank => bank.Representation == 1 &&
+                            bank.Bindings != null &&
+                            bank.Bindings.Count == 4 * groupCount &&
+                            bank.Bindings.GroupBy(binding =>
+                                Math.Max(0, binding.InputExpressionGroup))
+                                .All(group => group.Count() == 4)) == true;
+                    if (hasSavedDigitalFourWay) Mapping.CompoundDigitalInput = true;
+                }
                 // Axis is one continuous source per axis; Button is a set of
                 // independent digital directions. The compound-digital backing
                 // belongs only to a 4-Way preset, not to a later Axis selection.
