@@ -240,13 +240,33 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public bool IsCapturing => DeviceBinding?.IsInBindMode == true;
 
+        private string _cachedBoundName;
+        private Guid _cachedBoundDevice;
+        private int _cachedBoundType;
+        private int _cachedBoundValue;
+        private int _cachedBoundSubValue;
+
+        private string BoundNameForDisplay()
+        {
+            var binding = DeviceBinding;
+            if (_cachedBoundName != null && _cachedBoundDevice == binding.DeviceConfigurationGuid &&
+                _cachedBoundType == binding.KeyType && _cachedBoundValue == binding.KeyValue &&
+                _cachedBoundSubValue == binding.KeySubValue)
+                return _cachedBoundName;
+            _cachedBoundDevice = binding.DeviceConfigurationGuid;
+            _cachedBoundType = binding.KeyType;
+            _cachedBoundValue = binding.KeyValue;
+            _cachedBoundSubValue = binding.KeySubValue;
+            return _cachedBoundName = binding.BoundName();
+        }
+
         public string BindButtonText
         {
             get
             {
                 if (DeviceBinding.IsInBindMode)
                     return "●  PRESS INPUT";
-                if (DeviceBinding.IsBound) return DeviceBinding.BoundName();
+                if (DeviceBinding.IsBound) return BoundNameForDisplay();
                 return "Bind";
             }
         }
@@ -287,6 +307,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (ReferenceEquals(_deviceBinding, value)) return;
                 if (_deviceBinding != null) _deviceBinding.PropertyChanged -= DeviceBindingOnPropertyChanged;
                 _deviceBinding = value;
+                _cachedBoundName = null;
                 if (_deviceBinding == null) return;
                 _deviceBinding.PropertyChanged += DeviceBindingOnPropertyChanged;
                 CurrentValue = _deviceBinding.CurrentValue;
@@ -512,6 +533,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public void RefreshDeviceList()
         {
             if (_disposed || DeviceBinding == null || DeviceBinding.Profile == null) return;
+            // Device capabilities/aliases may have changed even if the GUID hasn't.
+            _cachedBoundName = null;
             if (!_deviceListLoaded)
             {
                 _deviceListDirty = true;
