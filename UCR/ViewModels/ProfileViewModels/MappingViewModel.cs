@@ -1273,8 +1273,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                         node?.DeviceBindingInfo?.DeviceBindingCategory ==
                         DeviceBindingCategory.Momentary).ToList();
                 var matched = names.Select(name => controls.FirstOrDefault(node =>
-                    NormalizeAxisPresetKey(node.Title) == NormalizeAxisPresetKey(name)))
-                    .ToArray();
+                    MatchesControlLeafName(node.Title, name))).ToArray();
                 if (matched.Any(node => node == null)) continue;
                 candidates.Add(Tuple.Create(device, matched
                     .Select(node => node.DeviceBindingInfo).ToArray()));
@@ -2230,6 +2229,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             foreach (var binding in DeviceBindings) binding.RefreshDeviceList();
             RefreshCollapsedSummary();
             return true;
+        }
+
+        private static bool MatchesControlLeafName(string controlTitle, string name)
+        {
+            var normalized = NormalizeAxisPresetKey(name);
+            if (NormalizeAxisPresetKey(controlTitle) == normalized) return true;
+            // Providers may prefix controls with categories, e.g. "Buttons,A"
+            // or "Face buttons: Cross". Compare only complete trailing tokens,
+            // not arbitrary suffixes that would confuse A with another key.
+            var parts = Regex.Split(controlTitle ?? string.Empty, @"[,;:/\\|>]+");
+            return parts.Any(part => NormalizeAxisPresetKey(part) == normalized);
         }
 
         private static string NormalizeAxisPresetKey(string value)
