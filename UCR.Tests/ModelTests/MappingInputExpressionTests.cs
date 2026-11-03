@@ -195,6 +195,57 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void DirectionalOrGroupsAndCompoundBackingsSurviveXmlRoundTrip()
+        {
+            var mapping = new Mapping
+            {
+                DirectionalCapacity = 4,
+                InputRepresentation = 1,
+                OutputRepresentation = 1,
+                CompoundDigitalInput = true,
+                CompoundDigitalOutput = true,
+                UseInputExpression = true,
+                DeviceBindings = Enumerable.Range(0, 8).Select(index => new DeviceBinding
+                {
+                    InputExpressionGroup = index / 4,
+                    InputDirectionSlot = index % 4 + 1,
+                    InputExpressionInputKind = 0,
+                    KeyValue = 100 + index,
+                    IsBound = true
+                }).ToList(),
+                Plugins = Enumerable.Range(0, 4).Select(_ => (Plugin)new ButtonToButton()).ToList(),
+                InactiveInputRepresentations = new List<DirectionalInputBank>
+                {
+                    new DirectionalInputBank
+                    {
+                        Representation = 2,
+                        Bindings = Enumerable.Range(0, 2).Select(index => new DeviceBinding
+                        {
+                            InputExpressionGroup = index,
+                            InputExpressionInputKind = 3,
+                            IsBound = true,
+                            KeyValue = index + 17
+                        }).ToList()
+                    }
+                }
+            };
+            var clone = HidWizards.UCR.Core.Context.DeepXmlClone(mapping);
+            Assert.That(clone.CompoundDigitalInput, Is.True);
+            Assert.That(clone.CompoundDigitalOutput, Is.True);
+            Assert.That(clone.RequiredInputBindingSlots, Is.EqualTo(8));
+            Assert.That(clone.RequiredOutputBindingSlots, Is.EqualTo(4));
+            Assert.That(clone.DeviceBindings.Select(binding => binding.InputExpressionGroup),
+                Is.EqualTo(new[] { 0, 0, 0, 0, 1, 1, 1, 1 }));
+            Assert.That(clone.DeviceBindings.Select(binding => binding.KeyValue),
+                Is.EqualTo(Enumerable.Range(100, 8)));
+            Assert.That(clone.InactiveInputRepresentations.Single().Bindings
+                .Select(binding => binding.KeyValue), Is.EqualTo(new[] { 17, 18 }));
+            Assert.That(Mapping.ComputeDirectionalOrChannels(
+                new short[] { 0, 0, 0, 0, 0, 1, 1, 0 }, clone.DeviceBindings,
+                4, 3, 3, 4), Is.EqualTo(new short[] { 0, 1, 1, 0 }));
+        }
+
+        [Test]
         public void InactiveDirectionalOutputBanksSurviveXmlCloneWithDistinctPluginTypes()
         {
             var mapping = new Mapping
