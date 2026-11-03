@@ -243,7 +243,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (Mapping.InactiveInputRepresentations == null)
                 Mapping.InactiveInputRepresentations = new List<DirectionalInputBank>();
             var bank = Mapping.InactiveInputRepresentations.FirstOrDefault(item =>
-                item.Representation == representation);
+                item.Representation == representation &&
+                item.Bindings != null && item.Bindings.Count == required);
             var previous = Mapping.DeviceBindings.ToList();
             var priorType = Mapping.InputRepresentation;
             List<DeviceBinding> next;
@@ -315,7 +316,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 }
             }
             Mapping.InactiveInputRepresentations.RemoveAll(item =>
-                item.Representation == priorType);
+                item.Representation == priorType &&
+                item.Bindings != null && item.Bindings.Count == previous.Count);
             Mapping.InactiveInputRepresentations.Add(new DirectionalInputBank
             {
                 Representation = priorType,
@@ -337,7 +339,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (Mapping.InactiveOutputRepresentations == null)
                 Mapping.InactiveOutputRepresentations = new List<DirectionalOutputBank>();
             var bank = Mapping.InactiveOutputRepresentations.FirstOrDefault(item =>
-                item.Representation == representation);
+                item.Representation == representation &&
+                item.Plugins != null && item.Plugins.Count == required);
             var previous = Mapping.Plugins.ToList();
             var priorType = Mapping.OutputRepresentation;
             List<Plugin> next;
@@ -386,7 +389,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
 
             Mapping.InactiveOutputRepresentations.RemoveAll(item =>
-                item.Representation == priorType);
+                item.Representation == priorType &&
+                item.Plugins != null && item.Plugins.Count == previous.Count);
             Mapping.InactiveOutputRepresentations.Add(new DirectionalOutputBank
             {
                 Representation = priorType,
