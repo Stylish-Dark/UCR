@@ -416,6 +416,7 @@
                                                     <local:CompactInputBindingControl
                                                         DeviceBinding="{Binding DeviceBinding}"
                                                         DataContext="{Binding}"
+                                                        MenuOnLeft="{Binding MenuOnLeft}"
                                                         HorizontalAlignment="Stretch"/>
                                                 </StackPanel>
                                             </DataTemplate>
