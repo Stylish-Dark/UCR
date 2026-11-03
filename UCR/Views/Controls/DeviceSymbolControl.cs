@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Windows;
@@ -20,6 +21,8 @@ namespace HidWizards.UCR.Views.Controls
         private static readonly object TypefaceLock = new object();
         private static GlyphTypeface _typeface;
         private static bool _fontLoadFailed;
+        private static readonly Dictionary<Tuple<ushort, double>, Geometry> GlyphOutlines =
+            new Dictionary<Tuple<ushort, double>, Geometry>();
 
         public static readonly DependencyProperty SymbolTextProperty = DependencyProperty.Register(
             nameof(SymbolText), typeof(string), typeof(DeviceSymbolControl),
@@ -102,7 +105,22 @@ namespace HidWizards.UCR.Views.Controls
                 if (!typeface.CharacterToGlyphMap.TryGetValue(codePoint, out glyphIndex)) return;
 
                 var emSize = Math.Max(1.0, GlyphSize);
-                var outline = typeface.GetGlyphOutline(glyphIndex, emSize, emSize);
+                var outlineKey = Tuple.Create(glyphIndex, emSize);
+                Geometry outline;
+                lock (TypefaceLock)
+                {
+                    if (!GlyphOutlines.TryGetValue(outlineKey, out outline))
+                    {
+                        outline = typeface.GetGlyphOutline(glyphIndex, emSize, emSize);
+                        if (outline != null)
+                        {
+                            outline.Freeze();
+                            // A bounded cache prevents unbounded growth for animated glyph sizes.
+                            if (GlyphOutlines.Count >= 64) GlyphOutlines.Clear();
+                            GlyphOutlines[outlineKey] = outline;
+                        }
+                    }
+                }
                 if (outline == null) return;
 
                 var bounds = outline.Bounds;
@@ -124,9 +142,11 @@ namespace HidWizards.UCR.Views.Controls
                     transform.Children.Add(new ScaleTransform(scale, scale));
                 transform.Children.Add(new TranslateTransform(translateX, translateY));
 
-                var rendered = outline.CloneCurrentValue();
-                rendered.Transform = transform;
-                drawingContext.DrawGeometry(Foreground ?? Brushes.White, null, rendered);
+                // Transform the drawing context, not a cloned outline geometry.
+                // The same glyph shape, scale and translation are rendered as before.
+                drawingContext.PushTransform(transform);
+                drawingContext.DrawGeometry(Foreground ?? Brushes.White, null, outline);
+                drawingContext.Pop();
             }
             catch (Exception exception)
             {
