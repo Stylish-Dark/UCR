@@ -25,6 +25,38 @@ namespace HidWizards.UCR.Tests.ModelTests
                 Is.EqualTo(expectedOutputs));
         }
 
+        [TestCase(1, 1)]
+        [TestCase(1, 2)]
+        [TestCase(1, 3)]
+        [TestCase(2, 1)]
+        [TestCase(2, 2)]
+        [TestCase(2, 3)]
+        [TestCase(3, 1)]
+        [TestCase(3, 2)]
+        [TestCase(3, 3)]
+        public void EveryFullStickRepresentationPairPreservesDirectionalMeaning(
+            int inputRepresentation, int outputRepresentation)
+        {
+            // Same movement (right and up) in each physical representation.
+            short[] samples = inputRepresentation == 3
+                ? new short[] { 0, 1, 1, 0 }
+                : new short[] { 24000, -22000 };
+            var bindings = samples.Select(_ => new DeviceBinding
+            {
+                InputExpressionInputKind = inputRepresentation == 3 ? 0 : 3
+            }).ToArray();
+            var result = Mapping.ComputeDirectionalChannelValues(samples, bindings,
+                4, inputRepresentation, outputRepresentation);
+            if (outputRepresentation == 3)
+                Assert.That(result, Is.EqualTo(new short[] { 0, 1, 1, 0 }));
+            else
+            {
+                Assert.That(result.Count, Is.EqualTo(2));
+                Assert.That(result[0], Is.GreaterThan(8191));
+                Assert.That(result[1], Is.LessThan(-8191));
+            }
+        }
+
         [Test]
         public void FullStickAxisButtonConversionsPreserveBothVectorComponents()
         {
