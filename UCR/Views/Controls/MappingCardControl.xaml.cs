@@ -984,6 +984,39 @@ namespace HidWizards.UCR.Views.Controls
             RequestAxisInputMode(axis, 2);
         }
 
+        private void CompoundBindingsMenu_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mapping = DataContext as MappingViewModel;
+            var button = sender as Button;
+            if (mapping?.IsCompoundInput != true || button == null) return;
+            var menu = CreateDarkContextMenu(button);
+            foreach (var input in mapping.DeviceBindings)
+            {
+                var binding = input;
+                var label = binding.DeviceBindingName;
+                var assignment = binding.DeviceBinding.IsBound
+                    ? binding.CompactBindButtonText : "Unassigned";
+                var item = new MenuItem
+                {
+                    Header = label + "  —  " + assignment,
+                    IsEnabled = mapping.ButtonsEnabled
+                };
+                item.Click += (source, args) =>
+                {
+                    // Use the same Binding Category Menu as an ordinary input.
+                    // The underlying directional assignment remains independently addressable,
+                    // but it occupies no permanent row in the compound editor.
+                    Dispatcher.BeginInvoke((Action)(() =>
+                    {
+                        var picker = CompactInputBindingControl.CreateInputOptionsMenu(binding, button);
+                        picker.IsOpen = true;
+                    }), System.Windows.Threading.DispatcherPriority.Background);
+                };
+                menu.Items.Add(item);
+            }
+            menu.IsOpen = true;
+        }
+
         private void CompoundPreset_OnClick(object sender, RoutedEventArgs e)
         {
             var mapping = DataContext as MappingViewModel;
