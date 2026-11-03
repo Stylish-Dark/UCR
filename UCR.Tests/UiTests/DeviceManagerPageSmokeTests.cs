@@ -912,6 +912,22 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(mapping.IsCompoundOutput, Is.True);
                 Assert.That(mapping.Plugins.Count, Is.EqualTo(2),
                     "A 4-Way stick output has two internal axis channels and one logical control.");
+
+                var fourWayEditor = new MappingCardControl
+                {
+                    InspectorMode = true,
+                    InlineWorkspaceMode = true,
+                    DataContext = mapping
+                };
+                fourWayEditor.Measure(new Size(1050, 900));
+                fourWayEditor.Arrange(new Rect(0, 0, 1050, 900));
+                fourWayEditor.UpdateLayout();
+                Assert.That(FindVisualChildren<Button>(fourWayEditor).Count(button =>
+                    string.Equals(button.ToolTip as string,
+                        "Choose a complete 4-Way output destination",
+                        StringComparison.Ordinal)), Is.EqualTo(1),
+                    "Four-way outputs must display one logical binding regardless of internal channel count.");
+
                 var stick = new FourWayOutputChoice
                 {
                     DeviceConfigurationGuid = outputDevice.Guid,
