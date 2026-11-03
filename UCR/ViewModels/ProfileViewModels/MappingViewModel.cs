@@ -1235,17 +1235,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool ApplyTypedControllerFaceButtons(out string error, int groupIndex = 0)
         {
             error = null;
-            if (!EnsureCompoundDigitalSlots(out error, fourWay: true)) return false;
-            var profile = ProfileViewModel.Profile;
-            var group = DeviceBindings.Where(input =>
-                input.DeviceBinding.InputExpressionGroup == groupIndex)
-                .OrderBy(input => input.DeviceBinding.InputDirectionSlot).ToList();
-            if (group.Count != 4)
+            if (!ButtonsEnabled) return false;
+            var source = Mapping.DeviceBindings.FirstOrDefault(input =>
+                input.InputExpressionGroup == groupIndex);
+            if (source == null)
             {
-                error = "This 4-Way set does not contain four directions.";
+                error = "This input OR set no longer exists.";
                 return false;
             }
-            var preferred = group[0].DeviceBinding.DeviceConfigurationGuid;
+            var profile = ProfileViewModel.Profile;
+            var preferred = source.DeviceConfigurationGuid;
             var primary = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input)?.Guid;
             var candidates = new List<Tuple<DeviceConfiguration, DeviceBindingInfo[]>>();
             foreach (var device in profile.GetDeviceConfigurationList(DeviceIoType.Input))
@@ -1284,6 +1283,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (chosen == null)
             {
                 error = "No configured controller exposes a recognisable four-button face layout.";
+                return false;
+            }
+            // Do not replace any binding when the controller has no recognised
+            // face-button layout.
+            if (!EnsureCompoundDigitalSlots(out error, fourWay: true)) return false;
+            var group = DeviceBindings.Where(input =>
+                input.DeviceBinding.InputExpressionGroup == groupIndex)
+                .OrderBy(input => input.DeviceBinding.InputDirectionSlot).ToList();
+            if (group.Count != 4)
+            {
+                error = "This 4-Way set does not contain four directions.";
                 return false;
             }
             for (var i = 0; i < 4; i++)
