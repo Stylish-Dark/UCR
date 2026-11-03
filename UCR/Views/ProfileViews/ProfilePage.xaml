@@ -825,11 +825,16 @@
                                                       Visibility="{Binding IsExpanded, Converter={StaticResource MappingSectionVisibilityConverter}}"
                                                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                                       ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                                                      HorizontalContentAlignment="Stretch" VirtualizingPanel.IsVirtualizing="False"
+                                                      HorizontalContentAlignment="Stretch" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Standard"
                                                       PreviewMouseLeftButtonDown="MappingListView_OnPreviewMouseLeftButtonDown"
                                                       PreviewMouseLeftButtonUp="MappingListView_OnPreviewMouseLeftButtonUp"
                                                       PreviewMouseMove="MappingListView_OnPreviewMouseMove"
                                                       LostMouseCapture="MappingListView_OnLostMouseCapture">
+                                                <ListView.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <controls:OuterViewportVirtualizingPanel/>
+                                                    </ItemsPanelTemplate>
+                                                </ListView.ItemsPanel>
                                                 <ListView.ItemContainerStyle>
                                                     <Style TargetType="{x:Type ListViewItem}">
                                                         <Setter Property="HorizontalAlignment" Value="Stretch"/>
