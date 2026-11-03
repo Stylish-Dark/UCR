@@ -1121,6 +1121,156 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+        public bool ApplyTypedControllerStickPreset(int axisIndex, out string error,
+            int groupIndex = 0)
+        {
+            error = null;
+            if (!ButtonsEnabled || (axisIndex != 0 && axisIndex != 2))
+            {
+                error = "Stop the profile before editing a stick preset.";
+                return false;
+            }
+            var previousDigital = Mapping.CompoundDigitalInput;
+            Mapping.CompoundDigitalInput = false;
+            if (!IsFullStickInput || Mapping.DeviceBindings
+                    .GroupBy(input => input.InputExpressionGroup)
+                    .Any(group => group.Count() != 2))
+            {
+                if (!SetInputRepresentation(1) ||
+                    !SwitchDirectionalInputs(1))
+                {
+                    Mapping.CompoundDigitalInput = previousDigital;
+                    error = "Unable to prepare a 4-Way analogue stick binding.";
+                    return false;
+                }
+            }
+
+            var profile = ProfileViewModel.Profile;
+            var group = DeviceBindings.Where(binding =>
+                binding.DeviceBinding.InputExpressionGroup == groupIndex).ToList();
+            if (group.Count != 2)
+            {
+                error = "This OR set does not contain both stick axes.";
+                return false;
+            }
+            var preferred = group[0].DeviceBinding.DeviceConfigurationGuid;
+            var primary = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input)?.Guid;
+            var candidates = new List<Tuple<DeviceConfiguration, DeviceBindingInfo[]>>();
+            foreach (var device in profile.GetDeviceConfigurationList(DeviceIoType.Input))
+            {
+                if (device?.Device == null) continue;
+                var kind = DeviceVisualCatalog.Describe(device, profile, DeviceIoType.Input).Kind;
+                if (kind == DeviceVisualKind.Keyboard || kind == DeviceVisualKind.Mouse ||
+                    kind == DeviceVisualKind.Unavailable || kind == DeviceVisualKind.Unknown) continue;
+                var axes = FlattenBindingNodes(device.Device.GetDeviceBindingMenu(profile.Context,
+                    DeviceIoType.Input)).Where(node =>
+                        node?.DeviceBindingInfo?.DeviceBindingCategory == DeviceBindingCategory.Range).ToList();
+                var matching = axes.GroupBy(node => node.DeviceBindingInfo.KeyType)
+                    .FirstOrDefault(nodes => nodes.Any(node =>
+                        node.DeviceBindingInfo.KeyValue == axisIndex) &&
+                        nodes.Any(node => node.DeviceBindingInfo.KeyValue == axisIndex + 1));
+                if (matching == null) continue;
+                candidates.Add(Tuple.Create(device, new[]
+                {
+                    matching.First(node => node.DeviceBindingInfo.KeyValue == axisIndex).DeviceBindingInfo,
+                    matching.First(node => node.DeviceBindingInfo.KeyValue == axisIndex + 1).DeviceBindingInfo
+                }));
+            }
+            var chosen = candidates.FirstOrDefault(item => item.Item1.Guid == preferred)
+                ?? candidates.FirstOrDefault(item => item.Item1.Guid == primary)
+                ?? candidates.FirstOrDefault();
+            if (chosen == null)
+            {
+                error = "No configured controller exposes this stick's two axes.";
+                return false;
+            }
+            for (var i = 0; i < 2; i++)
+            {
+                var binding = group[i].DeviceBinding;
+                var info = chosen.Item2[i];
+                binding.InputExpressionInputKind = 3;
+                binding.DeviceBindingCategory = DeviceBindingCategory.Range;
+                binding.SetDeviceConfigurationGuid(chosen.Item1.Guid, false);
+                binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                group[i].RefreshDeviceList();
+            }
+            RefreshInputExpressionPresentation();
+            RefreshCollapsedSummary();
+            RefreshDirectionalAvailability();
+            return true;
+        }
+
+        public bool ApplyTypedControllerFaceButtons(out string error, int groupIndex = 0)
+        {
+            error = null;
+            if (!EnsureCompoundDigitalSlots(out error, fourWay: true)) return false;
+            var profile = ProfileViewModel.Profile;
+            var group = DeviceBindings.Where(input =>
+                input.DeviceBinding.InputExpressionGroup == groupIndex)
+                .OrderBy(input => input.DeviceBinding.InputDirectionSlot).ToList();
+            if (group.Count != 4)
+            {
+                error = "This 4-Way set does not contain four directions.";
+                return false;
+            }
+            var preferred = group[0].DeviceBinding.DeviceConfigurationGuid;
+            var primary = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input)?.Guid;
+            var candidates = new List<Tuple<DeviceConfiguration, DeviceBindingInfo[]>>();
+            foreach (var device in profile.GetDeviceConfigurationList(DeviceIoType.Input))
+            {
+                if (device?.Device == null) continue;
+                var kind = DeviceVisualCatalog.Describe(device, profile, DeviceIoType.Input).Kind;
+                string[] names;
+                if (kind == DeviceVisualKind.SwitchPro || kind == DeviceVisualKind.SwitchJoyCon ||
+                    kind == DeviceVisualKind.WiiClassic || kind == DeviceVisualKind.GameCube)
+                    names = new[] { "Y", "A", "X", "B" };
+                else if (kind == DeviceVisualKind.PlayStation1 ||
+                         kind == DeviceVisualKind.PlayStation2 ||
+                         kind == DeviceVisualKind.PlayStation3 ||
+                         kind == DeviceVisualKind.PlayStation4 ||
+                         kind == DeviceVisualKind.PlayStation5)
+                    names = new[] { "Square", "Circle", "Triangle", "Cross" };
+                else if (kind == DeviceVisualKind.XboxOriginal ||
+                         kind == DeviceVisualKind.Xbox360 ||
+                         kind == DeviceVisualKind.XboxOne ||
+                         kind == DeviceVisualKind.XboxSeries)
+                    names = new[] { "X", "B", "Y", "A" };
+                else continue;
+                var controls = FlattenBindingNodes(device.Device.GetDeviceBindingMenu(profile.Context,
+                    DeviceIoType.Input)).Where(node =>
+                        node?.DeviceBindingInfo?.DeviceBindingCategory ==
+                        DeviceBindingCategory.Momentary).ToList();
+                var matched = names.Select(name => controls.FirstOrDefault(node =>
+                    NormalizeAxisPresetKey(node.Title) == NormalizeAxisPresetKey(name)))
+                    .ToArray();
+                if (matched.Any(node => node == null)) continue;
+                candidates.Add(Tuple.Create(device, matched
+                    .Select(node => node.DeviceBindingInfo).ToArray()));
+            }
+            var chosen = candidates.FirstOrDefault(item => item.Item1.Guid == preferred)
+                ?? candidates.FirstOrDefault(item => item.Item1.Guid == primary)
+                ?? candidates.FirstOrDefault();
+            if (chosen == null)
+            {
+                error = "No configured controller exposes a recognisable four-button face layout.";
+                return false;
+            }
+            for (var i = 0; i < 4; i++)
+            {
+                var binding = group[i].DeviceBinding;
+                var info = chosen.Item2[i];
+                binding.InputExpressionInputKind = 0;
+                binding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
+                binding.SetDeviceConfigurationGuid(chosen.Item1.Guid, false);
+                binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                group[i].RefreshDeviceList();
+            }
+            RefreshInputExpressionPresentation();
+            RefreshCollapsedSummary();
+            RefreshDirectionalAvailability();
+            return true;
+        }
+
         public bool ApplyDirectionalDPadPreset(out string error, int groupIndex = 0)
         {
             error = null;
