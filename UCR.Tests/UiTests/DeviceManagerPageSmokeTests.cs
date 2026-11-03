@@ -733,6 +733,18 @@ namespace HidWizards.UCR.Tests.UiTests
             }
         }
 
+        [TestCase("A", "A", true)]
+        [TestCase("Buttons,A", "A", true)]
+        [TestCase("Face buttons: Cross", "Cross", true)]
+        [TestCase("Face buttons: Circle", "Cross", false)]
+        [TestCase("Y", "A", false)]
+        public void FaceButtonPresetMatchesCompleteProviderControlLabels(
+            string providerTitle, string faceButton, bool expected)
+        {
+            Assert.That(MappingViewModel.MatchesControlLeafName(providerTitle, faceButton),
+                Is.EqualTo(expected));
+        }
+
         [Test]
         [Apartment(ApartmentState.STA)]
         public void OutputSelectionCanReplaceButtonWithAxisWithoutLosingDestination()
