@@ -349,6 +349,36 @@ namespace HidWizards.UCR.Tests.UiTests
                 remove.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, remove));
                 Assert.That(profile.Mappings.Count, Is.EqualTo(0),
                     "The collapsed-row Delete button must actually remove the mapping.");
+
+                // Exercise the real nested workspace with enough rows to exceed a
+                // viewport. This runs on the same WPF dispatcher as the established
+                // workspace smoke test instead of creating a second STA application.
+                var model = (ProfileViewModel)page.DataContext;
+                for (var index = 0; index < 40; index++)
+                    model.AddMappingToSelectedSection("Virtual row " + index);
+                var fullViewport = new Size(1440, 960);
+                page.Measure(fullViewport);
+                page.Arrange(new Rect(new Point(0, 0), fullViewport));
+                page.UpdateLayout();
+
+                var virtualPanel = FindVisualChildren<OuterViewportVirtualizingPanel>(page)
+                    .FirstOrDefault();
+                Assert.That(virtualPanel, Is.Not.Null);
+                var longList = FindVisualChildren<ListView>(page)
+                    .First(candidate => candidate.Name == "MappingRowsList");
+                var visibleCount = Enumerable.Range(0, longList.Items.Count)
+                    .Count(index => longList.ItemContainerGenerator.ContainerFromIndex(index) != null);
+                Assert.That(visibleCount, Is.GreaterThan(0));
+                Assert.That(visibleCount, Is.LessThan(longList.Items.Count),
+                    "Off-screen mapping editors should not all be materialized.");
+
+                var distant = model.MappingsList.Last();
+                virtualPanel.BringMappingIntoView(distant);
+                page.Measure(fullViewport);
+                page.Arrange(new Rect(new Point(0, 0), fullViewport));
+                page.UpdateLayout();
+                Assert.That(longList.ItemContainerGenerator.ContainerFromItem(distant), Is.Not.Null,
+                    "A distant mapping must still be reachable by ordinary scrolling.");
             }
             finally
             {
