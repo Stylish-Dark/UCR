@@ -215,11 +215,14 @@
         <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Vertical"
                     Width="62" Margin="4 0 0 2"
                     HorizontalAlignment="Center" VerticalAlignment="Center"
-                    Visibility="{Binding ShowBlock}"
                     ToolTip="Block this binding">
             <StackPanel.Style>
                 <Style TargetType="{x:Type StackPanel}">
+                    <Setter Property="Visibility" Value="Visible"/>
                     <Style.Triggers>
+                        <DataTrigger Binding="{Binding ShowBlock}" Value="Collapsed">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
                         <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource AncestorType={x:Type local:CompactInputBindingControl}}}" Value="True">
                             <Setter Property="Visibility" Value="Collapsed"/>
                         </DataTrigger>
