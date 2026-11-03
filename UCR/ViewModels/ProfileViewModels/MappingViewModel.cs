@@ -253,88 +253,97 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             var profile = ProfileViewModel.Profile;
             var capacity = Mapping.EffectiveDirectionalCapacity;
-            var required = Mapping.CompoundDigitalInput && representation != 3 && capacity > 1
+            var perGroup = Mapping.CompoundDigitalInput && representation != 3 && capacity > 1
                 ? capacity : Mapping.RequiredBindingSlots(capacity, representation);
-            if (required < 1) return false;
+            if (perGroup < 1) return false;
+
             if (Mapping.InactiveInputRepresentations == null)
                 Mapping.InactiveInputRepresentations = new List<DirectionalInputBank>();
-            var bank = Mapping.InactiveInputRepresentations.FirstOrDefault(item =>
-                item.Representation == representation &&
-                item.Bindings != null && item.Bindings.Count == required);
             var previous = Mapping.DeviceBindings.ToList();
             var priorType = Mapping.InputRepresentation;
+            var oldGroups = previous.GroupBy(input => Math.Max(0, input.InputExpressionGroup))
+                .OrderBy(group => group.Key).Select(group => group.ToList()).ToList();
+            if (oldGroups.Count == 0) oldGroups.Add(new List<DeviceBinding>());
+
+            var required = perGroup * oldGroups.Count;
+            var bank = Mapping.InactiveInputRepresentations.FirstOrDefault(item =>
+                item.Representation == representation && item.Bindings != null &&
+                item.Bindings.Count == required &&
+                item.Bindings.Select(input => Math.Max(0, input.InputExpressionGroup))
+                    .Distinct().Count() == oldGroups.Count &&
+                item.Bindings.GroupBy(input => Math.Max(0, input.InputExpressionGroup))
+                    .All(group => group.Count() == perGroup));
+
             List<DeviceBinding> next;
-            if (bank != null && bank.Bindings != null && bank.Bindings.Count == required)
+            if (bank != null)
             {
                 next = bank.Bindings;
                 Mapping.InactiveInputRepresentations.Remove(bank);
             }
             else
             {
-                // A bank saved at axis capacity cannot be reused unmodified at
-                // full-stick capacity. Keep that bank intact; materialise enough
-                // slots for the new capacity instead of leaving a dead mapping.
                 next = new List<DeviceBinding>();
-                for (var index = 0; index < required; index++)
+                for (var groupIndex = 0; groupIndex < oldGroups.Count; groupIndex++)
                 {
+                    var sources = oldGroups[groupIndex];
                     var isButton = representation == 3 || capacity == 1 ||
                         Mapping.CompoundDigitalInput;
-                    var previousIndex = isButton && capacity > 1 && previous.Count == 1
-                        ? (index == 1 ? 0 : -1) : index;
-                    var derivedAxisDirection = false;
-                    if (isButton && capacity > 1 && previous.Count == capacity / 2 &&
-                        previous[index / 2].IsBound &&
-                        previous[index / 2].DeviceBindingCategory == DeviceBindingCategory.Range)
+                    for (var index = 0; index < perGroup; index++)
                     {
-                        // Preserve an existing stick/axis by exposing its two
-                        // signs as distinct digital-direction slots.
-                        previousIndex = index / 2;
-                        derivedAxisDirection = true;
+                        var previousIndex = isButton && capacity > 1 && sources.Count == 1
+                            ? (index == 1 ? 0 : -1) : index;
+                        var derivedAxisDirection = false;
+                        if (isButton && capacity > 1 && sources.Count == capacity / 2 &&
+                            sources[index / 2].IsBound &&
+                            sources[index / 2].DeviceBindingCategory == DeviceBindingCategory.Range)
+                        {
+                            previousIndex = index / 2;
+                            derivedAxisDirection = true;
+                        }
+                        else if (!isButton && capacity > 1 && sources.Count == capacity)
+                        {
+                            var negative = sources[index * 2];
+                            var positive = sources[index * 2 + 1];
+                            if (negative.IsBound && positive.IsBound &&
+                                negative.DeviceBindingCategory == DeviceBindingCategory.Range &&
+                                positive.DeviceBindingCategory == DeviceBindingCategory.Range &&
+                                negative.DeviceConfigurationGuid == positive.DeviceConfigurationGuid &&
+                                negative.KeyType == positive.KeyType &&
+                                negative.KeyValue == positive.KeyValue &&
+                                negative.KeySubValue == positive.KeySubValue)
+                                previousIndex = index * 2;
+                        }
+                        var compatible = previousIndex >= 0 && previousIndex < sources.Count &&
+                            sources[previousIndex].IsBound &&
+                            (derivedAxisDirection ||
+                                (isButton
+                                    ? sources[previousIndex].DeviceBindingCategory == DeviceBindingCategory.Momentary
+                                    : sources[previousIndex].DeviceBindingCategory == DeviceBindingCategory.Range));
+                        DeviceBinding input;
+                        if (compatible)
+                        {
+                            input = HidWizards.UCR.Core.Context.DeepXmlClone(sources[previousIndex]);
+                            input.Profile = profile;
+                            input.DeviceIoType = DeviceIoType.Input;
+                        }
+                        else
+                            input = new DeviceBinding(Mapping.Update, profile, DeviceIoType.Input);
+                        input.InputExpressionInputKind = derivedAxisDirection
+                            ? (index % 2 == 0 ? 2 : 1) : isButton ? 0 : 3;
+                        input.InputExpressionKindConfigured = true;
+                        input.DeviceBindingCategory = derivedAxisDirection
+                            ? DeviceBindingCategory.Range
+                            : isButton ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
+                        input.InputExpressionGroup = groupIndex;
+                        input.InputDirectionSlot = isButton && capacity > 1 ? index + 1 : 0;
+                        next.Add(input);
                     }
-                    else if (!isButton && capacity > 1 && previous.Count == capacity)
-                    {
-                        // Recombine opposing captures of the SAME physical axis.
-                        // Unrelated buttons cannot be promoted into one axis.
-                        var negative = previous[index * 2];
-                        var positive = previous[index * 2 + 1];
-                        if (negative.IsBound && positive.IsBound &&
-                            negative.DeviceBindingCategory == DeviceBindingCategory.Range &&
-                            positive.DeviceBindingCategory == DeviceBindingCategory.Range &&
-                            negative.DeviceConfigurationGuid == positive.DeviceConfigurationGuid &&
-                            negative.KeyType == positive.KeyType &&
-                            negative.KeyValue == positive.KeyValue &&
-                            negative.KeySubValue == positive.KeySubValue)
-                            previousIndex = index * 2;
-                    }
-                    var compatible = previousIndex >= 0 && previousIndex < previous.Count &&
-                        previous[previousIndex].IsBound &&
-                        (derivedAxisDirection ||
-                            (isButton
-                                ? previous[previousIndex].DeviceBindingCategory == DeviceBindingCategory.Momentary
-                                : previous[previousIndex].DeviceBindingCategory == DeviceBindingCategory.Range));
-                    DeviceBinding input;
-                    if (compatible)
-                    {
-                        input = HidWizards.UCR.Core.Context.DeepXmlClone(previous[previousIndex]);
-                        input.Profile = profile;
-                        input.DeviceIoType = DeviceIoType.Input;
-                    }
-                    else
-                        input = new DeviceBinding(Mapping.Update, profile, DeviceIoType.Input);
-                    input.InputExpressionInputKind = derivedAxisDirection
-                        ? (index % 2 == 0 ? 2 : 1) : isButton ? 0 : 3;
-                    input.InputExpressionKindConfigured = true;
-                    input.DeviceBindingCategory = derivedAxisDirection
-                        ? DeviceBindingCategory.Range
-                        : isButton ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
-                    input.InputExpressionGroup = 0;
-                    input.InputDirectionSlot = isButton && capacity > 1 ? index + 1 : 0;
-                    next.Add(input);
                 }
             }
+
             Mapping.InactiveInputRepresentations.RemoveAll(item =>
-                item.Representation == priorType &&
-                item.Bindings != null && item.Bindings.Count == previous.Count);
+                item.Representation == priorType && item.Bindings != null &&
+                item.Bindings.Count == previous.Count);
             Mapping.InactiveInputRepresentations.Add(new DirectionalInputBank
             {
                 Representation = priorType,
