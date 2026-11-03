@@ -982,6 +982,79 @@ namespace HidWizards.UCR.Views.Controls
             RequestAxisInputMode(axis, 2);
         }
 
+        private void CompoundPreset_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mapping = DataContext as MappingViewModel;
+            var button = sender as Button;
+            if (mapping?.ButtonsEnabled != true || button == null) return;
+            var menu = CreateDarkContextMenu(button);
+            foreach (var preset in new[] { "WASD", "Arrows", "Numpad", "UJHK" })
+            {
+                var name = preset;
+                var item = new MenuItem { Header = name };
+                item.Click += (source, args) => ApplyCompoundPreset(mapping, name);
+                menu.Items.Add(item);
+            }
+            foreach (var saved in mapping.ProfileViewModel.Profile.CompoundBindingPresets ??
+                new System.Collections.Generic.List<CompoundBindingPreset>())
+            {
+                if (saved.Capacity != mapping.DirectionalCapacity) continue;
+                var name = saved.Name;
+                var item = new MenuItem { Header = name };
+                item.Click += (source, args) => ApplyCompoundPreset(mapping, name);
+                menu.Items.Add(item);
+            }
+            menu.Items.Add(new Separator());
+            var save = new MenuItem { Header = "Save current bindings as preset..." };
+            save.Click += (source, args) =>
+            {
+                var dialog = new Window
+                {
+                    Title = "Save keyboard binding preset",
+                    Width = 360,
+                    Height = 164,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    ResizeMode = ResizeMode.NoResize,
+                    Background = new SolidColorBrush(Color.FromRgb(38, 38, 38)),
+                    Foreground = Brushes.White,
+                    Owner = Window.GetWindow(this)
+                };
+                var layout = new StackPanel { Margin = new Thickness(14) };
+                layout.Children.Add(new TextBlock { Text = "Preset name", Margin = new Thickness(0, 0, 0, 6) });
+                var textBox = new TextBox { Height = 30, MaxLength = 60 };
+                layout.Children.Add(textBox);
+                var saveButton = new Button
+                {
+                    Content = "Save", Width = 85, Height = 30,
+                    HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 10, 0, 0)
+                };
+                saveButton.Click += (clicked, clickArgs) =>
+                {
+                    string error;
+                    if (!mapping.SaveCompoundKeyboardPreset(textBox.Text, out error))
+                    {
+                        DarkMessageBox.Show(error, "Cannot save preset", MessageBoxButton.OK,
+                            MessageBoxImage.Information);
+                        return;
+                    }
+                    dialog.DialogResult = true;
+                };
+                layout.Children.Add(saveButton);
+                dialog.Content = layout;
+                dialog.ShowDialog();
+            };
+            menu.Items.Add(save);
+            menu.IsOpen = true;
+        }
+
+        private static void ApplyCompoundPreset(MappingViewModel mapping, string name)
+        {
+            string error;
+            if (!mapping.ApplyDirectionalKeyboardPreset(name, out error))
+                DarkMessageBox.Show(error ?? "Preset could not be applied.",
+                    "Binding preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
         private void CompoundBlock_OnClick(object sender, RoutedEventArgs e)
         {
             var mapping = DataContext as MappingViewModel;
