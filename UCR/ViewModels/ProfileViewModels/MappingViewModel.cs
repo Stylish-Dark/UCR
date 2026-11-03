@@ -173,6 +173,44 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool OutputIsFullStick => Mapping.EffectiveOutputRepresentation == 1;
         public bool OutputIsAxis => Mapping.EffectiveOutputRepresentation == 2;
         public bool OutputIsButton => Mapping.EffectiveOutputRepresentation == 3;
+        public bool HasAssignedControl =>
+            Mapping.DeviceBindings.Any(input => input.IsBound) ||
+            Mapping.Plugins.Any(plugin => plugin.Outputs.Any(output => output.IsBound));
+        public bool CanChooseInputButton => ButtonsEnabled && HasAssignedControl;
+        public bool CanChooseOutputButton => ButtonsEnabled && HasAssignedControl;
+        public bool CanChooseInputAxis => ButtonsEnabled && DirectionalCapacity >= 2 &&
+            (Mapping.EffectiveInputRepresentation == 2 ||
+             Mapping.EffectiveOutputRepresentation == 2 ||
+             Mapping.DeviceBindings.Any(input => input.IsBound &&
+                 input.DeviceBindingCategory == DeviceBindingCategory.Range) ||
+             Mapping.Plugins.Any(plugin => plugin.Outputs.Any(output => output.IsBound &&
+                 output.DeviceBindingCategory == DeviceBindingCategory.Range)));
+        public bool CanChooseOutputAxis => ButtonsEnabled && DirectionalCapacity >= 2 &&
+            (Mapping.EffectiveInputRepresentation == 2 ||
+             Mapping.EffectiveOutputRepresentation == 2 || IsFullStickInput ||
+             Mapping.Plugins.Any(plugin => plugin.Outputs.Any(output => output.IsBound &&
+                 output.DeviceBindingCategory == DeviceBindingCategory.Range)));
+        public bool CanChooseInputFourWay => ButtonsEnabled && DirectionalCapacity == 4 &&
+            (IsFullStickInput || IsFullStickOutput ||
+             Mapping.DeviceBindings.Any(input => input.IsBound &&
+                 input.InputDirectionSlot >= 3) ||
+             Mapping.Plugins.Count(plugin => plugin.Outputs.Any(output =>
+                 output.IsBound && output.DeviceBindingCategory == DeviceBindingCategory.Range)) >= 2);
+        public bool CanChooseOutputFourWay => ButtonsEnabled && DirectionalCapacity == 4 &&
+            (IsFullStickInput || IsFullStickOutput ||
+             Mapping.DeviceBindings.Any(input => input.IsBound &&
+                 input.InputDirectionSlot >= 3));
+        private void RefreshDirectionalAvailability()
+        {
+            OnPropertyChanged(nameof(HasAssignedControl));
+            OnPropertyChanged(nameof(CanChooseInputButton));
+            OnPropertyChanged(nameof(CanChooseOutputButton));
+            OnPropertyChanged(nameof(CanChooseInputAxis));
+            OnPropertyChanged(nameof(CanChooseOutputAxis));
+            OnPropertyChanged(nameof(CanChooseInputFourWay));
+            OnPropertyChanged(nameof(CanChooseOutputFourWay));
+        }
+
         public bool IsTypedDirectionalMapping => Mapping.InputRepresentation != 0 ||
             Mapping.OutputRepresentation != 0;
         public bool IsFullStickInput => IsTypedDirectionalMapping &&
@@ -262,6 +300,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(IsFullStickOutput));
             OnPropertyChanged(nameof(InputDirectionalGroupTitle));
             OnPropertyChanged(nameof(OutputDirectionalGroupTitle));
+            RefreshDirectionalAvailability();
             OnPropertyChanged(nameof(TypedDirectionalVisibility));
             OnPropertyChanged(nameof(LegacyOutputAddVisibility));
             RefreshInputExpressionPresentation();
@@ -833,6 +872,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(CompoundBindingSummary));
             foreach (var group in InputConditions)
                 group.RefreshCompoundSummary();
+            RefreshDirectionalAvailability();
             RefreshCollapsedSummary();
         }
 
