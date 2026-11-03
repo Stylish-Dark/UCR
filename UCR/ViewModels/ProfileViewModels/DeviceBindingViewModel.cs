@@ -405,9 +405,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (_disposed || DeviceBinding?.Profile == null) return;
             if (_deviceListLoaded && !_deviceListDirty) return;
 
-            LoadDeviceInputs();
-            OnPropertyChanged(nameof(Devices));
-            OnPropertyChanged(nameof(SelectedDevice));
+            IsRefreshingDeviceChoices = true;
+            try
+            {
+                LoadDeviceInputs();
+                OnPropertyChanged(nameof(Devices));
+                OnPropertyChanged(nameof(SelectedDevice));
+            }
+            finally
+            {
+                IsRefreshingDeviceChoices = false;
+            }
         }
         
         // Output devices must actually expose a control of the selected output category.
@@ -548,15 +556,23 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return;
             }
 
-            LoadDeviceInputs();
-            OnPropertyChanged(nameof(Devices));
-            OnPropertyChanged(nameof(SelectedDevice));
-            OnPropertyChanged(nameof(BindButtonText));
+            IsRefreshingDeviceChoices = true;
+            try
+            {
+                LoadDeviceInputs();
+                OnPropertyChanged(nameof(Devices));
+                OnPropertyChanged(nameof(SelectedDevice));
+                OnPropertyChanged(nameof(BindButtonText));
                 OnPropertyChanged(nameof(CompactBindButtonText));
-            OnPropertyChanged(nameof(ShowBlock));
-            OnPropertyChanged(nameof(CanBlock));
-            OnPropertyChanged(nameof(ShowInvertInput));
-            OnPropertyChanged(nameof(CanBindCurrentDevice));
+                OnPropertyChanged(nameof(ShowBlock));
+                OnPropertyChanged(nameof(CanBlock));
+                OnPropertyChanged(nameof(ShowInvertInput));
+                OnPropertyChanged(nameof(CanBindCurrentDevice));
+            }
+            finally
+            {
+                IsRefreshingDeviceChoices = false;
+            }
         }
 
         private void SetSelectDevice()
