@@ -177,7 +177,17 @@ namespace HidWizards.UCR.Views.Controls
                         DeviceIoType.Input);
                     foreach (var node in nodes)
                     {
-                        if (IsKeyboardRoot(node))
+                        // Providers may nest POV1/POV2 under a redundant POV category.
+                        // Present the actual POV controls directly in the category menu.
+                        if (IsRedundantPovRoot(node))
+                        {
+                            foreach (var pov in node.ChildrenNodes)
+                            {
+                                var item = BuildInputMenuItem(pov, configuration.Guid, binding);
+                                if (item != null) menu.Items.Add(item);
+                            }
+                        }
+                        else if (IsKeyboardRoot(node))
                         {
                             foreach (var group in DeviceBindingControl.BuildKeyboardCategories(node.ChildrenNodes))
                             {
@@ -198,6 +208,16 @@ namespace HidWizards.UCR.Views.Controls
                 IsEnabled = binding?.IsBound == true };
             clear.Click += (s, e) => binding?.ClearBinding();
             menu.Items.Add(clear);
+        }
+
+        private static bool IsRedundantPovRoot(DeviceBindingNode node)
+        {
+            return node != null &&
+                   string.Equals(node.Title, "POV", StringComparison.OrdinalIgnoreCase) &&
+                   node.ChildrenNodes != null && node.ChildrenNodes.Count > 0 &&
+                   node.ChildrenNodes.All(child => child?.Title != null &&
+                       child.Title.StartsWith("POV", StringComparison.OrdinalIgnoreCase) &&
+                       child.Title.Length > 3 && child.Title.Substring(3).All(char.IsDigit));
         }
 
         private static bool IsKeyboardRoot(DeviceBindingNode node)
