@@ -129,6 +129,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         internal event Action<DeviceBindingViewModel> UiValueInvalidated;
         private bool _deviceListLoaded;
         private bool _selectedPreviewLoaded;
+        public bool IsRefreshingDeviceChoices { get; private set; }
         private bool _deviceListDirty;
         private bool _disposed;
 
@@ -338,6 +339,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void LoadSelectedDevicePreview()
         {
+            IsRefreshingDeviceChoices = true;
+            try
+            {
             if (_disposed || _deviceListLoaded || DeviceBinding?.Profile == null) return;
             var profile = DeviceBinding.Profile;
             var type = DeviceBinding.DeviceIoType;
@@ -368,6 +372,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             SelectedDevice = chosen;
             _deviceListDirty = false;
             OnPropertyChanged(nameof(SelectedDevice));
+            }
+            finally
+            {
+                IsRefreshingDeviceChoices = false;
+            }
         }
 
         public void EnsureDeviceListLoaded()
