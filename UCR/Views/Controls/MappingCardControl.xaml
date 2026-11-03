@@ -635,6 +635,7 @@
                                                 </ItemsControl>
                                             </StackPanel>
                                             <Expander Header="Settings" Margin="0 6 0 0"
+                                                Expanded="OutputSettings_OnExpanded"
                                                 Visibility="{Binding InlineSettingsVisibility}"
                                                 Foreground="#D0D0D0">
                                                 <ItemsControl ItemsSource="{Binding InlinePropertyGroups}" Margin="6 4">
