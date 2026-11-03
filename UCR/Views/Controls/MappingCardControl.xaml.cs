@@ -130,7 +130,7 @@ namespace HidWizards.UCR.Views.Controls
             var mapping = DataContext as MappingViewModel;
             if (mapping != null)
                 foreach (var plugin in mapping.Plugins)
-                    plugin.EnsureEditorInitialized();
+                    plugin.EnsureFilterInitialized();
 
             // Interrupt any closing fade if the user immediately reopens the card.
             ExpandedBodyHost.BeginAnimation(OpacityProperty, null);
