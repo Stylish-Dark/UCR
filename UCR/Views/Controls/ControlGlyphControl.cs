@@ -8,6 +8,22 @@ namespace HidWizards.UCR.Views.Controls
 {
     public class ControlGlyphControl : FrameworkElement
     {
+        private static readonly FontFamily TextFontFamily = new FontFamily("Segoe UI");
+        private static readonly Typeface NormalTypeface = new Typeface(
+            TextFontFamily, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+        private static readonly Typeface SemiboldTypeface = new Typeface(
+            TextFontFamily, FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
+        private static readonly Typeface BoldTypeface = new Typeface(
+            TextFontFamily, FontStyles.Normal, FontWeights.Bold, FontStretches.Normal);
+
+        private static Typeface TextTypeface(FontWeight weight)
+        {
+            if (weight == FontWeights.Normal) return NormalTypeface;
+            if (weight == FontWeights.SemiBold) return SemiboldTypeface;
+            if (weight == FontWeights.Bold) return BoldTypeface;
+            return new Typeface(TextFontFamily, FontStyles.Normal, weight, FontStretches.Normal);
+        }
+
         public static readonly DependencyProperty KindProperty = DependencyProperty.Register(
             nameof(Kind), typeof(ControlVisualKind), typeof(ControlGlyphControl),
             new FrameworkPropertyMetadata(ControlVisualKind.Unknown, FrameworkPropertyMetadataOptions.AffectsRender));
@@ -144,7 +160,7 @@ namespace HidWizards.UCR.Views.Controls
             if (string.IsNullOrWhiteSpace(text) || rect.Width <= 0 || rect.Height <= 0) return;
 #pragma warning disable 618
             var formatted = new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
-                new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, weight, FontStretches.Normal),
+                TextTypeface(weight),
                 preferredSize, brush);
 #pragma warning restore 618
             // Measure actual text, not string length. ENTER, PAUSE and numpad labels
@@ -421,7 +437,7 @@ namespace HidWizards.UCR.Views.Controls
             if (string.IsNullOrEmpty(text)) return;
 #pragma warning disable 618
             var formatted = new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
-                new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, weight, FontStretches.Normal),
+                TextTypeface(weight),
                 fontSize, brush);
 #pragma warning restore 618
             var point = new Point(rect.Left + (rect.Width - formatted.Width) / 2.0,
