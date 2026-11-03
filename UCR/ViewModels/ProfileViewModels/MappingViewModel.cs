@@ -319,7 +319,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 Mapping.DirectionalCapacity = Math.Max(previousCapacity, requiredCapacity);
             if (inputSide)
             {
-                if (Mapping.InputRepresentation == value && !capacityIncreased) return true;
+                // Axis is one continuous source per axis; Button is a set of
+                // independent digital directions. The compound-digital backing
+                // belongs only to a 4-Way preset, not to a later Axis selection.
+                if (value == 2 || value == 3)
+                    Mapping.CompoundDigitalInput = false;
+                if (Mapping.InputRepresentation == value && !capacityIncreased)
+                {
+                    if (Mapping.DeviceBindings.Count == Mapping.RequiredInputBindingSlots)
+                        return true;
+                }
                 if (!SwitchDirectionalInputs(value)) return false;
                 if (capacityIncreased || Mapping.Plugins.Count !=
                     Mapping.RequiredOutputBindingSlots)
