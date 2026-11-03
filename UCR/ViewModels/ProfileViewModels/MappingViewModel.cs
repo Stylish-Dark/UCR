@@ -939,6 +939,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 InferInputTypeFromAssignment(changed.DeviceBinding))
                 return;
 
+            if (boundLabelChanged && changed?.DeviceBinding?.DeviceIoType == DeviceIoType.Output &&
+                IsTypedDirectionalMapping && Mapping.EffectiveInputRepresentation == 3)
+            {
+                for (var index = 0; index < DeviceBindings.Count; index++)
+                    DeviceBindings[index].DeviceBindingName = GetDirectionalInputSlotLabel(index);
+            }
+
             var structural = property == nameof(DeviceBindingViewModel.InputExpressionInputKind) ||
                              property == nameof(DeviceBindingViewModel.InputExpressionGroupLabel) ||
                              property == nameof(DeviceBindingViewModel.DeviceBindingCategory);
@@ -1013,7 +1020,23 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (DirectionalCapacity == 4)
                 return new[] { "Left", "Right", "Up", "Down" }[Math.Min(3, index)];
             if (DirectionalCapacity == 2 && (representation == 3 || Mapping.CompoundDigitalInput))
-                return index == 0 ? "Negative" : "Positive";
+            {
+                // Distinguish signed physical directions using the assigned axis
+                // whenever its orientation can be identified. Otherwise show signs.
+                var axis = Mapping.Plugins.SelectMany(plugin => plugin.Outputs)
+                    .FirstOrDefault(output => output.IsBound &&
+                        output.DeviceBindingCategory == DeviceBindingCategory.Range);
+                var name = axis?.BoundName() ?? string.Empty;
+                var vertical = Regex.IsMatch(name, @"(^|[^a-z])Y([^a-z]|$)",
+                    RegexOptions.IgnoreCase) ||
+                    name.IndexOf("vertical", StringComparison.OrdinalIgnoreCase) >= 0;
+                var horizontal = Regex.IsMatch(name, @"(^|[^a-z])X([^a-z]|$)",
+                    RegexOptions.IgnoreCase) ||
+                    name.IndexOf("horizontal", StringComparison.OrdinalIgnoreCase) >= 0;
+                if (vertical) return index == 0 ? "Up" : "Down";
+                if (horizontal) return index == 0 ? "Left" : "Right";
+                return index == 0 ? "−" : "+";
+            }
             return representation == 3 ? "Button" : "Axis";
         }
 
