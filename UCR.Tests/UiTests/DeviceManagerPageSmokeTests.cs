@@ -519,10 +519,17 @@ namespace HidWizards.UCR.Tests.UiTests
                 card.UpdateLayout();
                 var slotLabels = FindVisualChildren<TextBlock>(card)
                     .Select(text => text.Text).ToList();
-                Assert.That(slotLabels, Does.Contain("X axis"),
-                    "The full-stick editor must identify its first axis, not generic Input.");
-                Assert.That(slotLabels, Does.Contain("Y axis"),
-                    "The full-stick editor must identify its second axis.");
+                Assert.That(slotLabels, Does.Contain("4-Way"),
+                    "The compound input must identify the selected 4-Way representation.");
+                Assert.That(slotLabels, Does.Not.Contain("X axis"));
+                Assert.That(slotLabels, Does.Not.Contain("Y axis"),
+                    "The compound input must not expose separate directional editor rows.");
+                var compoundButtons = FindVisualChildren<Button>(card)
+                    .Where(button => (button.ToolTip as string) ==
+                        "Choose or edit the compound binding")
+                    .ToList();
+                Assert.That(compoundButtons.Count, Is.EqualTo(1),
+                    "A compound binding must have exactly one visible assignment control.");
 
                 var screenshot = System.IO.Path.Combine(
                     Environment.GetEnvironmentVariable("GITHUB_WORKSPACE") ??
