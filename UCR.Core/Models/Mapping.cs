@@ -60,6 +60,15 @@ namespace HidWizards.UCR.Core.Models
         [XmlAttribute]
         [DefaultValue(0)]
         public int OutputRepresentation { get; set; }
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool CompoundDigitalOutput { get; set; }
+
+        [XmlIgnore]
+        public int RequiredOutputBindingSlots => CompoundDigitalOutput &&
+            EffectiveOutputRepresentation == 1 && EffectiveDirectionalCapacity == 4
+                ? 4 : RequiredBindingSlots(EffectiveDirectionalCapacity, EffectiveOutputRepresentation);
+
         public List<DirectionalInputBank> InactiveInputRepresentations { get; set; } =
             new List<DirectionalInputBank>();
         public List<DirectionalOutputBank> InactiveOutputRepresentations { get; set; } =
@@ -305,12 +314,13 @@ namespace HidWizards.UCR.Core.Models
             var capacity = EffectiveDirectionalCapacity;
             var inputType = CompoundDigitalInput ? 3 : EffectiveInputRepresentation;
             var outputType = EffectiveOutputRepresentation;
-            var requiredOutput = RequiredBindingSlots(capacity, outputType);
+            var routedOutputType = CompoundDigitalOutput ? 3 : outputType;
+            var requiredOutput = RequiredOutputBindingSlots;
             if (RequiredInputBindingSlotsPerGroup == 0 || requiredOutput == 0 ||
                 Plugins.Count < requiredOutput) return;
 
             var selected = ComputeDirectionalOrChannels(InputCache, DeviceBindings,
-                capacity, inputType, outputType, RequiredInputBindingSlotsPerGroup);
+                capacity, inputType, routedOutputType, RequiredInputBindingSlotsPerGroup);
             for (var index = 0; index < Math.Min(Plugins.Count, selected.Count); index++)
             {
                 var plugin = Plugins[index];
