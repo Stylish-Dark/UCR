@@ -1511,7 +1511,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     ? new[] { name, name.Replace("Numpad", "Num"), name.Replace("Numpad", "Keypad") }
                     : new[] { name };
                 var choice = controls.FirstOrDefault(node => aliases.Any(alias =>
-                    NormalizeAxisPresetKey(node.Title) == NormalizeAxisPresetKey(alias)));
+                    MatchesControlLeafName(node.Title, alias)));
                 if (choice == null)
                 {
                     error = "The keyboard does not expose " + name + ".";
