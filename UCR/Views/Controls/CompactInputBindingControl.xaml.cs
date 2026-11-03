@@ -38,8 +38,24 @@ namespace HidWizards.UCR.Views.Controls
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             var viewModel = DataContext as DeviceBindingViewModel;
-            viewModel?.EnsureDeviceListLoaded();
+            viewModel?.EnsureSelectedDevicePreviewLoaded();
             _loaded = true;
+        }
+
+        private void DeviceSelectionBox_OnDropDownOpened(object sender, EventArgs e)
+        {
+            // Opening the selector is the first time the complete list is needed.
+            // Suppress transient SelectionChanged events while replacing the preview
+            // options so they cannot alter a saved device assignment.
+            _loaded = false;
+            try
+            {
+                (DataContext as DeviceBindingViewModel)?.EnsureDeviceListLoaded();
+            }
+            finally
+            {
+                _loaded = true;
+            }
         }
 
         private void DeviceSelectionBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
