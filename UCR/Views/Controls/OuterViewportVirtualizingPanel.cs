@@ -258,7 +258,7 @@ namespace HidWizards.UCR.Views.Controls
         // ListView keyboard navigation, accessibility and ScrollIntoView use
         // VirtualizingPanel.BringIndexIntoView. Its base implementation is empty;
         // without an override, off-screen rows could become unreachable by keyboard.
-        protected internal override void BringIndexIntoView(int index)
+        protected override void BringIndexIntoView(int index)
         {
             var owner = ItemsControl.GetItemsOwner(this);
             if (owner == null || index < 0 || index >= owner.Items.Count) return;
