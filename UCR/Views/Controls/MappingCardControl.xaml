@@ -337,7 +337,7 @@
         </DataTemplate>
 
         <!-- The representation determines the number of physical bindings.
-             Full Stick is one logical unit with two internal axis channels. -->
+             4-Way is one logical unit with two internal axis channels. -->
         <DataTemplate x:Key="TypedDirectionalInputsTemplate">
             <Border Background="#292929" BorderBrush="#454545" BorderThickness="1"
                     CornerRadius="3" Padding="8" Margin="2 0 2 4">
@@ -409,7 +409,7 @@
                             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
                                         Margin="6 0 0 0">
                                 <RadioButton Content="✣" GroupName="InputDirectionalType" Tag="1"
-                                             ToolTip="Full Stick input" Click="InputRepresentation_OnClick"
+                                             ToolTip="4-Way input" Click="InputRepresentation_OnClick"
                                              IsChecked="{Binding InputIsFullStick, Mode=OneWay}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                                 <RadioButton Content="↔" GroupName="InputDirectionalType" Tag="2"
@@ -462,7 +462,7 @@
                             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
                                         Margin="6 0 0 0">
                                 <RadioButton Content="✣" GroupName="OutputDirectionalType" Tag="1"
-                                             ToolTip="Full Stick output" Click="OutputRepresentation_OnClick"
+                                             ToolTip="4-Way output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsFullStick, Mode=OneWay}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                                 <RadioButton Content="↔" GroupName="OutputDirectionalType" Tag="2"
