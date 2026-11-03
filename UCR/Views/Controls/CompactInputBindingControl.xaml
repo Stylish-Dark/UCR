@@ -40,7 +40,7 @@
             </Setter>
         </Style>
     </UserControl.Resources>
-    <Grid MinHeight="38">
+    <Grid x:Name="BindingGrid" MinHeight="38">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -159,7 +159,7 @@
             </ComboBox.ItemTemplate>
         </ComboBox>
 
-        <Grid Grid.Row="0" Grid.Column="1" Margin="0" ClipToBounds="True">
+        <Grid x:Name="BindSurface" Grid.Row="0" Grid.Column="1" Margin="0" ClipToBounds="True">
             <Button x:Name="BindButton" MinHeight="32" MinWidth="0" Padding="0"
                     IsEnabled="{Binding CanBindCurrentDevice}"
                     Click="BindButton_OnClick"
