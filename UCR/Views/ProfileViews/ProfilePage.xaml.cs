@@ -415,12 +415,28 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void CollapseAllMappings_OnClick(object sender, RoutedEventArgs e)
         {
-            foreach (var mapping in ProfileViewModel.MappingsList) mapping.IsExpanded = false;
+            SetAllMappingsExpanded(false);
         }
 
         private void ExpandAllMappings_OnClick(object sender, RoutedEventArgs e)
         {
-            foreach (var mapping in ProfileViewModel.MappingsList) mapping.IsExpanded = true;
+            SetAllMappingsExpanded(true);
+        }
+
+        private void SetAllMappingsExpanded(bool expanded)
+        {
+            if (ProfileViewModel?.MappingsList == null) return;
+            // Logical state is updated once per mapping. The viewport-aware panels
+            // then calculate new heights in a single layout pass rather than building
+            // all off-screen editors and repeatedly relaying the scroll extent.
+            foreach (var mapping in ProfileViewModel.MappingsList)
+            {
+                if (mapping.IsExpanded != expanded)
+                    mapping.IsExpanded = expanded;
+            }
+            foreach (var panel in FindVisualChildren<OuterViewportVirtualizingPanel>(
+                MappingSectionsItemsControl))
+                panel.InvalidateMeasure();
         }
 
         private async void AddMappingGroup_OnClick(object sender, RoutedEventArgs e)
