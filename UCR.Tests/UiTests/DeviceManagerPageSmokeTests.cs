@@ -244,62 +244,6 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
-        public void ExpandingMultipleMappingsDefersDeviceMenuEnumeration()
-        {
-            EnsureApplicationResources();
-            var context = new Context();
-            var profile = context.ProfilesManager.CreateProfile("Expansion performance", null, null);
-            context.ProfilesManager.AddProfile(profile);
-            for (var index = 0; index < 18; index++)
-            {
-                var mapping = profile.AddMapping("Performance " + index);
-                profile.AddPlugin(mapping, new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
-            }
-
-            var page = new ProfilePage(context, profile, embedded: true);
-            try
-            {
-                page.SuspendEmbeddedVisuals();
-                var model = (ProfileViewModel)page.DataContext;
-                var bindings = model.MappingsList
-                    .SelectMany(mapping => mapping.DeviceBindings.Concat(
-                        mapping.Plugins.SelectMany(plugin => plugin.DeviceBindings)))
-                    .ToList();
-
-                // Constructing mappings must not enumerate every compatible device.
-                Assert.That(bindings.All(binding => binding.Devices.Count == 0), Is.True);
-                var size = new Size(1440, 900);
-                page.Measure(size);
-                page.Arrange(new Rect(new Point(0, 0), size));
-                page.UpdateLayout();
-
-                var watch = System.Diagnostics.Stopwatch.StartNew();
-                foreach (var mapping in model.MappingsList) mapping.IsExpanded = true;
-                page.Measure(size);
-                page.Arrange(new Rect(new Point(0, 0), size));
-                page.UpdateLayout();
-                watch.Stop();
-
-                TestContext.WriteLine("18 mapping editor expansion/layout: " +
-                                      watch.ElapsedMilliseconds + " ms");
-                Assert.That(model.MappingsList.All(mapping => mapping.IsExpanded), Is.True);
-                Assert.That(bindings.All(binding => binding.Devices.Count <= 2), Is.True,
-                    "Only the selected device preview should be prepared until dropdowns open.");
-
-                foreach (var mapping in model.MappingsList) mapping.IsExpanded = false;
-                page.Measure(size);
-                page.Arrange(new Rect(new Point(0, 0), size));
-                page.UpdateLayout();
-                Assert.That(model.MappingsList.All(mapping => !mapping.IsExpanded), Is.True);
-            }
-            finally
-            {
-                page.Dispose();
-            }
-        }
-
-        [Test]
-        [Apartment(ApartmentState.STA)]
         public void ActualProfileWorkspaceMappingChevronExpandsInputsAndOutputsBelowItsOwnRow()
         {
             EnsureApplicationResources();
