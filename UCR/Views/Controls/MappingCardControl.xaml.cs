@@ -1018,6 +1018,58 @@ namespace HidWizards.UCR.Views.Controls
             RequestAxisInputMode(axis, 2);
         }
 
+        private void CompoundOutput_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mapping = DataContext as MappingViewModel;
+            var button = sender as Button;
+            if (mapping?.ButtonsEnabled != true || !mapping.IsCompoundOutput || button == null)
+                return;
+            var menu = CreateDarkContextMenu(button);
+            var choices = mapping.GetFourWayOutputChoices();
+            foreach (var choice in choices)
+            {
+                var selected = choice;
+                var item = new MenuItem
+                {
+                    Header = choice.DeviceTitle + "  —  " + choice.Destination,
+                    ToolTip = choice.IsDPad
+                        ? "Bind all four D-pad directions as one output"
+                        : "Bind both stick axes as one output"
+                };
+                item.Click += (source, args) =>
+                {
+                    if (!mapping.ApplyTypedFourWayOutput(selected))
+                        DarkMessageBox.Show("Unable to assign the complete 4-Way output.",
+                            "Binding unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+                };
+                menu.Items.Add(item);
+            }
+            if (choices.Count == 0)
+                menu.Items.Add(new MenuItem
+                {
+                    Header = "No configured 4-Way output device",
+                    IsEnabled = false
+                });
+
+            // Preserve access to each axis's existing inversion control without
+            // exposing a second permanent output binding row.
+            for (var index = 0; index < mapping.Plugins.Count; index++)
+            {
+                var output = mapping.Plugins[index];
+                if (output.QuickInvertVisibility != Visibility.Visible) continue;
+                var label = index == 0 ? "Invert X" :
+                    index == 1 ? "Invert Y" : "Invert direction " + (index + 1);
+                var invert = new MenuItem
+                {
+                    Header = label, IsCheckable = true, IsChecked = output.QuickInvert
+                };
+                invert.Click += (source, args) => output.QuickInvert = invert.IsChecked;
+                if (index == 0) menu.Items.Add(new Separator());
+                menu.Items.Add(invert);
+            }
+            menu.IsOpen = true;
+        }
+
         private void CompoundBindingsMenu_OnClick(object sender, RoutedEventArgs e)
         {
             var mapping = DataContext as MappingViewModel;
