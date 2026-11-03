@@ -989,6 +989,31 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return true;
         }
 
+        public bool UseAnalogueCompoundInput(out string error)
+        {
+            error = null;
+            if (!ButtonsEnabled || !IsCompoundInput)
+            {
+                error = "Choose 4-Way or Axis input first.";
+                return false;
+            }
+            if (!Mapping.CompoundDigitalInput) return true;
+            Mapping.CompoundDigitalInput = false;
+            if (!SwitchDirectionalInputs(Mapping.EffectiveInputRepresentation))
+            {
+                Mapping.CompoundDigitalInput = true;
+                error = "Unable to restore analogue input slots.";
+                return false;
+            }
+            ProfileViewModel.Profile.Context.ContextChanged();
+            RefreshInputExpressionPresentation();
+            OnPropertyChanged(nameof(InputDirectionalSlotCount));
+            OnPropertyChanged(nameof(IsDigitalCompoundInput));
+            OnPropertyChanged(nameof(CompoundBlockEnabled));
+            OnPropertyChanged(nameof(CanBlockCompound));
+            return true;
+        }
+
         private bool EnsureCompoundDigitalSlots(out string error)
         {
             error = null;
