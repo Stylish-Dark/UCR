@@ -59,7 +59,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<PluginPropertyGroupViewModel> InlinePropertyGroups { get; }
             = new ObservableCollection<PluginPropertyGroupViewModel>();
         public Visibility InlineSettingsVisibility =>
-            InlinePropertyGroups.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            Plugin?.PluginPropertyGroups?.Any(group => group.PluginProperties?.Any(property =>
+                !(QuickInvertVisibility == Visibility.Visible && property.Name == "Invert")) == true)
+                == true ? Visibility.Visible : Visibility.Collapsed;
 
         public bool IsAxisButtonMapping =>
             string.Equals(Plugin.PluginName, "Button to Axis", StringComparison.OrdinalIgnoreCase) ||
@@ -127,6 +129,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool CanAddFilter => !MappingViewModel.ProfileViewModel.Profile.IsActive();
         public ObservableCollection<FilterViewModel> Filters { get; set; }
         private bool _editorInitialized;
+        private bool _settingsInitialized;
         private bool _disposed;
 
         public PluginViewModel(MappingViewModel mappingViewModel, Plugin plugin)
@@ -144,9 +147,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (_editorInitialized || _disposed) return;
             _editorInitialized = true;
-            PopulatePluginProperties();
+            // Filter references are visible in the editor even when Settings is closed.
+            // Property controls are not: don't allocate and bind them until expanded.
             PopulateFilterViewModels();
             OnPropertyChanged(nameof(InlineSettingsVisibility));
+        }
+
+        public void EnsureSettingsInitialized()
+        {
+            EnsureEditorInitialized();
+            if (_settingsInitialized || _disposed) return;
+            _settingsInitialized = true;
+            PopulatePluginProperties();
         }
 
 
