@@ -147,6 +147,7 @@
     <Compile Include="Views\Controls\MappingCardControl.xaml.cs">
       <DependentUpon>MappingCardControl.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Views\Controls\OuterViewportVirtualizingPanel.cs" />
     <Compile Include="Views\Controls\ControlGlyphControl.cs" />
     <Compile Include="Views\Controls\DeviceSymbolControl.cs" />
     <Compile Include="Views\Controls\Plugin\PluginControl.xaml.cs">
