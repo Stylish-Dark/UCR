@@ -224,6 +224,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 ? "Move the joystick or squeeze a trigger to detect its axis. Press Esc to cancel."
                 : "Press an input control to bind it. Press Esc to cancel.";
 
+        public bool MenuOnLeft => DeviceBinding?.InputDirectionSlot == 1 ||
+            DeviceBinding?.InputDirectionSlot == 3;
+
         public string DirectionalBindLabel
         {
             get
