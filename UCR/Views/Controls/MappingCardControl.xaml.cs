@@ -995,6 +995,18 @@ namespace HidWizards.UCR.Views.Controls
                 item.Click += (source, args) => ApplyCompoundPreset(mapping, name);
                 menu.Items.Add(item);
             }
+            if (mapping.DirectionalCapacity == 4)
+            {
+                var dpad = new MenuItem { Header = "Controller D-pad" };
+                dpad.Click += (source, args) =>
+                {
+                    string error;
+                    if (!mapping.ApplyDirectionalDPadPreset(out error))
+                        DarkMessageBox.Show(error ?? "D-pad preset could not be applied.",
+                            "Binding preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+                };
+                menu.Items.Add(dpad);
+            }
             foreach (var saved in mapping.ProfileViewModel.Profile.CompoundBindingPresets ??
                 new System.Collections.Generic.List<CompoundBindingPreset>())
             {
