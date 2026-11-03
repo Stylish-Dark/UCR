@@ -1019,6 +1019,15 @@ namespace HidWizards.UCR.Views.Controls
                 menu.Items.Add(item);
             }
             menu.Items.Add(new Separator());
+            var analogue = new MenuItem { Header = "Use analogue axis bindings" };
+            analogue.Click += (source, args) =>
+            {
+                string error;
+                if (!mapping.UseAnalogueCompoundInput(out error))
+                    DarkMessageBox.Show(error ?? "Analogue bindings could not be restored.",
+                        "Input representation unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+            };
+            menu.Items.Add(analogue);
             var save = new MenuItem { Header = "Save current bindings as preset..." };
             save.Click += (source, args) =>
             {
