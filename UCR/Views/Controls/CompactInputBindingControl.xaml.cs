@@ -20,6 +20,31 @@ namespace HidWizards.UCR.Views.Controls
             DependencyProperty.Register("DeviceBinding", typeof(DeviceBinding), typeof(CompactInputBindingControl),
                 new PropertyMetadata(default(DeviceBinding)));
 
+        public static readonly DependencyProperty MenuOnLeftProperty =
+            DependencyProperty.Register(nameof(MenuOnLeft), typeof(bool),
+                typeof(CompactInputBindingControl),
+                new PropertyMetadata(false, (owner, args) =>
+                    ((CompactInputBindingControl)owner).UpdateMenuPosition()));
+
+        public bool MenuOnLeft
+        {
+            get => (bool)GetValue(MenuOnLeftProperty);
+            set => SetValue(MenuOnLeftProperty, value);
+        }
+
+        private void UpdateMenuPosition()
+        {
+            if (BindingGrid == null || MenuButton == null || DeviceSelectionBox == null)
+                return;
+            var left = MenuOnLeft;
+            BindingGrid.ColumnDefinitions[0].Width = new GridLength(left ? 29 : 62);
+            BindingGrid.ColumnDefinitions[2].Width = new GridLength(left ? 62 : 29);
+            Grid.SetColumn(MenuButton, left ? 0 : 2);
+            Grid.SetColumn(DeviceSelectionBox, left ? 2 : 0);
+            // The binding button remains in the original flexible centre column,
+            // so its typography, height and interaction remain unchanged.
+        }
+
         private bool _loaded;
         private Popup _outputPicker;
 
@@ -37,6 +62,7 @@ namespace HidWizards.UCR.Views.Controls
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
+            UpdateMenuPosition();
             var viewModel = DataContext as DeviceBindingViewModel;
             viewModel?.EnsureSelectedDevicePreviewLoaded();
             _loaded = true;
