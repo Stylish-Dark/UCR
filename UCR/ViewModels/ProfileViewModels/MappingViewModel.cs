@@ -858,6 +858,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private string GetDirectionalInputSlotLabel(int index)
         {
             if (!IsTypedDirectionalMapping) return "Input " + (index + 1);
+            // Each OR group restarts its own directional slots.
+            var perGroup = Math.Max(1, Mapping.RequiredInputBindingSlotsPerGroup);
+            index %= perGroup;
             var representation = Mapping.EffectiveInputRepresentation;
             if (DirectionalCapacity == 4 && representation != 3 && !Mapping.CompoundDigitalInput)
                 return index == 0 ? "X axis" : "Y axis";
@@ -1258,8 +1261,36 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public void AddCondition()
         {
             if (!ButtonsEnabled || !SupportsNativeInputExpression) return;
-            var binding = Mapping.AddExpressionCondition();
-            AddExpressionBindingViewModel(binding);
+            if (IsTypedDirectionalMapping)
+            {
+                var group = Mapping.DeviceBindings.Count == 0 ? 0 :
+                    Mapping.DeviceBindings.Max(input => Math.Max(0, input.InputExpressionGroup)) + 1;
+                var count = Mapping.RequiredInputBindingSlotsPerGroup;
+                if (count < 1) return;
+                var capacity = DirectionalCapacity;
+                var isButton = Mapping.EffectiveInputRepresentation == 3 ||
+                    Mapping.CompoundDigitalInput || capacity == 1;
+                for (var index = 0; index < count; index++)
+                {
+                    var binding = new DeviceBinding(Mapping.Update, ProfileViewModel.Profile,
+                        DeviceIoType.Input)
+                    {
+                        DeviceBindingCategory = isButton
+                            ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range,
+                        InputExpressionInputKind = isButton ? 0 : 3,
+                        InputExpressionKindConfigured = true,
+                        InputExpressionGroup = group,
+                        InputDirectionSlot = isButton && capacity > 1 ? index + 1 : 0
+                    };
+                    Mapping.DeviceBindings.Add(binding);
+                }
+                Mapping.UseInputExpression = true;
+                ProfileViewModel.Profile.Context.ContextChanged();
+                RebuildDirectionalEditors();
+                return;
+            }
+            var added = Mapping.AddExpressionCondition();
+            AddExpressionBindingViewModel(added);
         }
 
         private void AddExpressionBindingViewModel(DeviceBinding binding)
