@@ -167,6 +167,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ? Visibility.Collapsed : Visibility.Visible;
         public int InputDirectionalSlotCount => Mapping.RequiredInputBindingSlots;
         public bool IsDigitalCompoundInput => IsCompoundInput && Mapping.CompoundDigitalInput;
+        public string CompoundBindingSummary => !IsCompoundInput || DeviceBindings == null ||
+            DeviceBindings.Count == 0 ? "Unassigned" : string.Join("  /  ",
+                DeviceBindings.Select(binding => binding.DeviceBinding.IsBound
+                    ? binding.CompactBindButtonText : "—"));
+
         public int OutputDirectionalSlotCount => Mapping.RequiredBindingSlots(
             DirectionalCapacity, Mapping.EffectiveOutputRepresentation);
 
@@ -227,6 +232,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(OutputIsAxis));
             OnPropertyChanged(nameof(OutputIsButton));
             OnPropertyChanged(nameof(InputDirectionalSlotCount));
+            OnPropertyChanged(nameof(CompoundBindingSummary));
             OnPropertyChanged(nameof(IsDigitalCompoundInput));
             OnPropertyChanged(nameof(OutputDirectionalSlotCount));
             OnPropertyChanged(nameof(IsTypedDirectionalMapping));
@@ -774,6 +780,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             OnPropertyChanged(nameof(CompoundBlockEnabled));
             OnPropertyChanged(nameof(CanBlockCompound));
+            OnPropertyChanged(nameof(CompoundBindingSummary));
             RefreshInputExpressionPresentation();
             RefreshPresetAvailability();
             RefreshCollapsedSummary();
@@ -925,6 +932,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     binding.Dispose();
                 }
                 PopulateDeviceBindingsViewModels();
+                OnPropertyChanged(nameof(CompoundBindingSummary));
                 foreach (var binding in DeviceBindings.ToList()) SubscribeSummaryBinding(binding);
                 foreach (var group in InputConditions.ToList())
                     group.DirectionalPrimary?.EnsureDeviceListLoaded();
@@ -1008,6 +1016,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ProfileViewModel.Profile.Context.ContextChanged();
             RefreshInputExpressionPresentation();
             OnPropertyChanged(nameof(InputDirectionalSlotCount));
+            OnPropertyChanged(nameof(CompoundBindingSummary));
             OnPropertyChanged(nameof(IsDigitalCompoundInput));
             OnPropertyChanged(nameof(CompoundBlockEnabled));
             OnPropertyChanged(nameof(CanBlockCompound));
@@ -1033,6 +1042,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 }
                 RefreshInputExpressionPresentation();
                 OnPropertyChanged(nameof(InputDirectionalSlotCount));
+            OnPropertyChanged(nameof(CompoundBindingSummary));
                 OnPropertyChanged(nameof(IsDigitalCompoundInput));
                 OnPropertyChanged(nameof(CompoundBlockEnabled));
             }
