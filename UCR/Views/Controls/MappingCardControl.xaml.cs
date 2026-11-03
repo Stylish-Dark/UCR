@@ -1051,6 +1051,40 @@ namespace HidWizards.UCR.Views.Controls
                     IsEnabled = false
                 });
 
+            // A compound output is one visible binding, but its constituent
+            // controls must remain independently assignable from the full
+            // device-category menu. The preset picker above is not a restriction.
+            var channels = mapping.Plugins.SelectMany(plugin =>
+                plugin.DeviceBindings.Where(binding =>
+                    binding.DeviceBinding.DeviceIoType == DeviceIoType.Output)).ToList();
+            if (channels.Count > 0)
+            {
+                menu.Items.Add(new Separator());
+                var editChannels = new MenuItem { Header = "Edit individual channels" };
+                for (var channelIndex = 0; channelIndex < channels.Count; channelIndex++)
+                {
+                    var binding = channels[channelIndex];
+                    var label = mapping.Mapping.CompoundDigitalOutput
+                        ? new[] { "Left", "Right", "Up", "Down" }[
+                            Math.Min(channelIndex, 3)]
+                        : channelIndex == 0 ? "X axis" : "Y axis";
+                    var option = new MenuItem
+                    {
+                        Header = label + "  —  " +
+                            (binding.DeviceBinding.IsBound
+                                ? binding.CompactBindButtonText : "Unassigned"),
+                        IsEnabled = binding.BindingEnabled
+                    };
+                    option.Click += async (source, args) =>
+                    {
+                        menu.IsOpen = false;
+                        await OpenQuickOutputPickerAsync(binding, button);
+                    };
+                    editChannels.Items.Add(option);
+                }
+                menu.Items.Add(editChannels);
+            }
+
             // Preserve access to each axis's existing inversion control without
             // exposing a second permanent output binding row.
             for (var index = 0; index < mapping.Plugins.Count; index++)
