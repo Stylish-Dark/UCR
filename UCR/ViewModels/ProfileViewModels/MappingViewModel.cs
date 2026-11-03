@@ -165,8 +165,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ? Visibility.Visible : Visibility.Collapsed;
         public Visibility LegacyOutputAddVisibility => IsTypedDirectionalMapping
             ? Visibility.Collapsed : Visibility.Visible;
-        public int InputDirectionalSlotCount => Mapping.RequiredBindingSlots(
-            DirectionalCapacity, Mapping.EffectiveInputRepresentation);
+        public int InputDirectionalSlotCount => Mapping.RequiredInputBindingSlots;
+        public bool IsDigitalCompoundInput => IsCompoundInput && Mapping.CompoundDigitalInput;
         public int OutputDirectionalSlotCount => Mapping.RequiredBindingSlots(
             DirectionalCapacity, Mapping.EffectiveOutputRepresentation);
 
@@ -206,9 +206,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 if (Mapping.OutputRepresentation == value && !capacityIncreased) return true;
                 if (!SwitchDirectionalOutputs(value)) return false;
-                if (capacityIncreased || Mapping.DeviceBindings.Count !=
-                    Mapping.RequiredBindingSlots(Mapping.EffectiveDirectionalCapacity,
-                        Mapping.EffectiveInputRepresentation))
+                if (capacityIncreased || Mapping.DeviceBindings.Count != Mapping.RequiredInputBindingSlots)
                 {
                     var otherType = Mapping.EffectiveInputRepresentation;
                     // Keep the old input representation in its legacy bank.
@@ -229,6 +227,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(OutputIsAxis));
             OnPropertyChanged(nameof(OutputIsButton));
             OnPropertyChanged(nameof(InputDirectionalSlotCount));
+            OnPropertyChanged(nameof(IsDigitalCompoundInput));
             OnPropertyChanged(nameof(OutputDirectionalSlotCount));
             OnPropertyChanged(nameof(IsTypedDirectionalMapping));
             OnPropertyChanged(nameof(IsFullStickInput));
@@ -246,7 +245,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             var profile = ProfileViewModel.Profile;
             var capacity = Mapping.EffectiveDirectionalCapacity;
-            var required = Mapping.RequiredBindingSlots(capacity, representation);
+            var required = Mapping.CompoundDigitalInput && representation != 3 && capacity > 1
+                ? capacity : Mapping.RequiredBindingSlots(capacity, representation);
             if (required < 1) return false;
             if (Mapping.InactiveInputRepresentations == null)
                 Mapping.InactiveInputRepresentations = new List<DirectionalInputBank>();
@@ -269,7 +269,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 next = new List<DeviceBinding>();
                 for (var index = 0; index < required; index++)
                 {
-                    var isButton = representation == 3 || capacity == 1;
+                    var isButton = representation == 3 || capacity == 1 ||
+                        Mapping.CompoundDigitalInput;
                     var previousIndex = isButton && capacity > 1 && previous.Count == 1
                         ? (index == 1 ? 0 : -1) : index;
                     var derivedAxisDirection = false;
@@ -823,11 +824,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (!IsTypedDirectionalMapping) return "Input " + (index + 1);
             var representation = Mapping.EffectiveInputRepresentation;
-            if (DirectionalCapacity == 4 && representation != 3)
+            if (DirectionalCapacity == 4 && representation != 3 && !Mapping.CompoundDigitalInput)
                 return index == 0 ? "X axis" : "Y axis";
             if (DirectionalCapacity == 4)
                 return new[] { "Left", "Right", "Up", "Down" }[Math.Min(3, index)];
-            if (DirectionalCapacity == 2 && representation == 3)
+            if (DirectionalCapacity == 2 && (representation == 3 || Mapping.CompoundDigitalInput))
                 return index == 0 ? "Negative" : "Positive";
             return representation == 3 ? "Button" : "Axis";
         }
@@ -981,13 +982,39 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return true;
         }
 
+        private bool EnsureCompoundDigitalSlots(out string error)
+        {
+            error = null;
+            if (!ButtonsEnabled || !IsCompoundInput || DirectionalCapacity <= 1)
+            {
+                error = "Choose 4-Way or Axis input first.";
+                return false;
+            }
+            if (!Mapping.CompoundDigitalInput ||
+                Mapping.DeviceBindings.Count != DirectionalCapacity)
+            {
+                Mapping.CompoundDigitalInput = true;
+                if (!SwitchDirectionalInputs(Mapping.EffectiveInputRepresentation))
+                {
+                    error = "Unable to prepare the compound directional bindings.";
+                    return false;
+                }
+                RefreshInputExpressionPresentation();
+                OnPropertyChanged(nameof(InputDirectionalSlotCount));
+                OnPropertyChanged(nameof(IsDigitalCompoundInput));
+                OnPropertyChanged(nameof(CompoundBlockEnabled));
+            }
+            return true;
+        }
+
         public bool ApplyDirectionalKeyboardPreset(string preset, out string error)
         {
             error = null;
+            if (!EnsureCompoundDigitalSlots(out error)) return false;
             var inputs = InputConditions?.FirstOrDefault()?.DirectionalInputs?.ToList();
-            if (!ButtonsEnabled || inputs == null || inputs.Count < 2)
+            if (inputs == null || inputs.Count != DirectionalCapacity)
             {
-                error = "Choose a two-way or four-way input first.";
+                error = "Unable to resolve the compound binding directions.";
                 return false;
             }
             var patterns = new Dictionary<string, string[]>
