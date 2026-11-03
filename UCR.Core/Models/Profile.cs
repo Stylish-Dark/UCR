@@ -14,6 +14,16 @@ using NLog;
 
 namespace HidWizards.UCR.Core.Models
 {
+    // A reusable collection of keyboard directions within a profile.
+    public class CompoundBindingPreset
+    {
+        [XmlAttribute]
+        public string Name { get; set; }
+        [XmlAttribute]
+        public int Capacity { get; set; }
+        public List<string> Keys { get; set; } = new List<string>();
+    }
+
     public class Profile : INotifyPropertyChanged
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
@@ -27,6 +37,7 @@ namespace HidWizards.UCR.Core.Models
         public List<Profile> ChildProfiles { get; set; }
         public List<Mapping> Mappings { get; set; }
         public List<MappingGroup> MappingGroups { get; set; }
+        public List<CompoundBindingPreset> CompoundBindingPresets { get; set; }
         // Main remains the legacy root collection, but is a normal enableable group.
         [XmlAttribute]
         [DefaultValue(true)]
@@ -139,6 +150,7 @@ namespace HidWizards.UCR.Core.Models
             ChildProfiles = new List<Profile>();
             Mappings = new List<Mapping>();
             MappingGroups = new List<MappingGroup>();
+            CompoundBindingPresets = new List<CompoundBindingPreset>();
             InputDeviceConfigurations = new List<DeviceConfiguration>();
             OutputDeviceConfigurations = new List<DeviceConfiguration>();
             BlockUnmappedInputEnabledOverrides = new List<Guid>();
