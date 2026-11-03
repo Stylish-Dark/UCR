@@ -1130,6 +1130,33 @@ namespace HidWizards.UCR.Views.Controls
                 };
                 menu.Items.Add(dpad);
             }
+            var leftStick = new MenuItem { Header = "Controller left stick" };
+            leftStick.Click += (source, args) =>
+            {
+                string error;
+                if (!mapping.ApplyTypedControllerStickPreset(0, out error, groupIndex))
+                    DarkMessageBox.Show(error ?? "The left stick could not be assigned.",
+                        "Binding preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+            };
+            menu.Items.Add(leftStick);
+            var rightStick = new MenuItem { Header = "Controller right stick" };
+            rightStick.Click += (source, args) =>
+            {
+                string error;
+                if (!mapping.ApplyTypedControllerStickPreset(2, out error, groupIndex))
+                    DarkMessageBox.Show(error ?? "The right stick could not be assigned.",
+                        "Binding preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+            };
+            menu.Items.Add(rightStick);
+            var faceButtons = new MenuItem { Header = "Controller face buttons" };
+            faceButtons.Click += (source, args) =>
+            {
+                string error;
+                if (!mapping.ApplyTypedControllerFaceButtons(out error, groupIndex))
+                    DarkMessageBox.Show(error ?? "The face buttons could not be assigned.",
+                        "Binding preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+            };
+            menu.Items.Add(faceButtons);
             foreach (var saved in mapping.ProfileViewModel.Profile.CompoundBindingPresets ??
                 new System.Collections.Generic.List<CompoundBindingPreset>())
             {
