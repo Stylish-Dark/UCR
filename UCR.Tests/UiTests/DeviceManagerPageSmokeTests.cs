@@ -396,6 +396,10 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(afterExpand, Is.GreaterThan(0));
                 Assert.That(afterExpand, Is.LessThan(longList.Items.Count),
                     "Expanding all mappings must not instantiate all off-screen editors.");
+                var firstVirtualizedRow = longList.ItemContainerGenerator.ContainerFromIndex(0)
+                    as ListViewItem;
+                Assert.That(firstVirtualizedRow, Is.Not.Null);
+                var virtualizedRowHeight = firstVirtualizedRow.ActualHeight;
 
                 // The existing drag/reorder logic requires all concrete row slots.
                 // Its temporary full-layout mode must still realize every row,
@@ -408,6 +412,12 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(Enumerable.Range(0, longList.Items.Count)
                     .All(index => longList.ItemContainerGenerator.ContainerFromIndex(index) != null),
                     Is.True, "Drag mode must retain all reorder targets.");
+                var firstFullyRealizedRow = longList.ItemContainerGenerator.ContainerFromIndex(0)
+                    as ListViewItem;
+                Assert.That(firstFullyRealizedRow, Is.Not.Null);
+                Assert.That(firstFullyRealizedRow.ActualHeight,
+                    Is.EqualTo(virtualizedRowHeight).Within(1.0),
+                    "Virtualization must not change any visible mapping row's geometry.");
 
                 VirtualizingPanel.SetIsVirtualizing(longList, true);
                 virtualPanel.InvalidateMeasure();
