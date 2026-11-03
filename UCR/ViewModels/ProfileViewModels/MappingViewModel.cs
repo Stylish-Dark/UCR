@@ -235,6 +235,57 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public int OutputDirectionalSlotCount => Mapping.RequiredBindingSlots(
             DirectionalCapacity, Mapping.EffectiveOutputRepresentation);
 
+        // Physical assignments are authoritative. A representation is an expected
+        // shape, not a restriction that prevents choosing a different control.
+        public bool InferInputTypeFromAssignment(DeviceBinding input)
+        {
+            if (!ButtonsEnabled || input?.IsBound != true ||
+                input.DeviceIoType != DeviceIoType.Input) return false;
+            var physical = input.DeviceBindingCategory;
+            if (physical != DeviceBindingCategory.Momentary &&
+                physical != DeviceBindingCategory.Range) return false;
+
+            if (!IsTypedDirectionalMapping && physical == DeviceBindingCategory.Range)
+            {
+                Mapping.DirectionalCapacity = 2;
+                return SetInputRepresentation(2);
+            }
+            if (IsTypedDirectionalMapping)
+            {
+                if (physical == DeviceBindingCategory.Range &&
+                    Mapping.EffectiveInputRepresentation == 3)
+                    return SetInputRepresentation(2);
+                if (physical == DeviceBindingCategory.Momentary &&
+                    Mapping.EffectiveInputRepresentation == 2)
+                    return SetInputRepresentation(3);
+            }
+            RefreshDirectionalAvailability();
+            return false;
+        }
+
+        public bool InferOutputTypeFromAssignment(DeviceBindingCategory physical)
+        {
+            if (!ButtonsEnabled ||
+                (physical != DeviceBindingCategory.Momentary &&
+                 physical != DeviceBindingCategory.Range)) return false;
+            if (!IsTypedDirectionalMapping && physical == DeviceBindingCategory.Range)
+            {
+                Mapping.DirectionalCapacity = 2;
+                return SetOutputRepresentation(2);
+            }
+            if (IsTypedDirectionalMapping)
+            {
+                if (physical == DeviceBindingCategory.Range &&
+                    Mapping.EffectiveOutputRepresentation == 3)
+                    return SetOutputRepresentation(2);
+                if (physical == DeviceBindingCategory.Momentary &&
+                    Mapping.EffectiveOutputRepresentation != 3)
+                    return SetOutputRepresentation(3);
+            }
+            RefreshDirectionalAvailability();
+            return true;
+        }
+
         public bool SetInputRepresentation(int value)
         {
             return SetRepresentation(value, true);
@@ -361,6 +412,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                         }
                         else if (!isButton && capacity > 1 && sources.Count == capacity)
                         {
+                            var compatibleAxis = sources.FindIndex(source =>
+                                source.IsBound && source.DeviceBindingCategory ==
+                                    DeviceBindingCategory.Range);
+                            if (compatibleAxis >= 0) previousIndex = compatibleAxis;
                             var negative = sources[index * 2];
                             var positive = sources[index * 2 + 1];
                             if (negative.IsBound && positive.IsBound &&
@@ -855,6 +910,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     member.IsBlockable())
                     member.SetBlock(true);
             }
+
+            // Bind capture can resolve a different physical category from the
+            // one expected by the current representation. Respect the capture
+            // and restructure its OR set, keeping the actual new assignment.
+            if (boundLabelChanged && changed?.DeviceBinding?.IsBound == true &&
+                changed.DeviceBinding.DeviceIoType == DeviceIoType.Input &&
+                InferInputTypeFromAssignment(changed.DeviceBinding))
+                return;
 
             var structural = property == nameof(DeviceBindingViewModel.InputExpressionInputKind) ||
                              property == nameof(DeviceBindingViewModel.InputExpressionGroupLabel) ||
