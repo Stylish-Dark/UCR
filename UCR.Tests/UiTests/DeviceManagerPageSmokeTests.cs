@@ -798,6 +798,67 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(mapping.SetInputRepresentation(3), Is.True);
                 Assert.That(mapping.DeviceBindings.Count, Is.EqualTo(4),
                     "Switching back to Button restores one opposing pair per OR set.");
+
+                // A captured Button overrides a manually selected Axis expectation.
+                Assert.That(mapping.SetInputRepresentation(2), Is.True);
+                var axisExpectation = mapping.DeviceBindings.First().DeviceBinding;
+                axisExpectation.SetInputExpressionInputKind(0);
+                axisExpectation.SetKeyTypeValue(1, 5, 0);
+                Assert.That(mapping.Mapping.EffectiveInputRepresentation, Is.EqualTo(3));
+                Assert.That(mapping.DeviceBindings.Count, Is.EqualTo(4),
+                    "A captured Button splits every Axis OR set into a matching pair.");
+                Assert.That(mapping.Mapping.DeviceBindings.Any(input =>
+                    input.IsBound && input.InputExpressionInputKind == 0 && input.KeyValue == 5),
+                    Is.True, "The newly captured Button must survive automatic type switching.");
+
+                Assert.That(mapping.SetInputRepresentation(1), Is.True);
+                Assert.That(mapping.SetOutputRepresentation(1), Is.True);
+                Assert.That(mapping.IsCompoundOutput, Is.True);
+                Assert.That(mapping.Plugins.Count, Is.EqualTo(2),
+                    "A 4-Way stick output has two internal axis channels and one logical control.");
+                var stick = new FourWayOutputChoice
+                {
+                    DeviceConfigurationGuid = outputDevice.Guid,
+                    Controls = new[]
+                    {
+                        new HidWizards.UCR.Core.Models.Binding.DeviceBindingInfo
+                        {
+                            DeviceBindingCategory = HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Range,
+                            KeyType = 3, KeyValue = 0
+                        },
+                        new HidWizards.UCR.Core.Models.Binding.DeviceBindingInfo
+                        {
+                            DeviceBindingCategory = HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Range,
+                            KeyType = 3, KeyValue = 1
+                        }
+                    }
+                };
+                Assert.That(mapping.ApplyTypedFourWayOutput(stick), Is.True);
+                Assert.That(mapping.Plugins.All(plugin =>
+                    plugin.Plugin.Outputs.Single().IsBound), Is.True);
+
+                var dpad = new FourWayOutputChoice
+                {
+                    DeviceConfigurationGuid = outputDevice.Guid,
+                    IsDPad = true,
+                    Controls = Enumerable.Range(0, 4)
+                        .Select(index => new HidWizards.UCR.Core.Models.Binding.DeviceBindingInfo
+                        {
+                            DeviceBindingCategory = HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary,
+                            KeyType = 2, KeyValue = index
+                        }).ToArray()
+                };
+                Assert.That(mapping.ApplyTypedFourWayOutput(dpad), Is.True);
+                Assert.That(mapping.IsCompoundOutput, Is.True);
+                Assert.That(mapping.Mapping.CompoundDigitalOutput, Is.True);
+                Assert.That(mapping.Mapping.RequiredOutputBindingSlots, Is.EqualTo(4));
+                Assert.That(mapping.Plugins.Count, Is.EqualTo(4));
+                Assert.That(mapping.Plugins.All(plugin =>
+                    plugin.Plugin.Outputs.Single().DeviceBindingCategory ==
+                        HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary), Is.True);
+                Assert.That(mapping.SetOutputRepresentation(2), Is.True);
+                Assert.That(mapping.Plugins.Count, Is.EqualTo(2),
+                    "Returning to Axis restores two axis outputs without changing 4-Way input.");
             }
             finally
             {
