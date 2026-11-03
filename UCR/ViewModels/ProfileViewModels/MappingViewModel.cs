@@ -70,38 +70,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<DeviceBindingViewModel> Inputs { get; }
         public Visibility OrLabelVisibility => GroupIndex > 0 ? Visibility.Visible : Visibility.Collapsed;
         private readonly bool _positionalFourWay;
-        public ObservableCollection<DeviceBindingViewModel> DirectionalInputs
-        {
-            get
-            {
-                if (_positionalFourWay)
-                    return new ObservableCollection<DeviceBindingViewModel>(Inputs.Take(4));
-                var slots = Inputs.Where(b => b.DeviceBinding.InputDirectionSlot > 0).ToList();
-                if (slots.Count == 4)
-                {
-                    // Native input expression slots are X-/X+/Y-/Y+, whereas
-                    // the ButtonsToAxes plugin order is Up/Down/Left/Right.
-                    // Expose both as Up/Down/Left/Right to the ONE compass.
-                    return new ObservableCollection<DeviceBindingViewModel>(slots.OrderBy(b =>
-                    {
-                        switch (b.DeviceBinding.InputDirectionSlot)
-                        {
-                            case 3: return 0; // Up
-                            case 4: return 1; // Down
-                            case 1: return 2; // Left
-                            case 2: return 3; // Right
-                            default: return 4;
-                        }
-                    }));
-                }
-                return new ObservableCollection<DeviceBindingViewModel>(
-                    slots.OrderBy(b => b.DeviceBinding.InputDirectionSlot));
-            }
-        }
-        public ObservableCollection<DeviceBindingViewModel> OrdinaryInputs =>
-            new ObservableCollection<DeviceBindingViewModel>(_positionalFourWay
-                ? Enumerable.Empty<DeviceBindingViewModel>()
-                : Inputs.Where(b => b.DeviceBinding.InputDirectionSlot == 0));
+        private readonly ObservableCollection<DeviceBindingViewModel> _directionalInputs;
+        private readonly ObservableCollection<DeviceBindingViewModel> _ordinaryInputs;
+
+        // WPF evaluates these getters many times during measure/bind. Returning a
+        // fresh ObservableCollection on every evaluation allocates and rebinds rows.
+        // An input-condition group has a fixed membership until the mapping rebuilds it.
+        public ObservableCollection<DeviceBindingViewModel> DirectionalInputs => _directionalInputs;
+        public ObservableCollection<DeviceBindingViewModel> OrdinaryInputs => _ordinaryInputs;
         public DeviceBindingViewModel DirectionalPrimary => DirectionalInputs.FirstOrDefault();
         public bool DirectionalBlockEnabled => DirectionalInputs.Any(input => input.DeviceBinding.Block);
         public Visibility DirectionalVisibility => DirectionalPrimary == null ? Visibility.Collapsed : Visibility.Visible;
@@ -121,6 +97,32 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             GroupIndex = groupIndex;
             _positionalFourWay = positionalFourWay;
             Inputs = new ObservableCollection<DeviceBindingViewModel>(inputs ?? Enumerable.Empty<DeviceBindingViewModel>());
+            var slots = _positionalFourWay
+                ? Inputs.Take(4).ToList()
+                : Inputs.Where(binding => binding.DeviceBinding.InputDirectionSlot > 0).ToList();
+            if (!_positionalFourWay && slots.Count == 4)
+            {
+                // Preserve the existing compass order: Up, Down, Left, Right.
+                slots = slots.OrderBy(binding =>
+                {
+                    switch (binding.DeviceBinding.InputDirectionSlot)
+                    {
+                        case 3: return 0;
+                        case 4: return 1;
+                        case 1: return 2;
+                        case 2: return 3;
+                        default: return 4;
+                    }
+                }).ToList();
+            }
+            else if (!_positionalFourWay)
+            {
+                slots = slots.OrderBy(binding => binding.DeviceBinding.InputDirectionSlot).ToList();
+            }
+            _directionalInputs = new ObservableCollection<DeviceBindingViewModel>(slots);
+            _ordinaryInputs = new ObservableCollection<DeviceBindingViewModel>(_positionalFourWay
+                ? Enumerable.Empty<DeviceBindingViewModel>()
+                : Inputs.Where(binding => binding.DeviceBinding.InputDirectionSlot == 0));
             CanRemoveCondition = canRemoveCondition;
         }
     }
