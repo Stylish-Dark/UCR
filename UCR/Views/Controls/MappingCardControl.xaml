@@ -306,10 +306,7 @@
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
                                         <StackPanel Orientation="Horizontal" Margin="2 3 0 0">
-                                            <Button Content="+ AND input" Click="AddInputToCondition_OnClick"
-                                                Height="32" Padding="10 3" Margin="0 0 6 0"
-                                                Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
-                                                ToolTip="Add another required input"/>
+                                            
                                             <Button Content="Remove group" Click="RemoveCondition_OnClick"
                                                 Height="32" Padding="8 2" Foreground="#BBBBBB">
                                                 <Button.Style>
@@ -330,7 +327,7 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <Button Content="+ OR input(s)" Click="AddCondition_OnClick"
+                <Button Content="+OR" Click="AddCondition_OnClick"
                     Height="34" HorizontalAlignment="Left" Padding="12 3" Margin="2 3 0 0"
                     IsEnabled="{Binding ButtonsEnabled}" Foreground="#FFFFFF"
                     Style="{StaticResource UcrAccentOutlineButton}"/>
@@ -482,14 +479,17 @@
                                 <RadioButton Content="✣" GroupName="InputDirectionalType" Tag="1"
                                              ToolTip="4-Way input" Click="InputRepresentation_OnClick"
                                              IsChecked="{Binding InputIsFullStick, Mode=OneWay}"
+                                             IsEnabled="{Binding CanChooseInputFourWay}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                                 <RadioButton Content="↔" GroupName="InputDirectionalType" Tag="2"
                                              ToolTip="Axis input" Click="InputRepresentation_OnClick"
                                              IsChecked="{Binding InputIsAxis, Mode=OneWay}"
+                                             IsEnabled="{Binding CanChooseInputAxis}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                                 <RadioButton Content="●" GroupName="InputDirectionalType" Tag="3"
                                              ToolTip="Button input" Click="InputRepresentation_OnClick"
                                              IsChecked="{Binding InputIsButton, Mode=OneWay}"
+                                             IsEnabled="{Binding CanChooseInputButton}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                             </StackPanel>
                         </Grid>
@@ -535,14 +535,17 @@
                                 <RadioButton Content="✣" GroupName="OutputDirectionalType" Tag="1"
                                              ToolTip="4-Way output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsFullStick, Mode=OneWay}"
+                                             IsEnabled="{Binding CanChooseOutputFourWay}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                                 <RadioButton Content="↔" GroupName="OutputDirectionalType" Tag="2"
                                              ToolTip="Axis output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsAxis, Mode=OneWay}"
+                                             IsEnabled="{Binding CanChooseOutputAxis}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                                 <RadioButton Content="●" GroupName="OutputDirectionalType" Tag="3"
                                              ToolTip="Button output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsButton, Mode=OneWay}"
+                                             IsEnabled="{Binding CanChooseOutputButton}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                             </StackPanel>
 
