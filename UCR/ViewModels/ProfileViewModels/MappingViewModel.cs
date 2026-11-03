@@ -997,17 +997,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
-        public bool ApplyDirectionalDPadPreset(out string error)
+        public bool ApplyDirectionalDPadPreset(out string error, int groupIndex = 0)
         {
             error = null;
-            if (!IsCompoundInput || DirectionalCapacity != 4)
-            {
-                error = "Choose 4-Way input first.";
-                return false;
-            }
-            if (!EnsureCompoundDigitalSlots(out error)) return false;
-            var inputs = DeviceBindings.OrderBy(input =>
-                input.DeviceBinding.InputDirectionSlot).ToList();
+            if (!EnsureCompoundDigitalSlots(out error, fourWay: true)) return false;
+            var inputs = DeviceBindings.Where(input =>
+                input.DeviceBinding.InputExpressionGroup == groupIndex)
+                .OrderBy(input => input.DeviceBinding.InputDirectionSlot).ToList();
             if (inputs.Count != 4)
             {
                 error = "The 4-Way binding does not contain four directions.";
@@ -1075,38 +1071,65 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return true;
         }
 
-        private bool EnsureCompoundDigitalSlots(out string error)
+        private bool EnsureCompoundDigitalSlots(out string error, bool fourWay)
         {
             error = null;
-            if (!ButtonsEnabled || !IsCompoundInput || DirectionalCapacity <= 1)
+            if (!ButtonsEnabled)
             {
-                error = "Choose 4-Way or Axis input first.";
+                error = "Stop the running profile to change bindings.";
                 return false;
             }
-            if (!Mapping.CompoundDigitalInput ||
-                Mapping.DeviceBindings.Count != DirectionalCapacity)
+            var previousDigital = Mapping.CompoundDigitalInput;
+            Mapping.CompoundDigitalInput = true;
+            if (fourWay && (DirectionalCapacity != 4 ||
+                            Mapping.EffectiveInputRepresentation != 1))
             {
-                Mapping.CompoundDigitalInput = true;
-                if (!SwitchDirectionalInputs(Mapping.EffectiveInputRepresentation))
+                if (!SetInputRepresentation(1))
                 {
-                    error = "Unable to prepare the compound directional bindings.";
+                    Mapping.CompoundDigitalInput = previousDigital;
+                    error = "Unable to change this mapping to 4-Way input.";
                     return false;
                 }
-                RefreshInputExpressionPresentation();
-                OnPropertyChanged(nameof(InputDirectionalSlotCount));
-            OnPropertyChanged(nameof(CompoundBindingSummary));
-                OnPropertyChanged(nameof(IsDigitalCompoundInput));
-                OnPropertyChanged(nameof(CompoundBlockEnabled));
             }
+            else if (!IsCompoundInput && !SetInputRepresentation(2))
+            {
+                Mapping.CompoundDigitalInput = previousDigital;
+                error = "Unable to prepare an Axis input.";
+                return false;
+            }
+            var required = DirectionalCapacity * Math.Max(1, Mapping.DeviceBindings
+                .Select(input => Math.Max(0, input.InputExpressionGroup))
+                .Distinct().Count());
+            if (!previousDigital && Mapping.DeviceBindings.Count != required)
+            {
+                if (!SwitchDirectionalInputs(Mapping.EffectiveInputRepresentation))
+                {
+                    Mapping.CompoundDigitalInput = previousDigital;
+                    error = "Unable to create compound directional slots.";
+                    return false;
+                }
+            }
+            if (Mapping.DeviceBindings.Count != required)
+            {
+                error = "The compound binding's internal slots are incomplete.";
+                return false;
+            }
+            OnPropertyChanged(nameof(InputDirectionalSlotCount));
+            OnPropertyChanged(nameof(IsDigitalCompoundInput));
+            OnPropertyChanged(nameof(CompoundBindingSummary));
+            OnPropertyChanged(nameof(CompoundBlockEnabled));
+            ProfileViewModel.Profile.Context.ContextChanged();
             return true;
         }
 
-        public bool ApplyDirectionalKeyboardPreset(string preset, out string error)
+        public bool ApplyDirectionalKeyboardPreset(string preset, out string error,
+            int groupIndex = 0)
         {
             error = null;
-            if (!EnsureCompoundDigitalSlots(out error)) return false;
-            var inputs = DeviceBindings.OrderBy(binding =>
-                binding.DeviceBinding.InputDirectionSlot).ToList();
+            if (!EnsureCompoundDigitalSlots(out error, fourWay: true)) return false;
+            var inputs = DeviceBindings.Where(binding =>
+                binding.DeviceBinding.InputExpressionGroup == groupIndex)
+                .OrderBy(binding => binding.DeviceBinding.InputDirectionSlot).ToList();
             if (inputs.Count != DirectionalCapacity)
             {
                 error = "Unable to resolve the compound binding directions.";
@@ -1117,6 +1140,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 { "WASD", new[] { "A", "D", "W", "S" } },
                 { "Arrows", new[] { "Left", "Right", "Up", "Down" } },
                 { "Numpad", new[] { "Numpad4", "Numpad6", "Numpad8", "Numpad2" } },
+                { "UHJK", new[] { "H", "K", "U", "J" } },
                 { "UJHK", new[] { "H", "K", "U", "J" } }
             };
             string[] keys;
@@ -1181,7 +1205,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return true;
         }
 
-        public bool SaveCompoundKeyboardPreset(string name, out string error)
+        public bool SaveCompoundKeyboardPreset(string name, out string error,
+            int groupIndex = 0)
         {
             error = null;
             name = (name ?? string.Empty).Trim();
@@ -1190,13 +1215,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 error = "Enter a preset name.";
                 return false;
             }
-            if (new[] { "WASD", "Arrows", "Numpad", "UJHK" }.Any(value =>
+            if (new[] { "WASD", "Arrows", "Numpad", "UHJK", "UJHK" }.Any(value =>
                 string.Equals(value, name, StringComparison.OrdinalIgnoreCase)))
             {
                 error = "That name is reserved for a built-in preset.";
                 return false;
             }
-            var inputs = DeviceBindings.OrderBy(input => input.DeviceBinding.InputDirectionSlot)
+            var inputs = DeviceBindings.Where(input =>
+                    input.DeviceBinding.InputExpressionGroup == groupIndex)
+                .OrderBy(input => input.DeviceBinding.InputDirectionSlot)
                 .Select(input => input.DeviceBinding).ToList();
             if (!IsDigitalCompoundInput || inputs.Count != DirectionalCapacity ||
                 inputs.Any(input => !input.IsBound))
