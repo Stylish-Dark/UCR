@@ -1011,8 +1011,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             error = null;
             if (!EnsureCompoundDigitalSlots(out error)) return false;
-            var inputs = InputConditions?.FirstOrDefault()?.DirectionalInputs?.ToList();
-            if (inputs == null || inputs.Count != DirectionalCapacity)
+            var inputs = DeviceBindings.OrderBy(binding =>
+                binding.DeviceBinding.InputDirectionSlot).ToList();
+            if (inputs.Count != DirectionalCapacity)
             {
                 error = "Unable to resolve the compound binding directions.";
                 return false;
@@ -1025,8 +1026,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 { "UJHK", new[] { "H", "K", "U", "J" } }
             };
             string[] keys;
-            if (!patterns.TryGetValue(preset, out keys)) return false;
             var profile = ProfileViewModel.Profile;
+            if (!patterns.TryGetValue(preset, out keys))
+            {
+                var custom = profile.CompoundBindingPresets?.FirstOrDefault(item =>
+                    item.Capacity == DirectionalCapacity &&
+                    string.Equals(item.Name, preset, StringComparison.OrdinalIgnoreCase));
+                keys = custom?.Keys?.ToArray();
+                if (keys == null)
+                {
+                    error = "Preset not found.";
+                    return false;
+                }
+            }
+            if (keys.Length != DirectionalCapacity)
+            {
+                error = "The preset does not match this input's number of directions.";
+                return false;
+            }
             var current = profile.GetDeviceConfiguration(DeviceIoType.Input,
                 inputs[0].DeviceBinding.DeviceConfigurationGuid);
             var keyboard = current != null &&
@@ -1068,6 +1085,70 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             foreach (var input in inputs) input.RefreshDeviceList();
             RefreshCollapsedSummary();
+            return true;
+        }
+
+        public bool SaveCompoundKeyboardPreset(string name, out string error)
+        {
+            error = null;
+            name = (name ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                error = "Enter a preset name.";
+                return false;
+            }
+            if (new[] { "WASD", "Arrows", "Numpad", "UJHK" }.Any(value =>
+                string.Equals(value, name, StringComparison.OrdinalIgnoreCase)))
+            {
+                error = "That name is reserved for a built-in preset.";
+                return false;
+            }
+            var inputs = DeviceBindings.OrderBy(input => input.DeviceBinding.InputDirectionSlot)
+                .Select(input => input.DeviceBinding).ToList();
+            if (!IsDigitalCompoundInput || inputs.Count != DirectionalCapacity ||
+                inputs.Any(input => !input.IsBound))
+            {
+                error = "Bind all compound directions before saving a preset.";
+                return false;
+            }
+            var profile = ProfileViewModel.Profile;
+            var keyboard = profile.GetDeviceConfiguration(DeviceIoType.Input,
+                inputs[0].DeviceConfigurationGuid);
+            if (keyboard?.Device == null ||
+                DeviceVisualCatalog.Describe(keyboard.Device, DeviceIoType.Input).Kind != DeviceVisualKind.Keyboard ||
+                inputs.Any(input => input.DeviceConfigurationGuid != keyboard.Guid))
+            {
+                error = "A keyboard preset requires all directions on the same keyboard.";
+                return false;
+            }
+            var controls = FlattenBindingNodes(profile.Context.DevicesManager.GetDeviceBindingMenu(
+                keyboard.Device, DeviceIoType.Input)).Where(node => node.DeviceBindingInfo != null).ToList();
+            var names = new List<string>();
+            foreach (var input in inputs)
+            {
+                var matching = controls.FirstOrDefault(node =>
+                    node.DeviceBindingInfo.KeyType == input.KeyType &&
+                    node.DeviceBindingInfo.KeyValue == input.KeyValue &&
+                    node.DeviceBindingInfo.KeySubValue == input.KeySubValue);
+                if (matching == null)
+                {
+                    error = "Could not identify every assigned keyboard key.";
+                    return false;
+                }
+                names.Add(matching.Title);
+            }
+            if (profile.CompoundBindingPresets == null)
+                profile.CompoundBindingPresets = new List<CompoundBindingPreset>();
+            var existing = profile.CompoundBindingPresets.FirstOrDefault(item =>
+                item.Capacity == DirectionalCapacity &&
+                string.Equals(item.Name, name, StringComparison.OrdinalIgnoreCase));
+            if (existing == null)
+            {
+                existing = new CompoundBindingPreset { Name = name, Capacity = DirectionalCapacity };
+                profile.CompoundBindingPresets.Add(existing);
+            }
+            existing.Keys = names;
+            profile.Context.ContextChanged();
             return true;
         }
 
