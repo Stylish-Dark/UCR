@@ -856,6 +856,15 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(mapping.Plugins.All(plugin =>
                     plugin.Plugin.Outputs.Single().DeviceBindingCategory ==
                         HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary), Is.True);
+
+                var savedDpad = Context.DeepXmlClone(mapping.Mapping);
+                Assert.That(savedDpad.CompoundDigitalOutput, Is.True,
+                    "The four-way digital-output backing must survive a saved profile.");
+                Assert.That(savedDpad.RequiredOutputBindingSlots, Is.EqualTo(4));
+                Assert.That(savedDpad.Plugins.Count, Is.EqualTo(4));
+                Assert.That(savedDpad.Plugins.All(plugin =>
+                    plugin.Outputs.Single().IsBound), Is.True);
+
                 Assert.That(mapping.SetOutputRepresentation(2), Is.True);
                 Assert.That(mapping.Plugins.Count, Is.EqualTo(2),
                     "Returning to Axis restores two axis outputs without changing 4-Way input.");
@@ -878,6 +887,13 @@ namespace HidWizards.UCR.Tests.UiTests
                     "Returning to analogue 4-Way must restore two compound axes per OR group.");
                 Assert.That(mapping.Mapping.DeviceBindings.GroupBy(binding =>
                     binding.InputExpressionGroup).All(group => group.Count() == 2), Is.True);
+                var savedAnalogue = Context.DeepXmlClone(mapping.Mapping);
+                Assert.That(savedAnalogue.DeviceBindings.Count, Is.EqualTo(4));
+                Assert.That(savedAnalogue.DeviceBindings.Select(binding =>
+                    binding.InputExpressionGroup).Distinct().Count(), Is.EqualTo(2));
+                Assert.That(savedAnalogue.InactiveInputRepresentations.Any(bank =>
+                    bank.Bindings.Count == 8), Is.True,
+                    "Converting back to Axis must retain the prior 4-Way keyboard layout.");
             }
             finally
             {
