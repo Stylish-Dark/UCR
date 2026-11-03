@@ -173,6 +173,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool OutputIsFullStick => Mapping.EffectiveOutputRepresentation == 1;
         public bool OutputIsAxis => Mapping.EffectiveOutputRepresentation == 2;
         public bool OutputIsButton => Mapping.EffectiveOutputRepresentation == 3;
+        public bool IsCompoundOutput => DirectionalCapacity == 4 &&
+            Mapping.EffectiveOutputRepresentation == 1;
+        public string CompoundOutputSummary => Plugins == null ? "Unassigned" :
+            string.Join("  /  ", Plugins.SelectMany(plugin => plugin.DeviceBindings)
+                .Where(binding => binding.DeviceBinding.DeviceIoType == DeviceIoType.Output)
+                .Select(binding => binding.DeviceBinding.IsBound
+                    ? binding.CompactBindButtonText : "—"));
+
         public bool HasAssignedControl =>
             Mapping.DeviceBindings.Any(input => input.IsBound) ||
             Mapping.Plugins.Any(plugin => plugin.Outputs.Any(output => output.IsBound));
@@ -232,8 +240,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 DeviceBindings.Select(binding => binding.DeviceBinding.IsBound
                     ? binding.CompactBindButtonText : "—"));
 
-        public int OutputDirectionalSlotCount => Mapping.RequiredBindingSlots(
-            DirectionalCapacity, Mapping.EffectiveOutputRepresentation);
+        public int OutputDirectionalSlotCount => Mapping.RequiredOutputBindingSlots;
 
         // Physical assignments are authoritative. A representation is an expected
         // shape, not a restriction that prevents choosing a different control.
@@ -315,8 +322,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (Mapping.InputRepresentation == value && !capacityIncreased) return true;
                 if (!SwitchDirectionalInputs(value)) return false;
                 if (capacityIncreased || Mapping.Plugins.Count !=
-                    Mapping.RequiredBindingSlots(Mapping.EffectiveDirectionalCapacity,
-                        Mapping.EffectiveOutputRepresentation))
+                    Mapping.RequiredOutputBindingSlots)
                 {
                     var otherType = Mapping.EffectiveOutputRepresentation;
                     // Materialise the inferred representation without changing
@@ -352,6 +358,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(CompoundBindingSummary));
             OnPropertyChanged(nameof(IsDigitalCompoundInput));
             OnPropertyChanged(nameof(OutputDirectionalSlotCount));
+            OnPropertyChanged(nameof(IsCompoundOutput));
+            OnPropertyChanged(nameof(CompoundOutputSummary));
             OnPropertyChanged(nameof(IsTypedDirectionalMapping));
             OnPropertyChanged(nameof(IsFullStickInput));
             OnPropertyChanged(nameof(IsFullStickOutput));
@@ -479,8 +487,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private bool SwitchDirectionalOutputs(int representation)
         {
             var profile = ProfileViewModel.Profile;
-            var required = Mapping.RequiredBindingSlots(Mapping.EffectiveDirectionalCapacity,
-                representation);
+            var required = Mapping.CompoundDigitalOutput && representation == 1 &&
+                Mapping.EffectiveDirectionalCapacity == 4 ? 4 :
+                Mapping.RequiredBindingSlots(Mapping.EffectiveDirectionalCapacity, representation);
             if (required < 1) return false;
             if (Mapping.InactiveOutputRepresentations == null)
                 Mapping.InactiveOutputRepresentations = new List<DirectionalOutputBank>();
@@ -498,7 +507,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             else
             {
                 // As above, capacity changes require a complete destination bank.
-                var isButton = representation == 3 || Mapping.EffectiveDirectionalCapacity == 1;
+                var isButton = representation == 3 || Mapping.EffectiveDirectionalCapacity == 1 ||
+                    (Mapping.CompoundDigitalOutput && representation == 1);
                 var pluginName = isButton ? "Button to Button" : "Axis to Axis";
                 var template = profile.Context.GetPlugins().FirstOrDefault(item =>
                     string.Equals(item.PluginName, pluginName, StringComparison.OrdinalIgnoreCase));
@@ -943,6 +953,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(CompoundBlockEnabled));
             OnPropertyChanged(nameof(CanBlockCompound));
             OnPropertyChanged(nameof(CompoundBindingSummary));
+            OnPropertyChanged(nameof(CompoundOutputSummary));
             foreach (var group in InputConditions)
                 group.RefreshCompoundSummary();
             RefreshDirectionalAvailability();
