@@ -1157,7 +1157,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             Mapping.CompoundDigitalInput = false;
             if (!IsFullStickInput || Mapping.DeviceBindings
                     .GroupBy(input => input.InputExpressionGroup)
-                    .Any(group => group.Count() != 2))
+                    .Any(set => set.Count() != 2))
             {
                 if (!SetInputRepresentation(1) ||
                     !SwitchDirectionalInputs(1))
