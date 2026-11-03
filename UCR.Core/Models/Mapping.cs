@@ -305,43 +305,49 @@ namespace HidWizards.UCR.Core.Models
             var capacity = EffectiveDirectionalCapacity;
             var inputType = CompoundDigitalInput ? 3 : EffectiveInputRepresentation;
             var outputType = EffectiveOutputRepresentation;
-            var slotsPerGroup = RequiredInputBindingSlotsPerGroup;
             var requiredOutput = RequiredBindingSlots(capacity, outputType);
-            if (slotsPerGroup == 0 || requiredOutput == 0 ||
+            if (RequiredInputBindingSlotsPerGroup == 0 || requiredOutput == 0 ||
                 Plugins.Count < requiredOutput) return;
 
-            var count = Math.Min(InputCache.Count, DeviceBindings.Count);
-            var alternatives = Enumerable.Range(0, count)
-                .GroupBy(index => Math.Max(0, DeviceBindings[index].InputExpressionGroup))
-                .OrderBy(group => group.Key);
-
-            List<short> selected = null;
-            foreach (var alternative in alternatives)
-            {
-                var positions = alternative.OrderBy(index =>
-                    DeviceBindings[index].InputDirectionSlot > 0
-                        ? DeviceBindings[index].InputDirectionSlot : index + 1).ToList();
-                if (positions.Count < slotsPerGroup) continue;
-                var values = positions.Take(slotsPerGroup).Select(index => InputCache[index]).ToList();
-                var bindings = positions.Take(slotsPerGroup)
-                    .Select(index => DeviceBindings[index]).ToList();
-                var channels = ComputeDirectionalChannelValues(values, bindings,
-                    capacity, inputType, outputType);
-
-                // Neutral sources do not shadow later OR alternatives.
-                if (channels.All(channel => channel == 0)) continue;
-                selected = channels;
-                break;
-            }
-            if (selected == null)
-                selected = Enumerable.Repeat((short)0, requiredOutput).ToList();
-
+            var selected = ComputeDirectionalOrChannels(InputCache, DeviceBindings,
+                capacity, inputType, outputType, RequiredInputBindingSlotsPerGroup);
             for (var index = 0; index < Math.Min(Plugins.Count, selected.Count); index++)
             {
                 var plugin = Plugins[index];
                 if (plugin.IsFiltered()) continue;
                 plugin.Update(new[] { selected[index] });
             }
+        }
+
+        internal static List<short> ComputeDirectionalOrChannels(
+            IList<short> inputValues, IList<DeviceBinding> inputBindings,
+            int capacity, int inputType, int outputType, int slotsPerGroup)
+        {
+            var requiredOutput = RequiredBindingSlots(capacity, outputType);
+            var zero = Enumerable.Repeat((short)0, requiredOutput).ToList();
+            if (inputValues == null || inputBindings == null || slotsPerGroup < 1)
+                return zero;
+
+            var count = Math.Min(inputValues.Count, inputBindings.Count);
+            foreach (var group in Enumerable.Range(0, count)
+                .GroupBy(index => Math.Max(0, inputBindings[index].InputExpressionGroup))
+                .OrderBy(group => group.Key))
+            {
+                var positions = group.OrderBy(index =>
+                    inputBindings[index].InputDirectionSlot > 0
+                        ? inputBindings[index].InputDirectionSlot : index + 1).ToList();
+                if (positions.Count < slotsPerGroup) continue;
+
+                var values = positions.Take(slotsPerGroup).Select(index => inputValues[index]).ToList();
+                var bindings = positions.Take(slotsPerGroup)
+                    .Select(index => inputBindings[index]).ToList();
+                var channels = ComputeDirectionalChannelValues(values, bindings,
+                    capacity, inputType, outputType);
+
+                // An inactive or neutral OR set must never suppress later sets.
+                if (channels.Any(channel => channel != 0)) return channels;
+            }
+            return zero;
         }
 
         internal static List<short> ComputeDirectionalChannelValues(
