@@ -26,6 +26,50 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void DirectionalOrGroupsDoNotCombineAxesFromDifferentAlternatives()
+        {
+            var bindings = Enumerable.Range(0, 8).Select(index => new DeviceBinding
+            {
+                InputExpressionGroup = index / 4,
+                InputDirectionSlot = index % 4 + 1,
+                InputExpressionInputKind = 0
+            }).ToList();
+            var values = new short[] { 0, 0, 0, 0, 0, 1, 1, 0 };
+            var channels = Mapping.ComputeDirectionalOrChannels(values, bindings,
+                4, 3, 2, 4);
+            Assert.That(channels, Is.EqualTo(new short[] { short.MaxValue, -short.MaxValue }));
+
+            // An active first set wins as a complete vector; its neutral Y
+            // must not leak Y from an alternative OR set.
+            values = new short[] { 0, 1, 0, 0, 0, 0, 1, 0 };
+            channels = Mapping.ComputeDirectionalOrChannels(values, bindings, 4, 3, 2, 4);
+            Assert.That(channels, Is.EqualTo(new short[] { short.MaxValue, (short)0 }));
+        }
+
+        [Test]
+        public void OpposedButtonOrGroupsAreIndependentAndPersistentInSlotCount()
+        {
+            var mapping = new Mapping
+            {
+                DirectionalCapacity = 2,
+                InputRepresentation = 3,
+                OutputRepresentation = 2,
+                DeviceBindings = new List<DeviceBinding>
+                {
+                    new DeviceBinding { InputExpressionGroup = 0, InputDirectionSlot = 1 },
+                    new DeviceBinding { InputExpressionGroup = 0, InputDirectionSlot = 2 },
+                    new DeviceBinding { InputExpressionGroup = 1, InputDirectionSlot = 1 },
+                    new DeviceBinding { InputExpressionGroup = 1, InputDirectionSlot = 2 }
+                }
+            };
+            Assert.That(mapping.RequiredInputBindingSlotsPerGroup, Is.EqualTo(2));
+            Assert.That(mapping.RequiredInputBindingSlots, Is.EqualTo(4));
+            var channels = Mapping.ComputeDirectionalOrChannels(
+                new short[] { 0, 0, 1, 0 }, mapping.DeviceBindings, 2, 3, 2, 2);
+            Assert.That(channels, Is.EqualTo(new short[] { -short.MaxValue }));
+        }
+
+        [Test]
         public void DigitalCompoundBindingUsesFourDirectionalSlotsAndCorrectVector()
         {
             var mapping = new Mapping
