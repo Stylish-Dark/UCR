@@ -58,6 +58,15 @@ namespace HidWizards.UCR.Views.Controls
             DataContextChanged += MappingCardControl_OnDataContextChanged;
         }
 
+        private void OutputSettings_OnExpanded(object sender, RoutedEventArgs e)
+        {
+            // WPF routes Expanded events from children as well; initialise only this
+            // output's settings, and only when its own Settings disclosure is opened.
+            if (!ReferenceEquals(sender, e.OriginalSource)) return;
+            ((sender as FrameworkElement)?.DataContext as PluginViewModel)
+                ?.EnsureSettingsInitialized();
+        }
+
         private void MappingCardControl_OnLoaded(object sender, RoutedEventArgs e)
         {
             ObserveMapping();
