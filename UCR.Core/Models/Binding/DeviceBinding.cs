@@ -273,7 +273,15 @@ namespace HidWizards.UCR.Core.Models.Binding
             var device = Profile.GetDeviceConfiguration(DeviceIoType, DeviceConfigurationGuid)?.Device;
             if (device == null) return false;
 
-            var deviceBindingNodes = Profile.Context.DevicesManager.GetDeviceBindingMenu(device, DeviceIoType);
+            // Configured devices normally already carry their provider's binding menu.
+            // Do not enumerate every live hardware provider just to display a Block toggle.
+            // Only fall back to provider resolution when the stored menu is unavailable.
+            var deviceBindingNodes = device.GetDeviceBindingMenu();
+            if (deviceBindingNodes == null || deviceBindingNodes.Count == 0 ||
+                (deviceBindingNodes.Count == 1 &&
+                 string.Equals(deviceBindingNodes[0].Title, "Device not connected",
+                     StringComparison.OrdinalIgnoreCase)))
+                deviceBindingNodes = Profile.Context.DevicesManager.GetDeviceBindingMenu(device, DeviceIoType);
             return IsBlockableInMenu(deviceBindingNodes, KeyType, KeyValue, KeySubValue);
         }
 
