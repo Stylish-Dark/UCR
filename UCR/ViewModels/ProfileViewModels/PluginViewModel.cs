@@ -40,7 +40,21 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public Visibility FilterDestinationSelectorVisibility =>
             string.Equals(OutputType, "Filter", StringComparison.OrdinalIgnoreCase)
                 ? Visibility.Visible : Visibility.Collapsed;
-        private System.Reflection.PropertyInfo InvertProperty => Plugin.GetType().GetProperty("Invert");
+        private Type _reflectedPluginType;
+        private System.Reflection.PropertyInfo _invertProperty;
+        private System.Reflection.PropertyInfo InvertProperty
+        {
+            get
+            {
+                var type = Plugin?.GetType();
+                if (type != _reflectedPluginType)
+                {
+                    _reflectedPluginType = type;
+                    _invertProperty = type?.GetProperty("Invert");
+                }
+                return _invertProperty;
+            }
+        }
         public Visibility QuickInvertVisibility =>
             InvertProperty?.PropertyType == typeof(bool) && InvertProperty.CanWrite
                 ? Visibility.Visible : Visibility.Collapsed;
