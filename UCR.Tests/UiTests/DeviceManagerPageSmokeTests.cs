@@ -379,6 +379,38 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.UpdateLayout();
                 Assert.That(longList.ItemContainerGenerator.ContainerFromItem(distant), Is.Not.Null,
                     "A distant mapping must still be reachable by ordinary scrolling.");
+
+                // Expanding the entire profile must keep off-screen heavy editor
+                // trees virtualized while allowing both ends of the list to open.
+                var outerScroll = page.FindName("MappingSectionsScrollViewer") as ScrollViewer;
+                Assert.That(outerScroll, Is.Not.Null);
+                outerScroll.ScrollToTop();
+                foreach (var mappingItem in model.MappingsList)
+                    mappingItem.IsExpanded = true;
+                virtualPanel.InvalidateMeasure();
+                page.Measure(fullViewport);
+                page.Arrange(new Rect(new Point(0, 0), fullViewport));
+                page.UpdateLayout();
+                var afterExpand = Enumerable.Range(0, longList.Items.Count)
+                    .Count(index => longList.ItemContainerGenerator.ContainerFromIndex(index) != null);
+                Assert.That(afterExpand, Is.GreaterThan(0));
+                Assert.That(afterExpand, Is.LessThan(longList.Items.Count),
+                    "Expanding all mappings must not instantiate all off-screen editors.");
+
+                virtualPanel.BringMappingIntoView(distant);
+                page.Measure(fullViewport);
+                page.Arrange(new Rect(new Point(0, 0), fullViewport));
+                page.UpdateLayout();
+                Assert.That(longList.ItemContainerGenerator.ContainerFromItem(distant), Is.Not.Null,
+                    "A mapping at the end of an expanded profile must remain reachable.");
+
+                foreach (var mappingItem in model.MappingsList)
+                    mappingItem.IsExpanded = false;
+                virtualPanel.InvalidateMeasure();
+                page.Measure(fullViewport);
+                page.Arrange(new Rect(new Point(0, 0), fullViewport));
+                page.UpdateLayout();
+                Assert.That(model.MappingsList.All(mappingItem => !mappingItem.IsExpanded), Is.True);
             }
             finally
             {
