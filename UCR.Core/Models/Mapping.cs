@@ -38,6 +38,17 @@ namespace HidWizards.UCR.Core.Models
         [XmlAttribute]
         [DefaultValue(0)]
         public int InputRepresentation { get; set; }
+        // A compound 4-Way/Axis input can contain digital directions instead of analogue axes.
+        // Keep this independent from its visible representation, so presets survive restarts.
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool CompoundDigitalInput { get; set; }
+        [XmlIgnore]
+        public int RequiredInputBindingSlots => CompoundDigitalInput &&
+            (EffectiveInputRepresentation == 1 || EffectiveInputRepresentation == 2) &&
+            EffectiveDirectionalCapacity > 1
+                ? EffectiveDirectionalCapacity
+                : RequiredBindingSlots(EffectiveDirectionalCapacity, EffectiveInputRepresentation);
 
         [XmlAttribute]
         [DefaultValue(0)]
@@ -285,14 +296,14 @@ namespace HidWizards.UCR.Core.Models
             var capacity = EffectiveDirectionalCapacity;
             var inputType = EffectiveInputRepresentation;
             var outputType = EffectiveOutputRepresentation;
-            var requiredInput = RequiredBindingSlots(capacity, inputType);
+            var requiredInput = RequiredInputBindingSlots;
             var requiredOutput = RequiredBindingSlots(capacity, outputType);
             if (requiredInput == 0 || requiredOutput == 0 ||
                 DeviceBindings.Count < requiredInput || Plugins.Count < requiredOutput)
                 return;
 
             var channelValues = ComputeDirectionalChannelValues(InputCache, DeviceBindings,
-                capacity, inputType, outputType);
+                capacity, CompoundDigitalInput ? 3 : inputType, outputType);
             for (var index = 0; index < Math.Min(Plugins.Count, channelValues.Count); index++)
             {
                 var plugin = Plugins[index];
