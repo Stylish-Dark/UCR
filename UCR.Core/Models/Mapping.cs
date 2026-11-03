@@ -314,7 +314,7 @@ namespace HidWizards.UCR.Core.Models
             var capacity = EffectiveDirectionalCapacity;
             var inputType = CompoundDigitalInput ? 3 : EffectiveInputRepresentation;
             var outputType = EffectiveOutputRepresentation;
-            var routedOutputType = CompoundDigitalOutput ? 3 : outputType;
+            var routedOutputType = CompoundDigitalOutput && outputType == 1 ? 3 : outputType;
             var requiredOutput = RequiredOutputBindingSlots;
             if (RequiredInputBindingSlotsPerGroup == 0 || requiredOutput == 0 ||
                 Plugins.Count < requiredOutput) return;
