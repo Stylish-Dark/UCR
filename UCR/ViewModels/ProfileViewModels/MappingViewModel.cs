@@ -2092,10 +2092,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 Node = node,
                 Direction = Regex.Match(node.Title ?? string.Empty,
-                    @"(?:^|[\\s,;:/_-])(Up|Down|Left|Right|North|South|West|East)$",
+                    @"(?:^|[\s,;:/_-])(Up|Down|Left|Right|North|South|West|East)$",
                     RegexOptions.IgnoreCase),
                 Prefix = Regex.Replace(node.Title ?? string.Empty,
-                    @"(?:[\\s,;:/_-])?(?:Up|Down|Left|Right|North|South|West|East)$",
+                    @"(?:[\s,;:/_-])?(?:Up|Down|Left|Right|North|South|West|East)$",
                     string.Empty, RegexOptions.IgnoreCase).Trim()
             }).Where(item => item.Direction.Success)
                 .Select(item => new
