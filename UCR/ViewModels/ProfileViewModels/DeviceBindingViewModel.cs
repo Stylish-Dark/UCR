@@ -128,6 +128,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private bool GuiInvalidated { get; set; }
         internal event Action<DeviceBindingViewModel> UiValueInvalidated;
         private bool _deviceListLoaded;
+        private bool _selectedPreviewLoaded;
         private bool _deviceListDirty;
         private bool _disposed;
 
@@ -325,6 +326,50 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             BindingEnabled = !DeviceBinding.Profile.IsActive();
         }
 
+        // The closed selector only needs its current choice. Building all compatible
+        // device choices is deferred until the user actually opens the dropdown.
+        public void EnsureSelectedDevicePreviewLoaded()
+        {
+            if (_disposed || DeviceBinding?.Profile == null || _deviceListLoaded) return;
+            if (_selectedPreviewLoaded && !_deviceListDirty) return;
+            _selectedPreviewLoaded = true;
+            LoadSelectedDevicePreview();
+        }
+
+        private void LoadSelectedDevicePreview()
+        {
+            if (_disposed || _deviceListLoaded || DeviceBinding?.Profile == null) return;
+            var profile = DeviceBinding.Profile;
+            var type = DeviceBinding.DeviceIoType;
+            var guid = DeviceBinding.DeviceConfigurationGuid;
+            var placeholder = new ComboBoxItemViewModel(
+                type == DeviceIoType.Input ? "Any input device" : "Choose output device",
+                Guid.Empty);
+            Devices.Clear();
+            Devices.Add(placeholder);
+            var chosen = placeholder;
+            if (guid != Guid.Empty)
+            {
+                var selected = profile.GetDeviceConfiguration(type, guid);
+                if (selected?.Device != null)
+                {
+                    chosen = new ComboBoxItemViewModel(selected.GetFullTitleForProfile(profile),
+                        selected.Guid, DeviceVisualCatalog.Describe(selected, profile, type));
+                    Devices.Add(chosen);
+                }
+                else
+                {
+                    chosen = new ComboBoxItemViewModel(
+                        type == DeviceIoType.Output ? "Unavailable device" : "Disconnected input device",
+                        guid);
+                    Devices.Add(chosen);
+                }
+            }
+            SelectedDevice = chosen;
+            _deviceListDirty = false;
+            OnPropertyChanged(nameof(SelectedDevice));
+        }
+
         public void EnsureDeviceListLoaded()
         {
             if (_disposed || DeviceBinding?.Profile == null) return;
@@ -461,8 +506,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!_deviceListLoaded)
             {
                 _deviceListDirty = true;
-                // The collapsed mapping header still depends on this view-model's presentation.
-                // Signal a lightweight presentation change without paying to build the dropdown.
+                if (_selectedPreviewLoaded)
+                    LoadSelectedDevicePreview();
+                // The collapsed mapping header depends on binding presentation,
+                // not on discovering all possible devices.
                 OnPropertyChanged(nameof(SelectedDevice));
                 OnPropertyChanged(nameof(BindButtonText));
                 OnPropertyChanged(nameof(CompactBindButtonText));
@@ -724,6 +771,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.DeviceConfigurationGuid), StringComparison.Ordinal))
             {
                 OnPropertyChanged(nameof(CanBindCurrentDevice));
+                if (_selectedPreviewLoaded && !_deviceListLoaded)
+                    LoadSelectedDevicePreview();
                 OnPropertyChanged(nameof(CompactBindButtonText));
                 OnPropertyChanged(nameof(BindButtonText));
                 OnPropertyChanged(nameof(CompactBindButtonText));
