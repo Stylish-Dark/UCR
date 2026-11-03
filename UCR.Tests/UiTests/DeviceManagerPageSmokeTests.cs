@@ -862,8 +862,13 @@ namespace HidWizards.UCR.Tests.UiTests
                     "The four-way digital-output backing must survive a saved profile.");
                 Assert.That(savedDpad.RequiredOutputBindingSlots, Is.EqualTo(4));
                 Assert.That(savedDpad.Plugins.Count, Is.EqualTo(4));
+                // XmlSerializer appends persisted outputs after constructor defaults.
+                // Normal profile loading runs PostLoad to reconcile those entries.
+                foreach (var restoredPlugin in savedDpad.Plugins)
+                    restoredPlugin.PostLoad(context, profile);
                 Assert.That(savedDpad.Plugins.All(plugin =>
-                    plugin.Outputs.Single().IsBound), Is.True);
+                    plugin.Outputs.Count == 1 && plugin.Outputs[0].IsBound), Is.True,
+                    "Reopened four-way D-pad outputs must each retain one assigned direction.");
 
                 Assert.That(mapping.SetOutputRepresentation(2), Is.True);
                 Assert.That(mapping.Plugins.Count, Is.EqualTo(2),
