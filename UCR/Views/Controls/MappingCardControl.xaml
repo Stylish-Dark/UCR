@@ -407,7 +407,7 @@
                                                   Visibility="{Binding ButtonPairVisibility}">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <UniformGrid Rows="1" Columns="{Binding DirectionalColumns}"/>
+                                                <UniformGrid Columns="{Binding ButtonPairColumns}"/>
                                             </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
