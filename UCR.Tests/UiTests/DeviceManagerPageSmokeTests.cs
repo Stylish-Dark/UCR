@@ -859,6 +859,25 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(mapping.SetOutputRepresentation(2), Is.True);
                 Assert.That(mapping.Plugins.Count, Is.EqualTo(2),
                     "Returning to Axis restores two axis outputs without changing 4-Way input.");
+
+                // Digital compound presets and analogue axes are two different
+                // physical structures even when both are labelled 4-Way.
+                // Switching to Axis must not leave four hidden digital slots.
+                mapping.Mapping.CompoundDigitalInput = true;
+                Assert.That(mapping.SetInputRepresentation(1), Is.True);
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(8),
+                    "Each of two OR alternatives requires its own four digital directions.");
+                Assert.That(mapping.Mapping.RequiredInputBindingSlots, Is.EqualTo(8));
+                Assert.That(mapping.SetInputRepresentation(2), Is.True);
+                Assert.That(mapping.Mapping.CompoundDigitalInput, Is.False,
+                    "Axis input must not retain digital-compound routing.");
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(4),
+                    "Each OR alternative must merge to two analogue axes in 4-Way capacity.");
+                Assert.That(mapping.SetInputRepresentation(1), Is.True);
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(4),
+                    "Returning to analogue 4-Way must restore two compound axes per OR group.");
+                Assert.That(mapping.Mapping.DeviceBindings.GroupBy(binding =>
+                    binding.InputExpressionGroup).All(group => group.Count() == 2), Is.True);
             }
             finally
             {
