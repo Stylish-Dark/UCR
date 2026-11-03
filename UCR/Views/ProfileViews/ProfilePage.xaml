@@ -1043,21 +1043,26 @@
                                                                 </Button>
                                                             </Grid>
                                                                 <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch">
+                                                                    <!-- A collapsed inline mapping must not retain its complete
+                                                                         editor tree. Load/unload the same template with IsExpanded
+                                                                         instead of keeping its controls alive at Visibility.Collapsed. -->
+                                                                    <ContentControl.Resources>
+                                                                        <DataTemplate x:Key="InlineExpandedMappingEditorTemplate">
+                                                                            <controls:MappingCardControl InspectorMode="True" InlineWorkspaceMode="True"/>
+                                                                        </DataTemplate>
+                                                                    </ContentControl.Resources>
                                                                     <ContentControl.Style>
                                                                         <Style TargetType="{x:Type ContentControl}">
                                                                             <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            <Setter Property="ContentTemplate" Value="{x:Null}"/>
                                                                             <Style.Triggers>
                                                                                 <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                                                    <Setter Property="ContentTemplate" Value="{StaticResource InlineExpandedMappingEditorTemplate}"/>
                                                                                     <Setter Property="Visibility" Value="Visible"/>
                                                                                 </DataTrigger>
                                                                             </Style.Triggers>
                                                                         </Style>
                                                                     </ContentControl.Style>
-                                                                    <ContentControl.ContentTemplate>
-                                                                        <DataTemplate>
-                                                                            <controls:MappingCardControl InspectorMode="True" InlineWorkspaceMode="True"/>
-                                                                        </DataTemplate>
-                                                                    </ContentControl.ContentTemplate>
                                                                 </ContentControl>
                                                             </StackPanel>
                                                         </Border>
