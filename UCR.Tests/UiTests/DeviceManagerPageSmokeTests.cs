@@ -899,6 +899,27 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(savedAnalogue.InactiveInputRepresentations.Any(bank =>
                     bank.Bindings.Count == 8), Is.True,
                     "Converting back to Axis must retain the prior 4-Way keyboard layout.");
+
+                // All preset menus must be transactional: a missing configured
+                // input device must leave the input type, OR count and assignments
+                // exactly as they were before the user opened the preset menu.
+                var beforePreset = Context.DeepXmlClone(mapping.Mapping);
+                string presetError;
+                Assert.That(mapping.ApplyDirectionalKeyboardPreset("WASD", out presetError),
+                    Is.False);
+                Assert.That(mapping.ApplyDirectionalDPadPreset(out presetError), Is.False);
+                Assert.That(mapping.ApplyTypedControllerFaceButtons(out presetError), Is.False);
+                Assert.That(mapping.ApplyTypedControllerStickPreset(0, out presetError), Is.False);
+                Assert.That(mapping.Mapping.InputRepresentation,
+                    Is.EqualTo(beforePreset.InputRepresentation));
+                Assert.That(mapping.Mapping.CompoundDigitalInput,
+                    Is.EqualTo(beforePreset.CompoundDigitalInput));
+                Assert.That(mapping.Mapping.DeviceBindings.Select(binding =>
+                    binding.InputExpressionGroup).ToArray(),
+                    Is.EqualTo(beforePreset.DeviceBindings.Select(binding =>
+                        binding.InputExpressionGroup).ToArray()));
+                Assert.That(mapping.Mapping.DeviceBindings.Count,
+                    Is.EqualTo(beforePreset.DeviceBindings.Count));
             }
             finally
             {
