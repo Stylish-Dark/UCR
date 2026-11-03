@@ -343,8 +343,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (configuration?.Device == null || context == null) return false;
             try
             {
-                return MenuHasCategory(context.DevicesManager.GetDeviceBindingMenu(
-                    configuration.Device, DeviceIoType.Output), category);
+                return MenuHasCategory(configuration.Device.GetDeviceBindingMenu(
+                    context, DeviceIoType.Output), category);
             }
             catch (Exception exception)
             {
