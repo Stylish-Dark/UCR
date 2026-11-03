@@ -397,6 +397,27 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(afterExpand, Is.LessThan(longList.Items.Count),
                     "Expanding all mappings must not instantiate all off-screen editors.");
 
+                // The existing drag/reorder logic requires all concrete row slots.
+                // Its temporary full-layout mode must still realize every row,
+                // and leaving that mode must restore virtualization.
+                VirtualizingPanel.SetIsVirtualizing(longList, false);
+                virtualPanel.InvalidateMeasure();
+                page.Measure(fullViewport);
+                page.Arrange(new Rect(new Point(0, 0), fullViewport));
+                page.UpdateLayout();
+                Assert.That(Enumerable.Range(0, longList.Items.Count)
+                    .All(index => longList.ItemContainerGenerator.ContainerFromIndex(index) != null),
+                    Is.True, "Drag mode must retain all reorder targets.");
+
+                VirtualizingPanel.SetIsVirtualizing(longList, true);
+                virtualPanel.InvalidateMeasure();
+                page.Measure(fullViewport);
+                page.Arrange(new Rect(new Point(0, 0), fullViewport));
+                page.UpdateLayout();
+                Assert.That(Enumerable.Range(0, longList.Items.Count)
+                    .Count(index => longList.ItemContainerGenerator.ContainerFromIndex(index) != null),
+                    Is.LessThan(longList.Items.Count));
+
                 virtualPanel.BringMappingIntoView(distant);
                 page.Measure(fullViewport);
                 page.Arrange(new Rect(new Point(0, 0), fullViewport));
