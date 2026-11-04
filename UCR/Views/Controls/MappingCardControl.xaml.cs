@@ -383,11 +383,8 @@ namespace HidWizards.UCR.Views.Controls
                 return;
             if (!vm.SetInputRepresentation(value))
             {
-                if ((value == 4 && vm.OutputIsFullStick) ||
-                    (value == 1 && vm.OutputIsTrigger))
-                    DarkMessageBox.Show(
-                        "Trigger is one-sided. A 4-Way control has four distinct directions. Choose an Axis or Button representation, or assign the required directions individually.",
-                        "Trigger and 4-Way need a direction", MessageBoxButton.OK, MessageBoxImage.Information);
+                DarkMessageBox.Show("The input representation could not be prepared. Check the available remapper plugins.",
+                    "Unable to change input type", MessageBoxButton.OK, MessageBoxImage.Information);
                 vm.RefreshRepresentationSelections();
                 (sender as RadioButton)?.GetBindingExpression(ToggleButton.IsCheckedProperty)?.UpdateTarget();
             }
@@ -401,11 +398,8 @@ namespace HidWizards.UCR.Views.Controls
                 return;
             if (!vm.SetOutputRepresentation(value))
             {
-                if ((value == 4 && vm.InputIsFullStick) ||
-                    (value == 1 && vm.InputIsTrigger))
-                    DarkMessageBox.Show(
-                        "Trigger is one-sided. A 4-Way control has four distinct directions. Choose an Axis or Button representation, or assign the required directions individually.",
-                        "Trigger and 4-Way need a direction", MessageBoxButton.OK, MessageBoxImage.Information);
+                DarkMessageBox.Show("The output representation could not be prepared. Check the available remapper plugins.",
+                    "Unable to change output type", MessageBoxButton.OK, MessageBoxImage.Information);
                 vm.RefreshRepresentationSelections();
                 (sender as RadioButton)?.GetBindingExpression(ToggleButton.IsCheckedProperty)?.UpdateTarget();
             }
