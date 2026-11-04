@@ -120,7 +120,9 @@ namespace HidWizards.UCR.Core.Models
                 throw new ArgumentOutOfRangeException(nameof(representation));
             if (capacity == 1) return 1;
             if (representation == 3) return capacity;
-            if (representation == 4) return 1;
+            // Four one-sided sources can cover a complete 4-Way control.
+            // At smaller capacities a Trigger remains one positive-side source.
+            if (representation == 4) return capacity == 4 ? 4 : 1;
             // A full stick is one *logical* control but physically requires two
             // separately bound axes. The editor groups them as one stick.
             if (representation == 1 && capacity == 4) return 2;
@@ -371,9 +373,17 @@ namespace HidWizards.UCR.Core.Models
                 x = ReadDirectionalSource(inputValues, inputBindings, 0, inputType == 3);
             else if (inputType == 4)
             {
-                // A trigger is one unidirectional analogue source. Its neutral
-                // position is zero; it cannot supply a negative direction.
-                x = (short)Math.Max(0, (int)ReadDirectionalSource(inputValues, inputBindings, 0, false));
+                // One trigger drives one positive axis direction. In 4-Way
+                // capacity, four independent triggers form opposed X/Y pairs.
+                if (capacity == 4)
+                {
+                    x = ClampDirectional((int)Math.Max(0, (int)ReadDirectionalSource(inputValues, inputBindings, 1, false)) -
+                        Math.Max(0, (int)ReadDirectionalSource(inputValues, inputBindings, 0, false)));
+                    y = ClampDirectional((int)Math.Max(0, (int)ReadDirectionalSource(inputValues, inputBindings, 3, false)) -
+                        Math.Max(0, (int)ReadDirectionalSource(inputValues, inputBindings, 2, false)));
+                }
+                else
+                    x = (short)Math.Max(0, (int)ReadDirectionalSource(inputValues, inputBindings, 0, false));
             }
             else if (inputType == 3)
             {
@@ -395,7 +405,17 @@ namespace HidWizards.UCR.Core.Models
             var threshold = short.MaxValue / 4;
             var channelValues = new List<short>();
             if (outputType == 4)
-                channelValues.Add((short)Math.Max(0, (int)x));
+            {
+                if (capacity == 4)
+                {
+                    channelValues.Add((short)Math.Max(0, -(int)x));
+                    channelValues.Add((short)Math.Max(0, (int)x));
+                    channelValues.Add((short)Math.Max(0, -(int)y));
+                    channelValues.Add((short)Math.Max(0, (int)y));
+                }
+                else
+                    channelValues.Add((short)Math.Max(0, (int)x));
+            }
             else if (outputType == 3 && capacity > 1)
             {
                 channelValues.Add(x < -threshold ? (short)1 : (short)0);
@@ -414,6 +434,11 @@ namespace HidWizards.UCR.Core.Models
                 if (capacity == 4) channelValues.Add(y);
             }
             return channelValues;
+        }
+
+        private static short ClampDirectional(int value)
+        {
+            return (short)Math.Max(short.MinValue, Math.Min(short.MaxValue, value));
         }
 
         private static short ReadDirectionalSource(IList<short> inputValues,
