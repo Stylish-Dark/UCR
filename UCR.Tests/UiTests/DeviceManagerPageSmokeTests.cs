@@ -1010,6 +1010,11 @@ namespace HidWizards.UCR.Tests.UiTests
         [TestCase("Buttons,A", "A", true)]
         [TestCase("Face buttons: Cross", "Cross", true)]
         [TestCase("Face buttons: Circle", "Cross", false)]
+        [TestCase("Left Arrow", "Left", true)]
+        [TestCase("Arrow Right", "Right", true)]
+        [TestCase("Up Arrow", "Up", true)]
+        [TestCase("Arrow Down", "Down", true)]
+        [TestCase("Caps Lock", "A", false)]
         [TestCase("Y", "A", false)]
         public void FaceButtonPresetMatchesCompleteProviderControlLabels(
             string providerTitle, string faceButton, bool expected)
