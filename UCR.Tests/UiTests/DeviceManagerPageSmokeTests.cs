@@ -951,6 +951,22 @@ namespace HidWizards.UCR.Tests.UiTests
                     string.Equals(button.Content as string, "NOT", StringComparison.Ordinal)),
                     Is.True, "The AND gate must expose an actual NOT toggle.");
 
+                // Capture the real WPF control at a representative two-column
+                // editor width, so review can catch visual inconsistencies that
+                // property assertions alone do not detect.
+                card.Measure(new Size(850, 760));
+                card.Arrange(new Rect(0, 0, 850, 760));
+                card.UpdateLayout();
+                var preview = System.IO.Path.Combine(
+                    Environment.GetEnvironmentVariable("GITHUB_WORKSPACE") ??
+                    System.IO.Path.GetTempPath(), "UCR-typed-conditions-preview.png");
+                var bitmap = new RenderTargetBitmap(850, 760, 96, 96, PixelFormats.Pbgra32);
+                bitmap.Render(card);
+                var png = new PngBitmapEncoder();
+                png.Frames.Add(BitmapFrame.Create(bitmap));
+                using (var output = System.IO.File.Create(preview)) png.Save(output);
+                TestContext.WriteLine("Rendered WPF AND/NOT editor: " + preview);
+
                 Assert.That(mapping.SetInputRepresentation(2), Is.True);
                 Assert.That(mapping.InputConditions.Single().CoreInputs.Count, Is.EqualTo(1));
                 Assert.That(mapping.InputConditions.Single().AndInputs.Count, Is.EqualTo(1));
