@@ -378,6 +378,154 @@ namespace HidWizards.UCR.Views.Controls
             menu.IsOpen = true;
         }
 
+        private static StackPanel CompoundChoiceHeader(string label,
+            ControlVisualKind kind, string controls)
+        {
+            var row = new StackPanel { Orientation = Orientation.Horizontal };
+            row.Children.Add(new ControlGlyphControl
+            {
+                Kind = kind, Label = controls, AccentBrush = Brushes.White,
+                Width = 47, Height = 36, Margin = new Thickness(0, 0, 10, 0)
+            });
+            row.Children.Add(new TextBlock
+            {
+                Text = label, VerticalAlignment = VerticalAlignment.Center,
+                Foreground = Brushes.White, FontWeight = FontWeights.SemiBold
+            });
+            return row;
+        }
+
+        internal static void ShowQuickCompoundInputMenu(MappingViewModel mapping,
+            FrameworkElement anchor, int groupIndex = 0)
+        {
+            if (mapping?.ButtonsEnabled != true || anchor == null) return;
+            var menu = CreateDarkContextMenu(anchor);
+            menu.Placement = PlacementMode.Bottom;
+            var keyboardOptions = new[]
+            {
+                new { Name = "WASD", Keys = "A|D|W|S" },
+                new { Name = "Arrows", Keys = "Left|Right|Up|Down" },
+                new { Name = "Numpad", Keys = "4|6|8|2" },
+                new { Name = "UHJK", Keys = "H|K|U|J" }
+            };
+            foreach (var preset in keyboardOptions)
+            {
+                var selected = preset;
+                var item = new MenuItem
+                {
+                    Header = CompoundChoiceHeader(selected.Name,
+                        ControlVisualKind.CompoundKeys, selected.Keys)
+                };
+                item.Click += (sender, args) => ApplyCompoundPreset(
+                    mapping, selected.Name, groupIndex);
+                menu.Items.Add(item);
+            }
+            var deviceChoices = new[]
+            {
+                new { Name = "Controller D-pad", Kind = ControlVisualKind.DPad,
+                    Label = "", Preset = 0 },
+                new { Name = "Left stick", Kind = ControlVisualKind.CompoundStick,
+                    Label = "L", Preset = 1 },
+                new { Name = "Right stick", Kind = ControlVisualKind.CompoundStick,
+                    Label = "R", Preset = 2 },
+                new { Name = "Face buttons", Kind = ControlVisualKind.CompoundFaceButtons,
+                    Label = "X|B|Y|A", Preset = 3 }
+            };
+            foreach (var preset in deviceChoices)
+            {
+                var selected = preset;
+                var item = new MenuItem
+                {
+                    Header = CompoundChoiceHeader(selected.Name, selected.Kind, selected.Label)
+                };
+                item.Click += (sender, args) =>
+                {
+                    string error;
+                    bool success;
+                    switch (selected.Preset)
+                    {
+                        case 0: success = mapping.ApplyDirectionalDPadPreset(out error, groupIndex); break;
+                        case 1: success = mapping.ApplyTypedControllerStickPreset(0, out error, groupIndex); break;
+                        case 2: success = mapping.ApplyTypedControllerStickPreset(2, out error, groupIndex); break;
+                        default: success = mapping.ApplyTypedControllerFaceButtons(out error, groupIndex); break;
+                    }
+                    if (!success)
+                        DarkMessageBox.Show(error ?? "This complete 4-Way preset is unavailable.",
+                            "Preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+                };
+                menu.Items.Add(item);
+            }
+            var saved = mapping.ProfileViewModel.Profile.CompoundBindingPresets;
+            if (saved != null && saved.Count > 0)
+            {
+                menu.Items.Add(new Separator());
+                foreach (var preset in saved.Where(item => item.Capacity == 4))
+                {
+                    var selected = preset;
+                    var item = new MenuItem
+                    {
+                        Header = CompoundChoiceHeader(selected.Name,
+                            ControlVisualKind.CompoundKeys,
+                            string.Join("|", selected.Keys ?? new System.Collections.Generic.List<string>()))
+                    };
+                    item.Click += (sender, args) => ApplyCompoundPreset(
+                        mapping, selected.Name, groupIndex);
+                    menu.Items.Add(item);
+                }
+            }
+            menu.Items.Add(new Separator());
+            var single = new MenuItem
+            {
+                Header = "Use one button instead",
+                ToolTip = "Change the input type to Button and capture one key",
+                Foreground = Brushes.White
+            };
+            single.Click += (sender, args) =>
+            {
+                if (!mapping.SetInputRepresentation(3)) return;
+                var source = mapping.DeviceBindings.FirstOrDefault();
+                source?.DeviceBinding?.EnterBindMode(autoDetectInputCategory: true);
+            };
+            menu.Items.Add(single);
+            menu.IsOpen = true;
+        }
+
+        internal static void ShowQuickCompoundOutputMenu(MappingViewModel mapping,
+            FrameworkElement anchor)
+        {
+            if (mapping?.ButtonsEnabled != true || anchor == null) return;
+            var menu = CreateDarkContextMenu(anchor);
+            menu.Placement = PlacementMode.Bottom;
+            foreach (var choice in mapping.GetFourWayOutputChoices())
+            {
+                var selected = choice;
+                var kind = selected.IsDPad
+                    ? (selected.Destination == "WASD" ||
+                       selected.Destination == "Arrows"
+                        ? ControlVisualKind.CompoundKeys : ControlVisualKind.DPad)
+                    : ControlVisualKind.CompoundStick;
+                var controls = selected.Destination == "WASD" ? "A|D|W|S"
+                    : selected.Destination == "Arrows" ? "Left|Right|Up|Down"
+                    : selected.Destination == "Right stick" ? "R" : "L";
+                var item = new MenuItem
+                {
+                    Header = CompoundChoiceHeader(
+                        selected.Destination + "  ·  " + selected.DeviceTitle, kind, controls)
+                };
+                item.Click += (sender, args) =>
+                {
+                    if (!mapping.ApplyTypedFourWayOutput(selected))
+                        DarkMessageBox.Show("Unable to assign the complete 4-Way destination.",
+                            "Output unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+                };
+                menu.Items.Add(item);
+            }
+            if (menu.Items.Count == 0)
+                menu.Items.Add(new MenuItem { Header = "No configured 4-Way outputs",
+                    IsEnabled = false });
+            menu.IsOpen = true;
+        }
+
         private static ContextMenu CreateDarkContextMenu(FrameworkElement placementTarget)
         {
             return new ContextMenu
@@ -1414,9 +1562,9 @@ namespace HidWizards.UCR.Views.Controls
                 }
                 return;
             }
-            // Full sticks and compound D-pads need multiple physical channels.
-            // The centre button chooses the complete preset, not just X.
-            CompoundPreset_OnClick(sender, e);
+            // One compound 4-Way selection, even when routing internally
+            // requires multiple physical channels.
+            ShowQuickCompoundInputMenu(mapping, button, group.GroupIndex);
         }
 
         private void CompoundBindingsMenu_OnClick(object sender, RoutedEventArgs e)
