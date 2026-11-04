@@ -300,8 +300,20 @@
                             <StackPanel Margin="0 0 0 9">
                                 <TextBlock Text="OR" Visibility="{Binding OrLabelVisibility}"
                                     Foreground="#BBBBBB" FontWeight="SemiBold" Margin="4 2 0 6"/>
-                                <Border BorderBrush="#515151" BorderThickness="1"
-                                    Background="#2C2C2C" CornerRadius="3" Padding="7">
+                                <Border CornerRadius="3" Padding="7">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="BorderBrush" Value="#515151"/>
+                                            <Setter Property="BorderThickness" Value="1"/>
+                                            <Setter Property="Background" Value="#2C2C2C"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DataContext.InputConditions.Count, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="1">
+                                                    <Setter Property="BorderThickness" Value="0"/>
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
                                     <StackPanel>
                                         <ItemsControl ItemsSource="{Binding OrdinaryInputs}">
                                             <ItemsControl.ItemTemplate>
@@ -437,9 +449,21 @@
                 <ItemsControl ItemsSource="{Binding InputConditions}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Background="#292929" BorderBrush="#454545" BorderThickness="1"
-                                    CornerRadius="3" Padding="7" Margin="2 0 2 7"
+                            <Border CornerRadius="3" Padding="7" Margin="2 0 2 7"
                                     HorizontalAlignment="Stretch">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="BorderBrush" Value="#454545"/>
+                                        <Setter Property="BorderThickness" Value="1"/>
+                                        <Setter Property="Background" Value="#292929"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DataContext.InputConditions.Count, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="1">
+                                                <Setter Property="BorderThickness" Value="0"/>
+                                                <Setter Property="Background" Value="Transparent"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
                                 <StackPanel>
                                     <Grid Margin="3 0 0 7">
                                         <Grid.ColumnDefinitions>
@@ -826,22 +850,38 @@
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                             </StackPanel>
                         </Grid>
-                        <ContentControl x:Name="InputBodyHost" Grid.Row="1" Content="{Binding}" HorizontalContentAlignment="Stretch"
-                                        VerticalContentAlignment="Stretch">
-                            <ContentControl.Style>
-                                <Style TargetType="{x:Type ContentControl}">
-                                    <Setter Property="ContentTemplate" Value="{StaticResource ButtonExistingInputsTemplate}"/>
+                        <Border x:Name="InputBodySurface" Grid.Row="1" VerticalAlignment="Stretch">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="BorderThickness" Value="1"/>
+                                    <Setter Property="BorderBrush" Value="#454545"/>
+                                    <Setter Property="Background" Value="#292929"/>
+                                    <Setter Property="CornerRadius" Value="3"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding SupportsNativeInputExpression}" Value="True">
-                                            <Setter Property="ContentTemplate" Value="{StaticResource ButtonInputConditionsTemplate}"/>
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding IsTypedDirectionalMapping}" Value="True">
-                                            <Setter Property="ContentTemplate" Value="{StaticResource TypedDirectionalInputsTemplate}"/>
+                                        <DataTrigger Binding="{Binding InputConditions.Count}" Value="2">
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                            <Setter Property="Background" Value="Transparent"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </ContentControl.Style>
-                        </ContentControl>
+                            </Border.Style>
+                            <ContentControl x:Name="InputBodyHost" Content="{Binding}"
+                                            HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                                <ContentControl.Style>
+                                    <Style TargetType="{x:Type ContentControl}">
+                                        <Setter Property="ContentTemplate" Value="{StaticResource ButtonExistingInputsTemplate}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SupportsNativeInputExpression}" Value="True">
+                                                <Setter Property="ContentTemplate" Value="{StaticResource ButtonInputConditionsTemplate}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsTypedDirectionalMapping}" Value="True">
+                                                <Setter Property="ContentTemplate" Value="{StaticResource TypedDirectionalInputsTemplate}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ContentControl.Style>
+                            </ContentControl>
+                        </Border>
                         <Button Grid.Row="2" Content="+OR" Click="AddCondition_OnClick"
                                 Height="34" HorizontalAlignment="Left" Padding="12 3"
                                 Margin="2 6 0 0" IsEnabled="{Binding ButtonsEnabled}"
