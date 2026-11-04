@@ -515,14 +515,19 @@ namespace HidWizards.UCR.Views.Controls
             foreach (var choice in mapping.GetFourWayOutputChoices())
             {
                 var selected = choice;
-                var kind = selected.IsDPad
-                    ? (selected.Destination == "WASD" ||
-                       selected.Destination == "Arrows"
-                        ? ControlVisualKind.CompoundKeys : ControlVisualKind.DPad)
-                    : ControlVisualKind.CompoundStick;
-                var controls = selected.Destination == "WASD" ? "A|D|W|S"
-                    : selected.Destination == "Arrows" ? "Left|Right|Up|Down"
-                    : selected.Destination == "Right stick" ? "R" : "L";
+                var device = mapping.ProfileViewModel.Profile.GetDeviceConfiguration(
+                    DeviceIoType.Output, selected.DeviceConfigurationGuid);
+                var deviceKind = device?.Device == null ? DeviceVisualKind.Unknown :
+                    DeviceVisualCatalog.Describe(device, mapping.ProfileViewModel.Profile,
+                        DeviceIoType.Output).Kind;
+                var kind = selected.Destination == "Face buttons"
+                    ? ControlVisualKind.CompoundFaceButtons
+                    : deviceKind == DeviceVisualKind.Keyboard
+                        ? ControlVisualKind.CompoundKeys
+                        : selected.IsDPad ? ControlVisualKind.DPad
+                        : ControlVisualKind.CompoundStick;
+                var controls = selected.VisualKeys ??
+                    (selected.Destination == "Right stick" ? "R" : "L");
                 var item = new MenuItem
                 {
                     Header = CompoundChoiceHeader(
@@ -1408,115 +1413,10 @@ namespace HidWizards.UCR.Views.Controls
 
         private void CompoundOutput_OnClick(object sender, RoutedEventArgs e)
         {
-            var mapping = DataContext as MappingViewModel;
-            var button = sender as Button;
-            if (mapping?.ButtonsEnabled != true || !mapping.IsCompoundOutput || button == null)
-                return;
-            var menu = CreateDarkContextMenu(button);
-            var choices = mapping.GetFourWayOutputChoices();
-            var accent = button.TryFindResource("PrimaryHueLightBrush") as Brush ?? Brushes.White;
-            foreach (var choice in choices)
-            {
-                var selected = choice;
-                var header = new StackPanel { Orientation = Orientation.Horizontal };
-                header.Children.Add(new ControlGlyphControl
-                {
-                    Width = 44,
-                    Height = 34,
-                    Margin = new Thickness(0, 0, 9, 0),
-                    Kind = choice.IsDPad ? ControlVisualKind.DPad : ControlVisualKind.StickAxis,
-                    AccentBrush = accent,
-                    Label = choice.IsDPad ? "" :
-                        choice.Destination == "Right stick" ? "R" : "L"
-                });
-                var labels = new StackPanel { Orientation = Orientation.Vertical };
-                labels.Children.Add(new TextBlock
-                {
-                    Text = choice.Destination,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = Brushes.White
-                });
-                labels.Children.Add(new TextBlock
-                {
-                    Text = choice.DeviceTitle,
-                    FontSize = 11,
-                    Foreground = Brushes.LightGray
-                });
-                header.Children.Add(labels);
-                var item = new MenuItem
-                {
-                    Header = header,
-                    Padding = new Thickness(8, 5, 14, 5),
-                    ToolTip = choice.IsDPad
-                        ? "Assign all four D-pad directions"
-                        : "Assign the two axes of this stick"
-                };
-                item.Click += (source, args) =>
-                {
-                    if (!mapping.ApplyTypedFourWayOutput(selected))
-                        DarkMessageBox.Show("Unable to assign the complete 4-Way output.",
-                            "Binding unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
-                };
-                menu.Items.Add(item);
-            }
-            if (choices.Count == 0)
-                menu.Items.Add(new MenuItem
-                {
-                    Header = "No configured 4-Way output device",
-                    IsEnabled = false
-                });
-
-            // A compound output is one visible binding, but its constituent
-            // controls must remain independently assignable from the full
-            // device-category menu. The preset picker above is not a restriction.
-            var channels = mapping.Plugins.SelectMany(plugin =>
-                plugin.DeviceBindings.Where(binding =>
-                    binding.DeviceBinding.DeviceIoType == DeviceIoType.Output)).ToList();
-            if (channels.Count > 0)
-            {
-                menu.Items.Add(new Separator());
-                var editChannels = new MenuItem { Header = "Edit individual channels" };
-                for (var channelIndex = 0; channelIndex < channels.Count; channelIndex++)
-                {
-                    var binding = channels[channelIndex];
-                    var label = mapping.Mapping.CompoundDigitalOutput
-                        ? new[] { "Left", "Right", "Up", "Down" }[
-                            Math.Min(channelIndex, 3)]
-                        : channelIndex == 0 ? "X axis" : "Y axis";
-                    var option = new MenuItem
-                    {
-                        Header = label + "  —  " +
-                            (binding.DeviceBinding.IsBound
-                                ? binding.CompactBindButtonText : "Unassigned"),
-                        IsEnabled = binding.BindingEnabled
-                    };
-                    option.Click += async (source, args) =>
-                    {
-                        menu.IsOpen = false;
-                        await OpenQuickOutputPickerAsync(binding, button);
-                    };
-                    editChannels.Items.Add(option);
-                }
-                menu.Items.Add(editChannels);
-            }
-
-            // Preserve access to each axis's existing inversion control without
-            // exposing a second permanent output binding row.
-            for (var index = 0; index < mapping.Plugins.Count; index++)
-            {
-                var output = mapping.Plugins[index];
-                if (output.QuickInvertVisibility != Visibility.Visible) continue;
-                var label = index == 0 ? "Invert X" :
-                    index == 1 ? "Invert Y" : "Invert direction " + (index + 1);
-                var invert = new MenuItem
-                {
-                    Header = label, IsCheckable = true, IsChecked = output.QuickInvert
-                };
-                invert.Click += (source, args) => output.QuickInvert = invert.IsChecked;
-                if (index == 0) menu.Items.Add(new Separator());
-                menu.Items.Add(invert);
-            }
-            menu.IsOpen = true;
+            // The large binding surface is the graphical quick selector, not
+            // the former full technical channel/context menu.
+            ShowQuickCompoundOutputMenu(DataContext as MappingViewModel,
+                sender as FrameworkElement);
         }
 
         private void CompoundDevice_OnClick(object sender, RoutedEventArgs e)
