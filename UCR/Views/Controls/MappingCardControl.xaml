@@ -354,6 +354,34 @@
         <!-- Each OR alternative owns exactly one complete logical directional set.
              Compound sets use one visible binding, while Button sets expose the
              two/four independently assignable physical directions. -->
+        <!-- Each arrow remains a real physical binding, not a decorative direction.
+             The outer-side ellipsis opens that same binding's full category menu. -->
+        <DataTemplate x:Key="SpatialDirectionalInputSlotTemplate">
+            <DockPanel Width="116" Height="46" Margin="2" LastChildFill="True">
+                <Button DockPanel.Dock="Left" Width="25" Height="46" Padding="0"
+                        Content="⋮" FontSize="17" Click="SpatialInputOptions_OnClick"
+                        ToolTip="Binding categories, clearing and blocking"
+                        Visibility="{Binding MenuOnLeft, Converter={StaticResource CompoundVisibilityConverter}}"
+                        Foreground="#EEEEEE" Background="#303030" BorderBrush="#515151"/>
+                <Button DockPanel.Dock="Right" Width="25" Height="46" Padding="0"
+                        Content="⋮" FontSize="17" Click="SpatialInputOptions_OnClick"
+                        ToolTip="Binding categories, clearing and blocking"
+                        Visibility="{Binding MenuOnRight, Converter={StaticResource CompoundVisibilityConverter}}"
+                        Foreground="#EEEEEE" Background="#303030" BorderBrush="#515151"/>
+                <Button Height="46" MinWidth="0" Padding="4 1"
+                        Click="BindDirectionalSlot_OnClick" IsEnabled="{Binding BindingEnabled}"
+                        ToolTip="{Binding DeviceBindingName}"
+                        Foreground="#F0F0F0" Background="#183970" BorderBrush="#3665B3">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Tag, RelativeSource={RelativeSource AncestorType={x:Type ContentControl}}}"
+                                   TextAlignment="Center" FontSize="17" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding CompactBindButtonText}" TextTrimming="CharacterEllipsis"
+                                   MaxWidth="66" TextAlignment="Center" FontSize="10"/>
+                    </StackPanel>
+                </Button>
+            </DockPanel>
+        </DataTemplate>
+
         <DataTemplate x:Key="TypedDirectionalInputsTemplate">
             <StackPanel>
                 <ItemsControl ItemsSource="{Binding InputConditions}">
@@ -377,8 +405,15 @@
                                         </StackPanel>
                                         <StackPanel Grid.Column="1" Orientation="Horizontal"
                                                     VerticalAlignment="Center">
+                                            <Button Content="{Binding CompoundDeviceLabel}"
+                                                    Visibility="{Binding GroupDevicePickerVisibility}"
+                                                    FontSize="11" Height="30" MaxWidth="124" Padding="7 2"
+                                                    Margin="0 0 6 0" Click="CompoundDevice_OnClick"
+                                                    ToolTip="Choose the physical input device for this OR set"
+                                                    Foreground="#FFFFFF" Background="#303030" BorderBrush="#59709A"/>
                                             <Button Content="Presets ▾" FontSize="12" Padding="8 3"
                                                     Margin="0 0 9 0" Click="CompoundPreset_OnClick"
+                                                    Visibility="{Binding CompoundVisibility}"
                                                     ToolTip="Bind this complete input set from a keyboard or controller preset"/>
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
                                                         Visibility="{Binding CompoundVisibility}">
@@ -398,54 +433,68 @@
                                     </Grid>
                                     <Grid Margin="3 4 3 3" Visibility="{Binding CompoundVisibility}">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*" MinWidth="0"/>
                                             <ColumnDefinition Width="40"/>
                                         </Grid.ColumnDefinitions>
-                                        <Button Grid.Column="0" Height="38" MaxWidth="124"
-                                                Content="{Binding CompoundDeviceLabel}"
-                                                ToolTip="{Binding CompoundDeviceLabel}"
-                                                Click="CompoundDevice_OnClick"
-                                                Padding="7 2" Margin="0 0 5 0"
-                                                Background="#303030" BorderBrush="#59709A"
-                                                Foreground="#FFFFFF"/>
-                                        <Button Grid.Column="1" Content="{Binding CompoundSummary}"
+                                        <Button Grid.Column="0" Content="{Binding CompoundSummary}"
                                                 Click="CompoundBindingsMenu_OnClick"
                                                 ToolTip="Choose or edit the compound binding"
                                                 HorizontalContentAlignment="Center"
                                                 Height="38" Foreground="#FFFFFF"
                                                 Background="#0939A5" BorderBrush="#1250D3"
                                                 FontWeight="SemiBold" Padding="8 3"/>
-                                        <Button Grid.Column="2" Content="⋮" FontSize="20"
+                                        <Button Grid.Column="1" Content="⋮" FontSize="20"
                                                 Click="CompoundBindingsMenu_OnClick"
                                                 ToolTip="Compound binding options"
                                                 Height="38" Margin="3 0 0 0" Padding="0"
                                                 Foreground="#FFFFFF" Background="#0939A5"
                                                 BorderBrush="#1250D3"/>
                                     </Grid>
-                                    <ItemsControl ItemsSource="{Binding Inputs}"
-                                                  Visibility="{Binding ButtonPairVisibility}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <UniformGrid Columns="{Binding ButtonPairColumns}"/>
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <StackPanel Margin="2 0">
-                                                    <TextBlock Text="{Binding DeviceBindingName}"
-                                                               FontSize="12" Foreground="#CECECE"
-                                                               Margin="4 0 0 3"/>
-                                                    <local:CompactInputBindingControl
-                                                        DeviceBinding="{Binding DeviceBinding}"
-                                                        DataContext="{Binding}"
-                                                        MenuOnLeft="{Binding MenuOnLeft}"
-                                                        CompactDirectional="True"
-                                                        HorizontalAlignment="Stretch"/>
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
+                                    <StackPanel Visibility="{Binding ButtonPairVisibility}">
+                                        <!-- Ordinary one-button mapping: preserve the full selector. -->
+                                        <local:CompactInputBindingControl
+                                            DeviceBinding="{Binding Inputs[0].DeviceBinding}"
+                                            DataContext="{Binding Inputs[0]}"
+                                            Visibility="{Binding DataContext.SingleButtonVisibility, RelativeSource={RelativeSource Self}}"
+                                            HorizontalAlignment="Stretch"/>
+                                        <!-- Two or four independent directions surround a preset.
+                                             Slot identity and OR membership come from the model. -->
+                                        <Grid HorizontalAlignment="Center" Margin="0 3 0 3"
+                                              Visibility="{Binding DirectionalButtonsVisibility}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="120"/>
+                                                <ColumnDefinition Width="120"/>
+                                                <ColumnDefinition Width="120"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="50"/>
+                                                <RowDefinition Height="50"/>
+                                                <RowDefinition Height="50"/>
+                                            </Grid.RowDefinitions>
+                                            <ContentControl Grid.Row="0" Grid.Column="1" Tag="↑"
+                                                Content="{Binding UpDirection}"
+                                                ContentTemplate="{StaticResource SpatialDirectionalInputSlotTemplate}"
+                                                Visibility="{Binding UpDirectionVisibility}"/>
+                                            <ContentControl Grid.Row="1" Grid.Column="0" Tag="←"
+                                                Content="{Binding LeftDirection}"
+                                                ContentTemplate="{StaticResource SpatialDirectionalInputSlotTemplate}"
+                                                Visibility="{Binding LeftDirectionVisibility}"/>
+                                            <Button Grid.Row="1" Grid.Column="1" Content="Preset ▾"
+                                                    FontSize="12" FontWeight="SemiBold"
+                                                    Height="46" Margin="2" Padding="5 2"
+                                                    Foreground="#FFFFFF" Background="#164AA7"
+                                                    BorderBrush="#397AF0" Click="CompoundPreset_OnClick"
+                                                    ToolTip="Choose WASD, arrows, D-pad, joystick or face-button compound control"/>
+                                            <ContentControl Grid.Row="1" Grid.Column="2" Tag="→"
+                                                Content="{Binding RightDirection}"
+                                                ContentTemplate="{StaticResource SpatialDirectionalInputSlotTemplate}"
+                                                Visibility="{Binding RightDirectionVisibility}"/>
+                                            <ContentControl Grid.Row="2" Grid.Column="1" Tag="↓"
+                                                Content="{Binding DownDirection}"
+                                                ContentTemplate="{StaticResource SpatialDirectionalInputSlotTemplate}"
+                                                Visibility="{Binding DownDirectionVisibility}"/>
+                                        </Grid>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                         </DataTemplate>
