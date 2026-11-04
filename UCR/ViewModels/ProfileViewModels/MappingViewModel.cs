@@ -165,6 +165,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool InputIsFullStick => Mapping.EffectiveInputRepresentation == 1;
         public bool InputIsAxis => Mapping.EffectiveInputRepresentation == 2;
         public bool InputIsButton => Mapping.EffectiveInputRepresentation == 3;
+        public bool InputIsTrigger => Mapping.EffectiveInputRepresentation == 4;
         public bool IsCompoundInput => IsTypedDirectionalMapping && Mapping.EffectiveInputRepresentation != 3;
         public bool CompoundBlockEnabled => IsCompoundInput &&
             Mapping.DeviceBindings.Any(binding => binding.IsBound && binding.Block);
@@ -173,6 +174,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool OutputIsFullStick => Mapping.EffectiveOutputRepresentation == 1;
         public bool OutputIsAxis => Mapping.EffectiveOutputRepresentation == 2;
         public bool OutputIsButton => Mapping.EffectiveOutputRepresentation == 3;
+        public bool OutputIsTrigger => Mapping.EffectiveOutputRepresentation == 4;
         public bool IsCompoundOutput => DirectionalCapacity == 4 &&
             Mapping.EffectiveOutputRepresentation == 1;
         public string CompoundOutputSummary => Plugins == null ? "Unassigned" :
@@ -184,30 +186,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool HasAssignedControl =>
             Mapping.DeviceBindings.Any(input => input.IsBound) ||
             Mapping.Plugins.Any(plugin => plugin.Outputs.Any(output => output.IsBound));
-        public bool CanChooseInputButton => ButtonsEnabled && HasAssignedControl;
-        public bool CanChooseOutputButton => ButtonsEnabled && HasAssignedControl;
-        public bool CanChooseInputAxis => ButtonsEnabled && DirectionalCapacity >= 2 &&
-            (Mapping.EffectiveInputRepresentation == 2 ||
-             Mapping.EffectiveOutputRepresentation == 2 ||
-             Mapping.DeviceBindings.Any(input => input.IsBound &&
-                 input.DeviceBindingCategory == DeviceBindingCategory.Range) ||
-             Mapping.Plugins.Any(plugin => plugin.Outputs.Any(output => output.IsBound &&
-                 output.DeviceBindingCategory == DeviceBindingCategory.Range)));
-        public bool CanChooseOutputAxis => ButtonsEnabled && DirectionalCapacity >= 2 &&
-            (Mapping.EffectiveInputRepresentation == 2 ||
-             Mapping.EffectiveOutputRepresentation == 2 || IsFullStickInput ||
-             Mapping.Plugins.Any(plugin => plugin.Outputs.Any(output => output.IsBound &&
-                 output.DeviceBindingCategory == DeviceBindingCategory.Range)));
-        public bool CanChooseInputFourWay => ButtonsEnabled && DirectionalCapacity == 4 &&
-            (IsFullStickInput || IsFullStickOutput ||
-             Mapping.DeviceBindings.Any(input => input.IsBound &&
-                 input.InputDirectionSlot >= 3) ||
-             Mapping.Plugins.Count(plugin => plugin.Outputs.Any(output =>
-                 output.IsBound && output.DeviceBindingCategory == DeviceBindingCategory.Range)) >= 2);
-        public bool CanChooseOutputFourWay => ButtonsEnabled && DirectionalCapacity == 4 &&
-            (IsFullStickInput || IsFullStickOutput ||
-             Mapping.DeviceBindings.Any(input => input.IsBound &&
-                 input.InputDirectionSlot >= 3));
+        // A type selector declares the desired logical mapping. It must not be
+        // locked merely because the destination or source has not been assigned.
+        // Unsupported combinations are explained when chosen, not hidden.
+        public bool CanChooseInputButton => ButtonsEnabled;
+        public bool CanChooseOutputButton => ButtonsEnabled;
+        public bool CanChooseInputAxis => ButtonsEnabled;
+        public bool CanChooseOutputAxis => ButtonsEnabled;
+        public bool CanChooseInputFourWay => ButtonsEnabled;
+        public bool CanChooseOutputFourWay => ButtonsEnabled;
+        public bool CanChooseInputTrigger => ButtonsEnabled;
+        public bool CanChooseOutputTrigger => ButtonsEnabled;
         private void RefreshDirectionalAvailability()
         {
             OnPropertyChanged(nameof(HasAssignedControl));
@@ -217,6 +206,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(CanChooseOutputAxis));
             OnPropertyChanged(nameof(CanChooseInputFourWay));
             OnPropertyChanged(nameof(CanChooseOutputFourWay));
+            OnPropertyChanged(nameof(CanChooseInputTrigger));
+            OnPropertyChanged(nameof(CanChooseOutputTrigger));
         }
 
         public bool IsTypedDirectionalMapping => Mapping.InputRepresentation != 0 ||
@@ -226,9 +217,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool IsFullStickOutput => IsTypedDirectionalMapping &&
             DirectionalCapacity == 4 && Mapping.EffectiveOutputRepresentation == 1;
         public string InputDirectionalGroupTitle => Mapping.EffectiveInputRepresentation == 1
-            ? "4-Way" : Mapping.EffectiveInputRepresentation == 2 ? "Axis" : "Buttons";
+            ? "4-Way" : Mapping.EffectiveInputRepresentation == 2 ? "Axis" :
+            Mapping.EffectiveInputRepresentation == 4 ? "Trigger" : "Buttons";
         public string OutputDirectionalGroupTitle => Mapping.EffectiveOutputRepresentation == 1
-            ? "4-Way" : Mapping.EffectiveOutputRepresentation == 2 ? "Axes" : "Buttons";
+            ? "4-Way" : Mapping.EffectiveOutputRepresentation == 2 ? "Axis" :
+            Mapping.EffectiveOutputRepresentation == 4 ? "Trigger" : "Buttons";
         public Visibility TypedDirectionalVisibility => IsTypedDirectionalMapping
             ? Visibility.Visible : Visibility.Collapsed;
         public Visibility LegacyOutputAddVisibility => IsTypedDirectionalMapping
@@ -311,12 +304,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private bool SetRepresentation(int value, bool inputSide)
         {
-            if (!ButtonsEnabled || value < 1 || value > 3) return false;
+            if (!ButtonsEnabled || value < 1 || value > 4) return false;
+            var currentInput = Mapping.EffectiveInputRepresentation;
+            var currentOutput = Mapping.EffectiveOutputRepresentation;
+            var wantedInput = inputSide ? value : currentInput;
+            var wantedOutput = inputSide ? currentOutput : value;
+            // A single one-sided trigger cannot encode four independently
+            // addressable directions without specifying a particular direction.
+            // Do not silently discard three directions or invent an assignment.
+            if ((wantedInput == 4 && wantedOutput == 1) ||
+                (wantedOutput == 4 && wantedInput == 1)) return false;
             var previousCapacity = Mapping.EffectiveDirectionalCapacity;
-            var requiredCapacity = value == 1 ? 4 : value == 2 ? 2 : 1;
-            var capacityIncreased = requiredCapacity > previousCapacity;
-            if (Mapping.DirectionalCapacity == 0 || capacityIncreased)
-                Mapping.DirectionalCapacity = Math.Max(previousCapacity, requiredCapacity);
+            var targetCapacity = Math.Max(
+                wantedInput == 1 ? 4 : wantedInput == 2 ? 2 : 1,
+                wantedOutput == 1 ? 4 : wantedOutput == 2 ? 2 : 1);
+            var capacityChanged = previousCapacity != targetCapacity;
+            // Capacity can shrink as well as grow. Otherwise a former 4-Way
+            // mapping remains stuck with extra X/Y channels when set to Axis.
+            Mapping.DirectionalCapacity = targetCapacity;
             if (inputSide)
             {
                 if (value == 1 && !Mapping.CompoundDigitalInput &&
@@ -341,15 +346,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 // Axis is one continuous source per axis; Button is a set of
                 // independent digital directions. The compound-digital backing
                 // belongs only to a 4-Way preset, not to a later Axis selection.
-                if (value == 2 || value == 3)
+                if (value == 2 || value == 3 || value == 4)
                     Mapping.CompoundDigitalInput = false;
-                if (Mapping.InputRepresentation == value && !capacityIncreased)
+                if (Mapping.InputRepresentation == value && !capacityChanged)
                 {
                     if (Mapping.DeviceBindings.Count == Mapping.RequiredInputBindingSlots)
                         return true;
                 }
                 if (!SwitchDirectionalInputs(value)) return false;
-                if (capacityIncreased || Mapping.Plugins.Count !=
+                if (capacityChanged || Mapping.Plugins.Count !=
                     Mapping.RequiredOutputBindingSlots)
                 {
                     var otherType = Mapping.EffectiveOutputRepresentation;
@@ -360,9 +365,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             else
             {
-                if (Mapping.OutputRepresentation == value && !capacityIncreased) return true;
+                if (Mapping.OutputRepresentation == value && !capacityChanged) return true;
                 if (!SwitchDirectionalOutputs(value)) return false;
-                if (capacityIncreased || Mapping.DeviceBindings.Count != Mapping.RequiredInputBindingSlots)
+                if (capacityChanged || Mapping.DeviceBindings.Count != Mapping.RequiredInputBindingSlots)
                 {
                     var otherType = Mapping.EffectiveInputRepresentation;
                     // Keep the old input representation in its legacy bank.
@@ -376,12 +381,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(InputIsFullStick));
             OnPropertyChanged(nameof(InputIsAxis));
             OnPropertyChanged(nameof(InputIsButton));
+            OnPropertyChanged(nameof(InputIsTrigger));
             OnPropertyChanged(nameof(IsCompoundInput));
             OnPropertyChanged(nameof(CompoundBlockEnabled));
             OnPropertyChanged(nameof(CanBlockCompound));
             OnPropertyChanged(nameof(OutputIsFullStick));
             OnPropertyChanged(nameof(OutputIsAxis));
             OnPropertyChanged(nameof(OutputIsButton));
+            OnPropertyChanged(nameof(OutputIsTrigger));
             OnPropertyChanged(nameof(InputDirectionalSlotCount));
             OnPropertyChanged(nameof(CompoundBindingSummary));
             OnPropertyChanged(nameof(IsDigitalCompoundInput));
@@ -438,8 +445,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 for (var groupIndex = 0; groupIndex < oldGroups.Count; groupIndex++)
                 {
                     var sources = oldGroups[groupIndex];
-                    var isButton = representation == 3 || capacity == 1 ||
-                        Mapping.CompoundDigitalInput;
+                    var isButton = representation == 3 || Mapping.CompoundDigitalInput;
                     for (var index = 0; index < perGroup; index++)
                     {
                         var previousIndex = isButton && capacity > 1 && sources.Count == 1
@@ -535,7 +541,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             else
             {
                 // As above, capacity changes require a complete destination bank.
-                var isButton = representation == 3 || Mapping.EffectiveDirectionalCapacity == 1 ||
+                var isButton = representation == 3 ||
                     (Mapping.CompoundDigitalOutput && representation == 1);
                 var pluginName = isButton ? "Button to Button" : "Axis to Axis";
                 var template = profile.Context.GetPlugins().FirstOrDefault(item =>
@@ -1065,7 +1071,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (horizontal) return index == 0 ? "Left" : "Right";
                 return index == 0 ? "−" : "+";
             }
-            return representation == 3 ? "Button" : "Axis";
+            return representation == 3 ? "Button" : representation == 4 ? "Trigger" : "Axis";
         }
 
         private void PopulateDeviceBindingsViewModels()
@@ -1678,7 +1684,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (count < 1) return;
                 var capacity = DirectionalCapacity;
                 var isButton = Mapping.EffectiveInputRepresentation == 3 ||
-                    Mapping.CompoundDigitalInput || capacity == 1;
+                    Mapping.CompoundDigitalInput;
                 for (var index = 0; index < count; index++)
                 {
                     var binding = new DeviceBinding(Mapping.Update, ProfileViewModel.Profile,
