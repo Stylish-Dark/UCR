@@ -148,6 +148,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             // Removing one would disable the entire 4-Way mapping, so only
             // extra independently added output slots are individually removable.
             (!MappingViewModel.IsTypedDirectionalMapping ||
+             MappingViewModel.Mapping.RequiredOutputBindingSlots == 1 ||
              MappingViewModel.Plugins.IndexOf(this) >=
                 MappingViewModel.Mapping.RequiredOutputBindingSlots);
         public bool CanAddFilter => !MappingViewModel.ProfileViewModel.Profile.IsActive();
