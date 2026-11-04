@@ -590,10 +590,23 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Isolated device-row UI test failed: $LASTEXITCODE" }
           & $runner $tests --noresult --workers=0 --where "test == HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DirectionalTypeSelectorsRenderIndependentlyAndRestoreBindingBanks"
           if ($LASTEXITCODE -ne 0) { throw "Directional type WPF test failed: $LASTEXITCODE" }
-          if (-not (Test-Path -LiteralPath 'UCR-directional-preview.png')) {
-            throw 'Directional WPF preview was not rendered.'
+          $visualCaptures = @(
+            'UCR-directional-preview.png',
+            'UCR-typed-conditions-preview.png',
+            'UCR-workspace-collapsed-preview.png',
+            'UCR-workspace-expanded-preview.png'
+          )
+          foreach ($name in $visualCaptures) {
+            if (-not (Test-Path -LiteralPath $name -PathType Leaf)) {
+              throw "Mandatory WPF screenshot missing: $name"
+            }
+            $size = (Get-Item -LiteralPath $name).Length
+            if ($size -lt 5000) {
+              throw "WPF screenshot is suspiciously empty or truncated: $name [$size bytes]"
+            }
+            Write-Host "Visual QA screenshot ready: $name [$size bytes]"
           }
-          Write-Host 'Verified actual WPF directional editor rendering.'
+          Write-Host 'Verified all mandatory actual-WPF visual QA captures.'
 
 
       - name: Upload rendered directional editor preview
@@ -606,7 +619,7 @@ jobs:
             UCR-typed-conditions-preview.png
             UCR-workspace-collapsed-preview.png
             UCR-workspace-expanded-preview.png
-          if-no-files-found: warn
+          if-no-files-found: error
 
       - name: Expose WPF previews for actual visual review
         shell: pwsh
