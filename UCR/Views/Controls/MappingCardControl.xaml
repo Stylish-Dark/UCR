@@ -524,6 +524,7 @@
                                         <Button x:Name="CompassInputPreset"
                                             Grid.Row="1" Grid.Column="1"
                                             Content="Preset ▾"
+                                            VerticalAlignment="Top"
                                             Height="55" Margin="2 1" Padding="4 1"
                                             FontSize="12" FontWeight="SemiBold"
                                             Foreground="#FFFFFF" Click="CompoundPreset_OnClick"
