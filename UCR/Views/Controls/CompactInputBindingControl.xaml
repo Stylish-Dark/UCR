@@ -60,7 +60,7 @@
                   Height="38" Margin="0 0 4 0" Padding="0"
                   HorizontalAlignment="Left"
                   ItemsSource="{Binding Devices}"
-                  SelectedItem="{Binding SelectedDevice}"
+                  SelectedItem="{Binding SelectedDevice, Mode=OneWay}"
                   IsEnabled="{Binding BindingEnabled}"
                   DropDownOpened="DeviceSelectionBox_OnDropDownOpened"
                   SelectionChanged="DeviceSelectionBox_OnSelectionChanged"
