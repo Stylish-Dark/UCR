@@ -533,14 +533,17 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(mapping.SetInputRepresentation(2), Is.True);
                 Assert.That(model.DeviceBindings.Count, Is.EqualTo(1));
                 Assert.That(mapping.SetInputRepresentation(3), Is.True);
-                Assert.That(model.DeviceBindings.Count, Is.EqualTo(2));
+                Assert.That(model.DeviceBindings.Count, Is.EqualTo(1),
+                    "Returning to a single Button/Output Button mapping removes inactive direction slots.");
                 Assert.That(mapping.SetInputRepresentation(1), Is.True);
                 Assert.That(model.DirectionalCapacity, Is.EqualTo(4));
                 Assert.That(model.InactiveInputRepresentations.Any(bank =>
                     bank.Representation == 2 && bank.Bindings.Count == 1), Is.True);
                 Assert.That(mapping.SetInputRepresentation(2), Is.True);
-                Assert.That(model.DeviceBindings.Count, Is.EqualTo(2),
-                    "The capacity-2 bank cannot masquerade as a full-stick axis pair.");
+                Assert.That(model.DeviceBindings.Count, Is.EqualTo(1),
+                    "Axis restores one physical channel when the other side is Button.");
+                Assert.That(model.DirectionalCapacity, Is.EqualTo(2),
+                    "Reducing 4-Way to Axis must reduce logical capacity.");
                 Assert.That(mapping.SetInputRepresentation(1), Is.True);
                 Assert.That(model.DirectionalCapacity, Is.EqualTo(4));
                 Assert.That(model.DeviceBindings.Count, Is.EqualTo(2),
@@ -560,7 +563,8 @@ namespace HidWizards.UCR.Tests.UiTests
                 savedAxis.KeyValue = 271;
 
                 Assert.That(mapping.SetInputRepresentation(3), Is.True);
-                Assert.That(model.DeviceBindings.Count, Is.EqualTo(4));
+                Assert.That(model.DeviceBindings.Count, Is.EqualTo(2));
+                Assert.That(model.DirectionalCapacity, Is.EqualTo(2));
                 Assert.That(model.InactiveInputRepresentations.Any(
                     bank => bank.Representation == 1 &&
                         bank.Bindings.Any(binding => binding.KeyValue == 271)), Is.True);
@@ -590,11 +594,12 @@ namespace HidWizards.UCR.Tests.UiTests
                 card.UpdateLayout();
 
                 var selectors = FindVisualChildren<RadioButton>(card)
-                    .Where(button => (button.ToolTip as string)?.EndsWith(" input") == true ||
-                                     (button.ToolTip as string)?.EndsWith(" output") == true)
-                    .ToList();
-                Assert.That(selectors.Count, Is.EqualTo(6),
-                    "Each side must expose the independent three-type selector.");
+                    .Where(button => button.GroupName == "InputDirectionalType" ||
+                                     button.GroupName == "OutputDirectionalType").ToList();
+                Assert.That(selectors.Count, Is.EqualTo(8),
+                    "Each side exposes Button, Trigger, Axis and 4-Way.");
+                Assert.That(selectors.All(button => button.IsEnabled), Is.True,
+                    "Unassigned choices must not be locked by current capability.");
                 Assert.That(selectors.Count(button => button.IsChecked == true), Is.EqualTo(2),
                     "Exactly one representation must be selected on each side.");
 
@@ -881,8 +886,8 @@ namespace HidWizards.UCR.Tests.UiTests
                     "One Axis output requires an opposing Button input pair.");
                 Assert.That(mapping.CanChooseInputButton, Is.True);
                 Assert.That(mapping.CanChooseInputAxis, Is.True);
-                Assert.That(mapping.CanChooseInputFourWay, Is.False,
-                    "4-Way must remain unavailable until a four-direction capability exists.");
+                Assert.That(mapping.CanChooseInputFourWay, Is.True,
+                    "Type selectors declare intent, including before a four-way control is bound.");
                 Assert.That(mapping.SetInputRepresentation(2), Is.True);
                 Assert.That(mapping.DeviceBindings.Count, Is.EqualTo(1),
                     "Selecting Axis merges the opposing pair into one compound slot.");
@@ -997,8 +1002,8 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(mapping.SetInputRepresentation(2), Is.True);
                 Assert.That(mapping.Mapping.CompoundDigitalInput, Is.False,
                     "Axis input must not retain digital-compound routing.");
-                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(4),
-                    "Each OR alternative must merge to two analogue axes in 4-Way capacity.");
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(2),
+                    "Each OR alternative becomes one Axis after capacity shrinks from 4-Way.");
                 Assert.That(mapping.SetInputRepresentation(1), Is.True);
                 Assert.That(mapping.Mapping.CompoundDigitalInput, Is.True,
                     "Returning to 4-Way restores the previous digital compound preset.");
