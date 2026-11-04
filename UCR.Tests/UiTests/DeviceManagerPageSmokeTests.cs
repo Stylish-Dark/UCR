@@ -627,7 +627,7 @@ namespace HidWizards.UCR.Tests.UiTests
                     "The compound input must not expose separate directional editor rows.");
                 var compoundButtons = FindVisualChildren<Button>(card)
                     .Where(button => (button.ToolTip as string) ==
-                        "Choose or edit the compound binding")
+                        "Bind the axis or choose a complete preset")
                     .ToList();
                 Assert.That(compoundButtons.Count, Is.EqualTo(1),
                     "A compound binding must have exactly one visible assignment control.");
