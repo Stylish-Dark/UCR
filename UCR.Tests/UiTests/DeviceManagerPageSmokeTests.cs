@@ -957,8 +957,15 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(mapping.Mapping.Plugins.Count, Is.EqualTo(4));
                 Assert.That(Mapping.RequiredBindingSlots(4, 4), Is.EqualTo(4));
                 Assert.That(mapping.SetInputRepresentation(4), Is.True);
+                Assert.That(mapping.Mapping.DirectionalCapacity, Is.EqualTo(1),
+                    "When both sides become Trigger, the four-way capacity should disappear.");
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(1));
+                Assert.That(mapping.SetOutputRepresentation(1), Is.True);
+                Assert.That(mapping.Mapping.DirectionalCapacity, Is.EqualTo(4));
                 Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(4),
-                    "Each 4-Way direction has its own independently assignable Trigger.");
+                    "One-sided Trigger inputs expand into four slots against a 4-Way destination.");
+                Assert.That(mapping.SetOutputRepresentation(4), Is.True);
+                Assert.That(mapping.Mapping.DirectionalCapacity, Is.EqualTo(1));
                 Assert.That(mapping.SetInputRepresentation(3), Is.True);
                 Assert.That(mapping.Mapping.DirectionalCapacity, Is.EqualTo(1));
                 Assert.That(mapping.Mapping.Plugins.Count, Is.EqualTo(1));
