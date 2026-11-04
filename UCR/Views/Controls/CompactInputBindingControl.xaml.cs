@@ -220,6 +220,13 @@ namespace HidWizards.UCR.Views.Controls
             BringIntoView();
             if (DeviceBinding?.DeviceIoType == DeviceIoType.Output)
             {
+                var card = FindAncestor<MappingCardControl>(this);
+                if (card != null)
+                {
+                    card.ShowOutputCategoryMenuForBinding(
+                        DataContext as DeviceBindingViewModel, MenuButton);
+                    return;
+                }
                 ShowOutputPicker(MenuButton);
                 return;
             }
