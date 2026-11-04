@@ -446,6 +446,13 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(afterExpand, Is.GreaterThan(0));
                 Assert.That(afterExpand, Is.LessThan(longList.Items.Count),
                     "Expanding all mappings must not instantiate all off-screen editors.");
+                // The preceding BringMappingIntoView scrolled to the final mapping.
+                // Reposition before comparing the first mapping's row geometry.
+                outerScroll.ScrollToTop();
+                virtualPanel.InvalidateMeasure();
+                page.Measure(fullViewport);
+                page.Arrange(new Rect(new Point(0, 0), fullViewport));
+                page.UpdateLayout();
                 var firstVirtualizedRow = longList.ItemContainerGenerator.ContainerFromIndex(0)
                     as ListViewItem;
                 Assert.That(firstVirtualizedRow, Is.Not.Null);
@@ -1014,8 +1021,8 @@ namespace HidWizards.UCR.Tests.UiTests
                     "The two independent directions surround a central preset.");
                 Assert.That(buttons.Count(button => string.Equals(button.ToolTip as string,
                     "Binding categories, clearing and blocking", StringComparison.Ordinal) &&
-                    button.Visibility == Visibility.Visible), Is.EqualTo(2),
-                    "Every active direction keeps its own full binding-options menu.");
+                    button.Visibility == Visibility.Visible), Is.Zero,
+                    "The removed per-direction ellipsis menus must remain absent.");
                 Assert.That(FindVisualChildren<CompactInputBindingControl>(card)
                     .Any(control => control.DeviceOnly && control.Visibility == Visibility.Visible),
                     Is.True, "Compound device selection must reuse the real device icon selector.");
@@ -1039,14 +1046,14 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(FindVisualChildren<Button>(card).Count(button =>
                     string.Equals(button.ToolTip as string,
                         "Binding categories, clearing and blocking", StringComparison.Ordinal) &&
-                    button.Visibility == Visibility.Visible), Is.EqualTo(4),
-                    "Four-way Button input must expose four individually assignable directions.");
+                    button.Visibility == Visibility.Visible), Is.Zero,
+                    "Four-way directional binding buttons must have no ellipsis menus.");
                 var labels = FindVisualChildren<TextBlock>(card)
                     .Select(text => text.Text).ToList();
                 foreach (var glyph in new[] { "↑", "↓", "←", "→" })
                     Assert.That(labels, Does.Contain(glyph),
                         "Every spatial binding button must actually display its direction.");
-                Assert.That(mapping.CompoundOutputSummary, Is.EqualTo("Choose D-pad / stick ▾"),
+                Assert.That(mapping.CompoundOutputSummary, Is.EqualTo("Select 4-Way ▾"),
                     "An unassigned 4-Way output must offer a meaningful destination choice.");
             }
             finally
@@ -1094,7 +1101,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 card.Arrange(new Rect(0, 0, 1050, 1200));
                 card.UpdateLayout();
                 Assert.That(FindVisualChildren<Button>(card).Any(button =>
-                    string.Equals(button.Content as string, "+AND", StringComparison.Ordinal)),
+                    string.Equals(button.Content as string, "+ Add input", StringComparison.Ordinal)),
                     Is.True, "An AND control must exist in the actual typed mapping editor.");
                 Assert.That(FindVisualChildren<ToggleButton>(card).Any(button =>
                     string.Equals(button.Content as string, "NOT", StringComparison.Ordinal)),
