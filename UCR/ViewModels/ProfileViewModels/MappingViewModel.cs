@@ -73,6 +73,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<DeviceBindingViewModel> AndInputs { get; }
         public ObservableCollection<DeviceBindingViewModel> CoreInputs { get; }
         public Visibility CompoundVisibility => IsCompound ? Visibility.Visible : Visibility.Collapsed;
+        // A full 4-Way input is one logical assignment. Keep its preset button,
+        // but expose the actual physical channels with their directional labels.
+        // A slash-joined key list hides which key belongs to which direction.
+        public Visibility CompoundChannelPreviewVisibility =>
+            IsCompound && _owner.InputIsFullStick && CoreInputs.Count > 1
+                ? Visibility.Visible : Visibility.Collapsed;
+        public string CompoundPrimaryLabel => IsCompound && _owner.InputIsFullStick &&
+                                              CoreInputs.Count > 1
+            ? "Choose 4-Way preset ▾" : CompoundSummary;
         public Visibility ButtonPairVisibility => IsButtonPair ? Visibility.Visible : Visibility.Collapsed;
         public string CompoundSummary
         {
@@ -109,6 +118,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public void RefreshCompoundSummary()
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompoundSummary)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompoundPrimaryLabel)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompoundDeviceLabel)));
         }
 
