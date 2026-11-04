@@ -28,6 +28,47 @@ namespace HidWizards.UCR.Tests.UiTests
     [NonParallelizable]
     internal class DeviceManagerPageSmokeTests
     {
+        private static void CaptureWorkspacePreview(FrameworkElement element, int width, int height, string name,
+            int cropWidth = 0, int cropHeight = 0)
+        {
+            // Render the actual WPF visual tree, without requiring a logged-in desktop.
+            // A screenshot is evidence of layout only; it does not replace interactive testing.
+            element.Measure(new Size(width, height));
+            element.Arrange(new Rect(0, 0, width, height));
+            element.UpdateLayout();
+            var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(element);
+            var target = System.IO.Path.Combine(
+                Environment.GetEnvironmentVariable("GITHUB_WORKSPACE") ??
+                System.IO.Path.GetTempPath(), name);
+            var encoder = new PngBitmapEncoder();
+            BitmapSource image = bitmap;
+            if (cropWidth > 0 && cropHeight > 0)
+            {
+                Assert.That(cropWidth, Is.LessThanOrEqualTo(width));
+                Assert.That(cropHeight, Is.LessThanOrEqualTo(height));
+                image = new CroppedBitmap(bitmap, new Int32Rect(0, 0, cropWidth, cropHeight));
+            }
+            encoder.Frames.Add(BitmapFrame.Create(image));
+            using (var output = System.IO.File.Create(target)) encoder.Save(output);
+            Assert.That(new System.IO.FileInfo(target).Length, Is.GreaterThan(1000),
+                "WPF snapshot must contain substantial image data: " + name);
+            TestContext.WriteLine("Rendered actual workspace preview: " + target);
+        }
+
+        private static void CaptureEditorPreview(FrameworkElement element, int width, string name)
+        {
+            // The capture should show the entire real WPF editor, not a fixed-height
+            // screenshot with hundreds of pixels of irrelevant empty background.
+            element.Measure(new Size(width, double.PositiveInfinity));
+            var height = (int)Math.Ceiling(element.DesiredSize.Height);
+            Assert.That(height, Is.GreaterThan(150),
+                "The editor must have measurable rendered content before capture.");
+            Assert.That(height, Is.LessThanOrEqualTo(900),
+                "The editor exceeds the visual-review viewport; inspect overflow rather than clipping.");
+            CaptureWorkspacePreview(element, width, height + 8, name);
+        }
+
         private sealed class FakeDevicePageViewModel
         {
             public IList<DeviceManagerItemViewModel> Devices { get; }
@@ -248,9 +289,15 @@ namespace HidWizards.UCR.Tests.UiTests
         {
             EnsureApplicationResources();
             var context = new Context();
-            var profile = context.ProfilesManager.CreateProfile("Workspace expansion", null, null);
+            context.PluginManager.Plugins = new List<Plugin>
+            {
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton(),
+                new HidWizards.UCR.Plugins.Remapper.AxisToAxis()
+            };
+            var profile = context.ProfilesManager.CreateProfile("Keyboard to controller", null, null);
             context.ProfilesManager.AddProfile(profile);
-            profile.AddMapping("A");
+            var example = profile.AddMapping("Jump");
+            example.AddPlugin(new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
 
             var page = new ProfilePage(context, profile, embedded: true);
             try
@@ -260,6 +307,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.Measure(available);
                 page.Arrange(new Rect(new Point(0, 0), available));
                 page.UpdateLayout();
+                CaptureWorkspacePreview(page, 1440, 720, "UCR-workspace-collapsed-preview.png", 1020, 610);
 
                 var rows = FindVisualChildren<ListView>(page)
                     .SingleOrDefault(list => list.Name == "MappingRowsList");
@@ -286,6 +334,9 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.Measure(available);
                 page.Arrange(new Rect(new Point(0, 0), available));
                 page.UpdateLayout();
+                CaptureWorkspacePreview(page, 1440, 720, "UCR-workspace-expanded-preview.png", 1020, 650);
+                Assert.That(FindVisualChildren<MappingCardControl>(row).Any(), Is.True,
+                    "Visual QA requires a populated expanded mapping, not an empty editor.");
 
                 Assert.That(mapping.IsExpanded, Is.True);
                 Assert.That(toggle.Content, Is.InstanceOf<Grid>());
@@ -308,8 +359,7 @@ namespace HidWizards.UCR.Tests.UiTests
 
                 // Original collapsed glyphs must be actual clickable buttons.
                 var rebindingButtons = FindVisualChildren<Button>(row)
-                    .Where(button => button.ToolTip is string &&
-                        ((string)button.ToolTip).Contains("bind") &&
+                    .Where(button => button.Width == 62 && button.Height == 44 &&
                         button.Cursor == System.Windows.Input.Cursors.Hand).ToList();
                 Assert.That(rebindingButtons.Count, Is.GreaterThan(0),
                     "The workspace must expose clickable rebinding glyphs.");
@@ -653,15 +703,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 }), Is.True,
                     "Show NOT only on digital channels; analog channels must not offer an inert toggle.");
 
-                var screenshot = System.IO.Path.Combine(
-                    Environment.GetEnvironmentVariable("GITHUB_WORKSPACE") ??
-                    System.IO.Path.GetTempPath(), "UCR-directional-preview.png");
-                var bitmap = new RenderTargetBitmap(1050, 1100, 96, 96, PixelFormats.Pbgra32);
-                bitmap.Render(card);
-                var encoder = new PngBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(bitmap));
-                using (var file = System.IO.File.Create(screenshot)) encoder.Save(file);
-                TestContext.WriteLine("Rendered WPF typed editor: " + screenshot);
+                CaptureEditorPreview(card, 1050, "UCR-directional-preview.png");
             }
             finally
             {
@@ -981,21 +1023,9 @@ namespace HidWizards.UCR.Tests.UiTests
                     string.Equals(button.Content as string, "NOT", StringComparison.Ordinal)),
                     Is.True, "The AND gate must expose an actual NOT toggle.");
 
-                // Capture the real WPF control at a representative two-column
-                // editor width, so review can catch visual inconsistencies that
-                // property assertions alone do not detect.
-                card.Measure(new Size(850, 760));
-                card.Arrange(new Rect(0, 0, 850, 760));
-                card.UpdateLayout();
-                var preview = System.IO.Path.Combine(
-                    Environment.GetEnvironmentVariable("GITHUB_WORKSPACE") ??
-                    System.IO.Path.GetTempPath(), "UCR-typed-conditions-preview.png");
-                var bitmap = new RenderTargetBitmap(850, 760, 96, 96, PixelFormats.Pbgra32);
-                bitmap.Render(card);
-                var png = new PngBitmapEncoder();
-                png.Frames.Add(BitmapFrame.Create(bitmap));
-                using (var output = System.IO.File.Create(preview)) png.Save(output);
-                TestContext.WriteLine("Rendered WPF AND/NOT editor: " + preview);
+                // Render the actual editor at a representative two-column width;
+                // derive height from real WPF content instead of a giant blank canvas.
+                CaptureEditorPreview(card, 850, "UCR-typed-conditions-preview.png");
 
                 Assert.That(mapping.SetInputRepresentation(2), Is.True);
                 Assert.That(mapping.InputConditions.Single().CoreInputs.Count, Is.EqualTo(1));
