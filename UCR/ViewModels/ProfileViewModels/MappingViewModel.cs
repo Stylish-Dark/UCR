@@ -2727,6 +2727,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             var normalized = NormalizeAxisPresetKey(name);
             if (NormalizeAxisPresetKey(controlTitle) == normalized) return true;
+            // Keyboard arrow keys have several complete names depending on
+            // the provider. Accept exact "Left Arrow" / "Arrow Left" tokens
+            // without weakening the strict A-vs-Caps matching below.
+            if (new[] { "UP", "DOWN", "LEFT", "RIGHT" }.Contains(normalized) &&
+                (NormalizeAxisPresetKey(controlTitle) == normalized + "ARROW" ||
+                 NormalizeAxisPresetKey(controlTitle) == "ARROW" + normalized))
+                return true;
             // Providers may prefix controls with categories, e.g. "Buttons,A"
             // or "Face buttons: Cross". Compare only complete trailing tokens,
             // not arbitrary suffixes that would confuse A with another key.
