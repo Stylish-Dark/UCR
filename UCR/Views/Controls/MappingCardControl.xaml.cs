@@ -444,6 +444,26 @@ namespace HidWizards.UCR.Views.Controls
             (DataContext as MappingViewModel)?.RemoveCondition(condition);
         }
 
+        private void SpatialInputOptions_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var input = button?.DataContext as DeviceBindingViewModel;
+            if (button == null || input?.DeviceBinding == null) return;
+            var menu = CompactInputBindingControl.CreateInputOptionsMenu(input, button);
+            menu.Items.Add(new Separator());
+            var block = new MenuItem
+            {
+                Header = "Block original input",
+                IsCheckable = true,
+                IsChecked = input.Block,
+                IsEnabled = input.CanBlock,
+                ToolTip = input.BlockAvailability
+            };
+            block.Click += (s, args) => input.Block = block.IsChecked;
+            menu.Items.Add(block);
+            menu.IsOpen = true;
+        }
+
         private void BindDirectionalSlot_OnClick(object sender, RoutedEventArgs e)
         {
             var input = (sender as FrameworkElement)?.DataContext as DeviceBindingViewModel;
@@ -455,8 +475,9 @@ namespace HidWizards.UCR.Views.Controls
             }
             try
             {
+                input.ExpressionMapping?.EnableInputExpression();
                 input.DeviceBinding.DeviceBindingCategory = input.DeviceBindingCategory;
-                input.DeviceBinding.EnterBindMode();
+                input.DeviceBinding.EnterBindMode(autoDetectInputCategory: true);
             }
             catch (Exception exception)
             {
