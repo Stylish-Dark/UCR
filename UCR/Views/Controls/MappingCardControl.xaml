@@ -366,62 +366,58 @@
         <!-- Each arrow remains a real physical binding, not a decorative direction.
              The outer-side ellipsis opens that same binding's full category menu. -->
         <DataTemplate x:Key="SpatialDirectionalInputSlotTemplate">
-            <DockPanel Width="94" Height="40" Margin="1" LastChildFill="True">
-                <Button DockPanel.Dock="Left" Width="21" Height="40" Padding="0"
-                        Content="⋮" FontSize="17" Click="SpatialInputOptions_OnClick"
-                        Style="{StaticResource MaterialDesignRaisedButton}"
-                        IsEnabled="{Binding BindingEnabled}"
-                        ToolTip="Binding categories, clearing and blocking"
-                        Visibility="{Binding MenuOnLeft, Converter={StaticResource CompoundVisibilityConverter}}"
-                        Foreground="#EEEEEE" Background="#303030" BorderBrush="#515151"/>
-                <Button DockPanel.Dock="Right" Width="21" Height="40" Padding="0"
-                        Content="⋮" FontSize="17" Click="SpatialInputOptions_OnClick"
-                        Style="{StaticResource MaterialDesignRaisedButton}"
-                        IsEnabled="{Binding BindingEnabled}"
-                        ToolTip="Binding categories, clearing and blocking"
-                        Visibility="{Binding MenuOnRight, Converter={StaticResource CompoundVisibilityConverter}}"
-                        Foreground="#EEEEEE" Background="#303030" BorderBrush="#515151"/>
-                <Button Height="40" MinWidth="0" Padding="2 1"
-                        Click="BindDirectionalSlot_OnClick" IsEnabled="{Binding BindingEnabled}"
-                        ToolTip="{Binding DeviceBindingName}" Foreground="#F0F0F0"
-                        Style="{StaticResource MaterialDesignRaisedButton}">
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding DirectionalGlyph}"
-                                   TextAlignment="Center" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding CompactBindButtonText}" TextTrimming="CharacterEllipsis"
-                                   MaxWidth="47" TextAlignment="Center" FontSize="9"/>
-                    </StackPanel>
-                </Button>
-            </DockPanel>
+            <Button Width="94" Height="44" Margin="1" Padding="3 2"
+                    Click="BindDirectionalSlot_OnClick" IsEnabled="{Binding BindingEnabled}"
+                    ToolTip="{Binding DeviceBindingName}" Foreground="#FFFFFF">
+                <Button.Style>
+                    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsCapturing}" Value="True">
+                                <Setter Property="Background" Value="#D77A16"/>
+                                <Setter Property="BorderBrush" Value="#FFCB78"/>
+                                <Setter Property="BorderThickness" Value="2"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding DirectionalGlyph}" FontSize="18" FontWeight="SemiBold"
+                               HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding CompactBindButtonText}" FontSize="13"
+                               TextTrimming="CharacterEllipsis" MaxWidth="79"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Button>
         </DataTemplate>
 
         <!-- Four compass faces share the actual physical axis when the
              source is an analogue stick; digital D-pads have four bindings. -->
         <DataTemplate x:Key="CompoundCompassInputSlotTemplate">
             <StackPanel Width="116" Margin="1">
-                <DockPanel Height="55" LastChildFill="True">
-                    <Button DockPanel.Dock="Right" Width="23" Height="55" Padding="0"
-                            Content="⋮" FontSize="17"
-                            Click="SpatialInputOptions_OnClick"
-                            IsEnabled="{Binding PhysicalBinding.BindingEnabled}"
-                            ToolTip="{Binding PhysicalBinding.DeviceBindingName}"
-                            Foreground="#EEEEEE" Background="#303030" BorderBrush="#515151"
-                            Style="{StaticResource MaterialDesignRaisedButton}"/>
-                    <Button Height="55" MinWidth="0" Padding="2 1"
-                            Click="BindDirectionalSlot_OnClick"
-                            IsEnabled="{Binding PhysicalBinding.BindingEnabled}"
-                            ToolTip="{Binding PhysicalBinding.DeviceBindingName}"
-                            Foreground="#FFFFFF"
-                            Style="{StaticResource MaterialDesignRaisedButton}">
-                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Arrow}" FontSize="19" FontWeight="Bold"
-                                       TextAlignment="Center"/>
-                            <TextBlock Text="{Binding PhysicalBinding.CompactBindButtonText}"
-                                       FontSize="10" MaxWidth="82" TextTrimming="CharacterEllipsis"
-                                       TextAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-                </DockPanel>
+                <Button Height="55" MinWidth="0" Padding="3 2"
+                        Click="BindDirectionalSlot_OnClick"
+                        IsEnabled="{Binding PhysicalBinding.BindingEnabled}"
+                        ToolTip="{Binding PhysicalBinding.DeviceBindingName}"
+                        Foreground="#FFFFFF">
+                    <Button.Style>
+                        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding PhysicalBinding.IsCapturing}" Value="True">
+                                    <Setter Property="Background" Value="#D77A16"/>
+                                    <Setter Property="BorderBrush" Value="#FFCB78"/>
+                                    <Setter Property="BorderThickness" Value="2"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Arrow}" FontSize="19" FontWeight="Bold"
+                                   TextAlignment="Center"/>
+                        <TextBlock Text="{Binding PhysicalBinding.CompactBindButtonText}"
+                                   FontSize="13" MaxWidth="100" TextTrimming="CharacterEllipsis"
+                                   TextAlignment="Center"/>
+                    </StackPanel>
+                </Button>
                 <ToggleButton Content="NOT" Width="53" Height="24" Padding="1"
                               Margin="0 2 0 0" HorizontalAlignment="Center"
                               Visibility="{Binding PhysicalBinding.DirectionalNegationVisibility}"
@@ -453,16 +449,17 @@
                                             <TextBlock Text="{Binding DirectionalModeLabel}"
                                                        FontWeight="SemiBold" Foreground="#D0D0D0"
                                                        FontSize="12" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal"
-                                                    VerticalAlignment="Center">
                                             <Border Visibility="{Binding GroupDevicePickerVisibility}"
-                                                    Margin="0 0 7 0" ToolTip="Input device for this OR set">
+                                                    Margin="10 0 0 0" ToolTip="Input device for this OR set">
                                                 <local:CompactInputBindingControl
                                                     DataContext="{Binding CoreInputs[0]}"
                                                     DeviceBinding="{Binding DeviceBinding}"
                                                     DeviceOnly="True"/>
                                             </Border>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                                    VerticalAlignment="Center">
+
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
                                                         Visibility="{Binding CompoundVisibility}">
                                                 <TextBlock Text="Block" Foreground="#D0D0D0" FontSize="12"
@@ -881,10 +878,17 @@
                                 </Style>
                             </Border.Style>
                             <StackPanel>
-                                <TextBlock Text="{Binding OutputDirectionalGroupTitle}"
-                                           Visibility="{Binding IsCompoundOutput, Converter={StaticResource CompoundVisibilityConverter}}"
-                                           FontSize="12" FontWeight="SemiBold" Foreground="#D0D0D0"
-                                           Margin="4 1 0 7"/>
+                                <StackPanel Orientation="Horizontal" Margin="4 1 0 7"
+                                            Visibility="{Binding IsCompoundOutput, Converter={StaticResource CompoundVisibilityConverter}}">
+                                    <TextBlock Text="{Binding OutputDirectionalGroupTitle}"
+                                               FontSize="12" FontWeight="SemiBold" Foreground="#D0D0D0"
+                                               VerticalAlignment="Center" Margin="0 0 12 0"/>
+                                    <Button Content="Output device ▾" Padding="9 3" Height="30"
+                                            Click="CompoundOutputDevice_OnClick"
+                                            IsEnabled="{Binding ButtonsEnabled}"
+                                            Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
+                                            ToolTip="Choose the device for this 4-Way output"/>
+                                </StackPanel>
                                 <!-- 4-Way remains one logical destination even when
                                      implemented as two axes or four D-pad buttons. -->
                                 <Border Background="#292929" BorderBrush="#454545"
@@ -893,8 +897,7 @@
                                         Visibility="{Binding IsCompoundOutput, Converter={StaticResource CompoundVisibilityConverter}}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" MinWidth="0"/>
-                                            <ColumnDefinition Width="36"/>
+                                            <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <Button Grid.Column="0" Height="38"
                                                 Content="{Binding CompoundOutputSummary}"
@@ -903,12 +906,7 @@
                                                 FontWeight="SemiBold" Foreground="#FFFFFF"
                                                 Style="{StaticResource MaterialDesignRaisedButton}"
                                                 ToolTip="Choose a complete 4-Way output destination"/>
-                                        <Button Grid.Column="1" Content="⋮" FontSize="20"
-                                                Click="CompoundOutput_OnClick"
-                                                Height="38" Margin="3 0 0 0"
-                                                Padding="0" Foreground="#FFFFFF"
-                                                Style="{StaticResource MaterialDesignRaisedButton}"
-                                                ToolTip="4-Way output destination options"/>
+
                                     </Grid>
                                 </Border>
                         <!-- Exactly four destination bindings: Up / Left / Right / Down
