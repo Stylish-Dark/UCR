@@ -94,6 +94,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public Visibility CompoundChannelPreviewVisibility =>
             IsCompound && _owner.InputIsFullStick && CoreInputs.Count > 1
                 ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility StandaloneCompoundVisibility =>
+            IsCompound && CompoundChannelPreviewVisibility != Visibility.Visible
+                ? Visibility.Visible : Visibility.Collapsed;
         public string CompoundPrimaryLabel => IsCompound && _owner.InputIsFullStick &&
                                               CoreInputs.Count > 1
             ? "Preset ▾" : CompoundSummary;
