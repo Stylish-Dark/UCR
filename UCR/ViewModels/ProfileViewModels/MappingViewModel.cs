@@ -3367,7 +3367,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private BindingVisualDescriptor DescribeCompoundVisual(
             IList<DeviceBindingViewModel> channels, bool output)
         {
-            var selected = channels?.FirstOrDefault(binding => binding.DeviceBinding.IsBound)
+            var selected = channels?.FirstOrDefault(candidate => candidate.DeviceBinding.IsBound)
                 ?? channels?.FirstOrDefault();
             var visual = DescribeCollapsedBinding(selected);
             if (selected == null) return visual;
