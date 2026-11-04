@@ -1038,6 +1038,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 var add = FindVisualChildren<Button>(card).Single(button =>
                     string.Equals(button.Content as string, "+ Add input", StringComparison.Ordinal));
                 Assert.That(add.Visibility, Is.EqualTo(Visibility.Visible));
+                CaptureEditorPreview(card, 850, "UCR-button-button-preview.png");
                 Assert.That(FindVisualChildren<Button>(card).Any(button =>
                     string.Equals(button.ToolTip as string,
                         "Remove input condition", StringComparison.Ordinal) &&
@@ -1054,6 +1055,109 @@ namespace HidWizards.UCR.Tests.UiTests
                         "Remove input condition", StringComparison.Ordinal) &&
                     button.Visibility == Visibility.Visible), Is.True,
                     "The extra input must expose a real removal action.");
+            }
+            finally
+            {
+                vm.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void OutputRepresentationsRenderAtNaturalHeightWithWorkingAddOutput()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            context.PluginManager.Plugins = new List<Plugin>
+            {
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton(),
+                new HidWizards.UCR.Plugins.Remapper.AxisToAxis()
+            };
+            var profile = context.ProfilesManager.CreateProfile("Compact output modes", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            profile.AddMapping("Button").AddPlugin(
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+            var vm = new ProfileViewModel(profile);
+            try
+            {
+                var mapping = vm.MappingsList.Single();
+                var card = new MappingCardControl
+                {
+                    InspectorMode = true,
+                    InlineWorkspaceMode = true,
+                    DataContext = mapping
+                };
+                foreach (var mode in new[] { 4, 2 })
+                {
+                    Assert.That(mapping.SetOutputRepresentation(mode), Is.True);
+                    card.Measure(new Size(1050, 900));
+                    card.Arrange(new Rect(0, 0, 1050, 900));
+                    card.UpdateLayout();
+                    var outputCard = FindVisualChildren<Border>(card).FirstOrDefault(border =>
+                        border.Name == "OutputBindingCardSurface" &&
+                        border.Visibility == Visibility.Visible);
+                    Assert.That(outputCard, Is.Not.Null);
+                    Assert.That(outputCard.ActualHeight, Is.LessThan(190),
+                        "A collapsed output must not reserve arbitrary empty height.");
+                    Assert.That(FindVisualChildren<Button>(card).Any(button =>
+                        string.Equals(button.Content as string, "+ Add output", StringComparison.Ordinal) &&
+                        button.Visibility == Visibility.Visible), Is.True,
+                        "Every representation must retain a visible Add output.");
+                    CaptureEditorPreview(card, 1050, mode == 4
+                        ? "UCR-button-trigger-preview.png"
+                        : "UCR-button-axis-preview.png");
+                }
+            }
+            finally
+            {
+                vm.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void FourWayInputWithAndGuardsKeepsSpatialOutputsUsable()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            context.PluginManager.Plugins = new List<Plugin>
+            {
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton(),
+                new HidWizards.UCR.Plugins.Remapper.AxisToAxis()
+            };
+            var profile = context.ProfilesManager.CreateProfile("Four way with AND", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            profile.AddMapping("D-pad with AND").AddPlugin(
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+            var vm = new ProfileViewModel(profile);
+            try
+            {
+                var mapping = vm.MappingsList.Single();
+                Assert.That(mapping.SetInputRepresentation(1), Is.True);
+                mapping.Mapping.CompoundDigitalInput = true;
+                Assert.That(mapping.SetInputRepresentation(1), Is.True);
+                Assert.That(mapping.SetOutputRepresentation(3), Is.True);
+                mapping.AddInputToCondition(mapping.InputConditions.Single());
+                mapping.AddInputToCondition(mapping.InputConditions.Single());
+                var card = new MappingCardControl
+                {
+                    InspectorMode = true, InlineWorkspaceMode = true,
+                    DataContext = mapping
+                };
+                card.Measure(new Size(1150, 1200));
+                card.Arrange(new Rect(0, 0, 1150, 1200));
+                card.UpdateLayout();
+                Assert.That(FindVisualChildren<Button>(card).Any(button =>
+                    string.Equals(button.Content as string, "+ Add output", StringComparison.Ordinal) &&
+                    button.Visibility == Visibility.Visible), Is.True);
+                var outputControls = FindVisualChildren<Button>(card).Where(button =>
+                    string.Equals(button.ToolTip as string,
+                        "Choose output control", StringComparison.Ordinal) &&
+                    button.Visibility == Visibility.Visible).ToList();
+                Assert.That(outputControls.Count, Is.EqualTo(4));
+                Assert.That(outputControls.All(button => button.ActualWidth > 85), Is.True,
+                    "Every 4-Way output button must remain legible with additional input conditions.");
+                CaptureEditorPreview(card, 1150, "UCR-fourway-conditions-preview.png");
             }
             finally
             {
