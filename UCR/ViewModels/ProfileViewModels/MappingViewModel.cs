@@ -91,15 +91,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         // A full 4-Way input is one logical assignment. Keep its preset button,
         // but expose the actual physical channels with their directional labels.
         // A slash-joined key list hides which key belongs to which direction.
-        public Visibility CompoundChannelPreviewVisibility =>
-            IsCompound && _owner.InputIsFullStick && CoreInputs.Count > 1
-                ? Visibility.Visible : Visibility.Collapsed;
+        // 4-Way is one logical compound binding in the editor. Its underlying
+        // digital/analogue channels remain intact for routing and saved profiles.
+        public Visibility CompoundChannelPreviewVisibility => Visibility.Collapsed;
         public Visibility StandaloneCompoundVisibility =>
-            IsCompound && CompoundChannelPreviewVisibility != Visibility.Visible
+            IsCompound ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility CompoundAdvancedMenuVisibility =>
+            IsCompound && !_owner.InputIsFullStick
                 ? Visibility.Visible : Visibility.Collapsed;
-        public string CompoundPrimaryLabel => IsCompound && _owner.InputIsFullStick &&
-                                              CoreInputs.Count > 1
-            ? "Preset ▾" : CompoundSummary;
+        public string CompoundPrimaryLabel => IsCompound && _owner.InputIsFullStick
+            ? (CoreInputs.Any(input => input.DeviceBinding.IsBound)
+                ? CompoundSummary : "Select 4-Way ▾")
+            : CompoundSummary;
 
         private DirectionalCompassSlotViewModel CompassSlot(int digitalSlot, int analogueIndex, string arrow)
         {
