@@ -57,6 +57,13 @@ namespace HidWizards.UCR.Core.Models.Binding
         [DefaultValue(false)]
         public bool InputExpressionNegated { get; set; }
 
+        // An additional AND condition on a typed directional OR group.
+        // These conditions are not directional slots and must be preserved
+        // across Button / Trigger / Axis / 4-Way representation switches.
+        [XmlAttribute]
+        [DefaultValue(false)]
+        public bool IsDirectionalAndCondition { get; set; }
+
         // A logical directional control owns opposing physical bindings.
         // 0 = ordinary condition; 1/2 = negative/positive X; 3/4 = negative/positive Y.
         // The slots share Block and NOT, while retaining independent physical devices.
