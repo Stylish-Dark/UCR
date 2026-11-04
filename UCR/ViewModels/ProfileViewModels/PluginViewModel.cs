@@ -143,7 +143,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<PluginPropertyGroupViewModel> PluginPropertyGroups { get; set; }
         public bool CanRemove =>
             !MappingViewModel.ProfileViewModel.Profile.IsActive() &&
-            MappingViewModel.Plugins.Count > 1 &&
+            // The final ordinary output is removable: Add output can rebuild it.
             // Typed cardinal output channels are required by the routing engine.
             // Removing one would disable the entire 4-Way mapping, so only
             // extra independently added output slots are individually removable.
