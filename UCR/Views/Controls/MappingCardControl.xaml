@@ -507,7 +507,7 @@
                                     <Grid Margin="3 4 3 3" Visibility="{Binding StandaloneCompoundVisibility}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" MinWidth="0"/>
-                                            <ColumnDefinition Width="40"/>
+                                            <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <Button Grid.Column="0" Content="{Binding CompoundPrimaryLabel}"
                                                 Click="CompoundPrimaryBind_OnClick"
@@ -517,54 +517,15 @@
                                                 Style="{StaticResource MaterialDesignRaisedButton}"
                                                 FontWeight="SemiBold" Padding="8 3"/>
                                         <Button Grid.Column="1" Content="⋮" FontSize="20"
+                                                Visibility="{Binding CompoundAdvancedMenuVisibility}"
                                                 Click="CompoundBindingsMenu_OnClick"
                                                 ToolTip="Compound binding options"
                                                 Height="38" Margin="3 0 0 0" Padding="0"
                                                 Foreground="#FFFFFF"
                                                 Style="{StaticResource MaterialDesignRaisedButton}"/>
                                     </Grid>
-                                    <!-- Four visible directions are placed at the four
-                                         cardinal points around one shared preset. -->
-                                    <Grid x:Name="InputDirectionalCompassGrid"
-                                          HorizontalAlignment="Center" Margin="0 2 0 5"
-                                          Visibility="{Binding CompoundChannelPreviewVisibility}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="118"/>
-                                            <ColumnDefinition Width="118"/>
-                                            <ColumnDefinition Width="118"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
-                                        <ContentControl x:Name="CompassInputUp"
-                                            Grid.Row="0" Grid.Column="1"
-                                            Content="{Binding CompassInputUp}"
-                                            ContentTemplate="{StaticResource CompoundCompassInputSlotTemplate}"/>
-                                        <ContentControl x:Name="CompassInputLeft"
-                                            Grid.Row="1" Grid.Column="0"
-                                            Content="{Binding CompassInputLeft}"
-                                            ContentTemplate="{StaticResource CompoundCompassInputSlotTemplate}"/>
-                                        <Button x:Name="CompassInputPreset"
-                                            Grid.Row="1" Grid.Column="1"
-                                            Content="Preset ▾"
-                                            VerticalAlignment="Top"
-                                            Height="55" Margin="2 1" Padding="4 1"
-                                            FontSize="12" FontWeight="SemiBold"
-                                            Foreground="#FFFFFF" Click="CompoundPreset_OnClick"
-                                            Style="{StaticResource MaterialDesignRaisedButton}"
-                                            IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
-                                            ToolTip="Select a complete keyboard, D-pad or stick preset"/>
-                                        <ContentControl x:Name="CompassInputRight"
-                                            Grid.Row="1" Grid.Column="2"
-                                            Content="{Binding CompassInputRight}"
-                                            ContentTemplate="{StaticResource CompoundCompassInputSlotTemplate}"/>
-                                        <ContentControl x:Name="CompassInputDown"
-                                            Grid.Row="2" Grid.Column="1"
-                                            Content="{Binding CompassInputDown}"
-                                            ContentTemplate="{StaticResource CompoundCompassInputSlotTemplate}"/>
-                                    </Grid>
+                                    <!-- 4-Way occupies the single compound control above.
+                                         Individual implementation channels are not separate user bindings. -->
                                     <StackPanel Visibility="{Binding ButtonPairVisibility}">
                                         <!-- Ordinary one-button mapping: preserve the full selector. -->
                                         <Grid Visibility="{Binding SingleButtonVisibility}">
