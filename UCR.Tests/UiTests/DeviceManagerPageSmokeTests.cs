@@ -817,7 +817,8 @@ namespace HidWizards.UCR.Tests.UiTests
                     Is.EqualTo(new[] { 10, 11, 12, 13 }));
                 Assert.That(mapping.SetInputRepresentation(2), Is.True);
                 Assert.That(mapping.Mapping.CompoundDigitalInput, Is.False);
-                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(4));
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(2),
+                    "After reducing from 4-Way to Axis, each OR group needs one axis.");
                 Assert.That(mapping.SetInputRepresentation(1), Is.True);
                 Assert.That(mapping.Mapping.CompoundDigitalInput, Is.True,
                     "Returning to 4-Way should restore the previous compound preset.");
