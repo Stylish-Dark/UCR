@@ -650,6 +650,75 @@
             </StackPanel>
         </DataTemplate>
 
+        <!-- Compact actual output cards for the four arms of a D-pad.
+             Device selection, binding, inversion, filters and settings remain live. -->
+        <DataTemplate x:Key="DirectionalOutputDPadCardTemplate">
+            <Border Background="#292929" BorderBrush="#454545"
+                    BorderThickness="1" CornerRadius="3" Padding="4 5"
+                    Margin="1" HorizontalAlignment="Stretch">
+                <StackPanel>
+                    <TextBlock Text="{Binding DirectionalSlotLabel}" Foreground="#D8D8D8"
+                               FontSize="12" FontWeight="SemiBold" Margin="2 0 0 4"/>
+                    <ItemsControl ItemsSource="{Binding DeviceBindings}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <local:CompactInputBindingControl
+                                    DataContext="{Binding}" Tag="Output"
+                                    DeviceBinding="{Binding DeviceBinding}"
+                                    HorizontalAlignment="Stretch"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                VerticalAlignment="Center" Margin="0 4 2 0"
+                                Visibility="{Binding QuickInvertVisibility}">
+                        <TextBlock Text="Invert" FontSize="11" Foreground="#D8D8D8"
+                                   VerticalAlignment="Center" Margin="0 0 5 0"/>
+                        <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
+                                      IsChecked="{Binding QuickInvert, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      ToolTip="Invert this output"/>
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding Filters}" Margin="0 4 0 0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="0 0 3 0">
+                                    <Button Content="{Binding Name}" Click="ToggleOutputFilter_OnClick"
+                                            Height="26" Padding="4 1" IsEnabled="{Binding IsEnabled}"
+                                            Foreground="#FFFFFF" Background="#353535"
+                                            BorderBrush="#5C5C5C" BorderThickness="1"
+                                            ToolTip="Toggle output filter"/>
+                                    <Button Content="×" Click="RemoveOutputFilter_OnClick"
+                                            Height="26" Width="23" Padding="0"
+                                            IsEnabled="{Binding IsEnabled}" Foreground="#FF6868"
+                                            Background="#353535" BorderBrush="#5C5C5C"
+                                            ToolTip="Remove filter"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Expander Header="Settings" Margin="0 3 0 0"
+                              Expanded="OutputSettings_OnExpanded"
+                              Visibility="{Binding InlineSettingsVisibility}"
+                              Foreground="#D0D0D0">
+                        <ItemsControl ItemsSource="{Binding InlinePropertyGroups}" Margin="3">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Visibility="{Binding ShowPropertyList}">
+                                        <TextBlock Text="{Binding GroupName}"
+                                                   Foreground="#DADADA" FontWeight="SemiBold"/>
+                                        <plugin:PluginPropertyListControl DataContext="{Binding}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Expander>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
         <DataTemplate x:Key="ButtonMappingEditorTemplate">
             <Border Margin="2 0 2 3" Padding="6 5" Background="#202020"
                 BorderBrush="#303030" BorderThickness="0 1 0 0">
@@ -821,11 +890,50 @@
                                                 ToolTip="4-Way output destination options"/>
                                     </Grid>
                                 </Border>
+                        <!-- Exactly four destination bindings: Up / Left / Right / Down
+                             are positioned spatially, not in a vertical stack. -->
+                        <Grid x:Name="OutputDirectionalCompassGrid"
+                              Visibility="{Binding OutputDirectionalCompassVisibility}"
+                              Margin="0 0 0 4" HorizontalAlignment="Stretch">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" MinWidth="0"/>
+                                <ColumnDefinition Width="*" MinWidth="0"/>
+                                <ColumnDefinition Width="*" MinWidth="0"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <ContentControl x:Name="CompassOutputUp"
+                                Grid.Row="0" Grid.Column="1" Margin="1"
+                                Content="{Binding CompassOutputUp}"
+                                HorizontalContentAlignment="Stretch"
+                                ContentTemplate="{StaticResource DirectionalOutputDPadCardTemplate}"/>
+                            <ContentControl x:Name="CompassOutputLeft"
+                                Grid.Row="1" Grid.Column="0" Margin="1"
+                                Content="{Binding CompassOutputLeft}"
+                                HorizontalContentAlignment="Stretch"
+                                ContentTemplate="{StaticResource DirectionalOutputDPadCardTemplate}"/>
+                            <ContentControl x:Name="CompassOutputRight"
+                                Grid.Row="1" Grid.Column="2" Margin="1"
+                                Content="{Binding CompassOutputRight}"
+                                HorizontalContentAlignment="Stretch"
+                                ContentTemplate="{StaticResource DirectionalOutputDPadCardTemplate}"/>
+                            <ContentControl x:Name="CompassOutputDown"
+                                Grid.Row="2" Grid.Column="1" Margin="1"
+                                Content="{Binding CompassOutputDown}"
+                                HorizontalContentAlignment="Stretch"
+                                ContentTemplate="{StaticResource DirectionalOutputDPadCardTemplate}"/>
+                        </Grid>
                         <ItemsControl ItemsSource="{Binding Plugins}">
                             <ItemsControl.Style>
                                 <Style TargetType="{x:Type ItemsControl}">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsCompoundOutput}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding HasOutputDirectionalCompass}" Value="True">
                                             <Setter Property="Visibility" Value="Collapsed"/>
                                         </DataTrigger>
                                     </Style.Triggers>
