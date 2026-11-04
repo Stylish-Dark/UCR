@@ -305,7 +305,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     .ToList();
                 if (slots == null || slots.Count == 0 ||
                     !slots.Any(binding => binding.DeviceBinding.IsBound))
-                    return "Choose D-pad / stick ▾";
+                    return "Select 4-Way ▾";
                 if (Mapping.CompoundDigitalOutput)
                     return "D-pad · " + string.Join(" / ", slots.Select(binding =>
                         binding.DeviceBinding.IsBound ? binding.CompactBindButtonText : "—"));
@@ -358,7 +358,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ? Visibility.Visible : Visibility.Collapsed;
         public Visibility LegacyOutputAddVisibility =>
             !IsTypedDirectionalMapping || ((OutputIsButton || OutputIsTrigger) && DirectionalCapacity == 1) ||
-            (InputIsButton && OutputIsAxis && DirectionalCapacity == 2)
+            (InputIsButton && OutputIsAxis && DirectionalCapacity == 2) ||
+            (OutputIsFullStick && DirectionalCapacity == 4)
                 ? Visibility.Visible : Visibility.Collapsed;
         public int InputDirectionalSlotCount => Mapping.RequiredInputBindingSlots;
         public bool IsDigitalCompoundInput => IsCompoundInput && Mapping.CompoundDigitalInput;
