@@ -495,9 +495,10 @@
                                                                           Width="40" Height="30" Margin="3 0 0 0"
                                                                           Padding="2 0"
                                                                           IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
+                                                                          Visibility="{Binding DirectionalNegationVisibility}"
                                                                           Click="InputNegated_OnClick"
                                                                           Style="{StaticResource MappingNotToggle}"
-                                                                          ToolTip="Negate this channel"/>
+                                                                          ToolTip="Negate this digital channel"/>
                                                             <Button Grid.Column="2" Content="⋮" Width="26" Height="30"
                                                                     Margin="3 0 0 0" Padding="0"
                                                                     Foreground="#FFFFFF"
