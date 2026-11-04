@@ -605,7 +605,8 @@ namespace HidWizards.UCR.Views.Controls
         private void InputNegated_OnClick(object sender, RoutedEventArgs e)
         {
             var toggle = sender as ToggleButton;
-            var binding = toggle?.DataContext as DeviceBindingViewModel;
+            var binding = (toggle?.DataContext as DirectionalCompassSlotViewModel)?.PhysicalBinding ??
+                          toggle?.DataContext as DeviceBindingViewModel;
             if (toggle == null || binding == null) return;
             (DataContext as MappingViewModel)?.SetInputNegated(binding, toggle.IsChecked == true);
         }
