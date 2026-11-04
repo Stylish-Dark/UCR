@@ -117,6 +117,28 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool IsFourWay => DirectionalInputs.Count == 4;
         public int DirectionalColumns => IsFourWay ? 4 : 2;
         public int ButtonPairColumns => Inputs.Count <= 1 ? 1 : 2;
+        public bool IsSingleButton => IsButtonPair && Inputs.Count == 1;
+        public Visibility SingleButtonVisibility => IsSingleButton ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility DirectionalButtonsVisibility => IsButtonPair && Inputs.Count > 1
+            ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility GroupDevicePickerVisibility => IsSingleButton
+            ? Visibility.Collapsed : Visibility.Visible;
+        private DeviceBindingViewModel Slot(int number) => Inputs.FirstOrDefault(input =>
+            input.DeviceBinding.InputDirectionSlot == number);
+        private bool IsVerticalTwoWay => Inputs.Count == 2 &&
+            string.Equals(Slot(1)?.DeviceBindingName, "Up", StringComparison.OrdinalIgnoreCase);
+        public DeviceBindingViewModel LeftDirection => Inputs.Count >= 2 && !IsVerticalTwoWay
+            ? Slot(1) : null;
+        public DeviceBindingViewModel RightDirection => Inputs.Count >= 2 && !IsVerticalTwoWay
+            ? Slot(2) : null;
+        public DeviceBindingViewModel UpDirection => Inputs.Count == 4 ? Slot(3)
+            : IsVerticalTwoWay ? Slot(1) : null;
+        public DeviceBindingViewModel DownDirection => Inputs.Count == 4 ? Slot(4)
+            : IsVerticalTwoWay ? Slot(2) : null;
+        public Visibility LeftDirectionVisibility => LeftDirection != null ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility RightDirectionVisibility => RightDirection != null ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility UpDirectionVisibility => UpDirection != null ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility DownDirectionVisibility => DownDirection != null ? Visibility.Visible : Visibility.Collapsed;
         public string DirectionalModeLabel => IsTypedDirectional
             ? _owner.InputDirectionalGroupTitle : IsFourWay ? "4-way joystick" : "Axis";
 
