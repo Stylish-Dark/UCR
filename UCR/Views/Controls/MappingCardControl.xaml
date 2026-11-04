@@ -893,7 +893,7 @@
                                      implemented as two axes or four D-pad buttons. -->
                                 <Border Background="#292929" BorderBrush="#454545"
                                         BorderThickness="1" CornerRadius="3" Padding="7"
-                                        Margin="0 0 0 5"
+                                        Margin="0 0 0 5" MinHeight="346"
                                         Visibility="{Binding IsCompoundOutput, Converter={StaticResource CompoundVisibilityConverter}}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
