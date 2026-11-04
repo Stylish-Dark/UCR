@@ -49,6 +49,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public Guid DeviceConfigurationGuid { get; set; }
         public string DeviceTitle { get; set; }
         public string Destination { get; set; }
+        public string VisualKeys { get; set; }
         public bool IsDPad { get; set; }
         // Input/output key descriptors are resolved before any binding is changed.
         public DeviceBindingInfo[] Controls { get; set; }
@@ -2406,7 +2407,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     {
                         DeviceConfigurationGuid = device.Guid,
                         DeviceTitle = device.GetFullTitleForProfile(profile),
-                        Destination = name, IsDPad = true, Controls = controls
+                        Destination = name, IsDPad = true, Controls = controls,
+                        VisualKeys = string.Join("|", keys)
                     });
                 };
                 if (kind == DeviceVisualKind.Keyboard)
