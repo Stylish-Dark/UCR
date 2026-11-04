@@ -458,6 +458,8 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.Measure(fullViewport);
                 page.Arrange(new Rect(new Point(0, 0), fullViewport));
                 page.UpdateLayout();
+                CaptureWorkspacePreview(page, 1440, 900,
+                    "UCR-workspace-multi-expanded-preview.png", 1020, 860);
                 var firstVirtualizedRow = longList.ItemContainerGenerator.ContainerFromIndex(0)
                     as ListViewItem;
                 Assert.That(firstVirtualizedRow, Is.Not.Null);
@@ -470,6 +472,16 @@ namespace HidWizards.UCR.Tests.UiTests
                 var secondTop = secondVirtualizedRow.TranslatePoint(new Point(0, 0), virtualPanel).Y;
                 Assert.That(secondTop, Is.GreaterThanOrEqualTo(firstBottom - 1),
                     "An expanded editor must never paint beneath the next mapping header.");
+                var firstEditor = FindVisualChildren<MappingCardControl>(firstVirtualizedRow)
+                    .FirstOrDefault(card => card.InspectorMode);
+                Assert.That(firstEditor, Is.Not.Null);
+                var editorHost = firstEditor.FindName("ExpandedBodyHost") as ContentControl;
+                Assert.That(editorHost, Is.Not.Null);
+                var editorBottom = editorHost.TranslatePoint(
+                    new Point(0, editorHost.ActualHeight), firstVirtualizedRow).Y;
+                Assert.That(editorBottom,
+                    Is.LessThanOrEqualTo(firstVirtualizedRow.ActualHeight + 1),
+                    "All expanded editor content must fit within its own mapping row.");
                 var virtualizedRowHeight = firstVirtualizedRow.ActualHeight;
 
                 // The existing drag/reorder logic requires all concrete row slots.
