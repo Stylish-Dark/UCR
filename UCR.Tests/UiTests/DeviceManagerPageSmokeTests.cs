@@ -1010,6 +1010,59 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void OrdinaryButtonInputEditorOffersFunctionalAddInputWithoutDisabledDelete()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            context.PluginManager.Plugins = new List<Plugin>
+            {
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton()
+            };
+            var profile = context.ProfilesManager.CreateProfile("Ordinary button QC", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            profile.AddMapping("Button").AddPlugin(
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+            var vm = new ProfileViewModel(profile);
+            try
+            {
+                var mapping = vm.MappingsList.Single();
+                var card = new MappingCardControl
+                {
+                    InspectorMode = true,
+                    InlineWorkspaceMode = true,
+                    DataContext = mapping
+                };
+                card.Measure(new Size(1050, 900));
+                card.Arrange(new Rect(0, 0, 1050, 900));
+                card.UpdateLayout();
+                var add = FindVisualChildren<Button>(card).Single(button =>
+                    string.Equals(button.Content as string, "+ Add input", StringComparison.Ordinal));
+                Assert.That(add.Visibility, Is.EqualTo(Visibility.Visible));
+                Assert.That(FindVisualChildren<Button>(card).Any(button =>
+                    string.Equals(button.ToolTip as string,
+                        "Remove input condition", StringComparison.Ordinal) &&
+                    button.Visibility == Visibility.Visible), Is.False,
+                    "A primary button binding must not show an inactive remove control.");
+                add.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, add));
+                Assert.That(mapping.InputConditions.Single().OrdinaryInputs.Count, Is.EqualTo(2),
+                    "Add input must add an actual second AND binding, not a decorative button.");
+                card.Measure(new Size(1050, 900));
+                card.Arrange(new Rect(0, 0, 1050, 900));
+                card.UpdateLayout();
+                Assert.That(FindVisualChildren<Button>(card).Any(button =>
+                    string.Equals(button.ToolTip as string,
+                        "Remove input condition", StringComparison.Ordinal) &&
+                    button.Visibility == Visibility.Visible), Is.True,
+                    "The extra input must expose a real removal action.");
+            }
+            finally
+            {
+                vm.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void DirectionalButtonSlotsShowSpatialPresetAndAccessibleOuterOptions()
         {
             EnsureApplicationResources();
