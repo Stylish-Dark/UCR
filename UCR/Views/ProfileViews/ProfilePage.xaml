@@ -336,7 +336,7 @@
                     </StackPanel>
                 </Border>
                 <Grid x:Name="SidebarGrid" Grid.Row="1" Grid.Column="1"
-                       Margin="12 8 12 8" Visibility="Collapsed" Panel.ZIndex="2">
+                       Margin="12 8 12 8" Visibility="Visible" Panel.ZIndex="2">
                     <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
