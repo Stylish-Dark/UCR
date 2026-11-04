@@ -56,8 +56,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
         public Visibility QuickInvertVisibility =>
-            InvertProperty?.PropertyType == typeof(bool) && InvertProperty.CanWrite
-                ? Visibility.Visible : Visibility.Collapsed;
+            MappingViewModel.InputIsFullStick && MappingViewModel.OutputIsButton
+                ? Visibility.Collapsed
+                : InvertProperty?.PropertyType == typeof(bool) && InvertProperty.CanWrite
+                    ? Visibility.Visible : Visibility.Collapsed;
         public bool QuickInvert
         {
             get => QuickInvertVisibility == Visibility.Visible &&
@@ -139,7 +141,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<PluginPropertyGroupViewModel> PluginPropertyGroups { get; set; }
-        public bool CanRemove => !MappingViewModel.ProfileViewModel.Profile.IsActive() && !MappingViewModel.IsTypedDirectionalMapping && MappingViewModel.Plugins.Count > 1;
+        public bool CanRemove => !MappingViewModel.ProfileViewModel.Profile.IsActive() &&
+            MappingViewModel.Plugins.Count > 1 &&
+            (!MappingViewModel.IsTypedDirectionalMapping || !MappingViewModel.OutputIsFullStick);
         public bool CanAddFilter => !MappingViewModel.ProfileViewModel.Profile.IsActive();
         public ObservableCollection<FilterViewModel> Filters { get; set; }
         private bool _editorInitialized;
