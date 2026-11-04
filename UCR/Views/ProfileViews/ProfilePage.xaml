@@ -341,6 +341,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
@@ -509,9 +510,74 @@
                         </Expander>
                     </Border>
 
-                    <Border x:Name="ProfileDevicesPanel" Grid.Row="2" Margin="0 8 0 0" Background="#202020"
+                    <Border x:Name="CompoundPresetsPanel" Grid.Row="2" Margin="0 8 0 0"
+                            Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
+                        <Expander IsExpanded="False" HorizontalContentAlignment="Stretch"
+                                  Background="#202020">
+                            <Expander.Header>
+                                <Border Background="#242424"
+                                        BorderBrush="{DynamicResource PrimaryHueMidBrush}"
+                                        BorderThickness="3 0 0 0" Padding="10 8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="GamepadVariant" Width="16" Height="16"
+                                            Foreground="{DynamicResource PrimaryHueLightBrush}" Margin="0 0 7 0"/>
+                                        <TextBlock Text="4-Way presets" FontSize="16"
+                                            FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding CompoundPresetItems.Count, StringFormat={}  {0}}"
+                                            FontSize="12" Opacity="0.45" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </Expander.Header>
+                            <StackPanel Margin="8 5">
+                                <Button Content="+ New preset" Height="30" HorizontalAlignment="Left"
+                                        Padding="9 3" Margin="0 0 0 5"
+                                        IsEnabled="{Binding CanEditProfile}"
+                                        Click="AddCompoundPreset_OnClick"
+                                        Style="{StaticResource UcrProfileActionButton}"/>
+                                <ListBox x:Name="CompoundPresetList" MaxHeight="150"
+                                         ItemsSource="{Binding CompoundPresetItems}"
+                                         Background="Transparent" BorderThickness="0"
+                                         ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0 2 0 3">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"/>
+                                                    <StackPanel Orientation="Horizontal" Opacity="0.7">
+                                                        <TextBlock Text="{Binding Keys[0]}" FontSize="10"/>
+                                                        <TextBlock Text=" · " FontSize="10"/>
+                                                        <TextBlock Text="{Binding Keys[1]}" FontSize="10"/>
+                                                        <TextBlock Text=" · " FontSize="10"/>
+                                                        <TextBlock Text="{Binding Keys[2]}" FontSize="10"/>
+                                                        <TextBlock Text=" · " FontSize="10"/>
+                                                        <TextBlock Text="{Binding Keys[3]}" FontSize="10"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                                <Button Grid.Column="1" Content="Edit" Padding="5 2" Margin="3 0"
+                                                        Height="27" Click="EditCompoundPreset_OnClick"
+                                                        Style="{StaticResource UcrProfileActionButton}"
+                                                        ToolTip="Edit this 4-Way preset"/>
+                                                <Button Grid.Column="2" Content="×" Padding="4 1" Margin="0 0 1 0"
+                                                        Height="27" Width="27" Click="RemoveCompoundPreset_OnClick"
+                                                        ToolTip="Delete this 4-Way preset"
+                                                        Style="{StaticResource UcrDeleteItemButton}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+                        </Expander>
+                    </Border>
+
+                    <Border x:Name="ProfileDevicesPanel" Grid.Row="3" Margin="0 8 0 0" Background="#202020"
                             BorderBrush="#383838" BorderThickness="1" CornerRadius="4" VerticalAlignment="Top">
-                        <Expander x:Name="ProfileDevicesExpander" IsExpanded="True" HorizontalContentAlignment="Stretch"
+                        <Expander x:Name="ProfileDevicesExpander" IsExpanded="True" ToolTip="Expand or collapse configured devices"
+                                  HorizontalContentAlignment="Stretch"
                                   VerticalAlignment="Top" Background="#202020">
                             <Expander.Header>
                                 <Border Background="#242424" BorderBrush="{DynamicResource PrimaryHueMidBrush}" BorderThickness="3 0 0 0" Padding="10 7">
