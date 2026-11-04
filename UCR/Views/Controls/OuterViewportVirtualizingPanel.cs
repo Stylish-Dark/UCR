@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using System.Windows.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -26,6 +28,8 @@ namespace HidWizards.UCR.Views.Controls
 
         private readonly Dictionary<object, RowHeight> _heights = new Dictionary<object, RowHeight>();
         private readonly Dictionary<int, UIElement> _realized = new Dictionary<int, UIElement>();
+        private readonly HashSet<MappingViewModel> _observedMappings = new HashSet<MappingViewModel>();
+        private bool _remeasureScheduled;
         private ScrollViewer _outerViewer;
         private double _lastWidth;
         private bool _itemsDirty = true;
@@ -42,6 +46,9 @@ namespace HidWizards.UCR.Views.Controls
             {
                 if (_outerViewer != null) _outerViewer.ScrollChanged -= OuterViewerOnScrollChanged;
                 _outerViewer = null;
+                foreach (var mapping in _observedMappings)
+                    mapping.PropertyChanged -= MappingOnPropertyChanged;
+                _observedMappings.Clear();
             };
         }
 
@@ -63,6 +70,35 @@ namespace HidWizards.UCR.Views.Controls
             if (e.VerticalChange != 0 || e.ViewportHeightChange != 0 ||
                 e.ViewportWidthChange != 0)
                 InvalidateMeasure();
+        }
+
+        // Expanded mapping editors are loaded lazily. Their final measured size can
+        // change after the parent virtualization pass, so actively remeasure the
+        // whole row layout instead of leaving later card headers at stale offsets.
+        private void ScheduleRemeasure()
+        {
+            if (_remeasureScheduled) return;
+            _remeasureScheduled = true;
+            Dispatcher.BeginInvoke((Action)(() =>
+            {
+                _remeasureScheduled = false;
+                if (IsLoaded) InvalidateMeasure();
+            }), DispatcherPriority.Loaded);
+        }
+
+        private void MappingOnPropertyChanged(object sender, PropertyChangedEventArgs args)
+        {
+            if (args?.PropertyName != nameof(MappingViewModel.IsExpanded) &&
+                args?.PropertyName != nameof(MappingViewModel.CollapsedInputRows)) return;
+            var mapping = sender as MappingViewModel;
+            if (mapping != null) _heights.Remove(mapping);
+            ScheduleRemeasure();
+        }
+
+        private void RealizedRowOnSizeChanged(object sender, SizeChangedEventArgs args)
+        {
+            if (Math.Abs(args.NewSize.Height - args.PreviousSize.Height) > 0.5)
+                ScheduleRemeasure();
         }
 
         protected override void OnItemsChanged(object sender, ItemsChangedEventArgs args)
@@ -120,6 +156,18 @@ namespace HidWizards.UCR.Views.Controls
                 var valid = new HashSet<object>(items.Cast<object>());
                 foreach (var obsolete in _heights.Keys.Where(item => !valid.Contains(item)).ToList())
                     _heights.Remove(obsolete);
+                var current = new HashSet<MappingViewModel>(
+                    items.Cast<object>().OfType<MappingViewModel>());
+                foreach (var stale in _observedMappings.Where(mapping => !current.Contains(mapping)).ToList())
+                {
+                    stale.PropertyChanged -= MappingOnPropertyChanged;
+                    _observedMappings.Remove(stale);
+                }
+                foreach (var mapping in current.Where(mapping => !_observedMappings.Contains(mapping)))
+                {
+                    mapping.PropertyChanged += MappingOnPropertyChanged;
+                    _observedMappings.Add(mapping);
+                }
                 _lastItemCount = items.Count;
                 _itemsDirty = false;
             }
@@ -137,6 +185,8 @@ namespace HidWizards.UCR.Views.Controls
                 var position = generator.GeneratorPositionFromIndex(entry.Key);
                 if (position.Index >= 0 && position.Offset == 0)
                     generator.Remove(position, 1);
+                if (entry.Value is FrameworkElement removed)
+                    removed.SizeChanged -= RealizedRowOnSizeChanged;
                 RemoveInternalChildRange(childIndex, 1);
                 _realized.Remove(entry.Key);
             }
@@ -161,6 +211,11 @@ namespace HidWizards.UCR.Views.Controls
                         if (insertAt == InternalChildren.Count) AddInternalChild(child);
                         else InsertInternalChild(insertAt, child);
                         generator.PrepareItemContainer(child);
+                    }
+                    if (child is FrameworkElement realized)
+                    {
+                        realized.SizeChanged -= RealizedRowOnSizeChanged;
+                        realized.SizeChanged += RealizedRowOnSizeChanged;
                     }
                     _realized[index] = child;
                 }
