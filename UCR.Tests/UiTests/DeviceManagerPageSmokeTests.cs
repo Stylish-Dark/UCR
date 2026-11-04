@@ -387,10 +387,18 @@ namespace HidWizards.UCR.Tests.UiTests
                 // Keep sidebar WPF verification on the same working dispatcher
                 // as the established real-workspace test. A second STA-created
                 // ProfilePage can access theme resources owned by another thread.
+                var sidebar = page.FindName("SidebarGrid") as Grid;
+                Assert.That(sidebar, Is.Not.Null);
+                Assert.That(sidebar.Visibility, Is.EqualTo(Visibility.Visible),
+                    "The right sidebar must actually be visible, not just exist in XAML.");
+                Assert.That(sidebar.ActualWidth, Is.GreaterThan(300),
+                    "A collapsed or zero-width sidebar is not a usable devices/presets panel.");
                 var presetPanel = page.FindName("CompoundPresetsPanel") as Border;
                 var devicesExpander = page.FindName("ProfileDevicesExpander") as Expander;
                 Assert.That(presetPanel, Is.Not.Null);
                 Assert.That(devicesExpander, Is.Not.Null);
+                Assert.That(presetPanel.IsVisible, Is.True,
+                    "The new presets panel must be rendered on screen.");
                 var presetExpander = FindVisualChildren<Expander>(presetPanel).Single();
                 Assert.That(presetExpander.IsExpanded, Is.False);
                 presetExpander.IsExpanded = true;
