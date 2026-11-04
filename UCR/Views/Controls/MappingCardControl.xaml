@@ -360,11 +360,13 @@
             <DockPanel Width="116" Height="46" Margin="2" LastChildFill="True">
                 <Button DockPanel.Dock="Left" Width="25" Height="46" Padding="0"
                         Content="⋮" FontSize="17" Click="SpatialInputOptions_OnClick"
+                        IsEnabled="{Binding BindingEnabled}"
                         ToolTip="Binding categories, clearing and blocking"
                         Visibility="{Binding MenuOnLeft, Converter={StaticResource CompoundVisibilityConverter}}"
                         Foreground="#EEEEEE" Background="#303030" BorderBrush="#515151"/>
                 <Button DockPanel.Dock="Right" Width="25" Height="46" Padding="0"
                         Content="⋮" FontSize="17" Click="SpatialInputOptions_OnClick"
+                        IsEnabled="{Binding BindingEnabled}"
                         ToolTip="Binding categories, clearing and blocking"
                         Visibility="{Binding MenuOnRight, Converter={StaticResource CompoundVisibilityConverter}}"
                         Foreground="#EEEEEE" Background="#303030" BorderBrush="#515151"/>
@@ -408,11 +410,13 @@
                                             <Button Content="{Binding CompoundDeviceLabel}"
                                                     Visibility="{Binding GroupDevicePickerVisibility}"
                                                     FontSize="11" Height="30" MaxWidth="124" Padding="7 2"
+                                                    IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
                                                     Margin="0 0 6 0" Click="CompoundDevice_OnClick"
                                                     ToolTip="Choose the physical input device for this OR set"
                                                     Foreground="#FFFFFF" Background="#303030" BorderBrush="#59709A"/>
                                             <Button Content="Presets ▾" FontSize="12" Padding="8 3"
                                                     Margin="0 0 9 0" Click="CompoundPreset_OnClick"
+                                                    IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
                                                     Visibility="{Binding CompoundVisibility}"
                                                     ToolTip="Bind this complete input set from a keyboard or controller preset"/>
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
@@ -485,6 +489,7 @@
                                                     Height="46" Margin="2" Padding="5 2"
                                                     Foreground="#FFFFFF" Background="#164AA7"
                                                     BorderBrush="#397AF0" Click="CompoundPreset_OnClick"
+                                                    IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
                                                     ToolTip="Choose WASD, arrows, D-pad, joystick or face-button compound control"/>
                                             <ContentControl Grid.Row="1" Grid.Column="2" Tag="→"
                                                 Content="{Binding RightDirection}"
