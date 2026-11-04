@@ -89,6 +89,51 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void DeviceSelectorPreservesChosenDeviceAcrossListRebuild()
+        {
+            EnsureApplicationResources();
+            var keyboard = new FakeCompactDeviceItem
+            {
+                Title = "Keyboard",
+                Visual = DeviceVisualCatalog.Describe(
+                    new Device("Keyboard", "Core_Interception", "kbd", 0), DeviceIoType.Input)
+            };
+            var controller = new FakeCompactDeviceItem
+            {
+                Title = "Xbox 360 Controller",
+                Visual = DeviceVisualCatalog.Describe(
+                    new Device("Xbox 360 Controller", "SharpDX_XInput", "xinput", 0),
+                    DeviceIoType.Input)
+            };
+            var model = new FakeCompactBinding
+            {
+                Devices = new[] { keyboard }, SelectedDevice = keyboard
+            };
+            var control = new CompactInputBindingControl { DataContext = model };
+            control.Measure(new Size(370, 55));
+            control.Arrange(new Rect(0, 0, 370, 55));
+            control.UpdateLayout();
+
+            var selector = (ComboBox)control.FindName("DeviceSelectionBox");
+            Assert.That(selector.SelectedItem, Is.SameAs(keyboard));
+            // Reloading the available devices may transiently clear ComboBox
+            // selection, but must not overwrite the authoritative VM value.
+            model.Devices = new[] { controller };
+            control.UpdateLayout();
+            Assert.That(model.SelectedDevice, Is.SameAs(keyboard));
+            model.SelectedDevice = controller;
+            control.UpdateLayout();
+            Assert.That(selector.SelectedItem, Is.SameAs(controller),
+                "A valid new device must become the closed selector's selection.");
+            selector.ApplyTemplate();
+            var glyph = (DeviceSymbolControl)selector.Template.FindName(
+                "ClosedDeviceGlyph", selector);
+            Assert.That(glyph.SymbolText, Is.EqualTo(controller.Visual.SymbolText),
+                "The closed dropdown must show the selected device's glyph, never blank.");
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void FilterSelectorOpensWithoutMissingXamlResources()
         {
             EnsureApplicationResources();
@@ -148,10 +193,31 @@ namespace HidWizards.UCR.Tests.UiTests
             public DeviceVisualDescriptor Visual { get; set; }
         }
 
-        private sealed class FakeCompactBinding
+        private sealed class FakeCompactBinding : System.ComponentModel.INotifyPropertyChanged
         {
-            public IList<FakeCompactDeviceItem> Devices { get; set; }
-            public FakeCompactDeviceItem SelectedDevice { get; set; }
+            private IList<FakeCompactDeviceItem> _devices;
+            private FakeCompactDeviceItem _selectedDevice;
+            public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
+            public IList<FakeCompactDeviceItem> Devices
+            {
+                get => _devices;
+                set
+                {
+                    _devices = value;
+                    PropertyChanged?.Invoke(this,
+                        new System.ComponentModel.PropertyChangedEventArgs(nameof(Devices)));
+                }
+            }
+            public FakeCompactDeviceItem SelectedDevice
+            {
+                get => _selectedDevice;
+                set
+                {
+                    _selectedDevice = value;
+                    PropertyChanged?.Invoke(this,
+                        new System.ComponentModel.PropertyChangedEventArgs(nameof(SelectedDevice)));
+                }
+            }
             public bool BindingEnabled => true;
             public bool ShowButtonPreview => false;
             public Visibility ShowBlock => Visibility.Collapsed;
