@@ -1019,7 +1019,8 @@
                                                                             <Button Padding="0" BorderThickness="0" Background="Transparent" Cursor="Hand"
                                                                                     Focusable="True" Margin="2 3 2 5" MinHeight="48"
                                                                                     ClipToBounds="False" ToolTip="{Binding ToolTip}"
-                                                                                    Click="QuickBindWorkspaceOutput_OnClick">
+                                                                                    Click="QuickBindWorkspaceOutput_OnClick"
+                                                                                    PreviewMouseRightButtonDown="QuickBindWorkspaceOutput_OnPreviewMouseRightButtonDown">
                                                                                 <controls:ControlGlyphControl Kind="{Binding ControlKind}"
                                                                                                               AccentBrush="{Binding ControlBrush}"
                                                                                                               Label="{Binding ControlLabel}"
