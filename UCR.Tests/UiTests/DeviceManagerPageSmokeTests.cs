@@ -396,9 +396,14 @@ namespace HidWizards.UCR.Tests.UiTests
                     Assert.That(chevronX + collapsedChevron.ActualWidth, Is.LessThanOrEqualTo(row.ActualWidth + 1),
                         "Chevron must remain within the mapping row's right edge.");
                 }
+                Assert.That(MappingCardControl.RequiresDeleteConfirmation(mapping), Is.True,
+                    "A mapping with a name must require deletion confirmation even if no controls are bound.");
+                // This UI smoke test exercises the delete event, not a modal MessageBox.
+                // An unnamed, unbound mapping can be deleted without confirmation.
+                mapping.Mapping.Title = string.Empty;
                 remove.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, remove));
                 Assert.That(profile.Mappings.Count, Is.EqualTo(0),
-                    "The collapsed-row Delete button must actually remove the mapping.");
+                    "The collapsed-row Delete button must actually remove the unnamed mapping.");
 
                 // Exercise the real nested workspace with enough rows to exceed a
                 // viewport. This runs on the same WPF dispatcher as the established
