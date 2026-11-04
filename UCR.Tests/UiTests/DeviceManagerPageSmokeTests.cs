@@ -837,6 +837,62 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void DirectionalButtonSlotsShowSpatialPresetAndAccessibleOuterOptions()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            context.PluginManager.Plugins = new List<Plugin>
+            {
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton(),
+                new HidWizards.UCR.Plugins.Remapper.AxisToAxis()
+            };
+            var profile = context.ProfilesManager.CreateProfile("Spatial directions", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            profile.AddMapping("Spatial").AddPlugin(
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+            var vm = new ProfileViewModel(profile);
+            try
+            {
+                var mapping = vm.MappingsList.Single();
+                Assert.That(mapping.SetOutputRepresentation(2), Is.True);
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(2));
+                var card = new MappingCardControl
+                {
+                    InspectorMode = true,
+                    InlineWorkspaceMode = true,
+                    DataContext = mapping
+                };
+                card.Measure(new Size(1050, 1200));
+                card.Arrange(new Rect(0, 0, 1050, 1200));
+                card.UpdateLayout();
+                var buttons = FindVisualChildren<Button>(card).ToList();
+                Assert.That(buttons.Any(button => string.Equals(button.Content as string,
+                    "Preset ▾", StringComparison.Ordinal)), Is.True,
+                    "The two independent directions surround a central preset.");
+                Assert.That(buttons.Count(button => string.Equals(button.ToolTip as string,
+                    "Binding categories, clearing and blocking", StringComparison.Ordinal)), Is.EqualTo(2),
+                    "Every active direction keeps its own full binding-options menu.");
+                Assert.That(buttons.Any(button => string.Equals(button.ToolTip as string,
+                    "Choose the physical input device for this OR set", StringComparison.Ordinal)), Is.True,
+                    "Spatial bindings must retain their input device selector.");
+
+                Assert.That(mapping.SetOutputRepresentation(1), Is.True);
+                card.Measure(new Size(1050, 1200));
+                card.Arrange(new Rect(0, 0, 1050, 1200));
+                card.UpdateLayout();
+                Assert.That(FindVisualChildren<Button>(card).Count(button =>
+                    string.Equals(button.ToolTip as string,
+                        "Binding categories, clearing and blocking", StringComparison.Ordinal)), Is.EqualTo(4),
+                    "Four-way Button input must expose four individually assignable directions.");
+            }
+            finally
+            {
+                vm.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void TriggerAndAxisUseDifferentCapacitiesWithoutLockingTypeSelectors()
         {
             EnsureApplicationResources();
