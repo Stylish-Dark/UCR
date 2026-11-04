@@ -215,9 +215,24 @@ namespace HidWizards.UCR.Views.Controls
             var button = sender as Button;
             var descriptor = button?.DataContext as BindingVisualDescriptor;
             var mapping = DataContext as MappingViewModel;
-            var binding = mapping?.ResolveCollapsedBinding(descriptor, DeviceIoType.Input)?.DeviceBinding;
-            if (binding?.IsInBindMode != true) return;
-            binding.CancelBindMode();
+            if (mapping == null || descriptor == null) return;
+            var input = mapping.ResolveCollapsedBinding(descriptor, DeviceIoType.Input)?.DeviceBinding;
+            if (input?.IsInBindMode == true)
+            {
+                input.CancelBindMode();
+                e.Handled = true;
+                return;
+            }
+            var outputLane = false;
+            for (DependencyObject current = button; current != null; current = VisualTreeHelper.GetParent(current))
+            {
+                var items = current as ItemsControl;
+                if ((items?.Tag as string) == "Output") { outputLane = true; break; }
+                if ((items?.Tag as string) == "Input") break;
+            }
+            if (!outputLane || !mapping.ButtonsEnabled) return;
+            var binding = mapping.ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
+            ShowOutputCategoryMenuForBinding(binding, button);
             e.Handled = true;
         }
 
@@ -377,6 +392,21 @@ namespace HidWizards.UCR.Views.Controls
             };
         }
 
+        private void FilterOutput_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mapping = DataContext as MappingViewModel;
+            if (mapping?.ButtonsEnabled != true) return;
+            var analogue = mapping.Mapping.DeviceBindings.Any(input =>
+                input.InputExpressionInputKind == 3);
+            var choices = mapping.GetCompatiblePluginOptions().Where(option =>
+                string.Equals(option.OutputType, "Filter", StringComparison.OrdinalIgnoreCase));
+            var selected = PreferredOutputImplementation(choices, analogue);
+            if (selected == null || !mapping.ChangeAllOutputTypes(selected.Plugin))
+                DarkMessageBox.Show("A compatible Filter output is unavailable.",
+                    "Cannot select Filter", MessageBoxButton.OK, MessageBoxImage.Information);
+            mapping.RefreshRepresentationSelections();
+        }
+
         private void InputRepresentation_OnClick(object sender, RoutedEventArgs e)
         {
             var vm = DataContext as MappingViewModel;
@@ -398,6 +428,22 @@ namespace HidWizards.UCR.Views.Controls
             int value;
             if (vm == null || !int.TryParse((sender as FrameworkElement)?.Tag as string, out value))
                 return;
+            // Filter is a destination category, not a physical device or a
+            // directional representation. Switching back to Button must replace
+            // the Filter plugin even when the persisted representation is still 3.
+            if (vm.OutputIsFilter && value == 3)
+            {
+                var choices = vm.GetCompatiblePluginOptions().Where(option =>
+                    string.Equals(option.OutputType, "Button", StringComparison.OrdinalIgnoreCase));
+                var analogue = vm.Mapping.DeviceBindings.Any(binding =>
+                    binding.InputExpressionInputKind == 3);
+                var buttonType = PreferredOutputImplementation(choices, analogue);
+                if (buttonType != null && vm.ChangeAllOutputTypes(buttonType.Plugin))
+                {
+                    vm.RefreshRepresentationSelections();
+                    return;
+                }
+            }
             if (!vm.SetOutputRepresentation(value))
             {
                 DarkMessageBox.Show("The output representation could not be prepared. Check the available remapper plugins.",
@@ -741,6 +787,58 @@ namespace HidWizards.UCR.Views.Controls
             if (menu.Items.Count == 0)
                 menu.Items.Add(new MenuItem { Header = "No compatible output types", IsEnabled = false });
             menu.IsOpen = true;
+        }
+
+        // Shared categorical destination picker. The header right-click and
+        // the binding ellipsis must expose the same category choices.
+        internal static void ShowOutputCategoryMenu(MappingViewModel mapping,
+            FrameworkElement anchor, PluginViewModel output = null)
+        {
+            if (mapping?.ButtonsEnabled != true || anchor == null) return;
+            var analogue = mapping.Mapping.DeviceBindings.Any(binding =>
+                binding.InputExpressionInputKind == 3);
+            var menu = CreateDarkContextMenu(anchor);
+            menu.Placement = PlacementMode.Bottom;
+            foreach (var group in mapping.GetCompatiblePluginOptions()
+                .Where(option => IsPrimaryOutputCategory(option.OutputType))
+                .GroupBy(option => option.OutputType, StringComparer.OrdinalIgnoreCase))
+            {
+                var choice = PreferredOutputImplementation(group, analogue);
+                if (choice == null) continue;
+                var selected = choice;
+                var category = group.Key;
+                var item = new MenuItem
+                {
+                    Header = category,
+                    ToolTip = selected.Description,
+                    IsChecked = output == null
+                        ? mapping.Plugins.All(plugin => string.Equals(plugin.OutputType,
+                            category, StringComparison.OrdinalIgnoreCase))
+                        : string.Equals(output.OutputType, category, StringComparison.OrdinalIgnoreCase),
+                    Foreground = Brushes.White,
+                    Background = Brushes.Transparent,
+                    Padding = new Thickness(10, 6, 14, 6)
+                };
+                item.Click += (sender, args) =>
+                {
+                    if (output != null) mapping.ChangeOutputType(output, selected.Plugin);
+                    else mapping.ChangeAllOutputTypes(selected.Plugin);
+                    mapping.RefreshRepresentationSelections();
+                };
+                menu.Items.Add(item);
+            }
+            if (menu.Items.Count == 0)
+                menu.Items.Add(new MenuItem { Header = "No compatible output categories", IsEnabled = false });
+            menu.IsOpen = true;
+        }
+
+        internal void ShowOutputCategoryMenuForBinding(DeviceBindingViewModel binding,
+            FrameworkElement anchor)
+        {
+            var mapping = DataContext as MappingViewModel;
+            var output = mapping?.Plugins.FirstOrDefault(plugin => plugin.DeviceBindings
+                .Any(item => ReferenceEquals(item.DeviceBinding, binding?.DeviceBinding)));
+            ShowOutputCategoryMenu(mapping, anchor, output);
         }
 
         private void ChangeOutputType_OnClick(object sender, RoutedEventArgs e)
