@@ -141,9 +141,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<PluginPropertyGroupViewModel> PluginPropertyGroups { get; set; }
-        public bool CanRemove => !MappingViewModel.ProfileViewModel.Profile.IsActive() &&
+        public bool CanRemove =>
+            !MappingViewModel.ProfileViewModel.Profile.IsActive() &&
             MappingViewModel.Plugins.Count > 1 &&
-            (!MappingViewModel.IsTypedDirectionalMapping || !MappingViewModel.OutputIsFullStick);
+            // Typed cardinal output channels are required by the routing engine.
+            // Removing one would disable the entire 4-Way mapping, so only
+            // extra independently added output slots are individually removable.
+            (!MappingViewModel.IsTypedDirectionalMapping ||
+             MappingViewModel.Plugins.IndexOf(this) >=
+                MappingViewModel.Mapping.RequiredOutputBindingSlots);
         public bool CanAddFilter => !MappingViewModel.ProfileViewModel.Profile.IsActive();
         public ObservableCollection<FilterViewModel> Filters { get; set; }
         private bool _editorInitialized;
