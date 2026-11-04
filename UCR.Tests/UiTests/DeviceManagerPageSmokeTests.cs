@@ -461,6 +461,15 @@ namespace HidWizards.UCR.Tests.UiTests
                 var firstVirtualizedRow = longList.ItemContainerGenerator.ContainerFromIndex(0)
                     as ListViewItem;
                 Assert.That(firstVirtualizedRow, Is.Not.Null);
+                var secondVirtualizedRow = longList.ItemContainerGenerator.ContainerFromIndex(1)
+                    as ListViewItem;
+                Assert.That(secondVirtualizedRow, Is.Not.Null,
+                    "The next expanded row must be realized alongside the first.");
+                var firstBottom = firstVirtualizedRow.TranslatePoint(
+                    new Point(0, firstVirtualizedRow.ActualHeight), virtualPanel).Y;
+                var secondTop = secondVirtualizedRow.TranslatePoint(new Point(0, 0), virtualPanel).Y;
+                Assert.That(secondTop, Is.GreaterThanOrEqualTo(firstBottom - 1),
+                    "An expanded editor must never paint beneath the next mapping header.");
                 var virtualizedRowHeight = firstVirtualizedRow.ActualHeight;
 
                 // The existing drag/reorder logic requires all concrete row slots.
