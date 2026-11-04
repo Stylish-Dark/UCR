@@ -597,22 +597,9 @@ namespace HidWizards.UCR.Views.Controls
             int value;
             if (vm == null || !int.TryParse((sender as FrameworkElement)?.Tag as string, out value))
                 return;
-            // Filter is a destination category, not a physical device or a
-            // directional representation. Switching back to Button must replace
-            // the Filter plugin even when the persisted representation is still 3.
-            if (vm.OutputIsFilter && value == 3)
-            {
-                var choices = vm.GetCompatiblePluginOptions().Where(option =>
-                    string.Equals(option.OutputType, "Button", StringComparison.OrdinalIgnoreCase));
-                var analogue = vm.Mapping.DeviceBindings.Any(binding =>
-                    binding.InputExpressionInputKind == 3);
-                var buttonType = PreferredOutputImplementation(choices, analogue);
-                if (buttonType != null && vm.ChangeAllOutputTypes(buttonType.Plugin))
-                {
-                    vm.RefreshRepresentationSelections();
-                    return;
-                }
-            }
+            // Filter's selected type supersedes the persisted physical route.
+            // Returning to a type reconstructs or restores the correct output bank,
+            // including the case where its representation number did not change.
             if (!vm.SetOutputRepresentation(value))
             {
                 DarkMessageBox.Show("The output representation could not be prepared. Check the available remapper plugins.",
