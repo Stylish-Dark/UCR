@@ -749,6 +749,13 @@ namespace HidWizards.UCR.Tests.UiTests
                     digitalGroup.CompassInputUp.PhysicalBinding,
                     digitalGroup.CompassInputDown.PhysicalBinding
                 }.Distinct().Count(), Is.EqualTo(4));
+                // The conversion initially retains two old analogue assignments.
+                // Prepare four *digital* physical directions, as a keyboard/D-pad
+                // preset does, before asserting the four functional NOT switches.
+                foreach (var physicalDirection in digitalGroup.CoreInputs.ToArray())
+                    physicalDirection.InputExpressionInputKind = 0;
+                Assert.That(mapping.InputConditions.Single().CoreInputs.All(binding =>
+                    binding.InputExpressionInputKind == 0), Is.True);
                 card.Measure(new Size(1050, 900));
                 card.Arrange(new Rect(0, 0, 1050, 900));
                 card.UpdateLayout();
