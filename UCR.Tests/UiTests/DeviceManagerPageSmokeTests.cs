@@ -388,6 +388,9 @@ namespace HidWizards.UCR.Tests.UiTests
                 // as the established real-workspace test. A second STA-created
                 // ProfilePage can access theme resources owned by another thread.
                 var sidebar = page.FindName("SidebarGrid") as Grid;
+                var sidebarScroll = page.FindName("SidebarScrollViewer") as ScrollViewer;
+                Assert.That(sidebarScroll, Is.Not.Null,
+                    "The right sidebar requires its own scroll surface for Devices.");
                 Assert.That(sidebar, Is.Not.Null);
                 Assert.That(sidebar.Visibility, Is.EqualTo(Visibility.Visible),
                     "The right sidebar must actually be visible, not just exist in XAML.");
@@ -412,6 +415,16 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(presetList.Items.Count, Is.EqualTo(1));
                 Assert.That(presetList.Visibility, Is.EqualTo(Visibility.Visible));
                 CaptureWorkspacePreview(page, 1440, 900, "UCR-profile-sidebar-presets-preview.png");
+                sidebarScroll.ScrollToBottom();
+                page.UpdateLayout();
+                Assert.That(sidebarScroll.ScrollableHeight, Is.GreaterThan(20),
+                    "Devices must remain reachable via vertical scrolling.");
+                var devicesPanel = page.FindName("ProfileDevicesPanel") as Border;
+                Assert.That(devicesPanel, Is.Not.Null);
+                Assert.That(devicesPanel.Visibility, Is.EqualTo(Visibility.Visible));
+                Assert.That(devicesPanel.ActualHeight, Is.GreaterThan(35));
+                CaptureWorkspacePreview(page, 1440, 900, "UCR-profile-sidebar-devices-preview.png");
+                sidebarScroll.ScrollToTop();
                 devicesExpander.IsExpanded = true;
                 presetExpander.IsExpanded = false;
                 page.UpdateLayout();
