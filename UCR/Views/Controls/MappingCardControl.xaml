@@ -935,6 +935,11 @@
                                         DataContext="{Binding Plugins[0].DeviceBindings[0]}"
                                         DeviceBinding="{Binding DeviceBinding}"
                                         ToolTip="{Binding DataContext.FourWayOutputDeviceLabel, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"/>
+                                    <Button Width="34" Height="34" Margin="12 0 0 0"
+                                            Style="{StaticResource UcrDeleteItemButton}"
+                                            Visibility="{Binding CompoundOutputRemoveVisibility}"
+                                            Click="RemoveCompoundOutput_OnClick"
+                                            ToolTip="Remove this 4-Way output slot"/>
 
                                 </StackPanel>
                                 <!-- 4-Way remains one logical destination even when
