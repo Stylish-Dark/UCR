@@ -181,10 +181,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public int ButtonPairColumns => CoreInputs.Count <= 1 ? 1 : 2;
         public bool IsSingleButton => IsButtonPair && CoreInputs.Count == 1;
         public Visibility SingleButtonVisibility => IsSingleButton ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility DirectionalButtonsVisibility => IsButtonPair && CoreInputs.Count > 1
+        public bool IsPlainAxisButtonPair => IsButtonPair && CoreInputs.Count == 2 &&
+            _owner?.InputIsButton == true && _owner.OutputIsAxis;
+        public Visibility PlainAxisButtonPairVisibility => IsPlainAxisButtonPair
             ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility GroupDevicePickerVisibility => IsSingleButton
-            ? Visibility.Collapsed : Visibility.Visible;
+        public Visibility DirectionalButtonsVisibility =>
+            IsButtonPair && CoreInputs.Count > 1 && !IsPlainAxisButtonPair
+                ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility GroupDevicePickerVisibility =>
+            IsSingleButton || IsPlainAxisButtonPair
+                ? Visibility.Collapsed : Visibility.Visible;
         private DeviceBindingViewModel Slot(int number) => CoreInputs.FirstOrDefault(input =>
             input.DeviceBinding.InputDirectionSlot == number);
         private bool IsVerticalTwoWay => CoreInputs.Count == 2 &&
@@ -351,7 +357,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public Visibility TypedDirectionalVisibility => IsTypedDirectionalMapping
             ? Visibility.Visible : Visibility.Collapsed;
         public Visibility LegacyOutputAddVisibility =>
-            !IsTypedDirectionalMapping || ((OutputIsButton || OutputIsTrigger) && DirectionalCapacity == 1)
+            !IsTypedDirectionalMapping || ((OutputIsButton || OutputIsTrigger) && DirectionalCapacity == 1) ||
+            (InputIsButton && OutputIsAxis && DirectionalCapacity == 2)
                 ? Visibility.Visible : Visibility.Collapsed;
         public int InputDirectionalSlotCount => Mapping.RequiredInputBindingSlots;
         public bool IsDigitalCompoundInput => IsCompoundInput && Mapping.CompoundDigitalInput;
