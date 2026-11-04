@@ -668,8 +668,9 @@
                                                         Click="InputNegated_OnClick"
                                                         Style="{StaticResource MappingNotToggle}"
                                                         ToolTip="Negate this AND condition"/>
-                                                    <Button Grid.Column="2" Content="×" Width="25" Height="30"
+                                                    <Button Grid.Column="2" Width="32" Height="30"
                                                         Margin="5 15 0 0" Padding="0"
+                                                        Style="{StaticResource UcrDeleteItemButton}"
                                                         Click="RemoveExpressionInput_OnClick"
                                                         ToolTip="Remove this AND input"/>
                                                 </Grid>
@@ -838,11 +839,6 @@
                                              IsChecked="{Binding InputIsAxis, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseInputAxis}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
-                                <RadioButton Content="↦" Tag="4"
-                                             ToolTip="Trigger input (one-sided axis)" Click="InputRepresentation_OnClick"
-                                             IsChecked="{Binding InputIsTrigger, Mode=OneWay}"
-                                             IsEnabled="{Binding CanChooseInputTrigger}"
-                                             Style="{StaticResource DirectionalTypeChoice}"/>
                                 <RadioButton Content="●" Tag="3"
                                              ToolTip="Button input" Click="InputRepresentation_OnClick"
                                              IsChecked="{Binding InputIsButton, Mode=OneWay}"
@@ -927,11 +923,6 @@
                                              ToolTip="Axis output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsAxis, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseOutputAxis}"
-                                             Style="{StaticResource DirectionalTypeChoice}"/>
-                                <RadioButton Content="↦" Tag="4"
-                                             ToolTip="Trigger output (one-sided axis)" Click="OutputRepresentation_OnClick"
-                                             IsChecked="{Binding OutputIsTrigger, Mode=OneWay}"
-                                             IsEnabled="{Binding CanChooseOutputTrigger}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                                 <RadioButton Content="●" Tag="3"
                                              ToolTip="Button output" Click="OutputRepresentation_OnClick"
@@ -1106,7 +1097,7 @@
                                                     <Button Style="{StaticResource UcrDeleteItemButton}"
                                                         Click="RemoveOutput_OnClick" IsEnabled="{Binding CanRemove}"
                                                         Visibility="{Binding CanRemove, Converter={StaticResource CompoundVisibilityConverter}}"
-                                                        ToolTip="Remove this output"/>
+                                                        ToolTip="Remove this output slot"/>
                                                 </StackPanel>
                                             </Grid>
                                             <StackPanel Orientation="Horizontal" Margin="0 5 0 0">
