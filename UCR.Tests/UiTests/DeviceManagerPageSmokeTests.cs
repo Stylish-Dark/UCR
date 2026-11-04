@@ -665,13 +665,17 @@ namespace HidWizards.UCR.Tests.UiTests
                 card.UpdateLayout();
 
                 var selectors = FindVisualChildren<RadioButton>(card)
-                    .Where(button => new[] { "1", "2", "3", "4" }
+                    .Where(button => new[] { "1", "2", "3", "5" }
                         .Contains(button.Tag as string) &&
                         ((button.ToolTip as string)?.Contains(" input") == true ||
                          (button.ToolTip as string)?.Contains(" output") == true))
                     .ToList();
-                Assert.That(selectors.Count, Is.EqualTo(8),
-                    "Each side exposes Button, Trigger, Axis and 4-Way.");
+                Assert.That(selectors.Count, Is.EqualTo(7),
+                    "Input has three types; output has four including Filter.");
+                Assert.That(selectors.Any(button => (button.ToolTip as string) ==
+                    "Trigger input (one-sided axis)" || (button.ToolTip as string) ==
+                    "Trigger output (one-sided axis)"), Is.False,
+                    "No Trigger type selector may remain.");
                 Assert.That(selectors.All(button => button.IsEnabled), Is.True,
                     "Unassigned choices must not be locked by current capability.");
                 Assert.That(selectors.Count(button => button.IsChecked == true), Is.EqualTo(2),
@@ -693,47 +697,20 @@ namespace HidWizards.UCR.Tests.UiTests
                     .Select(text => text.Text).ToList();
                 Assert.That(slotLabels, Does.Contain("4-Way"),
                     "The compound input must identify the selected 4-Way representation.");
-                // The full-stick source has two real physical axes, but four
-                // spatial faces. Opposite directions share the same axis.
-                var inputFaces = FindVisualChildren<ContentControl>(card)
-                    .Where(control => new[] { "CompassInputLeft", "CompassInputRight",
-                        "CompassInputUp", "CompassInputDown" }.Contains(control.Name))
-                    .ToDictionary(control => control.Name);
-                Assert.That(inputFaces.Count, Is.EqualTo(4),
-                    "Four directional faces must be arranged like a D-pad.");
-                Assert.That(Grid.GetColumn(inputFaces["CompassInputUp"]), Is.EqualTo(1));
-                Assert.That(Grid.GetRow(inputFaces["CompassInputUp"]), Is.EqualTo(0));
-                Assert.That(Grid.GetColumn(inputFaces["CompassInputLeft"]), Is.EqualTo(0));
-                Assert.That(Grid.GetRow(inputFaces["CompassInputLeft"]), Is.EqualTo(1));
-                Assert.That(Grid.GetColumn(inputFaces["CompassInputRight"]), Is.EqualTo(2));
-                Assert.That(Grid.GetRow(inputFaces["CompassInputRight"]), Is.EqualTo(1));
-                Assert.That(Grid.GetColumn(inputFaces["CompassInputDown"]), Is.EqualTo(1));
-                Assert.That(Grid.GetRow(inputFaces["CompassInputDown"]), Is.EqualTo(2));
-                var leftAxis = (DirectionalCompassSlotViewModel)inputFaces["CompassInputLeft"].Content;
-                var rightAxis = (DirectionalCompassSlotViewModel)inputFaces["CompassInputRight"].Content;
-                var upAxis = (DirectionalCompassSlotViewModel)inputFaces["CompassInputUp"].Content;
-                var downAxis = (DirectionalCompassSlotViewModel)inputFaces["CompassInputDown"].Content;
-                Assert.That(leftAxis.PhysicalBinding, Is.SameAs(rightAxis.PhysicalBinding),
-                    "Left and Right must target the same underlying X axis.");
-                Assert.That(upAxis.PhysicalBinding, Is.SameAs(downAxis.PhysicalBinding),
-                    "Up and Down must target the same underlying Y axis.");
-                Assert.That(leftAxis.PhysicalBinding, Is.Not.SameAs(upAxis.PhysicalBinding),
-                    "X and Y must remain distinct physical assignments.");
-                Assert.That(FindVisualChildren<Button>(card).Any(button =>
-                    button.Name == "CompassInputPreset"), Is.True,
-                    "The actual preset picker belongs in the centre of the D-pad.");
-                var directionalBindButtons = FindVisualChildren<Button>(card)
-                    .Where(button => button.DataContext is DirectionalCompassSlotViewModel)
-                    .ToList();
-                Assert.That(directionalBindButtons.Count, Is.EqualTo(4),
-                    "Each compass face must provide one real Bind control without an ellipsis.");
-                var digitalNegationToggles = FindVisualChildren<ToggleButton>(card)
-                    .Where(toggle => (toggle.ToolTip as string) == "Negate this digital direction")
-                    .ToList();
-                Assert.That(digitalNegationToggles.Count, Is.EqualTo(4));
-                Assert.That(digitalNegationToggles.All(toggle =>
-                    toggle.Visibility == Visibility.Collapsed), Is.True,
-                    "Analogue axes must not show nonfunctional digital NOT toggles.");
+                var logicalInput = mapping.InputConditions.Single();
+                Assert.That(logicalInput.CoreInputs.Count, Is.EqualTo(2),
+                    "The underlying axes are preserved within the single compound binding.");
+                var visibleCompound = FindVisualChildren<Button>(card)
+                    .Where(button => button.DataContext is InputConditionViewModel condition &&
+                        condition.IsCompound && button.Visibility == Visibility.Visible &&
+                        string.Equals(button.Content as string, condition.CompoundPrimaryLabel,
+                            StringComparison.Ordinal)).ToList();
+                Assert.That(visibleCompound.Count, Is.EqualTo(1),
+                    "4-Way exposes exactly one compound binding control.");
+                Assert.That(FindVisualChildren<ContentControl>(card).Count(control =>
+                    new[] { "CompassInputLeft", "CompassInputRight", "CompassInputUp",
+                        "CompassInputDown" }.Contains(control.Name)), Is.Zero,
+                    "The old four independent 4-Way Bind controls must not be visible or constructed.");
 
                 // All four destinations are D-pad positions, not stacked rows.
                 var outputFaces = FindVisualChildren<ContentControl>(card)
@@ -770,7 +747,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 }
                 Assert.That(FindVisualChildren<Button>(card).Any(button =>
                     string.Equals(button.ToolTip as string,
-                        "Choose the device for this 4-Way output", StringComparison.Ordinal) &&
+                        mapping.FourWayOutputDeviceLabel, StringComparison.Ordinal) &&
                     button.Visibility == Visibility.Visible), Is.True,
                     "The complete four-direction destination must expose device selection.");
                 Assert.That(FindVisualChildren<Button>(card).Any(button =>
@@ -807,23 +784,14 @@ namespace HidWizards.UCR.Tests.UiTests
                     .Where(toggle => (toggle.ToolTip as string) ==
                         "Negate this digital direction" &&
                         toggle.Visibility == Visibility.Visible).ToList();
-                Assert.That(visibleNotToggles.Count, Is.EqualTo(4),
-                    "Every digital D-pad direction requires its own working NOT toggle.");
-                var centrePreset = FindVisualChildren<Button>(card).Single(button =>
-                    button.Name == "CompassInputPreset");
-                var leftDirectionButton = FindVisualChildren<Button>(card).Single(button =>
-                    button.DataContext is DirectionalCompassSlotViewModel slot &&
-                    slot.Arrow == "←" && button.Content is StackPanel);
-                var rightDirectionButton = FindVisualChildren<Button>(card).Single(button =>
-                    button.DataContext is DirectionalCompassSlotViewModel slot &&
-                    slot.Arrow == "→" && button.Content is StackPanel);
-                var centreY = centrePreset.TranslatePoint(new Point(0, 0), card).Y;
-                var leftY = leftDirectionButton.TranslatePoint(new Point(0, 0), card).Y;
-                var rightY = rightDirectionButton.TranslatePoint(new Point(0, 0), card).Y;
-                Assert.That(Math.Abs(centreY - leftY), Is.LessThan(3),
-                    "The preset must align with the horizontal D-pad arms, even when NOT is visible.");
-                Assert.That(Math.Abs(centreY - rightY), Is.LessThan(3),
-                    "The right arm and centre must share an aligned top edge.");
+                Assert.That(visibleNotToggles.Count, Is.Zero,
+                    "A logical 4-Way binding does not expose four separate NOT switches.");
+                Assert.That(FindVisualChildren<Button>(card).Count(button =>
+                    button.DataContext is InputConditionViewModel condition &&
+                    condition.IsCompound && button.Visibility == Visibility.Visible &&
+                    string.Equals(button.Content as string, condition.CompoundPrimaryLabel,
+                        StringComparison.Ordinal)), Is.EqualTo(1),
+                    "Keyboard/D-pad presets are selected through one compound control.");
                 CaptureEditorPreview(card, 1050, "UCR-digital-dpad-preview.png");
             }
             finally
