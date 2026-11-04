@@ -973,7 +973,8 @@
                             </ItemsControl.Style>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="#292929" BorderBrush="#454545"
+                                    <Border x:Name="OutputBindingCardSurface"
+                                        Background="#292929" BorderBrush="#454545"
                                         BorderThickness="1" CornerRadius="3" Padding="5 4" Margin="0 0 0 3">
                                         <StackPanel>
                                             <TextBlock Text="{Binding DirectionalSlotLabel}"
