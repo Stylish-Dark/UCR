@@ -1179,6 +1179,62 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void FourWayToSingleButtonPreservesBoundInputsAsAndGuardsAndAllOutputs()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            context.PluginManager.Plugins = new List<Plugin>
+            {
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton(),
+                new HidWizards.UCR.Plugins.Remapper.AxisToAxis()
+            };
+            var profile = context.ProfilesManager.CreateProfile("Compound to single", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            profile.AddMapping("Preserve inputs").AddPlugin(
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+            var vm = new ProfileViewModel(profile);
+            try
+            {
+                var mapping = vm.MappingsList.Single();
+                Assert.That(mapping.SetInputRepresentation(1), Is.True);
+                Assert.That(mapping.SetOutputRepresentation(3), Is.True);
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(2));
+                var old = mapping.Mapping.DeviceBindings.ToList();
+                old[0].IsBound = true;
+                old[0].KeyValue = 31;
+                old[1].IsBound = true;
+                old[1].KeyValue = 32;
+                var outputs = mapping.Mapping.Plugins.ToList();
+
+                string error;
+                Assert.That(mapping.ConvertCompoundToSingleButton(out error),
+                    Is.True, error);
+                Assert.That(mapping.InputIsButton, Is.True);
+                Assert.That(mapping.Mapping.UseInputExpression, Is.True);
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(3),
+                    "Only a new primary input and two existing bound guards should remain.");
+                Assert.That(mapping.Mapping.DeviceBindings[0].IsBound, Is.False);
+                Assert.That(mapping.Mapping.DeviceBindings.Skip(1)
+                    .All(binding => binding.IsDirectionalAndCondition &&
+                        binding.IsBound && binding.InputDirectionSlot == 0), Is.True);
+                Assert.That(mapping.Mapping.DeviceBindings.Skip(1)
+                    .Select(binding => binding.KeyValue), Is.EquivalentTo(new[] { 31, 32 }));
+                Assert.That(mapping.Mapping.Plugins.Count, Is.EqualTo(outputs.Count));
+                Assert.That(mapping.Mapping.Plugins,
+                    Is.EquivalentTo(outputs),
+                    "Conversion must never discard the existing output destinations.");
+                Assert.That(mapping.Mapping.InputRepresentation, Is.Zero);
+                Assert.That(mapping.Mapping.OutputRepresentation, Is.Zero);
+                Assert.That(mapping.Mapping.DirectionalCapacity, Is.Zero);
+            }
+            finally
+            {
+                vm.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void DirectionalButtonSlotsShowSpatialPresetAndAccessibleOuterOptions()
         {
             EnsureApplicationResources();
