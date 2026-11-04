@@ -72,16 +72,27 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool IsButtonPair => IsTypedDirectional && !IsCompound;
         public Visibility CompoundVisibility => IsCompound ? Visibility.Visible : Visibility.Collapsed;
         public Visibility ButtonPairVisibility => IsButtonPair ? Visibility.Visible : Visibility.Collapsed;
-        public string CompoundSummary => !IsCompound ? string.Empty :
-            string.Join("  /  ", Inputs.Select(input => input.DeviceBinding.IsBound
-                ? input.CompactBindButtonText : "—"));
+        public string CompoundSummary
+        {
+            get
+            {
+                if (!IsCompound) return string.Empty;
+                if (!Inputs.Any(input => input.DeviceBinding.IsBound))
+                    return _owner?.InputIsFullStick == true ? "Choose stick / D-pad ▾"
+                        : _owner?.InputIsTrigger == true ? "Choose trigger ▾" : "Choose axis ▾";
+                return string.Join("  /  ", Inputs.Select(input => input.DeviceBinding.IsBound
+                    ? input.CompactBindButtonText : "—"));
+            }
+        }
         public string CompoundDeviceLabel
         {
             get
             {
-                var selectedGuids = Inputs.Where(input => input.DeviceBinding != null)
+                var assigned = Inputs.Where(input => input.DeviceBinding?.IsBound == true).ToList();
+                var source = assigned.Count > 0 ? assigned : Inputs.ToList();
+                var selectedGuids = source.Where(input => input.DeviceBinding != null)
                     .Select(input => input.DeviceBinding.DeviceConfigurationGuid)
-                    .Distinct().ToList();
+                    .Where(guid => guid != Guid.Empty).Distinct().ToList();
                 if (selectedGuids.Count > 1) return "Mixed devices ▾";
                 var guid = selectedGuids.FirstOrDefault();
                 if (guid == Guid.Empty) return "Any device ▾";
@@ -218,11 +229,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool OutputIsTrigger => Mapping.EffectiveOutputRepresentation == 4;
         public bool IsCompoundOutput => DirectionalCapacity == 4 &&
             Mapping.EffectiveOutputRepresentation == 1;
-        public string CompoundOutputSummary => Plugins == null ? "Unassigned" :
-            string.Join("  /  ", Plugins.SelectMany(plugin => plugin.DeviceBindings)
-                .Where(binding => binding.DeviceBinding.DeviceIoType == DeviceIoType.Output)
-                .Select(binding => binding.DeviceBinding.IsBound
-                    ? binding.CompactBindButtonText : "—"));
+        public string CompoundOutputSummary
+        {
+            get
+            {
+                var slots = Plugins?.SelectMany(plugin => plugin.DeviceBindings)
+                    .Where(binding => binding.DeviceBinding.DeviceIoType == DeviceIoType.Output)
+                    .ToList();
+                if (slots == null || slots.Count == 0 ||
+                    !slots.Any(binding => binding.DeviceBinding.IsBound))
+                    return "Choose D-pad / stick ▾";
+                if (Mapping.CompoundDigitalOutput)
+                    return "D-pad · " + string.Join(" / ", slots.Select(binding =>
+                        binding.DeviceBinding.IsBound ? binding.CompactBindButtonText : "—"));
+                return string.Join("  ·  ", slots.Select((binding, index) =>
+                    (index == 0 ? "X: " : "Y: ") + (binding.DeviceBinding.IsBound
+                        ? binding.CompactBindButtonText : "—")));
+            }
+        }
 
         public bool HasAssignedControl =>
             Mapping.DeviceBindings.Any(input => input.IsBound) ||
