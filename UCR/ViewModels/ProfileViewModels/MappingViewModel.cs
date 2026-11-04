@@ -390,6 +390,22 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return (device?.GetFullTitleForProfile(profile) ?? "Output device") + " ▾";
             }
         }
+        public DeviceVisualDescriptor FourWayOutputDeviceVisual
+        {
+            get
+            {
+                var guids = Plugins?.SelectMany(plugin => plugin.DeviceBindings)
+                    .Where(binding => binding.DeviceBinding.DeviceIoType == DeviceIoType.Output)
+                    .Select(binding => binding.DeviceBinding.DeviceConfigurationGuid)
+                    .Where(guid => guid != Guid.Empty).Distinct().ToList();
+                if (guids?.Count != 1) return null;
+                var profile = ProfileViewModel.Profile;
+                var device = profile.GetDeviceConfiguration(DeviceIoType.Output, guids[0]);
+                return device?.Device == null ? null
+                    : DeviceVisualCatalog.Describe(device, profile, DeviceIoType.Output);
+            }
+        }
+
         public bool SetFourWayButtonOutputDevice(Guid guid)
         {
             if (!ButtonsEnabled || !HasOutputDirectionalCompass) return false;
@@ -402,6 +418,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     binding.ChangeDeviceConfiguration(guid);
             profile.Context.ContextChanged();
             OnPropertyChanged(nameof(FourWayOutputDeviceLabel));
+            OnPropertyChanged(nameof(FourWayOutputDeviceVisual));
             RefreshCollapsedSummary();
             return true;
         }
