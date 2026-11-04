@@ -465,6 +465,9 @@ namespace HidWizards.UCR.Core.Models
                 return source.InputExpressionInputKind == 0
                     ? (short)(value != 0 ? short.MaxValue : 0) : value;
             }
+            // NOT on an unassigned direction must never synthesize a pressed
+            // control merely because the empty input cache reads as zero.
+            if (source.InputExpressionNegated && !source.IsBound) return 0;
             var pressed = AdaptPositionalInput(value, source, DeviceBindingCategory.Momentary) != 0;
             if (source.InputExpressionNegated) pressed = !pressed;
             return pressed ? (short)1 : (short)0;
