@@ -826,7 +826,7 @@
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                             </StackPanel>
                         </Grid>
-                        <ContentControl Grid.Row="1" Content="{Binding}" HorizontalContentAlignment="Stretch"
+                        <ContentControl x:Name="InputBodyHost" Grid.Row="1" Content="{Binding}" HorizontalContentAlignment="Stretch"
                                         VerticalContentAlignment="Stretch">
                             <ContentControl.Style>
                                 <Style TargetType="{x:Type ContentControl}">
@@ -901,7 +901,7 @@
                             </StackPanel>
 
                         </Grid>
-                        <Border Grid.Row="1" VerticalAlignment="Stretch">
+                        <Border x:Name="OutputBodySurface" Grid.Row="1" VerticalAlignment="Stretch">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Setter Property="BorderThickness" Value="1"/>
