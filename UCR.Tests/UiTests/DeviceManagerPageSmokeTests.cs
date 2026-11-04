@@ -882,6 +882,15 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(buttons.Any(button => string.Equals(button.Content as string,
                     "+AND", StringComparison.Ordinal)), Is.True,
                     "The directional editor must retain its AND action.");
+                var twoWayCompass = FindVisualChildren<Grid>(card).FirstOrDefault(grid =>
+                    grid.RowDefinitions.Count == 3 && grid.ColumnDefinitions.Count == 3 &&
+                    grid.Children.OfType<Button>().Any(button =>
+                        string.Equals(button.Content as string, "Preset ▾", StringComparison.Ordinal)));
+                Assert.That(twoWayCompass, Is.Not.Null);
+                Assert.That(twoWayCompass.RowDefinitions[0].ActualHeight, Is.LessThan(2),
+                    "2-Way controls must not reserve an empty top compass row.");
+                Assert.That(twoWayCompass.RowDefinitions[2].ActualHeight, Is.LessThan(2),
+                    "2-Way controls must not reserve an empty bottom compass row.");
 
                 Assert.That(mapping.SetOutputRepresentation(1), Is.True);
                 card.Measure(new Size(1050, 1200));
