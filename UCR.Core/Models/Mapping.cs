@@ -373,7 +373,7 @@ namespace HidWizards.UCR.Core.Models
             {
                 // A trigger is one unidirectional analogue source. Its neutral
                 // position is zero; it cannot supply a negative direction.
-                x = (short)Math.Max(0, ReadDirectionalSource(inputValues, inputBindings, 0, false));
+                x = (short)Math.Max(0, (int)ReadDirectionalSource(inputValues, inputBindings, 0, false));
             }
             else if (inputType == 3)
             {
@@ -395,7 +395,7 @@ namespace HidWizards.UCR.Core.Models
             var threshold = short.MaxValue / 4;
             var channelValues = new List<short>();
             if (outputType == 4)
-                channelValues.Add((short)Math.Max(0, x));
+                channelValues.Add((short)Math.Max(0, (int)x));
             else if (outputType == 3 && capacity > 1)
             {
                 channelValues.Add(x < -threshold ? (short)1 : (short)0);
