@@ -1460,6 +1460,13 @@ namespace HidWizards.UCR.Views.ProfileViews
             var descriptor = button?.DataContext as BindingVisualDescriptor;
             var mapping = MappingForWorkspaceGlyph(button);
             if (mapping == null || descriptor == null || !mapping.ButtonsEnabled) return;
+            if (mapping.InputIsFullStick && mapping.DirectionalCapacity == 4)
+            {
+                var selectedBinding = mapping.ResolveCollapsedBinding(descriptor, DeviceIoType.Input);
+                MappingCardControl.ShowQuickCompoundInputMenu(mapping, button,
+                    selectedBinding?.DeviceBinding?.InputExpressionGroup ?? 0);
+                return;
+            }
             try
             {
                 var selected = mapping.ResolveCollapsedBinding(descriptor, DeviceIoType.Input)?.DeviceBinding;
@@ -1532,7 +1539,10 @@ namespace HidWizards.UCR.Views.ProfileViews
             var descriptor = button?.DataContext as BindingVisualDescriptor;
             var mapping = MappingForWorkspaceGlyph(button);
             if (mapping == null || descriptor == null || !mapping.ButtonsEnabled) return;
-            await MappingCardControl.OpenQuickOutputPickerAsync(mapping, descriptor, button);
+            if (mapping.IsCompoundOutput)
+                MappingCardControl.ShowQuickCompoundOutputMenu(mapping, button);
+            else
+                await MappingCardControl.OpenQuickOutputPickerAsync(mapping, descriptor, button);
         }
 
         private void RenameMappingRow_OnClick(object sender, RoutedEventArgs e)
