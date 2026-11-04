@@ -1027,7 +1027,7 @@ namespace HidWizards.UCR.Tests.UiTests
                     .Any(control => control.DeviceOnly && control.Visibility == Visibility.Visible),
                     Is.True, "Compound device selection must reuse the real device icon selector.");
                 Assert.That(buttons.Any(button => string.Equals(button.Content as string,
-                    "+AND", StringComparison.Ordinal)), Is.True,
+                    "+ Add input", StringComparison.Ordinal)), Is.True,
                     "The directional editor must retain its AND action.");
                 var twoWayCompass = FindVisualChildren<Grid>(card).FirstOrDefault(grid =>
                     grid.RowDefinitions.Count == 3 && grid.ColumnDefinitions.Count == 3 &&
