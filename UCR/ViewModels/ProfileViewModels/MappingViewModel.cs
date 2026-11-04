@@ -2987,7 +2987,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             RefreshHeaderState();
             RefreshCollapsedSummary();
             ProfileViewModel.RefreshFilterReferenceLabels();
-            if (Plugins.Count == 0) DeviceBindings.Clear();
+            // The inputs remain available if the final output is removed.
+            RefreshInputExpressionPresentation();
+            RefreshRepresentationSelections();
         }
 
         private void PopulatePlugins(Mapping mapping)
