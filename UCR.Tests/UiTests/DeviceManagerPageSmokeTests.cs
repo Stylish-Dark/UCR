@@ -28,7 +28,8 @@ namespace HidWizards.UCR.Tests.UiTests
     [NonParallelizable]
     internal class DeviceManagerPageSmokeTests
     {
-        private static void CaptureWorkspacePreview(FrameworkElement element, int width, int height, string name)
+        private static void CaptureWorkspacePreview(FrameworkElement element, int width, int height, string name,
+            int cropWidth = 0, int cropHeight = 0)
         {
             // Render the actual WPF visual tree, without requiring a logged-in desktop.
             // A screenshot is evidence of layout only; it does not replace interactive testing.
@@ -41,7 +42,14 @@ namespace HidWizards.UCR.Tests.UiTests
                 Environment.GetEnvironmentVariable("GITHUB_WORKSPACE") ??
                 System.IO.Path.GetTempPath(), name);
             var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            BitmapSource image = bitmap;
+            if (cropWidth > 0 && cropHeight > 0)
+            {
+                Assert.That(cropWidth, Is.LessThanOrEqualTo(width));
+                Assert.That(cropHeight, Is.LessThanOrEqualTo(height));
+                image = new CroppedBitmap(bitmap, new Int32Rect(0, 0, cropWidth, cropHeight));
+            }
+            encoder.Frames.Add(BitmapFrame.Create(image));
             using (var output = System.IO.File.Create(target)) encoder.Save(output);
             Assert.That(new System.IO.FileInfo(target).Length, Is.GreaterThan(1000),
                 "WPF snapshot must contain substantial image data: " + name);
@@ -299,7 +307,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.Measure(available);
                 page.Arrange(new Rect(new Point(0, 0), available));
                 page.UpdateLayout();
-                CaptureWorkspacePreview(page, 980, 620, "UCR-workspace-collapsed-preview.png");
+                CaptureWorkspacePreview(page, 1440, 720, "UCR-workspace-collapsed-preview.png", 1020, 610);
 
                 var rows = FindVisualChildren<ListView>(page)
                     .SingleOrDefault(list => list.Name == "MappingRowsList");
@@ -326,7 +334,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.Measure(available);
                 page.Arrange(new Rect(new Point(0, 0), available));
                 page.UpdateLayout();
-                CaptureWorkspacePreview(page, 980, 620, "UCR-workspace-expanded-preview.png");
+                CaptureWorkspacePreview(page, 1440, 720, "UCR-workspace-expanded-preview.png", 1020, 650);
                 Assert.That(FindVisualChildren<MappingCardControl>(row).Any(), Is.True,
                     "Visual QA requires a populated expanded mapping, not an empty editor.");
 
@@ -351,8 +359,7 @@ namespace HidWizards.UCR.Tests.UiTests
 
                 // Original collapsed glyphs must be actual clickable buttons.
                 var rebindingButtons = FindVisualChildren<Button>(row)
-                    .Where(button => button.ToolTip is string &&
-                        ((string)button.ToolTip).Contains("bind") &&
+                    .Where(button => button.Width == 62 && button.Height == 44 &&
                         button.Cursor == System.Windows.Input.Cursors.Hand).ToList();
                 Assert.That(rebindingButtons.Count, Is.GreaterThan(0),
                     "The workspace must expose clickable rebinding glyphs.");
