@@ -2807,7 +2807,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     Math.Max(0, input.InputExpressionGroup) == groupIndex))
                 {
                     guard.InputDirectionSlot = 0;
-                    guard.IsDirectionalAndCondition = false;
+                    // Keep the guard marker: the representation inference must
+                    // not mistake an analogue AND condition for an Axis primary.
+                    guard.IsDirectionalAndCondition = true;
                     guard.InputExpressionKindConfigured = true;
                     nextInputs.Add(guard);
                 }
