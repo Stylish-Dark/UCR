@@ -314,6 +314,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (!ButtonsEnabled || input?.IsBound != true ||
                 input.DeviceIoType != DeviceIoType.Input) return false;
+            // Capturing an extra AND key must never convert the mapping's
+            // shared directional input representation to Button or Axis.
+            if (input.IsDirectionalAndCondition) return false;
             var physical = input.DeviceBindingCategory;
             if (physical != DeviceBindingCategory.Momentary &&
                 physical != DeviceBindingCategory.Range) return false;
@@ -1814,7 +1817,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 profile.GetDeviceConfiguration(DeviceIoType.Input, deviceGuid) == null)
                 return false;
             var inputs = DeviceBindings.Where(item => item.DeviceBinding != null &&
-                item.DeviceBinding.InputExpressionGroup == groupIndex).ToList();
+                item.DeviceBinding.InputExpressionGroup == groupIndex &&
+                !item.DeviceBinding.IsDirectionalAndCondition).ToList();
             if (inputs.Count == 0) return false;
             foreach (var input in inputs)
             {
