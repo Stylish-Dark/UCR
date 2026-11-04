@@ -1352,6 +1352,28 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(8),
                     "Each of two OR alternatives requires its own four digital directions.");
                 Assert.That(mapping.Mapping.RequiredInputBindingSlots, Is.EqualTo(8));
+                foreach (var group in mapping.InputConditions)
+                {
+                    Assert.That(group.CoreInputs.Count, Is.EqualTo(4));
+                    var compassBindings = new[]
+                    {
+                        group.CompassInputLeft?.PhysicalBinding,
+                        group.CompassInputRight?.PhysicalBinding,
+                        group.CompassInputUp?.PhysicalBinding,
+                        group.CompassInputDown?.PhysicalBinding
+                    };
+                    Assert.That(compassBindings.All(binding => binding != null), Is.True);
+                    Assert.That(compassBindings.Distinct().Count(), Is.EqualTo(4),
+                        "A keyboard/D-pad must expose four independent physical directions.");
+                }
+                fourWayEditor.Measure(new Size(1050, 900));
+                fourWayEditor.Arrange(new Rect(0, 0, 1050, 900));
+                fourWayEditor.UpdateLayout();
+                Assert.That(FindVisualChildren<ContentControl>(fourWayEditor).Count(control =>
+                    new[] { "CompassInputLeft", "CompassInputRight",
+                            "CompassInputUp", "CompassInputDown" }.Contains(control.Name)),
+                    Is.EqualTo(8),
+                    "Each of two OR alternatives must independently render a four-direction D-pad.");
                 Assert.That(mapping.SetInputRepresentation(2), Is.True);
                 Assert.That(mapping.Mapping.CompoundDigitalInput, Is.False,
                     "Axis input must not retain digital-compound routing.");
