@@ -447,7 +447,7 @@
                                             <ColumnDefinition Width="*" MinWidth="0"/>
                                             <ColumnDefinition Width="40"/>
                                         </Grid.ColumnDefinitions>
-                                        <Button Grid.Column="0" Content="{Binding CompoundSummary}"
+                                        <Button Grid.Column="0" Content="{Binding CompoundPrimaryLabel}"
                                                 Click="CompoundPrimaryBind_OnClick"
                                                 ToolTip="Bind the axis or choose a complete preset"
                                                 HorizontalContentAlignment="Center"
@@ -461,6 +461,56 @@
                                                 Foreground="#FFFFFF"
                                                 Style="{StaticResource MaterialDesignRaisedButton}"/>
                                     </Grid>
+                                    <!-- Keep one logical 4-Way source; show its physical
+                                         channels rather than an ambiguous slash-joined list. -->
+                                    <ItemsControl ItemsSource="{Binding CoreInputs}"
+                                                  Visibility="{Binding CompoundChannelPreviewVisibility}"
+                                                  Margin="3 2 3 5">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#252525" BorderBrush="#454545"
+                                                        BorderThickness="1" CornerRadius="3"
+                                                        Margin="2" Padding="5 4">
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding DeviceBindingName}"
+                                                                   Foreground="#DEDEDE" FontSize="11"
+                                                                   FontWeight="SemiBold" Margin="1 0 0 3"/>
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" MinWidth="0"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <Button Grid.Column="0" Height="30" MinWidth="0"
+                                                                    Content="{Binding CompactBindButtonText}"
+                                                                    Click="BindDirectionalSlot_OnClick"
+                                                                    IsEnabled="{Binding BindingEnabled}"
+                                                                    ToolTip="Bind this physical 4-Way channel"
+                                                                    Padding="4 1" Foreground="#FFFFFF"
+                                                                    Style="{StaticResource MaterialDesignRaisedButton}"/>
+                                                            <ToggleButton Grid.Column="1" Content="NOT"
+                                                                          Width="40" Height="30" Margin="3 0 0 0"
+                                                                          Padding="2 0"
+                                                                          IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
+                                                                          Click="InputNegated_OnClick"
+                                                                          Style="{StaticResource MappingNotToggle}"
+                                                                          ToolTip="Negate this channel"/>
+                                                            <Button Grid.Column="2" Content="⋮" Width="26" Height="30"
+                                                                    Margin="3 0 0 0" Padding="0"
+                                                                    Foreground="#FFFFFF"
+                                                                    Click="SpatialInputOptions_OnClick"
+                                                                    IsEnabled="{Binding BindingEnabled}"
+                                                                    ToolTip="Channel device and binding options"
+                                                                    Style="{StaticResource MaterialDesignRaisedButton}"/>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                     <StackPanel Visibility="{Binding ButtonPairVisibility}">
                                         <!-- Ordinary one-button mapping: preserve the full selector. -->
                                         <Grid Visibility="{Binding SingleButtonVisibility}">
@@ -756,7 +806,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Background="#292929" BorderBrush="#454545"
-                                        BorderThickness="1" CornerRadius="3" Padding="7" Margin="0 0 0 5">
+                                        BorderThickness="1" CornerRadius="3" Padding="5 4" Margin="0 0 0 3">
                                         <StackPanel>
                                             <TextBlock Text="{Binding DirectionalSlotLabel}"
                                                        Visibility="{Binding DirectionalSlotVisibility}"
@@ -803,7 +853,16 @@
                                                         ToolTip="Remove this output"/>
                                                 </StackPanel>
                                             </Grid>
-                                            <StackPanel Orientation="Horizontal" Margin="0 9 0 0">
+                                            <StackPanel Orientation="Horizontal" Margin="0 5 0 0">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="{x:Type StackPanel}">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Filters.Count}" Value="0">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </StackPanel.Style>
                                                 <ItemsControl ItemsSource="{Binding Filters}" Margin="0">
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
