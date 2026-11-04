@@ -643,6 +643,15 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(model.DeviceBindings[0].KeyValue, Is.EqualTo(271),
                     "Restoring Full Stick must recover its previous axis assignment.");
                 Assert.That(mapping.OutputIsAxis, Is.True);
+                Assert.That(mapping.CollapsedInputRows.Count, Is.EqualTo(1));
+                Assert.That(mapping.CollapsedInputRows.Single().Visuals.Count, Is.EqualTo(1),
+                    "A full-stick input is one grouped mapping-header glyph.");
+                Assert.That(mapping.SetOutputRepresentation(1), Is.True);
+                Assert.That(mapping.CollapsedOutputVisuals.Count, Is.EqualTo(1),
+                    "A complete 4-Way output must be one compound glyph, not separate channels.");
+                Assert.That(new[] { ControlVisualKind.DPad, ControlVisualKind.CompoundStick,
+                    ControlVisualKind.CompoundFaceButtons, ControlVisualKind.CompoundKeys },
+                    Does.Contain(mapping.CollapsedOutputVisuals.Single().ControlKind));
                 Assert.That(mapping.SetOutputRepresentation(3), Is.True);
                 Assert.That(model.Plugins.Count, Is.EqualTo(4));
                 Assert.That(mapping.SetOutputRepresentation(2), Is.True);
