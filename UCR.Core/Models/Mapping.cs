@@ -55,7 +55,8 @@ namespace HidWizards.UCR.Core.Models
         [XmlIgnore]
         public int RequiredInputBindingSlots => RequiredInputBindingSlotsPerGroup *
             Math.Max(1, DeviceBindings?.Select(binding =>
-                Math.Max(0, binding.InputExpressionGroup)).Distinct().Count() ?? 1);
+                Math.Max(0, binding.InputExpressionGroup)).Distinct().Count() ?? 1) +
+            (DeviceBindings?.Count(binding => binding.IsDirectionalAndCondition) ?? 0);
 
         [XmlAttribute]
         [DefaultValue(0)]
@@ -347,10 +348,19 @@ namespace HidWizards.UCR.Core.Models
                 .GroupBy(index => Math.Max(0, inputBindings[index].InputExpressionGroup))
                 .OrderBy(group => group.Key))
             {
-                var positions = group.OrderBy(index =>
-                    inputBindings[index].InputDirectionSlot > 0
+                var positions = group.Where(index => !inputBindings[index].IsDirectionalAndCondition)
+                    .OrderBy(index => inputBindings[index].InputDirectionSlot > 0
                         ? inputBindings[index].InputDirectionSlot : index + 1).ToList();
                 if (positions.Count < slotsPerGroup) continue;
+
+                // An OR branch is eligible only when ALL its independent AND
+                // conditions pass. A missing gate binding cannot accidentally
+                // activate a route through NOT on an unassigned input.
+                var guards = group.Where(index => inputBindings[index].IsDirectionalAndCondition);
+                if (guards.Any(index => !inputBindings[index].IsBound ||
+                    ((AdaptPositionalInput(inputValues[index], inputBindings[index],
+                        DeviceBindingCategory.Momentary) != 0) ==
+                        inputBindings[index].InputExpressionNegated))) continue;
 
                 var values = positions.Take(slotsPerGroup).Select(index => inputValues[index]).ToList();
                 var bindings = positions.Take(slotsPerGroup)
@@ -455,8 +465,9 @@ namespace HidWizards.UCR.Core.Models
                 return source.InputExpressionInputKind == 0
                     ? (short)(value != 0 ? short.MaxValue : 0) : value;
             }
-            return AdaptPositionalInput(value, source, DeviceBindingCategory.Momentary) != 0
-                ? (short)1 : (short)0;
+            var pressed = AdaptPositionalInput(value, source, DeviceBindingCategory.Momentary) != 0;
+            if (source.InputExpressionNegated) pressed = !pressed;
+            return pressed ? (short)1 : (short)0;
         }
 
         internal static short AdaptPositionalInput(short value, DeviceBinding binding,
