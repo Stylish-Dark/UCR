@@ -382,7 +382,12 @@ namespace HidWizards.UCR.Views.Controls
             if (vm == null || !int.TryParse((sender as FrameworkElement)?.Tag as string, out value))
                 return;
             if (!vm.SetInputRepresentation(value))
+            {
+                DarkMessageBox.Show("The input representation could not be prepared. Check the available remapper plugins.",
+                    "Unable to change input type", MessageBoxButton.OK, MessageBoxImage.Information);
+                vm.RefreshRepresentationSelections();
                 (sender as RadioButton)?.GetBindingExpression(ToggleButton.IsCheckedProperty)?.UpdateTarget();
+            }
         }
 
         private void OutputRepresentation_OnClick(object sender, RoutedEventArgs e)
@@ -392,7 +397,12 @@ namespace HidWizards.UCR.Views.Controls
             if (vm == null || !int.TryParse((sender as FrameworkElement)?.Tag as string, out value))
                 return;
             if (!vm.SetOutputRepresentation(value))
+            {
+                DarkMessageBox.Show("The output representation could not be prepared. Check the available remapper plugins.",
+                    "Unable to change output type", MessageBoxButton.OK, MessageBoxImage.Information);
+                vm.RefreshRepresentationSelections();
                 (sender as RadioButton)?.GetBindingExpression(ToggleButton.IsCheckedProperty)?.UpdateTarget();
+            }
         }
 
         private void AddAndInput_OnClick(object sender, RoutedEventArgs e)
@@ -428,6 +438,55 @@ namespace HidWizards.UCR.Views.Controls
             (DataContext as MappingViewModel)?.RemoveCondition(condition);
         }
 
+        private void SpatialInputOptions_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var input = button?.DataContext as DeviceBindingViewModel;
+            if (button == null || input?.DeviceBinding == null || !input.BindingEnabled ||
+                (DataContext as MappingViewModel)?.ButtonsEnabled != true) return;
+            var menu = CompactInputBindingControl.CreateInputOptionsMenu(input, button);
+            var mapping = DataContext as MappingViewModel;
+            var profile = mapping?.ProfileViewModel.Profile;
+            if (profile != null)
+            {
+                var deviceMenu = new MenuItem { Header = "Input device" };
+                var currentGuid = input.DeviceBinding.DeviceConfigurationGuid;
+                var any = new MenuItem
+                {
+                    Header = "Any input device",
+                    IsChecked = currentGuid == Guid.Empty
+                };
+                any.Click += (s, args) => mapping.SetDirectionalSlotDevice(input, Guid.Empty);
+                deviceMenu.Items.Add(any);
+                foreach (var device in profile.GetDeviceConfigurationList(DeviceIoType.Input))
+                {
+                    if (device?.Device == null) continue;
+                    var guid = device.Guid;
+                    var choice = new MenuItem
+                    {
+                        Header = device.GetFullTitleForProfile(profile),
+                        IsChecked = guid == currentGuid
+                    };
+                    choice.Click += (s, args) => mapping.SetDirectionalSlotDevice(input, guid);
+                    deviceMenu.Items.Add(choice);
+                }
+                menu.Items.Insert(0, new Separator());
+                menu.Items.Insert(0, deviceMenu);
+            }
+            menu.Items.Add(new Separator());
+            var block = new MenuItem
+            {
+                Header = "Block original input",
+                IsCheckable = true,
+                IsChecked = input.Block,
+                IsEnabled = input.CanBlock,
+                ToolTip = input.BlockAvailability
+            };
+            block.Click += (s, args) => input.Block = block.IsChecked;
+            menu.Items.Add(block);
+            menu.IsOpen = true;
+        }
+
         private void BindDirectionalSlot_OnClick(object sender, RoutedEventArgs e)
         {
             var input = (sender as FrameworkElement)?.DataContext as DeviceBindingViewModel;
@@ -439,8 +498,9 @@ namespace HidWizards.UCR.Views.Controls
             }
             try
             {
+                input.ExpressionMapping?.EnableInputExpression();
                 input.DeviceBinding.DeviceBindingCategory = input.DeviceBindingCategory;
-                input.DeviceBinding.EnterBindMode();
+                input.DeviceBinding.EnterBindMode(autoDetectInputCategory: true);
             }
             catch (Exception exception)
             {
@@ -1104,11 +1164,40 @@ namespace HidWizards.UCR.Views.Controls
             menu.IsOpen = true;
         }
 
+        private void CompoundDevice_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mapping = DataContext as MappingViewModel;
+            var button = sender as Button;
+            var group = button?.DataContext as InputConditionViewModel;
+            if (mapping?.ButtonsEnabled != true || group == null) return;
+            var profile = mapping.ProfileViewModel.Profile;
+            var selectedGuid = group.Inputs.FirstOrDefault()?.DeviceBinding?.DeviceConfigurationGuid
+                ?? Guid.Empty;
+            var menu = CreateDarkContextMenu(button);
+            menu.Placement = PlacementMode.Bottom;
+            var any = new MenuItem { Header = "Any input device", IsChecked = selectedGuid == Guid.Empty };
+            any.Click += (s, args) => mapping.SetCompoundInputDevice(group.GroupIndex, Guid.Empty);
+            menu.Items.Add(any);
+            foreach (var device in profile.GetDeviceConfigurationList(DeviceIoType.Input))
+            {
+                if (device?.Device == null) continue;
+                var guid = device.Guid;
+                var item = new MenuItem
+                {
+                    Header = device.GetFullTitleForProfile(profile),
+                    IsChecked = guid == selectedGuid
+                };
+                item.Click += (s, args) => mapping.SetCompoundInputDevice(group.GroupIndex, guid);
+                menu.Items.Add(item);
+            }
+            menu.IsOpen = true;
+        }
+
         private void CompoundBindingsMenu_OnClick(object sender, RoutedEventArgs e)
         {
             var mapping = DataContext as MappingViewModel;
             var button = sender as Button;
-            if (mapping?.IsCompoundInput != true || button == null) return;
+            if (mapping?.IsCompoundInput != true || !mapping.ButtonsEnabled || button == null) return;
             var menu = CreateDarkContextMenu(button);
             var group = button.DataContext as InputConditionViewModel;
             foreach (var input in group?.Inputs ?? mapping.DeviceBindings)
