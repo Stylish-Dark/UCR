@@ -410,7 +410,13 @@ namespace HidWizards.UCR.Tests.UiTests
                 // workspace smoke test instead of creating a second STA application.
                 var model = (ProfileViewModel)page.DataContext;
                 for (var index = 0; index < 40; index++)
-                    model.AddMappingToSelectedSection("Virtual row " + index);
+                {
+                    var added = model.AddMappingToSelectedSection("Virtual row " + index);
+                    // Actual populated editors, not empty placeholder mappings:
+                    // geometry must remain correct with controls and settings.
+                    if (index < 5)
+                        added.AddPlugin(new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+                }
                 var fullViewport = new Size(1440, 960);
                 page.Measure(fullViewport);
                 page.Arrange(new Rect(new Point(0, 0), fullViewport));
