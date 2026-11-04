@@ -2766,32 +2766,59 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return false;
             }
             var profile = ProfileViewModel.Profile;
-            var retained = Mapping.DeviceBindings.Where(binding => binding.IsBound).ToList();
-            var newPrimary = new DeviceBinding(Mapping.Update, profile, DeviceIoType.Input)
+            var directions = Mapping.DeviceBindings.Where(input =>
+                !input.IsDirectionalAndCondition).ToList();
+            var existingGuards = Mapping.DeviceBindings.Where(input =>
+                input.IsDirectionalAndCondition && input.IsBound).ToList();
+
+            // Four directional controls are ONE compound input. Turning them all
+            // into AND guards would require opposite directions simultaneously
+            // (e.g. Left AND Right), making the new Button mapping unusable.
+            // Keep their complete physical bank for restoring 4-Way later.
+            if (Mapping.InactiveInputRepresentations == null)
+                Mapping.InactiveInputRepresentations = new List<DirectionalInputBank>();
+            Mapping.InactiveInputRepresentations.RemoveAll(bank =>
+                bank.Representation == 1 && bank.Bindings?.Count == directions.Count);
+            Mapping.InactiveInputRepresentations.Add(new DirectionalInputBank
             {
-                DeviceBindingCategory = DeviceBindingCategory.Momentary,
-                InputExpressionInputKind = 0,
-                InputExpressionKindConfigured = true,
-                InputExpressionGroup = 0,
-                InputDirectionSlot = 0
-            };
-            foreach (var guard in retained)
+                Representation = 1,
+                Bindings = directions
+            });
+
+            // Every former OR alternative becomes one unbound Button input.
+            // Its explicit, bound AND conditions are retained in that same
+            // alternative. Unbound redundant slots are discarded.
+            var nextInputs = new List<DeviceBinding>();
+            var groups = directions.Select(input =>
+                Math.Max(0, input.InputExpressionGroup)).Distinct().OrderBy(i => i).ToList();
+            if (groups.Count == 0) groups.Add(0);
+            foreach (var groupIndex in groups)
             {
-                guard.InputExpressionGroup = 0;
-                guard.InputDirectionSlot = 0;
-                guard.IsDirectionalAndCondition = true;
-                guard.InputExpressionKindConfigured = true;
+                var primary = new DeviceBinding(Mapping.Update, profile, DeviceIoType.Input)
+                {
+                    DeviceBindingCategory = DeviceBindingCategory.Momentary,
+                    InputExpressionInputKind = 0,
+                    InputExpressionKindConfigured = true,
+                    InputExpressionGroup = groupIndex,
+                    InputDirectionSlot = 0
+                };
+                nextInputs.Add(primary);
+                foreach (var guard in existingGuards.Where(input =>
+                    Math.Max(0, input.InputExpressionGroup) == groupIndex))
+                {
+                    guard.InputDirectionSlot = 0;
+                    guard.IsDirectionalAndCondition = false;
+                    guard.InputExpressionKindConfigured = true;
+                    nextInputs.Add(guard);
+                }
             }
 
-            // Untyped expression routing evaluates one Button plus AND guards
-            // and fans that Boolean result out to the existing output plugins.
-            // This is intentionally not the old four-direction positional route.
             Mapping.InputRepresentation = 0;
             Mapping.OutputRepresentation = 0;
             Mapping.DirectionalCapacity = 0;
             Mapping.CompoundDigitalInput = false;
             Mapping.CompoundDigitalOutput = false;
-            Mapping.DeviceBindings = new[] { newPrimary }.Concat(retained).ToList();
+            Mapping.DeviceBindings = nextInputs;
             Mapping.UseInputExpression = true;
             RebuildDirectionalEditors();
             RefreshInputExpressionPresentation();
