@@ -226,6 +226,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public bool MenuOnLeft => DeviceBinding?.InputDirectionSlot == 1 ||
             DeviceBinding?.InputDirectionSlot == 3;
+        public bool MenuOnRight => !MenuOnLeft;
 
         public string DirectionalBindLabel
         {
