@@ -523,6 +523,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                                 negative.KeySubValue == positive.KeySubValue)
                                 previousIndex = index * 2;
                         }
+                        // Full-stick X/Y channels and four separate one-sided
+                        // triggers have different meanings. Keep them in their
+                        // inactive banks; never relabel one as the other.
+                        if (capacity == 4 && ((representation == 4 && sources.Count == 2) ||
+                                              (priorType == 4 && representation != 4)))
+                            previousIndex = -1;
                         var compatible = previousIndex >= 0 && previousIndex < sources.Count &&
                             sources[previousIndex].IsBound &&
                             (derivedAxisDirection ||
@@ -609,6 +615,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                         ? (index == 1 ? 0 : -1) : index;
                     var previousPlugin = previousIndex >= 0 && previousIndex < previous.Count
                         ? previous[previousIndex] : null;
+                    if (Mapping.EffectiveDirectionalCapacity == 4 &&
+                        (representation == 4 || priorType == 4) && representation != priorType)
+                        previousPlugin = null;
                     if (previousPlugin != null)
                     {
                         plugin.Filters = previousPlugin.Filters.ToList();
