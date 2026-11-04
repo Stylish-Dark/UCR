@@ -1099,6 +1099,15 @@ namespace HidWizards.UCR.Tests.UiTests
                     Assert.That(outputCard, Is.Not.Null);
                     Assert.That(outputCard.ActualHeight, Is.LessThan(190),
                         "A collapsed output must not reserve arbitrary empty height.");
+                    var inputHost = FindVisualChildren<ContentControl>(card)
+                        .FirstOrDefault(control => control.Name == "InputBodyHost");
+                    var outputSurface = FindVisualChildren<Border>(card)
+                        .FirstOrDefault(border => border.Name == "OutputBodySurface");
+                    Assert.That(inputHost, Is.Not.Null);
+                    Assert.That(outputSurface, Is.Not.Null);
+                    Assert.That(outputSurface.ActualHeight,
+                        Is.EqualTo(inputHost.ActualHeight).Within(2.0),
+                        "Input/output surfaces must align by content-driven shared WPF rows.");
                     Assert.That(FindVisualChildren<Button>(card).Any(button =>
                         string.Equals(button.Content as string, "+ Add output", StringComparison.Ordinal) &&
                         button.Visibility == Visibility.Visible), Is.True,
