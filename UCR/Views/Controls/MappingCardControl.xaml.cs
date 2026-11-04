@@ -444,6 +444,34 @@ namespace HidWizards.UCR.Views.Controls
             var input = button?.DataContext as DeviceBindingViewModel;
             if (button == null || input?.DeviceBinding == null) return;
             var menu = CompactInputBindingControl.CreateInputOptionsMenu(input, button);
+            var mapping = DataContext as MappingViewModel;
+            var profile = mapping?.ProfileViewModel.Profile;
+            if (profile != null)
+            {
+                var deviceMenu = new MenuItem { Header = "Input device" };
+                var currentGuid = input.DeviceBinding.DeviceConfigurationGuid;
+                var any = new MenuItem
+                {
+                    Header = "Any input device",
+                    IsChecked = currentGuid == Guid.Empty
+                };
+                any.Click += (s, args) => mapping.SetDirectionalSlotDevice(input, Guid.Empty);
+                deviceMenu.Items.Add(any);
+                foreach (var device in profile.GetDeviceConfigurationList(DeviceIoType.Input))
+                {
+                    if (device?.Device == null) continue;
+                    var guid = device.Guid;
+                    var choice = new MenuItem
+                    {
+                        Header = device.GetFullTitleForProfile(profile),
+                        IsChecked = guid == currentGuid
+                    };
+                    choice.Click += (s, args) => mapping.SetDirectionalSlotDevice(input, guid);
+                    deviceMenu.Items.Add(choice);
+                }
+                menu.Items.Insert(0, new Separator());
+                menu.Items.Insert(0, deviceMenu);
+            }
             menu.Items.Add(new Separator());
             var block = new MenuItem
             {
