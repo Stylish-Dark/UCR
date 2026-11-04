@@ -1695,6 +1695,11 @@ namespace HidWizards.UCR.Views.Controls
             ((sender as FrameworkElement)?.DataContext as FilterViewModel)?.RemoveFilter();
         }
 
+        private void RemoveCompoundOutput_OnClick(object sender, RoutedEventArgs e)
+        {
+            (DataContext as MappingViewModel)?.RemoveAllOutputSlots();
+        }
+
         private void RemoveOutput_OnClick(object sender, RoutedEventArgs e)
         {
             var plugin = (sender as FrameworkElement)?.DataContext as PluginViewModel;
