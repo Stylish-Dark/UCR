@@ -784,13 +784,13 @@
                                                 Click="CompoundOutput_OnClick"
                                                 HorizontalContentAlignment="Center"
                                                 FontWeight="SemiBold" Foreground="#FFFFFF"
-                                                Background="#0939A5" BorderBrush="#1250D3"
+                                                Style="{StaticResource MaterialDesignRaisedButton}"
                                                 ToolTip="Choose a complete 4-Way output destination"/>
                                         <Button Grid.Column="1" Content="⋮" FontSize="20"
                                                 Click="CompoundOutput_OnClick"
                                                 Height="38" Margin="3 0 0 0"
                                                 Padding="0" Foreground="#FFFFFF"
-                                                Background="#0939A5" BorderBrush="#1250D3"
+                                                Style="{StaticResource MaterialDesignRaisedButton}"
                                                 ToolTip="4-Way output destination options"/>
                                     </Grid>
                                 </Border>
