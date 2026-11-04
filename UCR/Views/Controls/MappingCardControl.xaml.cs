@@ -1150,15 +1150,42 @@ namespace HidWizards.UCR.Views.Controls
                 return;
             var menu = CreateDarkContextMenu(button);
             var choices = mapping.GetFourWayOutputChoices();
+            var accent = button.TryFindResource("PrimaryHueLightBrush") as Brush ?? Brushes.White;
             foreach (var choice in choices)
             {
                 var selected = choice;
+                var header = new StackPanel { Orientation = Orientation.Horizontal };
+                header.Children.Add(new ControlGlyphControl
+                {
+                    Width = 44,
+                    Height = 34,
+                    Margin = new Thickness(0, 0, 9, 0),
+                    Kind = choice.IsDPad ? ControlVisualKind.DPad : ControlVisualKind.StickAxis,
+                    AccentBrush = accent,
+                    Label = choice.IsDPad ? "" :
+                        choice.Destination == "Right stick" ? "R" : "L"
+                });
+                var labels = new StackPanel { Orientation = Orientation.Vertical };
+                labels.Children.Add(new TextBlock
+                {
+                    Text = choice.Destination,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = Brushes.White
+                });
+                labels.Children.Add(new TextBlock
+                {
+                    Text = choice.DeviceTitle,
+                    FontSize = 11,
+                    Foreground = Brushes.LightGray
+                });
+                header.Children.Add(labels);
                 var item = new MenuItem
                 {
-                    Header = choice.DeviceTitle + "  —  " + choice.Destination,
+                    Header = header,
+                    Padding = new Thickness(8, 5, 14, 5),
                     ToolTip = choice.IsDPad
-                        ? "Bind all four D-pad directions as one output"
-                        : "Bind both stick axes as one output"
+                        ? "Assign all four D-pad directions"
+                        : "Assign the two axes of this stick"
                 };
                 item.Click += (source, args) =>
                 {
