@@ -646,8 +646,12 @@ namespace HidWizards.UCR.Tests.UiTests
                     .ToList();
                 Assert.That(analogNegationToggles.Count, Is.EqualTo(physicalChannels.Count));
                 Assert.That(analogNegationToggles.All(toggle =>
-                    toggle.Visibility == Visibility.Collapsed), Is.True,
-                    "Never expose digital NOT toggles that have no effect on analogue axes.");
+                {
+                    var channel = (DeviceBindingViewModel)toggle.DataContext;
+                    return toggle.Visibility == (channel.InputExpressionInputKind == 0
+                        ? Visibility.Visible : Visibility.Collapsed);
+                }), Is.True,
+                    "Show NOT only on digital channels; analog channels must not offer an inert toggle.");
 
                 var screenshot = System.IO.Path.Combine(
                     Environment.GetEnvironmentVariable("GITHUB_WORKSPACE") ??
