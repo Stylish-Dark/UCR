@@ -28,6 +28,26 @@ namespace HidWizards.UCR.Tests.UiTests
     [NonParallelizable]
     internal class DeviceManagerPageSmokeTests
     {
+        private static void CaptureWorkspacePreview(FrameworkElement element, int width, int height, string name)
+        {
+            // Render the actual WPF visual tree, without requiring a logged-in desktop.
+            // A screenshot is evidence of layout only; it does not replace interactive testing.
+            element.Measure(new Size(width, height));
+            element.Arrange(new Rect(0, 0, width, height));
+            element.UpdateLayout();
+            var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(element);
+            var target = System.IO.Path.Combine(
+                Environment.GetEnvironmentVariable("GITHUB_WORKSPACE") ??
+                System.IO.Path.GetTempPath(), name);
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            using (var output = System.IO.File.Create(target)) encoder.Save(output);
+            Assert.That(new System.IO.FileInfo(target).Length, Is.GreaterThan(1000),
+                "WPF snapshot must contain substantial image data: " + name);
+            TestContext.WriteLine("Rendered actual workspace preview: " + target);
+        }
+
         private sealed class FakeDevicePageViewModel
         {
             public IList<DeviceManagerItemViewModel> Devices { get; }
@@ -260,6 +280,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.Measure(available);
                 page.Arrange(new Rect(new Point(0, 0), available));
                 page.UpdateLayout();
+                CaptureWorkspacePreview(page, 1440, 960, "UCR-workspace-collapsed-preview.png");
 
                 var rows = FindVisualChildren<ListView>(page)
                     .SingleOrDefault(list => list.Name == "MappingRowsList");
@@ -286,6 +307,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.Measure(available);
                 page.Arrange(new Rect(new Point(0, 0), available));
                 page.UpdateLayout();
+                CaptureWorkspacePreview(page, 1440, 960, "UCR-workspace-expanded-preview.png");
 
                 Assert.That(mapping.IsExpanded, Is.True);
                 Assert.That(toggle.Content, Is.InstanceOf<Grid>());
