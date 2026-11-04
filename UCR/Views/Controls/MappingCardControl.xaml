@@ -358,10 +358,7 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <Button Content="+OR" Click="AddCondition_OnClick"
-                    Height="34" HorizontalAlignment="Left" Padding="12 3" Margin="2 3 0 0"
-                    IsEnabled="{Binding ButtonsEnabled}" Foreground="#FFFFFF"
-                    Style="{StaticResource UcrAccentOutlineButton}"/>
+
             </StackPanel>
         </DataTemplate>
 
@@ -666,12 +663,7 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <Button Content="+OR" Click="AddCondition_OnClick"
-                        Height="34" HorizontalAlignment="Left" Padding="12 3"
-                        Margin="2 3 0 0" IsEnabled="{Binding ButtonsEnabled}"
-                        Foreground="#FFFFFF"
-                        Style="{StaticResource UcrAccentOutlineButton}"
-                        ToolTip="Add another complete alternative input set"/>
+
             </StackPanel>
         </DataTemplate>
 
@@ -771,6 +763,7 @@
                     <UniformGrid.Style>
                         <Style TargetType="{x:Type UniformGrid}">
                             <Setter Property="Columns" Value="2"/>
+                            <Setter Property="Grid.IsSharedSizeScope" Value="True"/>
                             <Style.Triggers>
                                 <MultiDataTrigger>
                                     <MultiDataTrigger.Conditions>
@@ -778,21 +771,27 @@
                                         <Condition Binding="{Binding InlineWorkspaceMode, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="False"/>
                                     </MultiDataTrigger.Conditions>
                                     <Setter Property="Columns" Value="1"/>
+                                    <Setter Property="Grid.IsSharedSizeScope" Value="False"/>
                                 </MultiDataTrigger>
                             </Style.Triggers>
                         </Style>
                     </UniformGrid.Style>
-                    <StackPanel Margin="0 0 6 5">
-                        <StackPanel.Style>
-                            <Style TargetType="{x:Type StackPanel}">
+                    <Grid Margin="0 0 6 5">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" SharedSizeGroup="UcrHeaderRow"/>
+                            <RowDefinition Height="Auto" SharedSizeGroup="UcrBodyRow"/>
+                            <RowDefinition Height="Auto" SharedSizeGroup="UcrActionsRow"/>
+                        </Grid.RowDefinitions>
+                        <Grid.Style>
+                            <Style TargetType="{x:Type Grid}">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding InspectorSection, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="Outputs">
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </StackPanel.Style>
-                        <Grid Margin="6 0 0 5" Height="30">
+                        </Grid.Style>
+                        <Grid Grid.Row="0" Margin="6 0 0 5" Height="30">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" MinWidth="0"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -827,7 +826,8 @@
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                             </StackPanel>
                         </Grid>
-                        <ContentControl Content="{Binding}" HorizontalContentAlignment="Stretch">
+                        <ContentControl Grid.Row="1" Content="{Binding}" HorizontalContentAlignment="Stretch"
+                                        VerticalContentAlignment="Stretch">
                             <ContentControl.Style>
                                 <Style TargetType="{x:Type ContentControl}">
                                     <Setter Property="ContentTemplate" Value="{StaticResource ButtonExistingInputsTemplate}"/>
@@ -842,18 +842,30 @@
                                 </Style>
                             </ContentControl.Style>
                         </ContentControl>
-                    </StackPanel>
-                    <StackPanel Margin="6 0 0 5">
-                        <StackPanel.Style>
-                            <Style TargetType="{x:Type StackPanel}">
+                        <Button Grid.Row="2" Content="+OR" Click="AddCondition_OnClick"
+                                Height="34" HorizontalAlignment="Left" Padding="12 3"
+                                Margin="2 6 0 0" IsEnabled="{Binding ButtonsEnabled}"
+                                Visibility="{Binding SupportsNativeInputExpression, Converter={StaticResource CompoundVisibilityConverter}}"
+                                Foreground="#FFFFFF"
+                                Style="{StaticResource UcrAccentOutlineButton}"
+                                ToolTip="Add another complete alternative input set"/>
+                    </Grid>
+                    <Grid Margin="6 0 0 5">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" SharedSizeGroup="UcrHeaderRow"/>
+                            <RowDefinition Height="Auto" SharedSizeGroup="UcrBodyRow"/>
+                            <RowDefinition Height="Auto" SharedSizeGroup="UcrActionsRow"/>
+                        </Grid.RowDefinitions>
+                        <Grid.Style>
+                            <Style TargetType="{x:Type Grid}">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding InspectorSection, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="Inputs">
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </StackPanel.Style>
-                        <Grid Margin="6 0 0 5" Height="30">
+                        </Grid.Style>
+                        <Grid Grid.Row="0" Margin="6 0 0 5" Height="30">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" MinWidth="0"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -889,11 +901,18 @@
                             </StackPanel>
 
                         </Grid>
-                        <Border>
+                        <Border Grid.Row="1" VerticalAlignment="Stretch">
                             <Border.Style>
                                 <Style TargetType="Border">
-                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="BorderThickness" Value="1"/>
+                                    <Setter Property="BorderBrush" Value="#454545"/>
+                                    <Setter Property="Background" Value="#292929"/>
+                                    <Setter Property="CornerRadius" Value="3"/>
                                     <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasOutputDirectionalCompass}" Value="True">
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                            <Setter Property="Background" Value="Transparent"/>
+                                        </DataTrigger>
                                         <DataTrigger Binding="{Binding IsFullStickOutput}" Value="True">
                                             <Setter Property="BorderThickness" Value="1"/>
                                             <Setter Property="BorderBrush" Value="#535D70"/>
@@ -988,8 +1007,20 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border x:Name="OutputBindingCardSurface"
-                                        Background="#292929" BorderBrush="#454545"
-                                        BorderThickness="1" CornerRadius="3" Padding="5 4" Margin="0 0 0 3">
+                                        CornerRadius="3" Padding="5 4" Margin="0 0 0 3">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="#292929"/>
+                                                <Setter Property="BorderBrush" Value="#454545"/>
+                                                <Setter Property="BorderThickness" Value="1"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding DataContext.Plugins.Count, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="1">
+                                                        <Setter Property="Background" Value="Transparent"/>
+                                                        <Setter Property="BorderThickness" Value="0"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
                                         <StackPanel>
                                             <TextBlock Text="{Binding DirectionalSlotLabel}"
                                                        Visibility="{Binding DirectionalSlotVisibility}"
@@ -1094,7 +1125,7 @@
                         </ItemsControl>
                             </StackPanel>
                         </Border>
-                        <StackPanel Orientation="Horizontal" Margin="0 7 0 2">
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0 7 0 2">
                             <Button Content="+ Filter" Height="34" Padding="10 2" Margin="3 0 7 0"
                                 Click="AddMappingFilter_OnClick" IsEnabled="{Binding ButtonsEnabled}"
                                 HorizontalAlignment="Left" Foreground="#FFFFFF" Background="#343434"
@@ -1107,7 +1138,7 @@
                                 Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
                                 ToolTip="Add another output to this mapping"/>
                         </StackPanel>
-                    </StackPanel>
+                    </Grid>
                 </UniformGrid>
             </Border>
         </DataTemplate>
