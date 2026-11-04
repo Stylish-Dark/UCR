@@ -75,6 +75,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(DeviceBindingCategory));
                 OnPropertyChanged(nameof(ShowInvertInput));
                 OnPropertyChanged(nameof(CanBindCurrentDevice));
+                OnPropertyChanged(nameof(DirectionalNegationVisibility));
                 OnPropertyChanged(nameof(InputTypeDetailsVisibility));
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(BindButtonText));
@@ -83,6 +84,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(ThresholdConditionVisibility));
             }
         }
+        // Logical NOT applies to digital directional channels, not continuous axes.
+        // Hiding this for analogue channels avoids offering a switch the runtime ignores.
+        public Visibility DirectionalNegationVisibility =>
+            InputExpressionInputKind == 0 ? Visibility.Visible : Visibility.Collapsed;
+
         // Default button inputs need no extra row; advanced axis controls appear only
         // when that individual input uses analogue data.
         public Visibility InputTypeDetailsVisibility =>
