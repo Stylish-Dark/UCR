@@ -258,6 +258,13 @@ namespace HidWizards.UCR.Views.Controls
 
             if (lane == "Input")
             {
+                if (mapping.InputIsFullStick && mapping.DirectionalCapacity == 4)
+                {
+                    var logical = mapping.ResolveCollapsedBinding(descriptor, DeviceIoType.Input);
+                    ShowQuickCompoundInputMenu(mapping, button,
+                        logical?.DeviceBinding?.InputExpressionGroup ?? 0);
+                    return;
+                }
                 try
                 {
                     var existing = mapping.ResolveCollapsedBinding(descriptor, DeviceIoType.Input);
@@ -275,7 +282,10 @@ namespace HidWizards.UCR.Views.Controls
             }
             else if (lane == "Output")
             {
-                await OpenQuickOutputPickerAsync(mapping, descriptor, button);
+                if (mapping.IsCompoundOutput)
+                    ShowQuickCompoundOutputMenu(mapping, button);
+                else
+                    await OpenQuickOutputPickerAsync(mapping, descriptor, button);
             }
         }
 
