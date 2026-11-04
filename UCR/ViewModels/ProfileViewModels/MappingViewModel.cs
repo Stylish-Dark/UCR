@@ -3305,6 +3305,58 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         // Build preview rows from the actual bindings. InputConditions is a presentation
         // collection and may be empty for plugin types without native expressions.
         // Never truncate the preview at the first three bindings.
+        private BindingVisualDescriptor DescribeCompoundVisual(
+            IList<DeviceBindingViewModel> channels, bool output)
+        {
+            var selected = channels?.FirstOrDefault(binding => binding.DeviceBinding.IsBound)
+                ?? channels?.FirstOrDefault();
+            var visual = DescribeCollapsedBinding(selected);
+            if (selected == null) return visual;
+
+            var profile = ProfileViewModel.Profile;
+            var binding = selected.DeviceBinding;
+            var device = profile.GetDeviceConfiguration(
+                output ? DeviceIoType.Output : DeviceIoType.Input,
+                binding.DeviceConfigurationGuid);
+            var deviceKind = device?.Device == null ? DeviceVisualKind.Unknown :
+                DeviceVisualCatalog.Describe(device, profile,
+                    output ? DeviceIoType.Output : DeviceIoType.Input).Kind;
+            var names = channels.Select(channel => channel.DeviceBinding.IsBound
+                ? channel.CompactBindButtonText : string.Empty).ToList();
+            while (names.Count < 4) names.Add(string.Empty);
+
+            if (channels.Any(channel =>
+                channel.DeviceBindingCategory == DeviceBindingCategory.Range))
+            {
+                visual.ControlKind = ControlVisualKind.CompoundStick;
+                visual.ControlLabel = names.Any(name =>
+                    name.IndexOf("Right", StringComparison.OrdinalIgnoreCase) >= 0)
+                    ? "R" : "L";
+            }
+            else if (deviceKind == DeviceVisualKind.Keyboard)
+            {
+                visual.ControlKind = ControlVisualKind.CompoundKeys;
+                visual.ControlLabel = string.Join("|", names.Take(4));
+            }
+            else
+            {
+                var dpad = names.Any(name =>
+                    name.IndexOf("D-pad", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    name.IndexOf("Dpad", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    name.IndexOf("POV", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    name.IndexOf("Hat", StringComparison.OrdinalIgnoreCase) >= 0);
+                visual.ControlKind = dpad || !channels.Any(channel =>
+                    channel.DeviceBinding.IsBound)
+                    ? ControlVisualKind.DPad : ControlVisualKind.CompoundFaceButtons;
+                visual.ControlLabel = dpad ? string.Empty : string.Join("|", names.Take(4));
+            }
+            visual.IsBound = channels.Any(channel => channel.DeviceBinding.IsBound);
+            visual.ToolTip = (output ? "Output" : "Input") +
+                " 4-Way compound binding — choose a complete D-pad, stick, face-button or keyboard preset";
+            visual.JoinSymbol = "+";
+            return visual;
+        }
+
         private List<CollapsedConditionVisualRow> BuildCollapsedInputRows()
         {
             var result = new List<CollapsedConditionVisualRow>();
@@ -3319,6 +3371,25 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             for (var groupIndex = 0; groupIndex < groups.Count; groupIndex++)
             {
                 var bindings = groups[groupIndex];
+                if (IsTypedDirectionalMapping && InputIsFullStick)
+                {
+                    var mainChannels = bindings.Where(binding =>
+                        !binding.DeviceBinding.IsDirectionalAndCondition).ToList();
+                    var guarded = bindings.Where(binding =>
+                        binding.DeviceBinding.IsDirectionalAndCondition).ToList();
+                    var groupedVisuals = new List<BindingVisualDescriptor>
+                    {
+                        DescribeCompoundVisual(mainChannels, false)
+                    };
+                    foreach (var guard in guarded)
+                        groupedVisuals.Add(DescribeCollapsedBinding(guard));
+                    result.Add(new CollapsedConditionVisualRow
+                    {
+                        Visuals = groupedVisuals,
+                        StartsAlternative = groupIndex > 0
+                    });
+                    continue;
+                }
                 var visuals = new List<BindingVisualDescriptor>();
                 for (var i = 0; i < bindings.Count; i++)
                 {
@@ -3384,6 +3455,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private List<BindingVisualDescriptor> BuildCollapsedOutputVisuals()
         {
             var result = new List<BindingVisualDescriptor>();
+            // A 4-Way output is one logical destination even though its runtime
+            // routes to two analogue or four digital physical channels.
+            if (IsCompoundOutput)
+            {
+                var channels = Plugins.SelectMany(plugin => plugin.DeviceBindings)
+                    .Where(binding => binding.DeviceBinding.DeviceIoType == DeviceIoType.Output)
+                    .ToList();
+                result.Add(DescribeCompoundVisual(channels, true));
+                return result;
+            }
             // Present every output route, in the same order as the expanded output rows.
             // Avoid the old primary-plugin-only summary that concealed extra outputs.
             foreach (var plugin in Plugins)
