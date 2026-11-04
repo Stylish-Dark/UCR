@@ -836,6 +836,74 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void TriggerAndAxisUseDifferentCapacitiesWithoutLockingTypeSelectors()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            context.PluginManager.Plugins = new List<Plugin>
+            {
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton(),
+                new HidWizards.UCR.Plugins.Remapper.AxisToAxis()
+            };
+            var profile = context.ProfilesManager.CreateProfile("Trigger and axis", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            profile.AddMapping("Directional").AddPlugin(
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+            var vm = new ProfileViewModel(profile);
+            try
+            {
+                var mapping = vm.MappingsList.Single();
+                Assert.That(mapping.CanChooseInputFourWay && mapping.CanChooseInputAxis &&
+                    mapping.CanChooseInputTrigger && mapping.CanChooseInputButton, Is.True);
+                Assert.That(mapping.CanChooseOutputFourWay && mapping.CanChooseOutputAxis &&
+                    mapping.CanChooseOutputTrigger && mapping.CanChooseOutputButton, Is.True);
+
+                // One Button drives one unidirectional Trigger; it does not
+                // automatically grow a spurious opposing Button slot.
+                Assert.That(mapping.SetOutputRepresentation(4), Is.True);
+                Assert.That(mapping.Mapping.DirectionalCapacity, Is.EqualTo(1));
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(1));
+                Assert.That(mapping.Mapping.Plugins.Count, Is.EqualTo(1));
+                Assert.That(mapping.Plugins.Single().OutputType, Is.EqualTo("Axis"));
+                Assert.That(mapping.OutputIsTrigger, Is.True);
+
+                // Axis is bidirectional: one pair of Button directions drives it.
+                Assert.That(mapping.SetOutputRepresentation(2), Is.True);
+                Assert.That(mapping.Mapping.DirectionalCapacity, Is.EqualTo(2));
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(2));
+                Assert.That(mapping.Mapping.Plugins.Count, Is.EqualTo(1));
+
+                Assert.That(mapping.SetInputRepresentation(2), Is.True);
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(1));
+                Assert.That(mapping.SetOutputRepresentation(4), Is.True);
+                Assert.That(mapping.Mapping.DirectionalCapacity, Is.EqualTo(2),
+                    "A signed axis can drive a positive-only Trigger without losing its source range.");
+                Assert.That(mapping.SetInputRepresentation(4), Is.True);
+                Assert.That(mapping.Mapping.DirectionalCapacity, Is.EqualTo(1));
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(1));
+                Assert.That(mapping.Mapping.Plugins.Count, Is.EqualTo(1));
+                Assert.That(mapping.InputIsTrigger && mapping.OutputIsTrigger, Is.True);
+
+                Assert.That(mapping.SetOutputRepresentation(3), Is.True);
+                Assert.That(mapping.SetInputRepresentation(1), Is.True);
+                Assert.That(mapping.Mapping.DirectionalCapacity, Is.EqualTo(4));
+                Assert.That(mapping.Mapping.Plugins.Count, Is.EqualTo(4));
+                Assert.That(mapping.SetOutputRepresentation(4), Is.False,
+                    "A lone Trigger cannot silently discard three 4-Way directions.");
+                Assert.That(mapping.Mapping.DirectionalCapacity, Is.EqualTo(4));
+                Assert.That(mapping.OutputIsButton, Is.True);
+                Assert.That(mapping.SetInputRepresentation(3), Is.True);
+                Assert.That(mapping.Mapping.DirectionalCapacity, Is.EqualTo(1));
+                Assert.That(mapping.Mapping.Plugins.Count, Is.EqualTo(1));
+            }
+            finally
+            {
+                vm.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void OutputSelectionCanReplaceButtonWithAxisWithoutLosingDestination()
         {
             EnsureApplicationResources();
