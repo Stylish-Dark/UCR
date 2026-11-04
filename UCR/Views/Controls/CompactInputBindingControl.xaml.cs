@@ -157,6 +157,15 @@ namespace HidWizards.UCR.Views.Controls
                     mapping.SetCompoundInputDevice(viewModel.DeviceBinding.InputExpressionGroup,
                         selected.Value);
             }
+            else if (DeviceOnly && viewModel.DeviceBinding?.DeviceIoType == DeviceIoType.Output)
+            {
+                var mapping = FindAncestor<MappingCardControl>(this)?.DataContext as MappingViewModel;
+                if (mapping?.SetFourWayButtonOutputDevice(selected.Value) != true)
+                {
+                    viewModel.RefreshDeviceList();
+                    DeviceSelectionBox.SelectedItem = viewModel.SelectedDevice;
+                }
+            }
             else
             {
                 viewModel.ChangeDeviceConfiguration(selected.Value);
