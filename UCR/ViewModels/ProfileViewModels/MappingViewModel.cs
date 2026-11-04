@@ -377,7 +377,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ? Visibility.Visible : Visibility.Collapsed;
         public Visibility LegacyOutputAddVisibility => Visibility.Visible;
         public Visibility FourWayOutputDeviceVisibility =>
-            (IsCompoundOutput || HasOutputDirectionalCompass)
+            (IsCompoundOutput || HasOutputDirectionalCompass) && Plugins?.Count > 0
+                ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility CompoundOutputRemoveVisibility =>
+            ButtonsEnabled && IsTypedDirectionalMapping &&
+            Mapping.RequiredOutputBindingSlots > 1 && Plugins?.Count > 0
                 ? Visibility.Visible : Visibility.Collapsed;
         public string FourWayOutputDeviceLabel
         {
@@ -627,6 +631,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(IsCompoundOutput));
             OnPropertyChanged(nameof(CompoundOutputSummary));
             OnPropertyChanged(nameof(FourWayOutputDeviceVisibility));
+            OnPropertyChanged(nameof(CompoundOutputRemoveVisibility));
             OnPropertyChanged(nameof(FourWayOutputDeviceLabel));
             OnPropertyChanged(nameof(IsTypedDirectionalMapping));
             OnPropertyChanged(nameof(IsFullStickInput));
@@ -2153,6 +2158,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool AddDefaultOutput()
         {
             if (!ButtonsEnabled) return false;
+            if (Plugins.Count == 0 && IsTypedDirectionalMapping)
+            {
+                // Restore the whole required output group, never just a single
+                // physical channel of a 2-axis / 4-direction compound.
+                if (!SwitchDirectionalOutputs(Mapping.EffectiveOutputRepresentation))
+                    return false;
+                RefreshHeaderState();
+                RefreshInputExpressionPresentation();
+                RefreshRepresentationSelections();
+                RefreshCollapsedSummary();
+                ProfileViewModel.Profile.Context.ContextChanged();
+                return Plugins.Count == Mapping.RequiredOutputBindingSlots;
+            }
             var options = GetCompatiblePluginOptions();
             var currentType = Plugins.LastOrDefault()?.Plugin?.GetType();
             var selected = options.FirstOrDefault(option => option.Plugin.GetType() == currentType)
@@ -2984,8 +3002,28 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+        public void RemoveAllOutputSlots()
+        {
+            if (!ButtonsEnabled || !IsTypedDirectionalMapping ||
+                Mapping.RequiredOutputBindingSlots <= 1) return;
+            foreach (var output in Plugins.ToList())
+            {
+                if (!Mapping.RemovePlugin(output.Plugin)) continue;
+                foreach (var binding in output.DeviceBindings)
+                    binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
+                output.Dispose();
+                Plugins.Remove(output);
+            }
+            RefreshHeaderState();
+            RefreshInputExpressionPresentation();
+            RefreshRepresentationSelections();
+            RefreshCollapsedSummary();
+            ProfileViewModel.RefreshFilterReferenceLabels();
+        }
+
         public void RemovePlugin(PluginViewModel pluginViewModel)
         {
+            if (!ButtonsEnabled || pluginViewModel?.CanRemove != true) return;
             if (!Mapping.RemovePlugin(pluginViewModel.Plugin)) return;
 
             pluginViewModel.Dispose();
