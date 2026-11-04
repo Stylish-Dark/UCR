@@ -1603,8 +1603,14 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(FindVisualChildren<ContentControl>(fourWayEditor).Count(item =>
                     new[] { "CompassInputLeft", "CompassInputRight",
                             "CompassInputUp", "CompassInputDown" }.Contains(item.Name)),
-                    Is.EqualTo(8),
-                    "Each of two OR alternatives must independently render a four-direction D-pad.");
+                    Is.Zero,
+                    "4-Way compounds must not expose eight separate per-direction Bind buttons.");
+                Assert.That(FindVisualChildren<Button>(fourWayEditor).Count(button =>
+                    button.DataContext is InputConditionViewModel condition &&
+                    condition.IsCompound && button.Visibility == Visibility.Visible &&
+                    string.Equals(button.Content as string, condition.CompoundPrimaryLabel,
+                        StringComparison.Ordinal)), Is.EqualTo(2),
+                    "Each OR alternative owns one complete compound input binding.");
                 Assert.That(mapping.SetInputRepresentation(2), Is.True);
                 Assert.That(mapping.Mapping.CompoundDigitalInput, Is.False,
                     "Axis input must not retain digital-compound routing.");
