@@ -397,8 +397,11 @@ namespace HidWizards.UCR.Tests.UiTests
                 var devicesExpander = page.FindName("ProfileDevicesExpander") as Expander;
                 Assert.That(presetPanel, Is.Not.Null);
                 Assert.That(devicesExpander, Is.Not.Null);
-                Assert.That(presetPanel.IsVisible, Is.True,
-                    "The new presets panel must be rendered on screen.");
+                Assert.That(presetPanel.Visibility, Is.EqualTo(Visibility.Visible));
+                Assert.That(presetPanel.ActualWidth, Is.GreaterThan(180),
+                    "The preset panel must occupy visible width in the right sidebar.");
+                Assert.That(presetPanel.ActualHeight, Is.GreaterThan(30),
+                    "The preset panel must occupy visible height in the right sidebar.");
                 var presetExpander = FindVisualChildren<Expander>(presetPanel).Single();
                 Assert.That(presetExpander.IsExpanded, Is.False);
                 presetExpander.IsExpanded = true;
