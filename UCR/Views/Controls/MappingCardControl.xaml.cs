@@ -486,13 +486,19 @@ namespace HidWizards.UCR.Views.Controls
             menu.Items.Add(new Separator());
             var single = new MenuItem
             {
-                Header = "Use one button instead",
-                ToolTip = "Change the input type to Button and capture one key",
+                Header = "Bind one button instead",
+                ToolTip = "Switch to Button; retain bound 4-Way inputs as AND guards",
                 Foreground = Brushes.White
             };
             single.Click += (sender, args) =>
             {
-                if (!mapping.SetInputRepresentation(3)) return;
+                string error;
+                if (!mapping.ConvertCompoundToSingleButton(out error))
+                {
+                    DarkMessageBox.Show(error ?? "Unable to convert the compound binding.",
+                        "Binding unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
                 var source = mapping.DeviceBindings.FirstOrDefault();
                 source?.DeviceBinding?.EnterBindMode(autoDetectInputCategory: true);
             };
