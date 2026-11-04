@@ -64,6 +64,21 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public BindingVisualDescriptor Visual { get; set; }
     }
 
+    // One visual direction in the compass. Analogue sticks deliberately
+    // share their X binding between Left/Right and Y between Up/Down.
+    // Four-key D-pads instead reference four independent physical bindings.
+    public sealed class DirectionalCompassSlotViewModel
+    {
+        public string Arrow { get; }
+        public DeviceBindingViewModel PhysicalBinding { get; }
+
+        public DirectionalCompassSlotViewModel(string arrow, DeviceBindingViewModel physicalBinding)
+        {
+            Arrow = arrow;
+            PhysicalBinding = physicalBinding;
+        }
+    }
+
     public sealed class InputConditionViewModel : INotifyPropertyChanged
     {
         private readonly MappingViewModel _owner;
@@ -81,7 +96,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 ? Visibility.Visible : Visibility.Collapsed;
         public string CompoundPrimaryLabel => IsCompound && _owner.InputIsFullStick &&
                                               CoreInputs.Count > 1
-            ? "Choose 4-Way preset ▾" : CompoundSummary;
+            ? "Preset ▾" : CompoundSummary;
+
+        private DirectionalCompassSlotViewModel CompassSlot(int digitalSlot, int analogueIndex, string arrow)
+        {
+            if (CompoundChannelPreviewVisibility != Visibility.Visible) return null;
+            DeviceBindingViewModel physical;
+            if (CoreInputs.Count >= 4)
+                physical = CoreInputs.FirstOrDefault(input =>
+                    input.DeviceBinding.InputDirectionSlot == digitalSlot)
+                    ?? CoreInputs.ElementAtOrDefault(digitalSlot - 1);
+            else
+                physical = CoreInputs.ElementAtOrDefault(analogueIndex);
+            return physical == null ? null : new DirectionalCompassSlotViewModel(arrow, physical);
+        }
+        public DirectionalCompassSlotViewModel CompassInputLeft => CompassSlot(1, 0, "←");
+        public DirectionalCompassSlotViewModel CompassInputRight => CompassSlot(2, 0, "→");
+        public DirectionalCompassSlotViewModel CompassInputUp => CompassSlot(3, 1, "↑");
+        public DirectionalCompassSlotViewModel CompassInputDown => CompassSlot(4, 1, "↓");
         public Visibility ButtonPairVisibility => IsButtonPair ? Visibility.Visible : Visibility.Collapsed;
         public string CompoundSummary
         {
@@ -245,6 +277,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool OutputIsTrigger => Mapping.EffectiveOutputRepresentation == 4;
         public bool IsCompoundOutput => DirectionalCapacity == 4 &&
             Mapping.EffectiveOutputRepresentation == 1;
+        // Four Button output destinations have spatial identities. Their
+        // editor must use a D-pad, not a vertical list of four arbitrary rows.
+        public bool HasOutputDirectionalCompass => IsTypedDirectionalMapping &&
+            DirectionalCapacity == 4 && OutputIsButton && Plugins?.Count == 4;
+        public Visibility OutputDirectionalCompassVisibility => HasOutputDirectionalCompass
+            ? Visibility.Visible : Visibility.Collapsed;
+        public PluginViewModel CompassOutputLeft => HasOutputDirectionalCompass ? Plugins[0] : null;
+        public PluginViewModel CompassOutputRight => HasOutputDirectionalCompass ? Plugins[1] : null;
+        public PluginViewModel CompassOutputUp => HasOutputDirectionalCompass ? Plugins[2] : null;
+        public PluginViewModel CompassOutputDown => HasOutputDirectionalCompass ? Plugins[3] : null;
         public string CompoundOutputSummary
         {
             get
@@ -2766,6 +2808,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void RefreshHeaderState()
         {
+            OnPropertyChanged(nameof(HasOutputDirectionalCompass));
+            OnPropertyChanged(nameof(OutputDirectionalCompassVisibility));
+            OnPropertyChanged(nameof(CompassOutputLeft));
+            OnPropertyChanged(nameof(CompassOutputRight));
+            OnPropertyChanged(nameof(CompassOutputUp));
+            OnPropertyChanged(nameof(CompassOutputDown));
             _mappingRouteTokens = BuildMappingRouteTokens(MappingRouteDisplay);
             _mappingOutputTypeLabel = GetMappingOutputTypeLabel();
             RefreshFilterPresentationCache();
