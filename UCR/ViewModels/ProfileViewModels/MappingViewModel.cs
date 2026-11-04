@@ -356,11 +356,42 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             Mapping.EffectiveOutputRepresentation == 4 ? "Trigger" : "Buttons";
         public Visibility TypedDirectionalVisibility => IsTypedDirectionalMapping
             ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility LegacyOutputAddVisibility =>
-            !IsTypedDirectionalMapping || ((OutputIsButton || OutputIsTrigger) && DirectionalCapacity == 1) ||
-            (InputIsButton && OutputIsAxis && DirectionalCapacity == 2) ||
-            (OutputIsFullStick && DirectionalCapacity == 4)
+        public Visibility LegacyOutputAddVisibility => Visibility.Visible;
+        public Visibility FourWayOutputDeviceVisibility =>
+            (IsCompoundOutput || HasOutputDirectionalCompass)
                 ? Visibility.Visible : Visibility.Collapsed;
+        public string FourWayOutputDeviceLabel
+        {
+            get
+            {
+                var outputs = Plugins?.SelectMany(plugin => plugin.DeviceBindings)
+                    .Where(binding => binding.DeviceBinding.DeviceIoType == DeviceIoType.Output)
+                    .ToList();
+                if (outputs == null || outputs.Count == 0) return "Choose output device ▾";
+                var guids = outputs.Where(binding => binding.DeviceBinding.DeviceConfigurationGuid != Guid.Empty)
+                    .Select(binding => binding.DeviceBinding.DeviceConfigurationGuid).Distinct().ToList();
+                if (guids.Count > 1) return "Mixed output devices ▾";
+                if (guids.Count == 0) return "Choose output device ▾";
+                var profile = ProfileViewModel.Profile;
+                var device = profile.GetDeviceConfiguration(DeviceIoType.Output, guids[0]);
+                return (device?.GetFullTitleForProfile(profile) ?? "Output device") + " ▾";
+            }
+        }
+        public bool SetFourWayButtonOutputDevice(Guid guid)
+        {
+            if (!ButtonsEnabled || !HasOutputDirectionalCompass) return false;
+            var profile = ProfileViewModel.Profile;
+            if (profile.GetDeviceConfiguration(DeviceIoType.Output, guid)?.Device == null)
+                return false;
+            foreach (var plugin in Plugins)
+                foreach (var binding in plugin.DeviceBindings.Where(binding =>
+                    binding.DeviceBinding.DeviceIoType == DeviceIoType.Output))
+                    binding.ChangeDeviceConfiguration(guid);
+            profile.Context.ContextChanged();
+            OnPropertyChanged(nameof(FourWayOutputDeviceLabel));
+            RefreshCollapsedSummary();
+            return true;
+        }
         public int InputDirectionalSlotCount => Mapping.RequiredInputBindingSlots;
         public bool IsDigitalCompoundInput => IsCompoundInput && Mapping.CompoundDigitalInput;
         public string CompoundBindingSummary => !IsCompoundInput || DeviceBindings == null ||
@@ -543,6 +574,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(OutputDirectionalSlotCount));
             OnPropertyChanged(nameof(IsCompoundOutput));
             OnPropertyChanged(nameof(CompoundOutputSummary));
+            OnPropertyChanged(nameof(FourWayOutputDeviceVisibility));
+            OnPropertyChanged(nameof(FourWayOutputDeviceLabel));
             OnPropertyChanged(nameof(IsTypedDirectionalMapping));
             OnPropertyChanged(nameof(IsFullStickInput));
             OnPropertyChanged(nameof(IsFullStickOutput));
@@ -2401,6 +2434,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             profile.Context.ContextChanged();
             OnPropertyChanged(nameof(OutputDirectionalSlotCount));
             OnPropertyChanged(nameof(CompoundOutputSummary));
+            OnPropertyChanged(nameof(FourWayOutputDeviceLabel));
             RefreshDirectionalAvailability();
             RefreshCollapsedSummary();
             return true;
