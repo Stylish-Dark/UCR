@@ -47,6 +47,47 @@ namespace HidWizards.UCR.Tests.ModelTests
         }
 
         [Test]
+        public void TypedDirectionalAndNotGatesAreIndependentOfAxisSlotsAndOrBranches()
+        {
+            var model = new Mapping
+            {
+                DirectionalCapacity = 2,
+                InputRepresentation = 3,
+                OutputRepresentation = 2,
+                DeviceBindings = new List<DeviceBinding>
+                {
+                    new DeviceBinding { IsBound = true, InputExpressionGroup = 0, InputDirectionSlot = 1 },
+                    new DeviceBinding { IsBound = true, InputExpressionGroup = 0, InputDirectionSlot = 2 },
+                    new DeviceBinding { IsBound = true, InputExpressionGroup = 0, IsDirectionalAndCondition = true },
+                    new DeviceBinding { IsBound = true, InputExpressionGroup = 1, InputDirectionSlot = 1 },
+                    new DeviceBinding { IsBound = true, InputExpressionGroup = 1, InputDirectionSlot = 2 },
+                    new DeviceBinding { IsBound = true, InputExpressionGroup = 1,
+                        IsDirectionalAndCondition = true, InputExpressionNegated = true }
+                }
+            };
+            Assert.That(model.RequiredInputBindingSlots, Is.EqualTo(6));
+            var bindings = model.DeviceBindings;
+            // Branch zero is active but its AND gate is false. A NOT gate in
+            // branch one admits its opposing direction instead.
+            Assert.That(Mapping.ComputeDirectionalOrChannels(
+                new short[] { 0, 1, 0, 1, 0, 0 }, bindings, 2, 3, 2, 2),
+                Is.EqualTo(new short[] { -short.MaxValue }));
+            // Passing the first AND condition makes that entire OR branch win.
+            Assert.That(Mapping.ComputeDirectionalOrChannels(
+                new short[] { 0, 1, 1, 1, 0, 0 }, bindings, 2, 3, 2, 2),
+                Is.EqualTo(new short[] { short.MaxValue }));
+            // A pressed NOT gate rejects the second branch too.
+            Assert.That(Mapping.ComputeDirectionalOrChannels(
+                new short[] { 0, 1, 0, 1, 0, 1 }, bindings, 2, 3, 2, 2),
+                Is.EqualTo(new short[] { (short)0 }));
+            // A missing physical AND binding never passes by negation alone.
+            bindings[5].IsBound = false;
+            Assert.That(Mapping.ComputeDirectionalOrChannels(
+                new short[] { 0, 1, 0, 1, 0, 0 }, bindings, 2, 3, 2, 2),
+                Is.EqualTo(new short[] { (short)0 }));
+        }
+
+        [Test]
         public void OpposedButtonOrGroupsAreIndependentAndPersistentInSlotCount()
         {
             var mapping = new Mapping
