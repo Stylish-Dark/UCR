@@ -2712,6 +2712,60 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         // Explicitly replace a saved legacy mapping with a clean Button mapping.
         // Never mutate old mappings merely because their editor is hidden.
+        // Leaving a compound 4-Way source for a single physical button must not
+        // manufacture three blank directional slots or discard existing inputs.
+        // Move bound compound directions into ordinary AND guards and preserve
+        // the destination plugins, including any already bound output channels.
+        public bool ConvertCompoundToSingleButton(out string error)
+        {
+            error = null;
+            if (!ButtonsEnabled || !InputIsFullStick || Mapping.Plugins.Count == 0)
+            {
+                error = "Only an editable 4-Way input can be converted.";
+                return false;
+            }
+            if (Mapping.Plugins.Any(plugin => plugin.InputCategories.Count != 1))
+            {
+                error = "This remapper requires multiple positional inputs and cannot be converted safely.";
+                return false;
+            }
+            var profile = ProfileViewModel.Profile;
+            var retained = Mapping.DeviceBindings.Where(binding => binding.IsBound).ToList();
+            var newPrimary = new DeviceBinding(Mapping.Update, profile, DeviceIoType.Input)
+            {
+                DeviceBindingCategory = DeviceBindingCategory.Momentary,
+                InputExpressionInputKind = 0,
+                InputExpressionKindConfigured = true,
+                InputExpressionGroup = 0,
+                InputDirectionSlot = 0
+            };
+            foreach (var guard in retained)
+            {
+                guard.InputExpressionGroup = 0;
+                guard.InputDirectionSlot = 0;
+                guard.IsDirectionalAndCondition = true;
+                guard.InputExpressionKindConfigured = true;
+            }
+
+            // Untyped expression routing evaluates one Button plus AND guards
+            // and fans that Boolean result out to the existing output plugins.
+            // This is intentionally not the old four-direction positional route.
+            Mapping.InputRepresentation = 0;
+            Mapping.OutputRepresentation = 0;
+            Mapping.DirectionalCapacity = 0;
+            Mapping.CompoundDigitalInput = false;
+            Mapping.CompoundDigitalOutput = false;
+            Mapping.DeviceBindings = new[] { newPrimary }.Concat(retained).ToList();
+            Mapping.UseInputExpression = true;
+            RebuildDirectionalEditors();
+            RefreshInputExpressionPresentation();
+            RefreshRepresentationSelections();
+            RefreshHeaderState();
+            RefreshCollapsedSummary();
+            profile.Context.ContextChanged();
+            return true;
+        }
+
         public bool ConvertToButtonMapping()
         {
             if (!ButtonsEnabled || Plugins.Count == 0 || Mapping.Plugins.Count != Plugins.Count)
