@@ -834,12 +834,12 @@
                                              IsChecked="{Binding InputIsFullStick, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseInputFourWay}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
-                                <RadioButton Content="↔" Tag="2"
-                                             ToolTip="Axis input" Click="InputRepresentation_OnClick"
+                                <RadioButton Content="{Binding InputAxisChoiceGlyph}" Tag="2"
+                                             FontSize="14" ToolTip="Axis input" Click="InputRepresentation_OnClick"
                                              IsChecked="{Binding InputIsAxis, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseInputAxis}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
-                                <RadioButton Content="●" Tag="3"
+                                <RadioButton Content="{Binding InputButtonChoiceGlyph}" Tag="3"
                                              ToolTip="Button input" Click="InputRepresentation_OnClick"
                                              IsChecked="{Binding InputIsButton, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseInputButton}"
@@ -919,12 +919,21 @@
                                              IsChecked="{Binding OutputIsFullStick, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseOutputFourWay}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
-                                <RadioButton Content="↔" Tag="2"
-                                             ToolTip="Axis output" Click="OutputRepresentation_OnClick"
+                                <RadioButton Content="{Binding OutputAxisChoiceGlyph}" Tag="2"
+                                             FontSize="14" ToolTip="Axis output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsAxis, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseOutputAxis}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
-                                <RadioButton Content="●" Tag="3"
+                                <RadioButton Tag="5"
+                                             ToolTip="Filter output" Click="FilterOutput_OnClick"
+                                             IsChecked="{Binding OutputIsFilter, Mode=OneWay}"
+                                             IsEnabled="{Binding ButtonsEnabled}"
+                                             Margin="0 0 9 0"
+                                             Style="{StaticResource DirectionalTypeChoice}">
+                                    <materialDesign:PackIcon Kind="Filter" Width="17" Height="17"
+                                        Foreground="{StaticResource MappingTypeFilterBrush}"/>
+                                </RadioButton>
+                                <RadioButton Content="{Binding OutputButtonChoiceGlyph}" Tag="3"
                                              ToolTip="Button output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsButton, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseOutputButton}"
