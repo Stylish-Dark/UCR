@@ -439,7 +439,7 @@
                         <DataTemplate>
                             <Border Background="#292929" BorderBrush="#454545" BorderThickness="1"
                                     CornerRadius="3" Padding="7" Margin="2 0 2 7"
-                                    MaxWidth="430" HorizontalAlignment="Stretch">
+                                    MinHeight="180" HorizontalAlignment="Stretch">
                                 <StackPanel>
                                     <Grid Margin="3 0 0 7">
                                         <Grid.ColumnDefinitions>
@@ -545,7 +545,7 @@
                                         <Grid Visibility="{Binding SingleButtonVisibility}">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" MinWidth="0"/>
-                                                <ColumnDefinition Width="49"/>
+                                                <ColumnDefinition Width="56"/>
                                                 <!-- Match the AND row's remove-button slot without making the primary input removable. -->
                                                 <ColumnDefinition Width="30"/>
                                             </Grid.ColumnDefinitions>
@@ -609,7 +609,7 @@
                                                 <Grid Margin="2 2 0 2">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*" MinWidth="0"/>
-                                                        <ColumnDefinition Width="49"/>
+                                                        <ColumnDefinition Width="56"/>
                                                         <ColumnDefinition Width="30"/>
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel Grid.Column="0">
@@ -945,7 +945,8 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Background="#292929" BorderBrush="#454545"
-                                        BorderThickness="1" CornerRadius="3" Padding="5 4" Margin="0 0 0 3">
+                                        BorderThickness="1" CornerRadius="3" Padding="5 4" Margin="0 0 0 3"
+                                        MinHeight="180">
                                         <StackPanel>
                                             <TextBlock Text="{Binding DirectionalSlotLabel}"
                                                        Visibility="{Binding DirectionalSlotVisibility}"
@@ -978,12 +979,13 @@
                                                         ToolTip="Change this output to a physical device or keep Filter"/>
                                                 <StackPanel Grid.Column="1" Orientation="Horizontal"
                                                     VerticalAlignment="Center" Margin="8 0 0 0">
-                                                    <StackPanel Orientation="Horizontal"
+                                                    <StackPanel Orientation="Vertical"
                                                         Visibility="{Binding QuickInvertVisibility}"
                                                         VerticalAlignment="Center" Margin="0 0 9 0">
-                                                        <TextBlock Text="Invert" Foreground="#D8D8D8"
-                                                            VerticalAlignment="Center" Margin="0 0 6 0"/>
+                                                        <TextBlock Text="Invert" FontSize="11" Foreground="#D8D8D8"
+                                                            HorizontalAlignment="Center" Margin="0 0 0 4"/>
                                                         <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
+                                                            HorizontalAlignment="Center"
                                                             IsChecked="{Binding QuickInvert, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                             ToolTip="Invert this output"/>
                                                     </StackPanel>
