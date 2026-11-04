@@ -70,6 +70,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool IsTypedDirectional => _owner?.IsTypedDirectionalMapping == true;
         public bool IsCompound => IsTypedDirectional && _owner.IsCompoundInput;
         public bool IsButtonPair => IsTypedDirectional && !IsCompound;
+        public ObservableCollection<DeviceBindingViewModel> AndInputs { get; }
+        public ObservableCollection<DeviceBindingViewModel> CoreInputs { get; }
         public Visibility CompoundVisibility => IsCompound ? Visibility.Visible : Visibility.Collapsed;
         public Visibility ButtonPairVisibility => IsButtonPair ? Visibility.Visible : Visibility.Collapsed;
         public string CompoundSummary
@@ -77,10 +79,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             get
             {
                 if (!IsCompound) return string.Empty;
-                if (!Inputs.Any(input => input.DeviceBinding.IsBound))
+                if (!CoreInputs.Any(input => input.DeviceBinding.IsBound))
                     return _owner?.InputIsFullStick == true ? "Choose stick / D-pad ▾"
-                        : _owner?.InputIsTrigger == true ? "Choose trigger ▾" : "Choose axis ▾";
-                return string.Join("  /  ", Inputs.Select(input => input.DeviceBinding.IsBound
+                        : _owner?.InputIsTrigger == true ? "Bind" : "Bind";
+                return string.Join("  /  ", CoreInputs.Select(input => input.DeviceBinding.IsBound
                     ? input.CompactBindButtonText : "—"));
             }
         }
@@ -88,8 +90,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             get
             {
-                var assigned = Inputs.Where(input => input.DeviceBinding?.IsBound == true).ToList();
-                var source = assigned.Count > 0 ? assigned : Inputs.ToList();
+                var assigned = CoreInputs.Where(input => input.DeviceBinding?.IsBound == true).ToList();
+                var source = assigned.Count > 0 ? assigned : CoreInputs.ToList();
                 var selectedGuids = source.Where(input => input.DeviceBinding != null)
                     .Select(input => input.DeviceBinding.DeviceConfigurationGuid)
                     .Where(id => id != Guid.Empty).Distinct().ToList();
@@ -131,24 +133,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool HasDirectionalInputs => DirectionalPrimary != null;
         public bool IsFourWay => DirectionalInputs.Count == 4;
         public int DirectionalColumns => IsFourWay ? 4 : 2;
-        public int ButtonPairColumns => Inputs.Count <= 1 ? 1 : 2;
-        public bool IsSingleButton => IsButtonPair && Inputs.Count == 1;
+        public int ButtonPairColumns => CoreInputs.Count <= 1 ? 1 : 2;
+        public bool IsSingleButton => IsButtonPair && CoreInputs.Count == 1;
         public Visibility SingleButtonVisibility => IsSingleButton ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility DirectionalButtonsVisibility => IsButtonPair && Inputs.Count > 1
+        public Visibility DirectionalButtonsVisibility => IsButtonPair && CoreInputs.Count > 1
             ? Visibility.Visible : Visibility.Collapsed;
         public Visibility GroupDevicePickerVisibility => IsSingleButton
             ? Visibility.Collapsed : Visibility.Visible;
-        private DeviceBindingViewModel Slot(int number) => Inputs.FirstOrDefault(input =>
+        private DeviceBindingViewModel Slot(int number) => CoreInputs.FirstOrDefault(input =>
             input.DeviceBinding.InputDirectionSlot == number);
-        private bool IsVerticalTwoWay => Inputs.Count == 2 &&
+        private bool IsVerticalTwoWay => CoreInputs.Count == 2 &&
             string.Equals(Slot(1)?.DeviceBindingName, "Up", StringComparison.OrdinalIgnoreCase);
-        public DeviceBindingViewModel LeftDirection => Inputs.Count >= 2 && !IsVerticalTwoWay
+        public DeviceBindingViewModel LeftDirection => CoreInputs.Count >= 2 && !IsVerticalTwoWay
             ? Slot(1) : null;
-        public DeviceBindingViewModel RightDirection => Inputs.Count >= 2 && !IsVerticalTwoWay
+        public DeviceBindingViewModel RightDirection => CoreInputs.Count >= 2 && !IsVerticalTwoWay
             ? Slot(2) : null;
-        public DeviceBindingViewModel UpDirection => Inputs.Count == 4 ? Slot(3)
+        public DeviceBindingViewModel UpDirection => CoreInputs.Count == 4 ? Slot(3)
             : IsVerticalTwoWay ? Slot(1) : null;
-        public DeviceBindingViewModel DownDirection => Inputs.Count == 4 ? Slot(4)
+        public DeviceBindingViewModel DownDirection => CoreInputs.Count == 4 ? Slot(4)
             : IsVerticalTwoWay ? Slot(2) : null;
         public Visibility LeftDirectionVisibility => LeftDirection != null ? Visibility.Visible : Visibility.Collapsed;
         public Visibility RightDirectionVisibility => RightDirection != null ? Visibility.Visible : Visibility.Collapsed;
@@ -167,6 +169,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             GroupIndex = groupIndex;
             _positionalFourWay = positionalFourWay;
             Inputs = new ObservableCollection<DeviceBindingViewModel>(inputs ?? Enumerable.Empty<DeviceBindingViewModel>());
+            CoreInputs = new ObservableCollection<DeviceBindingViewModel>(Inputs.Where(input =>
+                !input.DeviceBinding.IsDirectionalAndCondition));
+            AndInputs = new ObservableCollection<DeviceBindingViewModel>(Inputs.Where(input =>
+                input.DeviceBinding.IsDirectionalAndCondition));
             var slots = _positionalFourWay
                 ? Inputs.Take(4).ToList()
                 : Inputs.Where(binding => binding.DeviceBinding.InputDirectionSlot > 0).ToList();
@@ -493,7 +499,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             if (Mapping.InactiveInputRepresentations == null)
                 Mapping.InactiveInputRepresentations = new List<DirectionalInputBank>();
-            var previous = Mapping.DeviceBindings.ToList();
+            var guards = Mapping.DeviceBindings.Where(input =>
+                input.IsDirectionalAndCondition).ToList();
+            var previous = Mapping.DeviceBindings.Where(input =>
+                !input.IsDirectionalAndCondition).ToList();
             var priorType = Mapping.InputRepresentation;
             var oldGroups = previous.GroupBy(input => Math.Max(0, input.InputExpressionGroup))
                 .OrderBy(group => group.Key).Select(group => group.ToList()).ToList();
@@ -598,7 +607,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 Representation = priorType,
                 Bindings = previous
             });
-            Mapping.DeviceBindings = next;
+            Mapping.DeviceBindings = next.Concat(guards).OrderBy(input =>
+                Math.Max(0, input.InputExpressionGroup))
+                .ThenBy(input => input.IsDirectionalAndCondition ? 1 : 0).ToList();
             Mapping.InputRepresentation = representation;
             Mapping.UseInputExpression = true;
             RebuildDirectionalEditors();
@@ -1542,7 +1553,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var required = DirectionalCapacity * Math.Max(1, Mapping.DeviceBindings
                 .Select(input => Math.Max(0, input.InputExpressionGroup))
                 .Distinct().Count());
-            if (!previousDigital && Mapping.DeviceBindings.Count != required)
+            if (!previousDigital && Mapping.DeviceBindings.Count(input =>
+                !input.IsDirectionalAndCondition) != required)
             {
                 if (!SwitchDirectionalInputs(Mapping.EffectiveInputRepresentation))
                 {
@@ -1551,7 +1563,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     return false;
                 }
             }
-            if (Mapping.DeviceBindings.Count != required)
+            if (Mapping.DeviceBindings.Count(input => !input.IsDirectionalAndCondition) != required)
             {
                 error = "The compound binding's internal slots are incomplete.";
                 return false;
@@ -1761,6 +1773,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!ButtonsEnabled || !SupportsNativeInputExpression) return;
             var group = condition?.GroupIndex ?? 0;
             var binding = Mapping.AddExpressionInputToGroup(group);
+            if (IsTypedDirectionalMapping && binding != null)
+                binding.IsDirectionalAndCondition = true;
             AddExpressionBindingViewModel(binding);
         }
 
@@ -1849,7 +1863,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             var viewModel = new DeviceBindingViewModel(binding)
             {
-                DeviceBindingName = "Input",
+                DeviceBindingName = binding.IsDirectionalAndCondition ? "AND" : "Input",
                 ExpressionMapping = Mapping,
                 DeviceBindingCategory = binding.InputExpressionInputKind == 0 ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range
             };
@@ -1889,7 +1903,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public void SetInputNegated(DeviceBindingViewModel bindingViewModel, bool negated)
         {
             if (!ButtonsEnabled || bindingViewModel?.DeviceBinding == null) return;
-            if (!Mapping.SetExpressionNegated(bindingViewModel.DeviceBinding, negated)) return;
+            if (IsTypedDirectionalMapping)
+                bindingViewModel.DeviceBinding.SetInputExpressionNegated(negated);
+            else if (!Mapping.SetExpressionNegated(bindingViewModel.DeviceBinding, negated)) return;
             RefreshInputExpressionPresentation();
             RefreshCollapsedSummary();
         }
@@ -1897,10 +1913,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private void RefreshInputExpressionPresentation()
         {
             var canRemove = UsesInputExpression && DeviceBindings.Count > 1;
+            var directionalIndex = 0;
             for (var i = 0; i < DeviceBindings.Count; i++)
             {
                 DeviceBindings[i].DeviceBindingName = IsTypedDirectionalMapping
-                    ? GetDirectionalInputSlotLabel(i)
+                    ? (DeviceBindings[i].DeviceBinding.IsDirectionalAndCondition
+                        ? "AND" : GetDirectionalInputSlotLabel(directionalIndex++))
                     : SupportsNativeInputExpression
                         ? "Input"
                         : (Mapping.Plugins.Count > 0 && i < Mapping.Plugins[0].InputCategories.Count
