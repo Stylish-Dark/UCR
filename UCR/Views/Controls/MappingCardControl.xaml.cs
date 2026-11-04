@@ -1090,14 +1090,40 @@ namespace HidWizards.UCR.Views.Controls
             RequestAxisInputMode(axis, 2);
         }
 
+        private async void CompassOutputBind_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var binding = button?.DataContext as DeviceBindingViewModel;
+            if (binding == null) return;
+            await OpenQuickOutputPickerAsync(binding, button);
+        }
+
         private void CompoundOutputDevice_OnClick(object sender, RoutedEventArgs e)
         {
             var mapping = DataContext as MappingViewModel;
             var button = sender as Button;
-            if (mapping?.ButtonsEnabled != true || !mapping.IsCompoundOutput || button == null)
+            if (mapping?.ButtonsEnabled != true || button == null ||
+                (!mapping.IsCompoundOutput && !mapping.HasOutputDirectionalCompass))
                 return;
             var menu = CreateDarkContextMenu(button);
             menu.Placement = PlacementMode.Bottom;
+            if (mapping.HasOutputDirectionalCompass)
+            {
+                foreach (var device in mapping.ProfileViewModel.Profile
+                             .GetDeviceConfigurationList(DeviceIoType.Output))
+                {
+                    if (device?.Device == null) continue;
+                    var chosenGuid = device.Guid;
+                    var option = new MenuItem { Header = device.GetFullTitleForProfile(mapping.ProfileViewModel.Profile) };
+                    option.Click += (source, args) =>
+                        mapping.SetFourWayButtonOutputDevice(chosenGuid);
+                    menu.Items.Add(option);
+                }
+                if (menu.Items.Count == 0)
+                    menu.Items.Add(new MenuItem { Header = "No configured output devices", IsEnabled = false });
+                menu.IsOpen = true;
+                return;
+            }
             foreach (var device in mapping.GetFourWayOutputChoices()
                          .GroupBy(choice => choice.DeviceConfigurationGuid))
             {
