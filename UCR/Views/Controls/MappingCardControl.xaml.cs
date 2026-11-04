@@ -1090,6 +1090,32 @@ namespace HidWizards.UCR.Views.Controls
             RequestAxisInputMode(axis, 2);
         }
 
+        private void CompoundOutputDevice_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mapping = DataContext as MappingViewModel;
+            var button = sender as Button;
+            if (mapping?.ButtonsEnabled != true || !mapping.IsCompoundOutput || button == null)
+                return;
+            var menu = CreateDarkContextMenu(button);
+            menu.Placement = PlacementMode.Bottom;
+            foreach (var device in mapping.GetFourWayOutputChoices()
+                         .GroupBy(choice => choice.DeviceConfigurationGuid))
+            {
+                var choices = device.ToList();
+                var item = new MenuItem { Header = choices[0].DeviceTitle };
+                item.Click += (source, args) =>
+                {
+                    var selected = choices.FirstOrDefault(choice => choice.Destination == "Left stick")
+                                   ?? choices[0];
+                    mapping.ApplyTypedFourWayOutput(selected);
+                };
+                menu.Items.Add(item);
+            }
+            if (menu.Items.Count == 0)
+                menu.Items.Add(new MenuItem { Header = "No configured output devices", IsEnabled = false });
+            menu.IsOpen = true;
+        }
+
         private void CompoundOutput_OnClick(object sender, RoutedEventArgs e)
         {
             var mapping = DataContext as MappingViewModel;
