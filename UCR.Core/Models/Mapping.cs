@@ -110,15 +110,17 @@ namespace HidWizards.UCR.Core.Models
 
         public static int RequiredBindingSlots(int capacity, int representation)
         {
-            // Representations: 0 = legacy, 1 = Full Stick, 2 = Axis, 3 = Button.
-            // A digital representation has one binding per direction.
+            // Representations: 0 = legacy, 1 = 4-Way, 2 = bidirectional Axis,
+            // 3 = Button, 4 = one-sided Trigger. Button uses a separate binding
+            // for each direction; Trigger is one analogue channel (0..maximum).
             if (capacity != 1 && capacity != 2 && capacity != 4)
                 throw new ArgumentOutOfRangeException(nameof(capacity));
             if (representation == 0) return 0;
-            if (representation < 1 || representation > 3)
+            if (representation < 1 || representation > 4)
                 throw new ArgumentOutOfRangeException(nameof(representation));
             if (capacity == 1) return 1;
             if (representation == 3) return capacity;
+            if (representation == 4) return 1;
             // A full stick is one *logical* control but physically requires two
             // separately bound axes. The editor groups them as one stick.
             if (representation == 1 && capacity == 4) return 2;
@@ -367,6 +369,12 @@ namespace HidWizards.UCR.Core.Models
             short x = 0, y = 0;
             if (capacity == 1)
                 x = ReadDirectionalSource(inputValues, inputBindings, 0, inputType == 3);
+            else if (inputType == 4)
+            {
+                // A trigger is one unidirectional analogue source. Its neutral
+                // position is zero; it cannot supply a negative direction.
+                x = (short)Math.Max(0, ReadDirectionalSource(inputValues, inputBindings, 0, false));
+            }
             else if (inputType == 3)
             {
                 // Two opposed digital directions form each logical axis.
@@ -386,7 +394,9 @@ namespace HidWizards.UCR.Core.Models
 
             var threshold = short.MaxValue / 4;
             var channelValues = new List<short>();
-            if (outputType == 3 && capacity > 1)
+            if (outputType == 4)
+                channelValues.Add((short)Math.Max(0, x));
+            else if (outputType == 3 && capacity > 1)
             {
                 channelValues.Add(x < -threshold ? (short)1 : (short)0);
                 channelValues.Add(x > threshold ? (short)1 : (short)0);
