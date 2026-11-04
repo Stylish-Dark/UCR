@@ -711,8 +711,8 @@ namespace HidWizards.UCR.Tests.UiTests
                 var directionalBindButtons = FindVisualChildren<Button>(card)
                     .Where(button => button.DataContext is DirectionalCompassSlotViewModel)
                     .ToList();
-                Assert.That(directionalBindButtons.Count, Is.GreaterThanOrEqualTo(8),
-                    "Each compass face must provide a real Bind and options control.");
+                Assert.That(directionalBindButtons.Count, Is.EqualTo(4),
+                    "Each compass face must provide one real Bind control without an ellipsis.");
                 var digitalNegationToggles = FindVisualChildren<ToggleButton>(card)
                     .Where(toggle => (toggle.ToolTip as string) == "Negate this digital direction")
                     .ToList();
