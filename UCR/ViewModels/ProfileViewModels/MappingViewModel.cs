@@ -92,7 +92,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var source = assigned.Count > 0 ? assigned : Inputs.ToList();
                 var selectedGuids = source.Where(input => input.DeviceBinding != null)
                     .Select(input => input.DeviceBinding.DeviceConfigurationGuid)
-                    .Where(guid => guid != Guid.Empty).Distinct().ToList();
+                    .Where(id => id != Guid.Empty).Distinct().ToList();
                 if (selectedGuids.Count > 1) return "Mixed devices ▾";
                 var guid = selectedGuids.FirstOrDefault();
                 if (guid == Guid.Empty) return "Any device ▾";
