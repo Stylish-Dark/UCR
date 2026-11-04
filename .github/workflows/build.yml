@@ -599,7 +599,8 @@ jobs:
             'UCR-digital-dpad-preview.png',
             'UCR-typed-conditions-preview.png',
             'UCR-workspace-collapsed-preview.png',
-            'UCR-workspace-expanded-preview.png'
+            'UCR-workspace-expanded-preview.png',
+            'UCR-workspace-multi-expanded-preview.png'
           )
           foreach ($name in $visualCaptures) {
             if (-not (Test-Path -LiteralPath $name -PathType Leaf)) {
@@ -629,12 +630,13 @@ jobs:
             UCR-typed-conditions-preview.png
             UCR-workspace-collapsed-preview.png
             UCR-workspace-expanded-preview.png
+            UCR-workspace-multi-expanded-preview.png
           if-no-files-found: error
 
       - name: Expose WPF previews for actual visual review
         shell: pwsh
         run: |
-          foreach ($name in @('UCR-directional-preview.png', 'UCR-button-button-preview.png', 'UCR-button-trigger-preview.png', 'UCR-button-axis-preview.png', 'UCR-fourway-conditions-preview.png', 'UCR-digital-dpad-preview.png', 'UCR-typed-conditions-preview.png', 'UCR-workspace-collapsed-preview.png', 'UCR-workspace-expanded-preview.png')) {
+          foreach ($name in @('UCR-directional-preview.png', 'UCR-button-button-preview.png', 'UCR-button-trigger-preview.png', 'UCR-button-axis-preview.png', 'UCR-fourway-conditions-preview.png', 'UCR-digital-dpad-preview.png', 'UCR-typed-conditions-preview.png', 'UCR-workspace-collapsed-preview.png', 'UCR-workspace-expanded-preview.png', 'UCR-workspace-multi-expanded-preview.png')) {
             if (-not (Test-Path -LiteralPath $name)) { continue }
             $base64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path $name).Path))
             Write-Host "UCR_UI_CAPTURE_BEGIN:$name"
