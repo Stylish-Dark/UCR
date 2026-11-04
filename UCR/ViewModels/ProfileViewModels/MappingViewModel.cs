@@ -3444,9 +3444,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 channel.DeviceBindingCategory == DeviceBindingCategory.Range))
             {
                 visual.ControlKind = ControlVisualKind.CompoundStick;
-                visual.ControlLabel = names.Any(name =>
-                    name.IndexOf("Right", StringComparison.OrdinalIgnoreCase) >= 0)
-                    ? "R" : "L";
+                var rightStick = names.Any(name =>
+                    name.IndexOf("Right", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    name.StartsWith("RX", StringComparison.OrdinalIgnoreCase) ||
+                    name.StartsWith("RY", StringComparison.OrdinalIgnoreCase) ||
+                    name.StartsWith("RS", StringComparison.OrdinalIgnoreCase)) ||
+                    channels.Where(channel => channel.DeviceBinding.IsBound &&
+                            channel.DeviceBindingCategory == DeviceBindingCategory.Range)
+                        .Any(channel => channel.DeviceBinding.KeyValue == 2 ||
+                            channel.DeviceBinding.KeyValue == 3);
+                visual.ControlLabel = rightStick ? "R" : "L";
             }
             else if (deviceKind == DeviceVisualKind.Keyboard)
             {
