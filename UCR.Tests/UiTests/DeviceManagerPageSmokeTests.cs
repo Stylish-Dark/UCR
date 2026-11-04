@@ -1039,6 +1039,65 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void FourWayOutputRemovesAndRestoresAsOneLogicalSlot()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            context.PluginManager.Plugins = new List<Plugin>
+            {
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton(),
+                new HidWizards.UCR.Plugins.Remapper.AxisToAxis()
+            };
+            var profile = context.ProfilesManager.CreateProfile("Four way logical output", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var model = profile.AddMapping("Compound output removal");
+            model.AddPlugin(new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+            var vm = new ProfileViewModel(profile);
+            try
+            {
+                var mapping = vm.MappingsList.Single();
+                Assert.That(mapping.SetInputRepresentation(1), Is.True);
+                Assert.That(mapping.SetOutputRepresentation(1), Is.True);
+                Assert.That(mapping.Mapping.RequiredOutputBindingSlots, Is.EqualTo(2));
+                Assert.That(mapping.Plugins, Has.Count.EqualTo(2));
+                var inputs = mapping.Mapping.DeviceBindings.ToList();
+                inputs[0].IsBound = true;
+                inputs[0].KeyValue = 57;
+
+                var card = new MappingCardControl
+                {
+                    InspectorMode = true, InlineWorkspaceMode = true, DataContext = mapping
+                };
+                card.Measure(new Size(1000, 800));
+                card.Arrange(new Rect(0, 0, 1000, 800));
+                card.UpdateLayout();
+                var remove = FindVisualChildren<Button>(card).Single(button =>
+                    string.Equals(button.ToolTip as string,
+                        "Remove this 4-Way output slot", StringComparison.Ordinal));
+                Assert.That(remove.Visibility, Is.EqualTo(Visibility.Visible));
+                Assert.That(mapping.Plugins.All(plugin => !plugin.CanRemove), Is.True,
+                    "The four-way physical channels cannot be individually removed.");
+                mapping.RemoveAllOutputSlots();
+                Assert.That(mapping.Plugins, Is.Empty);
+                Assert.That(model.DeviceBindings, Has.Count.EqualTo(inputs.Count));
+                Assert.That(model.DeviceBindings[0], Is.SameAs(inputs[0]));
+                Assert.That(model.DeviceBindings[0].KeyValue, Is.EqualTo(57));
+
+                Assert.That(mapping.AddDefaultOutput(), Is.True);
+                Assert.That(mapping.Plugins, Has.Count.EqualTo(2),
+                    "Adding one logical 4-Way output must restore its two axis channels.");
+                Assert.That(model.DeviceBindings[0], Is.SameAs(inputs[0]));
+                Assert.That(model.DeviceBindings[0].IsBound, Is.True);
+                Assert.That(mapping.Mapping.EffectiveOutputRepresentation, Is.EqualTo(1));
+            }
+            finally
+            {
+                vm.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void RemovingTheFinalOrdinaryOutputPreservesInputsAndAllowsReadding()
         {
             EnsureApplicationResources();
