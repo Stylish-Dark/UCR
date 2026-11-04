@@ -369,6 +369,11 @@ namespace HidWizards.UCR.Tests.UiTests
             context.ProfilesManager.AddProfile(profile);
             var example = profile.AddMapping("Jump");
             example.AddPlugin(new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+            profile.CompoundBindingPresets.Add(new CompoundBindingPreset
+            {
+                Name = "My WASD", Capacity = 4,
+                Keys = new List<string> { "A", "D", "W", "S" }
+            });
 
             var page = new ProfilePage(context, profile, embedded: true);
             try
@@ -379,6 +384,26 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.Arrange(new Rect(new Point(0, 0), available));
                 page.UpdateLayout();
                 CaptureWorkspacePreview(page, 1440, 720, "UCR-workspace-collapsed-preview.png", 1020, 610);
+                // Keep sidebar WPF verification on the same working dispatcher
+                // as the established real-workspace test. A second STA-created
+                // ProfilePage can access theme resources owned by another thread.
+                var presetPanel = page.FindName("CompoundPresetsPanel") as Border;
+                var devicesExpander = page.FindName("ProfileDevicesExpander") as Expander;
+                Assert.That(presetPanel, Is.Not.Null);
+                Assert.That(devicesExpander, Is.Not.Null);
+                var presetExpander = FindVisualChildren<Expander>(presetPanel).Single();
+                Assert.That(presetExpander.IsExpanded, Is.False);
+                presetExpander.IsExpanded = true;
+                devicesExpander.IsExpanded = false;
+                page.UpdateLayout();
+                var presetList = page.FindName("CompoundPresetList") as ListBox;
+                Assert.That(presetList, Is.Not.Null);
+                Assert.That(presetList.Items.Count, Is.EqualTo(1));
+                Assert.That(presetList.Visibility, Is.EqualTo(Visibility.Visible));
+                CaptureWorkspacePreview(page, 1440, 900, "UCR-profile-sidebar-presets-preview.png");
+                devicesExpander.IsExpanded = true;
+                presetExpander.IsExpanded = false;
+                page.UpdateLayout();
 
                 var rows = FindVisualChildren<ListView>(page)
                     .SingleOrDefault(list => list.Name == "MappingRowsList");
@@ -602,52 +627,6 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.Arrange(new Rect(new Point(0, 0), fullViewport));
                 page.UpdateLayout();
                 Assert.That(model.MappingsList.All(mappingItem => !mappingItem.IsExpanded), Is.True);
-            }
-            finally
-            {
-                page.Dispose();
-            }
-        }
-
-        [Test]
-        [Apartment(ApartmentState.STA)]
-        public void ProfileSidebarSeparatesEditableFourWayPresetsFromCollapsibleDevices()
-        {
-            EnsureApplicationResources();
-            var context = new Context();
-            var profile = context.ProfilesManager.CreateProfile("Preset sidebar QC", null, null);
-            context.ProfilesManager.AddProfile(profile);
-            profile.CompoundBindingPresets.Add(new CompoundBindingPreset
-            {
-                Name = "My WASD", Capacity = 4,
-                Keys = new List<string> { "A", "D", "W", "S" }
-            });
-            var page = new ProfilePage(context, profile, embedded: true);
-            try
-            {
-                page.SuspendEmbeddedVisuals();
-                page.Measure(new Size(1440, 960));
-                page.Arrange(new Rect(0, 0, 1440, 960));
-                page.UpdateLayout();
-
-                var presetPanel = page.FindName("CompoundPresetsPanel") as Border;
-                var devicesExpander = page.FindName("ProfileDevicesExpander") as Expander;
-                Assert.That(presetPanel, Is.Not.Null,
-                    "Editable four-way presets need their own sidebar section.");
-                Assert.That(devicesExpander, Is.Not.Null,
-                    "Devices must retain their independent collapse control.");
-                var presetExpander = FindVisualChildren<Expander>(presetPanel).Single();
-                Assert.That(presetExpander.IsExpanded, Is.False);
-                presetExpander.IsExpanded = true;
-                devicesExpander.IsExpanded = false;
-                page.UpdateLayout();
-                var presets = page.FindName("CompoundPresetList") as ListBox;
-                Assert.That(presets, Is.Not.Null);
-                Assert.That(presets.Items.Count, Is.EqualTo(1));
-                Assert.That(presets.Visibility, Is.EqualTo(Visibility.Visible));
-                Assert.That(devicesExpander.IsExpanded, Is.False);
-                CaptureWorkspacePreview(page, 1440, 900,
-                    "UCR-profile-sidebar-presets-preview.png");
             }
             finally
             {
