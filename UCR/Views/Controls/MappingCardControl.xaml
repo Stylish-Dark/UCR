@@ -563,7 +563,7 @@
         <DataTemplate x:Key="ButtonMappingEditorTemplate">
             <Border Margin="2 0 2 3" Padding="6 5" Background="#202020"
                 BorderBrush="#303030" BorderThickness="0 1 0 0">
-                <UniformGrid VerticalAlignment="Top" MinHeight="280">
+                <UniformGrid VerticalAlignment="Top">
                     <UniformGrid.Style>
                         <Style TargetType="{x:Type UniformGrid}">
                             <Setter Property="Columns" Value="2"/>
@@ -578,7 +578,7 @@
                             </Style.Triggers>
                         </Style>
                     </UniformGrid.Style>
-                    <StackPanel Margin="0 0 6 5" MinHeight="255">
+                    <StackPanel Margin="0 0 6 5">
                         <StackPanel.Style>
                             <Style TargetType="{x:Type StackPanel}">
                                 <Style.Triggers>
@@ -639,7 +639,7 @@
                             </ContentControl.Style>
                         </ContentControl>
                     </StackPanel>
-                    <StackPanel Margin="6 0 0 5" MinHeight="255">
+                    <StackPanel Margin="6 0 0 5">
                         <StackPanel.Style>
                             <Style TargetType="{x:Type StackPanel}">
                                 <Style.Triggers>
