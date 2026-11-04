@@ -889,6 +889,13 @@ namespace HidWizards.UCR.Tests.UiTests
                         "Binding categories, clearing and blocking", StringComparison.Ordinal) &&
                     button.Visibility == Visibility.Visible), Is.EqualTo(4),
                     "Four-way Button input must expose four individually assignable directions.");
+                var labels = FindVisualChildren<TextBlock>(card)
+                    .Select(text => text.Text).ToList();
+                foreach (var glyph in new[] { "↑", "↓", "←", "→" })
+                    Assert.That(labels, Does.Contain(glyph),
+                        "Every spatial binding button must actually display its direction.");
+                Assert.That(mapping.CompoundOutputSummary, Is.EqualTo("Choose D-pad / stick ▾"),
+                    "An unassigned 4-Way output must offer a meaningful destination choice.");
             }
             finally
             {
