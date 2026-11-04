@@ -76,7 +76,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             = new ObservableCollection<PluginPropertyGroupViewModel>();
         public Visibility InlineSettingsVisibility =>
             Plugin?.PluginPropertyGroups?.Any(group => group.PluginProperties?.Any(property =>
-                !(QuickInvertVisibility == Visibility.Visible && property.Name == "Invert")) == true)
+                property.Name != "Invert") == true)
                 == true ? Visibility.Visible : Visibility.Collapsed;
 
         public bool IsAxisButtonMapping =>
@@ -284,8 +284,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 // output group, which used to be silently omitted here.
                 PluginPropertyGroups.Add(new PluginPropertyGroupViewModel(pluginPropertyGroup));
                 var inlineGroup = new PluginPropertyGroupViewModel(pluginPropertyGroup);
-                if (QuickInvertVisibility == Visibility.Visible)
-                    inlineGroup.PluginProperties.RemoveAll(property => property.Name == "Invert");
+                // The only allowed Invert control is the dedicated switch.
+                // In 4-Way -> Button it is intentionally absent everywhere.
+                inlineGroup.PluginProperties.RemoveAll(property => property.Name == "Invert");
                 if (inlineGroup.PluginProperties.Count > 0)
                     InlinePropertyGroups.Add(inlineGroup);
             }
