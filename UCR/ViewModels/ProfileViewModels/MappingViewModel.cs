@@ -286,8 +286,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             Mapping.DeviceBindings.Any(binding => binding.IsBound && binding.Block);
         public bool CanBlockCompound => ButtonsEnabled && IsCompoundInput &&
             Mapping.DeviceBindings.Any(binding => binding.IsBound && binding.IsBlockable());
-        public bool OutputIsFullStick => Mapping.EffectiveOutputRepresentation == 1;
-        public bool OutputIsAxis => Mapping.EffectiveOutputRepresentation == 2;
+        public bool OutputIsFullStick => Mapping.EffectiveOutputRepresentation == 1 && !OutputIsFilter;
+        public bool OutputIsAxis => Mapping.EffectiveOutputRepresentation == 2 && !OutputIsFilter;
         public bool OutputIsFilter => Plugins?.Count > 0 &&
             Plugins.All(plugin => string.Equals(plugin.OutputType, "Filter", StringComparison.OrdinalIgnoreCase));
         public bool OutputIsButton => Mapping.EffectiveOutputRepresentation == 3 && !OutputIsFilter;
@@ -302,9 +302,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 ? "↦" : InputIsFullStick ? "⠛" : InputIsAxis ? "••" : "●";
         public string InputAxisChoiceGlyph => OutputIsFullStick ? "↔↔" : "↔";
         public string OutputAxisChoiceGlyph => InputIsFullStick ? "↔↔" : "↔";
-        public bool OutputIsTrigger => Mapping.EffectiveOutputRepresentation == 4;
+        public bool OutputIsTrigger => Mapping.EffectiveOutputRepresentation == 4 && !OutputIsFilter;
         public bool IsCompoundOutput => DirectionalCapacity == 4 &&
-            Mapping.EffectiveOutputRepresentation == 1;
+            Mapping.EffectiveOutputRepresentation == 1 && !OutputIsFilter;
         // Four Button output destinations have spatial identities. Their
         // editor must use a D-pad, not a vertical list of four arbitrary rows.
         public bool HasOutputDirectionalCompass => IsTypedDirectionalMapping &&
@@ -595,7 +595,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             else
             {
-                if (Mapping.OutputRepresentation == value && !capacityChanged) return true;
+                if (Mapping.OutputRepresentation == value && !capacityChanged &&
+                    !OutputIsFilter &&
+                    Mapping.Plugins.Count == Mapping.RequiredOutputBindingSlots)
+                    return true;
                 if (!SwitchDirectionalOutputs(value)) return false;
                 if (capacityChanged || Mapping.DeviceBindings.Count != Mapping.RequiredInputBindingSlots)
                 {
@@ -2897,6 +2900,26 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var candidates = GetCompatiblePluginOptions();
             if (!candidates.Any(candidate => candidate.Plugin.GetType() == replacementTemplate.GetType()))
                 return false;
+            var selectingFilter = string.Equals(replacementTemplate.Group, "Filter",
+                StringComparison.OrdinalIgnoreCase);
+            if (selectingFilter && !OutputIsFilter)
+            {
+                // Filter is a logical output category. Keep the previously assigned
+                // physical destinations in a representation bank, so switching back
+                // restores them rather than silently wiping the user's bindings.
+                if (Mapping.InactiveOutputRepresentations == null)
+                    Mapping.InactiveOutputRepresentations = new List<DirectionalOutputBank>();
+                var representation = Mapping.EffectiveOutputRepresentation;
+                var count = Mapping.Plugins.Count;
+                Mapping.InactiveOutputRepresentations.RemoveAll(bank =>
+                    bank.Representation == representation &&
+                    bank.Plugins?.Count == count);
+                Mapping.InactiveOutputRepresentations.Add(new DirectionalOutputBank
+                {
+                    Representation = representation,
+                    Plugins = Mapping.Plugins.ToList()
+                });
+            }
             // Apply the common category to each destination. Individual output type changes
             // remain available in the row's optional settings.
             var success = true;
