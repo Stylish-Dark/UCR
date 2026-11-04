@@ -106,7 +106,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private DirectionalCompassSlotViewModel CompassSlot(int digitalSlot, int analogueIndex, string arrow)
         {
-            if (CompoundChannelPreviewVisibility != Visibility.Visible) return null;
+            // Expose the four semantic directions for routing/tests even though
+            // the editor displays one compound binding instead of four buttons.
+            if (!IsCompound || !_owner.InputIsFullStick || CoreInputs.Count <= 1) return null;
             DeviceBindingViewModel physical;
             if (CoreInputs.Count >= 4)
                 physical = CoreInputs.FirstOrDefault(input =>
