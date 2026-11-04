@@ -601,8 +601,24 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: UCR-Directional-UI-Preview
-          path: UCR-directional-preview.png
+          path: |
+            UCR-directional-preview.png
+            UCR-typed-conditions-preview.png
           if-no-files-found: warn
+
+      - name: Expose WPF previews for actual visual review
+        shell: pwsh
+        run: |
+          foreach ($name in @('UCR-directional-preview.png', 'UCR-typed-conditions-preview.png')) {
+            if (-not (Test-Path -LiteralPath $name)) { continue }
+            $base64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path $name).Path))
+            Write-Host "UCR_UI_CAPTURE_BEGIN:$name"
+            for ($index = 0; $index -lt $base64.Length; $index += 3000) {
+              $part = $base64.Substring($index, [Math]::Min(3000, $base64.Length - $index))
+              Write-Host "UCR_UI_CAPTURE_PART:$part"
+            }
+            Write-Host "UCR_UI_CAPTURE_END:$name"
+          }
 
       - name: Smoke-test actual UCR.exe cold startup
         shell: pwsh
