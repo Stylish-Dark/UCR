@@ -561,6 +561,24 @@
                                                 Style="{StaticResource MappingNotToggle}"
                                                 ToolTip="Negate this input condition"/>
                                         </Grid>
+                                        <!-- Two buttons driving one axis use the same regular binding
+                                             controls as ordinary input rows. No compass or preset menu. -->
+                                        <ItemsControl ItemsSource="{Binding CoreInputs}"
+                                                      Visibility="{Binding PlainAxisButtonPairVisibility}"
+                                                      Margin="2 3 2 3">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Margin="0 0 0 7">
+                                                        <TextBlock Text="{Binding DeviceBindingName}"
+                                                                   FontSize="12" Foreground="#D5D5D5"
+                                                                   Margin="2 0 0 3"/>
+                                                        <local:CompactInputBindingControl
+                                                            DeviceBinding="{Binding DeviceBinding}"
+                                                            HorizontalAlignment="Stretch"/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
                                         <!-- Two or four independent directions surround a preset.
                                              Slot identity and OR membership come from the model. -->
                                         <Grid HorizontalAlignment="Center" Margin="0 2 0 2"
@@ -946,7 +964,7 @@
                                 <DataTemplate>
                                     <Border Background="#292929" BorderBrush="#454545"
                                         BorderThickness="1" CornerRadius="3" Padding="5 4" Margin="0 0 0 3"
-                                        MinHeight="180">
+                                        MinHeight="224">
                                         <StackPanel>
                                             <TextBlock Text="{Binding DirectionalSlotLabel}"
                                                        Visibility="{Binding DirectionalSlotVisibility}"
