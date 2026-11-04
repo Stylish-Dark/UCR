@@ -1340,7 +1340,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             var group = DeviceBindings.Where(binding =>
                 binding.DeviceBinding.InputExpressionGroup == groupIndex &&
-                !inding.IsDirectionalAndCondition &&
                 !binding.DeviceBinding.IsDirectionalAndCondition).ToList();
             if (group.Count != 2)
             {
@@ -1422,7 +1421,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!EnsureCompoundDigitalSlots(out error, fourWay: true)) return false;
             var group = DeviceBindings.Where(input =>
                 input.DeviceBinding.InputExpressionGroup == groupIndex &&
-                !inding.IsDirectionalAndCondition &&
                 !input.DeviceBinding.IsDirectionalAndCondition)
                 .OrderBy(input => input.DeviceBinding.InputDirectionSlot).ToList();
             if (group.Count != 4)
@@ -1482,7 +1480,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!EnsureCompoundDigitalSlots(out error, fourWay: true)) return false;
             var inputs = DeviceBindings.Where(input =>
                 input.DeviceBinding.InputExpressionGroup == groupIndex &&
-                !inding.IsDirectionalAndCondition &&
                 !input.DeviceBinding.IsDirectionalAndCondition)
                 .OrderBy(input => input.DeviceBinding.InputDirectionSlot).ToList();
             if (inputs.Count != 4)
@@ -1663,7 +1660,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!EnsureCompoundDigitalSlots(out error, fourWay: true)) return false;
             var inputs = DeviceBindings.Where(binding =>
                 binding.DeviceBinding.InputExpressionGroup == groupIndex &&
-                !inding.IsDirectionalAndCondition &&
                 !binding.DeviceBinding.IsDirectionalAndCondition)
                 .OrderBy(binding => binding.DeviceBinding.InputDirectionSlot).ToList();
             if (inputs.Count != 4)
@@ -1703,7 +1699,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             var inputs = DeviceBindings.Where(input =>
                     input.DeviceBinding.InputExpressionGroup == groupIndex &&
-                !inding.IsDirectionalAndCondition &&
                 !input.DeviceBinding.IsDirectionalAndCondition)
                 .OrderBy(input => input.DeviceBinding.InputDirectionSlot)
                 .Select(input => input.DeviceBinding).ToList();
