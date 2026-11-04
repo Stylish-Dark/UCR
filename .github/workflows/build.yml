@@ -592,6 +592,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Directional type WPF test failed: $LASTEXITCODE" }
           $visualCaptures = @(
             'UCR-directional-preview.png',
+            'UCR-digital-dpad-preview.png',
             'UCR-typed-conditions-preview.png',
             'UCR-workspace-collapsed-preview.png',
             'UCR-workspace-expanded-preview.png'
@@ -616,6 +617,7 @@ jobs:
           name: UCR-Directional-UI-Preview
           path: |
             UCR-directional-preview.png
+            UCR-digital-dpad-preview.png
             UCR-typed-conditions-preview.png
             UCR-workspace-collapsed-preview.png
             UCR-workspace-expanded-preview.png
@@ -624,7 +626,7 @@ jobs:
       - name: Expose WPF previews for actual visual review
         shell: pwsh
         run: |
-          foreach ($name in @('UCR-directional-preview.png', 'UCR-typed-conditions-preview.png', 'UCR-workspace-collapsed-preview.png', 'UCR-workspace-expanded-preview.png')) {
+          foreach ($name in @('UCR-directional-preview.png', 'UCR-digital-dpad-preview.png', 'UCR-typed-conditions-preview.png', 'UCR-workspace-collapsed-preview.png', 'UCR-workspace-expanded-preview.png')) {
             if (-not (Test-Path -LiteralPath $name)) { continue }
             $base64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path $name).Path))
             Write-Host "UCR_UI_CAPTURE_BEGIN:$name"
