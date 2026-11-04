@@ -48,6 +48,21 @@
                                 <Setter TargetName="Surface" Property="Background" Value="#164AA7"/>
                                 <Setter TargetName="Surface" Property="BorderBrush" Value="#3984F4"/>
                             </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Surface" Property="Background" Value="#1C1C1C"/>
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="#393939"/>
+                                <Setter Property="Foreground" Value="#696969"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                                <Setter Property="Opacity" Value="0.48"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsEnabled" Value="False"/>
+                                    <Condition Property="IsChecked" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Surface" Property="Background" Value="#233455"/>
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="#53678C"/>
+                            </MultiTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -383,17 +398,25 @@
                                     </Grid>
                                     <Grid Margin="3 4 3 3" Visibility="{Binding CompoundVisibility}">
                                         <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*" MinWidth="0"/>
                                             <ColumnDefinition Width="40"/>
                                         </Grid.ColumnDefinitions>
-                                        <Button Grid.Column="0" Content="{Binding CompoundSummary}"
+                                        <Button Grid.Column="0" Height="38" MaxWidth="124"
+                                                Content="{Binding CompoundDeviceLabel}"
+                                                ToolTip="{Binding CompoundDeviceLabel}"
+                                                Click="CompoundDevice_OnClick"
+                                                Padding="7 2" Margin="0 0 5 0"
+                                                Background="#303030" BorderBrush="#59709A"
+                                                Foreground="#FFFFFF"/>
+                                        <Button Grid.Column="1" Content="{Binding CompoundSummary}"
                                                 Click="CompoundBindingsMenu_OnClick"
                                                 ToolTip="Choose or edit the compound binding"
                                                 HorizontalContentAlignment="Center"
                                                 Height="38" Foreground="#FFFFFF"
                                                 Background="#0939A5" BorderBrush="#1250D3"
                                                 FontWeight="SemiBold" Padding="8 3"/>
-                                        <Button Grid.Column="1" Content="⋮" FontSize="20"
+                                        <Button Grid.Column="2" Content="⋮" FontSize="20"
                                                 Click="CompoundBindingsMenu_OnClick"
                                                 ToolTip="Compound binding options"
                                                 Height="38" Margin="3 0 0 0" Padding="0"
@@ -488,6 +511,11 @@
                                              IsChecked="{Binding InputIsAxis, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseInputAxis}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
+                                <RadioButton Content="↦" GroupName="InputDirectionalType" Tag="4"
+                                             ToolTip="Trigger input (one-sided axis)" Click="InputRepresentation_OnClick"
+                                             IsChecked="{Binding InputIsTrigger, Mode=OneWay}"
+                                             IsEnabled="{Binding CanChooseInputTrigger}"
+                                             Style="{StaticResource DirectionalTypeChoice}"/>
                                 <RadioButton Content="●" GroupName="InputDirectionalType" Tag="3"
                                              ToolTip="Button input" Click="InputRepresentation_OnClick"
                                              IsChecked="{Binding InputIsButton, Mode=OneWay}"
@@ -543,6 +571,11 @@
                                              ToolTip="Axis output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsAxis, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseOutputAxis}"
+                                             Style="{StaticResource DirectionalTypeChoice}"/>
+                                <RadioButton Content="↦" GroupName="OutputDirectionalType" Tag="4"
+                                             ToolTip="Trigger output (one-sided axis)" Click="OutputRepresentation_OnClick"
+                                             IsChecked="{Binding OutputIsTrigger, Mode=OneWay}"
+                                             IsEnabled="{Binding CanChooseOutputTrigger}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                                 <RadioButton Content="●" GroupName="OutputDirectionalType" Tag="3"
                                              ToolTip="Button output" Click="OutputRepresentation_OnClick"
