@@ -1034,6 +1034,7 @@
                                                     </StackPanel>
                                                     <Button Style="{StaticResource UcrDeleteItemButton}"
                                                         Click="RemoveOutput_OnClick" IsEnabled="{Binding CanRemove}"
+                                                        Visibility="{Binding CanRemove, Converter={StaticResource CompoundVisibilityConverter}}"
                                                         ToolTip="Remove this output"/>
                                                 </StackPanel>
                                             </Grid>
