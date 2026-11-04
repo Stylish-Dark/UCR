@@ -665,10 +665,15 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(mapping.CollapsedInputRows.Single().Visuals.Count, Is.EqualTo(1),
                     "A full-stick input is one grouped mapping-header glyph.");
                 Assert.That(mapping.SetOutputRepresentation(1), Is.True);
-                card.Measure(new Size(1050, 1100));
-                card.Arrange(new Rect(0, 0, 1050, 1100));
-                card.UpdateLayout();
-                CaptureEditorPreview(card, 1050, "UCR-fourway-to-fourway-preview.png");
+                var fourWayCard = new MappingCardControl
+                {
+                    InspectorMode = true, InlineWorkspaceMode = true,
+                    DataContext = mapping
+                };
+                fourWayCard.Measure(new Size(1050, 1100));
+                fourWayCard.Arrange(new Rect(0, 0, 1050, 1100));
+                fourWayCard.UpdateLayout();
+                CaptureEditorPreview(fourWayCard, 1050, "UCR-fourway-to-fourway-preview.png");
                 Assert.That(mapping.CollapsedOutputVisuals.Count, Is.EqualTo(1),
                     "A complete 4-Way output must be one compound glyph, not separate channels.");
                 Assert.That(new[] { ControlVisualKind.DPad, ControlVisualKind.CompoundStick,
