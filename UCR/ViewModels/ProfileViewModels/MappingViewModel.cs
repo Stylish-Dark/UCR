@@ -306,6 +306,20 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return true;
         }
 
+        // WPF RadioButton groups temporarily uncheck the previous choice even
+        // when a rejected selection leaves the underlying mapping unchanged.
+        public void RefreshRepresentationSelections()
+        {
+            OnPropertyChanged(nameof(InputIsFullStick));
+            OnPropertyChanged(nameof(InputIsAxis));
+            OnPropertyChanged(nameof(InputIsTrigger));
+            OnPropertyChanged(nameof(InputIsButton));
+            OnPropertyChanged(nameof(OutputIsFullStick));
+            OnPropertyChanged(nameof(OutputIsAxis));
+            OnPropertyChanged(nameof(OutputIsTrigger));
+            OnPropertyChanged(nameof(OutputIsButton));
+        }
+
         public bool SetInputRepresentation(int value)
         {
             return SetRepresentation(value, true);
