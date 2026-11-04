@@ -1006,7 +1006,7 @@ namespace HidWizards.UCR.Tests.UiTests
             var profile = context.ProfilesManager.CreateProfile("Disconnected input", null, null);
             context.ProfilesManager.AddProfile(profile);
             var binding = new HidWizards.UCR.Core.Models.Binding.DeviceBinding(
-                null, profile, HidWizards.UCR.Core.Models.Binding.DeviceIoType.Input)
+                null, profile, DeviceIoType.Input)
             {
                 IsBound = true,
                 DeviceConfigurationGuid = Guid.NewGuid()
