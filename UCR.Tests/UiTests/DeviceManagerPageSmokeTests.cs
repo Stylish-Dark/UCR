@@ -1141,6 +1141,21 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(mapping.OutputIsButton, Is.False);
                 Assert.That(mapping.OutputIsAxis, Is.False);
                 Assert.That(mapping.OutputIsFullStick, Is.False);
+                var filterCard = new MappingCardControl
+                {
+                    InspectorMode = true, InlineWorkspaceMode = true,
+                    DataContext = mapping
+                };
+                filterCard.Measure(new Size(1050, 800));
+                filterCard.Arrange(new Rect(0, 0, 1050, 800));
+                filterCard.UpdateLayout();
+                var activeOutputTypes = FindVisualChildren<RadioButton>(filterCard)
+                    .Where(button => (button.ToolTip as string)?.EndsWith(" output",
+                        StringComparison.Ordinal) == true && button.IsChecked == true).ToList();
+                Assert.That(activeOutputTypes.Count, Is.EqualTo(1),
+                    "Filter must not leave an Axis or 4-Way type active as well.");
+                Assert.That(activeOutputTypes[0].ToolTip, Is.EqualTo("Filter output"));
+                CaptureEditorPreview(filterCard, 1050, "UCR-filter-output-preview.png");
                 Assert.That(mapping.SetOutputRepresentation(3), Is.True);
                 Assert.That(mapping.OutputIsFilter, Is.False);
                 Assert.That(mapping.OutputIsButton, Is.True);
