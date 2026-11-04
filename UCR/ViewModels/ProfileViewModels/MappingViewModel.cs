@@ -1290,7 +1290,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return false;
             }
             var original = Mapping.DeviceBindings.FirstOrDefault(binding =>
-                binding.InputExpressionGroup == groupIndex);
+                binding.InputExpressionGroup == groupIndex &&
+                !binding.IsDirectionalAndCondition);
             if (original == null)
             {
                 error = "This input OR set no longer exists.";
@@ -1338,7 +1339,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return false;
             }
             var group = DeviceBindings.Where(binding =>
-                binding.DeviceBinding.InputExpressionGroup == groupIndex).ToList();
+                binding.DeviceBinding.InputExpressionGroup == groupIndex &&
+                !inding.IsDirectionalAndCondition &&
+                !binding.DeviceBinding.IsDirectionalAndCondition).ToList();
             if (group.Count != 2)
             {
                 error = "This OR set does not contain both stick axes.";
@@ -1365,7 +1368,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             error = null;
             if (!ButtonsEnabled) return false;
             var source = Mapping.DeviceBindings.FirstOrDefault(input =>
-                input.InputExpressionGroup == groupIndex);
+                input.InputExpressionGroup == groupIndex &&
+                !input.IsDirectionalAndCondition);
             if (source == null)
             {
                 error = "This input OR set no longer exists.";
@@ -1417,7 +1421,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             // face-button layout.
             if (!EnsureCompoundDigitalSlots(out error, fourWay: true)) return false;
             var group = DeviceBindings.Where(input =>
-                input.DeviceBinding.InputExpressionGroup == groupIndex)
+                input.DeviceBinding.InputExpressionGroup == groupIndex &&
+                !inding.IsDirectionalAndCondition &&
+                !input.DeviceBinding.IsDirectionalAndCondition)
                 .OrderBy(input => input.DeviceBinding.InputDirectionSlot).ToList();
             if (group.Count != 4)
             {
@@ -1445,7 +1451,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             error = null;
             if (!ButtonsEnabled) return false;
             var original = Mapping.DeviceBindings.FirstOrDefault(binding =>
-                binding.InputExpressionGroup == groupIndex);
+                binding.InputExpressionGroup == groupIndex &&
+                !binding.IsDirectionalAndCondition);
             if (original == null)
             {
                 error = "This input OR set no longer exists.";
@@ -1474,7 +1481,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             // Never convert existing bindings until the requested D-pad exists.
             if (!EnsureCompoundDigitalSlots(out error, fourWay: true)) return false;
             var inputs = DeviceBindings.Where(input =>
-                input.DeviceBinding.InputExpressionGroup == groupIndex)
+                input.DeviceBinding.InputExpressionGroup == groupIndex &&
+                !inding.IsDirectionalAndCondition &&
+                !input.DeviceBinding.IsDirectionalAndCondition)
                 .OrderBy(input => input.DeviceBinding.InputDirectionSlot).ToList();
             if (inputs.Count != 4)
             {
@@ -1582,7 +1591,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             error = null;
             if (!ButtonsEnabled) return false;
             var source = Mapping.DeviceBindings.FirstOrDefault(binding =>
-                binding.InputExpressionGroup == groupIndex);
+                binding.InputExpressionGroup == groupIndex &&
+                !binding.IsDirectionalAndCondition);
             if (source == null)
             {
                 error = "This input OR set no longer exists.";
@@ -1652,7 +1662,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             // keyboard/key must leave the mapping and its bindings untouched.
             if (!EnsureCompoundDigitalSlots(out error, fourWay: true)) return false;
             var inputs = DeviceBindings.Where(binding =>
-                binding.DeviceBinding.InputExpressionGroup == groupIndex)
+                binding.DeviceBinding.InputExpressionGroup == groupIndex &&
+                !inding.IsDirectionalAndCondition &&
+                !binding.DeviceBinding.IsDirectionalAndCondition)
                 .OrderBy(binding => binding.DeviceBinding.InputDirectionSlot).ToList();
             if (inputs.Count != 4)
             {
@@ -1690,7 +1702,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return false;
             }
             var inputs = DeviceBindings.Where(input =>
-                    input.DeviceBinding.InputExpressionGroup == groupIndex)
+                    input.DeviceBinding.InputExpressionGroup == groupIndex &&
+                !inding.IsDirectionalAndCondition &&
+                !input.DeviceBinding.IsDirectionalAndCondition)
                 .OrderBy(input => input.DeviceBinding.InputDirectionSlot)
                 .Select(input => input.DeviceBinding).ToList();
             if (!IsDigitalCompoundInput || inputs.Count != DirectionalCapacity ||
