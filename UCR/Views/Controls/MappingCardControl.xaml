@@ -452,11 +452,12 @@
                                     </Grid>
                                     <StackPanel Visibility="{Binding ButtonPairVisibility}">
                                         <!-- Ordinary one-button mapping: preserve the full selector. -->
-                                        <local:CompactInputBindingControl
-                                            DeviceBinding="{Binding Inputs[0].DeviceBinding}"
-                                            DataContext="{Binding Inputs[0]}"
-                                            Visibility="{Binding DataContext.SingleButtonVisibility, RelativeSource={RelativeSource Self}}"
-                                            HorizontalAlignment="Stretch"/>
+                                        <Border Visibility="{Binding SingleButtonVisibility}">
+                                            <local:CompactInputBindingControl
+                                                DataContext="{Binding Inputs[0]}"
+                                                DeviceBinding="{Binding DeviceBinding}"
+                                                HorizontalAlignment="Stretch"/>
+                                        </Border>
                                         <!-- Two or four independent directions surround a preset.
                                              Slot identity and OR membership come from the model. -->
                                         <Grid HorizontalAlignment="Center" Margin="0 3 0 3"
