@@ -335,14 +335,18 @@
                                    Margin="0 6 0 0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
-                <Grid x:Name="SidebarGrid" Grid.Row="1" Grid.Column="1"
-                       Margin="12 8 12 8" Visibility="Visible" Panel.ZIndex="2">
+                <ScrollViewer x:Name="SidebarScrollViewer" Grid.Row="1" Grid.Column="1"
+                              Margin="12 8 12 8"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              CanContentScroll="False">
+                <Grid x:Name="SidebarGrid" Visibility="Visible" Panel.ZIndex="2">
                     <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <Border x:Name="MappingToolboxPanel" Grid.Row="0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
@@ -725,6 +729,7 @@
                     </Border>
                 </Grid>
                 </Grid>
+                </ScrollViewer>
                 <Grid Grid.Row="1" Grid.Column="0" Margin="14 8 10 0">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
