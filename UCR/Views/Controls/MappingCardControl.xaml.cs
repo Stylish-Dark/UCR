@@ -441,7 +441,8 @@ namespace HidWizards.UCR.Views.Controls
         private void SpatialInputOptions_OnClick(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
-            var input = button?.DataContext as DeviceBindingViewModel;
+            var input = (button?.DataContext as DirectionalCompassSlotViewModel)?.PhysicalBinding ??
+                        button?.DataContext as DeviceBindingViewModel;
             if (button == null || input?.DeviceBinding == null || !input.BindingEnabled ||
                 (DataContext as MappingViewModel)?.ButtonsEnabled != true) return;
             var menu = CompactInputBindingControl.CreateInputOptionsMenu(input, button);
@@ -497,7 +498,9 @@ namespace HidWizards.UCR.Views.Controls
 
         private void BindDirectionalSlot_OnClick(object sender, RoutedEventArgs e)
         {
-            var input = (sender as FrameworkElement)?.DataContext as DeviceBindingViewModel;
+            var data = (sender as FrameworkElement)?.DataContext;
+            var input = (data as DirectionalCompassSlotViewModel)?.PhysicalBinding ??
+                        data as DeviceBindingViewModel;
             if (input?.DeviceBinding == null) return;
             if (input.DeviceBinding.IsInBindMode)
             {
