@@ -290,7 +290,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 if (DeviceBinding.IsInBindMode)
                     return "●  PRESS INPUT";
-                if (DeviceBinding.IsBound) return BoundNameForDisplay();
+                if (DeviceBinding.IsBound)
+                {
+                    var name = BoundNameForDisplay();
+                    // A disconnected/removed provider is not a control name.
+                    // Keep the stored assignment for reconnection, but make the
+                    // editor actionable instead of labelling the bind button
+                    // "Device unavailable".
+                    if (string.IsNullOrWhiteSpace(name) ||
+                        name.IndexOf("device unavailable", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        name.IndexOf("unavailable device", StringComparison.OrdinalIgnoreCase) >= 0)
+                        return "Bind";
+                    return name;
+                }
                 return "Bind";
             }
         }
