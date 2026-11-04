@@ -876,9 +876,12 @@ namespace HidWizards.UCR.Tests.UiTests
                     "Binding categories, clearing and blocking", StringComparison.Ordinal) &&
                     button.Visibility == Visibility.Visible), Is.EqualTo(2),
                     "Every active direction keeps its own full binding-options menu.");
-                Assert.That(buttons.Any(button => string.Equals(button.ToolTip as string,
-                    "Choose the physical input device for this OR set", StringComparison.Ordinal)), Is.True,
-                    "Spatial bindings must retain their input device selector.");
+                Assert.That(FindVisualChildren<CompactInputBindingControl>(card)
+                    .Any(control => control.DeviceOnly && control.Visibility == Visibility.Visible),
+                    Is.True, "Compound device selection must reuse the real device icon selector.");
+                Assert.That(buttons.Any(button => string.Equals(button.Content as string,
+                    "+AND", StringComparison.Ordinal)), Is.True,
+                    "The directional editor must retain its AND action.");
 
                 Assert.That(mapping.SetOutputRepresentation(1), Is.True);
                 card.Measure(new Size(1050, 1200));
@@ -896,6 +899,73 @@ namespace HidWizards.UCR.Tests.UiTests
                         "Every spatial binding button must actually display its direction.");
                 Assert.That(mapping.CompoundOutputSummary, Is.EqualTo("Choose D-pad / stick ▾"),
                     "An unassigned 4-Way output must offer a meaningful destination choice.");
+            }
+            finally
+            {
+                vm.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void TypedDirectionalAndNotConditionsRemainUsableAcrossTypeChanges()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            context.PluginManager.Plugins = new List<Plugin>
+            {
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton(),
+                new HidWizards.UCR.Plugins.Remapper.AxisToAxis()
+            };
+            var profile = context.ProfilesManager.CreateProfile("AND NOT regression", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            profile.AddMapping("Typed AND").AddPlugin(
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+            var vm = new ProfileViewModel(profile);
+            try
+            {
+                var mapping = vm.MappingsList.Single();
+                Assert.That(mapping.SetOutputRepresentation(2), Is.True);
+                var first = mapping.InputConditions.Single();
+                mapping.AddInputToCondition(first);
+                first = mapping.InputConditions.Single();
+                Assert.That(first.CoreInputs.Count, Is.EqualTo(2));
+                Assert.That(first.AndInputs.Count, Is.EqualTo(1));
+                var guard = first.AndInputs.Single();
+                Assert.That(guard.DeviceBinding.IsDirectionalAndCondition, Is.True);
+                mapping.SetInputNegated(guard, true);
+                Assert.That(guard.DeviceBinding.InputExpressionNegated, Is.True);
+
+                var card = new MappingCardControl
+                {
+                    InspectorMode = true, InlineWorkspaceMode = true,
+                    DataContext = mapping
+                };
+                card.Measure(new Size(1050, 1200));
+                card.Arrange(new Rect(0, 0, 1050, 1200));
+                card.UpdateLayout();
+                Assert.That(FindVisualChildren<Button>(card).Any(button =>
+                    string.Equals(button.Content as string, "+AND", StringComparison.Ordinal)),
+                    Is.True, "An AND control must exist in the actual typed mapping editor.");
+                Assert.That(FindVisualChildren<ToggleButton>(card).Any(button =>
+                    string.Equals(button.Content as string, "NOT", StringComparison.Ordinal)),
+                    Is.True, "The AND gate must expose an actual NOT toggle.");
+
+                Assert.That(mapping.SetInputRepresentation(2), Is.True);
+                Assert.That(mapping.InputConditions.Single().CoreInputs.Count, Is.EqualTo(1));
+                Assert.That(mapping.InputConditions.Single().AndInputs.Count, Is.EqualTo(1));
+                Assert.That(mapping.InputConditions.Single().AndInputs.Single()
+                    .DeviceBinding.InputExpressionNegated, Is.True);
+                Assert.That(mapping.SetInputRepresentation(3), Is.True);
+                Assert.That(mapping.InputConditions.Single().CoreInputs.Count, Is.EqualTo(2));
+                Assert.That(mapping.InputConditions.Single().AndInputs.Count, Is.EqualTo(1));
+                Assert.That(mapping.Mapping.RequiredInputBindingSlots,
+                    Is.EqualTo(mapping.Mapping.DeviceBindings.Count));
+                var saved = Context.DeepXmlClone(mapping.Mapping);
+                Assert.That(saved.DeviceBindings.Count(binding => binding.IsDirectionalAndCondition),
+                    Is.EqualTo(1), "AND gates must persist across profile save and reload.");
+                Assert.That(saved.DeviceBindings.Single(binding => binding.IsDirectionalAndCondition)
+                    .InputExpressionNegated, Is.True);
             }
             finally
             {
