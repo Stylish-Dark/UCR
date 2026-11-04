@@ -594,8 +594,11 @@ namespace HidWizards.UCR.Tests.UiTests
                 card.UpdateLayout();
 
                 var selectors = FindVisualChildren<RadioButton>(card)
-                    .Where(button => button.GroupName == "InputDirectionalType" ||
-                                     button.GroupName == "OutputDirectionalType").ToList();
+                    .Where(button => new[] { "1", "2", "3", "4" }
+                        .Contains(button.Tag as string) &&
+                        ((button.ToolTip as string)?.Contains(" input") == true ||
+                         (button.ToolTip as string)?.Contains(" output") == true))
+                    .ToList();
                 Assert.That(selectors.Count, Is.EqualTo(8),
                     "Each side exposes Button, Trigger, Axis and 4-Way.");
                 Assert.That(selectors.All(button => button.IsEnabled), Is.True,
