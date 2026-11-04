@@ -382,7 +382,15 @@ namespace HidWizards.UCR.Views.Controls
             if (vm == null || !int.TryParse((sender as FrameworkElement)?.Tag as string, out value))
                 return;
             if (!vm.SetInputRepresentation(value))
+            {
+                if ((value == 4 && vm.OutputIsFullStick) ||
+                    (value == 1 && vm.OutputIsTrigger))
+                    DarkMessageBox.Show(
+                        "Trigger is one-sided. A 4-Way control has four distinct directions. Choose an Axis or Button representation, or assign the required directions individually.",
+                        "Trigger and 4-Way need a direction", MessageBoxButton.OK, MessageBoxImage.Information);
+                vm.RefreshRepresentationSelections();
                 (sender as RadioButton)?.GetBindingExpression(ToggleButton.IsCheckedProperty)?.UpdateTarget();
+            }
         }
 
         private void OutputRepresentation_OnClick(object sender, RoutedEventArgs e)
@@ -392,7 +400,15 @@ namespace HidWizards.UCR.Views.Controls
             if (vm == null || !int.TryParse((sender as FrameworkElement)?.Tag as string, out value))
                 return;
             if (!vm.SetOutputRepresentation(value))
+            {
+                if ((value == 4 && vm.InputIsFullStick) ||
+                    (value == 1 && vm.InputIsTrigger))
+                    DarkMessageBox.Show(
+                        "Trigger is one-sided. A 4-Way control has four distinct directions. Choose an Axis or Button representation, or assign the required directions individually.",
+                        "Trigger and 4-Way need a direction", MessageBoxButton.OK, MessageBoxImage.Information);
+                vm.RefreshRepresentationSelections();
                 (sender as RadioButton)?.GetBindingExpression(ToggleButton.IsCheckedProperty)?.UpdateTarget();
+            }
         }
 
         private void AddAndInput_OnClick(object sender, RoutedEventArgs e)
@@ -1100,6 +1116,35 @@ namespace HidWizards.UCR.Views.Controls
                 invert.Click += (source, args) => output.QuickInvert = invert.IsChecked;
                 if (index == 0) menu.Items.Add(new Separator());
                 menu.Items.Add(invert);
+            }
+            menu.IsOpen = true;
+        }
+
+        private void CompoundDevice_OnClick(object sender, RoutedEventArgs e)
+        {
+            var mapping = DataContext as MappingViewModel;
+            var button = sender as Button;
+            var group = button?.DataContext as InputConditionViewModel;
+            if (mapping?.ButtonsEnabled != true || group == null) return;
+            var profile = mapping.ProfileViewModel.Profile;
+            var selectedGuid = group.Inputs.FirstOrDefault()?.DeviceBinding?.DeviceConfigurationGuid
+                ?? Guid.Empty;
+            var menu = CreateDarkContextMenu(button);
+            menu.Placement = PlacementMode.Bottom;
+            var any = new MenuItem { Header = "Any input device", IsChecked = selectedGuid == Guid.Empty };
+            any.Click += (s, args) => mapping.SetCompoundInputDevice(group.GroupIndex, Guid.Empty);
+            menu.Items.Add(any);
+            foreach (var device in profile.GetDeviceConfigurationList(DeviceIoType.Input))
+            {
+                if (device?.Device == null) continue;
+                var guid = device.Guid;
+                var item = new MenuItem
+                {
+                    Header = device.GetFullTitleForProfile(profile),
+                    IsChecked = guid == selectedGuid
+                };
+                item.Click += (s, args) => mapping.SetCompoundInputDevice(group.GroupIndex, guid);
+                menu.Items.Add(item);
             }
             menu.IsOpen = true;
         }
