@@ -740,6 +740,29 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(outputFaces["CompassOutputRight"].Content, Is.SameAs(mapping.Plugins[1]));
                 Assert.That(outputFaces["CompassOutputUp"].Content, Is.SameAs(mapping.Plugins[2]));
                 Assert.That(outputFaces["CompassOutputDown"].Content, Is.SameAs(mapping.Plugins[3]));
+                // Inspect real measured output controls, not merely their Grid coordinates.
+                foreach (var face in outputFaces.Values)
+                {
+                    var bindButtons = FindVisualChildren<Button>(face)
+                        .Where(button => string.Equals(button.ToolTip as string,
+                            "Choose output control", StringComparison.Ordinal) &&
+                            button.Visibility == Visibility.Visible).ToList();
+                    Assert.That(bindButtons.Count, Is.EqualTo(1),
+                        "Each 4-Way output face needs one direct output picker.");
+                    Assert.That(bindButtons[0].ActualWidth, Is.GreaterThan(85),
+                        "Output text must have a real, readable binding button; no clipped miniature button.");
+                    Assert.That(FindVisualChildren<CompactInputBindingControl>(face).Any(),
+                        Is.False, "4-Way faces must not repeat device selectors and ellipsis menus.");
+                }
+                Assert.That(FindVisualChildren<Button>(card).Any(button =>
+                    string.Equals(button.ToolTip as string,
+                        "Choose the device for this 4-Way output", StringComparison.Ordinal) &&
+                    button.Visibility == Visibility.Visible), Is.True,
+                    "The complete four-direction destination must expose device selection.");
+                Assert.That(FindVisualChildren<Button>(card).Any(button =>
+                    string.Equals(button.Content as string, "+ Add output", StringComparison.Ordinal) &&
+                    button.Visibility == Visibility.Visible), Is.True,
+                    "The output side must not lose Add output when switching representation.");
 
                 CaptureEditorPreview(card, 1050, "UCR-directional-preview.png");
 
@@ -1106,6 +1129,13 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(FindVisualChildren<ToggleButton>(card).Any(button =>
                     string.Equals(button.Content as string, "NOT", StringComparison.Ordinal)),
                     Is.True, "The AND gate must expose an actual NOT toggle.");
+                var outputCard = FindVisualChildren<Border>(card)
+                    .FirstOrDefault(border => border.Name == "OutputBindingCardSurface" &&
+                        border.Visibility == Visibility.Visible);
+                Assert.That(outputCard, Is.Not.Null,
+                    "The standard output editor must render a real card.");
+                Assert.That(outputCard.ActualHeight, Is.LessThan(190),
+                    "Collapsed settings must not leave a giant empty output panel.");
 
                 // Render the actual editor at a representative two-column width;
                 // derive height from real WPF content instead of a giant blank canvas.
