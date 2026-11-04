@@ -490,9 +490,10 @@
                                                 <ColumnDefinition Width="98"/>
                                             </Grid.ColumnDefinitions>
                                             <Grid.RowDefinitions>
+                                                <!-- Empty up/down slots contribute no height in 2-Way mode. -->
+                                                <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="44"/>
-                                                <RowDefinition Height="44"/>
-                                                <RowDefinition Height="44"/>
+                                                <RowDefinition Height="Auto"/>
                                             </Grid.RowDefinitions>
                                             <ContentControl Grid.Row="0" Grid.Column="1" Tag="↑"
                                                 Content="{Binding UpDirection}"
