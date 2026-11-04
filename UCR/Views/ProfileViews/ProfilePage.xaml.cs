@@ -498,6 +498,113 @@ namespace HidWizards.UCR.Views.ProfileViews
             Dispatcher.BeginInvoke((Action)(() => ScrollSectionIntoView(section)), DispatcherPriority.Background);
         }
 
+        private void AddCompoundPreset_OnClick(object sender, RoutedEventArgs e)
+        {
+            EditCompoundPresetDialog(null);
+        }
+
+        private void EditCompoundPreset_OnClick(object sender, RoutedEventArgs e)
+        {
+            EditCompoundPresetDialog((sender as FrameworkElement)?.DataContext as CompoundBindingPreset);
+        }
+
+        private void RemoveCompoundPreset_OnClick(object sender, RoutedEventArgs e)
+        {
+            var preset = (sender as FrameworkElement)?.DataContext as CompoundBindingPreset;
+            if (Profile.IsActive() || preset == null) return;
+            if (HidWizards.UCR.Utilities.DarkMessageBox.Show(
+                    "Delete 4-Way preset '" + preset.Name + "'?",
+                    "Delete preset", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                return;
+            Profile.CompoundBindingPresets?.Remove(preset);
+            Profile.Context.ContextChanged();
+            ProfileViewModel.RefreshCompoundPresetItems();
+        }
+
+        private void EditCompoundPresetDialog(CompoundBindingPreset existing)
+        {
+            if (Profile.IsActive()) return;
+            var dialog = new Window
+            {
+                Title = existing == null ? "New 4-Way preset" : "Edit 4-Way preset",
+                Width = 405,
+                Height = 370,
+                MinWidth = 355,
+                ResizeMode = ResizeMode.NoResize,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Background = new SolidColorBrush(Color.FromRgb(38, 38, 38)),
+                Foreground = Brushes.White,
+                Owner = Window.GetWindow(this)
+            };
+            var root = new StackPanel { Margin = new Thickness(15) };
+            var fields = new List<TextBox>();
+            Action<string, string> addField = (label, value) =>
+            {
+                root.Children.Add(new TextBlock
+                {
+                    Text = label,
+                    Margin = new Thickness(0, fields.Count == 0 ? 0 : 8, 0, 3)
+                });
+                var edit = new TextBox
+                {
+                    Height = 28,
+                    MaxLength = 60,
+                    Text = value ?? string.Empty
+                };
+                fields.Add(edit);
+                root.Children.Add(edit);
+            };
+            addField("Preset name", existing?.Name);
+            var keyNames = new[] { "Left", "Right", "Up", "Down" };
+            for (var i = 0; i < keyNames.Length; i++)
+                addField(keyNames[i] + " key", existing?.Keys?.ElementAtOrDefault(i));
+            var save = new Button
+            {
+                Content = "Save preset",
+                Height = 32, Width = 116,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(0, 12, 0, 0)
+            };
+            save.Click += (clicked, args) =>
+            {
+                var name = fields[0].Text.Trim();
+                var keys = fields.Skip(1).Select(field => field.Text.Trim()).ToList();
+                if (name.Length == 0 || keys.Any(string.IsNullOrWhiteSpace))
+                {
+                    HidWizards.UCR.Utilities.DarkMessageBox.Show(
+                        "Give the preset a name and all four directional keys.",
+                        "Incomplete preset", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+                if (Profile.CompoundBindingPresets == null)
+                    Profile.CompoundBindingPresets = new List<CompoundBindingPreset>();
+                if (Profile.CompoundBindingPresets.Any(preset =>
+                    !ReferenceEquals(preset, existing) &&
+                    string.Equals(preset.Name, name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    HidWizards.UCR.Utilities.DarkMessageBox.Show(
+                        "A preset with that name already exists.",
+                        "Duplicate preset", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+                var target = existing;
+                if (target == null)
+                {
+                    target = new CompoundBindingPreset { Capacity = 4 };
+                    Profile.CompoundBindingPresets.Add(target);
+                }
+                target.Name = name;
+                target.Capacity = 4;
+                target.Keys = keys;
+                Profile.Context.ContextChanged();
+                ProfileViewModel.RefreshCompoundPresetItems();
+                dialog.DialogResult = true;
+            };
+            root.Children.Add(save);
+            dialog.Content = root;
+            dialog.ShowDialog();
+        }
+
         private void RemoveMappingGroup_OnClick(object sender, RoutedEventArgs e)
         {
             var section = (sender as FrameworkElement)?.DataContext as MappingGroupViewModel;
