@@ -186,6 +186,11 @@ namespace HidWizards.UCR.Tests.UiTests
 
             var selector = control.FindName("DeviceSelectionBox") as ComboBox;
             Assert.That(selector, Is.Not.Null);
+            var selectedBinding = System.Windows.Data.BindingOperations.GetBinding(
+                selector, Selector.SelectedItemProperty);
+            Assert.That(selectedBinding, Is.Not.Null);
+            Assert.That(selectedBinding.Mode, Is.EqualTo(System.Windows.Data.BindingMode.OneWay),
+                "Refreshing physical device choices must never push a transient null into SelectedDevice.");
             Assert.That(selector.ActualWidth, Is.EqualTo(58).Within(1));
             selector.ApplyTemplate();
 
@@ -781,11 +786,17 @@ namespace HidWizards.UCR.Tests.UiTests
                     Assert.That(FindVisualChildren<CompactInputBindingControl>(face).Any(),
                         Is.False, "4-Way faces must not repeat device selectors and ellipsis menus.");
                 }
-                Assert.That(FindVisualChildren<Button>(card).Any(button =>
-                    string.Equals(button.ToolTip as string,
-                        mapping.FourWayOutputDeviceLabel, StringComparison.Ordinal) &&
-                    button.Visibility == Visibility.Visible), Is.True,
-                    "The complete four-direction destination must expose device selection.");
+                var compoundDeviceControl = FindVisualChildren<CompactInputBindingControl>(card)
+                    .Single(control => control.DeviceOnly &&
+                        control.DataContext is DeviceBindingViewModel candidate &&
+                        candidate.DeviceBinding.DeviceIoType == DeviceIoType.Output &&
+                        control.Visibility == Visibility.Visible);
+                Assert.That(compoundDeviceControl, Is.Not.Null,
+                    "All 4-Way output channels must share the regular device dropdown.");
+                var compoundSelector = compoundDeviceControl.FindName("DeviceSelectionBox") as ComboBox;
+                Assert.That(compoundSelector, Is.Not.Null);
+                Assert.That(compoundSelector.ActualWidth, Is.EqualTo(58).Within(1),
+                    "The complete 4-Way device selector must match the ordinary output selector.");
                 Assert.That(FindVisualChildren<Button>(card).Any(button =>
                     string.Equals(button.Content as string, "+ Add output", StringComparison.Ordinal) &&
                     button.Visibility == Visibility.Visible), Is.True,
@@ -1019,6 +1030,60 @@ namespace HidWizards.UCR.Tests.UiTests
                     .OrderBy(binding => binding.InputDirectionSlot)
                     .Select(binding => binding.KeyValue),
                     Is.EqualTo(new[] { 10, 11, 12, 13 }));
+            }
+            finally
+            {
+                vm.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void RemovingTheFinalOrdinaryOutputPreservesInputsAndAllowsReadding()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            context.PluginManager.Plugins = new List<Plugin>
+            {
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton()
+            };
+            var profile = context.ProfilesManager.CreateProfile("Output removal regression", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var model = profile.AddMapping("Retain keyboard input");
+            model.AddPlugin(new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+            var vm = new ProfileViewModel(profile);
+            try
+            {
+                var mapping = vm.MappingsList.Single();
+                var input = model.DeviceBindings.Single();
+                input.IsBound = true;
+                input.KeyValue = 42;
+                var card = new MappingCardControl
+                {
+                    InspectorMode = true, InlineWorkspaceMode = true,
+                    DataContext = mapping
+                };
+                card.Measure(new Size(1040, 850));
+                card.Arrange(new Rect(0, 0, 1040, 850));
+                card.UpdateLayout();
+                Assert.That(mapping.Plugins.Single().CanRemove, Is.True);
+                Assert.That(FindVisualChildren<Button>(card).Any(button =>
+                    string.Equals(button.ToolTip as string, "Remove this output slot",
+                        StringComparison.Ordinal) && button.Visibility == Visibility.Visible), Is.True,
+                    "The final ordinary output must expose its real removal X.");
+                mapping.RemovePlugin(mapping.Plugins.Single());
+                Assert.That(model.Plugins, Is.Empty);
+                Assert.That(model.DeviceBindings, Has.Count.EqualTo(1));
+                Assert.That(model.DeviceBindings.Single(), Is.SameAs(input));
+                Assert.That(input.KeyValue, Is.EqualTo(42));
+                Assert.That(mapping.DeviceBindings, Has.Count.EqualTo(1),
+                    "Removing an output must not erase the input-side editor.");
+                Assert.That(mapping.AddDefaultOutput(), Is.True);
+                Assert.That(model.Plugins, Has.Count.EqualTo(1));
+                Assert.That(model.DeviceBindings, Has.Count.EqualTo(1),
+                    "Adding a replacement output must not create a redundant input slot.");
+                Assert.That(model.DeviceBindings.Single(), Is.SameAs(input));
+                Assert.That(input.IsBound, Is.True);
             }
             finally
             {
