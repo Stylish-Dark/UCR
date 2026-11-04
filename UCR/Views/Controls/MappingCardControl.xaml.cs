@@ -192,7 +192,9 @@ namespace HidWizards.UCR.Views.Controls
         public static bool RequiresDeleteConfirmation(MappingViewModel mapping)
         {
             if (mapping?.Mapping == null) return false;
-            return mapping.Mapping.DeviceBindings != null && mapping.Mapping.DeviceBindings.Any(binding => binding != null && binding.IsBound);
+            return !string.IsNullOrWhiteSpace(mapping.Mapping.Title) ||
+                (mapping.Mapping.DeviceBindings != null &&
+                 mapping.Mapping.DeviceBindings.Any(binding => binding != null && binding.IsBound));
         }
 
         // Every visible binding glyph is a Button in MappingBindingVisualTemplate.
