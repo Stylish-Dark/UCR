@@ -442,7 +442,8 @@ namespace HidWizards.UCR.Views.Controls
         {
             var button = sender as Button;
             var input = button?.DataContext as DeviceBindingViewModel;
-            if (button == null || input?.DeviceBinding == null) return;
+            if (button == null || input?.DeviceBinding == null || !input.BindingEnabled ||
+                (DataContext as MappingViewModel)?.ButtonsEnabled != true) return;
             var menu = CompactInputBindingControl.CreateInputOptionsMenu(input, button);
             var mapping = DataContext as MappingViewModel;
             var profile = mapping?.ProfileViewModel.Profile;
@@ -1196,7 +1197,7 @@ namespace HidWizards.UCR.Views.Controls
         {
             var mapping = DataContext as MappingViewModel;
             var button = sender as Button;
-            if (mapping?.IsCompoundInput != true || button == null) return;
+            if (mapping?.IsCompoundInput != true || !mapping.ButtonsEnabled || button == null) return;
             var menu = CreateDarkContextMenu(button);
             var group = button.DataContext as InputConditionViewModel;
             foreach (var input in group?.Inputs ?? mapping.DeviceBindings)
