@@ -1452,7 +1452,7 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
-        public void FourWayToSingleButtonPreservesBoundInputsAsAndGuardsAndAllOutputs()
+        public void FourWayToSingleButtonArchivesOpposingDirectionsAndPreservesRealAndGuards()
         {
             EnsureApplicationResources();
             var context = new Context();
@@ -1477,6 +1477,11 @@ namespace HidWizards.UCR.Tests.UiTests
                 old[0].KeyValue = 31;
                 old[1].IsBound = true;
                 old[1].KeyValue = 32;
+                mapping.AddInputToCondition(mapping.InputConditions.Single());
+                var explicitGuard = mapping.Mapping.DeviceBindings.Single(input =>
+                    input.IsDirectionalAndCondition);
+                explicitGuard.IsBound = true;
+                explicitGuard.KeyValue = 89;
                 var outputs = mapping.Mapping.Plugins.ToList();
 
                 string error;
@@ -1484,14 +1489,22 @@ namespace HidWizards.UCR.Tests.UiTests
                     Is.True, error);
                 Assert.That(mapping.InputIsButton, Is.True);
                 Assert.That(mapping.Mapping.UseInputExpression, Is.True);
-                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(3),
-                    "Only a new primary input and two existing bound guards should remain.");
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(2),
+                    "Only the new primary and the existing real AND guard remain active.");
                 Assert.That(mapping.Mapping.DeviceBindings[0].IsBound, Is.False);
-                Assert.That(mapping.Mapping.DeviceBindings.Skip(1)
-                    .All(binding => binding.IsDirectionalAndCondition &&
-                        binding.IsBound && binding.InputDirectionSlot == 0), Is.True);
-                Assert.That(mapping.Mapping.DeviceBindings.Skip(1)
-                    .Select(binding => binding.KeyValue), Is.EquivalentTo(new[] { 31, 32 }));
+                Assert.That(mapping.Mapping.DeviceBindings[1], Is.SameAs(explicitGuard));
+                Assert.That(explicitGuard.IsDirectionalAndCondition, Is.True);
+                Assert.That(explicitGuard.IsBound, Is.True);
+                Assert.That(explicitGuard.KeyValue, Is.EqualTo(89));
+                var archivedDirections = mapping.Mapping.InactiveInputRepresentations
+                    .Single(bank => bank.Representation == 1 && bank.Bindings.Count == 2);
+                Assert.That(archivedDirections.Bindings, Is.EquivalentTo(old),
+                    "Four opposing physical directions belong to one restorable bank.");
+                Assert.That(archivedDirections.Bindings.Select(binding => binding.KeyValue),
+                    Is.EquivalentTo(new[] { 31, 32 }),
+                    "Left and Right must not become impossible simultaneous AND terms.");
+                Assert.That(mapping.Mapping.DeviceBindings.Any(binding =>
+                    binding.KeyValue == 31 || binding.KeyValue == 32), Is.False);
                 Assert.That(mapping.Mapping.Plugins.Count, Is.EqualTo(outputs.Count));
                 Assert.That(mapping.Mapping.Plugins,
                     Is.EquivalentTo(outputs),
