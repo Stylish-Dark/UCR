@@ -765,6 +765,21 @@ namespace HidWizards.UCR.Tests.UiTests
                         toggle.Visibility == Visibility.Visible).ToList();
                 Assert.That(visibleNotToggles.Count, Is.EqualTo(4),
                     "Every digital D-pad direction requires its own working NOT toggle.");
+                var centrePreset = FindVisualChildren<Button>(card).Single(button =>
+                    button.Name == "CompassInputPreset");
+                var leftDirectionButton = FindVisualChildren<Button>(card).Single(button =>
+                    button.DataContext is DirectionalCompassSlotViewModel slot &&
+                    slot.Arrow == "←" && button.Content is StackPanel);
+                var rightDirectionButton = FindVisualChildren<Button>(card).Single(button =>
+                    button.DataContext is DirectionalCompassSlotViewModel slot &&
+                    slot.Arrow == "→" && button.Content is StackPanel);
+                var centreY = centrePreset.TranslatePoint(new Point(0, 0), card).Y;
+                var leftY = leftDirectionButton.TranslatePoint(new Point(0, 0), card).Y;
+                var rightY = rightDirectionButton.TranslatePoint(new Point(0, 0), card).Y;
+                Assert.That(Math.Abs(centreY - leftY), Is.LessThan(3),
+                    "The preset must align with the horizontal D-pad arms, even when NOT is visible.");
+                Assert.That(Math.Abs(centreY - rightY), Is.LessThan(3),
+                    "The right arm and centre must share an aligned top edge.");
                 CaptureEditorPreview(card, 1050, "UCR-digital-dpad-preview.png");
             }
             finally
