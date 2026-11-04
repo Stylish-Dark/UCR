@@ -1891,6 +1891,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             existing.Keys = names;
             profile.Context.ContextChanged();
+            ProfileViewModel.RefreshCompoundPresetItems();
             return true;
         }
 
@@ -2377,6 +2378,62 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                         Destination = "D-pad", IsDPad = true,
                         Controls = dpad
                     });
+
+                // Keyboard presets and four face buttons are also complete
+                // four-way destinations. All four must resolve before being offered.
+                var kind = DeviceVisualCatalog.Describe(device, profile, DeviceIoType.Output).Kind;
+                var momentary = nodes.Where(node => node.DeviceBindingInfo.DeviceBindingCategory ==
+                    DeviceBindingCategory.Momentary).ToList();
+                Action<string, string[]> addDigital = (name, keys) =>
+                {
+                    if (keys == null || keys.Length != 4) return;
+                    var controls = new DeviceBindingInfo[4];
+                    // FourWayOutputChoice stores Up, Down, Left, Right.
+                    var indexOrder = new[] { 2, 3, 0, 1 };
+                    for (var index = 0; index < 4; index++)
+                    {
+                        var key = keys[indexOrder[index]];
+                        var aliases = key.StartsWith("Numpad", StringComparison.OrdinalIgnoreCase)
+                            ? new[] { key, key.Replace("Numpad", "Num"),
+                                key.Replace("Numpad", "Keypad") }
+                            : new[] { key };
+                        var option = momentary.FirstOrDefault(node => aliases.Any(alias =>
+                            MatchesControlLeafName(node.Title, alias)));
+                        if (option == null) return;
+                        controls[index] = option.DeviceBindingInfo;
+                    }
+                    result.Add(new FourWayOutputChoice
+                    {
+                        DeviceConfigurationGuid = device.Guid,
+                        DeviceTitle = device.GetFullTitleForProfile(profile),
+                        Destination = name, IsDPad = true, Controls = controls
+                    });
+                };
+                if (kind == DeviceVisualKind.Keyboard)
+                {
+                    addDigital("WASD", new[] { "A", "D", "W", "S" });
+                    addDigital("Arrows", new[] { "Left", "Right", "Up", "Down" });
+                    addDigital("Numpad", new[] { "Numpad4", "Numpad6", "Numpad8", "Numpad2" });
+                    foreach (var preset in profile.CompoundBindingPresets ??
+                        new List<CompoundBindingPreset>())
+                        if (preset.Capacity == 4)
+                            addDigital(preset.Name, preset.Keys?.ToArray());
+                }
+                else
+                {
+                    string[] face = null;
+                    if (kind == DeviceVisualKind.XboxOriginal || kind == DeviceVisualKind.Xbox360 ||
+                        kind == DeviceVisualKind.XboxOne || kind == DeviceVisualKind.XboxSeries)
+                        face = new[] { "X", "B", "Y", "A" };
+                    else if (kind == DeviceVisualKind.PlayStation1 || kind == DeviceVisualKind.PlayStation2 ||
+                        kind == DeviceVisualKind.PlayStation3 || kind == DeviceVisualKind.PlayStation4 ||
+                        kind == DeviceVisualKind.PlayStation5)
+                        face = new[] { "Square", "Circle", "Triangle", "Cross" };
+                    else if (kind == DeviceVisualKind.SwitchPro || kind == DeviceVisualKind.SwitchJoyCon ||
+                        kind == DeviceVisualKind.GameCube || kind == DeviceVisualKind.WiiClassic)
+                        face = new[] { "Y", "A", "X", "B" };
+                    if (face != null) addDigital("Face buttons", face);
+                }
             }
             return result;
         }
