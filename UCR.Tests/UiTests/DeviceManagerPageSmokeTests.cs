@@ -1393,9 +1393,9 @@ namespace HidWizards.UCR.Tests.UiTests
                 fourWayEditor.Measure(new Size(1050, 900));
                 fourWayEditor.Arrange(new Rect(0, 0, 1050, 900));
                 fourWayEditor.UpdateLayout();
-                Assert.That(FindVisualChildren<ContentControl>(fourWayEditor).Count(control =>
+                Assert.That(FindVisualChildren<ContentControl>(fourWayEditor).Count(item =>
                     new[] { "CompassInputLeft", "CompassInputRight",
-                            "CompassInputUp", "CompassInputDown" }.Contains(control.Name)),
+                            "CompassInputUp", "CompassInputDown" }.Contains(item.Name)),
                     Is.EqualTo(8),
                     "Each of two OR alternatives must independently render a four-direction D-pad.");
                 Assert.That(mapping.SetInputRepresentation(2), Is.True);
