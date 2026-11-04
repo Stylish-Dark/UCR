@@ -873,7 +873,8 @@ namespace HidWizards.UCR.Tests.UiTests
                     "Preset ▾", StringComparison.Ordinal)), Is.True,
                     "The two independent directions surround a central preset.");
                 Assert.That(buttons.Count(button => string.Equals(button.ToolTip as string,
-                    "Binding categories, clearing and blocking", StringComparison.Ordinal)), Is.EqualTo(2),
+                    "Binding categories, clearing and blocking", StringComparison.Ordinal) &&
+                    button.Visibility == Visibility.Visible), Is.EqualTo(2),
                     "Every active direction keeps its own full binding-options menu.");
                 Assert.That(buttons.Any(button => string.Equals(button.ToolTip as string,
                     "Choose the physical input device for this OR set", StringComparison.Ordinal)), Is.True,
@@ -885,7 +886,8 @@ namespace HidWizards.UCR.Tests.UiTests
                 card.UpdateLayout();
                 Assert.That(FindVisualChildren<Button>(card).Count(button =>
                     string.Equals(button.ToolTip as string,
-                        "Binding categories, clearing and blocking", StringComparison.Ordinal)), Is.EqualTo(4),
+                        "Binding categories, clearing and blocking", StringComparison.Ordinal) &&
+                    button.Visibility == Visibility.Visible), Is.EqualTo(4),
                     "Four-way Button input must expose four individually assignable directions.");
             }
             finally
