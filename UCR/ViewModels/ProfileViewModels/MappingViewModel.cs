@@ -79,7 +79,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             get
             {
-                var guid = Inputs.FirstOrDefault()?.DeviceBinding?.DeviceConfigurationGuid ?? Guid.Empty;
+                var selectedGuids = Inputs.Where(input => input.DeviceBinding != null)
+                    .Select(input => input.DeviceBinding.DeviceConfigurationGuid)
+                    .Distinct().ToList();
+                if (selectedGuids.Count > 1) return "Mixed devices ▾";
+                var guid = selectedGuids.FirstOrDefault();
                 if (guid == Guid.Empty) return "Any device ▾";
                 var profile = _owner?.ProfileViewModel?.Profile;
                 var name = profile?.GetDeviceConfiguration(DeviceIoType.Input, guid)
@@ -1739,6 +1743,22 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         // Device selection belongs to each OR set, including compound controls.
         // Changing it changes only that set; the preset or physical binding can
         // subsequently establish the representation without a device-type lock.
+        public bool SetDirectionalSlotDevice(DeviceBindingViewModel input, Guid deviceGuid)
+        {
+            if (!ButtonsEnabled || input?.DeviceBinding == null ||
+                !DeviceBindings.Contains(input)) return false;
+            var profile = ProfileViewModel.Profile;
+            if (deviceGuid != Guid.Empty &&
+                profile.GetDeviceConfiguration(DeviceIoType.Input, deviceGuid) == null)
+                return false;
+            input.DeviceBinding.SetDeviceConfigurationGuid(deviceGuid, false);
+            input.RefreshDeviceList();
+            profile.Context.ContextChanged();
+            RefreshInputExpressionPresentation();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
         public bool SetCompoundInputDevice(int groupIndex, Guid deviceGuid)
         {
             if (!ButtonsEnabled) return false;
