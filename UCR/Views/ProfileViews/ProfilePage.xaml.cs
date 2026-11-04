@@ -1404,6 +1404,20 @@ namespace HidWizards.UCR.Views.ProfileViews
             e.Handled = true;
         }
 
+        private void QuickBindWorkspaceOutput_OnPreviewMouseRightButtonDown(object sender,
+            MouseButtonEventArgs e)
+        {
+            var button = sender as Button;
+            var descriptor = button?.DataContext as BindingVisualDescriptor;
+            var mapping = MappingForWorkspaceGlyph(button);
+            if (mapping?.ButtonsEnabled != true || descriptor == null) return;
+            var binding = mapping.ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
+            var output = mapping.Plugins.FirstOrDefault(plugin => plugin.DeviceBindings
+                .Any(item => ReferenceEquals(item.DeviceBinding, binding?.DeviceBinding)));
+            MappingCardControl.ShowOutputCategoryMenu(mapping, button, output);
+            e.Handled = true;
+        }
+
         private async void QuickBindWorkspaceOutput_OnClick(object sender, RoutedEventArgs e)
         {
             e.Handled = true;
