@@ -408,9 +408,9 @@ namespace HidWizards.UCR.Core.Models
             {
                 if (capacity == 4)
                 {
-                    channelValues.Add((short)Math.Max(0, -(int)x));
+                    channelValues.Add((short)Math.Min(short.MaxValue, Math.Max(0, -(int)x)));
                     channelValues.Add((short)Math.Max(0, (int)x));
-                    channelValues.Add((short)Math.Max(0, -(int)y));
+                    channelValues.Add((short)Math.Min(short.MaxValue, Math.Max(0, -(int)y)));
                     channelValues.Add((short)Math.Max(0, (int)y));
                 }
                 else
