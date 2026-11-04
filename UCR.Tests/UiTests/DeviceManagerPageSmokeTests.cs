@@ -948,10 +948,15 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(mapping.SetInputRepresentation(1), Is.True);
                 Assert.That(mapping.Mapping.DirectionalCapacity, Is.EqualTo(4));
                 Assert.That(mapping.Mapping.Plugins.Count, Is.EqualTo(4));
-                Assert.That(mapping.SetOutputRepresentation(4), Is.False,
-                    "A lone Trigger cannot silently discard three 4-Way directions.");
+                Assert.That(mapping.SetOutputRepresentation(4), Is.True,
+                    "No type is locked: a full 4-Way source can drive four one-sided Trigger channels.");
                 Assert.That(mapping.Mapping.DirectionalCapacity, Is.EqualTo(4));
-                Assert.That(mapping.OutputIsButton, Is.True);
+                Assert.That(mapping.OutputIsTrigger, Is.True);
+                Assert.That(mapping.Mapping.Plugins.Count, Is.EqualTo(4));
+                Assert.That(Mapping.RequiredBindingSlots(4, 4), Is.EqualTo(4));
+                Assert.That(mapping.SetInputRepresentation(4), Is.True);
+                Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(4),
+                    "Each 4-Way direction has its own independently assignable Trigger.");
                 Assert.That(mapping.SetInputRepresentation(3), Is.True);
                 Assert.That(mapping.Mapping.DirectionalCapacity, Is.EqualTo(1));
                 Assert.That(mapping.Mapping.Plugins.Count, Is.EqualTo(1));
