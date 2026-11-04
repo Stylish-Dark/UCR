@@ -322,6 +322,7 @@
                                                             ToolTip="Negate this Boolean input condition"/>
                                                         <Button Grid.Column="2" Click="RemoveExpressionInput_OnClick"
                                                             IsEnabled="{Binding CanRemoveExpressionInput}"
+                                                            Visibility="{Binding CanRemoveExpressionInput, Converter={StaticResource CompoundVisibilityConverter}}"
                                                             ToolTip="Remove input condition"
                                                             ToolTipService.ShowOnDisabled="True"
                                                             Style="{StaticResource UcrDeleteItemButton}" Width="32" Height="32" Padding="0" Margin="2 0 0 0"/>
@@ -330,7 +331,13 @@
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
                                         <StackPanel Orientation="Horizontal" Margin="2 3 0 0">
-                                            
+                                            <Button Content="+ Add input"
+                                                Height="29" Padding="8 2" Margin="0 0 7 0"
+                                                Click="AddInputToCondition_OnClick"
+                                                IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
+                                                Foreground="#FFFFFF"
+                                                Style="{StaticResource UcrAccentOutlineButton}"
+                                                ToolTip="Add another AND input to this group"/>
                                             <Button Content="Remove group" Click="RemoveCondition_OnClick"
                                                 Height="32" Padding="8 2" Foreground="#BBBBBB">
                                                 <Button.Style>
