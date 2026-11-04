@@ -69,6 +69,39 @@
             </Setter>
         </Style>
 
+        <!-- One NOT style for legacy expressions, typed buttons and AND gates. -->
+        <Style x:Key="MappingNotToggle" TargetType="{x:Type ToggleButton}">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ToggleButton}">
+                        <Border x:Name="NotSurface" Background="#343434" CornerRadius="3"
+                            BorderBrush="#666666" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="NotSurface" Property="Background"
+                                    Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                <Setter TargetName="NotSurface" Property="BorderBrush"
+                                    Value="{DynamicResource PrimaryHueLightBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="NotSurface" Property="BorderBrush"
+                                    Value="{DynamicResource PrimaryHueLightBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="UcrMappingDeleteButton" TargetType="{x:Type ButtonBase}" BasedOn="{StaticResource UcrMappingActionButton}">
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
@@ -285,32 +318,8 @@
                                                         <ToggleButton Grid.Column="1" Content="NOT" Width="54" Height="30"
                                                             Margin="4 0 8 0" IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
                                                             Click="InputNegated_OnClick"
-                                                            ToolTip="Negate this Boolean input condition">
-                                                            <ToggleButton.Style>
-                                                                <Style TargetType="{x:Type ToggleButton}">
-                                                                    <Setter Property="Foreground" Value="#FFFFFF"/>
-                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
-                                                                    <Setter Property="Template">
-                                                                        <Setter.Value>
-                                                                            <ControlTemplate TargetType="{x:Type ToggleButton}">
-                                                                                <Border x:Name="NotSurface" Background="#343434"
-                                                                                    BorderBrush="{DynamicResource PrimaryHueLightBrush}"
-                                                                                    BorderThickness="1">
-                                                                                    <ContentPresenter HorizontalAlignment="Center"
-                                                                                        VerticalAlignment="Center"/>
-                                                                                </Border>
-                                                                                <ControlTemplate.Triggers>
-                                                                                    <Trigger Property="IsChecked" Value="True">
-                                                                                        <Setter TargetName="NotSurface" Property="Background" Value="#164AA7"/>
-                                                                                        <Setter TargetName="NotSurface" Property="BorderBrush" Value="#397AF0"/>
-                                                                                    </Trigger>
-                                                                                </ControlTemplate.Triggers>
-                                                                            </ControlTemplate>
-                                                                        </Setter.Value>
-                                                                    </Setter>
-                                                                </Style>
-                                                            </ToggleButton.Style>
-                                                        </ToggleButton>
+                                                            Style="{StaticResource MappingNotToggle}"
+                                                            ToolTip="Negate this Boolean input condition"/>
                                                         <Button Grid.Column="2" Click="RemoveExpressionInput_OnClick"
                                                             IsEnabled="{Binding CanRemoveExpressionInput}"
                                                             ToolTip="Remove input condition"
@@ -468,6 +477,7 @@
                                                 DataContext="{Binding CoreInputs[0]}"
                                                 IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
                                                 Click="InputNegated_OnClick"
+                                                Style="{StaticResource MappingNotToggle}"
                                                 ToolTip="Negate this input condition"/>
                                         </Grid>
                                         <!-- Two or four independent directions surround a preset.
@@ -531,6 +541,7 @@
                                                         Margin="5 15 0 0" Padding="2 0"
                                                         IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
                                                         Click="InputNegated_OnClick"
+                                                        Style="{StaticResource MappingNotToggle}"
                                                         ToolTip="Negate this AND condition"/>
                                                     <Button Grid.Column="2" Content="×" Width="25" Height="30"
                                                         Margin="5 15 0 0" Padding="0"
