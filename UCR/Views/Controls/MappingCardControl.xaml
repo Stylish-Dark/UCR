@@ -395,6 +395,43 @@
             </DockPanel>
         </DataTemplate>
 
+        <!-- Four compass faces share the actual physical axis when the
+             source is an analogue stick; digital D-pads have four bindings. -->
+        <DataTemplate x:Key="CompoundCompassInputSlotTemplate">
+            <StackPanel Width="116" Margin="1">
+                <DockPanel Height="55" LastChildFill="True">
+                    <Button DockPanel.Dock="Right" Width="23" Height="55" Padding="0"
+                            Content="⋮" FontSize="17"
+                            Click="SpatialInputOptions_OnClick"
+                            IsEnabled="{Binding PhysicalBinding.BindingEnabled}"
+                            ToolTip="{Binding PhysicalBinding.DeviceBindingName}"
+                            Foreground="#EEEEEE" Background="#303030" BorderBrush="#515151"
+                            Style="{StaticResource MaterialDesignRaisedButton}"/>
+                    <Button Height="55" MinWidth="0" Padding="2 1"
+                            Click="BindDirectionalSlot_OnClick"
+                            IsEnabled="{Binding PhysicalBinding.BindingEnabled}"
+                            ToolTip="{Binding PhysicalBinding.DeviceBindingName}"
+                            Foreground="#FFFFFF"
+                            Style="{StaticResource MaterialDesignRaisedButton}">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Arrow}" FontSize="19" FontWeight="Bold"
+                                       TextAlignment="Center"/>
+                            <TextBlock Text="{Binding PhysicalBinding.CompactBindButtonText}"
+                                       FontSize="10" MaxWidth="82" TextTrimming="CharacterEllipsis"
+                                       TextAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </DockPanel>
+                <ToggleButton Content="NOT" Width="53" Height="24" Padding="1"
+                              Margin="0 2 0 0" HorizontalAlignment="Center"
+                              Visibility="{Binding PhysicalBinding.DirectionalNegationVisibility}"
+                              IsChecked="{Binding PhysicalBinding.InputExpressionNegated, Mode=OneWay}"
+                              Click="InputNegated_OnClick"
+                              Style="{StaticResource MappingNotToggle}"
+                              ToolTip="Negate this digital direction"/>
+            </StackPanel>
+        </DataTemplate>
+
         <DataTemplate x:Key="TypedDirectionalInputsTemplate">
             <StackPanel>
                 <ItemsControl ItemsSource="{Binding InputConditions}">
@@ -442,7 +479,7 @@
                                                     Visibility="{Binding OrLabelVisibility}"/>
                                         </StackPanel>
                                     </Grid>
-                                    <Grid Margin="3 4 3 3" Visibility="{Binding CompoundVisibility}">
+                                    <Grid Margin="3 4 3 3" Visibility="{Binding StandaloneCompoundVisibility}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" MinWidth="0"/>
                                             <ColumnDefinition Width="40"/>
@@ -461,57 +498,47 @@
                                                 Foreground="#FFFFFF"
                                                 Style="{StaticResource MaterialDesignRaisedButton}"/>
                                     </Grid>
-                                    <!-- Keep one logical 4-Way source; show its physical
-                                         channels rather than an ambiguous slash-joined list. -->
-                                    <ItemsControl ItemsSource="{Binding CoreInputs}"
-                                                  Visibility="{Binding CompoundChannelPreviewVisibility}"
-                                                  Margin="3 2 3 5">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate><UniformGrid Columns="2"/></ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Border Background="#252525" BorderBrush="#454545"
-                                                        BorderThickness="1" CornerRadius="3"
-                                                        Margin="2" Padding="5 4">
-                                                    <StackPanel>
-                                                        <TextBlock Text="{Binding DeviceBindingName}"
-                                                                   Foreground="#DEDEDE" FontSize="11"
-                                                                   FontWeight="SemiBold" Margin="1 0 0 3"/>
-                                                        <Grid>
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="*" MinWidth="0"/>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                            </Grid.ColumnDefinitions>
-                                                            <Button Grid.Column="0" Height="30" MinWidth="0"
-                                                                    Content="{Binding CompactBindButtonText}"
-                                                                    Click="BindDirectionalSlot_OnClick"
-                                                                    IsEnabled="{Binding BindingEnabled}"
-                                                                    ToolTip="Bind this physical 4-Way channel"
-                                                                    Padding="4 1" Foreground="#FFFFFF"
-                                                                    Style="{StaticResource MaterialDesignRaisedButton}"/>
-                                                            <ToggleButton Grid.Column="1" Content="NOT"
-                                                                          Width="40" Height="30" Margin="3 0 0 0"
-                                                                          Padding="2 0"
-                                                                          IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
-                                                                          Visibility="{Binding DirectionalNegationVisibility}"
-                                                                          Click="InputNegated_OnClick"
-                                                                          Style="{StaticResource MappingNotToggle}"
-                                                                          ToolTip="Negate this digital channel"/>
-                                                            <Button Grid.Column="2" Content="⋮" Width="26" Height="30"
-                                                                    Margin="3 0 0 0" Padding="0"
-                                                                    Foreground="#FFFFFF"
-                                                                    Click="SpatialInputOptions_OnClick"
-                                                                    IsEnabled="{Binding BindingEnabled}"
-                                                                    ToolTip="Channel device and binding options"
-                                                                    Style="{StaticResource MaterialDesignRaisedButton}"/>
-                                                        </Grid>
-                                                    </StackPanel>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
+                                    <!-- Four visible directions are placed at the four
+                                         cardinal points around one shared preset. -->
+                                    <Grid x:Name="InputDirectionalCompassGrid"
+                                          HorizontalAlignment="Center" Margin="0 2 0 5"
+                                          Visibility="{Binding CompoundChannelPreviewVisibility}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="118"/>
+                                            <ColumnDefinition Width="118"/>
+                                            <ColumnDefinition Width="118"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <ContentControl x:Name="CompassInputUp"
+                                            Grid.Row="0" Grid.Column="1"
+                                            Content="{Binding CompassInputUp}"
+                                            ContentTemplate="{StaticResource CompoundCompassInputSlotTemplate}"/>
+                                        <ContentControl x:Name="CompassInputLeft"
+                                            Grid.Row="1" Grid.Column="0"
+                                            Content="{Binding CompassInputLeft}"
+                                            ContentTemplate="{StaticResource CompoundCompassInputSlotTemplate}"/>
+                                        <Button x:Name="CompassInputPreset"
+                                            Grid.Row="1" Grid.Column="1"
+                                            Content="Preset ▾"
+                                            Height="55" Margin="2 1" Padding="4 1"
+                                            FontSize="12" FontWeight="SemiBold"
+                                            Foreground="#FFFFFF" Click="CompoundPreset_OnClick"
+                                            Style="{StaticResource MaterialDesignRaisedButton}"
+                                            IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
+                                            ToolTip="Select a complete keyboard, D-pad or stick preset"/>
+                                        <ContentControl x:Name="CompassInputRight"
+                                            Grid.Row="1" Grid.Column="2"
+                                            Content="{Binding CompassInputRight}"
+                                            ContentTemplate="{StaticResource CompoundCompassInputSlotTemplate}"/>
+                                        <ContentControl x:Name="CompassInputDown"
+                                            Grid.Row="2" Grid.Column="1"
+                                            Content="{Binding CompassInputDown}"
+                                            ContentTemplate="{StaticResource CompoundCompassInputSlotTemplate}"/>
+                                    </Grid>
                                     <StackPanel Visibility="{Binding ButtonPairVisibility}">
                                         <!-- Ordinary one-button mapping: preserve the full selector. -->
                                         <Grid Visibility="{Binding SingleButtonVisibility}">
