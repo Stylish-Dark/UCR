@@ -47,10 +47,38 @@ namespace HidWizards.UCR.Views.Controls
             set => SetValue(CompactDirectionalProperty, value);
         }
 
+        // Reuse the exact existing icon/arrow device selector inside a compound
+        // input group instead of introducing a differently styled fake button.
+        public static readonly DependencyProperty DeviceOnlyProperty =
+            DependencyProperty.Register(nameof(DeviceOnly), typeof(bool),
+                typeof(CompactInputBindingControl),
+                new PropertyMetadata(false, (owner, args) =>
+                    ((CompactInputBindingControl)owner).UpdateMenuPosition()));
+
+        public bool DeviceOnly
+        {
+            get => (bool)GetValue(DeviceOnlyProperty);
+            set => SetValue(DeviceOnlyProperty, value);
+        }
+
         private void UpdateMenuPosition()
         {
             if (BindingGrid == null || MenuButton == null || DeviceSelectionBox == null)
                 return;
+            BindSurface.Visibility = DeviceOnly ? Visibility.Collapsed : Visibility.Visible;
+            MenuButton.Visibility = DeviceOnly ? Visibility.Collapsed : Visibility.Visible;
+            BindingGrid.ColumnDefinitions[1].Width = DeviceOnly ?
+                new GridLength(0) : new GridLength(1, GridUnitType.Star);
+            BindingGrid.ColumnDefinitions[3].Width = DeviceOnly ?
+                new GridLength(0) : GridLength.Auto;
+            Width = DeviceOnly ? 62 : double.NaN;
+            if (DeviceOnly)
+            {
+                BindingGrid.ColumnDefinitions[0].Width = new GridLength(62);
+                BindingGrid.ColumnDefinitions[2].Width = new GridLength(0);
+                Grid.SetColumn(DeviceSelectionBox, 0);
+                return;
+            }
             var left = MenuOnLeft;
             var deviceColumnWidth = CompactDirectional ? 48 : 62;
             BindingGrid.ColumnDefinitions[0].Width = new GridLength(left ? 29 : deviceColumnWidth);
@@ -121,6 +149,13 @@ namespace HidWizards.UCR.Views.Controls
                 if (card != null)
                     Dispatcher.BeginInvoke((Action)(() => card.SwitchOutputBindingToFilter(viewModel)),
                         System.Windows.Threading.DispatcherPriority.Background);
+            }
+            else if (DeviceOnly && viewModel.DeviceBinding?.DeviceIoType == DeviceIoType.Input)
+            {
+                var mapping = FindAncestor<MappingCardControl>(this)?.DataContext as MappingViewModel;
+                if (mapping != null)
+                    mapping.SetCompoundInputDevice(viewModel.DeviceBinding.InputExpressionGroup,
+                        selected.Value);
             }
             else
             {
