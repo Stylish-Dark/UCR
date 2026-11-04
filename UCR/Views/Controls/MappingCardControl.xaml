@@ -858,7 +858,7 @@
                                     <Setter Property="Background" Value="#292929"/>
                                     <Setter Property="CornerRadius" Value="3"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding InputConditions.Count}" Value="2">
+                                        <DataTrigger Binding="{Binding HasMultipleInputConditions}" Value="True">
                                             <Setter Property="BorderThickness" Value="0"/>
                                             <Setter Property="Background" Value="Transparent"/>
                                         </DataTrigger>
