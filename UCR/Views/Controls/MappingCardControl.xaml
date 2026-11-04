@@ -875,6 +875,15 @@
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
                                         Margin="6 0 0 0">
+                                <RadioButton Tag="5"
+                                             ToolTip="Filter output" Click="FilterOutput_OnClick"
+                                             IsChecked="{Binding OutputIsFilter, Mode=OneWay}"
+                                             IsEnabled="{Binding ButtonsEnabled}"
+                                             Margin="0 0 9 0"
+                                             Style="{StaticResource DirectionalTypeChoice}">
+                                    <materialDesign:PackIcon Kind="Filter" Width="17" Height="17"
+                                        Foreground="{StaticResource MappingTypeFilterBrush}"/>
+                                </RadioButton>
                                 <RadioButton Content="✣" Tag="1"
                                              ToolTip="4-Way output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsFullStick, Mode=OneWay}"
@@ -885,15 +894,6 @@
                                              IsChecked="{Binding OutputIsAxis, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseOutputAxis}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
-                                <RadioButton Tag="5"
-                                             ToolTip="Filter output" Click="FilterOutput_OnClick"
-                                             IsChecked="{Binding OutputIsFilter, Mode=OneWay}"
-                                             IsEnabled="{Binding ButtonsEnabled}"
-                                             Margin="0 0 9 0"
-                                             Style="{StaticResource DirectionalTypeChoice}">
-                                    <materialDesign:PackIcon Kind="Filter" Width="17" Height="17"
-                                        Foreground="{StaticResource MappingTypeFilterBrush}"/>
-                                </RadioButton>
                                 <RadioButton Content="{Binding OutputButtonChoiceGlyph}" Tag="3"
                                              ToolTip="Button output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsButton, Mode=OneWay}"
