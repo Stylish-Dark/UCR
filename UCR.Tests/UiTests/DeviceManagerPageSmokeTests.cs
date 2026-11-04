@@ -735,6 +735,30 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(outputFaces["CompassOutputDown"].Content, Is.SameAs(mapping.Plugins[3]));
 
                 CaptureEditorPreview(card, 1050, "UCR-directional-preview.png");
+
+                // Render the four independent digital directions as well.
+                // This is the keyboard/D-pad configuration the user actually edits.
+                mapping.Mapping.CompoundDigitalInput = true;
+                Assert.That(mapping.SetInputRepresentation(1), Is.True);
+                var digitalGroup = mapping.InputConditions.Single();
+                Assert.That(digitalGroup.CoreInputs.Count, Is.EqualTo(4));
+                Assert.That(new[]
+                {
+                    digitalGroup.CompassInputLeft.PhysicalBinding,
+                    digitalGroup.CompassInputRight.PhysicalBinding,
+                    digitalGroup.CompassInputUp.PhysicalBinding,
+                    digitalGroup.CompassInputDown.PhysicalBinding
+                }.Distinct().Count(), Is.EqualTo(4));
+                card.Measure(new Size(1050, 900));
+                card.Arrange(new Rect(0, 0, 1050, 900));
+                card.UpdateLayout();
+                var visibleNotToggles = FindVisualChildren<ToggleButton>(card)
+                    .Where(toggle => (toggle.ToolTip as string) ==
+                        "Negate this digital direction" &&
+                        toggle.Visibility == Visibility.Visible).ToList();
+                Assert.That(visibleNotToggles.Count, Is.EqualTo(4),
+                    "Every digital D-pad direction requires its own working NOT toggle.");
+                CaptureEditorPreview(card, 1050, "UCR-digital-dpad-preview.png");
             }
             finally
             {
