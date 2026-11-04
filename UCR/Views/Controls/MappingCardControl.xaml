@@ -545,7 +545,9 @@
                                         <Grid Visibility="{Binding SingleButtonVisibility}">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" MinWidth="0"/>
-                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="49"/>
+                                                <!-- Match the AND row's remove-button slot without making the primary input removable. -->
+                                                <ColumnDefinition Width="30"/>
                                             </Grid.ColumnDefinitions>
                                             <local:CompactInputBindingControl Grid.Column="0"
                                                 DataContext="{Binding CoreInputs[0]}"
@@ -607,8 +609,8 @@
                                                 <Grid Margin="2 2 0 2">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*" MinWidth="0"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="49"/>
+                                                        <ColumnDefinition Width="30"/>
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel Grid.Column="0">
                                                         <TextBlock Text="AND" FontSize="11"
@@ -631,7 +633,7 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                    <Button Content="+AND" Click="AddInputToCondition_OnClick"
+                                    <Button Content="+ Add input" Click="AddInputToCondition_OnClick"
                                         Height="29" HorizontalAlignment="Left" Padding="8 2"
                                         Margin="2 5 0 0"
                                         IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
