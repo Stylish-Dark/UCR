@@ -350,8 +350,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             Mapping.EffectiveOutputRepresentation == 4 ? "Trigger" : "Buttons";
         public Visibility TypedDirectionalVisibility => IsTypedDirectionalMapping
             ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility LegacyOutputAddVisibility => IsTypedDirectionalMapping
-            ? Visibility.Collapsed : Visibility.Visible;
+        public Visibility LegacyOutputAddVisibility =>
+            !IsTypedDirectionalMapping || (OutputIsButton && DirectionalCapacity == 1)
+                ? Visibility.Visible : Visibility.Collapsed;
         public int InputDirectionalSlotCount => Mapping.RequiredInputBindingSlots;
         public bool IsDigitalCompoundInput => IsCompoundInput && Mapping.CompoundDigitalInput;
         public string CompoundBindingSummary => !IsCompoundInput || DeviceBindings == null ||
