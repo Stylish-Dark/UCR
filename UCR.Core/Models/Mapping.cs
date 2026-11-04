@@ -80,7 +80,8 @@ namespace HidWizards.UCR.Core.Models
             ? InputRepresentation : EffectiveDirectionalCapacity == 4 &&
                 DeviceBindings?.Count == 2 &&
                 DeviceBindings.All(b => b.InputExpressionInputKind == 3) ? 1
-            : DeviceBindings?.Any(b => b.InputExpressionInputKind == 3) == true ? 2 : 3;
+            : DeviceBindings?.Any(b => !b.IsDirectionalAndCondition &&
+                    b.InputExpressionInputKind == 3) == true ? 2 : 3;
         [XmlIgnore]
         public int EffectiveOutputRepresentation => OutputRepresentation != 0
             ? OutputRepresentation : EffectiveDirectionalCapacity == 4 &&
