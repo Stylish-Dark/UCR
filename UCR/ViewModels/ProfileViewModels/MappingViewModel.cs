@@ -414,14 +414,20 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public bool SetFourWayButtonOutputDevice(Guid guid)
         {
-            if (!ButtonsEnabled || !HasOutputDirectionalCompass) return false;
-            var profile = ProfileViewModel.Profile;
-            if (profile.GetDeviceConfiguration(DeviceIoType.Output, guid)?.Device == null)
+            if (!ButtonsEnabled || !(IsCompoundOutput || HasOutputDirectionalCompass))
                 return false;
-            foreach (var plugin in Plugins)
-                foreach (var binding in plugin.DeviceBindings.Where(binding =>
-                    binding.DeviceBinding.DeviceIoType == DeviceIoType.Output))
-                    binding.ChangeDeviceConfiguration(guid);
+            var profile = ProfileViewModel.Profile;
+            var selected = profile.GetDeviceConfiguration(DeviceIoType.Output, guid);
+            if (selected?.Device == null) return false;
+            var outputs = Plugins.SelectMany(plugin => plugin.DeviceBindings)
+                .Where(binding => binding.DeviceBinding.DeviceIoType == DeviceIoType.Output)
+                .ToList();
+            if (outputs.Count == 0 || outputs.Any(binding =>
+                !DeviceBindingViewModel.SupportsOutputCategory(selected,
+                    binding.DeviceBindingCategory, profile.Context)))
+                return false;
+            foreach (var binding in outputs)
+                binding.ChangeDeviceConfiguration(guid);
             profile.Context.ContextChanged();
             OnPropertyChanged(nameof(FourWayOutputDeviceLabel));
             OnPropertyChanged(nameof(FourWayOutputDeviceVisual));
