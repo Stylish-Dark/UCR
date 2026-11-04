@@ -120,7 +120,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
         public ObservableCollection<ComboBoxItemViewModel> Devices { get; set; }
-        public ComboBoxItemViewModel SelectedDevice { get; set; }
+        private ComboBoxItemViewModel _selectedDevice;
+        public ComboBoxItemViewModel SelectedDevice
+        {
+            get => _selectedDevice;
+            set
+            {
+                if (ReferenceEquals(_selectedDevice, value)) return;
+                _selectedDevice = value;
+                OnPropertyChanged(nameof(SelectedDevice));
+            }
+        }
         public Visibility ShowPreview => DeviceBinding.IsInBindMode ? Visibility.Hidden : Visibility.Visible;
         public Visibility ShowBindMode => ShowPreview.Equals(Visibility.Visible) ? Visibility.Hidden : Visibility.Visible;
         public Visibility ShowPropertyList => PluginPropertyGroup == null ? Visibility.Collapsed : Visibility.Visible;
@@ -574,11 +584,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     deviceConfiguration.Guid,
                     DeviceVisualCatalog.Describe(deviceConfiguration, DeviceBinding.Profile, DeviceBinding.DeviceIoType)));
             }
-            // Filter is an output operation, not a physical device. Its entry is
-            // handled by the output editor instead of assigning a device GUID.
-            if (DeviceBinding.DeviceIoType == DeviceIoType.Output)
-                Devices.Add(new ComboBoxItemViewModel("Filter", FilterOutputChoiceGuid));
-
             _deviceListLoaded = true;
             _deviceListDirty = false;
             SetSelectDevice();
