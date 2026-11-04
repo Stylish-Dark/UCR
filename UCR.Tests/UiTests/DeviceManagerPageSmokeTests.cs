@@ -622,15 +622,32 @@ namespace HidWizards.UCR.Tests.UiTests
                     .Select(text => text.Text).ToList();
                 Assert.That(slotLabels, Does.Contain("4-Way"),
                     "The compound input must identify the selected 4-Way representation.");
-                Assert.That(slotLabels, Does.Not.Contain("X axis"));
-                Assert.That(slotLabels, Does.Not.Contain("Y axis"),
-                    "The compound input must not expose separate directional editor rows.");
                 var compoundButtons = FindVisualChildren<Button>(card)
                     .Where(button => (button.ToolTip as string) ==
                         "Bind the axis or choose a complete preset")
                     .ToList();
                 Assert.That(compoundButtons.Count, Is.EqualTo(1),
-                    "A compound binding must have exactly one visible assignment control.");
+                    "A 4-Way input must retain one shared preset assignment control.");
+                Assert.That(compoundButtons.Single().Content as string,
+                    Is.EqualTo("Choose 4-Way preset ▾"),
+                    "Do not compress four direction assignments into a slash-separated button label.");
+                var physicalChannels = FindVisualChildren<Button>(card)
+                    .Where(button => (button.ToolTip as string) ==
+                        "Bind this physical 4-Way channel")
+                    .ToList();
+                Assert.That(physicalChannels.Count, Is.EqualTo(model.DeviceBindings.Count),
+                    "Show every underlying physical binding in the 4-Way editor.");
+                Assert.That(physicalChannels.All(button =>
+                    button.DataContext is DeviceBindingViewModel), Is.True,
+                    "Each visible channel must bind the real physical input, not a dummy label.");
+                var analogNegationToggles = FindVisualChildren<ToggleButton>(card)
+                    .Where(toggle => (toggle.ToolTip as string) ==
+                        "Negate this digital channel")
+                    .ToList();
+                Assert.That(analogNegationToggles.Count, Is.EqualTo(physicalChannels.Count));
+                Assert.That(analogNegationToggles.All(toggle =>
+                    toggle.Visibility == Visibility.Collapsed), Is.True,
+                    "Never expose digital NOT toggles that have no effect on analogue axes.");
 
                 var screenshot = System.IO.Path.Combine(
                     Environment.GetEnvironmentVariable("GITHUB_WORKSPACE") ??
