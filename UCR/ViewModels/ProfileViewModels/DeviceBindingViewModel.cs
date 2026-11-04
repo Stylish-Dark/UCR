@@ -29,6 +29,26 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (_deviceBindingName == value) return;
                 _deviceBindingName = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(DirectionalGlyph));
+            }
+        }
+        // Spatial binding buttons must carry their own visible direction.
+        // The previous XAML tried to read an ancestor ContentControl.Tag from
+        // inside a nested button template; that binding rendered no glyph.
+        public string DirectionalGlyph
+        {
+            get
+            {
+                switch (DeviceBindingName)
+                {
+                    case "Up": return "↑";
+                    case "Down": return "↓";
+                    case "Left": return "←";
+                    case "Right": return "→";
+                    case "−": return "−";
+                    case "+": return "+";
+                    default: return string.Empty;
+                }
             }
         }
         public string IoTypeName => DeviceBinding.DeviceIoType.Equals(DeviceIoType.Input) ? "Input" : "Output";
