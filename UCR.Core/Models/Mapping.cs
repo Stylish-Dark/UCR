@@ -856,7 +856,7 @@ namespace HidWizards.UCR.Core.Models
             if (Plugins.Count > 0 && !plugin.HasSameInputCategories(Plugins[0]) &&
                 !UseInputExpression && !EnableInputExpression())
                 return false;
-            if (Plugins.Count == 0)
+            if (Plugins.Count == 0 && DeviceBindings.Count == 0)
             {
                 foreach (var definition in plugin.InputCategories)
                 {
@@ -880,11 +880,9 @@ namespace HidWizards.UCR.Core.Models
         {
             if (!Plugins.Remove(plugin)) return false;
 
-            if (Plugins.Count == 0)
-            {
-                DeviceBindings = new List<DeviceBinding>();
-                UseInputExpression = false;
-            }
+            // Removing the final output does not mean removing the input side.
+            // Keep all bound inputs/AND groups until the owner explicitly removes
+            // the mapping or those individual inputs.
             Profile.PruneUndefinedFilterReferencesRecursive();
             Profile.Context.ContextChanged();
 
