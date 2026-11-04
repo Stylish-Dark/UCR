@@ -360,31 +360,22 @@
             <DockPanel Width="94" Height="40" Margin="1" LastChildFill="True">
                 <Button DockPanel.Dock="Left" Width="21" Height="40" Padding="0"
                         Content="⋮" FontSize="17" Click="SpatialInputOptions_OnClick"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
                         IsEnabled="{Binding BindingEnabled}"
                         ToolTip="Binding categories, clearing and blocking"
                         Visibility="{Binding MenuOnLeft, Converter={StaticResource CompoundVisibilityConverter}}"
                         Foreground="#EEEEEE" Background="#303030" BorderBrush="#515151"/>
                 <Button DockPanel.Dock="Right" Width="21" Height="40" Padding="0"
                         Content="⋮" FontSize="17" Click="SpatialInputOptions_OnClick"
+                        Style="{StaticResource MaterialDesignRaisedButton}"
                         IsEnabled="{Binding BindingEnabled}"
                         ToolTip="Binding categories, clearing and blocking"
                         Visibility="{Binding MenuOnRight, Converter={StaticResource CompoundVisibilityConverter}}"
                         Foreground="#EEEEEE" Background="#303030" BorderBrush="#515151"/>
                 <Button Height="40" MinWidth="0" Padding="2 1"
                         Click="BindDirectionalSlot_OnClick" IsEnabled="{Binding BindingEnabled}"
-                        ToolTip="{Binding DeviceBindingName}" Foreground="#F0F0F0">
-                    <Button.Style>
-                        <Style TargetType="{x:Type Button}">
-                            <Setter Property="Background" Value="#333740"/>
-                            <Setter Property="BorderBrush" Value="#62666D"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding DeviceBinding.IsBound}" Value="True">
-                                    <Setter Property="Background" Value="#17448E"/>
-                                    <Setter Property="BorderBrush" Value="#478CF5"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
+                        ToolTip="{Binding DeviceBindingName}" Foreground="#F0F0F0"
+                        Style="{StaticResource MaterialDesignRaisedButton}">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <TextBlock Text="{Binding DirectionalGlyph}"
                                    TextAlignment="Center" FontSize="15" FontWeight="SemiBold"/>
@@ -419,18 +410,13 @@
                                         </StackPanel>
                                         <StackPanel Grid.Column="1" Orientation="Horizontal"
                                                     VerticalAlignment="Center">
-                                            <Button Content="{Binding CompoundDeviceLabel}"
-                                                    Visibility="{Binding GroupDevicePickerVisibility}"
-                                                    FontSize="11" Height="30" MaxWidth="124" Padding="7 2"
-                                                    IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
-                                                    Margin="0 0 6 0" Click="CompoundDevice_OnClick"
-                                                    ToolTip="Choose the physical input device for this OR set"
-                                                    Foreground="#FFFFFF" Background="#303030" BorderBrush="#59709A"/>
-                                            <Button Content="Presets ▾" FontSize="12" Padding="8 3"
-                                                    Margin="0 0 9 0" Click="CompoundPreset_OnClick"
-                                                    IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
-                                                    Visibility="{Binding CompoundVisibility}"
-                                                    ToolTip="Bind this complete input set from a keyboard or controller preset"/>
+                                            <Border Visibility="{Binding GroupDevicePickerVisibility}"
+                                                    Margin="0 0 7 0" ToolTip="Input device for this OR set">
+                                                <local:CompactInputBindingControl
+                                                    DataContext="{Binding CoreInputs[0]}"
+                                                    DeviceBinding="{Binding DeviceBinding}"
+                                                    DeviceOnly="True"/>
+                                            </Border>
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
                                                         Visibility="{Binding CompoundVisibility}">
                                                 <TextBlock Text="Block" Foreground="#D0D0D0" FontSize="12"
@@ -453,27 +439,37 @@
                                             <ColumnDefinition Width="40"/>
                                         </Grid.ColumnDefinitions>
                                         <Button Grid.Column="0" Content="{Binding CompoundSummary}"
-                                                Click="CompoundBindingsMenu_OnClick"
-                                                ToolTip="Choose or edit the compound binding"
+                                                Click="CompoundPrimaryBind_OnClick"
+                                                ToolTip="Bind the axis or choose a complete preset"
                                                 HorizontalContentAlignment="Center"
                                                 Height="38" Foreground="#FFFFFF"
-                                                Background="#0939A5" BorderBrush="#1250D3"
+                                                Style="{StaticResource MaterialDesignRaisedButton}"
                                                 FontWeight="SemiBold" Padding="8 3"/>
                                         <Button Grid.Column="1" Content="⋮" FontSize="20"
                                                 Click="CompoundBindingsMenu_OnClick"
                                                 ToolTip="Compound binding options"
                                                 Height="38" Margin="3 0 0 0" Padding="0"
-                                                Foreground="#FFFFFF" Background="#0939A5"
-                                                BorderBrush="#1250D3"/>
+                                                Foreground="#FFFFFF"
+                                                Style="{StaticResource MaterialDesignRaisedButton}"/>
                                     </Grid>
                                     <StackPanel Visibility="{Binding ButtonPairVisibility}">
                                         <!-- Ordinary one-button mapping: preserve the full selector. -->
-                                        <Border Visibility="{Binding SingleButtonVisibility}">
-                                            <local:CompactInputBindingControl
-                                                DataContext="{Binding Inputs[0]}"
+                                        <Grid Visibility="{Binding SingleButtonVisibility}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" MinWidth="0"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <local:CompactInputBindingControl Grid.Column="0"
+                                                DataContext="{Binding CoreInputs[0]}"
                                                 DeviceBinding="{Binding DeviceBinding}"
                                                 HorizontalAlignment="Stretch"/>
-                                        </Border>
+                                            <ToggleButton Grid.Column="1" Content="NOT" Width="43" Height="32"
+                                                Margin="6 0 0 0" Padding="2 0"
+                                                DataContext="{Binding CoreInputs[0]}"
+                                                IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
+                                                Click="InputNegated_OnClick"
+                                                ToolTip="Negate this input condition"/>
+                                        </Grid>
                                         <!-- Two or four independent directions surround a preset.
                                              Slot identity and OR membership come from the model. -->
                                         <Grid HorizontalAlignment="Center" Margin="0 2 0 2"
@@ -499,8 +495,8 @@
                                             <Button Grid.Row="1" Grid.Column="1" Content="Preset ▾"
                                                     FontSize="11" FontWeight="SemiBold"
                                                     Height="40" Margin="1" Padding="4 2"
-                                                    Foreground="#FFFFFF" Background="#164AA7"
-                                                    BorderBrush="#397AF0" Click="CompoundPreset_OnClick"
+                                                    Foreground="#FFFFFF" Click="CompoundPreset_OnClick"
+                                                    Style="{StaticResource MaterialDesignRaisedButton}"
                                                     IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
                                                     ToolTip="Choose WASD, arrows, D-pad, joystick or face-button compound control"/>
                                             <ContentControl Grid.Row="1" Grid.Column="2" Tag="→"
@@ -513,6 +509,43 @@
                                                 Visibility="{Binding DownDirectionVisibility}"/>
                                         </Grid>
                                     </StackPanel>
+                                    <!-- Existing Boolean AND/NOT operations remain real
+                                         input conditions; they are not directional slots. -->
+                                    <ItemsControl ItemsSource="{Binding AndInputs}" Margin="0 5 0 0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="2 2 0 2">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" MinWidth="0"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="AND" FontSize="11"
+                                                            Foreground="#CECECE" Margin="1 0 0 3"/>
+                                                        <local:CompactInputBindingControl
+                                                            DeviceBinding="{Binding DeviceBinding}"
+                                                            HorizontalAlignment="Stretch"/>
+                                                    </StackPanel>
+                                                    <ToggleButton Grid.Column="1" Content="NOT" Width="43" Height="32"
+                                                        Margin="5 15 0 0" Padding="2 0"
+                                                        IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
+                                                        Click="InputNegated_OnClick"
+                                                        ToolTip="Negate this AND condition"/>
+                                                    <Button Grid.Column="2" Content="×" Width="25" Height="30"
+                                                        Margin="5 15 0 0" Padding="0"
+                                                        Click="RemoveExpressionInput_OnClick"
+                                                        ToolTip="Remove this AND input"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Button Content="+AND" Click="AddInputToCondition_OnClick"
+                                        Height="29" HorizontalAlignment="Left" Padding="8 2"
+                                        Margin="2 5 0 0"
+                                        IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
+                                        ToolTip="Require another independent condition in this OR group"
+                                        Style="{StaticResource UcrAccentOutlineButton}"/>
                                 </StackPanel>
                             </Border>
                         </DataTemplate>
