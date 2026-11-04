@@ -508,7 +508,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                         else if (representation != 4 && !isButton && capacity > 1 &&
                                  sources.Count == capacity)
                         {
-                            var compatibleAxis = sources.FindIndex(source =>
+                            // Match only the requested X or Y pair. Copying an
+                            // arbitrary axis into both channels would make a single
+                            // bound direction drive the entire joystick diagonally.
+                            var axisOffset = index * 2;
+                            var compatibleAxis = sources.FindIndex(axisOffset, 2, source =>
                                 source.IsBound && source.DeviceBindingCategory ==
                                     DeviceBindingCategory.Range);
                             if (compatibleAxis >= 0) previousIndex = compatibleAxis;
