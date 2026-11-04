@@ -1105,6 +1105,69 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void FilterOutputIsExclusiveAndRestoresPreviousPhysicalDestinations()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            context.PluginManager.Plugins = new List<Plugin>
+            {
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton(),
+                new HidWizards.UCR.Plugins.Remapper.AxisToAxis(),
+                new HidWizards.UCR.Plugins.Filter.ButtonToFilter(),
+                new HidWizards.UCR.Plugins.Filter.AxisToFilter()
+            };
+            var profile = context.ProfilesManager.CreateProfile("Filter output choice", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var model = profile.AddMapping("Output type transition");
+            model.AddPlugin(new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+            var vm = new ProfileViewModel(profile);
+            try
+            {
+                var mapping = vm.MappingsList.Single();
+                var original = model.Plugins[0];
+                original.Outputs[0].IsBound = true;
+                original.Outputs[0].KeyValue = 12;
+                var filter = mapping.GetCompatiblePluginOptions()
+                    .FirstOrDefault(option => option.OutputType == "Filter");
+                Assert.That(filter, Is.Not.Null,
+                    "Filter must be a selectable output type, not a device.");
+                Assert.That(mapping.ChangeAllOutputTypes(filter.Plugin), Is.True);
+                Assert.That(mapping.OutputIsFilter, Is.True);
+                Assert.That(mapping.OutputIsButton, Is.False);
+                Assert.That(mapping.OutputIsAxis, Is.False);
+                Assert.That(mapping.OutputIsFullStick, Is.False);
+                Assert.That(mapping.SetOutputRepresentation(3), Is.True);
+                Assert.That(mapping.OutputIsFilter, Is.False);
+                Assert.That(mapping.OutputIsButton, Is.True);
+                Assert.That(model.Plugins, Has.Count.EqualTo(1));
+                Assert.That(model.Plugins[0], Is.SameAs(original),
+                    "A Filter round-trip must recover the prior physical output.");
+                Assert.That(model.Plugins[0].Outputs[0].KeyValue, Is.EqualTo(12));
+
+                Assert.That(mapping.SetInputRepresentation(1), Is.True);
+                Assert.That(mapping.SetOutputRepresentation(1), Is.True);
+                var compoundOriginal = model.Plugins.ToList();
+                Assert.That(compoundOriginal, Has.Count.EqualTo(2));
+                var axisFilter = mapping.GetCompatiblePluginOptions()
+                    .FirstOrDefault(option => option.Name == "Axis to Filter");
+                Assert.That(axisFilter, Is.Not.Null);
+                Assert.That(mapping.ChangeAllOutputTypes(axisFilter.Plugin), Is.True);
+                Assert.That(mapping.OutputIsFilter, Is.True);
+                Assert.That(mapping.IsCompoundOutput, Is.False,
+                    "Filter must not simultaneously render a 4-Way destination.");
+                Assert.That(mapping.SetOutputRepresentation(1), Is.True);
+                Assert.That(mapping.IsCompoundOutput, Is.True);
+                Assert.That(model.Plugins, Is.EquivalentTo(compoundOriginal),
+                    "Returning to 4-Way must restore both physical axes.");
+            }
+            finally
+            {
+                vm.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void FourWayOutputRemovesAndRestoresAsOneLogicalSlot()
         {
             EnsureApplicationResources();
