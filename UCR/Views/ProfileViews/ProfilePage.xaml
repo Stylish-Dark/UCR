@@ -560,10 +560,12 @@
                                                 </StackPanel>
                                                 <Button Grid.Column="1" Content="Edit" Padding="5 2" Margin="3 0"
                                                         Height="27" Click="EditCompoundPreset_OnClick"
+                                                        IsEnabled="{Binding DataContext.CanEditProfile, ElementName=ProfilePageName}"
                                                         Style="{StaticResource UcrProfileActionButton}"
                                                         ToolTip="Edit this 4-Way preset"/>
                                                 <Button Grid.Column="2" Content="×" Padding="4 1" Margin="0 0 1 0"
                                                         Height="27" Width="27" Click="RemoveCompoundPreset_OnClick"
+                                                        IsEnabled="{Binding DataContext.CanEditProfile, ElementName=ProfilePageName}"
                                                         ToolTip="Delete this 4-Way preset"
                                                         Style="{StaticResource UcrDeleteItemButton}"/>
                                             </Grid>
