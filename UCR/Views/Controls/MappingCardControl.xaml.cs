@@ -484,6 +484,14 @@ namespace HidWizards.UCR.Views.Controls
             };
             block.Click += (s, args) => input.Block = block.IsChecked;
             menu.Items.Add(block);
+            var not = new MenuItem
+            {
+                Header = "NOT (invert this button condition)",
+                IsCheckable = true,
+                IsChecked = input.InputExpressionNegated
+            };
+            not.Click += (s, args) => mapping.SetInputNegated(input, not.IsChecked);
+            menu.Items.Add(not);
             menu.IsOpen = true;
         }
 
@@ -1193,6 +1201,41 @@ namespace HidWizards.UCR.Views.Controls
             menu.IsOpen = true;
         }
 
+        private void CompoundPrimaryBind_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = sender as Button;
+            var group = button?.DataContext as InputConditionViewModel;
+            var mapping = DataContext as MappingViewModel;
+            if (mapping?.ButtonsEnabled != true || group == null) return;
+            // Axis and Trigger really have one physical bind button. Capturing
+            // from the large centre control must not bury detection in a menu.
+            if (group.CoreInputs.Count == 1)
+            {
+                var input = group.CoreInputs[0];
+                if (input?.DeviceBinding == null) return;
+                if (input.DeviceBinding.IsInBindMode)
+                {
+                    input.DeviceBinding.CancelBindMode();
+                    return;
+                }
+                try
+                {
+                    input.DeviceBinding.EnterBindMode(autoDetectInputCategory: true);
+                }
+                catch (Exception exception)
+                {
+                    Logger.Error("Unable to capture compound input", exception);
+                    DarkMessageBox.Show("Unable to capture input: " +
+                        exception.GetBaseException().Message,
+                        "Input detection unavailable", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                return;
+            }
+            // Full sticks and compound D-pads need multiple physical channels.
+            // The centre button chooses the complete preset, not just X.
+            CompoundPreset_OnClick(sender, e);
+        }
+
         private void CompoundBindingsMenu_OnClick(object sender, RoutedEventArgs e)
         {
             var mapping = DataContext as MappingViewModel;
@@ -1200,7 +1243,8 @@ namespace HidWizards.UCR.Views.Controls
             if (mapping?.IsCompoundInput != true || !mapping.ButtonsEnabled || button == null) return;
             var menu = CreateDarkContextMenu(button);
             var group = button.DataContext as InputConditionViewModel;
-            foreach (var input in group?.Inputs ?? mapping.DeviceBindings)
+            foreach (var input in group?.CoreInputs ?? mapping.DeviceBindings.Where(item =>
+                !item.DeviceBinding.IsDirectionalAndCondition))
             {
                 var binding = input;
                 var label = binding.DeviceBindingName;
