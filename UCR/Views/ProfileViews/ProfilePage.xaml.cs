@@ -549,7 +549,11 @@ namespace HidWizards.UCR.Views.ProfileViews
                 {
                     Height = 28,
                     MaxLength = 60,
-                    Text = value ?? string.Empty
+                    Text = value ?? string.Empty,
+                    Padding = new Thickness(5, 2, 5, 2),
+                    Background = new SolidColorBrush(Color.FromRgb(42, 42, 42)),
+                    Foreground = Brushes.White,
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(100, 100, 100))
                 };
                 fields.Add(edit);
                 root.Children.Add(edit);
