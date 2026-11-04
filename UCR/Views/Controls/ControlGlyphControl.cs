@@ -82,6 +82,15 @@ namespace HidWizards.UCR.Views.Controls
                 case ControlVisualKind.DPad:
                     DrawDPad(dc, b, accent, Label);
                     break;
+                case ControlVisualKind.CompoundKeys:
+                    DrawCompoundKeys(dc, b, accent, Label, false);
+                    break;
+                case ControlVisualKind.CompoundFaceButtons:
+                    DrawCompoundKeys(dc, b, accent, Label, true);
+                    break;
+                case ControlVisualKind.CompoundStick:
+                    DrawCompoundStick(dc, b, accent, Label);
+                    break;
                 case ControlVisualKind.ShoulderButton:
                 case ControlVisualKind.Trigger:
                     DrawPill(dc, b, accent, Label, Kind == ControlVisualKind.Trigger);
@@ -246,6 +255,58 @@ namespace HidWizards.UCR.Views.Controls
                         FontFor(label, radius * 1.15), FontWeights.Bold);
                     return;
             }
+        }
+
+        // Four physical directions appear as ONE compound header glyph.
+        // The labels encode Left|Right|Up|Down, preserving their spatial meaning.
+        private static void DrawCompoundKeys(DrawingContext dc, Rect b,
+            Brush accent, string labels, bool faceButtons)
+        {
+            var parts = (labels ?? string.Empty).Split('|');
+            Func<int, string> key = index =>
+                index < parts.Length && !string.IsNullOrWhiteSpace(parts[index])
+                    ? parts[index] : "·";
+            var size = Math.Min((b.Width - 3) / 3.15, (b.Height - 2) / 2.9);
+            var centerX = b.Left + b.Width / 2.0;
+            var centerY = b.Top + b.Height / 2.0;
+            var left = new Rect(centerX - size * 1.50, centerY - size * 0.43, size, size);
+            var right = new Rect(centerX + size * 0.50, centerY - size * 0.43, size, size);
+            var up = new Rect(centerX - size * 0.50, centerY - size * 1.39, size, size);
+            var down = new Rect(centerX - size * 0.50, centerY + size * 0.57, size, size);
+            if (faceButtons)
+            {
+                DrawFaceButton(dc, left, accent, key(0), true);
+                DrawFaceButton(dc, right, accent, key(1), true);
+                DrawFaceButton(dc, up, accent, key(2), true);
+                DrawFaceButton(dc, down, accent, key(3), true);
+            }
+            else
+            {
+                DrawKey(dc, left, accent, key(0));
+                DrawKey(dc, right, accent, key(1));
+                DrawKey(dc, up, accent, key(2));
+                DrawKey(dc, down, accent, key(3));
+            }
+        }
+
+        private static void DrawCompoundStick(DrawingContext dc, Rect b,
+            Brush accent, string label)
+        {
+            var center = new Point(b.Left + b.Width * 0.42, b.Top + b.Height * 0.50);
+            var radius = Math.Min(b.Height, b.Width) * 0.37;
+            var baseBrush = new SolidColorBrush(Color.FromRgb(31, 31, 31));
+            var capBrush = new SolidColorBrush(Color.FromRgb(59, 59, 59));
+            dc.DrawEllipse(baseBrush, Pen(accent, 1.8), center, radius, radius);
+            dc.DrawEllipse(capBrush, Pen(accent, 1.35), center, radius * 0.70, radius * 0.70);
+            var span = radius * 0.36;
+            dc.DrawLine(Pen(accent, 1.55),
+                new Point(center.X - span, center.Y), new Point(center.X + span, center.Y));
+            dc.DrawLine(Pen(accent, 1.55),
+                new Point(center.X, center.Y - span), new Point(center.X, center.Y + span));
+            if (!string.IsNullOrWhiteSpace(label))
+                DrawCenteredText(dc, label, accent,
+                    new Rect(b.Left + b.Width * 0.79, b.Top, b.Width * 0.20, b.Height),
+                    b.Height * 0.36, FontWeights.Bold);
         }
 
         private static void DrawDPad(DrawingContext dc, Rect b, Brush accent, string label)
