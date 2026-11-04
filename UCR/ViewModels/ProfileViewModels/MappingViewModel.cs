@@ -75,11 +75,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public string CompoundSummary => !IsCompound ? string.Empty :
             string.Join("  /  ", Inputs.Select(input => input.DeviceBinding.IsBound
                 ? input.CompactBindButtonText : "—"));
+        public string CompoundDeviceLabel
+        {
+            get
+            {
+                var guid = Inputs.FirstOrDefault()?.DeviceBinding?.DeviceConfigurationGuid ?? Guid.Empty;
+                if (guid == Guid.Empty) return "Any device ▾";
+                var profile = _owner?.ProfileViewModel?.Profile;
+                var name = profile?.GetDeviceConfiguration(DeviceIoType.Input, guid)
+                    ?.GetFullTitleForProfile(profile) ?? "Unavailable device";
+                return (name.Length > 13 ? name.Substring(0, 12) + "…" : name) + " ▾";
+            }
+        }
 
         public event PropertyChangedEventHandler PropertyChanged;
         public void RefreshCompoundSummary()
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompoundSummary)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompoundDeviceLabel)));
         }
 
         public int GroupIndex { get; }
@@ -257,7 +270,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var requested = physical == DeviceBindingCategory.Range &&
                     Mapping.EffectiveInputRepresentation == 3 ? 2 :
                     physical == DeviceBindingCategory.Momentary &&
-                    Mapping.EffectiveInputRepresentation == 2 ? 3 : 0;
+                    (Mapping.EffectiveInputRepresentation == 2 ||
+                     Mapping.EffectiveInputRepresentation == 4) ? 3 : 0;
                 if (requested != 0)
                 {
                     _preferCapturedDirectionalBinding = true;
@@ -1671,6 +1685,32 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var group = condition?.GroupIndex ?? 0;
             var binding = Mapping.AddExpressionInputToGroup(group);
             AddExpressionBindingViewModel(binding);
+        }
+
+        // Device selection belongs to each OR set, including compound controls.
+        // Changing it changes only that set; the preset or physical binding can
+        // subsequently establish the representation without a device-type lock.
+        public bool SetCompoundInputDevice(int groupIndex, Guid deviceGuid)
+        {
+            if (!ButtonsEnabled) return false;
+            var profile = ProfileViewModel.Profile;
+            if (deviceGuid != Guid.Empty &&
+                profile.GetDeviceConfiguration(DeviceIoType.Input, deviceGuid) == null)
+                return false;
+            var inputs = DeviceBindings.Where(item => item.DeviceBinding != null &&
+                item.DeviceBinding.InputExpressionGroup == groupIndex).ToList();
+            if (inputs.Count == 0) return false;
+            foreach (var input in inputs)
+            {
+                // A new device does not guarantee that the old physical key is
+                // meaningful. Keep representation banks, but clear that key.
+                input.DeviceBinding.SetDeviceConfigurationGuid(deviceGuid, false);
+                input.RefreshDeviceList();
+            }
+            ProfileViewModel.Profile.Context.ContextChanged();
+            RefreshInputExpressionPresentation();
+            RefreshCollapsedSummary();
+            return true;
         }
 
         public void AddCondition()
