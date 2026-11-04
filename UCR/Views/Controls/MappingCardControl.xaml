@@ -681,34 +681,41 @@
                     <TextBlock Text="{Binding DirectionalSlotLabel}" Foreground="#D8D8D8"
                                FontSize="13" FontWeight="SemiBold" Margin="2 0 0 5"
                                HorizontalAlignment="Center"/>
-                    <ItemsControl ItemsSource="{Binding DeviceBindings}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Button Height="44" MinWidth="0" Margin="0 1 0 3" Padding="5 3"
-                                        Click="CompassOutputBind_OnClick"
-                                        IsEnabled="{Binding BindingEnabled}"
-                                        ToolTip="Choose output control"
-                                        Foreground="#FFFFFF"
-                                        Style="{StaticResource MaterialDesignRaisedButton}"
-                                        HorizontalContentAlignment="Stretch">
-                                    <TextBlock Text="{Binding CompactBindButtonText}"
-                                               TextAlignment="Center"
-                                               FontSize="14" FontWeight="SemiBold"
-                                               TextTrimming="CharacterEllipsis"/>
-                                </Button>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center"
-                                VerticalAlignment="Center" Margin="0 3 0 2"
-                                Visibility="{Binding QuickInvertVisibility}">
-                        <TextBlock Text="Invert" FontSize="11" Foreground="#D8D8D8"
-                                   HorizontalAlignment="Center" Margin="0 0 0 4"/>
-                        <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
-                                      HorizontalAlignment="Center"
-                                      IsChecked="{Binding QuickInvert, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      ToolTip="Invert this output"/>
-                    </StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" MinWidth="0"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ItemsControl Grid.Column="0" ItemsSource="{Binding DeviceBindings}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Height="44" MinWidth="0" Margin="0 1 0 2" Padding="3 2"
+                                            Click="CompassOutputBind_OnClick"
+                                            IsEnabled="{Binding BindingEnabled}"
+                                            ToolTip="Choose output control"
+                                            Foreground="#FFFFFF"
+                                            Style="{StaticResource MaterialDesignRaisedButton}"
+                                            HorizontalContentAlignment="Stretch">
+                                        <TextBlock Text="{Binding CompactBindButtonText}"
+                                                   TextAlignment="Center"
+                                                   FontSize="14" FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <StackPanel Grid.Column="1" Orientation="Vertical"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    Margin="6 0 0 0"
+                                    Visibility="{Binding QuickInvertVisibility}">
+                            <TextBlock Text="Invert" FontSize="11" Foreground="#D8D8D8"
+                                       HorizontalAlignment="Center" Margin="0 0 0 3"/>
+                            <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
+                                          HorizontalAlignment="Center"
+                                          IsChecked="{Binding QuickInvert, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          ToolTip="Invert this output"/>
+                        </StackPanel>
+                    </Grid>
                     <ItemsControl ItemsSource="{Binding Filters}" Margin="0 4 0 0">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
@@ -1079,17 +1086,19 @@
                         </ItemsControl>
                             </StackPanel>
                         </Border>
-                        <Button Content="+ Filter" Height="29" Padding="10 2" Margin="3 7 0 2"
-                            Click="AddMappingFilter_OnClick" IsEnabled="{Binding ButtonsEnabled}"
-                            HorizontalAlignment="Left" Foreground="#FFFFFF" Background="#343434"
-                            BorderBrush="#555555" BorderThickness="1"
-                            ToolTip="Add a filter to this mapping"/>
-                        <Button Content="+ Add output" Click="AddPlugin_OnClick"
-                            Visibility="{Binding LegacyOutputAddVisibility}"
-                            Height="34" Padding="12 3" Margin="3 8 0 2"
-                            HorizontalAlignment="Left" IsEnabled="{Binding ButtonsEnabled}"
-                            Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
-                            ToolTip="Add another output to this mapping"/>
+                        <StackPanel Orientation="Horizontal" Margin="0 7 0 2">
+                            <Button Content="+ Filter" Height="34" Padding="10 2" Margin="3 0 7 0"
+                                Click="AddMappingFilter_OnClick" IsEnabled="{Binding ButtonsEnabled}"
+                                HorizontalAlignment="Left" Foreground="#FFFFFF" Background="#343434"
+                                BorderBrush="#555555" BorderThickness="1"
+                                ToolTip="Add a filter to this mapping"/>
+                            <Button Content="+ Add output" Click="AddPlugin_OnClick"
+                                Visibility="{Binding LegacyOutputAddVisibility}"
+                                Height="34" Padding="12 3" Margin="0"
+                                HorizontalAlignment="Left" IsEnabled="{Binding ButtonsEnabled}"
+                                Foreground="#FFFFFF" Style="{StaticResource UcrAccentOutlineButton}"
+                                ToolTip="Add another output to this mapping"/>
+                        </StackPanel>
                     </StackPanel>
                 </UniformGrid>
             </Border>
