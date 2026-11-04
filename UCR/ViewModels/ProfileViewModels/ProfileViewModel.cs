@@ -65,6 +65,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         }
 
         public bool CanPasteMappingGroup => _copiedMappingGroup != null && !Profile.IsActive();
+        public ObservableCollection<CompoundBindingPreset> CompoundPresetItems { get; private set; }
+        public void RefreshCompoundPresetItems()
+        {
+            if (CompoundPresetItems == null)
+                CompoundPresetItems = new ObservableCollection<CompoundBindingPreset>();
+            CompoundPresetItems.Clear();
+            foreach (var item in Profile.CompoundBindingPresets ?? new List<CompoundBindingPreset>())
+                CompoundPresetItems.Add(item);
+            OnPropertyChanged(nameof(CompoundPresetItems));
+        }
         public ObservableCollection<string> FilterNames { get; private set; }
         public ObservableCollection<FilterDefinitionItemViewModel> FilterDefinitions { get; private set; }
         public PluginToolboxViewModel PluginToolbox { get; set; }
@@ -83,6 +93,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ProfileViewModel(Profile profile)
         {
             Profile = profile;
+            RefreshCompoundPresetItems();
             _lastKnownActiveState = profile.IsActive();
             profile.Context.ActiveProfileChangedEvent += ContextOnActiveProfileChangedEvent;
             profile.Context.DeviceAliasesChangedEvent += ContextOnDeviceAliasesChanged;
