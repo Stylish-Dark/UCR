@@ -435,7 +435,7 @@
                         <DataTemplate>
                             <Border Background="#292929" BorderBrush="#454545" BorderThickness="1"
                                     CornerRadius="3" Padding="7" Margin="2 0 2 7"
-                                    MinHeight="180" HorizontalAlignment="Stretch">
+                                    HorizontalAlignment="Stretch">
                                 <StackPanel>
                                     <Grid Margin="3 0 0 7">
                                         <Grid.ColumnDefinitions>
@@ -893,7 +893,7 @@
                                      implemented as two axes or four D-pad buttons. -->
                                 <Border Background="#292929" BorderBrush="#454545"
                                         BorderThickness="1" CornerRadius="3" Padding="7"
-                                        Margin="0 0 0 5" MinHeight="346"
+                                        Margin="0 0 0 5"
                                         Visibility="{Binding IsCompoundOutput, Converter={StaticResource CompoundVisibilityConverter}}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -961,8 +961,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Background="#292929" BorderBrush="#454545"
-                                        BorderThickness="1" CornerRadius="3" Padding="5 4" Margin="0 0 0 3"
-                                        MinHeight="224">
+                                        BorderThickness="1" CornerRadius="3" Padding="5 4" Margin="0 0 0 3">
                                         <StackPanel>
                                             <TextBlock Text="{Binding DirectionalSlotLabel}"
                                                        Visibility="{Binding DirectionalSlotVisibility}"
