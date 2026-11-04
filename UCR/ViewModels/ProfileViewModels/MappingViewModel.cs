@@ -282,7 +282,20 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             Mapping.DeviceBindings.Any(binding => binding.IsBound && binding.IsBlockable());
         public bool OutputIsFullStick => Mapping.EffectiveOutputRepresentation == 1;
         public bool OutputIsAxis => Mapping.EffectiveOutputRepresentation == 2;
-        public bool OutputIsButton => Mapping.EffectiveOutputRepresentation == 3;
+        public bool OutputIsFilter => Plugins?.Count > 0 &&
+            Plugins.All(plugin => string.Equals(plugin.OutputType, "Filter", StringComparison.OrdinalIgnoreCase));
+        public bool OutputIsButton => Mapping.EffectiveOutputRepresentation == 3 && !OutputIsFilter;
+        // The choice icons show how many bindings the opposite representation requires.
+        public string InputButtonChoiceGlyph => InputIsButton &&
+            DeviceBindings?.Any(binding => binding.InputExpressionInputKind == 3 ||
+                binding.DeviceBindingCategory == DeviceBindingCategory.Range) == true
+                ? "↦" : OutputIsFullStick ? "⠛" : OutputIsAxis ? "••" : "●";
+        public string OutputButtonChoiceGlyph => OutputIsButton &&
+            Plugins?.Any(plugin => plugin.DeviceBindings.Any(binding =>
+                binding.DeviceBindingCategory == DeviceBindingCategory.Range)) == true
+                ? "↦" : InputIsFullStick ? "⠛" : InputIsAxis ? "••" : "●";
+        public string InputAxisChoiceGlyph => OutputIsFullStick ? "↔↔" : "↔";
+        public string OutputAxisChoiceGlyph => InputIsFullStick ? "↔↔" : "↔";
         public bool OutputIsTrigger => Mapping.EffectiveOutputRepresentation == 4;
         public bool IsCompoundOutput => DirectionalCapacity == 4 &&
             Mapping.EffectiveOutputRepresentation == 1;
@@ -474,6 +487,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(OutputIsAxis));
             OnPropertyChanged(nameof(OutputIsTrigger));
             OnPropertyChanged(nameof(OutputIsButton));
+            OnPropertyChanged(nameof(OutputIsFilter));
+            OnPropertyChanged(nameof(InputButtonChoiceGlyph));
+            OnPropertyChanged(nameof(OutputButtonChoiceGlyph));
+            OnPropertyChanged(nameof(InputAxisChoiceGlyph));
+            OnPropertyChanged(nameof(OutputAxisChoiceGlyph));
         }
 
         public bool SetInputRepresentation(int value)
@@ -568,6 +586,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(OutputIsAxis));
             OnPropertyChanged(nameof(OutputIsButton));
             OnPropertyChanged(nameof(OutputIsTrigger));
+            OnPropertyChanged(nameof(OutputIsFilter));
+            OnPropertyChanged(nameof(InputButtonChoiceGlyph));
+            OnPropertyChanged(nameof(OutputButtonChoiceGlyph));
+            OnPropertyChanged(nameof(InputAxisChoiceGlyph));
+            OnPropertyChanged(nameof(OutputAxisChoiceGlyph));
             OnPropertyChanged(nameof(InputDirectionalSlotCount));
             OnPropertyChanged(nameof(CompoundBindingSummary));
             OnPropertyChanged(nameof(IsDigitalCompoundInput));
