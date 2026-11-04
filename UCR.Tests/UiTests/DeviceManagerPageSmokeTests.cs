@@ -1000,6 +1000,33 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void MissingPhysicalDeviceStillShowsActionableBindCaption()
+        {
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Disconnected input", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var binding = new HidWizards.UCR.Core.Models.Binding.DeviceBinding(
+                null, profile, HidWizards.UCR.Core.Models.Binding.DeviceIoType.Input)
+            {
+                IsBound = true,
+                DeviceConfigurationGuid = Guid.NewGuid()
+            };
+            var viewModel = new DeviceBindingViewModel(binding);
+            try
+            {
+                Assert.That(viewModel.BindButtonText, Is.EqualTo("Bind"));
+                Assert.That(viewModel.CompactBindButtonText, Is.EqualTo("Bind"));
+                Assert.That(binding.IsBound, Is.True,
+                    "A missing provider must not destroy a saved physical assignment.");
+            }
+            finally
+            {
+                viewModel.Dispose();
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void TriggerAndAxisUseDifferentCapacitiesWithoutLockingTypeSelectors()
         {
             EnsureApplicationResources();
