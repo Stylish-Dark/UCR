@@ -821,6 +821,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<PluginViewModel> Plugins { get; set; }
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<InputConditionViewModel> InputConditions { get; private set; }
+        public bool HasMultipleInputConditions => InputConditions?.Count > 1;
         public bool ButtonsEnabled => !ProfileViewModel.Profile.IsActive();
         // Axis runtime/plugins remain supported for existing profiles, but their
         // experimental editor is intentionally absent until it is redesigned.
@@ -2044,6 +2045,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(UsesInputExpression));
             OnPropertyChanged(nameof(InputLogicSummary));
             OnPropertyChanged(nameof(InputConditions));
+            OnPropertyChanged(nameof(HasMultipleInputConditions));
             // Binding changes also affect the singular/plural header, even during initial load.
             _mappingRouteTokens = BuildMappingRouteTokens(MappingRouteDisplay);
             OnPropertyChanged(nameof(MappingInputTypeLabel));
