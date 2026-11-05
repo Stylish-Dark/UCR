@@ -564,6 +564,55 @@ namespace HidWizards.UCR.Tests.UiTests
                 // viewport. This runs on the same WPF dispatcher as the established
                 // workspace smoke test instead of creating a second STA application.
                 var model = (ProfileViewModel)page.DataContext;
+                // Test compound key lettering in the REAL mapping header on
+                // the same dispatcher as this ProfilePage, not a second page.
+                var keyboard = new Device(new DeviceCache
+                {
+                    Title = "Keyboard", ProviderName = "Core_Interception", DeviceHandle = "keyboard",
+                    DeviceBindingMenu = new List<HidWizards.UCR.Core.Models.Binding.DeviceBindingNode>
+                    {
+                        new HidWizards.UCR.Core.Models.Binding.DeviceBindingNode
+                        {
+                            Title = "Keys",
+                            ChildrenNodes = new[] { "A", "D", "W", "S" }
+                                .Select((key, index) => new HidWizards.UCR.Core.Models.Binding.DeviceBindingNode
+                                {
+                                    Title = "Keys," + key,
+                                    DeviceBindingInfo = new HidWizards.UCR.Core.Models.Binding.DeviceBindingInfo
+                                    {
+                                        DeviceBindingCategory = HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary,
+                                        KeyType = 1, KeyValue = index + 10
+                                    }
+                                }).ToList()
+                        }
+                    }
+                });
+                profile.AddDeviceConfigurations(new List<DeviceConfiguration>
+                {
+                    new DeviceConfiguration(keyboard)
+                }, DeviceIoType.Input);
+                var compoundHeader = model.AddMappingToSelectedSection("Compound header");
+                compoundHeader.AddPlugin(new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+                Assert.That(compoundHeader.SetOutputRepresentation(2), Is.True);
+                string presetError;
+                Assert.That(compoundHeader.ApplyDirectionalKeyboardPreset("My WASD", out presetError),
+                    Is.True, presetError);
+                compoundHeader.IsExpanded = false;
+                page.Measure(available);
+                page.Arrange(new Rect(new Point(0, 0), available));
+                page.UpdateLayout();
+                var compoundHeaderRow = FindVisualChildren<ListView>(page)
+                    .Single(list => list.Name == "MappingRowsList").ItemContainerGenerator
+                    .ContainerFromItem(compoundHeader) as ListViewItem;
+                Assert.That(compoundHeaderRow, Is.Not.Null);
+                Assert.That(FindVisualChildren<ControlGlyphControl>(compoundHeaderRow).Any(glyph =>
+                    glyph.Kind == ControlVisualKind.CompoundKeys && glyph.ActualHeight >= 70), Is.True,
+                    "Compound keyboard keys must render at a legible size in the real mapping row.");
+                Assert.That(FindVisualChildren<TextBlock>(compoundHeaderRow).Any(text =>
+                    text.Text == "My WASD"), Is.True,
+                    "The collapsed header must identify the selected named preset.");
+                CaptureWorkspacePreview(page, 1440, 900, "UCR-named-fourway-header-preview.png");
+                compoundHeader.Remove();
                 for (var index = 0; index < 40; index++)
                 {
                     var added = model.AddMappingToSelectedSection("Virtual row " + index);
@@ -1201,21 +1250,6 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(header.Visuals[0].ControlKind, Is.EqualTo(ControlVisualKind.CompoundKeys),
                     "Four assigned keyboard directions must appear as one compound header glyph.");
                 Assert.That(header.Visuals[0].IsCompoundVisual, Is.True);
-                var namedWorkspace = new ProfilePage(context, profile, embedded: true);
-                try
-                {
-                    namedWorkspace.SuspendEmbeddedVisuals();
-                    var fullSize = new Size(1440, 900);
-                    namedWorkspace.Measure(fullSize);
-                    namedWorkspace.Arrange(new Rect(new Point(0, 0), fullSize));
-                    namedWorkspace.UpdateLayout();
-                    CaptureWorkspacePreview(namedWorkspace, 1440, 900,
-                        "UCR-named-fourway-header-preview.png");
-                }
-                finally
-                {
-                    namedWorkspace.Dispose();
-                }
                 Assert.That(mapping.SetInputRepresentation(2), Is.True);
                 Assert.That(mapping.Mapping.CompoundDigitalInput, Is.False);
                 Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(2),
