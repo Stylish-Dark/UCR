@@ -432,7 +432,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 return;
             }
 
-            if (lower.Contains("dpad") || lower.Contains("pov") ||
+            if (lower.Contains("dpad") || lower.Contains("d-pad") || lower.Contains("pov") ||
                 lower == "up" || lower == "down" || lower == "left" || lower == "right")
             {
                 result.ControlKind = ControlVisualKind.DPad;
@@ -458,7 +458,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
             DeviceBindingCategory category, string leaf, DeviceVisualKind deviceKind)
         {
             var lower = (leaf ?? string.Empty).ToLowerInvariant();
-            if (lower.Contains("dpad") || lower.Contains("pov") || lower == "up" || lower == "right" || lower == "down" || lower == "left")
+            if (lower.Contains("dpad") || lower.Contains("d-pad") || lower.Contains("pov") || lower == "up" || lower == "right" || lower == "down" || lower == "left")
             {
                 result.ControlKind = ControlVisualKind.DPad;
                 result.ControlLabel = DirectionLabel(leaf, binding.KeyValue);
