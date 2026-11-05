@@ -79,12 +79,11 @@
                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 <Canvas x:Name="StackedAxes" Width="25" Height="23"
                         Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <!-- Two full-width bidirectional axes, one above the other.
-                         Vector strokes remain legible at normal WPF UI size. -->
-                    <Path Data="M 5,6.5 L 20,6.5 M 5,6.5 L 8,3.5 M 5,6.5 L 8,9.5 M 20,6.5 L 17,3.5 M 20,6.5 L 17,9.5"
+                    <!-- Crossed X and Y axes instead of two repeated horizontal arrows. -->
+                    <Path Data="M 2,11.5 L 23,11.5 M 2,11.5 L 6,7.5 M 2,11.5 L 6,15.5 M 23,11.5 L 19,7.5 M 23,11.5 L 19,15.5"
                           Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"
                           StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
-                    <Path Data="M 5,16.5 L 20,16.5 M 5,16.5 L 8,13.5 M 5,16.5 L 8,19.5 M 20,16.5 L 17,13.5 M 20,16.5 L 17,19.5"
+                    <Path Data="M 12.5,1 L 12.5,22 M 12.5,1 L 8.5,5 M 12.5,1 L 16.5,5 M 12.5,22 L 8.5,18 M 12.5,22 L 16.5,18"
                           Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"
                           StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
                 </Canvas>
