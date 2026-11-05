@@ -409,6 +409,34 @@ namespace HidWizards.UCR.Views.Controls
             }
         }
 
+        // Classify by HID semantics: analogue triggers are full-range axes,
+        // never a separate 'Trigger' representation or an ordinary button.
+        public static string OutputPickerCategory(DeviceBindingCategory category,
+            ControlVisualKind visualKind, string title)
+        {
+            if (category == DeviceBindingCategory.Range) return "Axes";
+            if (category != DeviceBindingCategory.Momentary) return null;
+            var label = (title ?? string.Empty).Trim().ToLowerInvariant();
+            var isDirection = visualKind == ControlVisualKind.DPad ||
+                label.Contains("d-pad") || label.Contains("dpad") ||
+                label.Contains("pov") || label.Contains("hat") ||
+                label == "up" || label == "down" || label == "left" ||
+                label == "right" || label == "north" || label == "south" ||
+                label == "east" || label == "west";
+            return isDirection ? "Directions" : "Buttons";
+        }
+
+        public static int PreferredOutputPickerTab(DeviceBindingCategory current,
+            int buttonCount, int directionCount, int axisCount)
+        {
+            if (current == DeviceBindingCategory.Range && axisCount > 0) return 2;
+            if (current == DeviceBindingCategory.Momentary && buttonCount > 0) return 0;
+            if (directionCount > 0) return 1;
+            if (buttonCount > 0) return 0;
+            if (axisCount > 0) return 2;
+            return 0;
+        }
+
         // Output controls come directly from the selected device's provider descriptors.
         private void ShowOutputPicker(FrameworkElement target)
         {
@@ -459,13 +487,6 @@ namespace HidWizards.UCR.Views.Controls
                     temporary, info.DeviceBindingCategory, DeviceBinding.Profile);
                 var title = node.Title ?? "";
                 var lower = title.ToLowerInvariant();
-                bool isDirectional = visual.ControlKind == ControlVisualKind.StickAxis ||
-                    lower.Contains("d-pad") || lower.Contains("dpad") ||
-                    lower.Contains("hat") || lower.Contains("pov") ||
-                    lower.Contains("axis") || lower.Contains("stick") ||
-                    lower == "up" || lower == "down" || lower == "left" || lower == "right" ||
-                    lower.Contains("north") || lower.Contains("south") ||
-                    lower.Contains("east") || lower.Contains("west");
                 var row = new StackPanel { Orientation = Orientation.Horizontal };
                 row.Children.Add(new ControlGlyphControl
                 {
@@ -511,15 +532,11 @@ namespace HidWizards.UCR.Views.Controls
                             popup.IsOpen = false;
                     }
                 };
-                var isTrigger = visual.ControlKind == ControlVisualKind.Trigger ||
-                                lower.Contains("trigger") || lower == "lt" || lower == "rt" ||
-                                lower.Contains("l2") || lower.Contains("r2");
-                if (isTrigger || info.DeviceBindingCategory == DeviceBindingCategory.Momentary && !isDirectional)
-                    buttons.Children.Add(choice);
-                else if (info.DeviceBindingCategory == DeviceBindingCategory.Range)
-                    axes.Children.Add(choice);
-                else
-                    directionals.Children.Add(choice);
+                var category = OutputPickerCategory(
+                    info.DeviceBindingCategory, visual.ControlKind, title);
+                if (category == "Axes") axes.Children.Add(choice);
+                else if (category == "Directions") directionals.Children.Add(choice);
+                else if (category == "Buttons") buttons.Children.Add(choice);
 
                 // Each stick axis also offers its two signed directions. A selected
                 // direction configures the same underlying range axis, with an
@@ -614,8 +631,14 @@ namespace HidWizards.UCR.Views.Controls
                 foreach (var item in new[] { lb, rb, lt, rt }) buttons.Children.Insert(index++, item);
             }
 
-            var tabs = new TabControl { Background = Brushes.Transparent, MinHeight = 365,
-                SelectedIndex = DeviceBinding.DeviceBindingCategory == DeviceBindingCategory.Range ? 2 : 0 };
+            var selectedTab = PreferredOutputPickerTab(DeviceBinding.DeviceBindingCategory,
+                buttons.Children.Count, directionals.Children.Count, axes.Children.Count);
+            var tabs = new TabControl
+            {
+                Background = Brushes.Transparent,
+                MinHeight = 365,
+                SelectedIndex = selectedTab
+            };
             foreach (var category in new[] {
                 new { Title = "Buttons", Items = buttons },
                 new { Title = "Directions", Items = directionals },
@@ -643,7 +666,7 @@ namespace HidWizards.UCR.Views.Controls
                     }
                 });
             }
-            tabs.SelectedIndex = 0;
+            // Preserve the category chosen for this binding; never force Buttons.
             var root = new StackPanel();
             root.Children.Add(new TextBlock
             {
