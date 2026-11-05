@@ -228,6 +228,56 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void TwoButtonSelectorUsesUnclippedSolidCircularDots()
+        {
+            EnsureApplicationResources();
+            var owner = new MappingCardControl();
+            var template = owner.FindResource("DirectionalChoiceGlyphTemplate") as DataTemplate;
+            var style = owner.FindResource("DirectionalTypeChoice") as Style;
+            Assert.That(template, Is.Not.Null);
+            Assert.That(style, Is.Not.Null);
+            var button = new RadioButton
+            {
+                Content = "••",
+                ContentTemplate = template,
+                Style = style,
+                IsChecked = true,
+                Foreground = Brushes.White,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var surface = new Grid
+            {
+                Width = 116,
+                Height = 64,
+                Background = new SolidColorBrush(Color.FromRgb(36, 36, 36))
+            };
+            surface.Children.Add(button);
+            surface.Measure(new Size(116, 64));
+            surface.Arrange(new Rect(0, 0, 116, 64));
+            surface.UpdateLayout();
+            var canvas = FindVisualChildren<Canvas>(button)
+                .Single(item => item.Name == "TwoDots");
+            Assert.That(canvas.Visibility, Is.EqualTo(Visibility.Visible),
+                "The two-dot selector must render geometry, not clipped font glyphs.");
+            var dots = FindVisualChildren<System.Windows.Shapes.Ellipse>(canvas).ToList();
+            Assert.That(dots.Count, Is.EqualTo(2));
+            foreach (var dot in dots)
+            {
+                Assert.That(dot.ActualWidth, Is.EqualTo(dot.ActualHeight).Within(0.1),
+                    "Each button dot must be a full circle.");
+                var left = dot.TranslatePoint(new Point(0, 0), canvas).X;
+                Assert.That(left, Is.GreaterThan(2),
+                    "Leave breathing room before the leftmost dot.");
+                Assert.That(left + dot.ActualWidth, Is.LessThan(canvas.ActualWidth - 2),
+                    "The dot's rightmost curve must remain inside the glyph's viewport.");
+            }
+            CaptureWorkspacePreview(surface, 116, 64,
+                "UCR-two-button-full-circles-preview.png");
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void CompactDeviceSelectorKeepsFullSizeGlyphInsideItsActualBorder()
         {
             EnsureApplicationResources();
