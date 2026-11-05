@@ -456,6 +456,55 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(editorScroll.VerticalOffset, Is.GreaterThan(0),
                     "A saved preset's lower directional fields must remain reachable.");
 
+                // Exercise the real sidebar with more presets than the list can
+                // show. The nested preset list must scroll without expanding the
+                // sidebar over Devices or pushing buttons out of the viewport.
+                for (var presetIndex = 0; presetIndex < 28; presetIndex++)
+                    profile.CompoundBindingPresets.Add(new CompoundBindingPreset
+                    {
+                        Name = "Stress preset " + presetIndex,
+                        Capacity = 4,
+                        Keys = new List<string> { "A", "D", "W", "S" }
+                    });
+                var sidebarModel = page.DataContext as ProfileViewModel;
+                Assert.That(sidebarModel, Is.Not.Null);
+                sidebarModel.RefreshCompoundPresetItems();
+                var narrow = new Size(950, 700);
+                page.Measure(narrow);
+                page.Arrange(new Rect(new Point(0, 0), narrow));
+                page.UpdateLayout();
+                Assert.That(presetList.Items.Count, Is.EqualTo(29));
+                Assert.That(presetList.ActualHeight, Is.LessThanOrEqualTo(152),
+                    "The 4-Way presets list must remain bounded, not bury Devices.");
+                var presetListScroll = FindVisualChildren<ScrollViewer>(presetList)
+                    .FirstOrDefault();
+                Assert.That(presetListScroll, Is.Not.Null);
+                Assert.That(presetListScroll.ScrollableHeight, Is.GreaterThan(0),
+                    "A long custom-preset collection must offer real vertical scrolling.");
+                presetList.ScrollIntoView(presetList.Items[presetList.Items.Count - 1]);
+                page.UpdateLayout();
+                Assert.That(presetListScroll.VerticalOffset, Is.GreaterThan(0),
+                    "The final custom preset must be reachable by scrolling.");
+                CaptureWorkspacePreview(page, 950, 700,
+                    "UCR-profile-sidebar-stress-preview.png");
+                devicesExpander.IsExpanded = true;
+                page.UpdateLayout();
+                sidebarScroll.ScrollToBottom();
+                page.UpdateLayout();
+                Assert.That(sidebarScroll.ScrollableHeight, Is.GreaterThan(0),
+                    "Expanding Devices below a long preset list must preserve a scrollable sidebar.");
+                var devicesAtBottom = (page.FindName("ProfileDevicesPanel") as Border)
+                    .TranslatePoint(new Point(0, 0), sidebarScroll).Y;
+                Assert.That(devicesAtBottom, Is.LessThan(sidebarScroll.ViewportHeight),
+                    "Devices must be reachable below the preset list, even at narrow widths.");
+                profile.CompoundBindingPresets.RemoveRange(1, 28);
+                sidebarModel.RefreshCompoundPresetItems();
+                devicesExpander.IsExpanded = false;
+                page.Measure(available);
+                page.Arrange(new Rect(new Point(0, 0), available));
+                page.UpdateLayout();
+                Assert.That(presetList.Items.Count, Is.EqualTo(1),
+                    "Stress fixtures must not leak into subsequent workspace checks.");
                 sidebarScroll.ScrollToBottom();
                 page.UpdateLayout();
                 // Deleting the obsolete Add Mapping toolbox shortens the sidebar.
