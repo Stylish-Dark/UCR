@@ -481,10 +481,14 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(presetListScroll, Is.Not.Null);
                 Assert.That(presetListScroll.ScrollableHeight, Is.GreaterThan(0),
                     "A long custom-preset collection must offer real vertical scrolling.");
-                presetList.ScrollIntoView(presetList.Items[presetList.Items.Count - 1]);
+                // This page is rendered without a native HWND. ListBox.ScrollIntoView
+                // can defer its BringIntoView request until it is shown. Instead,
+                // operate the actual inner ScrollViewer and verify scroll motion.
+                presetListScroll.ScrollToVerticalOffset(presetListScroll.ScrollableHeight);
+                presetListScroll.UpdateLayout();
                 page.UpdateLayout();
                 Assert.That(presetListScroll.VerticalOffset, Is.GreaterThan(0),
-                    "The final custom preset must be reachable by scrolling.");
+                    "The final custom preset must be reachable by the list's vertical scrollbar.");
                 CaptureWorkspacePreview(page, 950, 700,
                     "UCR-profile-sidebar-stress-preview.png");
                 devicesExpander.IsExpanded = true;
