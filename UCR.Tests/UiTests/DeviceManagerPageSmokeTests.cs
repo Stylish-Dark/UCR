@@ -51,7 +51,11 @@ namespace HidWizards.UCR.Tests.UiTests
             }
             encoder.Frames.Add(BitmapFrame.Create(image));
             using (var output = System.IO.File.Create(target)) encoder.Save(output);
-            Assert.That(new System.IO.FileInfo(target).Length, Is.GreaterThan(1000),
+            // A 116×64 selector icon legitimately compresses below 1 KB.
+            // Keep the 1 KB threshold for normal-sized screenshots while
+            // accepting small, successfully rendered icon captures.
+            var minBytes = Math.Min(1000, Math.Max(250, image.PixelWidth * image.PixelHeight / 20));
+            Assert.That(new System.IO.FileInfo(target).Length, Is.GreaterThan(minBytes),
                 "WPF snapshot must contain substantial image data: " + name);
             TestContext.WriteLine("Rendered actual workspace preview: " + target);
         }
