@@ -1169,6 +1169,90 @@ namespace HidWizards.UCR.Tests.UiTests
             }
         }
 
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void DPadPresetChangesFromKeyboardToConfiguredControllerWithoutLosingDirections()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            context.PluginManager.Plugins = new List<Plugin>
+            {
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton(),
+                new HidWizards.UCR.Plugins.Remapper.AxisToAxis()
+            };
+            var profile = context.ProfilesManager.CreateProfile("Switch D-pad source", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var keyboard = new Device(new DeviceCache
+            {
+                Title = "Keyboard", ProviderName = "Core_Interception", DeviceHandle = "keyboard",
+                DeviceBindingMenu = new List<HidWizards.UCR.Core.Models.Binding.DeviceBindingNode>
+                {
+                    new HidWizards.UCR.Core.Models.Binding.DeviceBindingNode
+                    {
+                        Title = "Keys",
+                        ChildrenNodes = new[] { "A", "D", "W", "S" }
+                            .Select((key, index) => new HidWizards.UCR.Core.Models.Binding.DeviceBindingNode
+                            {
+                                Title = "Keys," + key,
+                                DeviceBindingInfo = new HidWizards.UCR.Core.Models.Binding.DeviceBindingInfo
+                                {
+                                    DeviceBindingCategory = HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary,
+                                    KeyType = 1, KeyValue = index + 10
+                                }
+                            }).ToList()
+                    }
+                }
+            });
+            var controller = new Device(new DeviceCache
+            {
+                Title = "Xbox 360 Controller", ProviderName = "SharpDX_XInput", DeviceHandle = "xinput",
+                DeviceBindingMenu = new List<HidWizards.UCR.Core.Models.Binding.DeviceBindingNode>
+                {
+                    new HidWizards.UCR.Core.Models.Binding.DeviceBindingNode
+                    {
+                        Title = "D-pad",
+                        ChildrenNodes = new[] { "Up", "Right", "Down", "Left" }
+                            .Select((direction, index) => new HidWizards.UCR.Core.Models.Binding.DeviceBindingNode
+                            {
+                                Title = "D-pad " + direction,
+                                DeviceBindingInfo = new HidWizards.UCR.Core.Models.Binding.DeviceBindingInfo
+                                {
+                                    DeviceBindingCategory = HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary,
+                                    KeyType = 1, KeyValue = index
+                                }
+                            }).ToList()
+                    }
+                }
+            });
+            var keyboardConfig = new DeviceConfiguration(keyboard);
+            var controllerConfig = new DeviceConfiguration(controller);
+            profile.AddDeviceConfigurations(new List<DeviceConfiguration>
+                { keyboardConfig, controllerConfig }, DeviceIoType.Input);
+            profile.AddMapping("Source").AddPlugin(new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+            var vm = new ProfileViewModel(profile);
+            try
+            {
+                var mapping = vm.MappingsList.Single();
+                string error;
+                Assert.That(mapping.ApplyDirectionalKeyboardPreset("WASD", out error), Is.True, error);
+                Assert.That(mapping.CanApplyCompoundInputPreset("Controller D-pad"), Is.True);
+                Assert.That(mapping.ApplyDirectionalDPadPreset(out error), Is.True, error);
+                var directions = mapping.Mapping.DeviceBindings
+                    .OrderBy(binding => binding.InputDirectionSlot).ToList();
+                Assert.That(directions.Count, Is.EqualTo(4));
+                Assert.That(directions.Select(binding => binding.DeviceConfigurationGuid),
+                    Is.All.EqualTo(controllerConfig.Guid));
+                Assert.That(directions.Select(binding => binding.KeyValue),
+                    Is.EqualTo(new[] { 3, 1, 0, 2 }));
+                Assert.That(directions.Select(binding => binding.CompoundPresetName),
+                    Is.All.EqualTo("D-pad"));
+            }
+            finally
+            {
+                vm.Dispose();
+            }
+        }
+
         [TestCase("A", "A", true)]
         [TestCase("Buttons,A", "A", true)]
         [TestCase("Face buttons: Cross", "Cross", true)]
