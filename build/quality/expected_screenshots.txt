@@ -18,3 +18,5 @@ UCR-fourway-preset-editor-preview.png
 UCR-profile-sidebar-stress-preview.png
 UCR-output-picker-axes-preview.png
 UCR-output-picker-directions-preview.png
+UCR-output-picker-single-axis-preview.png
+UCR-two-button-full-circles-preview.png
