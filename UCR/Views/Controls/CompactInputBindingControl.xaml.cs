@@ -65,6 +65,7 @@ namespace HidWizards.UCR.Views.Controls
         {
             if (BindingGrid == null || MenuButton == null || DeviceSelectionBox == null)
                 return;
+            BindingActionGroup.Visibility = DeviceOnly ? Visibility.Collapsed : Visibility.Visible;
             BindSurface.Visibility = DeviceOnly ? Visibility.Collapsed : Visibility.Visible;
             MenuButton.Visibility = DeviceOnly ? Visibility.Collapsed : Visibility.Visible;
             BindingGrid.ColumnDefinitions[1].Width = DeviceOnly ?
