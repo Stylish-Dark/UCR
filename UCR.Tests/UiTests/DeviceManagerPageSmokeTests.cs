@@ -383,6 +383,33 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.Measure(available);
                 page.Arrange(new Rect(new Point(0, 0), available));
                 page.UpdateLayout();
+
+                // Assert actual toolbar geometry, not just whether a click handler exists.
+                var actionToolTips = new[] {
+                    "Rename group", "Duplicate group here",
+                    "Copy group for pasting", "Delete group"
+                };
+                var groupToolbar = FindVisualChildren<Button>(page)
+                    .Where(button => actionToolTips.Contains(button.ToolTip as string)).ToList();
+                Assert.That(groupToolbar.Count, Is.EqualTo(4),
+                    "Main group must show four distinct compact edit/copy/duplicate/delete controls.");
+                foreach (var action in groupToolbar)
+                {
+                    Assert.That(action.ActualWidth, Is.InRange(28, 32));
+                    Assert.That(action.ActualHeight, Is.InRange(28, 32));
+                    var chrome = FindVisualChildren<Border>(action)
+                        .FirstOrDefault(border => border.Name == "Chrome");
+                    Assert.That(chrome, Is.Not.Null,
+                        "Group tools must have explicit neutral chrome rather than default blue raised-button borders.");
+                    Assert.That(((SolidColorBrush)chrome.BorderBrush).Color,
+                        Is.EqualTo(Color.FromRgb(0x50, 0x50, 0x50)));
+                }
+                var groupBlockSwitch = FindVisualChildren<ToggleButton>(page)
+                    .FirstOrDefault(button => (button.ToolTip as string)?.StartsWith(
+                        "Block all mapped physical inputs", StringComparison.Ordinal) == true);
+                Assert.That(groupBlockSwitch, Is.Not.Null);
+                Assert.That(groupBlockSwitch.ActualWidth, Is.EqualTo(36).Within(1),
+                    "Group Block inputs needs a compact, consistently sized switch.");
                 CaptureWorkspacePreview(page, 1440, 720, "UCR-workspace-collapsed-preview.png", 1020, 610);
                 // Keep sidebar WPF verification on the same working dispatcher
                 // as the established real-workspace test. A second STA-created
@@ -604,6 +631,21 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(inlineColumns, Is.Not.Null);
                 Assert.That(inlineColumns.Columns, Is.EqualTo(2),
                     "Inline mapping Inputs and Outputs must appear side by side.");
+                var compactInput = FindVisualChildren<CompactInputBindingControl>(inlinePanel)
+                    .FirstOrDefault();
+                Assert.That(compactInput, Is.Not.Null,
+                    "The expanded mapping must contain an actual selectable input binding.");
+                var bindAction = compactInput.FindName("BindButton") as Button;
+                var bindMenu = compactInput.FindName("MenuButton") as Button;
+                Assert.That(bindAction, Is.Not.Null);
+                Assert.That(bindMenu, Is.Not.Null);
+                Assert.That(bindMenu.ActualWidth, Is.GreaterThanOrEqualTo(40),
+                    "The binding options must not shrink to an unusable sliver.");
+                var bindActionRight = bindAction.TranslatePoint(
+                    new Point(bindAction.ActualWidth, 0), compactInput).X;
+                var menuLeft = bindMenu.TranslatePoint(new Point(), compactInput).X;
+                Assert.That(menuLeft, Is.EqualTo(bindActionRight).Within(2),
+                    "Bind and binding-options controls must form an aligned split action.");
 
                 // Original collapsed glyphs must be actual clickable buttons.
                 var rebindingButtons = FindVisualChildren<Button>(row)
