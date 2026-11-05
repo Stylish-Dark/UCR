@@ -2,6 +2,7 @@
 
 on:
   push:
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -726,9 +727,117 @@ jobs:
             if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
           }
 
-      - name: Upload UCR Stylish Windows build
+      - name: Upload unverified Windows build for internal QA only
         uses: actions/upload-artifact@v7
         with:
-          name: UCR-Stylish-Windows
+          name: UCR-Unverified-Windows
           path: UCR/bin/Release/
+          if-no-files-found: error
+
+  visual-approval:
+    name: Visual Approval (required for release)
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Check out exact candidate revision
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - name: Install Python for independent review
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Download exact-build WPF screenshots
+        uses: actions/download-artifact@v7
+        with:
+          name: UCR-Directional-UI-Preview
+          path: visual-evidence
+
+      - name: Test fail-closed review machinery
+        shell: bash
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+
+      - name: Check screenshot inventory, duplications, and protected baselines
+        shell: bash
+        run: |
+          set -o pipefail
+          python build/quality/verify_visual_artifacts.py \
+            --screenshots visual-evidence \
+            --expected build/quality/expected_screenshots.txt \
+            --baselines quality/approved_visual_baselines \
+            2>&1 | tee visual-evidence-report.txt
+
+      - name: Bind review to the exact tested commit and build
+        shell: bash
+        env:
+          REVIEW_SHA: ${{ github.sha }}
+          REVIEW_RUN_ID: ${{ github.run_id }}
+        run: |
+          git diff --binary HEAD^ HEAD > review.patch
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          Path("review-metadata.json").write_text(json.dumps({
+              "source_sha": os.environ["REVIEW_SHA"],
+              "windows_build_run_id": os.environ["REVIEW_RUN_ID"],
+              "windows_build_conclusion": "success"
+          }), encoding="utf-8")
+          PY
+
+      - name: Independent visual and functional veto (fail closed)
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          python build/quality/independent_review.py \
+            --screenshots visual-evidence \
+            --expected build/quality/expected_screenshots.txt \
+            --constitution quality/DESIGN_CONSTITUTION.md \
+            --diff review.patch \
+            --metadata review-metadata.json \
+            --output independent-report
+
+      - name: Preserve approval/rejection evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: UCR-Visual-QA-Verdict
+          path: |
+            independent-report/
+            visual-evidence-report.txt
+          if-no-files-found: warn
+
+  publish-approved:
+    name: Publish approved UCR executable
+    needs: [build, visual-approval]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Retrieve only the binary from this successful exact-build run
+        uses: actions/download-artifact@v7
+        with:
+          name: UCR-Unverified-Windows
+          path: approved-dist
+
+      - name: Check expected approved runtime files
+        shell: bash
+        run: |
+          test -s approved-dist/UCR.exe
+          test -s approved-dist/NLog.config
+          sha256sum approved-dist/UCR.exe > approved-dist/APPROVED-EXE-SHA256.txt
+          printf 'APPROVED source SHA: %s\nWindows/review run: %s\n' \
+            "${{ github.sha }}" "${{ github.run_id }}" > approved-dist/APPROVAL.txt
+
+      - name: Publish only after mandatory build and visual approval
+        uses: actions/upload-artifact@v7
+        with:
+          name: UCR-APPROVED-Windows-${{ github.sha }}
+          path: approved-dist/
           if-no-files-found: error
