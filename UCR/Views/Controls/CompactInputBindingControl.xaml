@@ -282,7 +282,15 @@
             </ComboBox.ItemTemplate>
         </ComboBox>
 
-        <Grid x:Name="BindSurface" Grid.Row="0" Grid.Column="1" Margin="0" ClipToBounds="True">
+        <!-- Bind and options form ONE compact, intrinsic-width action group.
+             A lone Bind command must not stretch into a 600px blue slab. -->
+        <Grid x:Name="BindingActionGroup" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2"
+              HorizontalAlignment="Left" MaxWidth="300" MinHeight="36">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="0"/>
+                <ColumnDefinition Width="42"/>
+            </Grid.ColumnDefinitions>
+        <Grid x:Name="BindSurface" Grid.Column="0" Margin="0" ClipToBounds="True">
             <Button x:Name="BindButton" MinHeight="36" MinWidth="0" Padding="2 0"
                     IsEnabled="{Binding CanBindCurrentDevice}"
                     Click="BindButton_OnClick"
@@ -325,7 +333,7 @@
             </ProgressBar>
         </Grid>
 
-        <Button Grid.Row="0" Grid.Column="2" x:Name="MenuButton" Margin="0" Width="42" MinHeight="36" Padding="0"
+        <Button Grid.Column="1" x:Name="MenuButton" Margin="0" Width="42" MinHeight="36" Padding="0"
                 IsEnabled="{Binding BindingEnabled}" Click="MenuButton_OnClick"
                 Style="{StaticResource CompactBindOptionsButton}"
                 ToolTip="Binding options">
@@ -335,6 +343,7 @@
                              Foreground="#FFFFFF" Background="#242424"/>
             </Button.ContextMenu>
         </Button>
+        </Grid>
 
         <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Vertical"
                     Margin="4 0 0 2"
