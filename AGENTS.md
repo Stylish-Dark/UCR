@@ -1,19 +1,47 @@
 # Repository instructions for AI coding assistants
 
-## Owner-directed development workflow (highest priority for this repository)
+## Owner-directed development and visual release workflow (6 November 2026)
 
-This repository is the user's single active UCR project. **For user-requested implementation and fixes, work directly on the existing `master` branch.** Do not create feature branches, draft pull requests, review-only changes, or copies as an alternative to updating the program.
+The owner explicitly commissioned enforceable prevention of AI-introduced aesthetic
+regressions, not another promise to exercise judgement. This supersedes the older
+direct-to-master/no-PR instruction in this repository.
 
-- Read and follow the owner's exact feature requirements. Implement them in `master`, using small, traceable commits.
-- Run the available build/tests and correct failures. Clearly distinguish tested behaviour from unverified GUI interactions.
-- The user tests changes through the actual program built from `master`; merely opening a pull request is **not** delivery.
-- Preserve unrelated code, existing profiles, configuration, device mappings and work. Do not force-push, reset history, or overwrite concurrent edits.
-- Check the current `master` head before changes and reconcile concurrent work as necessary.
-- No branch or PR unless the owner **explicitly asks for one**. Do not assume conventional GitHub/GitFlow collaboration requirements override this instruction.
-- Keep explanations concise and focus on delivering the change rather than making the owner perform debugging or QA.
-- Older instructions in `CONTRIBUTING.md` describing forks, GitFlow and mandatory pull requests are historical upstream contributor guidance, **not** the owner's workflow for this repository.
+- Do not treat a source commit, green compilation, NUnit success, or screenshot upload
+  as aesthetic approval. Do not send the owner unreviewed screenshots as a debugging task.
+- For future UCR interface changes use a short-lived candidate branch. A pull request
+  is an internal development mechanism, not a finished deliverable. The owner must
+  receive the actual approved executable; a PR by itself is not delivery.
+- Keep one active candidate per affected UI component. Re-read latest branch SHA
+  before editing; do not let independent chats redesign the same surface in parallel.
+- Do not publish or present an executable as approved without a successful build,
+  complete unique WPF capture set, all geometry/behavior assertions, and a completed
+  independent review for the **same exact SHA**.
+- A failed or unavailable independent reviewer means NOT APPROVED. Never re-label
+  an internal QA artifact as approved, delete a failing test, regenerate reference
+  screenshots to match a bad candidate, or waive a visual rejection.
+- The only owner-facing GitHub artifact to identify as approved has the
+  `UCR-APPROVED-Windows-<SHA>` prefix and comes from the `publish-approved`
+  job after both the Windows build and the visual-approval job succeed.
+- Preserve profile files, device configurations, unrelated code and existing
+  visual conventions. Do not force-push or reset shared history.
+- The connector cannot configure GitHub repository rules. Until branch protection
+  is activated by the repository owner, candidate-branch discipline is a written
+  instruction, **not** an unbypassable GitHub permission barrier. State this clearly.
 
-When unable to safely deliver directly to `master`, explain the specific blocker; never silently substitute a PR or branch.
+### Limits on aesthetic discretion
+
+The owner specifies design. Implementers may repair measurable defects but may not
+invent new labels, icons, control families, spacing rules, hierarchy, or geometry
+for aesthetic preference. Derive each change from an explicit requirement or
+the existing approved visual convention. Example forbidden expansions: adding
+"Arrows" next to an unambiguous arrow glyph, or expanding a self-explanatory
+X face-button label to "Face button X" without the owner's direction. Correct
+WASD, D-pad, side-by-side pairs, delete X controls, and icon semantics are
+design constraints, not opportunities for artistic reinterpretation.
+
+Do not add goldens under `quality/approved_visual_baselines/` unless the owner
+actually approved those captures. Never infer approval from a green build,
+an AI verdict, or previously generated WPF screenshots.
 
 ## Non-negotiable delivery standard: owner-directed, AI-owned quality control
 
@@ -31,11 +59,11 @@ These roles may be executed by one assistant, but the reviewer must adopt an ind
 ### Required implementation and verification loop
 
 1. Read the request, examine the relevant existing UI/code, and understand nearby mapping types. Preserve the owner's established visual language and functional conventions. Avoid invented controls, gratuitous redesigns, arbitrary fixed heights, and changes outside scope.
-2. Implement the smallest coherent change on `master` (small traceable commits). Check for collateral effects on Button, Axis, Trigger, 4-Way, AND/OR groups, input/output devices, multiple outputs, filters, and persisted assignments as relevant.
+2. Implement the smallest coherent change on an isolated candidate branch (small traceable commits). Check for collateral effects on Button, Axis, Trigger, 4-Way, AND/OR groups, input/output devices, multiple outputs, filters, and persisted assignments as relevant.
 3. **Run the real Windows GitHub Actions build** (`.github/workflows/build.yml`). Check the *complete* run through tests, actual `UCR.exe` startup, screenshot generation, and build artifact upload. A commit or a successful compilation step alone is **not** completion. If the run fails, read the specific failing job logs, correct the underlying issue and rerun until green; never stop at “the build is running.”
 4. **Fetch and inspect the actual WPF screenshot artifacts** from the completed build. Inspect each affected mapping mode and relevant states—not merely that screenshots were produced. Check geometry, alignment, size, clipping, text legibility, labels, controls, device selectors, menus, colour/state feedback, unnecessary whitespace and cross-mode consistency. Compare to the owner's screenshots and explicit instructions. Generate or expand WPF QA screenshots when an affected state is not represented.
 5. **Act as the QC reviewer:** identify and correct additional defects yourself, including problems the owner has not individually enumerated. Add meaningful regression assertions when possible. Do **not** rewrite tests merely to make them pass if functionality or design has genuinely regressed; tests must verify the intended actual behavior and measured UI.
-6. Repeat build → test → screenshot inspection → reject/fix until the implementation meets the stated acceptance criteria and the latest `master` commit is verified. Report a concise outcome and link the successful build and directly usable artifact. Be transparent about any remaining defects or hardware interactions that cannot be verified.
+6. Repeat build → test → screenshot inspection → reject/fix until the candidate meets the stated acceptance criteria. Promote only an independently approved exact revision; never substitute a PR for a usable final executable. Report a concise outcome and link the successful build and directly usable artifact. Be transparent about any remaining defects or hardware interactions that cannot be verified.
 
 ### Acceptance standard for UCR interface work
 
