@@ -579,15 +579,18 @@
                                          blue strip consuming the width of the entire input pane. -->
                                     <StackPanel Orientation="Horizontal" Margin="3 4 3 3"
                                                 Visibility="{Binding StandaloneCompoundVisibility}">
-                                        <Button Click="CompoundPrimaryBind_OnClick"
+                                        <Button Content="{Binding CompoundPrimaryLabel}" Click="CompoundPrimaryBind_OnClick"
                                                 ToolTip="Bind the axis or choose a complete preset"
                                                 HorizontalContentAlignment="Center"
                                                 HorizontalAlignment="Left" MinWidth="154" MaxWidth="300"
                                                 Height="38" Foreground="#FFFFFF"
                                                 Style="{StaticResource MaterialDesignRaisedButton}"
                                                 FontWeight="SemiBold" Padding="8 3">
-                                            <TextBlock Text="{Binding CompoundPrimaryLabel}"
-                                                       TextTrimming="CharacterEllipsis" MaxWidth="268"/>
+                                            <Button.ContentTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" MaxWidth="268"/>
+                                                </DataTemplate>
+                                            </Button.ContentTemplate>
                                         </Button>
                                         <Button Content="⋮" FontSize="20" Width="38"
                                                 Visibility="{Binding CompoundAdvancedMenuVisibility}"
@@ -1030,14 +1033,18 @@
                                          picker, matching the compound input's visual scale. -->
                                     <StackPanel Orientation="Horizontal">
                                         <Button MinWidth="154" MaxWidth="300" Height="38"
+                                                Content="{Binding CompoundOutputSummary}"
                                                 Click="CompoundOutput_OnClick"
                                                 HorizontalContentAlignment="Center"
                                                 HorizontalAlignment="Left" Padding="8 3"
                                                 FontWeight="SemiBold" Foreground="#FFFFFF"
                                                 Style="{StaticResource MaterialDesignRaisedButton}"
                                                 ToolTip="Choose a complete 4-Way output destination">
-                                            <TextBlock Text="{Binding CompoundOutputSummary}"
-                                                       TextTrimming="CharacterEllipsis" MaxWidth="268"/>
+                                            <Button.ContentTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" MaxWidth="268"/>
+                                                </DataTemplate>
+                                            </Button.ContentTemplate>
                                         </Button>
                                     </StackPanel>
                                 </Border>
