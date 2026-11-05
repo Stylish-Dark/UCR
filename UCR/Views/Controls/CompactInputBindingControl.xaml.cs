@@ -677,14 +677,28 @@ namespace HidWizards.UCR.Views.Controls
             }
             // Preserve the category chosen for this binding; never force Buttons.
             var root = new StackPanel();
-            root.Children.Add(new TextBlock
+            var deviceTitle = config.GetFullTitleForProfile(DeviceBinding.Profile);
+            var header = new DockPanel { Margin = new Thickness(8, 7, 8, 8),
+                LastChildFill = true };
+            header.Children.Add(new TextBlock
             {
                 Text = "CHOOSE OUTPUT",
                 FontSize = 12,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = Brushes.LightGray,
-                Margin = new Thickness(8, 7, 0, 8)
+                Width = 126
             });
+            header.Children.Add(new TextBlock
+            {
+                Text = deviceTitle,
+                FontSize = 11,
+                Foreground = Brushes.LightGray,
+                Opacity = 0.8,
+                TextAlignment = TextAlignment.Right,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                ToolTip = deviceTitle
+            });
+            root.Children.Add(header);
             root.Children.Add(tabs);
             var clear = new Button
             {
