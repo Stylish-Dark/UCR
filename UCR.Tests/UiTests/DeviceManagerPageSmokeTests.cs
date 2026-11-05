@@ -718,6 +718,15 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(devicesBottomInViewport,
                     Is.LessThanOrEqualTo(sidebarScroll.ViewportHeight + 2),
                     "Devices must be fully reachable, even when no scrollbar is needed.");
+                // Capture a genuinely different sidebar state: Devices open, Presets closed.
+                // Identical captures under two labels provide false visual QA coverage.
+                presetExpander.IsExpanded = false;
+                devicesExpander.IsExpanded = true;
+                page.UpdateLayout();
+                sidebarScroll.ScrollToBottom();
+                page.UpdateLayout();
+                Assert.That(presetExpander.IsExpanded, Is.False);
+                Assert.That(devicesExpander.IsExpanded, Is.True);
                 CaptureWorkspacePreview(page, 1440, 900, "UCR-profile-sidebar-devices-preview.png");
                 sidebarScroll.ScrollToTop();
                 devicesExpander.IsExpanded = true;
