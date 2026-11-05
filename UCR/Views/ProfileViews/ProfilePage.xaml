@@ -762,10 +762,10 @@
                                        FontSize="12" Foreground="#A0A0A0" VerticalAlignment="Center" Margin="6 0 0 0"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
-                            <Button Width="38" Height="34" Margin="0 0 7 0" Padding="4"
+                            <Button Width="36" Height="34" Margin="0 0 7 0" Padding="2"
                                     Click="WorkspaceAddMapping_OnClick" IsEnabled="{Binding CanEditProfile}"
-                                    ToolTip="Add mapping" Style="{StaticResource UcrDialogRaisedButton}">
-                                <materialDesign:PackIcon Kind="Plus" Width="23" Height="23"/>
+                                    ToolTip="Add mapping" Style="{StaticResource UcrProfileActionButton}">
+                                <materialDesign:PackIcon Kind="Plus" Width="19" Height="19"/>
                             </Button>
                             <Button Content="···" Width="36" Height="34" Padding="0"
                                     BorderBrush="{DynamicResource PrimaryHueLightBrush}" BorderThickness="1"
