@@ -411,6 +411,7 @@ namespace HidWizards.UCR.Views.Controls
             if (mapping?.ButtonsEnabled != true || anchor == null) return;
             var menu = CreateDarkContextMenu(anchor);
             menu.Placement = PlacementMode.Bottom;
+            var availableCount = 0;
             var keyboardOptions = new[]
             {
                 new { Name = "WASD", Keys = "A|D|W|S" },
@@ -421,6 +422,7 @@ namespace HidWizards.UCR.Views.Controls
             foreach (var preset in keyboardOptions)
             {
                 var selected = preset;
+                if (!mapping.CanApplyCompoundInputPreset(selected.Name)) continue;
                 var item = new MenuItem
                 {
                     Header = CompoundChoiceHeader(selected.Name,
@@ -429,6 +431,7 @@ namespace HidWizards.UCR.Views.Controls
                 item.Click += (sender, args) => ApplyCompoundPreset(
                     mapping, selected.Name, groupIndex);
                 menu.Items.Add(item);
+                availableCount++;
             }
             var deviceChoices = new[]
             {
@@ -464,14 +467,22 @@ namespace HidWizards.UCR.Views.Controls
                             "Preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
                 };
                 menu.Items.Add(item);
+                availableCount++;
             }
             var saved = mapping.ProfileViewModel.Profile.CompoundBindingPresets;
             if (saved != null && saved.Count > 0)
             {
-                menu.Items.Add(new Separator());
-                foreach (var preset in saved.Where(item => item.Capacity == 4))
+                foreach (var preset in saved.Where(item => item.Capacity == 4 &&
+                    mapping.CanApplyCompoundInputPreset(item.Name)))
                 {
                     var selected = preset;
+                    if (availableCount > 0)
+                    {
+                        // Custom presets share the same physical device pool, but
+                        // should be visually separated from built-in choices.
+                        if (!menu.Items.OfType<Separator>().Any())
+                            menu.Items.Add(new Separator());
+                    }
                     var item = new MenuItem
                     {
                         Header = CompoundChoiceHeader(selected.Name,
@@ -481,8 +492,15 @@ namespace HidWizards.UCR.Views.Controls
                     item.Click += (sender, args) => ApplyCompoundPreset(
                         mapping, selected.Name, groupIndex);
                     menu.Items.Add(item);
+                    availableCount++;
                 }
             }
+            if (availableCount == 0)
+                menu.Items.Add(new MenuItem
+                {
+                    Header = "No complete 4-Way presets for configured input devices",
+                    IsEnabled = false
+                });
             menu.Items.Add(new Separator());
             var single = new MenuItem
             {
