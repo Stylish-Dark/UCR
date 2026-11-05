@@ -13,7 +13,7 @@ UCR-workspace-collapsed-preview.png
 UCR-workspace-expanded-preview.png
 UCR-workspace-multi-expanded-preview.png
 UCR-profile-sidebar-presets-preview.png
-UCR-profile-sidebar-devices-preview.png
+UCR-profile-options-preview.png
 UCR-fourway-preset-editor-preview.png
 UCR-profile-sidebar-stress-preview.png
 UCR-output-picker-axes-preview.png
