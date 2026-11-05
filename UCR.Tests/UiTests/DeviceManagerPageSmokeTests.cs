@@ -1233,6 +1233,16 @@ namespace HidWizards.UCR.Tests.UiTests
             try
             {
                 var mapping = vm.MappingsList.Single();
+                Assert.That(mapping.CanApplyCompoundInputPreset("WASD"), Is.True,
+                    "The actual configured keyboard exposes all four WASD controls.");
+                Assert.That(mapping.CanApplyCompoundInputPreset("Arrows"), Is.False,
+                    "Do not offer arrow presets if the configured keyboard lacks arrow keys.");
+                Assert.That(mapping.CanApplyCompoundInputPreset("Controller D-pad"), Is.False,
+                    "A configured keyboard must not masquerade as a controller D-pad.");
+                Assert.That(mapping.CanApplyCompoundInputPreset("Left stick"), Is.False,
+                    "Do not offer unavailable controller sticks.");
+                Assert.That(mapping.CanApplyCompoundInputPreset("Face buttons"), Is.False,
+                    "Do not offer controller face buttons when no such device exists.");
                 Assert.That(mapping.SetOutputRepresentation(2), Is.True);
                 mapping.AddOrInput();
                 Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(4));
@@ -1261,6 +1271,8 @@ namespace HidWizards.UCR.Tests.UiTests
                     Name = "My Movement", Capacity = 4,
                     Keys = new List<string> { "A", "D", "W", "S" }
                 });
+                Assert.That(mapping.CanApplyCompoundInputPreset("My Movement"), Is.True,
+                    "A complete named keyboard preset must be selectable.");
                 Assert.That(mapping.ApplyDirectionalKeyboardPreset("My Movement", out error, 1),
                     Is.True, error);
                 var namedGroup = mapping.InputConditions.Single(group => group.GroupIndex == 1);
