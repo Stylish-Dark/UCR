@@ -515,8 +515,9 @@
                                 <ScrollViewer.Resources>
                                     <Style TargetType="{x:Type ScrollBar}" BasedOn="{StaticResource UcrSlimVerticalScrollBar}"/>
                                 </ScrollViewer.Resources>
-                                <StackPanel VerticalAlignment="Top" HorizontalAlignment="Left"
-                                            Width="{Binding ViewportWidth, ElementName=ProfileDevicesScrollViewer}">
+                                <!-- Stretch inside the scroll viewport. ViewportWidth can be zero on
+                                             initial measure, making configured devices appear blank. -->
+                                        <StackPanel VerticalAlignment="Top" HorizontalAlignment="Stretch">
                                     <Grid Margin="8 7 8 2">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                         <TextBlock Text="INPUT" FontSize="10.5" FontWeight="SemiBold" Opacity="0.68" VerticalAlignment="Center"/>
