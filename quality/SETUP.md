@@ -6,7 +6,7 @@ did not prevent unsolicited cosmetic changes from reaching their daily program.
 ## Implemented safeguards
 
 The existing Windows build still compiles UCR, runs NUnit and real WPF tests,
-starts UCR.exe, and captures 22 named WPF image states. It now uploads the
+starts UCR.exe, and captures 22 named WPF images (including a focused Devices detail view). It now uploads the
 executable under **UCR-Unverified-Windows**, explicitly not an approved release.
 
 In the **same GitHub Actions run**, the `visual-approval` job runs only after
@@ -73,7 +73,7 @@ than silent baseline re-generation.
 - The independent reviewer requires working API credentials. A missing
   key or quota failure blocks release; this has not been waived.
 - The first trusted baselines must be approved, not invented by the AI.
-- The current 22 WPF screenshots and assertions cover finite states,
+- The current 22 WPF screenshots and assertions cover a finite selection of views,
   not every DPI, popup, hardware device or possible user state.
 - SHA-256 baseline equality can be brittle across renderer/environment
   upgrades. Until an intentional new owner-approved baseline is created,
