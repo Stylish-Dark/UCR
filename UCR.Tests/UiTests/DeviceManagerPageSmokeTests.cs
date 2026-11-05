@@ -637,8 +637,14 @@ namespace HidWizards.UCR.Tests.UiTests
                     "The expanded mapping must contain an actual selectable input binding.");
                 var bindAction = compactInput.FindName("BindButton") as Button;
                 var bindMenu = compactInput.FindName("MenuButton") as Button;
+                var bindActionGroup = compactInput.FindName("BindingActionGroup") as Grid;
                 Assert.That(bindAction, Is.Not.Null);
                 Assert.That(bindMenu, Is.Not.Null);
+                Assert.That(bindActionGroup, Is.Not.Null);
+                Assert.That(bindActionGroup.ActualWidth, Is.LessThanOrEqualTo(301),
+                    "An unbound Bind control must not stretch into a giant action slab.");
+                Assert.That(bindActionGroup.ActualWidth, Is.GreaterThan(60),
+                    "The Bind action and options need enough width for distinct targets.");
                 Assert.That(bindMenu.ActualWidth, Is.GreaterThanOrEqualTo(40),
                     "The binding options must not shrink to an unusable sliver.");
                 var bindActionRight = bindAction.TranslatePoint(
