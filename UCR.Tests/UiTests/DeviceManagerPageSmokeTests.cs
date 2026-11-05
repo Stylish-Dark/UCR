@@ -1212,6 +1212,12 @@ namespace HidWizards.UCR.Tests.UiTests
                 fourWayCard.Measure(new Size(1050, 1100));
                 fourWayCard.Arrange(new Rect(0, 0, 1050, 1100));
                 fourWayCard.UpdateLayout();
+                var compoundDestination = FindVisualChildren<Button>(fourWayCard)
+                    .Single(button => (button.ToolTip as string) ==
+                        "Choose a complete 4-Way output destination");
+                Assert.That(compoundDestination.ActualWidth, Is.InRange(154, 300),
+                    "A single complete 4-Way output must be a bounded picker, not a full-pane slab.");
+                Assert.That(compoundDestination.ActualWidth, Is.LessThan(fourWayCard.ActualWidth * 0.4));
                 CaptureEditorPreview(fourWayCard, 1050, "UCR-fourway-to-fourway-preview.png");
                 Assert.That(mapping.CollapsedOutputVisuals.Count, Is.EqualTo(1),
                     "A complete 4-Way output must be one compound glyph, not separate channels.");
