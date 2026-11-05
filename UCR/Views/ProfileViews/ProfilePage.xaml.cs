@@ -527,16 +527,38 @@ namespace HidWizards.UCR.Views.ProfileViews
             var dialog = new Window
             {
                 Title = existing == null ? "New 4-Way preset" : "Edit 4-Way preset",
-                Width = 405,
-                Height = 370,
-                MinWidth = 355,
-                ResizeMode = ResizeMode.NoResize,
+                Width = 430,
+                Height = Math.Min(490, Math.Max(360, SystemParameters.WorkArea.Height - 80)),
+                MinWidth = 390,
+                MinHeight = 340,
+                ResizeMode = ResizeMode.CanResize,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Background = new SolidColorBrush(Color.FromRgb(38, 38, 38)),
                 Foreground = Brushes.White,
                 Owner = Window.GetWindow(this)
             };
-            var root = new StackPanel { Margin = new Thickness(15) };
+            // A scrollable form with a fixed footer keeps Save/Cancel reachable
+            // even at small display heights, DPI scaling or enlarged text.
+            var layout = new Grid { Margin = new Thickness(14, 12, 14, 12) };
+            layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var root = new StackPanel { Margin = new Thickness(0, 0, 6, 8) };
+            var scroll = new ScrollViewer
+            {
+                Content = root,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
+            };
+            Grid.SetRow(scroll, 0);
+            layout.Children.Add(scroll);
+            var actions = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(0, 10, 0, 0)
+            };
+            Grid.SetRow(actions, 1);
+            layout.Children.Add(actions);
             var fields = new List<TextBox>();
             Action<string, string> addField = (label, value) =>
             {
@@ -565,9 +587,8 @@ namespace HidWizards.UCR.Views.ProfileViews
             var save = new Button
             {
                 Content = "Save preset",
-                Height = 32, Width = 116,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                Margin = new Thickness(0, 12, 0, 0)
+                Height = 34, Width = 116,
+                IsDefault = true
             };
             save.Click += (clicked, args) =>
             {
@@ -578,6 +599,22 @@ namespace HidWizards.UCR.Views.ProfileViews
                     HidWizards.UCR.Utilities.DarkMessageBox.Show(
                         "Give the preset a name and all four directional keys.",
                         "Incomplete preset", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+                if (new[] { "WASD", "Arrows", "Numpad", "UHJK", "UJHK" }.Any(preset =>
+                    string.Equals(preset, name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    HidWizards.UCR.Utilities.DarkMessageBox.Show(
+                        "This name belongs to a built-in preset. Choose another name.",
+                        "Reserved preset name", MessageBoxButton.OK, MessageBoxImage.Information);
+                    fields[0].Focus();
+                    return;
+                }
+                if (keys.Distinct(StringComparer.OrdinalIgnoreCase).Count() != 4)
+                {
+                    HidWizards.UCR.Utilities.DarkMessageBox.Show(
+                        "Each direction must use a different physical key.",
+                        "Duplicate directional keys", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
                 if (Profile.CompoundBindingPresets == null)
@@ -604,8 +641,16 @@ namespace HidWizards.UCR.Views.ProfileViews
                 ProfileViewModel.RefreshCompoundPresetItems();
                 dialog.DialogResult = true;
             };
-            root.Children.Add(save);
-            dialog.Content = root;
+            var cancel = new Button
+            {
+                Content = "Cancel", Width = 85, Height = 34,
+                IsCancel = true, Margin = new Thickness(0, 0, 10, 0)
+            };
+            cancel.Click += (sender, args) => dialog.DialogResult = false;
+            actions.Children.Add(cancel);
+            actions.Children.Add(save);
+            dialog.Content = layout;
+            dialog.Loaded += (sender, args) => fields[0].Focus();
             dialog.ShowDialog();
         }
 
