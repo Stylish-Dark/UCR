@@ -1635,6 +1635,18 @@ namespace HidWizards.UCR.Tests.UiTests
 
         // A trigger is not a separate binding type: when its HID source is
         // analogue, the picker must expose it with the other full-range axes.
+        [TestCase("LX", "Left stick X axis")]
+        [TestCase("RY", "Right stick Y axis")]
+        [TestCase("LT", "Left trigger")]
+        [TestCase("RT", "Right trigger")]
+        [TestCase("LB", "Left shoulder")]
+        [TestCase("A", "Face button A")]
+        [TestCase("D-pad Up", "D-pad Up")]
+        public void OutputPickerCaptionsDoNotRepeatRawGlyphCodes(string raw, string expected)
+        {
+            Assert.That(CompactInputBindingControl.OutputPickerDisplayName(raw), Is.EqualTo(expected));
+        }
+
         [TestCase(HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Range, ControlVisualKind.Trigger, "LT", "Axes")]
         [TestCase(HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Range, ControlVisualKind.StickAxis, "LX", "Axes")]
         [TestCase(HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary, ControlVisualKind.Trigger, "LT", "Buttons")]
