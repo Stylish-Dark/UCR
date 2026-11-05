@@ -826,6 +826,25 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Reject publication until master has GitHub-enforced protection
+        shell: bash
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GH_REPO/branches/master" > branch-protection.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          branch = json.loads(Path("branch-protection.json").read_text())
+          if branch.get("protected") is not True:
+              raise SystemExit("NOT APPROVED: master has no server-enforced branch protection")
+          print("GitHub reports master as protected")
+          PY
+
       - name: Retrieve only the binary from this successful exact-build run
         uses: actions/download-artifact@v7
         with:
