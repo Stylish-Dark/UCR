@@ -522,6 +522,7 @@
                                 <ListBox x:Name="CompoundPresetList" MaxHeight="150"
                                          ItemsSource="{Binding CompoundPresetItems}"
                                          Background="Transparent" BorderThickness="0"
+                                         ScrollViewer.CanContentScroll="False"
                                          ScrollViewer.VerticalScrollBarVisibility="Auto">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
