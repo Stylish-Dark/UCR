@@ -24,6 +24,26 @@
     <UserControl.Resources>
         <ResourceDictionary>
             <BooleanToVisibilityConverter x:Key="MappingSectionVisibilityConverter"/>
+            <!-- Compound bindings display all four physical directions. Their
+                 buttons must be as tall as their glyphs, including the down key. -->
+            <Style x:Key="UcrCollapsedInputBindingButton" TargetType="{x:Type Button}"
+                   BasedOn="{StaticResource MaterialDesignFlatButton}">
+                <Setter Property="MinHeight" Value="44"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsCompoundVisual}" Value="True">
+                        <Setter Property="MinHeight" Value="70"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="UcrCollapsedOutputBindingButton" TargetType="{x:Type Button}"
+                   BasedOn="{StaticResource MaterialDesignFlatButton}">
+                <Setter Property="MinHeight" Value="48"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsCompoundVisual}" Value="True">
+                        <Setter Property="MinHeight" Value="70"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
             <converter:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
             <Style x:Key="ToolboxChoiceList" TargetType="{x:Type ListBox}">
                 <Setter Property="Background" Value="Transparent"/>
@@ -924,7 +944,8 @@
                                                                                                         </Style>
                                                                                                     </TextBlock.Style>
                                                                                                 </TextBlock>
-                                                                                                <Button MinWidth="62" MinHeight="44" Margin="2 1" Padding="0" Background="Transparent"
+                                                                                                <Button MinWidth="62" Margin="2 1" Padding="0" Background="Transparent"
+                                                                                                       Style="{StaticResource UcrCollapsedInputBindingButton}"
                                                                                                       BorderThickness="0" Cursor="Hand" Focusable="True"
                                                                                                       ToolTip="{Binding ToolTip}" Click="QuickBindWorkspaceInput_OnClick"
                                                                                                       PreviewMouseLeftButtonDown="QuickBindWorkspaceInput_OnPreviewMouseLeftButtonDown"
@@ -1015,7 +1036,8 @@
                                                                     <ItemsControl.ItemTemplate>
                                                                         <DataTemplate>
                                                                             <Button Padding="0" BorderThickness="0" Background="Transparent" Cursor="Hand"
-                                                                                    Focusable="True" Margin="2 3 2 5" MinHeight="48"
+                                                                                    Focusable="True" Margin="2 3 2 5"
+                                                                                    Style="{StaticResource UcrCollapsedOutputBindingButton}"
                                                                                     ClipToBounds="False" ToolTip="{Binding ToolTip}"
                                                                                     Click="QuickBindWorkspaceOutput_OnClick"
                                                                                     PreviewMouseRightButtonDown="QuickBindWorkspaceOutput_OnPreviewMouseRightButtonDown">
