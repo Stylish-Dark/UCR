@@ -621,12 +621,27 @@ namespace HidWizards.UCR.Tests.UiTests
                 // Preserve the rendered evidence even if a later visibility
                 // assertion rejects it. Failing QC must remain inspectable.
                 CaptureWorkspacePreview(page, 1440, 900, "UCR-named-fourway-header-preview.png");
-                Assert.That(compoundCaption.IsVisible, Is.True,
-                    "Caption visibility=" + compoundCaption.Visibility +
-                    ", row visibility=" + compoundHeaderRow.Visibility +
-                    ", row IsVisible=" + compoundHeaderRow.IsVisible +
-                    ", caption ActualWidth=" + compoundCaption.ActualWidth +
-                    ". The selected preset caption must render beside the compound glyph.");
+                // An offscreen test page has no PresentationSource, so WPF
+                // IsVisible is false even for a fully rendered, Visible element.
+                // Verify the caption and keycaps against actual layout bounds.
+                Assert.That(compoundCaption.Visibility, Is.EqualTo(Visibility.Visible));
+                Assert.That(compoundCaption.ActualWidth, Is.GreaterThan(40),
+                    "The preset caption must have a readable measured width.");
+                var compoundButton = FindVisualChildren<Button>(compoundHeaderRow)
+                    .SingleOrDefault(button => FindVisualChildren<ControlGlyphControl>(button)
+                        .Any(glyph => ReferenceEquals(glyph, compoundGlyph)));
+                Assert.That(compoundButton, Is.Not.Null);
+                var glyphTopInButton = compoundGlyph.TranslatePoint(new Point(0, 0), compoundButton).Y;
+                var glyphBottomInButton = compoundGlyph.TranslatePoint(
+                    new Point(0, compoundGlyph.ActualHeight), compoundButton).Y;
+                Assert.That(glyphTopInButton, Is.GreaterThanOrEqualTo(-1),
+                    "Top keycap must stay inside its clickable binding surface.");
+                Assert.That(glyphBottomInButton, Is.LessThanOrEqualTo(compoundButton.ActualHeight + 1),
+                    "The button must be tall enough to contain the fourth, downward keycap.");
+                var captionRightInRow = compoundCaption.TranslatePoint(
+                    new Point(compoundCaption.ActualWidth, 0), compoundHeaderRow).X;
+                Assert.That(captionRightInRow, Is.LessThanOrEqualTo(compoundHeaderRow.ActualWidth + 1),
+                    "The preset name must not overrun the collapsed mapping row.");
                 compoundHeader.Remove();
                 for (var index = 0; index < 40; index++)
                 {
