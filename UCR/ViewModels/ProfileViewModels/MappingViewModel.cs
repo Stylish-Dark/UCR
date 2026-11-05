@@ -340,6 +340,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (channels.Count == 0 || channels.Any(binding => !binding.DeviceBinding.IsBound))
                 return null;
 
+            var persisted = channels[0].DeviceBinding.CompoundPresetName;
+            if (!string.IsNullOrWhiteSpace(persisted) &&
+                channels.All(channel => string.Equals(channel.DeviceBinding.CompoundPresetName,
+                    persisted, StringComparison.Ordinal)))
+                return persisted;
+
             var labels = channels.Select(binding => binding.CompactBindButtonText).ToArray();
             if (channels.Any(binding =>
                 binding.DeviceBindingCategory == DeviceBindingCategory.Range))
@@ -1582,6 +1588,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 binding.DeviceBindingCategory = DeviceBindingCategory.Range;
                 binding.SetDeviceConfigurationGuid(chosen.Item1.Guid, false);
                 binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                binding.CompoundPresetName = axisIndex == 0 ? "Left stick" : "Right stick";
                 group[i].RefreshDeviceList();
             }
             RefreshInputExpressionPresentation();
@@ -1664,6 +1671,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 binding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
                 binding.SetDeviceConfigurationGuid(chosen.Item1.Guid, false);
                 binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                binding.CompoundPresetName = "Face buttons";
                 group[i].RefreshDeviceList();
             }
             RefreshInputExpressionPresentation();
@@ -1726,6 +1734,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 binding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
                 binding.SetDeviceConfigurationGuid(device.Guid, false);
                 binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                binding.CompoundPresetName = "D-pad";
             }
             foreach (var input in inputs) input.RefreshDeviceList();
             RefreshCollapsedSummary();
@@ -1903,6 +1912,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 input.DeviceBindingCategory = DeviceBindingCategory.Momentary;
                 input.SetDeviceConfigurationGuid(keyboard.Guid, false);
                 input.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                input.CompoundPresetName = preset;
             }
             foreach (var input in inputs) input.RefreshDeviceList();
             RefreshCollapsedSummary();
@@ -2628,6 +2638,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 output.DeviceBinding.DeviceBindingCategory = info.DeviceBindingCategory;
                 output.DeviceBinding.SetDeviceConfigurationGuid(device.Guid, false);
                 output.DeviceBinding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                output.DeviceBinding.CompoundPresetName = choice.Destination;
                 output.RefreshDeviceList();
             }
 
