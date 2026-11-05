@@ -2982,7 +2982,13 @@ namespace HidWizards.UCR.Tests.UiTests
                     condition.IsCompound && button.Visibility == Visibility.Visible &&
                     string.Equals(button.Content as string, condition.CompoundPrimaryLabel,
                         StringComparison.Ordinal)), Is.EqualTo(2),
-                    "Each OR alternative owns one complete compound input binding.");
+                    "Each OR alternative owns one complete compound input binding. " +
+                    "Input state: " + string.Join(" | ", mapping.InputConditions.Select(group =>
+                        group.GroupIndex + ":" + group.IsCompound + ":" +
+                        group.CompoundPrimaryLabel + ":" + group.StandaloneCompoundVisibility)) +
+                    "; rendered actions: " + string.Join(" | ", FindVisualChildren<Button>(fourWayEditor)
+                        .Where(button => button.DataContext is InputConditionViewModel)
+                        .Select(button => (button.Content ?? "(null)") + ":" + button.Visibility)));
                 Assert.That(mapping.SetInputRepresentation(2), Is.True);
                 Assert.That(mapping.Mapping.CompoundDigitalInput, Is.False,
                     "Axis input must not retain digital-compound routing.");
