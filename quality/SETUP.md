@@ -18,7 +18,10 @@ difference, real screenshots and the Windows run identity. Missing API key,
 unavailable reviewers, failed reviews or missing evidence block approval.
 
 The `publish-approved` job depends on Windows and visual-approval success,
-and only on a push to `master`. It publishes the verified binary as
+and only on a push to `master`. It also queries GitHub's actual branch metadata
+and refuses publication if `master` is not protected. A weakly configured
+protection rule is not sufficient; the owner must enable the required checks
+and remove bypasses as described below. It publishes the verified binary as
 `UCR-APPROVED-Windows-<full-commit-SHA>` with an approval file and executable
 SHA-256 hash. Failed checks never publish that named approved artifact.
 
