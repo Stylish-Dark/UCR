@@ -913,11 +913,13 @@
                                                                                                       ToolTip="{Binding ToolTip}" Click="QuickBindWorkspaceInput_OnClick"
                                                                                                       PreviewMouseLeftButtonDown="QuickBindWorkspaceInput_OnPreviewMouseLeftButtonDown"
                                                                                                       PreviewMouseRightButtonDown="QuickBindWorkspaceInput_OnPreviewMouseRightButtonDown">
-                                                                                                    <StackPanel><Grid>
+                                                                                                    <StackPanel>
+                                                                                                    <Grid>
                                                                                                     <controls:ControlGlyphControl Kind="{Binding ControlKind}"
                                                                                                                                   AccentBrush="{Binding ControlBrush}"
                                                                                                                                   Label="{Binding ControlLabel}"
-                                                                                                                                  >                                                                                                        <controls:ControlGlyphControl.Style>
+                                                                                                                                  >
+                                                                                                        <controls:ControlGlyphControl.Style>
                                                                                                             <Style TargetType="{x:Type controls:ControlGlyphControl}">
                                                                                                                  <Setter Property="Width" Value="58"/>
                                                                                                                  <Setter Property="Height" Value="42"/>
@@ -926,8 +928,7 @@
                                                                                                                          <Setter Property="Width" Value="84"/>
                                                                                                                          <Setter Property="Height" Value="62"/>
                                                                                                                      </DataTrigger>
-                                                                                                                 </Style.Triggers>
-                                                                                                                <Style.Triggers>
+                                                                                                                 
                                                                                                                     <DataTrigger Binding="{Binding IsCapturing}" Value="True">
                                                                                                                         <Setter Property="Visibility" Value="Collapsed"/>
                                                                                                                     </DataTrigger>
