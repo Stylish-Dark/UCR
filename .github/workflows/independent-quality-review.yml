@@ -22,6 +22,7 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           persist-credentials: false
+          fetch-depth: 2
       - name: Download actual WPF screenshots from exact Windows run
         uses: actions/download-artifact@v4
         with:
@@ -37,7 +38,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
-          git show --format=fuller --no-ext-diff --stat HEAD > qa-diff.txt
+          git show --format=fuller --no-ext-diff --stat --no-patch HEAD > qa-diff.txt
           git show --format= --no-ext-diff --find-renames HEAD >> qa-diff.txt
           python3 - <<'PY'
           import os, json
