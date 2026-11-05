@@ -925,8 +925,8 @@
                                                                                                                  <Setter Property="Height" Value="42"/>
                                                                                                                  <Style.Triggers>
                                                                                                                      <DataTrigger Binding="{Binding IsCompoundVisual}" Value="True">
-                                                                                                                         <Setter Property="Width" Value="84"/>
-                                                                                                                         <Setter Property="Height" Value="62"/>
+                                                                                                                         <Setter Property="Width" Value="96"/>
+                                                                                                                         <Setter Property="Height" Value="74"/>
                                                                                                                      </DataTrigger>
                                                                                                                  
                                                                                                                     <DataTrigger Binding="{Binding IsCapturing}" Value="True">
@@ -1013,8 +1013,8 @@
                                                                                                 <Setter Property="Height" Value="42"/>
                                                                                                 <Style.Triggers>
                                                                                                     <DataTrigger Binding="{Binding IsCompoundVisual}" Value="True">
-                                                                                                        <Setter Property="Width" Value="84"/>
-                                                                                                        <Setter Property="Height" Value="62"/>
+                                                                                                        <Setter Property="Width" Value="96"/>
+                                                                                                        <Setter Property="Height" Value="74"/>
                                                                                                     </DataTrigger>
                                                                                                 </Style.Triggers>
                                                                                             </Style>
