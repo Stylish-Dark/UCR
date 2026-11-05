@@ -285,9 +285,9 @@
         <!-- Bind and options form ONE compact, intrinsic-width action group.
              A lone Bind command must not stretch into a 600px blue slab. -->
         <Grid x:Name="BindingActionGroup" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2"
-              HorizontalAlignment="Left" MaxWidth="300" MinHeight="36">
+              HorizontalAlignment="Left" MinWidth="80" MaxWidth="300" MinHeight="36">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" MinWidth="0"/>
+                <ColumnDefinition Width="*" MinWidth="38"/>
                 <ColumnDefinition Width="42"/>
             </Grid.ColumnDefinitions>
         <Grid x:Name="BindSurface" Grid.Column="0" Margin="0" ClipToBounds="True">
@@ -315,7 +315,7 @@
                 <TextBlock Text="{Binding CompactBindButtonText}"
                            TextTrimming="CharacterEllipsis"
                            TextAlignment="Center" VerticalAlignment="Center"
-                           TextWrapping="Wrap" MaxHeight="36" Margin="1 0"/>
+                           TextWrapping="NoWrap" MaxHeight="36" Margin="1 0"/>
             </Button>
             <ProgressBar Height="3" Margin="8 0 8 2" VerticalAlignment="Bottom"
                          Minimum="0" Maximum="100" Value="{Binding PreviewValue, Mode=OneWay}"

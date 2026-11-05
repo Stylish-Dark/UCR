@@ -2396,6 +2396,24 @@ namespace HidWizards.UCR.Tests.UiTests
                 // derive height from real WPF content instead of a giant blank canvas.
                 CaptureEditorPreview(card, 850, "UCR-typed-conditions-preview.png");
 
+                // The compact split Bind action must remain legible in the tight
+                // two-column editor, including when multiple AND guards are present.
+                foreach (var compact in FindVisualChildren<CompactInputBindingControl>(card)
+                    .Where(control => control.Visibility == Visibility.Visible))
+                {
+                    var action = compact.FindName("BindButton") as Button;
+                    if (action == null || action.Visibility != Visibility.Visible) continue;
+                    Assert.That(action.ActualWidth, Is.GreaterThanOrEqualTo(37),
+                        "Bind must not collapse into a two-line 20-pixel sliver.");
+                    var label = FindVisualChildren<TextBlock>(action).FirstOrDefault();
+                    Assert.That(label, Is.Not.Null, "The visible Bind action must have a text label.");
+                    Assert.That(label.TextWrapping, Is.EqualTo(TextWrapping.NoWrap),
+                        "Binding labels must remain on one line at reduced editor widths.");
+                    var right = action.TranslatePoint(new Point(action.ActualWidth, 0), card).X;
+                    Assert.That(right, Is.LessThanOrEqualTo(card.ActualWidth + 1),
+                        "The compact Bind button must remain inside the editor viewport.");
+                }
+
                 Assert.That(mapping.SetInputRepresentation(2), Is.True);
                 Assert.That(mapping.InputConditions.Single().CoreInputs.Count, Is.EqualTo(1));
                 Assert.That(mapping.InputConditions.Single().AndInputs.Count, Is.EqualTo(1));
