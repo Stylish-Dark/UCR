@@ -102,8 +102,45 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 ? Visibility.Visible : Visibility.Collapsed;
         public string CompoundPrimaryLabel => IsCompound && _owner.InputIsFullStick
             ? (CoreInputs.Any(input => input.DeviceBinding.IsBound)
-                ? CompoundSummary : "Select 4-Way ▾")
+                ? FourWayBindingName : "Select 4-Way ▾")
             : CompoundSummary;
+
+        // A 4-Way input is one user-facing compound binding. Its label is the
+        // matching preset name, never a slash-separated implementation key list.
+        private string FourWayBindingName
+        {
+            get
+            {
+                if (CoreInputs.Count != 4 || CoreInputs.Any(input => !input.DeviceBinding.IsBound))
+                    return "4-Way binding ▾";
+                var assigned = CoreInputs.OrderBy(input => input.DeviceBinding.InputDirectionSlot)
+                    .Select(input => NormalizePresetKey(input.CompactBindButtonText)).ToArray();
+                Func<IEnumerable<string>, bool> matches = expected =>
+                {
+                    var keys = expected?.Select(NormalizePresetKey).ToArray();
+                    return keys != null && keys.Length == 4 &&
+                        assigned.SequenceEqual(keys, StringComparer.OrdinalIgnoreCase);
+                };
+                // The owner's own name takes precedence over built-in aliases.
+                var saved = _owner.ProfileViewModel?.Profile?.CompoundBindingPresets?
+                    .FirstOrDefault(preset => preset.Capacity == 4 && matches(preset.Keys));
+                if (saved != null) return saved.Name + " ▾";
+                if (matches(new[] { "A", "D", "W", "S" })) return "WASD ▾";
+                if (matches(new[] { "Left", "Right", "Up", "Down" })) return "Arrows ▾";
+                if (matches(new[] { "Numpad4", "Numpad6", "Numpad8", "Numpad2" })) return "Numpad ▾";
+                if (matches(new[] { "H", "K", "U", "J" })) return "UHJK ▾";
+                return "Custom 4-Way ▾";
+            }
+        }
+
+        private static string NormalizePresetKey(string label)
+        {
+            var key = Regex.Replace(label ?? string.Empty, "[^A-Za-z0-9]", "")
+                .ToUpperInvariant().Replace("NUMPAD", "NUM").Replace("KEYPAD", "NUM")
+                .Replace("ARROW", "");
+            return key.StartsWith("KEY", StringComparison.Ordinal) && key.Length == 4
+                ? key.Substring(3) : key;
+        }
 
         private DirectionalCompassSlotViewModel CompassSlot(int digitalSlot, int analogueIndex, string arrow)
         {
