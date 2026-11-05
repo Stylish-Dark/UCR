@@ -453,7 +453,8 @@ namespace HidWizards.UCR.Views.Controls
         // The vector glyph already prints abbreviated controller codes.
         // Give the adjacent caption a human-readable name instead of repeating
         // "LX LX" or "LT LT" in each control tile.
-        public static string OutputPickerDisplayName(string title)
+        public static string OutputPickerDisplayName(string title,
+            ControlVisualKind visualKind = ControlVisualKind.Unknown)
         {
             switch ((title ?? string.Empty).Trim().ToUpperInvariant())
             {
@@ -473,7 +474,11 @@ namespace HidWizards.UCR.Views.Controls
                 case "B":
                 case "X":
                 case "Y":
-                    return "Face button " + title.Trim().ToUpperInvariant();
+                    // A keyboard key called "A" is not an Xbox face button.
+                    return visualKind == ControlVisualKind.XboxFaceButton ||
+                           visualKind == ControlVisualKind.PlayStationFaceButton
+                        ? "Face button " + title.Trim().ToUpperInvariant()
+                        : title ?? string.Empty;
                 default: return title ?? string.Empty;
             }
         }
@@ -547,7 +552,7 @@ namespace HidWizards.UCR.Views.Controls
                 });
                 row.Children.Add(new TextBlock
                 {
-                    Text = OutputPickerDisplayName(title),
+                    Text = OutputPickerDisplayName(title, visual.ControlKind),
                     Foreground = Brushes.White,
                     VerticalAlignment = VerticalAlignment.Center,
                     TextWrapping = TextWrapping.Wrap,
