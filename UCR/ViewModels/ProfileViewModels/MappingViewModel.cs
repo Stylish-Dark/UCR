@@ -390,10 +390,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
 
             if (channels.Count != 4) return null;
-            // Input slots use Left, Right, Up, Down. Output digital channels
-            // are stored Up, Down, Left, Right by the output preset picker.
-            if (output) labels = new[] { labels[2], labels[3], labels[0], labels[1] };
-
             // Explicitly named presets outrank built-in pattern aliases. A user
             // who names their four keys "My Movement" must see that name, not WASD.
             var templates = new List<Tuple<string, string[]>>();
@@ -3651,11 +3647,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var names = channels.Select(channel => channel.DeviceBinding.IsBound
                 ? channel.CompactBindButtonText : string.Empty).ToList();
             while (names.Count < 4) names.Add(string.Empty);
-            // The output picker stores Up, Down, Left, Right; the compound
-            // glyph renderer expects Left, Right, Up, Down.
-            if (output && channels.Count == 4 && Mapping.CompoundDigitalOutput)
-                names = new List<string> { names[2], names[3], names[0], names[1] };
-
             if (channels.Any(channel =>
                 channel.DeviceBindingCategory == DeviceBindingCategory.Range))
             {
