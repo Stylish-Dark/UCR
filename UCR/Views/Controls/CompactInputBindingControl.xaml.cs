@@ -626,15 +626,31 @@ namespace HidWizards.UCR.Views.Controls
                 }
             }
 
-            // Keep the eight stick directions in compass order.
+            // WrapPanel is row-major. Order each direction pair consistently,
+            // regardless of provider enumeration (X-before-Y or Y-before-X).
+            // Each button's Content is a StackPanel, not a string: use ToolTip.
             var nextPosition = 0;
             foreach (var stickName in new[] { "Left Stick", "Right Stick" })
             foreach (var directionName in new[] { "Up", "Down", "Left", "Right" })
             {
                 var title = stickName + " " + directionName;
                 var item = directionals.Children.OfType<Button>()
-                    .FirstOrDefault(button => string.Equals(button.Content as string, title,
-                        StringComparison.Ordinal));
+                    .FirstOrDefault(button => string.Equals(button.ToolTip as string, title,
+                        StringComparison.OrdinalIgnoreCase));
+                if (item == null) continue;
+                directionals.Children.Remove(item);
+                directionals.Children.Insert(nextPosition++, item);
+            }
+
+            // A D-pad follows the same two-column direction pairing: Up/Down,
+            // then Left/Right. The device provider may enumerate clockwise
+            // (Up/Right/Down/Left), which otherwise produces inconsistent rows.
+            foreach (var directionName in new[] { "Up", "Down", "Left", "Right" })
+            {
+                var title = "D-pad " + directionName;
+                var item = directionals.Children.OfType<Button>()
+                    .FirstOrDefault(button => string.Equals(button.ToolTip as string, title,
+                        StringComparison.OrdinalIgnoreCase));
                 if (item == null) continue;
                 directionals.Children.Remove(item);
                 directionals.Children.Insert(nextPosition++, item);
