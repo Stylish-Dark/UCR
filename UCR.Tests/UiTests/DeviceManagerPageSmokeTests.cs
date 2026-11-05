@@ -1476,6 +1476,112 @@ namespace HidWizards.UCR.Tests.UiTests
                 category, buttons, directions, axes), Is.EqualTo(expected));
         }
 
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void RealOutputPickerRendersDeviceSpecificAxesDirectionsAndButtons()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Output picker visual QC", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var device = new Device(new DeviceCache
+            {
+                Title = "Xbox 360 Controller",
+                ProviderName = "SharpDX_XInput",
+                DeviceHandle = "xinput-preview",
+                DeviceBindingMenu = new List<HidWizards.UCR.Core.Models.Binding.DeviceBindingNode>
+                {
+                    new HidWizards.UCR.Core.Models.Binding.DeviceBindingNode
+                    {
+                        Title = "Buttons",
+                        ChildrenNodes = new[] { "A", "B", "LB", "RB" }
+                            .Select((name, index) => new HidWizards.UCR.Core.Models.Binding.DeviceBindingNode
+                            {
+                                Title = name,
+                                DeviceBindingInfo = new HidWizards.UCR.Core.Models.Binding.DeviceBindingInfo
+                                {
+                                    DeviceBindingCategory = HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary,
+                                    KeyType = 1, KeyValue = index
+                                }
+                            }).ToList()
+                    },
+                    new HidWizards.UCR.Core.Models.Binding.DeviceBindingNode
+                    {
+                        Title = "D-pad",
+                        ChildrenNodes = new[] { "Up", "Right", "Down", "Left" }
+                            .Select((name, index) => new HidWizards.UCR.Core.Models.Binding.DeviceBindingNode
+                            {
+                                Title = "D-pad " + name,
+                                DeviceBindingInfo = new HidWizards.UCR.Core.Models.Binding.DeviceBindingInfo
+                                {
+                                    DeviceBindingCategory = HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary,
+                                    KeyType = 2, KeyValue = index
+                                }
+                            }).ToList()
+                    },
+                    new HidWizards.UCR.Core.Models.Binding.DeviceBindingNode
+                    {
+                        Title = "Axes",
+                        ChildrenNodes = new[] { "LX", "LY", "RX", "RY", "LT", "RT" }
+                            .Select((name, index) => new HidWizards.UCR.Core.Models.Binding.DeviceBindingNode
+                            {
+                                Title = name,
+                                DeviceBindingInfo = new HidWizards.UCR.Core.Models.Binding.DeviceBindingInfo
+                                {
+                                    DeviceBindingCategory = HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Range,
+                                    KeyType = 3, KeyValue = index
+                                }
+                            }).ToList()
+                    }
+                }
+            });
+            var configuration = new DeviceConfiguration(device);
+            profile.AddDeviceConfigurations(new List<DeviceConfiguration> { configuration },
+                DeviceIoType.Output);
+            var binding = new HidWizards.UCR.Core.Models.Binding.DeviceBinding
+            {
+                Profile = profile,
+                DeviceIoType = DeviceIoType.Output,
+                DeviceBindingCategory = HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Range,
+                DeviceConfigurationGuid = configuration.Guid
+            };
+            var control = new CompactInputBindingControl { DeviceBinding = binding };
+            var createPicker = typeof(CompactInputBindingControl).GetMethod(
+                "BuildOutputPickerContent", System.Reflection.BindingFlags.NonPublic |
+                System.Reflection.BindingFlags.Instance);
+            Assert.That(createPicker, Is.Not.Null);
+            var picker = createPicker.Invoke(control,
+                new object[] { configuration, new Popup() }) as Border;
+            Assert.That(picker, Is.Not.Null);
+            var tabs = FindVisualChildren<TabControl>(picker).Single();
+            Assert.That(tabs.Items.Count, Is.EqualTo(3));
+            Assert.That(tabs.SelectedIndex, Is.EqualTo(2),
+                "An axis output must open the Axes tab, never reset to Buttons.");
+            var pages = tabs.Items.Cast<TabItem>().ToArray();
+            Assert.That(pages.Select(item => item.Header as string),
+                Is.EqualTo(new[] { "Buttons", "Directions", "Axes" }));
+            Func<int, List<string>> titlesFor = index =>
+                (((pages[index].Content as ScrollViewer).Content as WrapPanel)
+                    .Children.OfType<Button>().Select(button => button.ToolTip as string)
+                    .Where(title => title != null).ToList());
+            var buttons = titlesFor(0);
+            var directions = titlesFor(1);
+            var axes = titlesFor(2);
+            Assert.That(buttons, Does.Contain("A"));
+            Assert.That(buttons, Does.Not.Contain("LT"));
+            Assert.That(buttons, Does.Not.Contain("RT"));
+            Assert.That(axes, Does.Contain("LT"));
+            Assert.That(axes, Does.Contain("RT"));
+            Assert.That(axes, Does.Contain("LX"));
+            Assert.That(directions, Does.Contain("D-pad Up"));
+            Assert.That(directions, Does.Contain("Left Stick Up"));
+            CaptureWorkspacePreview(picker, 470, 470,
+                "UCR-output-picker-axes-preview.png");
+            tabs.SelectedIndex = 1;
+            CaptureWorkspacePreview(picker, 470, 470,
+                "UCR-output-picker-directions-preview.png");
+        }
+
         [TestCase("A", "A", true)]
         [TestCase("Buttons,A", "A", true)]
         [TestCase("Face buttons: Cross", "Cross", true)]
