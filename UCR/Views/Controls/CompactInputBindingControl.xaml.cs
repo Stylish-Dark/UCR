@@ -663,7 +663,7 @@ namespace HidWizards.UCR.Views.Controls
                 tabs.Items.Add(new TabItem
                 {
                     Header = category.Title,
-                    Foreground = Brushes.White,
+                    Style = (Style)FindResource("OutputPickerTabStyle"),
                     Content = new ScrollViewer
                     {
                         Content = category.Items,
