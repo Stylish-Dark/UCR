@@ -279,6 +279,16 @@
                                 <Setter Property="Width" Value="39"/>
                                 <Setter Property="Height" Value="39"/>
                                 <Style.Triggers>
+                                    <!-- Four keyboard legends need readable keycaps; 39 px shrinks
+                                         each to approximately 7 px and makes the letters illegible. -->
+                                    <DataTrigger Binding="{Binding ControlKind}" Value="CompoundKeys">
+                                        <Setter Property="Width" Value="68"/>
+                                        <Setter Property="Height" Value="62"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding ControlKind}" Value="CompoundFaceButtons">
+                                        <Setter Property="Width" Value="68"/>
+                                        <Setter Property="Height" Value="62"/>
+                                    </DataTrigger>
                                     <DataTrigger Binding="{Binding IsFilterControl}" Value="True">
                                         <Setter Property="Width" Value="20"/>
                                         <Setter Property="Height" Value="20"/>
