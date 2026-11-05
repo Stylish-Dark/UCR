@@ -418,7 +418,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 || label.IndexOf("POV", StringComparison.OrdinalIgnoreCase) >= 0
                 || label.IndexOf("Hat", StringComparison.OrdinalIgnoreCase) >= 0))
                 return "D-pad";
-            return "Face buttons";
+            var first = channels.FirstOrDefault();
+            var config = ProfileViewModel.Profile.GetDeviceConfiguration(
+                output ? DeviceIoType.Output : DeviceIoType.Input,
+                first.DeviceBinding.DeviceConfigurationGuid);
+            var kind = config?.Device == null ? DeviceVisualKind.Unknown :
+                DeviceVisualCatalog.Describe(config, ProfileViewModel.Profile,
+                    output ? DeviceIoType.Output : DeviceIoType.Input).Kind;
+            return kind == DeviceVisualKind.Keyboard || kind == DeviceVisualKind.Unknown
+                ? null : "Face buttons";
         }
 
         private static bool PresetControlMatches(string label, string expected)
@@ -3640,6 +3648,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var names = channels.Select(channel => channel.DeviceBinding.IsBound
                 ? channel.CompactBindButtonText : string.Empty).ToList();
             while (names.Count < 4) names.Add(string.Empty);
+            // The output picker stores Up, Down, Left, Right; the compound
+            // glyph renderer expects Left, Right, Up, Down.
+            if (output && channels.Count == 4 && Mapping.CompoundDigitalOutput)
+                names = new List<string> { names[2], names[3], names[0], names[1] };
 
             if (channels.Any(channel =>
                 channel.DeviceBindingCategory == DeviceBindingCategory.Range))
