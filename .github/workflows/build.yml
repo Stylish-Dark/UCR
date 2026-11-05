@@ -750,7 +750,7 @@ jobs:
       - name: Check out exact candidate revision
         uses: actions/checkout@v6
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Install Python for independent review
         uses: actions/setup-python@v6
@@ -783,7 +783,16 @@ jobs:
           REVIEW_SHA: ${{ github.sha }}
           REVIEW_RUN_ID: ${{ github.run_id }}
         run: |
-          git diff --binary HEAD^ HEAD > review.patch
+          # Candidate branch: compare ALL proposed changes to trusted master,
+          # not merely the most recent commit of a multi-commit PR.
+          if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" != "refs/heads/master" ]]; then
+            git fetch origin master --no-tags
+            BASE="$(git merge-base HEAD origin/master)"
+          else
+            BASE="$(git rev-parse HEAD^)"
+          fi
+          git diff --binary "$BASE" HEAD > review.patch
+          test -s review.patch
           python - <<'PY'
           import json
           import os
