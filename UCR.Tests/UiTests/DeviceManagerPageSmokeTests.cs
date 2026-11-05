@@ -415,6 +415,47 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(presetList.Items.Count, Is.EqualTo(1));
                 Assert.That(presetList.Visibility, Is.EqualTo(Visibility.Visible));
                 CaptureWorkspacePreview(page, 1440, 900, "UCR-profile-sidebar-presets-preview.png");
+
+                // Render the real preset editor (not a mock window). Verify
+                // its fixed action footer remains reachable even when the
+                // five-field form needs vertical scrolling at small heights.
+                var createPresetDialog = typeof(ProfilePage).GetMethod(
+                    "CreateCompoundPresetDialog",
+                    System.Reflection.BindingFlags.Instance |
+                    System.Reflection.BindingFlags.NonPublic);
+                Assert.That(createPresetDialog, Is.Not.Null);
+                var presetDialog = createPresetDialog.Invoke(page, new object[] { null }) as Window;
+                Assert.That(presetDialog, Is.Not.Null);
+                var dialogContent = presetDialog.Content as FrameworkElement;
+                Assert.That(dialogContent, Is.Not.Null);
+                CaptureWorkspacePreview(dialogContent, 390, 275,
+                    "UCR-fourway-preset-editor-preview.png");
+                var fields = FindVisualChildren<TextBox>(dialogContent).ToList();
+                Assert.That(fields.Count, Is.EqualTo(5),
+                    "The editor must expose name and all four directional key fields.");
+                var saveButton = FindVisualChildren<Button>(dialogContent)
+                    .Single(button => string.Equals(button.Content as string,
+                        "Save preset", StringComparison.Ordinal));
+                var cancelButton = FindVisualChildren<Button>(dialogContent)
+                    .Single(button => string.Equals(button.Content as string,
+                        "Cancel", StringComparison.Ordinal));
+                var editorScroll = FindVisualChildren<ScrollViewer>(dialogContent).First();
+                var saveBottom = saveButton.TranslatePoint(
+                    new Point(0, saveButton.ActualHeight), dialogContent).Y;
+                var cancelBottom = cancelButton.TranslatePoint(
+                    new Point(0, cancelButton.ActualHeight), dialogContent).Y;
+                Assert.That(saveButton.ActualHeight, Is.GreaterThan(28));
+                Assert.That(saveBottom, Is.LessThanOrEqualTo(dialogContent.ActualHeight + 1),
+                    "Save must not scroll away or clip at a compact window height.");
+                Assert.That(cancelBottom, Is.LessThanOrEqualTo(dialogContent.ActualHeight + 1),
+                    "Cancel must remain accessible alongside Save.");
+                Assert.That(editorScroll.ScrollableHeight, Is.GreaterThan(0),
+                    "The five input fields must scroll when the dialog viewport is short.");
+                editorScroll.ScrollToBottom();
+                dialogContent.UpdateLayout();
+                Assert.That(editorScroll.VerticalOffset, Is.GreaterThan(0),
+                    "A saved preset's lower directional fields must remain reachable.");
+
                 sidebarScroll.ScrollToBottom();
                 page.UpdateLayout();
                 // Deleting the obsolete Add Mapping toolbox shortens the sidebar.
