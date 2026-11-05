@@ -563,9 +563,33 @@ namespace HidWizards.UCR.Views.Controls
                     {
                         var selectedSign = direction.Sign;
                         var label = stick + " " + direction.Name;
+                        // Signed stick directions are virtual half-axis choices.
+                        // Give them a directional icon so they cannot be mistaken
+                        // for a second full axis or an ordinary face button.
+                        var glyph = horizontal
+                            ? (selectedSign < 0 ? "←" : "→")
+                            : (selectedSign < 0 ? "↑" : "↓");
+                        var directionalContent = new StackPanel { Orientation = Orientation.Horizontal };
+                        directionalContent.Children.Add(new TextBlock
+                        {
+                            Text = glyph,
+                            FontSize = 23,
+                            FontWeight = FontWeights.SemiBold,
+                            Width = 41,
+                            Margin = new Thickness(0, 0, 8, 0),
+                            TextAlignment = TextAlignment.Center,
+                            VerticalAlignment = VerticalAlignment.Center,
+                            Foreground = Brushes.White
+                        });
+                        directionalContent.Children.Add(new TextBlock
+                        {
+                            Text = label,
+                            VerticalAlignment = VerticalAlignment.Center,
+                            Foreground = Brushes.White
+                        });
                         var directional = new Button
                         {
-                            Content = label,
+                            Content = directionalContent,
                             Width = 212,
                             MinHeight = 46,
                             HorizontalContentAlignment = HorizontalAlignment.Left,
@@ -642,24 +666,20 @@ namespace HidWizards.UCR.Views.Controls
 
             var selectedTab = PreferredOutputPickerTab(DeviceBinding.DeviceBindingCategory,
                 buttons.Children.Count, directionals.Children.Count, axes.Children.Count);
-            var tabs = new TabControl
-            {
-                Background = Brushes.Transparent,
-                MinHeight = 365,
-                SelectedIndex = selectedTab
-            };
+            var preferredCategory = new[] { "Buttons", "Directions", "Axes" }[selectedTab];
+            var tabs = new TabControl { Background = Brushes.Transparent };
             foreach (var category in new[] {
                 new { Title = "Buttons", Items = buttons },
                 new { Title = "Directions", Items = directionals },
                 new { Title = "Axes", Items = axes }
             })
             {
-                if (category.Items.Children.Count == 0)
-                    category.Items.Children.Add(new TextBlock {
-                        Text = "No controls in this category",
-                        Foreground = Brushes.LightGray,
-                        Margin = new Thickness(12)
-                    });
+                var count = category.Items.Children.Count;
+                // A device should not present tabs with no selectable controls.
+                if (count == 0) continue;
+                // Two 212-DIP tiles per row; size to actual content, with a
+                // scrollbar only when the selected category needs it.
+                var listHeight = Math.Min(340, Math.Max(58, Math.Ceiling(count / 2.0) * 54 + 8));
                 tabs.Items.Add(new TabItem
                 {
                     Header = category.Title,
@@ -667,14 +687,18 @@ namespace HidWizards.UCR.Views.Controls
                     Content = new ScrollViewer
                     {
                         Content = category.Items,
-                        Height = 340,
-                        MinHeight = 340,
+                        Height = listHeight,
                         MaxHeight = 340,
                         HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
                         VerticalScrollBarVisibility = ScrollBarVisibility.Auto
                     }
                 });
             }
+            var matchingTab = tabs.Items.Cast<TabItem>().ToList().FindIndex(
+                item => string.Equals(item.Header as string, preferredCategory,
+                    StringComparison.Ordinal));
+            if (tabs.Items.Count > 0)
+                tabs.SelectedIndex = matchingTab >= 0 ? matchingTab : 0;
             // Preserve the category chosen for this binding; never force Buttons.
             var root = new StackPanel();
             var deviceTitle = config.GetFullTitleForProfile(DeviceBinding.Profile);
@@ -699,7 +723,16 @@ namespace HidWizards.UCR.Views.Controls
                 ToolTip = deviceTitle
             });
             root.Children.Add(header);
-            root.Children.Add(tabs);
+            if (tabs.Items.Count > 0)
+                root.Children.Add(tabs);
+            else
+                root.Children.Add(new TextBlock
+                {
+                    Text = "This device has no selectable output controls.",
+                    Foreground = Brushes.LightGray,
+                    Margin = new Thickness(12, 10, 12, 10),
+                    TextWrapping = TextWrapping.Wrap
+                });
             var clear = new Button
             {
                 Content = "Clear binding",
