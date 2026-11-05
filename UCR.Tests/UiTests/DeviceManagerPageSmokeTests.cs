@@ -417,12 +417,33 @@ namespace HidWizards.UCR.Tests.UiTests
                 CaptureWorkspacePreview(page, 1440, 900, "UCR-profile-sidebar-presets-preview.png");
                 sidebarScroll.ScrollToBottom();
                 page.UpdateLayout();
-                Assert.That(sidebarScroll.ScrollableHeight, Is.GreaterThan(20),
-                    "Devices must remain reachable via vertical scrolling.");
+                // Deleting the obsolete Add Mapping toolbox shortens the sidebar.
+                // Zero scroll distance is correct when all panels fit; prove that
+                // the Devices section is visible rather than demanding overflow.
+                Assert.That(sidebarScroll.ViewportHeight, Is.GreaterThan(0));
+                var filtersPanel = page.FindName("MappingFiltersPanel") as Border;
                 var devicesPanel = page.FindName("ProfileDevicesPanel") as Border;
+                Assert.That(filtersPanel, Is.Not.Null);
                 Assert.That(devicesPanel, Is.Not.Null);
                 Assert.That(devicesPanel.Visibility, Is.EqualTo(Visibility.Visible));
                 Assert.That(devicesPanel.ActualHeight, Is.GreaterThan(35));
+                Assert.That(page.FindName("MappingToolboxPanel"), Is.Null,
+                    "The retired Add Mapping panel must not be constructed.");
+                var filtersBottom = filtersPanel.TranslatePoint(
+                    new Point(0, filtersPanel.ActualHeight), sidebar).Y;
+                var presetsTop = presetPanel.TranslatePoint(new Point(0, 0), sidebar).Y;
+                var presetsBottom = presetPanel.TranslatePoint(
+                    new Point(0, presetPanel.ActualHeight), sidebar).Y;
+                var devicesTop = devicesPanel.TranslatePoint(new Point(0, 0), sidebar).Y;
+                Assert.That(presetsTop, Is.GreaterThanOrEqualTo(filtersBottom - 1),
+                    "4-Way presets must begin below Filters, without overlapping.");
+                Assert.That(devicesTop, Is.GreaterThanOrEqualTo(presetsBottom - 1),
+                    "Devices must begin below 4-Way presets, without overlapping.");
+                var devicesBottomInViewport = devicesPanel.TranslatePoint(
+                    new Point(0, devicesPanel.ActualHeight), sidebarScroll).Y;
+                Assert.That(devicesBottomInViewport,
+                    Is.LessThanOrEqualTo(sidebarScroll.ViewportHeight + 2),
+                    "Devices must be fully reachable, even when no scrollbar is needed.");
                 CaptureWorkspacePreview(page, 1440, 900, "UCR-profile-sidebar-devices-preview.png");
                 sidebarScroll.ScrollToTop();
                 devicesExpander.IsExpanded = true;
