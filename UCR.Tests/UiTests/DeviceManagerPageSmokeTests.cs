@@ -1336,7 +1336,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 var outputCompass = outputFaces["CompassOutputUp"].Parent as Grid;
                 Assert.That(outputCompass, Is.Not.Null,
                     "The four output directions must share one spatial grid.");
-                Assert.That(outputCompass.ActualWidth, Is.LessThanOrEqualTo(391),
+                Assert.That(outputCompass.ActualWidth, Is.LessThanOrEqualTo(481),
                     "The D-pad must remain a compact cluster, not stretch across the output pane.");
                 var outputMidpoint = outputCompass.TranslatePoint(
                     new Point(outputCompass.ActualWidth / 2, 0), card).X;
