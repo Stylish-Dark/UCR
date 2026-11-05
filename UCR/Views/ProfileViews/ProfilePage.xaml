@@ -908,18 +908,25 @@
                                                                                                         </Style>
                                                                                                     </TextBlock.Style>
                                                                                                 </TextBlock>
-                                                                                                <Button Width="62" Height="44" Margin="2 1" Padding="0" Background="Transparent"
+                                                                                                <Button MinWidth="62" MinHeight="44" Margin="2 1" Padding="0" Background="Transparent"
                                                                                                       BorderThickness="0" Cursor="Hand" Focusable="True"
                                                                                                       ToolTip="{Binding ToolTip}" Click="QuickBindWorkspaceInput_OnClick"
                                                                                                       PreviewMouseLeftButtonDown="QuickBindWorkspaceInput_OnPreviewMouseLeftButtonDown"
                                                                                                       PreviewMouseRightButtonDown="QuickBindWorkspaceInput_OnPreviewMouseRightButtonDown">
-                                                                                                    <Grid>
+                                                                                                    <StackPanel><Grid>
                                                                                                     <controls:ControlGlyphControl Kind="{Binding ControlKind}"
                                                                                                                                   AccentBrush="{Binding ControlBrush}"
                                                                                                                                   Label="{Binding ControlLabel}"
-                                                                                                                                  Width="58" Height="42">
-                                                                                                        <controls:ControlGlyphControl.Style>
+                                                                                                                                  >                                                                                                        <controls:ControlGlyphControl.Style>
                                                                                                             <Style TargetType="{x:Type controls:ControlGlyphControl}">
+                                                                                                                 <Setter Property="Width" Value="58"/>
+                                                                                                                 <Setter Property="Height" Value="42"/>
+                                                                                                                 <Style.Triggers>
+                                                                                                                     <DataTrigger Binding="{Binding IsCompoundVisual}" Value="True">
+                                                                                                                         <Setter Property="Width" Value="84"/>
+                                                                                                                         <Setter Property="Height" Value="62"/>
+                                                                                                                     </DataTrigger>
+                                                                                                                 </Style.Triggers>
                                                                                                                 <Style.Triggers>
                                                                                                                     <DataTrigger Binding="{Binding IsCapturing}" Value="True">
                                                                                                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -961,6 +968,12 @@
                                                                                                         </Line.Style>
                                                                                                     </Line>
                                                                                                 </Grid>
+                                                                                                <TextBlock Text="{Binding CompoundPresetName}" FontSize="12" FontWeight="SemiBold"
+                                                                                                                Foreground="#FFFFFF" TextAlignment="Center"
+                                                                                                                HorizontalAlignment="Center" MaxWidth="118"
+                                                                                                                TextTrimming="CharacterEllipsis"
+                                                                                                                Visibility="{Binding IsCompoundVisual, Converter={StaticResource MappingSectionVisibilityConverter}}"/>
+                                                                                                    </StackPanel>
                                                                                                 </Button>
                                                                                             </StackPanel>
                                                                                         </DataTemplate>
@@ -989,10 +1002,28 @@
                                                                                     ClipToBounds="False" ToolTip="{Binding ToolTip}"
                                                                                     Click="QuickBindWorkspaceOutput_OnClick"
                                                                                     PreviewMouseRightButtonDown="QuickBindWorkspaceOutput_OnPreviewMouseRightButtonDown">
-                                                                                <controls:ControlGlyphControl Kind="{Binding ControlKind}"
-                                                                                                              AccentBrush="{Binding ControlBrush}"
-                                                                                                              Label="{Binding ControlLabel}"
-                                                                                                              Width="58" Height="42"/>
+                                                                                <StackPanel HorizontalAlignment="Center">
+                                                                                    <controls:ControlGlyphControl Kind="{Binding ControlKind}"
+                                                                                                                  AccentBrush="{Binding ControlBrush}"
+                                                                                                                  Label="{Binding ControlLabel}">
+                                                                                        <controls:ControlGlyphControl.Style>
+                                                                                            <Style TargetType="{x:Type controls:ControlGlyphControl}">
+                                                                                                <Setter Property="Width" Value="58"/>
+                                                                                                <Setter Property="Height" Value="42"/>
+                                                                                                <Style.Triggers>
+                                                                                                    <DataTrigger Binding="{Binding IsCompoundVisual}" Value="True">
+                                                                                                        <Setter Property="Width" Value="84"/>
+                                                                                                        <Setter Property="Height" Value="62"/>
+                                                                                                    </DataTrigger>
+                                                                                                </Style.Triggers>
+                                                                                            </Style>
+                                                                                        </controls:ControlGlyphControl.Style>
+                                                                                    </controls:ControlGlyphControl>
+                                                                                    <TextBlock Text="{Binding CompoundPresetName}" FontSize="12" FontWeight="SemiBold"
+                                                                                               Foreground="#FFFFFF" HorizontalAlignment="Center"
+                                                                                               TextAlignment="Center" MaxWidth="118" TextTrimming="CharacterEllipsis"
+                                                                                               Visibility="{Binding IsCompoundVisual, Converter={StaticResource MappingSectionVisibilityConverter}}"/>
+                                                                                </StackPanel>
                                                                             </Button>
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
