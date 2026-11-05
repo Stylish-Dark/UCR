@@ -1354,6 +1354,34 @@ namespace HidWizards.UCR.Tests.UiTests
             }
         }
 
+        // A trigger is not a separate binding type: when its HID source is
+        // analogue, the picker must expose it with the other full-range axes.
+        [TestCase(HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Range, ControlVisualKind.Trigger, "LT", "Axes")]
+        [TestCase(HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Range, ControlVisualKind.StickAxis, "LX", "Axes")]
+        [TestCase(HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary, ControlVisualKind.Trigger, "LT", "Buttons")]
+        [TestCase(HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary, ControlVisualKind.Button, "LB", "Buttons")]
+        [TestCase(HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary, ControlVisualKind.DPad, "D-pad Up", "Directions")]
+        [TestCase(HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary, ControlVisualKind.Button, "POV1 South", "Directions")]
+        [TestCase(HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary, ControlVisualKind.Button, "A", "Buttons")]
+        public void OutputPickerGroupsControlsByPhysicalBindingSemantics(
+            HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory category, ControlVisualKind kind, string name, string expected)
+        {
+            Assert.That(CompactInputBindingControl.OutputPickerCategory(category, kind, name),
+                Is.EqualTo(expected));
+        }
+
+        [TestCase(HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Range, 11, 8, 6, 2)]
+        [TestCase(HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary, 11, 8, 6, 0)]
+        [TestCase(HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Range, 11, 8, 0, 0)]
+        [TestCase(HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary, 0, 8, 6, 1)]
+        [TestCase(HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary, 0, 0, 6, 2)]
+        public void OutputPickerOpensExpectedNonemptyCategory(
+            HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory category, int buttons, int directions, int axes, int expected)
+        {
+            Assert.That(CompactInputBindingControl.PreferredOutputPickerTab(
+                category, buttons, directions, axes), Is.EqualTo(expected));
+        }
+
         [TestCase("A", "A", true)]
         [TestCase("Buttons,A", "A", true)]
         [TestCase("Face buttons: Cross", "Cross", true)]
