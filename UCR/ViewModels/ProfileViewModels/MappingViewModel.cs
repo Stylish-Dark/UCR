@@ -1514,6 +1514,79 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+        // Query only: menu availability must reflect the physical controls in
+        // configured devices rather than showing preset choices that cannot bind.
+        public bool CanApplyCompoundInputPreset(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return false;
+            var profile = ProfileViewModel.Profile;
+            var patterns = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "WASD", new[] { "A", "D", "W", "S" } },
+                { "Arrows", new[] { "Left", "Right", "Up", "Down" } },
+                { "Numpad", new[] { "Numpad4", "Numpad6", "Numpad8", "Numpad2" } },
+                { "UHJK", new[] { "H", "K", "U", "J" } },
+                { "UJHK", new[] { "H", "K", "U", "J" } }
+            };
+            string[] keys;
+            if (!patterns.TryGetValue(name, out keys))
+                keys = profile.CompoundBindingPresets?.FirstOrDefault(preset =>
+                    preset.Capacity == 4 && string.Equals(preset.Name, name,
+                        StringComparison.OrdinalIgnoreCase))?.Keys?.ToArray();
+            foreach (var device in profile.GetDeviceConfigurationList(DeviceIoType.Input))
+            {
+                if (device?.Device == null) continue;
+                if (name == "Controller D-pad" && FindDPadControls(device, DeviceIoType.Input) != null)
+                    return true;
+                var kind = DeviceVisualCatalog.Describe(device, profile, DeviceIoType.Input).Kind;
+                var nodes = FlattenBindingNodes(device.Device.GetDeviceBindingMenu(
+                    profile.Context, DeviceIoType.Input))
+                    .Where(node => node?.DeviceBindingInfo != null).ToList();
+                if (keys != null)
+                {
+                    if (keys.Length != 4 || kind != DeviceVisualKind.Keyboard) continue;
+                    var buttons = nodes.Where(node => node.DeviceBindingInfo.DeviceBindingCategory ==
+                        DeviceBindingCategory.Momentary).ToList();
+                    if (keys.All(key => buttons.Any(node =>
+                        MatchesControlLeafName(node.Title, key)))) return true;
+                    continue;
+                }
+                if (name == "Left stick" || name == "Right stick")
+                {
+                    if (kind == DeviceVisualKind.Keyboard || kind == DeviceVisualKind.Mouse ||
+                        kind == DeviceVisualKind.Unknown || kind == DeviceVisualKind.Unavailable) continue;
+                    var index = name == "Left stick" ? 0 : 2;
+                    if (nodes.Where(node => node.DeviceBindingInfo.DeviceBindingCategory ==
+                            DeviceBindingCategory.Range)
+                        .GroupBy(node => node.DeviceBindingInfo.KeyType)
+                        .Any(group => group.Any(node => node.DeviceBindingInfo.KeyValue == index)
+                                   && group.Any(node => node.DeviceBindingInfo.KeyValue == index + 1)))
+                        return true;
+                }
+                else if (name == "Face buttons")
+                {
+                    string[] face = null;
+                    if (kind == DeviceVisualKind.XboxOriginal || kind == DeviceVisualKind.Xbox360 ||
+                        kind == DeviceVisualKind.XboxOne || kind == DeviceVisualKind.XboxSeries)
+                        face = new[] { "X", "B", "Y", "A" };
+                    else if (kind == DeviceVisualKind.PlayStation1 ||
+                             kind == DeviceVisualKind.PlayStation2 ||
+                             kind == DeviceVisualKind.PlayStation3 ||
+                             kind == DeviceVisualKind.PlayStation4 ||
+                             kind == DeviceVisualKind.PlayStation5)
+                        face = new[] { "Square", "Circle", "Triangle", "Cross" };
+                    else if (kind == DeviceVisualKind.SwitchPro || kind == DeviceVisualKind.SwitchJoyCon ||
+                             kind == DeviceVisualKind.WiiClassic || kind == DeviceVisualKind.GameCube)
+                        face = new[] { "Y", "A", "X", "B" };
+                    if (face != null && face.All(label => nodes.Any(node =>
+                        node.DeviceBindingInfo.DeviceBindingCategory ==
+                            DeviceBindingCategory.Momentary &&
+                        MatchesControlLeafName(node.Title, label)))) return true;
+                }
+            }
+            return false;
+        }
+
         public bool ApplyTypedControllerStickPreset(int axisIndex, out string error,
             int groupIndex = 0)
         {
