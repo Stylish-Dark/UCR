@@ -755,7 +755,7 @@
                         <ItemsControl Grid.Column="0" ItemsSource="{Binding DeviceBindings}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Button Height="44" MinWidth="0" Margin="0 1 0 2" Padding="3 2"
+                                    <Button Height="44" MinWidth="90" Margin="0 1 0 2" Padding="3 2"
                                             Click="CompassOutputBind_OnClick"
                                             IsEnabled="{Binding BindingEnabled}"
                                             ToolTip="Choose output control"
