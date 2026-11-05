@@ -44,6 +44,75 @@
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
+            <!-- Group controls are plain dark toolbar actions. The application-wide
+                 raised-button style drew bright blue outlines around every idle
+                 group action, falsely implying four selected buttons. -->
+            <Style x:Key="UcrGroupAction" TargetType="{x:Type Button}">
+                <Setter Property="Width" Value="30"/>
+                <Setter Property="Height" Value="30"/>
+                <Setter Property="Margin" Value="2 0"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Foreground" Value="#D5D5D5"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type Button}">
+                            <Border x:Name="Chrome" Background="#292929"
+                                    BorderBrush="#505050" BorderThickness="1"
+                                    CornerRadius="3">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Chrome" Property="Background" Value="#3B3B3B"/>
+                                    <Setter TargetName="Chrome" Property="BorderBrush" Value="#8B8B8B"/>
+                                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Chrome" Property="Background" Value="#1C4A91"/>
+                                    <Setter TargetName="Chrome" Property="BorderBrush" Value="#5D91DF"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.36"/>
+                                    <Setter Property="Cursor" Value="Arrow"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style x:Key="UcrGroupBlockSwitch" TargetType="{x:Type ToggleButton}">
+                <Setter Property="Width" Value="36"/>
+                <Setter Property="Height" Value="20"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ToggleButton}">
+                            <Grid Width="36" Height="20">
+                                <Border x:Name="Track" Background="#4B4B4B"
+                                        BorderBrush="#777777" BorderThickness="1"
+                                        CornerRadius="10"/>
+                                <Ellipse x:Name="Thumb" Width="14" Height="14"
+                                         HorizontalAlignment="Left" VerticalAlignment="Center"
+                                         Margin="3 0 0 0" Fill="#E9E9E9"/>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Track" Property="Background" Value="#2359AA"/>
+                                    <Setter TargetName="Track" Property="BorderBrush" Value="#5895EF"/>
+                                    <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right"/>
+                                    <Setter TargetName="Thumb" Property="Margin" Value="0 0 3 0"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.4"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
             <converter:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
             <Style x:Key="ToolboxChoiceList" TargetType="{x:Type ListBox}">
                 <Setter Property="Background" Value="Transparent"/>
@@ -782,25 +851,25 @@
                                                     </StackPanel>
 
                                                     <StackPanel Grid.Column="3" Orientation="Horizontal">
-                                                        <TextBlock Text="Block inputs" VerticalAlignment="Center" FontSize="11"
-                                                                   Margin="0 0 5 0" Foreground="#C8C8C8"/>
-                                                        <ToggleButton Style="{StaticResource CompactBlockSwitch}"
-                                                                      VerticalAlignment="Center" Margin="0 0 9 0"
+                                                        <TextBlock Text="Block inputs" VerticalAlignment="Center" FontSize="12"
+                                                                   Margin="0 0 7 0" Foreground="#D0D0D0"/>
+                                                        <ToggleButton Style="{StaticResource UcrGroupBlockSwitch}"
+                                                                      VerticalAlignment="Center" Margin="0 13 0 0"
                                                                       IsChecked="{Binding BlockInputs, Mode=TwoWay}"
                                                                       IsEnabled="{Binding CanEdit}"
                                                                       ToolTip="Block all mapped physical inputs in this group when the provider supports blocking"/>
-                                                        <Button Width="27" Height="27" Padding="3" Margin="1 0"
+                                                        <Button Style="{StaticResource UcrGroupAction}"
                                                                 ToolTip="Rename group" IsEnabled="{Binding CanEdit}" Click="RenameMappingGroup_OnClick">
                                                             <materialDesign:PackIcon Kind="Pencil" Width="15" Height="15"/>
                                                         </Button>
-                                                        <Button Width="27" Height="27" Padding="3" Margin="1 0" ToolTip="Duplicate group"
+                                                        <Button Style="{StaticResource UcrGroupAction}" ToolTip="Duplicate group here"
                                                                 IsEnabled="{Binding CanEdit}" Click="DuplicateMappingGroup_OnClick">
-                                                            <materialDesign:PackIcon Kind="ContentCopy" Width="15" Height="15"/>
+                                                            <materialDesign:PackIcon Kind="ContentDuplicate" Width="16" Height="16"/>
                                                         </Button>
-                                                        <Button Width="27" Height="27" Padding="3" Margin="1 0" ToolTip="Copy group" Click="CopyMappingGroup_OnClick">
-                                                            <materialDesign:PackIcon Kind="ContentDuplicate" Width="15" Height="15"/>
+                                                        <Button Style="{StaticResource UcrGroupAction}" ToolTip="Copy group for pasting" Click="CopyMappingGroup_OnClick">
+                                                            <materialDesign:PackIcon Kind="ContentCopy" Width="16" Height="16"/>
                                                         </Button>
-                                                        <Button Width="27" Height="27" Padding="3" Margin="1 0" ToolTip="Delete group"
+                                                        <Button Style="{StaticResource UcrGroupAction}" ToolTip="Delete group"
                                                                 IsEnabled="{Binding CanEdit}" Click="RemoveMappingGroup_OnClick">
                                                             <materialDesign:PackIcon Kind="Delete" Width="15" Height="15" Foreground="#FF8B8B"/>
                                                         </Button>
