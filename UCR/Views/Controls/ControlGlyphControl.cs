@@ -501,7 +501,9 @@ namespace HidWizards.UCR.Views.Controls
             var rect = new Rect(b.Left + 2, b.Top + 3, Math.Max(1, b.Width - 4), Math.Max(1, b.Height - 6));
             var pen = Pen(new SolidColorBrush(Color.FromRgb(105, 105, 105)), 1.0);
             dc.DrawRoundedRectangle(null, pen, rect, 3, 3);
-            DrawCenteredText(dc, "?", new SolidColorBrush(Color.FromRgb(160, 160, 160)), rect, b.Height * 0.48, FontWeights.SemiBold);
+            // An unassigned control is an actionable binding slot, not an unknown device.
+            DrawCenteredText(dc, "Bind", new SolidColorBrush(Color.FromRgb(188, 188, 188)), rect,
+                Math.Min(13, b.Height * 0.35), FontWeights.SemiBold);
         }
 
         private static void DrawCenteredText(DrawingContext dc, string text, Brush brush, Rect rect, double fontSize, FontWeight weight)
