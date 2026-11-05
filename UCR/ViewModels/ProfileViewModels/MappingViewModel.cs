@@ -3641,7 +3641,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             else if (deviceKind == DeviceVisualKind.Keyboard)
             {
                 visual.ControlKind = ControlVisualKind.CompoundKeys;
-                visual.ControlLabel = string.Join("|", names.Take(4));
+                // Providers may report "Keys,A" or "Keyboard,Keys,A".
+                // The physical keycaps must show A, D, W, S, not category paths.
+                var keys = names.Select(name =>
+                {
+                    var label = name ?? string.Empty;
+                    var separator = Math.Max(label.LastIndexOf(','), label.LastIndexOf(':'));
+                    return (separator >= 0 ? label.Substring(separator + 1) : label).Trim();
+                });
+                visual.ControlLabel = string.Join("|", keys.Take(4));
             }
             else
             {
