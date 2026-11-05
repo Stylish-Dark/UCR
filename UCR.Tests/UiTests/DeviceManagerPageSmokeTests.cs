@@ -642,6 +642,30 @@ namespace HidWizards.UCR.Tests.UiTests
                     new Point(compoundCaption.ActualWidth, 0), compoundHeaderRow).X;
                 Assert.That(captionRightInRow, Is.LessThanOrEqualTo(compoundHeaderRow.ActualWidth + 1),
                     "The preset name must not overrun the collapsed mapping row.");
+
+                // The commissioner must not lose his pointer coordinates when
+                // changing Button / Axis / 4-Way: a collapsed header's physical
+                // row size and top edge must remain invariant.
+                var originalHeaderHeight = compoundHeaderRow.ActualHeight;
+                var originalHeaderTop = compoundHeaderRow.TranslatePoint(new Point(0, 0), page).Y;
+                foreach (var representation in new[] { 2, 3, 1 })
+                {
+                    Assert.That(compoundHeader.SetInputRepresentation(representation), Is.True,
+                        "This mapping must support all three binding representations.");
+                    page.Measure(available);
+                    page.Arrange(new Rect(new Point(0, 0), available));
+                    page.UpdateLayout();
+                    compoundHeaderRow = FindVisualChildren<ListView>(page)
+                        .Single(list => list.Name == "MappingRowsList").ItemContainerGenerator
+                        .ContainerFromItem(compoundHeader) as ListViewItem;
+                    Assert.That(compoundHeaderRow, Is.Not.Null);
+                    Assert.That(compoundHeaderRow.ActualHeight,
+                        Is.EqualTo(originalHeaderHeight).Within(1.0),
+                        "Changing input representation must never grow or shrink a collapsed mapping header.");
+                    Assert.That(compoundHeaderRow.TranslatePoint(new Point(0, 0), page).Y,
+                        Is.EqualTo(originalHeaderTop).Within(1.0),
+                        "Changing input representation must not move the mapping header's screen coordinates.");
+                }
                 compoundHeader.Remove();
                 for (var index = 0; index < 40; index++)
                 {
