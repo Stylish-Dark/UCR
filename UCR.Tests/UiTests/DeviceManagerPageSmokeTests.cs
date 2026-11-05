@@ -1274,9 +1274,8 @@ namespace HidWizards.UCR.Tests.UiTests
             };
             var profile = context.ProfilesManager.CreateProfile("Multiple input keyboards", null, null);
             context.ProfilesManager.AddProfile(profile);
-            Device makeKeyboard(string title, string handle, string[] keys, int baseValue)
-            {
-                return new Device(new DeviceCache
+            Func<string, string, string[], int, Device> makeKeyboard =
+                (title, handle, keys, baseValue) => new Device(new DeviceCache
                 {
                     Title = title,
                     ProviderName = "Core_Interception",
@@ -1300,7 +1299,6 @@ namespace HidWizards.UCR.Tests.UiTests
                         }
                     }
                 });
-            }
             var partial = new DeviceConfiguration(makeKeyboard(
                 "Partial keyboard", "partial", new[] { "A" }, 10));
             var complete = new DeviceConfiguration(makeKeyboard(
