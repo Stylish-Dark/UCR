@@ -1196,6 +1196,26 @@ namespace HidWizards.UCR.Tests.UiTests
                     DataContext = mapping
                 };
                 CaptureEditorPreview(namedPresetCard, 1050, "UCR-named-fourway-preset-preview.png");
+                var header = mapping.CollapsedInputRows.Single(row =>
+                    row.Visuals.Any(visual => visual.CompoundPresetName == "My Movement"));
+                Assert.That(header.Visuals[0].ControlKind, Is.EqualTo(ControlVisualKind.CompoundKeys),
+                    "Four assigned keyboard directions must appear as one compound header glyph.");
+                Assert.That(header.Visuals[0].IsCompoundVisual, Is.True);
+                var namedWorkspace = new ProfilePage(context, profile, embedded: true);
+                try
+                {
+                    namedWorkspace.SuspendEmbeddedVisuals();
+                    var fullSize = new Size(1440, 900);
+                    namedWorkspace.Measure(fullSize);
+                    namedWorkspace.Arrange(new Rect(new Point(0, 0), fullSize));
+                    namedWorkspace.UpdateLayout();
+                    CaptureWorkspacePreview(namedWorkspace, 1440, 900,
+                        "UCR-named-fourway-header-preview.png");
+                }
+                finally
+                {
+                    namedWorkspace.Dispose();
+                }
                 Assert.That(mapping.SetInputRepresentation(2), Is.True);
                 Assert.That(mapping.Mapping.CompoundDigitalInput, Is.False);
                 Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(2),
