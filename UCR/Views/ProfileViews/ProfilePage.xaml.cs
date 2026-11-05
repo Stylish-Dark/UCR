@@ -1305,12 +1305,12 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (_disposed || SidebarGrid == null || SelectedMappingInspector == null
                 || ProfileOptionsHost == null) return;
             SelectedMappingInspector.Visibility = Visibility.Collapsed;
-            SidebarGrid.Visibility = Visibility.Collapsed;
-            ProfileOptionsHost.Visibility = Visibility.Visible;
+            SidebarGrid.Visibility = Visibility.Visible;
+            ProfileOptionsHost.Visibility = Visibility.Collapsed;
             DockedDevicesNotice.Visibility = Visibility.Collapsed;
-            MappingToolboxPanel.Visibility = Visibility.Collapsed;
-            MappingFiltersPanel.Visibility = _filterDock != null ? Visibility.Visible : Visibility.Collapsed;
-            ProfileDevicesPanel.Visibility = _deviceDock != null ? Visibility.Visible : Visibility.Collapsed;
+            MappingFiltersPanel.Visibility = Visibility.Visible;
+            CompoundPresetsPanel.Visibility = Visibility.Visible;
+            ProfileDevicesPanel.Visibility = Visibility.Visible;
         }
 
         public void ShowWorkspaceInspector()
