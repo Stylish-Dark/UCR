@@ -169,8 +169,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (!CoreInputs.Any(input => input.DeviceBinding.IsBound))
                     return _owner?.InputIsFullStick == true ? "Choose stick / D-pad ▾"
                         : _owner?.InputIsTrigger == true ? "Bind" : "Bind";
-                return string.Join("  /  ", CoreInputs.Select(input => input.DeviceBinding.IsBound
-                    ? input.CompactBindButtonText : "—"));
+                return _owner?.ResolveCompoundPresetName(CoreInputs, false)
+                    ?? "Custom 4-Way";
             }
         }
         public string CompoundDeviceLabel
@@ -362,13 +362,72 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (slots == null || slots.Count == 0 ||
                     !slots.Any(binding => binding.DeviceBinding.IsBound))
                     return "Select 4-Way ▾";
-                if (Mapping.CompoundDigitalOutput)
-                    return "D-pad · " + string.Join(" / ", slots.Select(binding =>
-                        binding.DeviceBinding.IsBound ? binding.CompactBindButtonText : "—"));
-                return string.Join("  ·  ", slots.Select((binding, index) =>
-                    (index == 0 ? "X: " : "Y: ") + (binding.DeviceBinding.IsBound
-                        ? binding.CompactBindButtonText : "—")));
+                return ResolveCompoundPresetName(slots, true) ?? "Custom 4-Way";
             }
+        }
+
+        // The selected preset is identified from the saved physical channels, so
+        // its name survives profile reloads and never goes stale after rebinding.
+        public string ResolveCompoundPresetName(
+            IEnumerable<DeviceBindingViewModel> bindings, bool output)
+        {
+            var channels = (bindings ?? Enumerable.Empty<DeviceBindingViewModel>())
+                .Where(binding => binding?.DeviceBinding != null).ToList();
+            if (channels.Count == 0 || channels.Any(binding => !binding.DeviceBinding.IsBound))
+                return null;
+
+            var labels = channels.Select(binding => binding.CompactBindButtonText).ToArray();
+            if (channels.Any(binding =>
+                binding.DeviceBindingCategory == DeviceBindingCategory.Range))
+            {
+                var right = labels.Any(name => name.IndexOf("Right", StringComparison.OrdinalIgnoreCase) >= 0
+                    || name.StartsWith("RX", StringComparison.OrdinalIgnoreCase)
+                    || name.StartsWith("RY", StringComparison.OrdinalIgnoreCase)
+                    || name.StartsWith("RS", StringComparison.OrdinalIgnoreCase))
+                    || channels.Any(binding => binding.DeviceBinding.KeyValue == 2
+                        || binding.DeviceBinding.KeyValue == 3);
+                return right ? "Right stick" : "Left stick";
+            }
+
+            if (channels.Count != 4) return null;
+            // Input slots use Left, Right, Up, Down. Output digital channels
+            // are stored Up, Down, Left, Right by the output preset picker.
+            if (output) labels = new[] { labels[2], labels[3], labels[0], labels[1] };
+
+            var templates = new List<Tuple<string, string[]>>
+            {
+                Tuple.Create("WASD", new[] { "A", "D", "W", "S" }),
+                Tuple.Create("Arrows", new[] { "Left", "Right", "Up", "Down" }),
+                Tuple.Create("Numpad", new[] { "Numpad4", "Numpad6", "Numpad8", "Numpad2" }),
+                Tuple.Create("UHJK", new[] { "H", "K", "U", "J" })
+            };
+            foreach (var custom in ProfileViewModel.Profile.CompoundBindingPresets ??
+                new List<CompoundBindingPreset>())
+                if (custom.Capacity == 4 && custom.Keys?.Count == 4)
+                    templates.Add(Tuple.Create(custom.Name, custom.Keys.ToArray()));
+
+            foreach (var template in templates)
+            {
+                if (labels.Select((label, index) => PresetControlMatches(label,
+                    template.Item2[index])).All(match => match))
+                    return template.Item1;
+            }
+
+            if (labels.Any(label => label.IndexOf("D-pad", StringComparison.OrdinalIgnoreCase) >= 0
+                || label.IndexOf("Dpad", StringComparison.OrdinalIgnoreCase) >= 0
+                || label.IndexOf("POV", StringComparison.OrdinalIgnoreCase) >= 0
+                || label.IndexOf("Hat", StringComparison.OrdinalIgnoreCase) >= 0))
+                return "D-pad";
+            return "Face buttons";
+        }
+
+        private static bool PresetControlMatches(string label, string expected)
+        {
+            if (MatchesControlLeafName(label, expected)) return true;
+            if (expected.StartsWith("Numpad", StringComparison.OrdinalIgnoreCase))
+                return MatchesControlLeafName(label, expected.Replace("Numpad", "Num"))
+                    || MatchesControlLeafName(label, expected.Replace("Numpad", "Keypad"));
+            return false;
         }
 
         public bool HasAssignedControl =>
