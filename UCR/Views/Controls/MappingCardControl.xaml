@@ -838,10 +838,10 @@
                             </Style.Triggers>
                         </Style>
                     </UniformGrid.Style>
-                    <Grid Margin="0 0 6 5">
+                    <Grid Margin="0 0 6 5" VerticalAlignment="Top">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" SharedSizeGroup="UcrHeaderRow"/>
-                            <RowDefinition Height="Auto" SharedSizeGroup="UcrBodyRow"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto" SharedSizeGroup="UcrActionsRow"/>
                         </Grid.RowDefinitions>
                         <Grid.Style>
@@ -923,10 +923,10 @@
                                 Style="{StaticResource UcrAccentOutlineButton}"
                                 ToolTip="Add another complete alternative input set"/>
                     </Grid>
-                    <Grid Margin="6 0 0 5">
+                    <Grid Margin="6 0 0 5" VerticalAlignment="Top">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" SharedSizeGroup="UcrHeaderRow"/>
-                            <RowDefinition Height="Auto" SharedSizeGroup="UcrBodyRow"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto" SharedSizeGroup="UcrActionsRow"/>
                         </Grid.RowDefinitions>
                         <Grid.Style>
