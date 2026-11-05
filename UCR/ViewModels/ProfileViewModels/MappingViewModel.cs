@@ -1939,38 +1939,47 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 error = "A 4-Way preset must contain four distinct directional keys.";
                 return false;
             }
-            var current = profile.GetDeviceConfiguration(DeviceIoType.Input,
-                source.DeviceConfigurationGuid);
-            var keyboard = current != null &&
-                DeviceVisualCatalog.Describe(current.Device, DeviceIoType.Input).Kind == DeviceVisualKind.Keyboard
-                ? current : profile.GetDeviceConfigurationList(DeviceIoType.Input).FirstOrDefault(config =>
-                    config?.Device != null &&
-                    DeviceVisualCatalog.Describe(config.Device, DeviceIoType.Input).Kind == DeviceVisualKind.Keyboard);
-            if (keyboard?.Device == null)
+            var currentGuid = source.DeviceConfigurationGuid;
+            var primaryGuid = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input)?.Guid;
+            // A preset is offered when any configured keyboard has the complete
+            // set. Applying it must use that same criterion, not blindly choose
+            // the first keyboard (which may expose only some keys).
+            var compatible = profile.GetDeviceConfigurationList(DeviceIoType.Input)
+                .Where(config => config?.Device != null &&
+                    DeviceVisualCatalog.Describe(config, profile, DeviceIoType.Input).Kind ==
+                        DeviceVisualKind.Keyboard)
+                .Select(config =>
+                {
+                    var available = FlattenBindingNodes(config.Device.GetDeviceBindingMenu(
+                        profile.Context, DeviceIoType.Input))
+                        .Where(node => node?.DeviceBindingInfo != null &&
+                            node.DeviceBindingInfo.DeviceBindingCategory ==
+                                DeviceBindingCategory.Momentary).ToList();
+                    var matched = keys.Select(name =>
+                    {
+                        var aliases = name.StartsWith("Numpad", StringComparison.OrdinalIgnoreCase)
+                            ? new[] { name, name.Replace("Numpad", "Num"),
+                                name.Replace("Numpad", "Keypad") }
+                            : new[] { name };
+                        return available.FirstOrDefault(node => aliases.Any(alias =>
+                            MatchesControlLeafName(node.Title, alias)));
+                    }).ToArray();
+                    return new { Configuration = config, Selections = matched };
+                })
+                .Where(candidate => candidate.Selections.All(node => node != null))
+                .ToList();
+            var selected = compatible.FirstOrDefault(candidate =>
+                    candidate.Configuration.Guid == currentGuid)
+                ?? compatible.FirstOrDefault(candidate =>
+                    candidate.Configuration.Guid == primaryGuid)
+                ?? compatible.FirstOrDefault();
+            if (selected == null)
             {
-                error = "Add a keyboard to this profile first.";
+                error = "No configured keyboard exposes all four keys for " + preset + ".";
                 return false;
             }
-            var controls = FlattenBindingNodes(keyboard.Device.GetDeviceBindingMenu(
-                profile.Context, DeviceIoType.Input))
-                .Where(node => node.DeviceBindingInfo != null &&
-                    node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary)
-                .ToList();
-            var selections = new List<DeviceBindingNode>();
-            foreach (var name in keys)
-            {
-                var aliases = name.StartsWith("Numpad", StringComparison.OrdinalIgnoreCase)
-                    ? new[] { name, name.Replace("Numpad", "Num"), name.Replace("Numpad", "Keypad") }
-                    : new[] { name };
-                var choice = controls.FirstOrDefault(node => aliases.Any(alias =>
-                    MatchesControlLeafName(node.Title, alias)));
-                if (choice == null)
-                {
-                    error = "The keyboard does not expose " + name + ".";
-                    return false;
-                }
-                selections.Add(choice);
-            }
+            var keyboard = selected.Configuration;
+            var selections = selected.Selections;
 
             // Discovery must complete before any topology change. A missing
             // keyboard/key must leave the mapping and its bindings untouched.
