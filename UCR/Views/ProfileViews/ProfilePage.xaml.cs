@@ -1237,7 +1237,7 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         public void DockRightWorkspacePanels()
         {
-            DockProfileFilters(RightFiltersHost);
+            // The sidebar owns Filters; do not move them to a second host.
         }
 
         public void UndockRightWorkspacePanels()
