@@ -138,6 +138,72 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void CompactBindingToolbarNeverOverlapsWhenMenuChangesSides()
+        {
+            EnsureApplicationResources();
+            var keyboard = new FakeCompactDeviceItem
+            {
+                Title = "Keyboard",
+                Visual = DeviceVisualCatalog.Describe(
+                    new Device("Keyboard", "Core_Interception", "kbd", 0), DeviceIoType.Input)
+            };
+            foreach (var menuOnLeft in new[] { false, true })
+            {
+                var control = new CompactInputBindingControl
+                {
+                    DataContext = new FakeCompactBinding
+                    {
+                        Devices = new[] { keyboard },
+                        SelectedDevice = keyboard
+                    },
+                    CompactDirectional = true,
+                    MenuOnLeft = menuOnLeft
+                };
+                control.Measure(new Size(500, 80));
+                control.Arrange(new Rect(0, 0, 500, 80));
+                control.UpdateLayout();
+
+                var device = (ComboBox)control.FindName("DeviceSelectionBox");
+                var bind = (Button)control.FindName("BindButton");
+                var menu = (Button)control.FindName("MenuButton");
+                var actionGroup = (Grid)control.FindName("BindingActionGroup");
+                var deviceLeft = device.TranslatePoint(new Point(), control).X;
+                var bindLeft = bind.TranslatePoint(new Point(), control).X;
+                var menuLeft = menu.TranslatePoint(new Point(), control).X;
+                var deviceRight = deviceLeft + device.ActualWidth;
+                var bindRight = bindLeft + bind.ActualWidth;
+                var menuRight = menuLeft + menu.ActualWidth;
+
+                Assert.That(menu.ActualWidth, Is.GreaterThanOrEqualTo(40));
+                Assert.That(actionGroup.ActualWidth, Is.LessThanOrEqualTo(301),
+                    "The Bind/options group must retain compact, intrinsic width.");
+                if (menuOnLeft)
+                {
+                    Assert.That(menuRight, Is.EqualTo(bindLeft).Within(2),
+                        "Left options must touch, never overlap, the Bind button.");
+                    Assert.That(bindRight, Is.LessThanOrEqualTo(deviceLeft + 2),
+                        "The right-side device selector must not cover Bind.");
+                }
+                else
+                {
+                    Assert.That(deviceRight, Is.LessThanOrEqualTo(bindLeft + 2),
+                        "The left-side device selector must not cover Bind.");
+                    Assert.That(bindRight, Is.EqualTo(menuLeft).Within(2),
+                        "Right options must touch, never overlap, the Bind button.");
+                }
+
+                control.DeviceOnly = true;
+                control.Measure(new Size(500, 80));
+                control.Arrange(new Rect(0, 0, 500, 80));
+                control.UpdateLayout();
+                Assert.That(control.ActualWidth, Is.EqualTo(62).Within(1));
+                Assert.That(bind.Visibility, Is.EqualTo(Visibility.Collapsed));
+                Assert.That(menu.Visibility, Is.EqualTo(Visibility.Collapsed));
+            }
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void FilterSelectorOpensWithoutMissingXamlResources()
         {
             EnsureApplicationResources();
