@@ -450,6 +450,19 @@ namespace HidWizards.UCR.Tests.UiTests
                 presetExpander.IsExpanded = false;
                 page.UpdateLayout();
 
+                // Profile options must remain accessible, but can never occupy
+                // the same hit-test surface as the unified right sidebar.
+                var optionsHost = page.FindName("ProfileOptionsHost") as ContentControl;
+                Assert.That(optionsHost, Is.Not.Null);
+                page.ShowWorkspaceToolbox("Profile options");
+                page.UpdateLayout();
+                Assert.That(optionsHost.Visibility, Is.EqualTo(Visibility.Visible));
+                Assert.That(sidebarScroll.Visibility, Is.EqualTo(Visibility.Collapsed));
+                page.ShowWorkspaceInspector();
+                page.UpdateLayout();
+                Assert.That(optionsHost.Visibility, Is.EqualTo(Visibility.Collapsed));
+                Assert.That(sidebarScroll.Visibility, Is.EqualTo(Visibility.Visible));
+
                 var rows = FindVisualChildren<ListView>(page)
                     .SingleOrDefault(list => list.Name == "MappingRowsList");
                 Assert.That(rows, Is.Not.Null);
