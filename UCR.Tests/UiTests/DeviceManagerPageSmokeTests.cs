@@ -727,7 +727,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.UpdateLayout();
                 Assert.That(presetExpander.IsExpanded, Is.False);
                 Assert.That(devicesExpander.IsExpanded, Is.True);
-                CaptureWorkspacePreview(page, 1440, 900, "UCR-profile-sidebar-devices-preview.png");
+                // Devices are already checked for bounds and reachability above.
                 sidebarScroll.ScrollToTop();
                 devicesExpander.IsExpanded = true;
                 presetExpander.IsExpanded = false;
@@ -741,6 +741,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.UpdateLayout();
                 Assert.That(optionsHost.Visibility, Is.EqualTo(Visibility.Visible));
                 Assert.That(sidebarScroll.Visibility, Is.EqualTo(Visibility.Collapsed));
+                CaptureWorkspacePreview(page, 1440, 900, "UCR-profile-options-preview.png");
                 page.ShowWorkspaceInspector();
                 page.UpdateLayout();
                 Assert.That(optionsHost.Visibility, Is.EqualTo(Visibility.Collapsed));
