@@ -617,7 +617,10 @@ jobs:
               throw "Mandatory WPF screenshot missing: $name"
             }
             $size = (Get-Item -LiteralPath $name).Length
-            if ($size -lt 5000) {
+            # The dedicated 116x64 icon capture legitimately compresses to
+            # hundreds of bytes. Full workspace captures still need 5 KB.
+            $minimumBytes = if ($name -eq 'UCR-two-button-full-circles-preview.png') { 500 } else { 5000 }
+            if ($size -lt $minimumBytes) {
               throw "WPF screenshot is suspiciously empty or truncated: $name [$size bytes]"
             }
             Write-Host "Visual QA screenshot ready: $name [$size bytes]"
