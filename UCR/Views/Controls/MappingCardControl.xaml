@@ -567,8 +567,9 @@
                                                               Click="DirectionalBlock_OnClick"
                                                               ToolTip="Block the assigned controls in this OR set"/>
                                             </StackPanel>
-                                            <Button Content="×" FontSize="14" Width="24" Height="24"
-                                                    Margin="8 0 0 0" Padding="0"
+                                            <Button Width="30" Height="30" Padding="0"
+                                                    Style="{StaticResource UcrDeleteItemButton}"
+                                                    Margin="8 0 0 0"
                                                     Click="RemoveCondition_OnClick"
                                                     ToolTip="Remove this OR group"
                                                     Visibility="{Binding OrLabelVisibility}"/>
@@ -636,6 +637,7 @@
                                                                    Margin="2 0 0 3"/>
                                                         <local:CompactInputBindingControl
                                                             DeviceBinding="{Binding DeviceBinding}"
+                                                            CompactDirectional="True"
                                                             HorizontalAlignment="Stretch"/>
                                                     </StackPanel>
                                                 </DataTemplate>
