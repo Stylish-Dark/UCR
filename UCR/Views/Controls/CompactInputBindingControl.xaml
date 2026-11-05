@@ -365,6 +365,11 @@
                         <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource AncestorType={x:Type local:CompactInputBindingControl}}}" Value="True">
                             <Setter Property="Visibility" Value="Collapsed"/>
                         </DataTrigger>
+                        <!-- A device-only picker must not paint an orphaned Block
+                             toggle outside its zero-width action column. -->
+                        <DataTrigger Binding="{Binding DeviceOnly, RelativeSource={RelativeSource AncestorType={x:Type local:CompactInputBindingControl}}}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
                     </Style.Triggers>
                 </Style>
             </StackPanel.Style>
