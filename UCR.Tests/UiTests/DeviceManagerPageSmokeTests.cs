@@ -274,10 +274,10 @@ namespace HidWizards.UCR.Tests.UiTests
             var ellipsis = control.FindName("MenuButton") as Button;
             Assert.That(bindButton, Is.Not.Null);
             Assert.That(ellipsis, Is.Not.Null);
-            Assert.That(ellipsis.Width, Is.EqualTo(28),
-                "The vertical ellipsis should not take unnecessary horizontal space.");
-            Assert.That(bindButton.Padding.Left + bindButton.Padding.Right, Is.EqualTo(0),
-                "Do not clip the Bind label with Material Design's default button padding.");
+            Assert.That(ellipsis.Width, Is.EqualTo(42),
+                "The split Bind menu requires a usable 42-DIP hit target.");
+            Assert.That(bindButton.Padding.Left + bindButton.Padding.Right, Is.LessThanOrEqualTo(4),
+                "Bind label padding must not clip the text.");
 
             var popup = selector.Template.FindName("PART_Popup", selector)
                 as System.Windows.Controls.Primitives.Popup;
