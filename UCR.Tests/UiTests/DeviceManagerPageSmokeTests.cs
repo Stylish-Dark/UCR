@@ -2596,11 +2596,15 @@ namespace HidWizards.UCR.Tests.UiTests
 
                 // The compact split Bind action must remain legible in the tight
                 // two-column editor, including when multiple AND guards are present.
-                foreach (var compact in FindVisualChildren<CompactInputBindingControl>(card)
-                    .Where(control => control.Visibility == Visibility.Visible))
+                var renderedBindControls = FindVisualChildren<CompactInputBindingControl>(card)
+                    .Where(control => control.Visibility == Visibility.Visible && control.ActualWidth > 0)
+                    .Select(control => control.FindName("BindButton") as Button)
+                    .Where(button => button != null && button.ActualWidth > 0)
+                    .ToList();
+                Assert.That(renderedBindControls.Count, Is.GreaterThanOrEqualTo(3),
+                    "The two main inputs and the AND guard must render usable Bind actions.");
+                foreach (var action in renderedBindControls)
                 {
-                    var action = compact.FindName("BindButton") as Button;
-                    if (action == null || action.Visibility != Visibility.Visible) continue;
                     Assert.That(action.ActualWidth, Is.GreaterThanOrEqualTo(37),
                         "Bind must not collapse into a two-line 20-pixel sliver.");
                     var label = FindVisualChildren<TextBlock>(action).FirstOrDefault();
