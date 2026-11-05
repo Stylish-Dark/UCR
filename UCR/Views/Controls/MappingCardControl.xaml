@@ -1052,7 +1052,7 @@
                              are positioned spatially, not in a vertical stack. -->
                         <Grid x:Name="OutputDirectionalCompassGrid"
                               Visibility="{Binding OutputDirectionalCompassVisibility}"
-                              Margin="0 0 0 4" HorizontalAlignment="Center" MaxWidth="390">
+                              Margin="0 0 0 4" HorizontalAlignment="Stretch" MaxWidth="480">
                             <!-- A D-pad is one spatial cluster, not four unrelated
                                  buttons spread across the entire output pane. -->
                             <Grid.ColumnDefinitions>
