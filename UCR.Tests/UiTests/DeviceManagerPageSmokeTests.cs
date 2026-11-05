@@ -1687,11 +1687,84 @@ namespace HidWizards.UCR.Tests.UiTests
                 "A D-pad direction must not be rendered as an Xbox A/B/X/Y face button.");
             Assert.That(pages.All(tab => tab.Style != null), Is.True,
                 "Output tabs must use explicit dark chrome, not unreadable white-on-white defaults.");
+            var signedUp = directionalButtons.Single(button =>
+                string.Equals(button.ToolTip as string, "Left Stick Up", StringComparison.Ordinal));
+            var signedIcon = ((StackPanel)signedUp.Content).Children.OfType<TextBlock>().First();
+            Assert.That(signedIcon.Text, Is.EqualTo("↑"),
+                "A signed half-axis must visibly indicate its physical direction.");
+            Assert.That(((ScrollViewer)pages[2].Content).Height, Is.LessThan(340),
+                "Six full-range axes must not require a permanently oversized popup.");
+            Assert.That(((ScrollViewer)pages[0].Content).Height, Is.LessThan(340),
+                "Four buttons must not leave a large blank list below them.");
             CaptureWorkspacePreview(picker, 470, 470,
                 "UCR-output-picker-axes-preview.png");
             tabs.SelectedIndex = 1;
             CaptureWorkspacePreview(picker, 470, 470,
                 "UCR-output-picker-directions-preview.png");
+        }
+
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void OutputPickerOmitsEmptyCategoriesAndSizesSingleControlToContent()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            var profile = context.ProfilesManager.CreateProfile("Compact output picker QC", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            var device = new Device(new DeviceCache
+            {
+                Title = "Single-axis output",
+                ProviderName = "SharpDX_XInput",
+                DeviceHandle = "output-single-axis",
+                DeviceBindingMenu = new List<HidWizards.UCR.Core.Models.Binding.DeviceBindingNode>
+                {
+                    new HidWizards.UCR.Core.Models.Binding.DeviceBindingNode
+                    {
+                        Title = "Axes",
+                        ChildrenNodes = new List<HidWizards.UCR.Core.Models.Binding.DeviceBindingNode>
+                        {
+                            new HidWizards.UCR.Core.Models.Binding.DeviceBindingNode
+                            {
+                                Title = "LT",
+                                DeviceBindingInfo = new HidWizards.UCR.Core.Models.Binding.DeviceBindingInfo
+                                {
+                                    DeviceBindingCategory = HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Range,
+                                    KeyType = 3, KeyValue = 4
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            var configuration = new DeviceConfiguration(device);
+            profile.AddDeviceConfigurations(new List<DeviceConfiguration> { configuration },
+                DeviceIoType.Output);
+            var binding = new HidWizards.UCR.Core.Models.Binding.DeviceBinding
+            {
+                Profile = profile,
+                DeviceIoType = DeviceIoType.Output,
+                DeviceBindingCategory = HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Range,
+                DeviceConfigurationGuid = configuration.Guid
+            };
+            var control = new CompactInputBindingControl { DeviceBinding = binding };
+            var createPicker = typeof(CompactInputBindingControl).GetMethod(
+                "BuildOutputPickerContent", System.Reflection.BindingFlags.NonPublic |
+                System.Reflection.BindingFlags.Instance);
+            Assert.That(createPicker, Is.Not.Null);
+            var picker = createPicker.Invoke(control,
+                new object[] { configuration, new Popup() }) as Border;
+            Assert.That(picker, Is.Not.Null);
+            var tabs = FindVisualChildren<TabControl>(picker).Single();
+            Assert.That(tabs.Items.Count, Is.EqualTo(1),
+                "Empty Buttons and Directions tabs should not appear for a single-axis device.");
+            Assert.That(((TabItem)tabs.Items[0]).Header, Is.EqualTo("Axes"));
+            Assert.That(tabs.SelectedIndex, Is.EqualTo(0));
+            var scrolling = (ScrollViewer)((TabItem)tabs.Items[0]).Content;
+            Assert.That(scrolling.Height, Is.InRange(58, 100),
+                "One physical output control must not waste hundreds of pixels.");
+            CaptureWorkspacePreview(picker, 470, 220,
+                "UCR-output-picker-single-axis-preview.png");
         }
 
         [TestCase("A", "A", true)]
