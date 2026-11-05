@@ -574,26 +574,28 @@
                                                     Visibility="{Binding OrLabelVisibility}"/>
                                         </StackPanel>
                                     </Grid>
-                                    <Grid Margin="3 4 3 3" Visibility="{Binding StandaloneCompoundVisibility}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" MinWidth="0"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Button Grid.Column="0" Content="{Binding CompoundPrimaryLabel}"
-                                                Click="CompoundPrimaryBind_OnClick"
+                                    <!-- One compound input is one compact binding action, not a
+                                         blue strip consuming the width of the entire input pane. -->
+                                    <StackPanel Orientation="Horizontal" Margin="3 4 3 3"
+                                                Visibility="{Binding StandaloneCompoundVisibility}">
+                                        <Button Click="CompoundPrimaryBind_OnClick"
                                                 ToolTip="Bind the axis or choose a complete preset"
                                                 HorizontalContentAlignment="Center"
+                                                HorizontalAlignment="Left" MinWidth="154" MaxWidth="300"
                                                 Height="38" Foreground="#FFFFFF"
                                                 Style="{StaticResource MaterialDesignRaisedButton}"
-                                                FontWeight="SemiBold" Padding="8 3"/>
-                                        <Button Grid.Column="1" Content="⋮" FontSize="20"
+                                                FontWeight="SemiBold" Padding="8 3">
+                                            <TextBlock Text="{Binding CompoundPrimaryLabel}"
+                                                       TextTrimming="CharacterEllipsis" MaxWidth="268"/>
+                                        </Button>
+                                        <Button Content="⋮" FontSize="20" Width="38"
                                                 Visibility="{Binding CompoundAdvancedMenuVisibility}"
                                                 Click="CompoundBindingsMenu_OnClick"
                                                 ToolTip="Compound binding options"
                                                 Height="38" Margin="3 0 0 0" Padding="0"
                                                 Foreground="#FFFFFF"
                                                 Style="{StaticResource MaterialDesignRaisedButton}"/>
-                                    </Grid>
+                                    </StackPanel>
                                     <!-- 4-Way occupies the single compound control above.
                                          Individual implementation channels are not separate user bindings. -->
                                     <StackPanel Visibility="{Binding ButtonPairVisibility}">
