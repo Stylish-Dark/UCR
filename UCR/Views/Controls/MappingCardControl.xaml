@@ -69,6 +69,60 @@
             </Setter>
         </Style>
 
+        <!-- Draw multi-channel selector states with actual geometry instead of
+             font-dependent repeated glyphs. Two axes stack vertically; four
+             buttons form a balanced two-by-two grid. -->
+        <DataTemplate x:Key="DirectionalChoiceGlyphTemplate">
+            <Grid Width="26" Height="23" SnapsToDevicePixels="True">
+                <TextBlock x:Name="SingleGlyph" Text="{Binding}" FontSize="17"
+                           FontWeight="SemiBold" TextAlignment="Center"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <StackPanel x:Name="StackedAxes" Visibility="Collapsed"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Viewbox Width="22" Height="10" Stretch="Uniform">
+                        <TextBlock Text="↔" FontSize="16" FontWeight="SemiBold"/>
+                    </Viewbox>
+                    <Viewbox Width="22" Height="10" Stretch="Uniform">
+                        <TextBlock Text="↔" FontSize="16" FontWeight="SemiBold"/>
+                    </Viewbox>
+                </StackPanel>
+                <Grid x:Name="FourDots" Width="19" Height="19" Visibility="Collapsed"
+                      HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                    <Ellipse Grid.Row="0" Grid.Column="0" Width="6" Height="6" HorizontalAlignment="Center" VerticalAlignment="Center"
+                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"/>
+                    <Ellipse Grid.Row="0" Grid.Column="1" Width="6" Height="6" HorizontalAlignment="Center" VerticalAlignment="Center"
+                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"/>
+                    <Ellipse Grid.Row="1" Grid.Column="0" Width="6" Height="6" HorizontalAlignment="Center" VerticalAlignment="Center"
+                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"/>
+                    <Ellipse Grid.Row="1" Grid.Column="1" Width="6" Height="6" HorizontalAlignment="Center" VerticalAlignment="Center"
+                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"/>
+                </Grid>
+                <StackPanel x:Name="TwoDots" Visibility="Collapsed"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Ellipse Width="6" Height="6" Margin="0 1 0 2"
+                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"/>
+                    <Ellipse Width="6" Height="6" Margin="0 2 0 1"
+                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"/>
+                </StackPanel>
+            </Grid>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding}" Value="↔↔">
+                    <Setter TargetName="SingleGlyph" Property="Visibility" Value="Collapsed"/>
+                    <Setter TargetName="StackedAxes" Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding}" Value="⠛">
+                    <Setter TargetName="SingleGlyph" Property="Visibility" Value="Collapsed"/>
+                    <Setter TargetName="FourDots" Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding}" Value="••">
+                    <Setter TargetName="SingleGlyph" Property="Visibility" Value="Collapsed"/>
+                    <Setter TargetName="TwoDots" Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
         <!-- One NOT style for legacy expressions, typed buttons and AND gates. -->
         <Style x:Key="MappingNotToggle" TargetType="{x:Type ToggleButton}">
             <Setter Property="Foreground" Value="#FFFFFF"/>
@@ -795,12 +849,12 @@
                                              IsChecked="{Binding InputIsFullStick, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseInputFourWay}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
-                                <RadioButton Content="{Binding InputAxisChoiceGlyph}" Tag="2"
+                                <RadioButton Content="{Binding InputAxisChoiceGlyph}" Tag="2" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
                                              FontSize="14" ToolTip="Axis input" Click="InputRepresentation_OnClick"
                                              IsChecked="{Binding InputIsAxis, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseInputAxis}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
-                                <RadioButton Content="{Binding InputButtonChoiceGlyph}" Tag="3"
+                                <RadioButton Content="{Binding InputButtonChoiceGlyph}" Tag="3" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
                                              ToolTip="Button input" Click="InputRepresentation_OnClick"
                                              IsChecked="{Binding InputIsButton, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseInputButton}"
@@ -889,12 +943,12 @@
                                              IsChecked="{Binding OutputIsFullStick, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseOutputFourWay}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
-                                <RadioButton Content="{Binding OutputAxisChoiceGlyph}" Tag="2"
+                                <RadioButton Content="{Binding OutputAxisChoiceGlyph}" Tag="2" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
                                              FontSize="14" ToolTip="Axis output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsAxis, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseOutputAxis}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
-                                <RadioButton Content="{Binding OutputButtonChoiceGlyph}" Tag="3"
+                                <RadioButton Content="{Binding OutputButtonChoiceGlyph}" Tag="3" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
                                              ToolTip="Button output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsButton, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseOutputButton}"
