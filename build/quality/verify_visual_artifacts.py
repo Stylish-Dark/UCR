@@ -12,6 +12,7 @@ import hashlib
 from pathlib import Path
 import struct
 import sys
+import zlib
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 TINY_CAPTURE = "UCR-two-button-full-circles-preview.png"
@@ -30,13 +31,46 @@ def manifest_names(manifest: Path) -> list[str]:
 def image_evidence(path: Path) -> tuple[int, int, str]:
     data = path.read_bytes()
     minimum = 500 if path.name == TINY_CAPTURE else 5000
-    if len(data) < minimum or data[:8] != PNG_SIGNATURE or data[12:16] != b"IHDR":
+    if len(data) < minimum or data[:8] != PNG_SIGNATURE:
         raise ValueError(f"{path.name}: missing, empty, or invalid PNG")
-    width, height = struct.unpack(">II", data[16:24])
+    offset = 8
+    width = height = None
+    payload = []
+    completed = False
+    while offset + 12 <= len(data):
+        length = struct.unpack(">I", data[offset:offset + 4])[0]
+        kind = data[offset + 4:offset + 8]
+        end = offset + 12 + length
+        if end > len(data):
+            break
+        body = data[offset + 8:offset + 8 + length]
+        expected_crc = struct.unpack(">I", data[end - 4:end])[0]
+        if zlib.crc32(kind + body) & 0xffffffff != expected_crc:
+            raise ValueError(f"{path.name}: corrupted PNG chunk")
+        if kind == b"IHDR":
+            if width is not None or len(body) != 13:
+                raise ValueError(f"{path.name}: malformed IHDR")
+            width, height, depth, colour, compression, filtering, interlace = struct.unpack(">IIBBBBB", body)
+            if (depth, colour, compression, filtering, interlace) != (8, 6, 0, 0, 0):
+                raise ValueError(f"{path.name}: expected real 8-bit RGBA WPF render")
+        elif kind == b"IDAT":
+            payload.append(body)
+        elif kind == b"IEND":
+            completed = True
+            offset = end
+            break
+        offset = end
+    if not completed or offset != len(data) or not payload or width is None or height is None:
+        raise ValueError(f"{path.name}: incomplete PNG")
     if width < 100 or height < 60 or width > 10000 or height > 10000:
         raise ValueError(f"{path.name}: implausible capture dimensions {width}x{height}")
+    try:
+        raw_pixels = zlib.decompress(b"".join(payload))
+    except zlib.error as exc:
+        raise ValueError(f"{path.name}: invalid pixel data") from exc
+    if len(raw_pixels) != height * (1 + 4 * width):
+        raise ValueError(f"{path.name}: pixel buffer has invalid dimensions")
     return width, height, hashlib.sha256(data).hexdigest()
-
 
 def verify(screenshots: Path, manifest: Path, baselines: Path | None = None) -> list[str]:
     expected = manifest_names(manifest)
