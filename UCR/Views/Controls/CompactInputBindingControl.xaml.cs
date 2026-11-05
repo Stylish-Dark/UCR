@@ -449,6 +449,34 @@ namespace HidWizards.UCR.Views.Controls
             return 0;
         }
 
+        // The vector glyph already prints abbreviated controller codes.
+        // Give the adjacent caption a human-readable name instead of repeating
+        // "LX LX" or "LT LT" in each control tile.
+        public static string OutputPickerDisplayName(string title)
+        {
+            switch ((title ?? string.Empty).Trim().ToUpperInvariant())
+            {
+                case "LX": return "Left stick X axis";
+                case "LY": return "Left stick Y axis";
+                case "RX": return "Right stick X axis";
+                case "RY": return "Right stick Y axis";
+                case "LT":
+                case "L2": return "Left trigger";
+                case "RT":
+                case "R2": return "Right trigger";
+                case "LB":
+                case "L1": return "Left shoulder";
+                case "RB":
+                case "R1": return "Right shoulder";
+                case "A":
+                case "B":
+                case "X":
+                case "Y":
+                    return "Face button " + title.Trim().ToUpperInvariant();
+                default: return title ?? string.Empty;
+            }
+        }
+
         // Output controls come directly from the selected device's provider descriptors.
         private void ShowOutputPicker(FrameworkElement target)
         {
@@ -518,7 +546,7 @@ namespace HidWizards.UCR.Views.Controls
                 });
                 row.Children.Add(new TextBlock
                 {
-                    Text = title,
+                    Text = OutputPickerDisplayName(title),
                     Foreground = Brushes.White,
                     VerticalAlignment = VerticalAlignment.Center,
                     TextWrapping = TextWrapping.Wrap,
