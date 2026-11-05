@@ -454,7 +454,14 @@ namespace HidWizards.UCR.Views.Controls
                 StaysOpen = false
             };
             _outputPicker = popup;
+            popup.Child = BuildOutputPickerContent(config, popup);
+            popup.IsOpen = true;
+        }
 
+        // Real chooser visual is independently measurable and renderable in
+        // headless WPF CI without requiring a popup HWND or a user desktop.
+        private Border BuildOutputPickerContent(DeviceConfiguration config, Popup popup)
+        {
             var mapping = FindAncestor<MappingCardControl>(this)?.DataContext
                 as MappingViewModel;
             // Every output control remains selectable. Picking another category
@@ -696,7 +703,7 @@ namespace HidWizards.UCR.Views.Controls
                 popup.IsOpen = false;
             };
             root.Children.Add(clear);
-            popup.Child = new Border
+            return new Border
             {
                 Child = root,
                 Background = new SolidColorBrush(Color.FromRgb(32, 32, 32)),
@@ -705,7 +712,6 @@ namespace HidWizards.UCR.Views.Controls
                 Padding = new Thickness(5),
                 Width = 470
             };
-            popup.IsOpen = true;
         }
 
         private DeviceConfiguration GetSelectedDeviceConfiguration()
