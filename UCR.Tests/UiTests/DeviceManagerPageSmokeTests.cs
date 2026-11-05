@@ -682,6 +682,11 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.UpdateLayout();
                 Assert.That(presetList.Items.Count, Is.EqualTo(1),
                     "Stress fixtures must not leak into subsequent workspace checks.");
+                Assert.That(presetListScroll.ScrollableHeight, Is.LessThanOrEqualTo(1),
+                    "Shrinking the preset list must clear its former scroll range.");
+                Assert.That(presetListScroll.ComputedVerticalScrollBarVisibility,
+                    Is.EqualTo(Visibility.Collapsed),
+                    "A single preset must not leave orphaned scrollbar arrows.");
                 sidebarScroll.ScrollToBottom();
                 page.UpdateLayout();
                 // Deleting the obsolete Add Mapping toolbox shortens the sidebar.
