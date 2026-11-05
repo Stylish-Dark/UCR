@@ -1682,11 +1682,20 @@ namespace HidWizards.UCR.Tests.UiTests
         [TestCase("LT", "Left trigger")]
         [TestCase("RT", "Right trigger")]
         [TestCase("LB", "Left shoulder")]
-        [TestCase("A", "Face button A")]
+        [TestCase("A", "A")]
         [TestCase("D-pad Up", "D-pad Up")]
         public void OutputPickerCaptionsDoNotRepeatRawGlyphCodes(string raw, string expected)
         {
             Assert.That(CompactInputBindingControl.OutputPickerDisplayName(raw), Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void OutputPickerOnlyNamesFaceButtonsWhenProviderGlyphIsActuallyAFaceButton()
+        {
+            Assert.That(CompactInputBindingControl.OutputPickerDisplayName(
+                "A", ControlVisualKind.Key), Is.EqualTo("A"));
+            Assert.That(CompactInputBindingControl.OutputPickerDisplayName(
+                "A", ControlVisualKind.XboxFaceButton), Is.EqualTo("Face button A"));
         }
 
         [TestCase(HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Range, ControlVisualKind.Trigger, "LT", "Axes")]
