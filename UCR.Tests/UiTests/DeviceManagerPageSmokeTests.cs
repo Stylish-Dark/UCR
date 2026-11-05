@@ -547,8 +547,8 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.UpdateLayout();
                 Assert.That(searchHint.Visibility, Is.EqualTo(Visibility.Visible),
                     "The hint must return after the search is cleared.");
-                Assert.That(FindVisualChildren<TextBlock>(page).Any(label => label.Text == "1 mapping"),
-                    Is.True, "A profile with one mapping must not read '1 mappings'.");
+                Assert.That(FindVisualChildren<TextBlock>(page).Any(label => label.Text == "1 mappings"),
+                    Is.False, "The profile must not display a grammatically incorrect mapping count.");
                 CaptureWorkspacePreview(page, 1440, 720, "UCR-workspace-collapsed-preview.png", 1020, 610);
                 // Keep sidebar WPF verification on the same working dispatcher
                 // as the established real-workspace test. A second STA-created
