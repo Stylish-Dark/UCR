@@ -1767,18 +1767,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             var profile = ProfileViewModel.Profile;
             var selectedGuid = original.DeviceConfigurationGuid;
-            var device = profile.GetDeviceConfiguration(DeviceIoType.Input, selectedGuid);
-            var dpad = FindDPadControls(device, DeviceIoType.Input);
-            if (dpad == null && selectedGuid == Guid.Empty)
-            {
-                foreach (var candidate in profile.GetDeviceConfigurationList(DeviceIoType.Input))
-                {
-                    dpad = FindDPadControls(candidate, DeviceIoType.Input);
-                    if (dpad == null) continue;
-                    device = candidate;
-                    break;
-                }
-            }
+            var primaryGuid = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input)?.Guid;
+            var candidates = profile.GetDeviceConfigurationList(DeviceIoType.Input)
+                .Select(config => new { Device = config, Controls = FindDPadControls(config, DeviceIoType.Input) })
+                .Where(candidate => candidate.Controls != null).ToList();
+            // Choosing a D-pad preset explicitly selects a D-pad-capable device.
+            // Prefer the currently selected controller, then the profile primary,
+            // then the first configured compatible controller.
+            var choice = candidates.FirstOrDefault(candidate => candidate.Device.Guid == selectedGuid)
+                ?? candidates.FirstOrDefault(candidate => candidate.Device.Guid == primaryGuid)
+                ?? candidates.FirstOrDefault();
+            var device = choice?.Device;
+            var dpad = choice?.Controls;
             if (device == null || dpad == null)
             {
                 error = "Select a controller with a D-pad in the shared device picker, or add one to this profile.";
