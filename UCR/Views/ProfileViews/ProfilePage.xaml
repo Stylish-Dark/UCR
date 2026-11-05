@@ -455,11 +455,10 @@
                                                 <Setter Property="Template">
                                                     <Setter.Value>
                                                         <ControlTemplate>
-                                                            <StackPanel Margin="8 18" HorizontalAlignment="Center">
-                                                                <materialDesign:PackIcon Kind="Filter" Width="20" Height="20" HorizontalAlignment="Center" Opacity="0.28"/>
-                                                                <TextBlock Margin="0 6 0 0" Text="No filters defined" FontSize="14" Opacity="0.55" HorizontalAlignment="Center"/>
-                                                                <TextBlock Margin="0 2 0 0" Text="Use the buttons above to create a filter." FontSize="12" Opacity="0.38" HorizontalAlignment="Center"/>
-                                                            </StackPanel>
+                                                            <!-- The Add filter action is immediately above; keep its
+                                                                  empty state compact and avoid pushing Devices downward. -->
+                                                             <TextBlock Margin="10 8 8 12" Text="No filters defined"
+                                                                        FontSize="12" Opacity="0.52" HorizontalAlignment="Left"/>
                                                         </ControlTemplate>
                                                     </Setter.Value>
                                                 </Setter>
