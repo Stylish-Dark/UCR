@@ -266,30 +266,38 @@ namespace HidWizards.UCR.Views.Controls
             Func<int, string> key = index =>
                 index < parts.Length && !string.IsNullOrWhiteSpace(parts[index])
                     ? parts[index] : "·";
-            // A four-key cross occupies an exact 3x3 footprint. Reserve a
-            // three-pixel inset on every edge so none of its directions
-            // (especially Down) can be painted outside the clipping bounds.
-            var size = Math.Max(1, Math.Min((b.Width - 6) / 3.0, (b.Height - 6) / 3.0));
             var centerX = b.Left + b.Width / 2.0;
             var centerY = b.Top + b.Height / 2.0;
+            if (!faceButtons)
+            {
+                // A keyboard preset is laid out like the actual WASD keys:
+                //         W
+                //       A S D
+                // The visual's logical channel order remains Left, Right,
+                // Up, Down; only their physical keycap positions change.
+                const double gap = 2.0;
+                var side = Math.Max(1, Math.Min(
+                    (b.Width - 8 - 2 * gap) / 3.0,
+                    (b.Height - 8 - gap) / 2.0));
+                var leftX = centerX - (3 * side + 2 * gap) / 2.0;
+                var topY = centerY - (2 * side + gap) / 2.0;
+                var bottomY = topY + side + gap;
+                DrawKey(dc, new Rect(leftX, bottomY, side, side), accent, key(0));
+                DrawKey(dc, new Rect(leftX + 2 * (side + gap), bottomY, side, side), accent, key(1));
+                DrawKey(dc, new Rect(leftX + side + gap, topY, side, side), accent, key(2));
+                DrawKey(dc, new Rect(leftX + side + gap, bottomY, side, side), accent, key(3));
+                return;
+            }
+            // Face buttons, unlike keyboard caps, retain their diamond cross.
+            var size = Math.Max(1, Math.Min((b.Width - 6) / 3.0, (b.Height - 6) / 3.0));
             var left = new Rect(centerX - size * 1.50, centerY - size * 0.50, size, size);
             var right = new Rect(centerX + size * 0.50, centerY - size * 0.50, size, size);
             var up = new Rect(centerX - size * 0.50, centerY - size * 1.50, size, size);
             var down = new Rect(centerX - size * 0.50, centerY + size * 0.50, size, size);
-            if (faceButtons)
-            {
-                DrawFaceButton(dc, left, accent, key(0), true);
-                DrawFaceButton(dc, right, accent, key(1), true);
-                DrawFaceButton(dc, up, accent, key(2), true);
-                DrawFaceButton(dc, down, accent, key(3), true);
-            }
-            else
-            {
-                DrawKey(dc, left, accent, key(0));
-                DrawKey(dc, right, accent, key(1));
-                DrawKey(dc, up, accent, key(2));
-                DrawKey(dc, down, accent, key(3));
-            }
+            DrawFaceButton(dc, left, accent, key(0), true);
+            DrawFaceButton(dc, right, accent, key(1), true);
+            DrawFaceButton(dc, up, accent, key(2), true);
+            DrawFaceButton(dc, down, accent, key(3), true);
         }
 
         private static void DrawCompoundStick(DrawingContext dc, Rect b,
