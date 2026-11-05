@@ -605,12 +605,21 @@ namespace HidWizards.UCR.Tests.UiTests
                     .Single(list => list.Name == "MappingRowsList").ItemContainerGenerator
                     .ContainerFromItem(compoundHeader) as ListViewItem;
                 Assert.That(compoundHeaderRow, Is.Not.Null);
-                Assert.That(FindVisualChildren<ControlGlyphControl>(compoundHeaderRow).Any(glyph =>
-                    glyph.Kind == ControlVisualKind.CompoundKeys && glyph.ActualHeight >= 70), Is.True,
-                    "Compound keyboard keys must render at a legible size in the real mapping row.");
-                Assert.That(FindVisualChildren<TextBlock>(compoundHeaderRow).Any(text =>
-                    text.Text == "My WASD"), Is.True,
-                    "The collapsed header must identify the selected named preset.");
+                var compoundGlyph = FindVisualChildren<ControlGlyphControl>(compoundHeaderRow)
+                    .SingleOrDefault(glyph => glyph.Kind == ControlVisualKind.CompoundKeys);
+                Assert.That(compoundGlyph, Is.Not.Null);
+                Assert.That(compoundGlyph.Label, Is.EqualTo("A|D|W|S"),
+                    "Each keycap needs just its key letter, not provider/category text.");
+                Assert.That(compoundGlyph.ActualHeight, Is.GreaterThanOrEqualTo(60));
+                var compoundBottom = compoundGlyph.TranslatePoint(
+                    new Point(0, compoundGlyph.ActualHeight), compoundHeaderRow).Y;
+                Assert.That(compoundBottom, Is.LessThanOrEqualTo(compoundHeaderRow.ActualHeight + 1),
+                    "The fourth keycap must not be clipped below the collapsed mapping row.");
+                var compoundCaption = FindVisualChildren<TextBlock>(compoundHeaderRow)
+                    .SingleOrDefault(text => text.Text == "My WASD");
+                Assert.That(compoundCaption, Is.Not.Null);
+                Assert.That(compoundCaption.IsVisible, Is.True,
+                    "The selected preset caption must actually render beside its compound glyph.");
                 CaptureWorkspacePreview(page, 1440, 900, "UCR-named-fourway-header-preview.png");
                 compoundHeader.Remove();
                 for (var index = 0; index < 40; index++)
