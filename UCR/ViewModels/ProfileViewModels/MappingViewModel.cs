@@ -1544,7 +1544,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     .Where(node => node?.DeviceBindingInfo != null).ToList();
                 if (keys != null)
                 {
-                    if (keys.Length != 4 || kind != DeviceVisualKind.Keyboard) continue;
+                    if (keys.Length != 4 ||
+                        keys.Distinct(StringComparer.OrdinalIgnoreCase).Count() != 4 ||
+                        kind != DeviceVisualKind.Keyboard) continue;
                     var buttons = nodes.Where(node => node.DeviceBindingInfo.DeviceBindingCategory ==
                         DeviceBindingCategory.Momentary).ToList();
                     if (keys.All(key => buttons.Any(node =>
@@ -1927,9 +1929,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     return false;
                 }
             }
-            if (keys.Length != 4)
+            if (keys.Length != 4 ||
+                keys.Distinct(StringComparer.OrdinalIgnoreCase).Count() != 4)
             {
-                error = "A 4-Way preset must contain four directions.";
+                error = "A 4-Way preset must contain four distinct directional keys.";
                 return false;
             }
             var current = profile.GetDeviceConfiguration(DeviceIoType.Input,
