@@ -1237,6 +1237,14 @@ namespace HidWizards.UCR.Tests.UiTests
                 card.Arrange(new Rect(0, 0, 1050, 1100));
                 card.UpdateLayout();
 
+                var compoundBind = FindVisualChildren<Button>(card)
+                    .Single(button => (button.ToolTip as string) ==
+                        "Bind the axis or choose a complete preset");
+                Assert.That(compoundBind.ActualWidth, Is.InRange(154, 300),
+                    "The single 4-Way binding must be one bounded action, not a full-width blue slab.");
+                Assert.That(compoundBind.ActualWidth, Is.LessThan(card.ActualWidth * 0.4),
+                    "A compound Bind action must not expand to the full input pane.");
+
                 var selectors = FindVisualChildren<RadioButton>(card)
                     .Where(button => new[] { "1", "2", "3", "5" }
                         .Contains(button.Tag as string) &&
