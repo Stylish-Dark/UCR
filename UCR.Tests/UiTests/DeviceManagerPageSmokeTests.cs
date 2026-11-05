@@ -1261,6 +1261,77 @@ namespace HidWizards.UCR.Tests.UiTests
             }
         }
 
+        [Test]
+        [Apartment(ApartmentState.STA)]
+        public void KeyboardPresetUsesKeyboardContainingAllKeysInsteadOfFirstPartialKeyboard()
+        {
+            EnsureApplicationResources();
+            var context = new Context();
+            context.PluginManager.Plugins = new List<Plugin>
+            {
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton(),
+                new HidWizards.UCR.Plugins.Remapper.AxisToAxis()
+            };
+            var profile = context.ProfilesManager.CreateProfile("Multiple input keyboards", null, null);
+            context.ProfilesManager.AddProfile(profile);
+            Device makeKeyboard(string title, string handle, string[] keys, int baseValue)
+            {
+                return new Device(new DeviceCache
+                {
+                    Title = title,
+                    ProviderName = "Core_Interception",
+                    DeviceHandle = handle,
+                    DeviceBindingMenu = new List<HidWizards.UCR.Core.Models.Binding.DeviceBindingNode>
+                    {
+                        new HidWizards.UCR.Core.Models.Binding.DeviceBindingNode
+                        {
+                            Title = "Keys",
+                            ChildrenNodes = keys.Select((key, index) =>
+                                new HidWizards.UCR.Core.Models.Binding.DeviceBindingNode
+                                {
+                                    Title = "Keys," + key,
+                                    DeviceBindingInfo = new HidWizards.UCR.Core.Models.Binding.DeviceBindingInfo
+                                    {
+                                        DeviceBindingCategory =
+                                            HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary,
+                                        KeyType = 1, KeyValue = baseValue + index
+                                    }
+                                }).ToList()
+                        }
+                    }
+                });
+            }
+            var partial = new DeviceConfiguration(makeKeyboard(
+                "Partial keyboard", "partial", new[] { "A" }, 10));
+            var complete = new DeviceConfiguration(makeKeyboard(
+                "Full keyboard", "complete", new[] { "A", "D", "W", "S" }, 30));
+            profile.AddDeviceConfigurations(new List<DeviceConfiguration> { partial, complete },
+                DeviceIoType.Input);
+            profile.AddMapping("Keyboard preset").AddPlugin(
+                new HidWizards.UCR.Plugins.Remapper.ButtonToButton());
+            var vm = new ProfileViewModel(profile);
+            try
+            {
+                var mapping = vm.MappingsList.Single();
+                Assert.That(mapping.CanApplyCompoundInputPreset("WASD"), Is.True,
+                    "A complete second keyboard must make its preset available.");
+                string error;
+                Assert.That(mapping.ApplyDirectionalKeyboardPreset("WASD", out error), Is.True, error);
+                var inputs = mapping.Mapping.DeviceBindings
+                    .OrderBy(binding => binding.InputDirectionSlot).ToList();
+                Assert.That(inputs.Count, Is.EqualTo(4));
+                Assert.That(inputs.Select(binding => binding.DeviceConfigurationGuid),
+                    Is.All.EqualTo(complete.Guid),
+                    "Every direction must come from the same complete keyboard.");
+                Assert.That(inputs.Select(binding => binding.KeyValue),
+                    Is.EqualTo(new[] { 30, 31, 32, 33 }));
+            }
+            finally
+            {
+                vm.Dispose();
+            }
+        }
+
         [TestCase("A", "A", true)]
         [TestCase("Buttons,A", "A", true)]
         [TestCase("Face buttons: Cross", "Cross", true)]
