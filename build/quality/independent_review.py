@@ -95,12 +95,31 @@ def review(model: str, instructions: str, content: list[dict], key: str) -> dict
         API_URL, data=json.dumps(payload).encode("utf-8"),
         headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
         method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=210) as res:
-            result = json.load(res)
-    except urllib.error.HTTPError as exc:
-        raise RuntimeError(f"Reviewer API returned HTTP {exc.code}") from exc
-    return validated_verdict(json.loads(extract_text(result)))
+    import time
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(req, timeout=210) as res:
+                result = json.load(res)
+            return validated_verdict(json.loads(extract_text(result)))
+        except urllib.error.HTTPError as exc:
+            raw = exc.read(4096).decode("utf-8", "replace")
+            try:
+                error = json.loads(raw).get("error", {})
+            except (ValueError, AttributeError):
+                error = {}
+            code = str(error.get("code") or error.get("type") or "unspecified")
+            message = str(error.get("message") or "")[:300]
+            if exc.code == 429 and code != "insufficient_quota" and attempt < 3:
+                retry_after = exc.headers.get("retry-after", "")
+                try:
+                    delay = max(1, min(60, int(retry_after)))
+                except (TypeError, ValueError):
+                    delay = (10, 20, 40)[attempt]
+                print(f"Review API temporarily rate limited ({code}); retrying in {delay}s", flush=True)
+                time.sleep(delay)
+                continue
+            raise RuntimeError(f"Reviewer API HTTP {exc.code} ({code}): {message}") from exc
+    raise RuntimeError("Reviewer API retries exhausted")
 
 
 def images_from_manifest(root: Path, manifest: Path) -> list[Path]:
