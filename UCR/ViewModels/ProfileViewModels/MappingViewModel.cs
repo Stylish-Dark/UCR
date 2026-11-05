@@ -394,17 +394,20 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             // are stored Up, Down, Left, Right by the output preset picker.
             if (output) labels = new[] { labels[2], labels[3], labels[0], labels[1] };
 
-            var templates = new List<Tuple<string, string[]>>
+            // Explicitly named presets outrank built-in pattern aliases. A user
+            // who names their four keys "My Movement" must see that name, not WASD.
+            var templates = new List<Tuple<string, string[]>>();
+            foreach (var custom in ProfileViewModel.Profile.CompoundBindingPresets ??
+                new List<CompoundBindingPreset>())
+                if (custom.Capacity == 4 && custom.Keys?.Count == 4)
+                    templates.Add(Tuple.Create(custom.Name, custom.Keys.ToArray()));
+            templates.AddRange(new[]
             {
                 Tuple.Create("WASD", new[] { "A", "D", "W", "S" }),
                 Tuple.Create("Arrows", new[] { "Left", "Right", "Up", "Down" }),
                 Tuple.Create("Numpad", new[] { "Numpad4", "Numpad6", "Numpad8", "Numpad2" }),
                 Tuple.Create("UHJK", new[] { "H", "K", "U", "J" })
-            };
-            foreach (var custom in ProfileViewModel.Profile.CompoundBindingPresets ??
-                new List<CompoundBindingPreset>())
-                if (custom.Capacity == 4 && custom.Keys?.Count == 4)
-                    templates.Add(Tuple.Create(custom.Name, custom.Keys.ToArray()));
+            });
 
             foreach (var template in templates)
             {
