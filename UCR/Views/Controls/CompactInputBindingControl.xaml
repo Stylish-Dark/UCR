@@ -147,7 +147,9 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="62"/>
+            <!-- Match the actual selector width (58px normal, 44px compact).
+                 Reserving 62px even in compact mode starves paired Bind buttons. -->
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*" MinWidth="0"/>
             <ColumnDefinition Width="42"/>
             <!-- Auto collapses to zero for outputs, where Block is hidden.
