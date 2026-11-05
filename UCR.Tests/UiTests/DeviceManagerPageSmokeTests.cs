@@ -1868,7 +1868,12 @@ namespace HidWizards.UCR.Tests.UiTests
             CaptureEditorPreview(picker, 470,
                 "UCR-output-picker-axes-preview.png");
             tabs.SelectedIndex = 1;
-            CaptureEditorPreview(picker, 470,
+            // Unlike the six-axis list, Directions contains twelve choices.
+            // Offscreen WPF keeps the previous tab's DesiredSize until a new
+            // layout pass; an intrinsic capture at that moment silently cuts
+            // off the four D-pad choices. Give the directional visual review
+            // the full viewport so every direction is actually inspected.
+            CaptureWorkspacePreview(picker, 470, 470,
                 "UCR-output-picker-directions-preview.png");
         }
 
