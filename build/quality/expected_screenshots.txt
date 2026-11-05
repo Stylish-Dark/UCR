@@ -15,3 +15,4 @@ UCR-workspace-multi-expanded-preview.png
 UCR-profile-sidebar-presets-preview.png
 UCR-profile-sidebar-devices-preview.png
 UCR-fourway-preset-editor-preview.png
+UCR-profile-sidebar-stress-preview.png
