@@ -201,6 +201,8 @@ namespace HidWizards.UCR.Tests.UiTests
                     Is.EqualTo(Visibility.Collapsed),
                     "Device-only mode must hide the entire Bind surface, not just its child.");
                 Assert.That(menu.Visibility, Is.EqualTo(Visibility.Collapsed));
+                Assert.That(actionGroup.Visibility, Is.EqualTo(Visibility.Collapsed),
+                    "A device-only picker must not leave an invisible overlapping action panel.");
                 var blockGroup = FindVisualChildren<StackPanel>(control)
                     .Single(panel => string.Equals(panel.ToolTip as string,
                         "Block this binding", StringComparison.Ordinal));
