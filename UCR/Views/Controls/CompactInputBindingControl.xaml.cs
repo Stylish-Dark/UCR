@@ -431,8 +431,10 @@ namespace HidWizards.UCR.Views.Controls
         {
             if (current == DeviceBindingCategory.Range && axisCount > 0) return 2;
             if (current == DeviceBindingCategory.Momentary && buttonCount > 0) return 0;
-            if (directionCount > 0) return 1;
+            // When the configured device lacks the current category, prefer
+            // ordinary buttons before digital directions, never an empty tab.
             if (buttonCount > 0) return 0;
+            if (directionCount > 0) return 1;
             if (axisCount > 0) return 2;
             return 0;
         }
