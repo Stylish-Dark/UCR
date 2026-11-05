@@ -257,7 +257,7 @@
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" MinWidth="360"/>
-                    <ColumnDefinition Width="510" MinWidth="390"/>
+                    <ColumnDefinition Width="410" MinWidth="390"/>
                 </Grid.ColumnDefinitions>
                 <Border Grid.Row="0" Grid.ColumnSpan="2" Padding="20 12 20 13"
                         Background="#202020" BorderBrush="#383838" BorderThickness="0 0 0 1">
@@ -311,15 +311,9 @@
                     <TabItem Header="Filters"/>
                     <TabItem Header="Profile options"/>
                 </TabControl>
-                <Grid Grid.Row="1" Grid.Column="1" Background="#222222" Margin="0">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <ContentControl x:Name="ProfileOptionsHost" Grid.Row="0" HorizontalContentAlignment="Stretch"/>
-                    <ContentControl x:Name="RightDevicesHost" Grid.Row="1" Visibility="Collapsed" HorizontalContentAlignment="Stretch"/>
-                    <ContentControl x:Name="RightFiltersHost" Grid.Row="1" MaxHeight="225" HorizontalContentAlignment="Stretch"/>
-                </Grid>
+                <!-- One sidebar owns Filters, presets and Devices. -->
+                <ContentControl x:Name="ProfileOptionsHost" Grid.Row="1" Grid.Column="1"
+                                Visibility="Collapsed" IsHitTestVisible="False"/>
                 <!-- Device management remains in the bottom-left sidebar; the
                      Devices tab points to its location instead of duplicating it. -->
                 <Border x:Name="DockedDevicesNotice" Grid.Row="1" Grid.Column="1"
@@ -346,108 +340,9 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <Border x:Name="MappingToolboxPanel" Grid.Row="0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
-                        <Expander IsExpanded="True" HorizontalContentAlignment="Stretch" Background="#202020">
-                            <Expander.Header>
-                                <Border Background="#242424" BorderBrush="{DynamicResource PrimaryHueMidBrush}" BorderThickness="3 0 0 0" Padding="10 8">
-                                    <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="Plus" Width="17" Height="17" Margin="0 0 7 0" Foreground="{DynamicResource PrimaryHueMidBrush}"/>
-                                        <TextBlock Text="Add mapping" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                            </Expander.Header>
-                            <Grid Margin="10">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-
-                                <TextBlock Grid.Row="0" Text="FROM" FontSize="10.5" FontWeight="SemiBold" Opacity="0.48" Margin="2 0 0 5"/>
-                                <ListBox Grid.Row="1" ItemsSource="{Binding PluginToolbox.InputOptions}"
-                                         SelectedItem="{Binding PluginToolbox.SelectedInput, Mode=TwoWay}"
-                                         IsEnabled="{Binding PluginToolbox.IsEnabled}"
-                                         Style="{StaticResource ToolboxChoiceList}"
-                                         ItemContainerStyle="{StaticResource ToolboxChoiceItem}">
-                                    <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding}" FontWeight="SemiBold"
-                                                       Foreground="#FFFFFF"/>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-
-                                <TextBlock Grid.Row="2" Text="TO" FontSize="10.5" FontWeight="SemiBold" Opacity="0.48" Margin="2 3 0 5"/>
-                                <ListBox Grid.Row="3" ItemsSource="{Binding PluginToolbox.OutputOptions}"
-                                         SelectedItem="{Binding PluginToolbox.SelectedOutput, Mode=TwoWay}"
-                                         IsEnabled="{Binding PluginToolbox.IsEnabled}"
-                                         Style="{StaticResource ToolboxChoiceList}"
-                                         ItemContainerStyle="{StaticResource ToolboxChoiceItem}">
-                                    <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding OutputLabel}" FontWeight="SemiBold"
-                                                       Foreground="#FFFFFF"/>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-
-                                <TextBlock Grid.Row="4" Text="MODE" FontSize="10.5" FontWeight="SemiBold" Opacity="0.48" Margin="2 4 0 5">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/>
-                                            <Style.Triggers><DataTrigger Binding="{Binding PluginToolbox.HasRouteVariants}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                                <ListBox Grid.Row="5" ItemsSource="{Binding PluginToolbox.VariantOptions}"
-                                         SelectedItem="{Binding PluginToolbox.SelectedRoute, Mode=TwoWay}"
-                                         IsEnabled="{Binding PluginToolbox.IsEnabled}"
-                                         ItemContainerStyle="{StaticResource ToolboxChoiceItem}">
-                                    <ListBox.Style>
-                                        <Style TargetType="ListBox" BasedOn="{StaticResource ToolboxChoiceList}">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                            <Style.Triggers><DataTrigger Binding="{Binding PluginToolbox.HasRouteVariants}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
-                                        </Style>
-                                    </ListBox.Style>
-                                    <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding VariantLabel}" FontWeight="SemiBold" Foreground="#DADADA"/>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-
-                                <TextBlock Grid.Row="6" Text="SECTION" FontSize="10.5" FontWeight="SemiBold" Opacity="0.48" Margin="2 7 0 5"/>
-                                <ComboBox Grid.Row="7" ItemsSource="{Binding MappingSections}"
-                                          SelectedItem="{Binding SelectedMappingSection, Mode=TwoWay}"
-                                          DisplayMemberPath="Title" Height="32" Padding="7 2"
-                                          IsEnabled="{Binding CanEditProfile}"
-                                          ToolTip="Choose which local section receives the new mapping. Stop the running profile to edit."
-                                          ToolTipService.ShowOnDisabled="True"/>
-
-                                <Button Grid.Row="8" Margin="0 7 0 0" Height="34" Content="ADD" FontSize="14" FontWeight="SemiBold"
-                                        Style="{StaticResource MaterialDesignRaisedButton}" IsEnabled="{Binding PluginToolbox.CanAddMapping}" Click="AddMapping_OnClick"/>
-
-                                <StackPanel Grid.Row="9" Margin="2 8 2 0">
-                                    <TextBlock Text="{Binding PluginToolbox.SelectedPluginName}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                                    <TextBlock Text="{Binding PluginToolbox.SelectedPluginDescription}" Margin="0 2 0 0" Opacity="0.55" TextWrapping="Wrap" FontSize="12.5"/>
-                                </StackPanel>
-                            </Grid>
-                        </Expander>
-                    </Border>
-
-                    <Border x:Name="MappingFiltersPanel" Grid.Row="1" Margin="0 8 0 0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
+                    <Border x:Name="MappingFiltersPanel" Grid.Row="0" Margin="0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
                         <Expander IsExpanded="True" HorizontalContentAlignment="Stretch" Background="#202020">
                             <Expander.Header>
                                 <Border Background="#242424" BorderBrush="{StaticResource MappingTypeFilterBrush}" BorderThickness="3 0 0 0" Padding="10 8">
@@ -514,7 +409,7 @@
                         </Expander>
                     </Border>
 
-                    <Border x:Name="CompoundPresetsPanel" Grid.Row="2" Margin="0 8 0 0"
+                    <Border x:Name="CompoundPresetsPanel" Grid.Row="1" Margin="0 8 0 0"
                             Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
                         <Expander IsExpanded="False" HorizontalContentAlignment="Stretch"
                                   Background="#202020">
@@ -580,7 +475,7 @@
                         </Expander>
                     </Border>
 
-                    <Border x:Name="ProfileDevicesPanel" Grid.Row="3" Margin="0 8 0 0" Background="#202020"
+                    <Border x:Name="ProfileDevicesPanel" Grid.Row="2" Margin="0 8 0 0" Background="#202020"
                             BorderBrush="#383838" BorderThickness="1" CornerRadius="4" VerticalAlignment="Top">
                         <Expander x:Name="ProfileDevicesExpander" IsExpanded="True" ToolTip="Expand or collapse configured devices"
                                   HorizontalContentAlignment="Stretch"
