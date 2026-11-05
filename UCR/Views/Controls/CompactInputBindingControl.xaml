@@ -39,6 +39,71 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="CompactBindSurfaceButton" TargetType="{x:Type Button}">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#244A87"/>
+            <Setter Property="BorderBrush" Value="#4C80C9"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="Chrome" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3 0 0 3">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#305DA1"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#16376D"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="CompactBindOptionsButton" TargetType="{x:Type Button}">
+            <Setter Property="Foreground" Value="#EAEAEA"/>
+            <Setter Property="Background" Value="#303030"/>
+            <Setter Property="BorderBrush" Value="#58749C"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="Chrome" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="0 3 3 0">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#414141"/>
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#86A3D0"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#244A87"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <!-- The generated output-picker tabs cannot inherit the light WPF
              selected-tab chrome: it made white captions disappear on white. -->
         <Style x:Key="OutputPickerTabStyle" TargetType="{x:Type TabItem}">
@@ -84,7 +149,7 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="62"/>
             <ColumnDefinition Width="*" MinWidth="0"/>
-            <ColumnDefinition Width="29"/>
+            <ColumnDefinition Width="42"/>
             <!-- Auto collapses to zero for outputs, where Block is hidden.
                  A fixed 92px column previously stole space from Choose output. -->
             <ColumnDefinition Width="Auto"/>
@@ -218,7 +283,7 @@
         </ComboBox>
 
         <Grid x:Name="BindSurface" Grid.Row="0" Grid.Column="1" Margin="0" ClipToBounds="True">
-            <Button x:Name="BindButton" MinHeight="32" MinWidth="0" Padding="0"
+            <Button x:Name="BindButton" MinHeight="36" MinWidth="0" Padding="2 0"
                     IsEnabled="{Binding CanBindCurrentDevice}"
                     Click="BindButton_OnClick"
                     PreviewMouseLeftButtonDown="BindButton_OnPreviewMouseLeftButtonDown"
@@ -228,7 +293,7 @@
                     materialDesign:TransitionAssist.DisableTransitions="True"
                     ToolTip="Waiting for input: click again, right-click or press Esc to cancel">
                 <Button.Style>
-                    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource CompactBindSurfaceButton}">
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsCapturing}" Value="True">
                                 <Setter Property="Background" Value="#9A4D16"/>
@@ -260,11 +325,11 @@
             </ProgressBar>
         </Grid>
 
-        <Button Grid.Row="0" Grid.Column="2" x:Name="MenuButton" Margin="1 0 0 0" Width="28" MinHeight="32" Padding="0"
+        <Button Grid.Row="0" Grid.Column="2" x:Name="MenuButton" Margin="0" Width="42" MinHeight="36" Padding="0"
                 IsEnabled="{Binding BindingEnabled}" Click="MenuButton_OnClick"
-                Style="{StaticResource MaterialDesignRaisedButton}" Foreground="#FFFFFF"
+                Style="{StaticResource CompactBindOptionsButton}"
                 ToolTip="Binding options">
-            <materialDesign:PackIcon Kind="DotsVertical" Width="18" Height="18"/>
+            <materialDesign:PackIcon Kind="DotsVertical" Width="20" Height="20"/>
             <Button.ContextMenu>
                 <ContextMenu x:Name="Ddl" Style="{StaticResource MaterialDesignContextMenu}"
                              Foreground="#FFFFFF" Background="#242424"/>
