@@ -100,18 +100,18 @@
                     <Ellipse Grid.Row="1" Grid.Column="1" Width="6" Height="6" HorizontalAlignment="Center" VerticalAlignment="Center"
                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"/>
                 </Grid>
-                <StackPanel x:Name="TwoDots" Orientation="Horizontal" Visibility="Collapsed"
-                            HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <!-- Two button caps, not two tiny dots without physical meaning. -->
-                    <Ellipse Width="10" Height="10" Margin="1 0 1 0"
-                             Fill="#3B3B3B"
-                             Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"
-                             StrokeThickness="2"/>
-                    <Ellipse Width="10" Height="10" Margin="1 0 1 0"
-                             Fill="#3B3B3B"
-                             Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"
-                             StrokeThickness="2"/>
-                </StackPanel>
+                <!-- Two unchanged solid dots. Keep explicit insets on every side:
+                     the old glyph's right edge was flattened by clipping. -->
+                <Canvas x:Name="TwoDots" Width="26" Height="23" ClipToBounds="False"
+                        Visibility="Collapsed" HorizontalAlignment="Center"
+                        VerticalAlignment="Center" SnapsToDevicePixels="False">
+                    <Ellipse Canvas.Left="5" Canvas.Top="8" Width="7" Height="7"
+                             SnapsToDevicePixels="False"
+                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"/>
+                    <Ellipse Canvas.Left="15" Canvas.Top="8" Width="7" Height="7"
+                             SnapsToDevicePixels="False"
+                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"/>
+                </Canvas>
             </Grid>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding}" Value="↔↔">
