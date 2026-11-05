@@ -2632,8 +2632,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (device?.Device == null) return null;
             var nodes = FlattenBindingNodes(device.Device.GetDeviceBindingMenu(profile.Context, ioType)).Where(node => node?.DeviceBindingInfo != null &&
                     node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary).ToList();
+            var kind = DeviceVisualCatalog.Describe(device, profile, ioType).Kind;
+            if (kind == DeviceVisualKind.Keyboard || kind == DeviceVisualKind.Mouse) return null;
             var dpad = nodes.Where(node =>
             {
+                // The device's binding-menu title is authoritative for controls
+                // explicitly named as a D-pad/POV/hat direction. Rendering metadata
+                // may not be populated for a cached or temporarily disconnected HID,
+                // so visual classification alone must not hide valid directions.
+                var title = node.Title ?? string.Empty;
+                if (Regex.IsMatch(title, @"(?:d[\s-]?pad|pov|hat)", RegexOptions.IgnoreCase) &&
+                    Regex.IsMatch(title, @"(?:^|[\s,;:/_-])(Up|Down|Left|Right|North|South|West|East)$",
+                        RegexOptions.IgnoreCase))
+                    return true;
                 var info = node.DeviceBindingInfo;
                 var candidate = new DeviceBinding
                 {
