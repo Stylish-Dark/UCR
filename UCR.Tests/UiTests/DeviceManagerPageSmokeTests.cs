@@ -530,6 +530,23 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(groupBlockSwitch, Is.Not.Null);
                 Assert.That(groupBlockSwitch.ActualWidth, Is.EqualTo(36).Within(1),
                     "Group Block inputs needs a compact, consistently sized switch.");
+                var searchBox = page.FindName("WorkspaceMappingSearch") as TextBox;
+                var searchHint = page.FindName("WorkspaceMappingSearchPlaceholder") as StackPanel;
+                Assert.That(searchBox, Is.Not.Null, "The mapping search must remain editable.");
+                Assert.That(searchHint, Is.Not.Null, "The search field needs a visible empty-state affordance.");
+                Assert.That(searchBox.ActualHeight, Is.GreaterThanOrEqualTo(34));
+                Assert.That(searchHint.Visibility, Is.EqualTo(Visibility.Visible),
+                    "The empty search bar must identify its purpose, not appear as a blank stripe.");
+                searchBox.Text = "Jump";
+                page.UpdateLayout();
+                Assert.That(searchHint.Visibility, Is.EqualTo(Visibility.Collapsed),
+                    "The hint must not overlap a typed search query.");
+                searchBox.Text = string.Empty;
+                page.UpdateLayout();
+                Assert.That(searchHint.Visibility, Is.EqualTo(Visibility.Visible),
+                    "The hint must return after the search is cleared.");
+                Assert.That(FindVisualChildren<TextBlock>(page).Any(label => label.Text == "1 mapping"),
+                    Is.True, "A profile with one mapping must not read '1 mappings'.");
                 CaptureWorkspacePreview(page, 1440, 720, "UCR-workspace-collapsed-preview.png", 1020, 610);
                 // Keep sidebar WPF verification on the same working dispatcher
                 // as the established real-workspace test. A second STA-created
