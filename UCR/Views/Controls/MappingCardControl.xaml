@@ -1026,19 +1026,20 @@
                                         BorderThickness="1" CornerRadius="3" Padding="7"
                                         Margin="0 0 0 5"
                                         Visibility="{Binding IsCompoundOutput, Converter={StaticResource CompoundVisibilityConverter}}">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Button Grid.Column="0" Height="38"
-                                                Content="{Binding CompoundOutputSummary}"
+                                    <!-- The one complete 4-Way destination has one bounded
+                                         picker, matching the compound input's visual scale. -->
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button MinWidth="154" MaxWidth="300" Height="38"
                                                 Click="CompoundOutput_OnClick"
                                                 HorizontalContentAlignment="Center"
+                                                HorizontalAlignment="Left" Padding="8 3"
                                                 FontWeight="SemiBold" Foreground="#FFFFFF"
                                                 Style="{StaticResource MaterialDesignRaisedButton}"
-                                                ToolTip="Choose a complete 4-Way output destination"/>
-
-                                    </Grid>
+                                                ToolTip="Choose a complete 4-Way output destination">
+                                            <TextBlock Text="{Binding CompoundOutputSummary}"
+                                                       TextTrimming="CharacterEllipsis" MaxWidth="268"/>
+                                        </Button>
+                                    </StackPanel>
                                 </Border>
                         <!-- Exactly four destination bindings: Up / Left / Right / Down
                              are positioned spatially, not in a vertical stack. -->
