@@ -1231,10 +1231,6 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         // Profile settings use the actual existing settings controls, embedded inside
         // the right inspector instead of navigating away from the mapping workspace.
-        private Panel _filterOriginalParent;
-        private Thickness _filterOriginalMargin;
-        private ContentControl _filterDock;
-
         public void DockRightWorkspacePanels()
         {
             // The sidebar owns Filters; do not move them to a second host.
@@ -1575,29 +1571,6 @@ namespace HidWizards.UCR.Views.ProfileViews
             return mapping;
         }
 
-        private async void AddMapping_OnClick(object sender, RoutedEventArgs e)
-        {
-            var selectedRoute = ProfileViewModel.PluginToolbox.SelectedRoute;
-            if (selectedRoute == null || selectedRoute.PluginItem == null) return;
 
-            if (string.Equals(selectedRoute.OutputLabel, "Filter", StringComparison.OrdinalIgnoreCase))
-            {
-                var picker = new FilterSelectDialog(Profile.GetFilters().OrderBy(name => name,
-                    StringComparer.OrdinalIgnoreCase), true);
-                var selected = (FilterSelectDialogViewModel)await DialogHost.Show(picker,
-                    ProfileViewModel.ProfileDialogIdentifier);
-                if (selected == null || !selected.HasSelection) return;
-                AddNamedFilterMapping(selectedRoute.PluginItem.Plugin, selected.SelectedFilter.Trim());
-                return;
-            }
-
-            var mappingViewModel = ProfileViewModel.AddMappingToSelectedSection(ProfileViewModel.GetNextMappingTitle());
-            if (mappingViewModel == null) return;
-            mappingViewModel.AddPlugin(selectedRoute.PluginItem.Plugin);
-            mappingViewModel.IsExpanded = false;
-            ProfileViewModel.SelectedMapping = mappingViewModel;
-            ShowWorkspaceInspector();
-            Dispatcher.BeginInvoke((Action)(() => ScrollMappingIntoView(mappingViewModel)), DispatcherPriority.Background);
-        }
     }
 }
