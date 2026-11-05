@@ -353,8 +353,18 @@
                     <StackPanel>
                         <TextBlock Text="{Binding Profile.Title}" FontSize="22" FontWeight="SemiBold"
                                    Foreground="White" Margin="0 4 0 1"/>
-                        <TextBlock Text="{Binding MappingsList.Count, StringFormat={}{0} mappings}"
-                                   FontSize="12" Foreground="#AAAAAA"/>
+                        <TextBlock FontSize="12" Foreground="#AAAAAA">
+                            <TextBlock.Style>
+                                <Style TargetType="{x:Type TextBlock}">
+                                    <Setter Property="Text" Value="{Binding MappingsList.Count, StringFormat={}{0} mappings}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding MappingsList.Count}" Value="1">
+                                            <Setter Property="Text" Value="1 mapping"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </StackPanel>
                 </Border>
 
@@ -782,13 +792,37 @@
                         </StackPanel>
                     </Grid>
 
-                    <StackPanel Grid.Row="2" Margin="7 0 7 7">
+                    <!-- A blank search field read as an unexplained empty bar in the
+                         actual workspace capture. Give it a visible, non-interactive hint. -->
+                    <Grid Grid.Row="2" Margin="7 0 7 7">
                         <TextBox x:Name="WorkspaceMappingSearch" MinHeight="34" Padding="9 5"
                                  Background="#242424" BorderBrush="#505050"
                                  Foreground="White" FontSize="13"
                                  ToolTip="Filter mappings by name"
                                  TextChanged="WorkspaceSearch_OnTextChanged"/>
-                    </StackPanel>
+                        <StackPanel x:Name="WorkspaceMappingSearchPlaceholder" Orientation="Horizontal"
+                                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                                    Margin="11 0 0 0" IsHitTestVisible="False">
+                            <StackPanel.Style>
+                                <Style TargetType="{x:Type StackPanel}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding Text, ElementName=WorkspaceMappingSearch}" Value=""/>
+                                                <Condition Binding="{Binding IsKeyboardFocusWithin, ElementName=WorkspaceMappingSearch}" Value="False"/>
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <materialDesign:PackIcon Kind="Magnify" Width="15" Height="15"
+                                                     Foreground="#A5A5A5" VerticalAlignment="Center"/>
+                            <TextBlock Text="Search mappings" Margin="7 0 0 0"
+                                       Foreground="#A5A5A5" FontSize="13" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
                     <ScrollViewer Grid.Row="3" x:Name="MappingSectionsScrollViewer"
                                   VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                                   CanContentScroll="False" Padding="0 1 0 4"
