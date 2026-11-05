@@ -266,13 +266,16 @@ namespace HidWizards.UCR.Views.Controls
             Func<int, string> key = index =>
                 index < parts.Length && !string.IsNullOrWhiteSpace(parts[index])
                     ? parts[index] : "·";
-            var size = Math.Min((b.Width - 3) / 3.15, (b.Height - 2) / 2.9);
+            // A four-key cross occupies an exact 3x3 footprint. Reserve a
+            // three-pixel inset on every edge so none of its directions
+            // (especially Down) can be painted outside the clipping bounds.
+            var size = Math.Max(1, Math.Min((b.Width - 6) / 3.0, (b.Height - 6) / 3.0));
             var centerX = b.Left + b.Width / 2.0;
             var centerY = b.Top + b.Height / 2.0;
-            var left = new Rect(centerX - size * 1.50, centerY - size * 0.43, size, size);
-            var right = new Rect(centerX + size * 0.50, centerY - size * 0.43, size, size);
-            var up = new Rect(centerX - size * 0.50, centerY - size * 1.39, size, size);
-            var down = new Rect(centerX - size * 0.50, centerY + size * 0.57, size, size);
+            var left = new Rect(centerX - size * 1.50, centerY - size * 0.50, size, size);
+            var right = new Rect(centerX + size * 0.50, centerY - size * 0.50, size, size);
+            var up = new Rect(centerX - size * 0.50, centerY - size * 1.50, size, size);
+            var down = new Rect(centerX - size * 0.50, centerY + size * 0.50, size, size);
             if (faceButtons)
             {
                 DrawFaceButton(dc, left, accent, key(0), true);
