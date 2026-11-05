@@ -81,12 +81,22 @@ namespace HidWizards.UCR.Views.Controls
             }
             var left = MenuOnLeft;
             var deviceColumnWidth = CompactDirectional ? 48 : 62;
-            BindingGrid.ColumnDefinitions[0].Width = new GridLength(left ? 29 : deviceColumnWidth);
-            BindingGrid.ColumnDefinitions[2].Width = new GridLength(left ? deviceColumnWidth : 29);
-            Grid.SetColumn(MenuButton, left ? 0 : 2);
+            // The options control lives INSIDE BindingActionGroup, not directly
+            // in BindingGrid. The previous outer-column assignment misplaced it,
+            // and a 29px column could not accommodate its actual 42px width.
+            BindingGrid.ColumnDefinitions[0].Width = new GridLength(left ? 42 : deviceColumnWidth);
+            BindingGrid.ColumnDefinitions[2].Width = new GridLength(left ? deviceColumnWidth : 42);
+            Grid.SetColumn(BindingActionGroup, left ? 0 : 1);
+            Grid.SetColumnSpan(BindingActionGroup, 2);
+            BindingActionGroup.ColumnDefinitions[0].Width = left
+                ? new GridLength(42) : new GridLength(1, GridUnitType.Star);
+            BindingActionGroup.ColumnDefinitions[1].Width = left
+                ? new GridLength(1, GridUnitType.Star) : new GridLength(42);
+            Grid.SetColumn(MenuButton, left ? 0 : 1);
+            Grid.SetColumn(BindSurface, left ? 1 : 0);
             Grid.SetColumn(DeviceSelectionBox, left ? 2 : 0);
-            // The binding button remains in the original flexible centre column,
-            // so its typography, height and interaction remain unchanged.
+            // Keep the bind action and ellipsis immediately adjacent, while
+            // swapping the device selector to the opposite outer edge.
         }
 
         private bool _loaded;
