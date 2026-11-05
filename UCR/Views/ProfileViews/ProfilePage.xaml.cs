@@ -1322,23 +1322,9 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         public void ShowWorkspaceToolbox(string section)
         {
-            if (_disposed) return;
-            if (section == "Devices" || section == "Filters" || section == "Profile options")
-            {
-                var index = section == "Devices" ? 1 : section == "Filters" ? 2 : 3;
-                SelectInspectorTab(index);
-                ShowInspectorTab(index);
-                return;
-            }
-            // Add mapping remains available through its existing workflow.
-            SelectInspectorTab(0);
-            ShowInspectorTab(0);
-            if (section == "Add mapping")
-            {
-                SidebarGrid.Visibility = Visibility.Visible;
-                SelectedMappingInspector.Visibility = Visibility.Collapsed;
-                MappingToolboxPanel.Visibility = Visibility.Visible;
-            }
+            // The only mapping creation action is the '+' above the workspace.
+            // Filters, presets and Devices stay in the same scrollable sidebar.
+            ShowWorkspaceInspector();
         }
 
         private void DeleteSelectedMapping_OnClick(object sender, RoutedEventArgs e)
