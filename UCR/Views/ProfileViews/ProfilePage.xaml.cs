@@ -524,6 +524,13 @@ namespace HidWizards.UCR.Views.ProfileViews
         private void EditCompoundPresetDialog(CompoundBindingPreset existing)
         {
             if (Profile.IsActive()) return;
+            CreateCompoundPresetDialog(existing).ShowDialog();
+        }
+
+        // Separate construction from showing: actual WPF layout and scrolling
+        // can be regression-tested without opening a modal desktop window.
+        private Window CreateCompoundPresetDialog(CompoundBindingPreset existing)
+        {
             var dialog = new Window
             {
                 Title = existing == null ? "New 4-Way preset" : "Edit 4-Way preset",
@@ -651,7 +658,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             actions.Children.Add(save);
             dialog.Content = layout;
             dialog.Loaded += (sender, args) => fields[0].Focus();
-            dialog.ShowDialog();
+            return dialog;
         }
 
         private void RemoveMappingGroup_OnClick(object sender, RoutedEventArgs e)
