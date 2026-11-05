@@ -1172,18 +1172,22 @@ namespace HidWizards.UCR.Tests.UiTests
                     "Applying a preset to one OR set must not bind another set.");
                 Assert.That(secondSet.Select(binding => binding.KeyValue),
                     Is.EqualTo(new[] { 10, 11, 12, 13 }));
-                // A saved name is the single compound binding's user-facing identity,
-                // including when its keys also match a built-in pattern.
+                // The selected preset's identity must survive an identical key pattern.
+                // Assign built-in WASD first, then explicitly choose the saved name.
+                Assert.That(mapping.ResolveCompoundPresetName(
+                    mapping.InputConditions.Single(group => group.GroupIndex == 1).CoreInputs, false),
+                    Is.EqualTo("WASD"));
                 profile.CompoundBindingPresets.Add(new CompoundBindingPreset
                 {
                     Name = "My Movement", Capacity = 4,
                     Keys = new List<string> { "A", "D", "W", "S" }
                 });
-                mapping.RefreshCollapsedSummary();
+                Assert.That(mapping.ApplyDirectionalKeyboardPreset("My Movement", out error, 1),
+                    Is.True, error);
                 var namedGroup = mapping.InputConditions.Single(group => group.GroupIndex == 1);
                 Assert.That(mapping.ResolveCompoundPresetName(namedGroup.CoreInputs, false),
                     Is.EqualTo("My Movement"),
-                    "The explicit preset name must override the built-in WASD alias.");
+                    "The explicitly selected custom preset must win over the WASD alias.");
                 Assert.That(namedGroup.CompoundPrimaryLabel, Is.EqualTo("My Movement ▾"),
                     "The one compound binding must show the preset name, not A / D / W / S.");
                 var namedPresetCard = new MappingCardControl
