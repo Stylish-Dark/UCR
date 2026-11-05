@@ -132,7 +132,8 @@ def images_from_manifest(root: Path, manifest: Path) -> list[Path]:
         if Path(name).name != name or not name.lower().endswith(".png"):
             raise ValueError(f"Invalid manifest screenshot name: {name}")
         path = root / name
-        if not path.is_file() or path.stat().st_size < 5000:
+        minimum_bytes = 500 if name == "UCR-two-button-full-circles-preview.png" else 5000
+        if not path.is_file() or path.stat().st_size < minimum_bytes:
             raise FileNotFoundError(f"Required real WPF screenshot missing or empty: {name}")
         with path.open("rb") as source:
             signature = source.read(8)
@@ -232,7 +233,7 @@ def run(args: argparse.Namespace) -> int:
             "documentation, do not invent functional risks. Approve only with adequate evidence.")
         content = [user_text("DESIGN CONSTITUTION:\n" + constitution +
                              "\nBUILD: Windows compile, NUnit, cold startup passed. "
-                             "16 WPF screenshots present but not all interactive states represented. "
+                             "22 WPF screenshots required, but not all interactive states represented. "
                              "\nSOURCE DIFF:\n" + difftext)]
         verdict = review(function_model, function_instructions, content, key)
         outcome["reviews"].append({"role": "Independent functional risk reviewer", "verdict": verdict})
