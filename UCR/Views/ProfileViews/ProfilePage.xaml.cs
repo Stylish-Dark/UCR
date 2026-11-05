@@ -1281,9 +1281,14 @@ namespace HidWizards.UCR.Views.ProfileViews
         {
             if (_disposed || SidebarGrid == null || SelectedMappingInspector == null
                 || ProfileOptionsHost == null) return;
+            var showOptions = index == 3;
             SelectedMappingInspector.Visibility = Visibility.Collapsed;
-            SidebarGrid.Visibility = Visibility.Visible;
-            ProfileOptionsHost.Visibility = Visibility.Collapsed;
+            // The sidebar and profile settings are mutually exclusive surfaces.
+            // Hiding only their contents leaves an overlay that intercepts clicks.
+            SidebarScrollViewer.Visibility = showOptions ? Visibility.Collapsed : Visibility.Visible;
+            SidebarGrid.Visibility = showOptions ? Visibility.Collapsed : Visibility.Visible;
+            ProfileOptionsHost.Visibility = showOptions ? Visibility.Visible : Visibility.Collapsed;
+            ProfileOptionsHost.IsHitTestVisible = showOptions;
             DockedDevicesNotice.Visibility = Visibility.Collapsed;
             MappingFiltersPanel.Visibility = Visibility.Visible;
             CompoundPresetsPanel.Visibility = Visibility.Visible;
@@ -1299,9 +1304,16 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         public void ShowWorkspaceToolbox(string section)
         {
-            // The only mapping creation action is the '+' above the workspace.
-            // Filters, presets and Devices stay in the same scrollable sidebar.
+            // Mapping creation lives only in the '+' toolbar. The three sidebar
+            // sections share one scroll surface; profile options are a separate tab.
+            if (section == "Profile options")
+            {
+                SelectInspectorTab(3);
+                ShowInspectorTab(3);
+                return;
+            }
             ShowWorkspaceInspector();
+            if (section == "Devices") ProfileDevicesExpander.IsExpanded = true;
         }
 
         private void DeleteSelectedMapping_OnClick(object sender, RoutedEventArgs e)
