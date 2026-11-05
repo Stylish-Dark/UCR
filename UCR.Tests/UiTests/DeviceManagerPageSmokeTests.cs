@@ -1236,7 +1236,15 @@ namespace HidWizards.UCR.Tests.UiTests
                 string error;
                 Assert.That(mapping.ApplyDirectionalKeyboardPreset("WASD", out error), Is.True, error);
                 Assert.That(mapping.CanApplyCompoundInputPreset("Controller D-pad"), Is.True);
-                Assert.That(mapping.ApplyDirectionalDPadPreset(out error), Is.True, error);
+                Assert.That(mapping.ButtonsEnabled, Is.True,
+                    "Checking D-pad availability must not change the profile's editable state.");
+                var applied = mapping.ApplyDirectionalDPadPreset(out error);
+                Assert.That(applied, Is.True,
+                    "D-pad transition failed: " + (error ?? "no diagnostic") +
+                    "; profile active=" + profile.IsActive() +
+                    "; input slots=" + mapping.Mapping.DeviceBindings.Count +
+                    "; digital=" + mapping.Mapping.CompoundDigitalInput +
+                    "; representation=" + mapping.Mapping.EffectiveInputRepresentation);
                 var directions = mapping.Mapping.DeviceBindings
                     .OrderBy(binding => binding.InputDirectionSlot).ToList();
                 Assert.That(directions.Count, Is.EqualTo(4));
