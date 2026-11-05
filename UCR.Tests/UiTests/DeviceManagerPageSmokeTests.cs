@@ -618,9 +618,15 @@ namespace HidWizards.UCR.Tests.UiTests
                 var compoundCaption = FindVisualChildren<TextBlock>(compoundHeaderRow)
                     .SingleOrDefault(text => text.Text == "My WASD");
                 Assert.That(compoundCaption, Is.Not.Null);
-                Assert.That(compoundCaption.IsVisible, Is.True,
-                    "The selected preset caption must actually render beside its compound glyph.");
+                // Preserve the rendered evidence even if a later visibility
+                // assertion rejects it. Failing QC must remain inspectable.
                 CaptureWorkspacePreview(page, 1440, 900, "UCR-named-fourway-header-preview.png");
+                Assert.That(compoundCaption.IsVisible, Is.True,
+                    "Caption visibility=" + compoundCaption.Visibility +
+                    ", row visibility=" + compoundHeaderRow.Visibility +
+                    ", row IsVisible=" + compoundHeaderRow.IsVisible +
+                    ", caption ActualWidth=" + compoundCaption.ActualWidth +
+                    ". The selected preset caption must render beside the compound glyph.");
                 compoundHeader.Remove();
                 for (var index = 0; index < 40; index++)
                 {
