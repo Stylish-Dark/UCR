@@ -49,6 +49,12 @@ namespace HidWizards.UCR.Core.Models.Binding
         [DefaultValue(false)]
         public bool InvertInput { get; set; }
 
+        // The user-selected compound preset label is persisted with its physical channels.
+        // Rebinding a channel invalidates that selection; older profiles infer it from keys.
+        [XmlAttribute]
+        [DefaultValue("")]
+        public string CompoundPresetName { get; set; } = string.Empty;
+
         // Native logical-input metadata. Inputs in the same group are ANDed; groups are ORed.
         [XmlAttribute]
         [DefaultValue(0)]
@@ -199,6 +205,7 @@ namespace HidWizards.UCR.Core.Models.Binding
                 KeyType = 0;
                 KeyValue = 0;
                 KeySubValue = 0;
+                CompoundPresetName = string.Empty;
                 Block = false;
                 IsBound = false;
             }
@@ -262,6 +269,7 @@ namespace HidWizards.UCR.Core.Models.Binding
             KeyType = type;
             KeyValue = value;
             KeySubValue = subValue;
+            if (bindingChanged) CompoundPresetName = string.Empty;
             IsBound = true;
             Profile.Context.ContextChanged();
 
