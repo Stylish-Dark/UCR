@@ -3674,8 +3674,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 visual.ControlLabel = dpad ? string.Empty : string.Join("|", names.Take(4));
             }
             visual.IsBound = channels.Any(channel => channel.DeviceBinding.IsBound);
-            visual.ToolTip = (output ? "Output" : "Input") +
-                " 4-Way compound binding — choose a complete D-pad, stick, face-button or keyboard preset";
+            visual.IsCompoundVisual = true;
+            visual.CompoundPresetName = visual.IsBound
+                ? ResolveCompoundPresetName(channels, output) ?? "Custom 4-Way" : "4-Way";
+            visual.ToolTip = visual.CompoundPresetName +
+                " — choose a complete D-pad, stick, face-button or keyboard preset";
             visual.JoinSymbol = "+";
             return visual;
         }
