@@ -1801,6 +1801,13 @@ namespace HidWizards.UCR.Tests.UiTests
             Assert.That(axes, Does.Contain("LT"));
             Assert.That(axes, Does.Contain("RT"));
             Assert.That(axes, Does.Contain("LX"));
+            var leftAxisTile = ((ScrollViewer)pages[2].Content).Content as WrapPanel;
+            var leftAxisButton = leftAxisTile.Children.OfType<Button>()
+                .Single(button => string.Equals(button.ToolTip as string, "LX", StringComparison.Ordinal));
+            var leftAxisCaption = ((StackPanel)leftAxisButton.Content).Children
+                .OfType<TextBlock>().Single();
+            Assert.That(leftAxisCaption.Text, Is.EqualTo("Left stick X axis"),
+                "The rendered output picker must not repeat the bare LX glyph as its label.");
             Assert.That(directions, Does.Contain("D-pad Up"));
             Assert.That(directions, Does.Contain("Left Stick Up"));
             // Visual tiles are arranged in row-major pairs. Do not silently
@@ -1836,10 +1843,12 @@ namespace HidWizards.UCR.Tests.UiTests
                 "Six full-range axes must not require a permanently oversized popup.");
             Assert.That(((ScrollViewer)pages[0].Content).Height, Is.LessThan(340),
                 "Four buttons must not leave a large blank list below them.");
-            CaptureWorkspacePreview(picker, 470, 470,
+            // Capture the intrinsic popup height. A fixed 470px canvas made six
+            // axis choices appear to occupy a mostly empty menu.
+            CaptureEditorPreview(picker, 470,
                 "UCR-output-picker-axes-preview.png");
             tabs.SelectedIndex = 1;
-            CaptureWorkspacePreview(picker, 470, 470,
+            CaptureEditorPreview(picker, 470,
                 "UCR-output-picker-directions-preview.png");
         }
 
