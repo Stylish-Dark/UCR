@@ -691,6 +691,8 @@ namespace HidWizards.UCR.Tests.UiTests
                 var filtersPanel = page.FindName("MappingFiltersPanel") as Border;
                 var devicesPanel = page.FindName("ProfileDevicesPanel") as Border;
                 Assert.That(filtersPanel, Is.Not.Null);
+                Assert.That(filtersPanel.ActualHeight, Is.LessThan(195),
+                    "An empty Filters sidebar must not consume space needed by presets and Devices.");
                 Assert.That(devicesPanel, Is.Not.Null);
                 Assert.That(devicesPanel.Visibility, Is.EqualTo(Visibility.Visible));
                 Assert.That(devicesPanel.ActualHeight, Is.GreaterThan(35));
