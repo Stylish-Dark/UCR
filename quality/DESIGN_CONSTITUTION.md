@@ -14,6 +14,8 @@ The owner commissions behaviour and product direction. The project director owns
 6. **Stability:** Binding-type changes, conditions, expansion/collapse and device changes must not cause arbitrary layout shifts, clipping, hidden actions or broken states.
 7. **Semantics and persistence:** Mappings, device selections, saved profiles, compound bindings and filtering must remain functional. Visual quality never excuses a functional regression.
 8. **Scope discipline:** Fix related quality defects discovered during implementation but avoid unrelated redesign or reinterpretation of the owner's requirements.
+9. **No unsolicited explanation of self-evident symbols:** Do not expand a controller X symbol to "Face button X" or add the word "Arrows" next to an obvious directional arrow glyph without specific owner authorisation. Labels distinguish genuinely ambiguous controls, not decorate or restate their glyphs.
+10. **Settled visual decisions are protected:** A change request is not permission to adjust neighbouring iconography, button chrome, colours, labels, or spacing. Visual discretion is restricted to implementing the specific owner-authorised outcome and proven geometric repairs.
 
 ## Rejection criteria
 
