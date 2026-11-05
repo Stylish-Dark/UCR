@@ -29,7 +29,7 @@ namespace HidWizards.UCR.Tests.UiTests
     internal class DeviceManagerPageSmokeTests
     {
         private static void CaptureWorkspacePreview(FrameworkElement element, int width, int height, string name,
-            int cropWidth = 0, int cropHeight = 0)
+            int cropWidth = 0, int cropHeight = 0, int cropX = 0, int cropY = 0)
         {
             // Render the actual WPF visual tree, without requiring a logged-in desktop.
             // A screenshot is evidence of layout only; it does not replace interactive testing.
@@ -45,9 +45,10 @@ namespace HidWizards.UCR.Tests.UiTests
             BitmapSource image = bitmap;
             if (cropWidth > 0 && cropHeight > 0)
             {
-                Assert.That(cropWidth, Is.LessThanOrEqualTo(width));
-                Assert.That(cropHeight, Is.LessThanOrEqualTo(height));
-                image = new CroppedBitmap(bitmap, new Int32Rect(0, 0, cropWidth, cropHeight));
+                Assert.That(cropX + cropWidth, Is.LessThanOrEqualTo(width));
+                Assert.That(cropY + cropHeight, Is.LessThanOrEqualTo(height));
+                image = new CroppedBitmap(bitmap,
+                    new Int32Rect(cropX, cropY, cropWidth, cropHeight));
             }
             encoder.Frames.Add(BitmapFrame.Create(image));
             using (var output = System.IO.File.Create(target)) encoder.Save(output);
@@ -745,7 +746,10 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.UpdateLayout();
                 Assert.That(presetExpander.IsExpanded, Is.False);
                 Assert.That(devicesExpander.IsExpanded, Is.True);
-                // Devices are already checked for bounds and reachability above.
+                // Capture actual rendered Devices/sidebar controls at legible detail,
+                // not a second full-page image pretending to be another state.
+                CaptureWorkspacePreview(page, 1440, 900,
+                    "UCR-profile-devices-detail-preview.png", 425, 460, 1015, 280);
                 sidebarScroll.ScrollToTop();
                 devicesExpander.IsExpanded = true;
                 presetExpander.IsExpanded = false;
@@ -759,7 +763,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 page.UpdateLayout();
                 Assert.That(optionsHost.Visibility, Is.EqualTo(Visibility.Visible));
                 Assert.That(sidebarScroll.Visibility, Is.EqualTo(Visibility.Collapsed));
-                CaptureWorkspacePreview(page, 1440, 900, "UCR-profile-options-preview.png");
+                // This detached WPF test does not render usable Profile Options content.
                 page.ShowWorkspaceInspector();
                 page.UpdateLayout();
                 Assert.That(optionsHost.Visibility, Is.EqualTo(Visibility.Collapsed));
