@@ -1172,6 +1172,26 @@ namespace HidWizards.UCR.Tests.UiTests
                     "Applying a preset to one OR set must not bind another set.");
                 Assert.That(secondSet.Select(binding => binding.KeyValue),
                     Is.EqualTo(new[] { 10, 11, 12, 13 }));
+                // A saved name is the single compound binding's user-facing identity,
+                // including when its keys also match a built-in pattern.
+                profile.CompoundBindingPresets.Add(new CompoundBindingPreset
+                {
+                    Name = "My Movement", Capacity = 4,
+                    Keys = new List<string> { "A", "D", "W", "S" }
+                });
+                mapping.RefreshCollapsedSummary();
+                var namedGroup = mapping.InputConditions.Single(group => group.GroupIndex == 1);
+                Assert.That(mapping.ResolveCompoundPresetName(namedGroup.CoreInputs, false),
+                    Is.EqualTo("My Movement"),
+                    "The explicit preset name must override the built-in WASD alias.");
+                Assert.That(namedGroup.CompoundPrimaryLabel, Is.EqualTo("My Movement ▾"),
+                    "The one compound binding must show the preset name, not A / D / W / S.");
+                var namedPresetCard = new MappingCardControl
+                {
+                    InspectorMode = true, InlineWorkspaceMode = true,
+                    DataContext = mapping
+                };
+                CaptureEditorPreview(namedPresetCard, 1050, "UCR-named-fourway-preset-preview.png");
                 Assert.That(mapping.SetInputRepresentation(2), Is.True);
                 Assert.That(mapping.Mapping.CompoundDigitalInput, Is.False);
                 Assert.That(mapping.Mapping.DeviceBindings.Count, Is.EqualTo(2),
