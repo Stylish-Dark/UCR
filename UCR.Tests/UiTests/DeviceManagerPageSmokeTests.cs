@@ -73,6 +73,24 @@ namespace HidWizards.UCR.Tests.UiTests
             CaptureWorkspacePreview(element, width, height + 8, name);
         }
 
+        private static void AssertActionWithinRenderedCard(FrameworkElement card, Button action, string description)
+        {
+            // Actual layout geometry, not a property or the existence of the button.
+            var point = action.TranslatePoint(new Point(0, 0), card);
+            Assert.That(action.ActualWidth, Is.GreaterThanOrEqualTo(24),
+                description + " shrank below a usable visible hit target.");
+            Assert.That(action.ActualHeight, Is.GreaterThanOrEqualTo(20),
+                description + " shrank below a usable visible hit target.");
+            Assert.That(point.X, Is.GreaterThanOrEqualTo(-1),
+                description + " clips past the left edge of the mapping card.");
+            Assert.That(point.Y, Is.GreaterThanOrEqualTo(-1),
+                description + " clips past the top edge of the mapping card.");
+            Assert.That(point.X + action.ActualWidth, Is.LessThanOrEqualTo(card.ActualWidth + 1),
+                description + " clips past the right edge of the mapping card.");
+            Assert.That(point.Y + action.ActualHeight, Is.LessThanOrEqualTo(card.ActualHeight + 1),
+                description + " clips past the bottom edge of the mapping card.");
+        }
+
         private sealed class FakeDevicePageViewModel
         {
             public IList<DeviceManagerItemViewModel> Devices { get; }
@@ -2449,6 +2467,13 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(outputControls.Count, Is.EqualTo(4));
                 Assert.That(outputControls.All(button => button.ActualWidth > 85), Is.True,
                     "Every 4-Way output button must remain legible with additional input conditions.");
+                foreach (var button in outputControls)
+                    AssertActionWithinRenderedCard(card, button, "4-Way output picker");
+                foreach (var button in FindVisualChildren<Button>(card).Where(button =>
+                    button.Visibility == Visibility.Visible && new[] {
+                        "Remove input condition", "Remove this output slot"
+                    }.Contains(button.ToolTip as string)))
+                    AssertActionWithinRenderedCard(card, button, "Remove/X action");
                 CaptureEditorPreview(card, 1150, "UCR-fourway-conditions-preview.png");
             }
             finally
