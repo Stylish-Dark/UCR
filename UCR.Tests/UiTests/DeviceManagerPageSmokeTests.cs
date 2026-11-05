@@ -197,7 +197,9 @@ namespace HidWizards.UCR.Tests.UiTests
                 control.Arrange(new Rect(0, 0, 500, 80));
                 control.UpdateLayout();
                 Assert.That(control.ActualWidth, Is.EqualTo(62).Within(1));
-                Assert.That(bind.Visibility, Is.EqualTo(Visibility.Collapsed));
+                Assert.That(((Grid)control.FindName("BindSurface")).Visibility,
+                    Is.EqualTo(Visibility.Collapsed),
+                    "Device-only mode must hide the entire Bind surface, not just its child.");
                 Assert.That(menu.Visibility, Is.EqualTo(Visibility.Collapsed));
             }
         }
