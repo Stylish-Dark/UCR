@@ -513,8 +513,9 @@ namespace HidWizards.UCR.Tests.UiTests
 
                 // Original collapsed glyphs must be actual clickable buttons.
                 var rebindingButtons = FindVisualChildren<Button>(row)
-                    .Where(button => button.Width == 62 && button.Height == 44 &&
-                        button.Cursor == System.Windows.Input.Cursors.Hand).ToList();
+                    .Where(button => button.Cursor == System.Windows.Input.Cursors.Hand &&
+                        button.ActualWidth >= 62 && button.ActualHeight >= 44 &&
+                        FindVisualChildren<ControlGlyphControl>(button).Any()).ToList();
                 Assert.That(rebindingButtons.Count, Is.GreaterThan(0),
                     "The workspace must expose clickable rebinding glyphs.");
 
