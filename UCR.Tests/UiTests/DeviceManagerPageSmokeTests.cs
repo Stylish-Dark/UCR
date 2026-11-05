@@ -1575,6 +1575,16 @@ namespace HidWizards.UCR.Tests.UiTests
             Assert.That(axes, Does.Contain("LX"));
             Assert.That(directions, Does.Contain("D-pad Up"));
             Assert.That(directions, Does.Contain("Left Stick Up"));
+            var directionalButtons = ((pages[1].Content as ScrollViewer).Content
+                as WrapPanel).Children.OfType<Button>().ToList();
+            var dpadUp = directionalButtons.Single(button =>
+                string.Equals(button.ToolTip as string, "D-pad Up", StringComparison.Ordinal));
+            var dpadGlyph = (dpadUp.Content as StackPanel).Children
+                .OfType<ControlGlyphControl>().Single();
+            Assert.That(dpadGlyph.Kind, Is.EqualTo(ControlVisualKind.DPad),
+                "A D-pad direction must not be rendered as an Xbox A/B/X/Y face button.");
+            Assert.That(pages.All(tab => tab.Style != null), Is.True,
+                "Output tabs must use explicit dark chrome, not unreadable white-on-white defaults.");
             CaptureWorkspacePreview(picker, 470, 470,
                 "UCR-output-picker-axes-preview.png");
             tabs.SelectedIndex = 1;
