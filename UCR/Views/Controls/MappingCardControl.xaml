@@ -873,7 +873,7 @@
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                             </StackPanel>
                         </Grid>
-                        <Border x:Name="InputBodySurface" Grid.Row="1" VerticalAlignment="Stretch">
+                        <Border x:Name="InputBodySurface" Grid.Row="1" VerticalAlignment="Top">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Setter Property="BorderThickness" Value="1"/>
@@ -968,7 +968,7 @@
                             </StackPanel>
 
                         </Grid>
-                        <Border x:Name="OutputBodySurface" Grid.Row="1" VerticalAlignment="Stretch">
+                        <Border x:Name="OutputBodySurface" Grid.Row="1" VerticalAlignment="Top">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Setter Property="BorderThickness" Value="1"/>
