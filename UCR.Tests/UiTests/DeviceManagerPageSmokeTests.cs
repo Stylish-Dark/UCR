@@ -1331,6 +1331,15 @@ namespace HidWizards.UCR.Tests.UiTests
                 Assert.That(Grid.GetRow(outputFaces["CompassOutputRight"]), Is.EqualTo(1));
                 Assert.That(Grid.GetColumn(outputFaces["CompassOutputDown"]), Is.EqualTo(1));
                 Assert.That(Grid.GetRow(outputFaces["CompassOutputDown"]), Is.EqualTo(2));
+                var outputCompass = outputFaces["CompassOutputUp"].Parent as Grid;
+                Assert.That(outputCompass, Is.Not.Null,
+                    "The four output directions must share one spatial grid.");
+                Assert.That(outputCompass.ActualWidth, Is.LessThanOrEqualTo(391),
+                    "The D-pad must remain a compact cluster, not stretch across the output pane.");
+                var outputMidpoint = outputCompass.TranslatePoint(
+                    new Point(outputCompass.ActualWidth / 2, 0), card).X;
+                Assert.That(outputMidpoint, Is.GreaterThan(card.ActualWidth / 2),
+                    "The D-pad must remain centred inside the Outputs half.");
                 Assert.That(outputFaces["CompassOutputLeft"].Content, Is.SameAs(mapping.Plugins[0]));
                 Assert.That(outputFaces["CompassOutputRight"].Content, Is.SameAs(mapping.Plugins[1]));
                 Assert.That(outputFaces["CompassOutputUp"].Content, Is.SameAs(mapping.Plugins[2]));
