@@ -597,15 +597,13 @@
                                         <Grid Visibility="{Binding SingleButtonVisibility}">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" MinWidth="0"/>
-                                                <ColumnDefinition Width="56"/>
-                                                <!-- Match the AND row's remove-button slot without making the primary input removable. -->
-                                                <ColumnDefinition Width="30"/>
+                                                <ColumnDefinition Width="60"/>
                                             </Grid.ColumnDefinitions>
                                             <local:CompactInputBindingControl Grid.Column="0"
                                                 DataContext="{Binding CoreInputs[0]}"
                                                 DeviceBinding="{Binding DeviceBinding}"
                                                 HorizontalAlignment="Stretch"/>
-                                            <ToggleButton Grid.Column="1" Content="NOT" Width="43" Height="32"
+                                            <ToggleButton Grid.Column="1" Content="NOT" Width="48" Height="32"
                                                 Margin="6 0 0 0" Padding="2 0"
                                                 DataContext="{Binding CoreInputs[0]}"
                                                 IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
@@ -685,8 +683,8 @@
                                                 <Grid Margin="2 2 0 2">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*" MinWidth="0"/>
-                                                        <ColumnDefinition Width="56"/>
-                                                        <ColumnDefinition Width="30"/>
+                                                        <ColumnDefinition Width="60"/>
+                                                        <ColumnDefinition Width="40"/>
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel Grid.Column="0">
                                                         <TextBlock Text="AND" FontSize="11"
@@ -695,13 +693,13 @@
                                                             DeviceBinding="{Binding DeviceBinding}"
                                                             HorizontalAlignment="Stretch"/>
                                                     </StackPanel>
-                                                    <ToggleButton Grid.Column="1" Content="NOT" Width="43" Height="32"
+                                                    <ToggleButton Grid.Column="1" Content="NOT" Width="48" Height="32"
                                                         Margin="5 15 0 0" Padding="2 0"
                                                         IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
                                                         Click="InputNegated_OnClick"
                                                         Style="{StaticResource MappingNotToggle}"
                                                         ToolTip="Negate this AND condition"/>
-                                                    <Button Grid.Column="2" Width="32" Height="30"
+                                                    <Button Grid.Column="2" Width="30" Height="30"
                                                         Margin="5 15 0 0" Padding="0"
                                                         Style="{StaticResource UcrDeleteItemButton}"
                                                         Click="RemoveExpressionInput_OnClick"
