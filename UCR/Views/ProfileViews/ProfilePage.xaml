@@ -353,18 +353,6 @@
                     <StackPanel>
                         <TextBlock Text="{Binding Profile.Title}" FontSize="22" FontWeight="SemiBold"
                                    Foreground="White" Margin="0 4 0 1"/>
-                        <TextBlock FontSize="12" Foreground="#AAAAAA">
-                            <TextBlock.Style>
-                                <Style TargetType="{x:Type TextBlock}">
-                                    <Setter Property="Text" Value="{Binding MappingsList.Count, StringFormat={}{0} mappings}"/>
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding MappingsList.Count}" Value="1">
-                                            <Setter Property="Text" Value="1 mapping"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
                     </StackPanel>
                 </Border>
 
