@@ -1760,6 +1760,20 @@ namespace HidWizards.UCR.Tests.UiTests
             Assert.That(axes, Does.Contain("LX"));
             Assert.That(directions, Does.Contain("D-pad Up"));
             Assert.That(directions, Does.Contain("Left Stick Up"));
+            // Visual tiles are arranged in row-major pairs. Do not silently
+            // retain provider order when its X/Y axes or D-pad keys differ.
+            Assert.That(directions.Where(title => title.StartsWith("Left Stick ",
+                StringComparison.Ordinal)).ToArray(), Is.EqualTo(new[] {
+                    "Left Stick Up", "Left Stick Down", "Left Stick Left", "Left Stick Right"
+                }), "Left stick directions must have consistent Up/Down and Left/Right rows.");
+            Assert.That(directions.Where(title => title.StartsWith("Right Stick ",
+                StringComparison.Ordinal)).ToArray(), Is.EqualTo(new[] {
+                    "Right Stick Up", "Right Stick Down", "Right Stick Left", "Right Stick Right"
+                }), "Right stick directions must not depend on axis provider order.");
+            Assert.That(directions.Where(title => title.StartsWith("D-pad ",
+                StringComparison.Ordinal)).ToArray(), Is.EqualTo(new[] {
+                    "D-pad Up", "D-pad Down", "D-pad Left", "D-pad Right"
+                }), "D-pad direction tiles must pair Up/Down and Left/Right.");
             var directionalButtons = ((pages[1].Content as ScrollViewer).Content
                 as WrapPanel).Children.OfType<Button>().ToList();
             var dpadUp = directionalButtons.Single(button =>
