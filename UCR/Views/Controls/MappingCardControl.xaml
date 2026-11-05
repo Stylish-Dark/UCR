@@ -81,10 +81,10 @@
                         Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <!-- Two full-width bidirectional axes, one above the other.
                          Vector strokes remain legible at normal WPF UI size. -->
-                    <Path Data="M 2,6 L 23,6 M 2,6 L 6,2 M 2,6 L 6,10 M 23,6 L 19,2 M 23,6 L 19,10"
+                    <Path Data="M 5,6.5 L 20,6.5 M 5,6.5 L 8,3.5 M 5,6.5 L 8,9.5 M 20,6.5 L 17,3.5 M 20,6.5 L 17,9.5"
                           Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"
                           StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
-                    <Path Data="M 2,17 L 23,17 M 2,17 L 6,13 M 2,17 L 6,21 M 23,17 L 19,13 M 23,17 L 19,21"
+                    <Path Data="M 5,16.5 L 20,16.5 M 5,16.5 L 8,13.5 M 5,16.5 L 8,19.5 M 20,16.5 L 17,13.5 M 20,16.5 L 17,19.5"
                           Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"
                           StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
                 </Canvas>
@@ -101,11 +101,11 @@
                     <Ellipse Grid.Row="1" Grid.Column="1" Width="6" Height="6" HorizontalAlignment="Center" VerticalAlignment="Center"
                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"/>
                 </Grid>
-                <StackPanel x:Name="TwoDots" Visibility="Collapsed"
+                <StackPanel x:Name="TwoDots" Orientation="Horizontal" Visibility="Collapsed"
                             HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Ellipse Width="6" Height="6" Margin="0 1 0 2"
+                    <Ellipse Width="6" Height="6" Margin="1 0 2 0"
                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"/>
-                    <Ellipse Width="6" Height="6" Margin="0 2 0 1"
+                    <Ellipse Width="6" Height="6" Margin="2 0 1 0"
                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"/>
                 </StackPanel>
             </Grid>
@@ -618,7 +618,13 @@
                                         <ItemsControl ItemsSource="{Binding CoreInputs}"
                                                       Visibility="{Binding PlainAxisButtonPairVisibility}"
                                                       Margin="2 3 2 3">
-                                            <ItemsControl.ItemTemplate>
+                                            <!-- Axis driven by two buttons: equal-width horizontal pair. -->
+                                             <ItemsControl.ItemsPanel>
+                                                 <ItemsPanelTemplate>
+                                                     <UniformGrid Columns="2"/>
+                                                 </ItemsPanelTemplate>
+                                             </ItemsControl.ItemsPanel>
+                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
                                                     <StackPanel Margin="0 0 0 7">
                                                         <TextBlock Text="{Binding DeviceBindingName}"
