@@ -1758,7 +1758,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool ApplyDirectionalDPadPreset(out string error, int groupIndex = 0)
         {
             error = null;
-            if (!ButtonsEnabled) return false;
+            if (!ButtonsEnabled)
+            {
+                error = "Stop the running profile before selecting a D-pad preset.";
+                return false;
+            }
             var original = Mapping.DeviceBindings.FirstOrDefault(binding =>
                 binding.InputExpressionGroup == groupIndex &&
                 !binding.IsDirectionalAndCondition);
