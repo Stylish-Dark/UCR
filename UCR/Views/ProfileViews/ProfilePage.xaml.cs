@@ -1247,31 +1247,12 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         public void DockProfileFilters(ContentControl target)
         {
-            if (target == null || ReferenceEquals(_filterDock, target)) return;
-            UndockProfileFilters();
-            _filterOriginalParent = MappingFiltersPanel.Parent as Panel;
-            if (_filterOriginalParent == null) return;
-            _filterOriginalMargin = MappingFiltersPanel.Margin;
-            _filterOriginalParent.Children.Remove(MappingFiltersPanel);
-            MappingFiltersPanel.Margin = new Thickness(0);
-            MappingFiltersPanel.DataContext = ProfileViewModel;
-            MappingFiltersPanel.Visibility = Visibility.Visible;
-            target.Content = MappingFiltersPanel;
-            _filterDock = target;
+            // Intentionally keep Filters in the unified workspace sidebar.
         }
 
         public void UndockProfileFilters()
         {
-            if (_filterDock == null) return;
-            _filterDock.Content = null;
-            _filterDock = null;
-            MappingFiltersPanel.Margin = _filterOriginalMargin;
-            MappingFiltersPanel.ClearValue(DataContextProperty);
-            if (_filterOriginalParent != null)
-            {
-                Grid.SetRow(MappingFiltersPanel, 1);
-                _filterOriginalParent.Children.Add(MappingFiltersPanel);
-            }
+            // No separate dock exists.
         }
 
         public void AttachProfileOptions(UIElement options)
