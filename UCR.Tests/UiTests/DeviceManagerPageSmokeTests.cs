@@ -1237,6 +1237,14 @@ namespace HidWizards.UCR.Tests.UiTests
                 card.Arrange(new Rect(0, 0, 1050, 1100));
                 card.UpdateLayout();
 
+                var compactInputPane = FindVisualChildren<Border>(card)
+                    .Single(border => border.Name == "InputBodySurface");
+                var compassOutputPane = FindVisualChildren<Border>(card)
+                    .Single(border => border.Name == "OutputBodySurface");
+                Assert.That(compactInputPane.ActualHeight,
+                    Is.LessThan(compassOutputPane.ActualHeight - 40),
+                    "The short input pane must be content-sized; do not draw an empty box to the full D-pad height.");
+
                 var compoundBind = FindVisualChildren<Button>(card)
                     .Single(button => (button.ToolTip as string) ==
                         "Bind the axis or choose a complete preset");
