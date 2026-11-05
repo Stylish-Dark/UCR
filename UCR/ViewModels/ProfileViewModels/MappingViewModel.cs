@@ -1915,6 +1915,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 input.CompoundPresetName = preset;
             }
             foreach (var input in inputs) input.RefreshDeviceList();
+            RefreshInputExpressionPresentation();
             RefreshCollapsedSummary();
             return true;
         }
