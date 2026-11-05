@@ -835,7 +835,23 @@
                                                         <Border Margin="0 2" Padding="10 4" CornerRadius="4"
                                                                 Background="#252525" BorderBrush="#393939"
                                                                 BorderThickness="1" HorizontalAlignment="Stretch">
-                                                            <StackPanel><Grid MinHeight="49" HorizontalAlignment="Stretch">
+                                                            <StackPanel><Grid HorizontalAlignment="Stretch">
+                                                                <Grid.Style>
+                                                                    <Style TargetType="{x:Type Grid}">
+                                                                        <Setter Property="MinHeight" Value="49"/>
+                                                                        <Style.Triggers>
+                                                                            <!-- The complete directional glyph is 64 DIP tall.
+                                                                                 Give the row a guaranteed measured height,
+                                                                                 rather than clipping its last keycap. -->
+                                                                            <DataTrigger Binding="{Binding InputIsFullStick}" Value="True">
+                                                                                <Setter Property="MinHeight" Value="86"/>
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding IsCompoundOutput}" Value="True">
+                                                                                <Setter Property="MinHeight" Value="86"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Grid.Style>
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="1.25*" MinWidth="0"/>
                                                                     <ColumnDefinition Width="1.05*" MinWidth="0"/>
