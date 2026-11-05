@@ -2356,9 +2356,10 @@ namespace HidWizards.UCR.Tests.UiTests
                         .FirstOrDefault(border => border.Name == "OutputBodySurface");
                     Assert.That(inputSurface, Is.Not.Null);
                     Assert.That(outputSurface, Is.Not.Null);
-                    Assert.That(outputSurface.ActualHeight,
-                        Is.EqualTo(inputSurface.ActualHeight).Within(1.0),
-                        "The visible input and output panels must have equal heights.");
+                    Assert.That(inputSurface.ActualHeight, Is.InRange(38, 200),
+                        "Ordinary input bindings must be content-sized, without an inflated empty pane.");
+                    Assert.That(outputSurface.ActualHeight, Is.InRange(38, 240),
+                        "Output bindings must use their own content height, including genuine settings.");
                     Assert.That(FindVisualChildren<Button>(card).Any(button =>
                         string.Equals(button.Content as string, "+ Add output", StringComparison.Ordinal) &&
                         button.Visibility == Visibility.Visible), Is.True,
