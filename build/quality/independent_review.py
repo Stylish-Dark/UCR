@@ -18,7 +18,7 @@ import urllib.request
 from typing import Any
 
 API_URL = "https://api.openai.com/v1/responses"
-MAX_DIFF_BYTES = 100_000
+MAX_DIFF_BYTES = 500_000
 BATCH_SIZE = 4
 
 ISSUE = {
