@@ -77,15 +77,17 @@
                 <TextBlock x:Name="SingleGlyph" Text="{Binding}" FontSize="17"
                            FontWeight="SemiBold" TextAlignment="Center"
                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                <StackPanel x:Name="StackedAxes" Visibility="Collapsed"
-                            HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Viewbox Width="22" Height="10" Stretch="Uniform">
-                        <TextBlock Text="↔" FontSize="16" FontWeight="SemiBold"/>
-                    </Viewbox>
-                    <Viewbox Width="22" Height="10" Stretch="Uniform">
-                        <TextBlock Text="↔" FontSize="16" FontWeight="SemiBold"/>
-                    </Viewbox>
-                </StackPanel>
+                <Canvas x:Name="StackedAxes" Width="25" Height="23"
+                        Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <!-- Two full-width bidirectional axes, one above the other.
+                         Vector strokes remain legible at normal WPF UI size. -->
+                    <Path Data="M 2,6 L 23,6 M 2,6 L 6,2 M 2,6 L 6,10 M 23,6 L 19,2 M 23,6 L 19,10"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"
+                          StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                    <Path Data="M 2,17 L 23,17 M 2,17 L 6,13 M 2,17 L 6,21 M 23,17 L 19,13 M 23,17 L 19,21"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"
+                          StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                </Canvas>
                 <Grid x:Name="FourDots" Width="19" Height="19" Visibility="Collapsed"
                       HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
