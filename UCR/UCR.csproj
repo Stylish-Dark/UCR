@@ -429,6 +429,9 @@
     <Content Include="Assets\Styles\profiles.xaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Assets\Layouts\geometry.ini">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <EmbeddedResource Include="Assets\Fonts\DeviceSymbols-v7.ttf">
       <LogicalName>HidWizards.UCR.Assets.Fonts.DeviceSymbols-v7.ttf</LogicalName>
     </EmbeddedResource>

@@ -538,6 +538,10 @@
                             </Setter.Value>
                         </Setter>
                     </Style>
+            <system:Double x:Key="UcrLayoutWindowHeight">740</system:Double>
+            <system:Double x:Key="UcrLayoutWindowMinHeight">500</system:Double>
+            <system:Double x:Key="UcrLayoutWindowWidth">1320</system:Double>
+            <system:Double x:Key="UcrLayoutWindowMinWidth">1200</system:Double>
             <system:Double x:Key="UcrUiScale">1.0</system:Double>
 
             <!-- A dedicated delete-button template avoids MaterialDesign's icon scaling/clipping.

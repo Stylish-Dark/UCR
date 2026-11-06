@@ -67,6 +67,36 @@ namespace HidWizards.UCR.Utilities
             Logger.Info("Loaded " + loaded + " editable accent colours from " + path);
         }
 
+        // Editable window dimensions; absent or invalid entries use the compiled values.
+        public static void LoadGeometryOverrides()
+        {
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Layouts", "geometry.ini");
+            if (Application.Current == null || !File.Exists(path)) return;
+
+            var loaded = 0;
+            foreach (var sourceLine in File.ReadAllLines(path))
+            {
+                var line = sourceLine.Trim();
+                if (line.Length == 0 || line.StartsWith("#") || line.StartsWith(";")) continue;
+                var equals = line.IndexOf('=');
+                if (equals <= 0) continue;
+
+                var key = line.Substring(0, equals).Trim();
+                if (!key.StartsWith("UcrLayout", StringComparison.Ordinal)
+                    || !(Application.Current.Resources[key] is double)) continue;
+
+                double value;
+                if (!double.TryParse(line.Substring(equals + 1).Trim(), NumberStyles.Float,
+                    CultureInfo.InvariantCulture, out value)
+                    || double.IsNaN(value) || double.IsInfinity(value)
+                    || value < 1 || value > 4000) continue;
+
+                Application.Current.Resources[key] = value;
+                loaded++;
+            }
+            Logger.Info("Loaded " + loaded + " editable layout values from " + path);
+        }
+
         public static void ApplySavedAccent()
         {
             ApplyAccent(HidWizards.UCR.Properties.Settings.Default.AccentColor, false);

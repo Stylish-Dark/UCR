@@ -15,7 +15,7 @@
         BorderBrush="{DynamicResource PrimaryHueDarkBrush}"
         BorderThickness="1"
         Title="Universal Control Remapper" 
-        Height="740" MinHeight="500" Width="1320" MinWidth="1200"
+        Height="{DynamicResource UcrLayoutWindowHeight}" MinHeight="{DynamicResource UcrLayoutWindowMinHeight}" Width="{DynamicResource UcrLayoutWindowWidth}" MinWidth="{DynamicResource UcrLayoutWindowMinWidth}"
         Closing="MainWindow_OnClosing"
         KeyboardNavigation.TabNavigation="Cycle"
         PreviewKeyDown="MainWindow_OnPreviewKeyDown"

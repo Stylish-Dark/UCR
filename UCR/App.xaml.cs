@@ -55,6 +55,8 @@ namespace HidWizards.UCR
             catch (Exception exception) { Logger.Warn("Could not load device outline colours; using defaults.", exception); }
             try { AppearanceManager.LoadPaletteOverrides(); }
             catch (Exception exception) { Logger.Warn("Could not load editable accent colours; using defaults.", exception); }
+            try { AppearanceManager.LoadGeometryOverrides(); }
+            catch (Exception exception) { Logger.Warn("Could not load editable layout values; using defaults.", exception); }
             try { AppearanceManager.ApplySavedAccent(); AppearanceManager.ApplySavedUiScale(); }
             catch (Exception exception) { Logger.Warn("Could not restore appearance preferences; using defaults.", exception); }
 
