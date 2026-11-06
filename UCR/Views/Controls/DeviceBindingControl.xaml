@@ -69,7 +69,7 @@
                 <ColumnDefinition Width="40"/>
             </Grid.ColumnDefinitions>
             <Grid Grid.Column="0">
-            <Button
+            <Button x:Name="UiBind"
                     HorizontalAlignment="Stretch"
                     Content="{Binding BindButtonText}"
                     IsEnabled="{Binding BindingEnabled}"
@@ -99,7 +99,7 @@
                              Visibility="{Binding ShowButtonPreview, Converter={StaticResource BoolToVisibilityConverter}}"
                              Style="{StaticResource UcrBindingProgressBar}"/>
             </Grid>
-            <Button Grid.Column="1" IsEnabled="{Binding BindingEnabled}" Margin="0"
+            <Button x:Name="UiBindOptions" Grid.Column="1" IsEnabled="{Binding BindingEnabled}" Margin="0"
                     ToolTip="Stop the active profile to edit this binding." ToolTipService.ShowOnDisabled="True"
                     Click="BindMenuButton_OnClick"
                     Width="40" Padding="0"

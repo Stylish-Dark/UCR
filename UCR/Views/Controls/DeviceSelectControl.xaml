@@ -39,7 +39,7 @@
                                             </Style>
                                         </TextBlock.Style>
                                     </TextBlock>
-                                    <CheckBox Style="{StaticResource MaterialDesignCheckBox}" IsChecked="{Binding Checked}" HorizontalAlignment="Center"/>
+                                    <CheckBox x:Name="UiDeviceChoice" Style="{StaticResource MaterialDesignCheckBox}" IsChecked="{Binding Checked}" HorizontalAlignment="Center"/>
                                 </StackPanel>
                                 <materialDesign:Ripple Grid.Column="0" Grid.ColumnSpan="3" Feedback="{DynamicResource MaterialDesignFlatButtonRipple}" ToolTip="{Binding Title}"/>
                             </Grid>
