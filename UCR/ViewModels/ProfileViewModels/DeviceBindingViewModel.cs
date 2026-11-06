@@ -12,6 +12,7 @@ using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.ViewModels.Presentation;
+using HidWizards.UCR.Utilities;
 
 namespace HidWizards.UCR.ViewModels.ProfileViewModels
 {
@@ -271,7 +272,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var slot = DeviceBinding?.InputDirectionSlot ?? 0;
                 var direction = slot == 1 ? "←" : slot == 2 ? "→" :
                     slot == 3 ? "↑" : slot == 4 ? "↓" : "";
-                if (!DeviceBinding.IsBound) return direction + " Bind";
+                if (!DeviceBinding.IsBound) return direction + " " + UiLabels.Bind;
                 var label = CompactBindButtonText;
                 if (label.Length > 9) label = label.Substring(0, 8) + "…";
                 return direction + " " + label;
@@ -305,7 +306,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             get
             {
                 if (DeviceBinding.IsInBindMode)
-                    return "●  PRESS INPUT";
+                    return UiLabels.Capture;
                 if (DeviceBinding.IsBound)
                 {
                     var name = BoundNameForDisplay();
@@ -316,10 +317,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     if (string.IsNullOrWhiteSpace(name) ||
                         name.IndexOf("device unavailable", StringComparison.OrdinalIgnoreCase) >= 0 ||
                         name.IndexOf("unavailable device", StringComparison.OrdinalIgnoreCase) >= 0)
-                        return "Bind";
+                        return UiLabels.Bind;
                     return name;
                 }
-                return "Bind";
+                return UiLabels.Bind;
             }
         }
 
@@ -331,13 +332,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 var label = BindButtonText;
                 if (DeviceBinding.IsInBindMode)
-                    return "●  PRESS INPUT";
+                    return UiLabels.Capture;
                 if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Output)
-                    return "Output";
+                    return UiLabels.Bind;
                 // A new mapping has no configured physical input type yet.
                 // Never present the axis-specific instruction before binding.
                 if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Input)
-                    return "Bind";
+                    return UiLabels.Bind;
                 if (string.IsNullOrWhiteSpace(label)) return label;
                 // The device picker already identifies the device and the binding
                 // menu owns category names. In a compact slot, show the control:
