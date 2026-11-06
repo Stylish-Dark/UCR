@@ -71,6 +71,34 @@ class UiContractVetoTests(unittest.TestCase):
             'Style="{StaticResource MaterialDesignRaisedButton}"')
         self.assert_veto("MenuButton_OnClick bypasses UcrBindOptionsButton")
 
+    def test_compact_bind_minimum_cannot_be_reset_to_zero(self):
+        self.modify(
+            "UCR/Views/Controls/CompactInputBindingControl.xaml",
+            'x:Name="BindButton" MinHeight="36" Padding="2 0"',
+            'x:Name="BindButton" MinHeight="36" MinWidth="0" Padding="2 0"')
+        self.assert_veto("Compact Bind button resets its minimum width")
+
+    def test_output_type_filter_icon_cannot_be_reintroduced(self):
+        self.modify(
+            "UCR/Views/Controls/MappingCardControl.xaml",
+            'ToolTip="Axis output" Click="OutputRepresentation_OnClick"',
+            'ToolTip="Filter output" Click="OutputRepresentation_OnClick"')
+        self.assert_veto("Filter must not appear as an Outputs representation")
+
+    def test_output_compass_cannot_expand_back_to_full_panel_width(self):
+        self.modify(
+            "UCR/Views/Controls/MappingCardControl.xaml",
+            'HorizontalAlignment="Center" MaxWidth="360"',
+            'HorizontalAlignment="Center" MaxWidth="480"')
+        self.assert_veto("4-Way output compass must have one compact 360px")
+
+    def test_four_way_direction_invert_cannot_return(self):
+        self.modify(
+            "UCR/Views/Controls/MappingCardControl.xaml",
+            'x:Key="DirectionalOutputDPadCardTemplate"',
+            'x:Key="DirectionalOutputDPadCardTemplate" ToolTip="Invert this output"')
+        self.assert_veto("4-Way output directions must not have per-arm Invert")
+
     def test_NOT_label_drift_is_rejected(self):
         self.modify(
             "UCR/Views/Controls/MappingCardControl.xaml",
