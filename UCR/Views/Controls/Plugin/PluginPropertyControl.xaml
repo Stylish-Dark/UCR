@@ -7,7 +7,7 @@
              Name="PluginPropertyControlName"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
-    <Grid>
+    <Grid x:Name="UiPropertyRow">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -15,7 +15,7 @@
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
-        <TextBlock Grid.Row="0" Text="{Binding Name}" Margin="0 6" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
-        <ContentPresenter Content="{Binding PropertyContent, ElementName=PluginPropertyControlName}" Grid.Row="0" Grid.Column="1"/>
+        <TextBlock x:Name="UiPropertyName" Grid.Row="0" Text="{Binding Name}" Margin="0 6" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
+        <ContentPresenter x:Name="UiPropertyValue" Content="{Binding PropertyContent, ElementName=PluginPropertyControlName}" Grid.Row="0" Grid.Column="1"/>
     </Grid>
 </UserControl>

@@ -26,14 +26,14 @@
                                FontSize="15" FontWeight="SemiBold"
                                Text="{Binding Plugin.PluginName}"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
-                        <Button ToolTip="Add filter"
+                        <Button x:Name="UiAddFilter" ToolTip="Add filter"
                                 materialDesign:ColorZoneAssist.Mode="Standard"
                                 Style="{StaticResource MaterialDesignCardButton}"
                                 Click="AddFilter_OnClick"
                                 IsEnabled="{Binding CanAddFilter}">
                             <materialDesign:PackIcon Kind="Filter" Width="18" Height="18"/>
                         </Button>
-                        <Button ToolTip="Remove plugin"
+                        <Button x:Name="UiRemovePlugin" ToolTip="Remove plugin"
                                 materialDesign:ColorZoneAssist.Mode="Standard"
                                 Style="{StaticResource MaterialDesignCardButton}"
                                 Click="RemovePlugin_OnClick"

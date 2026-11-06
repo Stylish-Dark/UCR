@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style x:Key="UiPropertyRow" TargetType="{x:Type Grid}"></Style>
+
+    <Style x:Key="UiPropertyName" TargetType="{x:Type TextBlock}">
+        <Setter Property="Margin" Value="0 6"/>
+    </Style>
+
+    <Style x:Key="UiPropertyValue" TargetType="{x:Type ContentPresenter}"></Style>
+
+    <Style x:Key="PluginPropertyControlName" TargetType="{x:Type UserControl}"></Style>
+</ResourceDictionary>

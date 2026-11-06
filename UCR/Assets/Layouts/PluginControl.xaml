@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style x:Key="UiAddFilter" TargetType="{x:Type Button}"></Style>
+
+    <Style x:Key="UiRemovePlugin" TargetType="{x:Type Button}"></Style>
+
+    <Style x:Key="PluginViewName" TargetType="{x:Type UserControl}"></Style>
+
+    <Style x:Key="PluginContent" TargetType="{x:Type StackPanel}"></Style>
+</ResourceDictionary>
