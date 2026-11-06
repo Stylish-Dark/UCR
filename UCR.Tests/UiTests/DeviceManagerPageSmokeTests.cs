@@ -2204,12 +2204,14 @@ namespace HidWizards.UCR.Tests.UiTests
                 filterCard.UpdateLayout();
                 var filterSection = FindVisualChildren<Border>(filterCard)
                     .Single(border => border.Name == "MappingFiltersSurface");
-                Assert.That(filterSection.IsVisible, Is.True,
+                Assert.That(filterSection.Visibility, Is.EqualTo(Visibility.Visible),
                     "A filter mapping must expose its route in the FILTERS section.");
                 var physicalOutputSurface = FindVisualChildren<Border>(filterCard)
                     .Single(border => border.Name == "OutputBodySurface");
-                Assert.That(physicalOutputSurface.IsVisible, Is.False,
-                    "Filter-only mappings must not expose an empty physical Outputs editor.");
+                var physicalOutputGrid = VisualTreeHelper.GetParent(physicalOutputSurface) as Grid;
+                Assert.That(physicalOutputGrid, Is.Not.Null);
+                Assert.That(physicalOutputGrid.Visibility, Is.EqualTo(Visibility.Collapsed),
+                    "Filter-only mappings must not expose a physical Outputs editor.");
                 var filterRouteButtons = FindVisualChildren<Button>(filterSection)
                     .Where(button => string.Equals(button.ToolTip as string,
                         "Choose filter or physical output", StringComparison.Ordinal)).ToList();
