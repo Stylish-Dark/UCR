@@ -301,4 +301,33 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <Style x:Key="UcrMappingActionButton" TargetType="{x:Type ButtonBase}">
+            <Setter Property="Foreground" Value="#DADADA"/>
+            <Setter Property="Opacity" Value="0.84"/>
+            <Setter Property="Margin" Value="2"/>
+            <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="Opacity" Value="1"/>
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="Opacity" Value="1"/>
+            </Trigger>
+            </Style.Triggers>
+            </Style>
+
+    <Style x:Key="DevicePageTextButton" TargetType="{x:Type Button}">
+            <Setter Property="Background" Value="#303030"/>
+            <Setter Property="BorderBrush" Value="#686868"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10 6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#414141"/>
+                <Setter Property="BorderBrush" Value="#A0A0A0"/>
+            </Trigger>
+            </Style.Triggers>
+            </Style>
 </ResourceDictionary>

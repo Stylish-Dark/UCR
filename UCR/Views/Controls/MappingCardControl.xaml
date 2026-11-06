@@ -12,21 +12,7 @@
              d:DesignHeight="320" d:DesignWidth="800">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="CompoundVisibilityConverter"/>
-        <Style x:Key="UcrMappingActionButton" TargetType="{x:Type ButtonBase}" BasedOn="{StaticResource MaterialDesignCardButton}">
-            <Setter Property="Foreground" Value="#DADADA"/>
-            <Setter Property="Opacity" Value="0.84"/>
-            <Setter Property="Margin" Value="2"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Foreground" Value="#FFFFFF"/>
-                    <Setter Property="Opacity" Value="1"/>
-                </Trigger>
-                <Trigger Property="IsKeyboardFocused" Value="True">
-                    <Setter Property="Foreground" Value="#FFFFFF"/>
-                    <Setter Property="Opacity" Value="1"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
+
 
 
         <!-- Draw multi-channel selector states with actual geometry instead of

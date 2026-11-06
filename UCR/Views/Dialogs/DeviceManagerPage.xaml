@@ -11,19 +11,7 @@
              KeyboardNavigation.TabNavigation="Cycle"
              PreviewKeyDown="DeviceManagerWindow_OnPreviewKeyDown">
     <UserControl.Resources>
-        <Style x:Key="DevicePageTextButton" TargetType="{x:Type Button}" BasedOn="{StaticResource UcrDialogFlatButton}">
-            <Setter Property="Background" Value="#303030"/>
-            <Setter Property="BorderBrush" Value="#686868"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="10 6"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#414141"/>
-                    <Setter Property="BorderBrush" Value="#A0A0A0"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
+
 
 
     </UserControl.Resources>
