@@ -2145,7 +2145,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 namedPresetCard.Arrange(new Rect(0, 0, 1050, 1100));
                 namedPresetCard.UpdateLayout();
                 var pairedAxisCards = FindVisualChildren<Border>(namedPresetCard)
-                    .Where(border => border.Name == "OutputBindingCardSurface" && border.IsVisible)
+                    .Where(border => border.Name == "OutputBindingCardSurface" && border.Visibility == Visibility.Visible)
                     .ToList();
                 Assert.That(pairedAxisCards.Count, Is.EqualTo(2),
                     "An Axis pair must retain exactly two physical output bindings.");
