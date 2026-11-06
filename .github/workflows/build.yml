@@ -808,6 +808,33 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Read release criteria from exact source revision
+        uses: actions/checkout@v6
+
+      - name: Require protected master and all owner-approved visual baselines
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/branches/master" > branch.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          if json.loads(Path("branch.json").read_text()).get("protected") is not True:
+              raise SystemExit("NOT APPROVED: master is not protected by GitHub")
+          names = [line.strip() for line in Path("build/quality/expected_screenshots.txt").read_text().splitlines()
+                   if line.strip() and not line.lstrip().startswith("#")]
+          baselines = Path("quality/approved_visual_baselines")
+          missing = [name for name in names if not (baselines / name).is_file()]
+          if missing:
+              raise SystemExit("NOT APPROVED: owner-approved visual baselines missing: " + ", ".join(missing))
+          print("Protected master and complete owner-approved visual baseline set verified.")
+          PY
+
       - name: Retrieve only the binary from this successful exact-build run
         uses: actions/download-artifact@v7
         with:
@@ -820,10 +847,10 @@ jobs:
           test -s approved-dist/UCR.exe
           test -s approved-dist/NLog.config
           sha256sum approved-dist/UCR.exe > approved-dist/APPROVED-EXE-SHA256.txt
-          printf 'APPROVED source SHA: %s\nWindows/review run: %s\n' \
+          printf 'APPROVED source SHA: %s\nWindows/offline-QC run: %s\n' \
             "${{ github.sha }}" "${{ github.run_id }}" > approved-dist/APPROVAL.txt
 
-      - name: Publish only after mandatory build and visual approval
+      - name: Publish only after protected-branch and approved-baseline checks
         uses: actions/upload-artifact@v7
         with:
           name: UCR-APPROVED-Windows-${{ github.sha }}
