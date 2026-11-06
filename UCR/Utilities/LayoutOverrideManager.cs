@@ -17,6 +17,8 @@ namespace HidWizards.UCR.Utilities
     {
         private static readonly Dictionary<string, Dictionary<string, Style>> Layouts =
             new Dictionary<string, Dictionary<string, Style>>(StringComparer.Ordinal);
+        private static readonly Dictionary<string, Dictionary<string, string>> NamedProperties =
+            new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
         private static readonly HashSet<string> Reported = new HashSet<string>(StringComparer.Ordinal);
         private static bool _registered;
 
@@ -32,12 +34,21 @@ namespace HidWizards.UCR.Utilities
                 {
                     var dictionary = new ResourceDictionary { Source = new Uri(Path.GetFullPath(file)) };
                     var styles = new Dictionary<string, Style>(StringComparer.Ordinal);
+                    var properties = new Dictionary<string, string>(StringComparer.Ordinal);
                     foreach (DictionaryEntry entry in dictionary)
                     {
                         var key = entry.Key as string;
                         var style = entry.Value as Style;
-                        if (string.IsNullOrEmpty(key) || style == null)
-                            throw new InvalidDataException("Layout files may contain only named Style entries.");
+                        if (style == null)
+                        {
+                            var literal = entry.Value as string;
+                            if (string.IsNullOrEmpty(key) || key.LastIndexOf('.') <= 0 || literal == null)
+                                throw new InvalidDataException("Layout entries must be named styles or Element.Property strings.");
+                            properties.Add(key, literal);
+                            continue;
+                        }
+                        if (string.IsNullOrEmpty(key))
+                            throw new InvalidDataException("Layout styles require a name.");
                         if (style.BasedOn != null || style.Triggers.Count != 0)
                             throw new InvalidDataException("Layout rules support property setters, not BasedOn or triggers: " + key);
 
@@ -54,7 +65,8 @@ namespace HidWizards.UCR.Utilities
 
                     var viewName = Path.GetFileNameWithoutExtension(file);
                     if (styles.Count != 0) Layouts[viewName] = styles;
-                    Logger.Info("Loaded " + styles.Count + " layout rules for " + viewName);
+                    if (properties.Count != 0) NamedProperties[viewName] = properties;
+                    Logger.Info("Loaded " + (styles.Count + properties.Count) + " layout rules for " + viewName);
                 }
                 catch (Exception exception)
                 {
@@ -62,7 +74,7 @@ namespace HidWizards.UCR.Utilities
                 }
             }
 
-            if (Layouts.Count == 0 || _registered) return;
+            if ((Layouts.Count == 0 && NamedProperties.Count == 0) || _registered) return;
             EventManager.RegisterClassHandler(typeof(FrameworkElement), FrameworkElement.LoadedEvent,
                 new RoutedEventHandler(ApplyOnLoaded), true);
             _registered = true;
@@ -71,8 +83,13 @@ namespace HidWizards.UCR.Utilities
         private static void ApplyOnLoaded(object sender, RoutedEventArgs e)
         {
             var element = sender as FrameworkElement;
-            if (element == null || !ReferenceEquals(sender, e.OriginalSource)
-                || string.IsNullOrEmpty(element.Name)) return;
+            if (element == null || !ReferenceEquals(sender, e.OriginalSource)) return;
+
+            Dictionary<string, string> properties;
+            if (NamedProperties.TryGetValue(element.GetType().Name, out properties))
+                ApplyNamedProperties(element, properties);
+
+            if (string.IsNullOrEmpty(element.Name)) return;
 
             // Nearest matching view wins, even when a view contains another user control.
             for (FrameworkElement owner = element; owner != null; owner = GetParent(owner))
@@ -121,6 +138,47 @@ namespace HidWizards.UCR.Utilities
                     Logger.Warn("Ignoring invalid external layout for " + identity, exception);
                 }
                 return;
+            }
+        }
+
+        private static void ApplyNamedProperties(FrameworkElement view, Dictionary<string, string> properties)
+        {
+            foreach (var pair in properties)
+            {
+                try
+                {
+                    var dot = pair.Key.LastIndexOf('.');
+                    var elementName = pair.Key.Substring(0, dot);
+                    var propertyName = pair.Key.Substring(dot + 1);
+                    var target = view.FindName(elementName) as DependencyObject;
+                    if (target == null)
+                        throw new InvalidDataException("Named layout target does not exist: " + elementName);
+
+                    var field = target.GetType().GetField(propertyName + "Property",
+                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static
+                        | System.Reflection.BindingFlags.FlattenHierarchy);
+                    var property = field == null ? null : field.GetValue(null) as DependencyProperty;
+                    if (property == null)
+                        throw new InvalidDataException("Unknown layout property: " + propertyName);
+
+                    var converter = TypeDescriptor.GetConverter(property.PropertyType);
+                    if (!converter.CanConvertFrom(typeof(string)))
+                        throw new InvalidDataException("Cannot convert layout property: " + propertyName);
+                    var value = converter.ConvertFrom(null, CultureInfo.InvariantCulture, pair.Value);
+                    if (!property.IsValidValue(value))
+                        throw new InvalidDataException("Invalid layout value for " + pair.Key);
+
+                    target.SetCurrentValue(property, value);
+                }
+                catch (Exception exception)
+                {
+                    var identity = view.GetType().Name + "." + pair.Key;
+                    lock (Reported)
+                    {
+                        if (!Reported.Add(identity)) continue;
+                    }
+                    Logger.Warn("Ignoring invalid named layout property " + identity, exception);
+                }
             }
         }
 

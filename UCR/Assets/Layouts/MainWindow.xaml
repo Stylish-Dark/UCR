@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <!-- Rules target existing x:Name elements in MainWindow. Properties can be changed without rebuilding. -->
     <Style x:Key="MainToolbarHost" TargetType="{x:Type Grid}">
         <Setter Property="Grid.Row" Value="1"/>
@@ -13,4 +14,7 @@
     <Style x:Key="ProfileDeviceEditorHost" TargetType="{x:Type ContentControl}">
         <Setter Property="MaxHeight" Value="280"/>
     </Style>
+    <!-- These properties belong to Grid columns rather than visual controls. -->
+    <sys:String x:Key="ProfilesColumn.MinWidth">320</sys:String>
+    <sys:String x:Key="ProfilesColumn.MaxWidth">480</sys:String>
 </ResourceDictionary>

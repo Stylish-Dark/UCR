@@ -211,7 +211,10 @@ namespace HidWizards.UCR.Views
             var longest = 0.0;
             foreach (var item in _dashboardViewModel.ProfileList)
                 MeasureProfileTitles(item, ref longest);
-            var width = Math.Max(335, Math.Min(480, Math.Ceiling(longest + 184)));
+            // Respect externally adjustable profile-column bounds.
+            var minimum = Math.Max(0, ProfilesColumn.MinWidth + 15);
+            var maximum = Math.Max(minimum, ProfilesColumn.MaxWidth);
+            var width = Math.Max(minimum, Math.Min(maximum, Math.Ceiling(longest + 184)));
             ProfilesColumn.Width = new GridLength(width, GridUnitType.Pixel);
         }
 
