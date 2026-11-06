@@ -6,39 +6,6 @@
              UseLayoutRounding="True"
              KeyboardNavigation.TabNavigation="Local">
     <UserControl.Resources>
-        <Style x:Key="CompactBindOptionsButton" TargetType="{x:Type Button}">
-            <Setter Property="Foreground" Value="#EAEAEA"/>
-            <Setter Property="Background" Value="#303030"/>
-            <Setter Property="BorderBrush" Value="#58749C"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type Button}">
-                        <Border x:Name="Chrome" Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="0 3 3 0">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="#414141"/>
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#86A3D0"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="#244A87"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.4"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
         <!-- The generated output-picker tabs cannot inherit the light WPF
              selected-tab chrome: it made white captions disappear on white. -->
         <Style x:Key="OutputPickerTabStyle" TargetType="{x:Type TabItem}">
@@ -272,7 +239,7 @@
 
         <Button Grid.Column="1" x:Name="MenuButton" Margin="0" Width="42" MinHeight="36" Padding="0"
                 IsEnabled="{Binding BindingEnabled}" Click="MenuButton_OnClick"
-                Style="{StaticResource CompactBindOptionsButton}"
+                Style="{StaticResource UcrBindOptionsButton}"
                 ToolTip="Binding options">
             <materialDesign:PackIcon Kind="DotsVertical" Width="20" Height="20"/>
             <Button.ContextMenu>
