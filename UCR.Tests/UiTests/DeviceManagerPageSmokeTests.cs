@@ -361,6 +361,51 @@ namespace HidWizards.UCR.Tests.UiTests
 
         [Test]
         [Apartment(ApartmentState.STA)]
+        public void DualAxisGlyphRendersTwoDistinctNonIntersectingAxes()
+        {
+            EnsureApplicationResources();
+            var owner = new MappingCardControl();
+            var template = owner.FindResource("DirectionalChoiceGlyphTemplate") as DataTemplate;
+            var style = owner.FindResource("DirectionalTypeChoice") as Style;
+            Assert.That(template, Is.Not.Null);
+            Assert.That(style, Is.Not.Null);
+
+            var button = new RadioButton
+            {
+                Content = "↔↔",
+                ContentTemplate = template,
+                Style = style,
+                IsChecked = true,
+                Foreground = Brushes.White
+            };
+            var surface = new Grid { Width = 116, Height = 64 };
+            surface.Children.Add(button);
+            surface.Measure(new Size(116, 64));
+            surface.Arrange(new Rect(0, 0, 116, 64));
+            surface.UpdateLayout();
+
+            var axes = FindVisualChildren<Canvas>(button)
+                .Single(canvas => canvas.Name == "StackedAxes");
+            Assert.That(axes.Visibility, Is.EqualTo(Visibility.Visible));
+            var paths = FindVisualChildren<System.Windows.Shapes.Path>(axes).ToList();
+            Assert.That(paths.Count, Is.EqualTo(2),
+                "Two axes require two geometric icons, not a single crossed four-way icon.");
+            var x = paths[0].Data.Bounds;
+            var y = paths[1].Data.Bounds;
+            Assert.That(x.Right, Is.LessThan(y.Left),
+                "The X and Y axis arrows must not touch or intersect.");
+            Assert.That(x.Width, Is.GreaterThan(x.Height),
+                "The X axis must actually be horizontal.");
+            Assert.That(y.Height, Is.GreaterThan(y.Width),
+                "The Y axis must actually be vertical.");
+            Assert.That(x.Left, Is.GreaterThanOrEqualTo(0));
+            Assert.That(y.Right, Is.LessThanOrEqualTo(axes.ActualWidth));
+            Assert.That(y.Top, Is.GreaterThanOrEqualTo(0));
+            Assert.That(y.Bottom, Is.LessThanOrEqualTo(axes.ActualHeight));
+        }
+
+        [Test]
+        [Apartment(ApartmentState.STA)]
         public void CompactDeviceSelectorKeepsFullSizeGlyphInsideItsActualBorder()
         {
             EnsureApplicationResources();
@@ -1357,8 +1402,8 @@ namespace HidWizards.UCR.Tests.UiTests
                 var outputCompass = outputFaces["CompassOutputUp"].Parent as Grid;
                 Assert.That(outputCompass, Is.Not.Null,
                     "The four output directions must share one spatial grid.");
-                Assert.That(outputCompass.ActualWidth, Is.LessThanOrEqualTo(481),
-                    "The D-pad must remain a compact cluster, not stretch across the output pane.");
+                Assert.That(outputCompass.ActualWidth, Is.LessThanOrEqualTo(361),
+                    "The four-way output cluster must stay compact rather than fill the Outputs pane.");
                 var outputMidpoint = outputCompass.TranslatePoint(
                     new Point(outputCompass.ActualWidth / 2, 0), card).X;
                 Assert.That(outputMidpoint, Is.GreaterThan(card.ActualWidth / 2),
@@ -1380,6 +1425,10 @@ namespace HidWizards.UCR.Tests.UiTests
                         "Output text must have a real, readable binding button; no clipped miniature button.");
                     Assert.That(FindVisualChildren<CompactInputBindingControl>(face).Any(),
                         Is.False, "4-Way faces must not repeat device selectors and ellipsis menus.");
+                    Assert.That(FindVisualChildren<ToggleButton>(face).Any(toggle =>
+                        string.Equals(toggle.ToolTip as string, "Invert this output",
+                            StringComparison.Ordinal)), Is.False,
+                        "Individual 4-Way output directions must not invent an Invert control.");
                 }
                 var compoundDeviceControl = FindVisualChildren<CompactInputBindingControl>(card)
                     .Single(control => control.DeviceOnly &&
@@ -2151,9 +2200,16 @@ namespace HidWizards.UCR.Tests.UiTests
                 var activeOutputTypes = FindVisualChildren<RadioButton>(filterCard)
                     .Where(button => (button.ToolTip as string)?.EndsWith(" output",
                         StringComparison.Ordinal) == true && button.IsChecked == true).ToList();
-                Assert.That(activeOutputTypes.Count, Is.EqualTo(1),
-                    "Filter must not leave an Axis or 4-Way type active as well.");
-                Assert.That(activeOutputTypes[0].ToolTip, Is.EqualTo("Filter output"));
+                Assert.That(activeOutputTypes.Count, Is.Zero,
+                    "A filter is not a physical output representation; no type icon may be selected.");
+                Assert.That(FindVisualChildren<RadioButton>(filterCard).Any(button =>
+                    string.Equals(button.ToolTip as string, "Filter output",
+                        StringComparison.Ordinal)), Is.False,
+                    "Filter must not be offered as an Outputs type.");
+                Assert.That(FindVisualChildren<Button>(filterCard).Any(button =>
+                    string.Equals(button.Content as string, "+ Filter",
+                        StringComparison.Ordinal)), Is.True,
+                    "The separate mapping-filter action must remain available.");
                 CaptureEditorPreview(filterCard, 1050, "UCR-filter-output-preview.png");
                 Assert.That(mapping.SetOutputRepresentation(3), Is.True);
                 Assert.That(mapping.OutputIsFilter, Is.False);
