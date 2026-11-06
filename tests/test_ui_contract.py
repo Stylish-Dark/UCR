@@ -95,8 +95,8 @@ class UiContractVetoTests(unittest.TestCase):
     def test_four_way_direction_invert_cannot_return(self):
         self.modify(
             "UCR/Views/Controls/MappingCardControl.xaml",
-            'x:Key="DirectionalOutputDPadCardTemplate"',
-            'x:Key="DirectionalOutputDPadCardTemplate" ToolTip="Invert this output"')
+            'ToolTip="Choose output control"',
+            'ToolTip="Invert this output"')
         self.assert_veto("4-Way output directions must not have per-arm Invert")
 
     def test_NOT_label_drift_is_rejected(self):
