@@ -87,9 +87,13 @@
             
             <!-- ONE ordinary Bind action style, based on the pre-redesign raised
                  button. Geometry can vary per host; chrome cannot. -->
+            <!-- Canonical minimum usable Bind target. Geometry variants may grow,
+                 but may not shrink below this width. -->
+            <system:Double x:Key="UcrBindMinWidth">82</system:Double>
             <Style x:Key="UcrBindActionButton" TargetType="{x:Type Button}"
                    BasedOn="{StaticResource MaterialDesignRaisedButton}">
                 <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="MinWidth" Value="{StaticResource UcrBindMinWidth}"/>
                 <Setter Property="MinHeight" Value="32"/>
             </Style>
 
