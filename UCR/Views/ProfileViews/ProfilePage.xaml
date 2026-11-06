@@ -141,58 +141,7 @@
                 </Style.Triggers>
             </Style>
 
-            <Style x:Key="UcrSlimVerticalScrollBar" TargetType="{x:Type ScrollBar}">
-                <Setter Property="Width" Value="8"/>
-                <Setter Property="MinWidth" Value="8"/>
-                <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="{x:Type ScrollBar}">
-                            <Grid Width="{TemplateBinding Width}" Background="Transparent">
-                                <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}"
-                                       Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
-                                       Value="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
-                                       ViewportSize="{TemplateBinding ViewportSize}" IsDirectionReversed="True">
-                                    <Track.DecreaseRepeatButton>
-                                        <RepeatButton Command="{x:Static ScrollBar.PageUpCommand}"
-                                                      CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
-                                                      Focusable="False" Opacity="0"/>
-                                    </Track.DecreaseRepeatButton>
-                                    <Track.Thumb>
-                                        <Thumb MinHeight="32">
-                                            <Thumb.Style>
-                                                <Style TargetType="{x:Type Thumb}">
-                                                    <Setter Property="Background" Value="#747474"/>
-                                                    <Setter Property="Template">
-                                                        <Setter.Value>
-                                                            <ControlTemplate TargetType="{x:Type Thumb}">
-                                                                <Border Background="{TemplateBinding Background}" CornerRadius="4"/>
-                                                            </ControlTemplate>
-                                                        </Setter.Value>
-                                                    </Setter>
-                                                    <Style.Triggers>
-                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter Property="Background" Value="#999999"/>
-                                                        </Trigger>
-                                                        <Trigger Property="IsDragging" Value="True">
-                                                            <Setter Property="Background" Value="#B0B0B0"/>
-                                                        </Trigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Thumb.Style>
-                                        </Thumb>
-                                    </Track.Thumb>
-                                    <Track.IncreaseRepeatButton>
-                                        <RepeatButton Command="{x:Static ScrollBar.PageDownCommand}"
-                                                      CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
-                                                      Focusable="False" Opacity="0"/>
-                                    </Track.IncreaseRepeatButton>
-                                </Track>
-                            </Grid>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
+
         </ResourceDictionary>
     </UserControl.Resources>
     <UserControl.CommandBindings>

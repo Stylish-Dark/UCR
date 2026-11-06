@@ -420,6 +420,9 @@
     <Content Include="Assets\Styles\dialogs.xaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Assets\Styles\scrollbars.xaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <EmbeddedResource Include="Assets\Fonts\DeviceSymbols-v7.ttf">
       <LogicalName>HidWizards.UCR.Assets.Fonts.DeviceSymbols-v7.ttf</LogicalName>
     </EmbeddedResource>
