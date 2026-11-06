@@ -119,6 +119,27 @@ def check(root: Path = ROOT) -> list[str]:
 
     if mapping.count('Content="{x:Static labels:UiLabels.Not}"') != 4:
         errors.append("Expected four NOT instances using canonical name and style")
+    # Every Block caption is sourced from UiLabels rather than a local literal.
+    expected_block = (
+        (mapping, 'Text="{x:Static labels:UiLabels.Block}"',
+         "MappingCardControl.xaml"),
+        (compact, 'Value="{x:Static labels:UiLabels.Block}"',
+         "CompactInputBindingControl.xaml"),
+        (device, 'Text="{x:Static labels:UiLabels.Block}"',
+         "DeviceBindingControl.xaml"),
+    )
+    for source, reference, filename in expected_block:
+        if source.count(reference) != 1:
+            errors.append(f"{filename}: Block label must reference UiLabels.Block exactly once")
+    for path, tree in nodes.items():
+        for node in tree.iter():
+            literal_caption = node.attrib.get("Text") == "Block"
+            literal_setter = (node.tag == PRESENT + "Setter"
+                              and node.attrib.get("Property") == "Text"
+                              and node.attrib.get("Value") == "Block")
+            if literal_caption or literal_setter:
+                errors.append(f"{path.relative_to(root)}: Block label bypasses UiLabels.Block")
+
     if "x:Key=\"CompactBlockSwitch\"" in compact:
         errors.append("Local Block template shadows the canonical application asset")
     for constant in ("Bind", "Not", "Block", "Output", "Input", "Axis",
