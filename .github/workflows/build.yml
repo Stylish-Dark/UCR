@@ -751,10 +751,159 @@ jobs:
             if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
           }
 
+      - name: Stamp QA executable source identity
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # pull_request checks out a synthetic merge; identify the candidate
+          # head revision, not that temporary merge or the unchanged master.
+          $sourceSha = '${{ github.event.pull_request.head.sha || github.sha }}'
+          $sourceBranch = '${{ github.head_ref || github.ref_name }}'
+          if ($sourceSha -notmatch '^[0-9a-f]{40}
+
+  visual-approval:
+    name: Offline visual evidence and component contract
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Check out exact candidate revision
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - name: Install Python for independent review
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Download exact-build WPF screenshots
+        uses: actions/download-artifact@v7
+        with:
+          name: UCR-Directional-UI-Preview
+          path: visual-evidence
+
+      - name: Test fail-closed review machinery
+        shell: bash
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+
+      - name: Check screenshot inventory, duplications, and protected baselines
+        shell: bash
+        run: |
+          set -o pipefail
+          python build/quality/verify_visual_artifacts.py \
+            --screenshots visual-evidence \
+            --expected build/quality/expected_screenshots.txt \
+            --baselines quality/approved_visual_baselines \
+            2>&1 | tee visual-evidence-report.txt
+
+      - name: Enforce source-level UI contract without any external API
+        shell: bash
+        run: python build/quality/check_ui_contract.py
+
+      - name: Preserve offline visual evidence verdict
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: UCR-Offline-Visual-Contract
+          path: |
+            visual-evidence-report.txt
+          if-no-files-found: warn
+
+  publish-approved:
+    name: Publish approved UCR executable
+    needs: [build, visual-approval]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Read release criteria from exact source revision
+        uses: actions/checkout@v6
+
+      - name: Require protected master and all owner-approved visual baselines
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/branches/master" > branch.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          if json.loads(Path("branch.json").read_text()).get("protected") is not True:
+              raise SystemExit("NOT APPROVED: master is not protected by GitHub")
+          names = [line.strip() for line in Path("build/quality/expected_screenshots.txt").read_text().splitlines()
+                   if line.strip() and not line.lstrip().startswith("#")]
+          baselines = Path("quality/approved_visual_baselines")
+          missing = [name for name in names if not (baselines / name).is_file()]
+          if missing:
+              raise SystemExit("NOT APPROVED: owner-approved visual baselines missing: " + ", ".join(missing))
+          print("Protected master and complete owner-approved visual baseline set verified.")
+          PY
+
+      - name: Retrieve only the binary from this successful exact-build run
+        uses: actions/download-artifact@v7
+        with:
+          name: UCR-Unverified-Windows
+          path: approved-dist
+
+      - name: Check expected approved runtime files
+        shell: bash
+        run: |
+          test -s approved-dist/UCR.exe
+          test -s approved-dist/NLog.config
+          sha256sum approved-dist/UCR.exe > approved-dist/APPROVED-EXE-SHA256.txt
+          printf 'APPROVED source SHA: %s\nWindows/offline-QC run: %s\n' \
+            "${{ github.sha }}" "${{ github.run_id }}" > approved-dist/APPROVAL.txt
+
+      - name: Publish only after protected-branch and approved-baseline checks
+        uses: actions/upload-artifact@v7
+        with:
+          name: UCR-APPROVED-Windows-${{ github.sha }}
+          path: approved-dist/
+          if-no-files-found: error
+) {
+            throw "Invalid source commit identity: $sourceSha"
+          }
+          $exe = '.\\UCR\\bin\\Release\\UCR.exe'
+          if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) {
+            throw "Built UCR.exe missing: $exe"
+          }
+          $sha256 = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $fileVersion = (Get-Item -LiteralPath $exe).VersionInfo.FileVersion
+          $manifest = @(
+            'UCR INTERNAL QA BUILD — NOT AN APPROVED RELEASE',
+            "SOURCE COMMIT: $sourceSha",
+            "SOURCE BRANCH: $sourceBranch",
+            'GITHUB RUN: ${{ github.run_id }}',
+            "UCR.exe FILE VERSION: $fileVersion",
+            "UCR.exe SHA256: $sha256",
+            '',
+            'Extract the entire ZIP into a new folder, then run the',
+            'UCR.exe INSIDE THAT FOLDER. Do not launch an older',
+            'installed UCR.exe, shortcut or copy from another folder.',
+            'Source identity and executable hash refer to this exact build.'
+          )
+          $manifestPath = '.\\UCR\\bin\\Release\\BUILD-IDENTITY.txt'
+          [System.IO.File]::WriteAllLines($manifestPath, $manifest,
+            [System.Text.UTF8Encoding]::new($false))
+          if (-not (Select-String -LiteralPath $manifestPath -SimpleMatch
+                  -Pattern "SOURCE COMMIT: $sourceSha" -Quiet)) {
+            throw 'Build provenance stamp verification failed.'
+          }
+          Write-Host "QA UCR.exe: $sourceSha SHA256=$sha256 version=$fileVersion"
+
       - name: Upload unverified Windows build for internal QA only
         uses: actions/upload-artifact@v7
         with:
-          name: UCR-Unverified-Windows
+          # A reusable generic artifact name obscured which executable the
+          # owner opened. Each candidate is now identified by its source SHA.
+          name: UCR-Unverified-Windows-${{ github.event.pull_request.head.sha || github.sha }}
           path: UCR/bin/Release/
           if-no-files-found: error
 
