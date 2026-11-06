@@ -1342,8 +1342,11 @@ namespace HidWizards.UCR.Tests.UiTests
                         ((button.ToolTip as string)?.Contains(" input") == true ||
                          (button.ToolTip as string)?.Contains(" output") == true))
                     .ToList();
-                Assert.That(selectors.Count, Is.EqualTo(7),
-                    "Input has three types; output has four including Filter.");
+                Assert.That(selectors.Count, Is.EqualTo(6),
+                    "Input and Output each have exactly three physical representation types.");
+                Assert.That(selectors.Any(button => string.Equals(
+                    button.ToolTip as string, "Filter output", StringComparison.Ordinal)), Is.False,
+                    "Filter must be managed as a separate mapping action, not an Outputs type.");
                 Assert.That(selectors.Any(button => (button.ToolTip as string) ==
                     "Trigger input (one-sided axis)" || (button.ToolTip as string) ==
                     "Trigger output (one-sided axis)"), Is.False,
