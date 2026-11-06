@@ -1084,10 +1084,11 @@
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
-                                                <StackPanel Grid.Column="1" Orientation="Horizontal"
-                                                    VerticalAlignment="Center" Margin="8 0 0 0">
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                     <StackPanel.Style>
                                                         <Style TargetType="{x:Type StackPanel}">
+                                                            <Setter Property="Grid.Column" Value="1"/>
+                                                            <Setter Property="Margin" Value="8 0 0 0"/>
                                                             <Style.Triggers>
                                                                 <MultiDataTrigger>
                                                                     <MultiDataTrigger.Conditions>
