@@ -34,8 +34,8 @@ def check(root: Path = ROOT) -> list[str]:
     # A shared asset is not shared if a view can silently shadow it.
     for key in STYLE_KEYS:
         owners = []
-        for path, root in nodes.items():
-            for node in root.iter():
+        for path, tree in nodes.items():
+            for node in tree.iter():
                 if node.tag == PRESENT + "Style" and node.attrib.get(XAMLNS + "Key") == key:
                     owners.append(path)
         if owners != [app]:
@@ -106,8 +106,8 @@ def check(root: Path = ROOT) -> list[str]:
     if mapping.count('Style="{StaticResource UcrBindActionButton}"') < 3:
         errors.append("Compound/output bindings must use the shared Bind asset")
 
-    for path, root in nodes.items():
-        for node in root.iter():
+    for path, tree in nodes.items():
+        for node in tree.iter():
             if node.tag != PRESENT + "ToggleButton":
                 continue
             content = node.attrib.get("Content", "")
