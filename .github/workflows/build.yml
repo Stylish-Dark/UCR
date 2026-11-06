@@ -591,6 +591,13 @@ jobs:
             if (-not (Select-String -LiteralPath $startupLog -Pattern 'Loaded 1 external UI style(s)' -SimpleMatch -Quiet)) {
               throw 'External switch style did not load. Check UCR-latest.log for a fallback warning.'
             }
+            $buttons = Join-Path $runtime 'Assets\Styles\buttons.xaml'
+            if (-not (Test-Path -LiteralPath $buttons -PathType Leaf)) {
+              throw 'External shared button styles were not copied to the deployed runtime.'
+            }
+            if (-not (Select-String -LiteralPath $startupLog -Pattern 'Loaded 2 external UI style\(s\) from .*buttons\.xaml' -Quiet)) {
+              throw 'External shared button styles did not load. Check UCR-latest.log for a fallback warning.'
+            }
             # WPF measures templates asynchronously AFTER the startup marker.
             # The old smoke test stopped immediately, missing a fatal resource
             # lookup 250ms later on machines with populated mapping panels.
