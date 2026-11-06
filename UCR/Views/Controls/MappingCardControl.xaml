@@ -129,39 +129,6 @@
             </DataTemplate.Triggers>
         </DataTemplate>
 
-        <!-- One NOT style for legacy expressions, typed buttons and AND gates. -->
-        <Style x:Key="MappingNotToggle" TargetType="{x:Type ToggleButton}">
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type ToggleButton}">
-                        <Border x:Name="NotSurface" Background="#343434" CornerRadius="3"
-                            BorderBrush="#666666" BorderThickness="1">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="NotSurface" Property="Background"
-                                    Value="{DynamicResource PrimaryHueMidBrush}"/>
-                                <Setter TargetName="NotSurface" Property="BorderBrush"
-                                    Value="{DynamicResource PrimaryHueLightBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="NotSurface" Property="BorderBrush"
-                                    Value="{DynamicResource PrimaryHueLightBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.4"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <Style x:Key="UcrMappingDeleteButton" TargetType="{x:Type ButtonBase}" BasedOn="{StaticResource UcrMappingActionButton}">
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
