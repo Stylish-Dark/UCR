@@ -305,8 +305,7 @@ jobs:
           $packageConfigs = @(
             '.\UCR\packages.config',
             '.\UCR.Core\packages.config',
-            '.\UCR.FileHandler\packages.config',
-            '.\UCR.Tests\packages.config'
+            '.\UCR.FileHandler\packages.config'
           )
 
           foreach ($config in $packageConfigs) {
