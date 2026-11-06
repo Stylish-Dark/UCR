@@ -12,7 +12,6 @@ import sys
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
-XAML_DIR = ROOT / "UCR" / "Views"
 STYLE_KEYS = (
     "MappingNotToggle", "CompactBlockSwitch",
     "UcrBindActionButton", "UcrBindOptionsButton",
@@ -21,16 +20,16 @@ XAMLNS = "{http://schemas.microsoft.com/winfx/2006/xaml}"
 PRESENT = "{http://schemas.microsoft.com/winfx/2006/xaml/presentation}"
 
 
-def check() -> list[str]:
+def check(root: Path = root) -> list[str]:
     errors = []
-    app = ROOT / "UCR/App.xaml"
-    all_xaml = [app] + sorted(XAML_DIR.rglob("*.xaml"))
+    app = root / "UCR/App.xaml"
+    all_xaml = [app] + sorted((root / "UCR/Views").rglob("*.xaml"))
     nodes = {}
     for path in all_xaml:
         try:
             nodes[path] = ET.parse(path).getroot()
         except ET.ParseError as exc:
-            errors.append(f"{path.relative_to(ROOT)}: malformed XAML: {exc}")
+            errors.append(f"{path.relative_to(root)}: malformed XAML: {exc}")
 
     # A shared asset is not shared if a view can silently shadow it.
     for key in STYLE_KEYS:
@@ -41,20 +40,62 @@ def check() -> list[str]:
                     owners.append(path)
         if owners != [app]:
             errors.append(f"{key} must be defined exactly once in App.xaml; "
-                          f"actual owners: {[str(x.relative_to(ROOT)) for x in owners]}")
+                          f"actual owners: {[str(x.relative_to(root)) for x in owners]}")
 
-    compact = (ROOT / "UCR/Views/Controls/CompactInputBindingControl.xaml").read_text(encoding="utf-8-sig")
-    mapping = (ROOT / "UCR/Views/Controls/MappingCardControl.xaml").read_text(encoding="utf-8-sig")
-    device = (ROOT / "UCR/Views/Controls/DeviceBindingControl.xaml").read_text(encoding="utf-8-sig")
-    binding_vm = (ROOT / "UCR/ViewModels/ProfileViewModels/DeviceBindingViewModel.cs").read_text(encoding="utf-8-sig")
-    mapping_vm = (ROOT / "UCR/ViewModels/ProfileViewModels/MappingViewModel.cs").read_text(encoding="utf-8-sig")
-    picker = (ROOT / "UCR/Views/Controls/CompactInputBindingControl.xaml.cs").read_text(encoding="utf-8-sig")
-    names = (ROOT / "UCR/Utilities/UiLabels.cs").read_text(encoding="utf-8-sig")
+    # Every binding action must inherit the SAME visual chrome, not merely
+    # increment a file-wide style-reference counter to make CI happy.
+    required_buttons = {
+        "UCR/Views/Controls/MappingCardControl.xaml": {
+            "BindDirectionalSlot_OnClick": (2, "UcrBindActionButton"),
+            "CompoundPrimaryBind_OnClick": (1, "UcrBindActionButton"),
+            "CompassOutputBind_OnClick": (1, "UcrBindActionButton"),
+            "CompoundOutput_OnClick": (1, "UcrBindActionButton"),
+        },
+        "UCR/Views/Controls/CompactInputBindingControl.xaml": {
+            "BindButton_OnClick": (1, "UcrBindActionButton"),
+            "MenuButton_OnClick": (1, "UcrBindOptionsButton"),
+        },
+        "UCR/Views/Controls/DeviceBindingControl.xaml": {
+            "BindButton_OnClick": (1, "UcrBindActionButton"),
+            "BindMenuButton_OnClick": (1, "UcrBindOptionsButton"),
+        },
+    }
+    for relative, controls in required_buttons.items():
+        xaml_path = root / relative
+        tree = nodes.get(xaml_path)
+        if tree is None:
+            errors.append(f"{relative}: missing parsed UI to check canonical binding actions")
+            continue
+        for handler, (required_count, required_style) in controls.items():
+            buttons = [element for element in tree.iter()
+                       if element.tag == PRESENT + "Button"
+                       and element.attrib.get("Click") == handler]
+            if len(buttons) != required_count:
+                errors.append(f"{relative}: expected {required_count} button(s) for {handler}, "
+                              f"found {len(buttons)}")
+            for button in buttons:
+                direct = button.attrib.get("Style") == (
+                    "{StaticResource " + required_style + "}")
+                inherited = any(style.attrib.get("BasedOn") == (
+                    "{StaticResource " + required_style + "}")
+                    for container in button.findall(PRESENT + "Button.Style")
+                    for style in container
+                    if style.tag == PRESENT + "Style")
+                if not (direct or inherited):
+                    errors.append(f"{relative}: {handler} bypasses {required_style}")
+
+    compact = (root / "UCR/Views/Controls/CompactInputBindingControl.xaml").read_text(encoding="utf-8-sig")
+    mapping = (root / "UCR/Views/Controls/MappingCardControl.xaml").read_text(encoding="utf-8-sig")
+    device = (root / "UCR/Views/Controls/DeviceBindingControl.xaml").read_text(encoding="utf-8-sig")
+    binding_vm = (root / "UCR/ViewModels/ProfileViewModels/DeviceBindingViewModel.cs").read_text(encoding="utf-8-sig")
+    mapping_vm = (root / "UCR/ViewModels/ProfileViewModels/MappingViewModel.cs").read_text(encoding="utf-8-sig")
+    picker = (root / "UCR/Views/Controls/CompactInputBindingControl.xaml.cs").read_text(encoding="utf-8-sig")
+    names = (root / "UCR/Utilities/UiLabels.cs").read_text(encoding="utf-8-sig")
 
     # Explicitly preserve the owner's good glyph and modifier controls.
     if "x:Name=\"TwoDots\"" not in mapping or 'Value="••"' not in mapping:
         errors.append("The approved two-dot button glyph is missing or replaced")
-    if "CompactBindSurfaceButton" in compact or "CompactBindSurfaceButton" in (ROOT / "UCR/App.xaml").read_text(encoding="utf-8-sig"):
+    if "CompactBindSurfaceButton" in compact or "CompactBindSurfaceButton" in (root / "UCR/App.xaml").read_text(encoding="utf-8-sig"):
         errors.append("A second, local Bind surface template has been introduced")
     if 'BasedOn="{StaticResource UcrBindActionButton}"' not in compact:
         errors.append("Compact Bind control is not derived from the shared Bind asset")
@@ -74,7 +115,7 @@ def check() -> list[str]:
                 continue
             style = node.attrib.get("Style", "")
             if content != "{x:Static labels:UiLabels.Not}" or style != "{StaticResource MappingNotToggle}":
-                errors.append(f"{path.relative_to(ROOT)}: NOT button bypasses canonical label/style")
+                errors.append(f"{path.relative_to(root)}: NOT button bypasses canonical label/style")
 
     if mapping.count('Content="{x:Static labels:UiLabels.Not}"') != 4:
         errors.append("Expected four NOT instances using canonical name and style")
