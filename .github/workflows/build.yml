@@ -34,6 +34,8 @@ jobs:
         run: |
           python .\build\quality\check_ui_contract.py
           if ($LASTEXITCODE -ne 0) { throw 'Canonical UI contract rejected this source revision.' }
+          python -m unittest discover -s tests -p test_ui_contract.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'UI contract mutation/veto tests failed.' }
 
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v3
