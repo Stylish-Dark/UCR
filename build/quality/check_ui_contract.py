@@ -92,11 +92,41 @@ def check(root: Path = ROOT) -> list[str]:
     picker = (root / "UCR/Views/Controls/CompactInputBindingControl.xaml.cs").read_text(encoding="utf-8-sig")
     names = (root / "UCR/Utilities/UiLabels.cs").read_text(encoding="utf-8-sig")
 
+    # Size and layout invariants are assets, not suggestions. The 82px
+    # minimum belongs to the canonical Bind style and its compact grid cell.
+    app_source = app.read_text(encoding="utf-8-sig")
+    if '<system:Double x:Key="UcrBindMinWidth">82</system:Double>' not in app_source:
+        errors.append("Shared Bind minimum width token must remain 82px")
+    if '<Setter Property="MinWidth" Value="{StaticResource UcrBindMinWidth}"/>' not in app_source:
+        errors.append("Canonical Bind style bypasses its minimum-width token")
+
+    output_compasses = [
+        element for element in nodes.get(root / "UCR/Views/Controls/MappingCardControl.xaml", [])
+        .iter() if element.attrib.get(XAMLNS + "Name") == "OutputDirectionalCompassGrid"
+    ] if root / "UCR/Views/Controls/MappingCardControl.xaml" in nodes else []
+    if len(output_compasses) != 1 or output_compasses[0].attrib.get("MaxWidth") != "360":
+        errors.append("4-Way output compass must have one compact 360px geometry limit")
+    if any(element.tag == PRESENT + "RadioButton"
+           and (element.attrib.get("Click") == "FilterOutput_OnClick" or
+                element.attrib.get("ToolTip") == "Filter output")
+           for tree in nodes.values() for element in tree.iter()):
+        errors.append("Filter must not appear as an Outputs representation type")
+
     # Explicitly preserve the owner's good glyph and modifier controls.
     if "x:Name=\"TwoDots\"" not in mapping or 'Value="••"' not in mapping:
         errors.append("The approved two-dot button glyph is missing or replaced")
     if "CompactBindSurfaceButton" in compact or "CompactBindSurfaceButton" in (root / "UCR/App.xaml").read_text(encoding="utf-8-sig"):
         errors.append("A second, local Bind surface template has been introduced")
+    if 'MinWidth="{StaticResource UcrBindMinWidth}"' not in compact or (
+            'x:Name="BindingActionGroup"' not in compact or
+            'HorizontalAlignment="Left" MinWidth="124"' not in compact):
+        errors.append("Compact Bind layout bypasses the shared 82px minimum target")
+    if 'x:Name="BindButton" MinHeight="36" MinWidth="0"' in compact:
+        errors.append("Compact Bind button resets its minimum width to zero")
+    if 'ToolTip="Invert this output"' in mapping.split(
+            '<DataTemplate x:Key="DirectionalOutputDPadCardTemplate">')[1].split(
+            '<DataTemplate x:Key="ButtonMappingEditorTemplate">')[0]:
+        errors.append("4-Way output directions must not have per-arm Invert switches")
     if 'BasedOn="{StaticResource UcrBindActionButton}"' not in compact:
         errors.append("Compact Bind control is not derived from the shared Bind asset")
     if 'Style="{StaticResource UcrBindActionButton}"' not in device:
