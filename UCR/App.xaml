@@ -85,6 +85,14 @@
         </Style>
 
             
+            <!-- ONE ordinary Bind action style, based on the pre-redesign raised
+                 button. Geometry can vary per host; chrome cannot. -->
+            <Style x:Key="UcrBindActionButton" TargetType="{x:Type Button}"
+                   BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="MinHeight" Value="32"/>
+            </Style>
+
             <system:Double x:Key="UcrUiScale">1.0</system:Double>
 
             <!-- A dedicated delete-button template avoids MaterialDesign's icon scaling/clipping.
