@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:local="clr-namespace:HidWizards.UCR.Views.Controls"
+             xmlns:labels="clr-namespace:HidWizards.UCR.Utilities"
              UseLayoutRounding="True"
              KeyboardNavigation.TabNavigation="Local">
     <UserControl.Resources>
@@ -279,7 +280,7 @@
                    HorizontalAlignment="Center" TextWrapping="NoWrap">
             <TextBlock.Style>
                 <Style TargetType="{x:Type TextBlock}">
-                    <Setter Property="Text" Value="Block"/>
+                    <Setter Property="Text" Value="{x:Static labels:UiLabels.Block}"/>
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding CompactDirectional, RelativeSource={RelativeSource AncestorType={x:Type local:CompactInputBindingControl}}}" Value="True">
                             <Setter Property="FontSize" Value="9"/>
