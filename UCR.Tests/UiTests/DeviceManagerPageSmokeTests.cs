@@ -1420,6 +1420,12 @@ namespace HidWizards.UCR.Tests.UiTests
                 // Inspect real measured output controls, not merely their Grid coordinates.
                 foreach (var face in outputFaces.Values)
                 {
+                    var faceSurface = FindVisualChildren<StackPanel>(face)
+                        .SingleOrDefault(panel => panel.Name == "DirectionalOutputFace");
+                    Assert.That(faceSurface, Is.Not.Null,
+                        "Each D-pad direction needs a single compact binding surface.");
+                    Assert.That(faceSurface.Children.OfType<Border>(), Is.Empty,
+                        "Do not surround individual D-pad Bind actions with decorative cards.");
                     var bindButtons = FindVisualChildren<Button>(face)
                         .Where(button => string.Equals(button.ToolTip as string,
                             "Choose output control", StringComparison.Ordinal) &&

@@ -709,10 +709,8 @@
             <!-- 4-Way output positions are real full-size destination buttons.
                  Their device is chosen once in the OUTPUTS header, not repeated
                  as a clipped selector/menu inside every compass arm. -->
-            <Border Background="#292929" BorderBrush="#454545"
-                    BorderThickness="1" CornerRadius="3" Padding="6 5"
-                    Margin="2" HorizontalAlignment="Stretch">
-                <StackPanel>
+            <StackPanel x:Name="DirectionalOutputFace" Margin="1"
+                        HorizontalAlignment="Stretch">
                     <TextBlock Text="{Binding DirectionalSlotLabel}" Foreground="#D8D8D8"
                                FontSize="13" FontWeight="SemiBold" Margin="2 0 0 5"
                                HorizontalAlignment="Center"/>
@@ -752,8 +750,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </Expander>
-                </StackPanel>
-            </Border>
+            </StackPanel>
         </DataTemplate>
 
         <DataTemplate x:Key="ButtonMappingEditorTemplate">
