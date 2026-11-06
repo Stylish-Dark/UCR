@@ -906,6 +906,22 @@
                     </Trigger>
                 </Style.Triggers>
             </Style>
+            <!-- Built-in fallback for profile device selector buttons. -->
+            <Style x:Key="PrimaryDeviceButtonStyle" TargetType="{x:Type Button}">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="4"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type Button}">
+                            <Grid Background="Transparent">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
             <!-- Built-in fallbacks for replaceable mapping and device page buttons. -->
             <Style x:Key="UcrMappingActionButton" TargetType="{x:Type ButtonBase}" BasedOn="{StaticResource MaterialDesignCardButton}">
                     <Setter Property="Foreground" Value="#DADADA"/>
