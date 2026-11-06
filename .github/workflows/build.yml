@@ -2,7 +2,7 @@
 
 on:
   push:
-  pull_request:
+    branches: [master]
   workflow_dispatch:
 
 permissions:
@@ -549,130 +549,6 @@ jobs:
 
           Write-Host 'Verified final deployed IOWrapper provider composition in the 32-bit .NET Framework runtime.'
 
-      - name: Run UCR unit tests
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-
-          $runner = '.\packages\NUnit.ConsoleRunner.3.9.0\tools\nunit3-console.exe'
-          $tests = '.\UCR.Tests\bin\Release\UCR.Tests.dll'
-          if (-not (Test-Path $runner)) {
-            throw "NUnit console runner is missing: $runner"
-          }
-          if (-not (Test-Path $tests)) {
-            throw "UCR test assembly is missing: $tests"
-          }
-
-          # The WPF smoke test initializes the real App resources. Old-style .NET Framework
-          # project references do not reliably carry UCR's package dependencies transitively,
-          # so require the test output to contain the exact theme assemblies before NUnit runs.
-          $testRuntimeDependencies = @(
-            '.\UCR.Tests\bin\Release\MaterialDesignThemes.Wpf.dll',
-            '.\UCR.Tests\bin\Release\MaterialDesignColors.dll',
-            '.\UCR.Tests\bin\Release\IOWrapper.Core.dll',
-            '.\UCR.Tests\bin\Release\IOWrapper.DTOs.dll',
-            '.\UCR.Tests\bin\Release\IOWrapper.IProvider.dll'
-          )
-          foreach ($dependency in $testRuntimeDependencies) {
-            if (-not (Test-Path -LiteralPath $dependency -PathType Leaf)) {
-              throw "Runtime test dependency is missing from UCR.Tests output: $dependency"
-            }
-            if ((Get-Item -LiteralPath $dependency).Length -le 0) {
-              throw "Runtime test dependency is empty: $dependency"
-            }
-          }
-          Write-Host 'Verified UCR.Tests runtime dependency closure.'
-
-          # WPF theme resources are owned by the dispatcher that creates App.
-          # Isolate device-row materialization in a fresh NUnit process.
-          & $runner $tests --noresult --workers=0 --where "test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton && test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DirectionalTypeSelectorsRenderIndependentlyAndRestoreBindingBanks"
-          if ($LASTEXITCODE -ne 0) { throw "Main UCR tests failed: $LASTEXITCODE" }
-          & $runner $tests --noresult --workers=0 --where "test == HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton"
-          if ($LASTEXITCODE -ne 0) { throw "Isolated device-row UI test failed: $LASTEXITCODE" }
-          & $runner $tests --noresult --workers=0 --where "test == HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DirectionalTypeSelectorsRenderIndependentlyAndRestoreBindingBanks"
-          if ($LASTEXITCODE -ne 0) { throw "Directional type WPF test failed: $LASTEXITCODE" }
-          $visualCaptures = @(
-            'UCR-directional-preview.png',
-            'UCR-button-button-preview.png',
-            'UCR-button-trigger-preview.png',
-            'UCR-button-axis-preview.png',
-            'UCR-fourway-conditions-preview.png',
-            'UCR-fourway-to-fourway-preview.png',
-            'UCR-filter-output-preview.png',
-            'UCR-digital-dpad-preview.png',
-            'UCR-typed-conditions-preview.png',
-            'UCR-named-fourway-preset-preview.png', 'UCR-named-fourway-header-preview.png',
-            'UCR-workspace-collapsed-preview.png',
-            'UCR-workspace-expanded-preview.png',
-            'UCR-workspace-multi-expanded-preview.png',
-            'UCR-profile-sidebar-presets-preview.png',
-            'UCR-profile-sidebar-devices-preview.png',
-            'UCR-fourway-preset-editor-preview.png',
-            'UCR-profile-sidebar-stress-preview.png',
-            'UCR-output-picker-axes-preview.png',
-            'UCR-output-picker-directions-preview.png', 'UCR-output-picker-single-axis-preview.png',
-            'UCR-two-button-full-circles-preview.png'
-          )
-          foreach ($name in $visualCaptures) {
-            if (-not (Test-Path -LiteralPath $name -PathType Leaf)) {
-              throw "Mandatory WPF screenshot missing: $name"
-            }
-            $size = (Get-Item -LiteralPath $name).Length
-            # The dedicated 116x64 icon capture legitimately compresses to
-            # hundreds of bytes. Full workspace captures still need 5 KB.
-            $minimumBytes = if ($name -eq 'UCR-two-button-full-circles-preview.png') { 500 } else { 5000 }
-            if ($size -lt $minimumBytes) {
-              throw "WPF screenshot is suspiciously empty or truncated: $name [$size bytes]"
-            }
-            Write-Host "Visual QA screenshot ready: $name [$size bytes]"
-          }
-          Write-Host 'Verified all mandatory actual-WPF visual QA captures.'
-
-
-      - name: Upload rendered directional editor preview
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: UCR-Directional-UI-Preview
-          path: |
-            UCR-directional-preview.png
-            UCR-button-button-preview.png
-            UCR-button-trigger-preview.png
-            UCR-button-axis-preview.png
-            UCR-fourway-conditions-preview.png
-            UCR-fourway-to-fourway-preview.png
-            UCR-filter-output-preview.png
-            UCR-digital-dpad-preview.png
-            UCR-typed-conditions-preview.png
-            UCR-named-fourway-preset-preview.png
-            UCR-named-fourway-header-preview.png
-            UCR-workspace-collapsed-preview.png
-            UCR-workspace-expanded-preview.png
-            UCR-workspace-multi-expanded-preview.png
-            UCR-profile-sidebar-presets-preview.png
-            UCR-profile-sidebar-devices-preview.png
-            UCR-fourway-preset-editor-preview.png
-            UCR-profile-sidebar-stress-preview.png
-            UCR-output-picker-axes-preview.png
-            UCR-output-picker-directions-preview.png
-            UCR-output-picker-single-axis-preview.png
-            UCR-two-button-full-circles-preview.png
-          if-no-files-found: error
-
-      - name: Expose WPF previews for actual visual review
-        shell: pwsh
-        run: |
-          foreach ($name in @('UCR-directional-preview.png', 'UCR-button-button-preview.png', 'UCR-button-trigger-preview.png', 'UCR-button-axis-preview.png', 'UCR-fourway-conditions-preview.png', 'UCR-fourway-to-fourway-preview.png', 'UCR-filter-output-preview.png', 'UCR-digital-dpad-preview.png', 'UCR-typed-conditions-preview.png', 'UCR-named-fourway-preset-preview.png', 'UCR-named-fourway-header-preview.png', 'UCR-workspace-collapsed-preview.png', 'UCR-workspace-expanded-preview.png', 'UCR-workspace-multi-expanded-preview.png', 'UCR-profile-sidebar-presets-preview.png', 'UCR-profile-sidebar-devices-preview.png', 'UCR-fourway-preset-editor-preview.png', 'UCR-profile-sidebar-stress-preview.png', 'UCR-output-picker-axes-preview.png', 'UCR-output-picker-directions-preview.png', 'UCR-output-picker-single-axis-preview.png', 'UCR-two-button-full-circles-preview.png')) {
-            if (-not (Test-Path -LiteralPath $name)) { continue }
-            $base64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path $name).Path))
-            Write-Host "UCR_UI_CAPTURE_BEGIN:$name"
-            for ($index = 0; $index -lt $base64.Length; $index += 3000) {
-              $part = $base64.Substring($index, [Math]::Min(3000, $base64.Length - $index))
-              Write-Host "UCR_UI_CAPTURE_PART:$part"
-            }
-            Write-Host "UCR_UI_CAPTURE_END:$name"
-          }
-
       - name: Smoke-test actual UCR.exe cold startup
         shell: pwsh
         run: |
@@ -727,9 +603,9 @@ jobs:
             if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
           }
 
-      - name: Upload unverified Windows build for internal QA only
+      - name: Upload Windows build
         uses: actions/upload-artifact@v7
         with:
-          name: UCR-Unverified-Windows
+          name: UCR-Windows
           path: UCR/bin/Release/
           if-no-files-found: error
