@@ -33,12 +33,12 @@
                 </ListView>
                 <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Grid.Row="1"
                             Margin="8">
-                <Button IsDefault="True" 
+                <Button x:Name="UiAdd" IsDefault="True" 
                             Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" 
                             Content="ADD" CommandParameter="{Binding ViewModel}"
                             IsEnabled="{Binding InputValid}" Style="{StaticResource UcrDialogRaisedButton}">
                 </Button>
-                    <Button IsCancel="True" Margin="8 0 0 0" Style="{StaticResource UcrDialogFlatButton}"
+                    <Button x:Name="UiCancel" IsCancel="True" Margin="8 0 0 0" Style="{StaticResource UcrDialogFlatButton}"
                             Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
                             Content="CANCEL">
                         <Button.CommandParameter>
