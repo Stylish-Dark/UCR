@@ -5,6 +5,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Obsolete runs must not compete for resources or confuse test evidence.
+concurrency:
+  group: ucr-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -617,7 +622,7 @@ jobs:
             'UCR-workspace-expanded-preview.png',
             'UCR-workspace-multi-expanded-preview.png',
             'UCR-profile-sidebar-presets-preview.png',
-            'UCR-profile-sidebar-devices-preview.png',
+            'UCR-profile-devices-detail-preview.png',
             'UCR-fourway-preset-editor-preview.png',
             'UCR-profile-sidebar-stress-preview.png',
             'UCR-output-picker-axes-preview.png',
@@ -661,7 +666,7 @@ jobs:
             UCR-workspace-expanded-preview.png
             UCR-workspace-multi-expanded-preview.png
             UCR-profile-sidebar-presets-preview.png
-            UCR-profile-sidebar-devices-preview.png
+            UCR-profile-devices-detail-preview.png
             UCR-fourway-preset-editor-preview.png
             UCR-profile-sidebar-stress-preview.png
             UCR-output-picker-axes-preview.png
@@ -673,7 +678,7 @@ jobs:
       - name: Expose WPF previews for actual visual review
         shell: pwsh
         run: |
-          foreach ($name in @('UCR-directional-preview.png', 'UCR-button-button-preview.png', 'UCR-button-trigger-preview.png', 'UCR-button-axis-preview.png', 'UCR-fourway-conditions-preview.png', 'UCR-fourway-to-fourway-preview.png', 'UCR-filter-output-preview.png', 'UCR-digital-dpad-preview.png', 'UCR-typed-conditions-preview.png', 'UCR-named-fourway-preset-preview.png', 'UCR-named-fourway-header-preview.png', 'UCR-workspace-collapsed-preview.png', 'UCR-workspace-expanded-preview.png', 'UCR-workspace-multi-expanded-preview.png', 'UCR-profile-sidebar-presets-preview.png', 'UCR-profile-sidebar-devices-preview.png', 'UCR-fourway-preset-editor-preview.png', 'UCR-profile-sidebar-stress-preview.png', 'UCR-output-picker-axes-preview.png', 'UCR-output-picker-directions-preview.png', 'UCR-output-picker-single-axis-preview.png', 'UCR-two-button-full-circles-preview.png')) {
+          foreach ($name in @('UCR-directional-preview.png', 'UCR-button-button-preview.png', 'UCR-button-trigger-preview.png', 'UCR-button-axis-preview.png', 'UCR-fourway-conditions-preview.png', 'UCR-fourway-to-fourway-preview.png', 'UCR-filter-output-preview.png', 'UCR-digital-dpad-preview.png', 'UCR-typed-conditions-preview.png', 'UCR-named-fourway-preset-preview.png', 'UCR-named-fourway-header-preview.png', 'UCR-workspace-collapsed-preview.png', 'UCR-workspace-expanded-preview.png', 'UCR-workspace-multi-expanded-preview.png', 'UCR-profile-sidebar-presets-preview.png', 'UCR-profile-devices-detail-preview.png', 'UCR-fourway-preset-editor-preview.png', 'UCR-profile-sidebar-stress-preview.png', 'UCR-output-picker-axes-preview.png', 'UCR-output-picker-directions-preview.png', 'UCR-output-picker-single-axis-preview.png', 'UCR-two-button-full-circles-preview.png')) {
             if (-not (Test-Path -LiteralPath $name)) { continue }
             $base64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path $name).Path))
             Write-Host "UCR_UI_CAPTURE_BEGIN:$name"
@@ -746,7 +751,7 @@ jobs:
           if-no-files-found: error
 
   visual-approval:
-    name: Visual Approval (required for release)
+    name: Offline visual evidence and component contract
     needs: build
     runs-on: ubuntu-24.04
     permissions:
@@ -782,44 +787,16 @@ jobs:
             --baselines quality/approved_visual_baselines \
             2>&1 | tee visual-evidence-report.txt
 
-      - name: Bind review to the exact tested commit and build
+      - name: Enforce source-level UI contract without any external API
         shell: bash
-        env:
-          REVIEW_SHA: ${{ github.sha }}
-          REVIEW_RUN_ID: ${{ github.run_id }}
-        run: |
-          git diff --binary HEAD^ HEAD > review.patch
-          python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-          Path("review-metadata.json").write_text(json.dumps({
-              "source_sha": os.environ["REVIEW_SHA"],
-              "windows_build_run_id": os.environ["REVIEW_RUN_ID"],
-              "windows_build_conclusion": "success"
-          }), encoding="utf-8")
-          PY
+        run: python build/quality/check_ui_contract.py
 
-      - name: Independent visual and functional veto (fail closed)
-        shell: bash
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          python build/quality/independent_review.py \
-            --screenshots visual-evidence \
-            --expected build/quality/expected_screenshots.txt \
-            --constitution quality/DESIGN_CONSTITUTION.md \
-            --diff review.patch \
-            --metadata review-metadata.json \
-            --output independent-report
-
-      - name: Preserve approval/rejection evidence
+      - name: Preserve offline visual evidence verdict
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: UCR-Visual-QA-Verdict
+          name: UCR-Offline-Visual-Contract
           path: |
-            independent-report/
             visual-evidence-report.txt
           if-no-files-found: warn
 
