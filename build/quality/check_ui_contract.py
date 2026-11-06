@@ -20,7 +20,7 @@ XAMLNS = "{http://schemas.microsoft.com/winfx/2006/xaml}"
 PRESENT = "{http://schemas.microsoft.com/winfx/2006/xaml/presentation}"
 
 
-def check(root: Path = root) -> list[str]:
+def check(root: Path = ROOT) -> list[str]:
     errors = []
     app = root / "UCR/App.xaml"
     all_xaml = [app] + sorted((root / "UCR/Views").rglob("*.xaml"))
