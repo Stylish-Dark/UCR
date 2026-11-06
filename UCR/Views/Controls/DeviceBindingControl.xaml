@@ -6,6 +6,7 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:plugin="clr-namespace:HidWizards.UCR.Views.Controls.Plugin"
              xmlns:local="clr-namespace:HidWizards.UCR.Views.Controls"
+             xmlns:labels="clr-namespace:HidWizards.UCR.Utilities"
              d:DesignHeight="160" d:DesignWidth="900"
              UseLayoutRounding="True"
              mc:Ignorable="d">
@@ -159,7 +160,7 @@
 
         <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Vertical" Margin="8 0 0 0" VerticalAlignment="Center">
             <StackPanel Orientation="Horizontal" Visibility="{Binding ShowBlock}" VerticalAlignment="Center" Margin="0 0 0 2">
-                <TextBlock Text="Block" VerticalAlignment="Center" Margin="0 0 7 0" FontSize="14" Foreground="#E2E2E2"/>
+                <TextBlock Text="{x:Static labels:UiLabels.Block}" VerticalAlignment="Center" Margin="0 0 7 0" FontSize="14" Foreground="#E2E2E2"/>
                 <ToggleButton IsChecked="{Binding Block, Mode=TwoWay}" IsEnabled="{Binding CanBlock}" ToolTip="{Binding BlockAvailability}" Style="{StaticResource UcrBrightSwitchToggleButton}"/>
             </StackPanel>
             <StackPanel Orientation="Horizontal" Visibility="{Binding ShowInvertInput}" VerticalAlignment="Center">
