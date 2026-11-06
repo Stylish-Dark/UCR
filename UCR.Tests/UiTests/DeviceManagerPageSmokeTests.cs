@@ -1691,8 +1691,8 @@ namespace HidWizards.UCR.Tests.UiTests
 
         // A trigger is not a separate binding type: when its HID source is
         // analogue, the picker must expose it with the other full-range axes.
-        [TestCase("LX", "Left stick X axis")]
-        [TestCase("RY", "Right stick Y axis")]
+        [TestCase("LX", "Left stick X")]
+        [TestCase("RY", "Right stick Y")]
         [TestCase("LT", "Left trigger")]
         [TestCase("RT", "Right trigger")]
         [TestCase("LB", "Left shoulder")]
@@ -1704,12 +1704,14 @@ namespace HidWizards.UCR.Tests.UiTests
         }
 
         [Test]
-        public void OutputPickerOnlyNamesFaceButtonsWhenProviderGlyphIsActuallyAFaceButton()
+        public void OutputPickerDoesNotExpandSelfEvidentFaceButtonGlyphs()
         {
             Assert.That(CompactInputBindingControl.OutputPickerDisplayName(
                 "A", ControlVisualKind.Key), Is.EqualTo("A"));
             Assert.That(CompactInputBindingControl.OutputPickerDisplayName(
-                "A", ControlVisualKind.XboxFaceButton), Is.EqualTo("Face button A"));
+                "A", ControlVisualKind.XboxFaceButton), Is.EqualTo("A"));
+            Assert.That(CompactInputBindingControl.OutputPickerDisplayName(
+                "X", ControlVisualKind.PlayStationFaceButton), Is.EqualTo("X"));
         }
 
         [TestCase(HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Range, ControlVisualKind.Trigger, "LT", "Axes")]
@@ -2593,7 +2595,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 foreach (var glyph in new[] { "↑", "↓", "←", "→" })
                     Assert.That(labels, Does.Contain(glyph),
                         "Every spatial binding button must actually display its direction.");
-                Assert.That(mapping.CompoundOutputSummary, Is.EqualTo("Select 4-Way ▾"),
+                Assert.That(mapping.CompoundOutputSummary, Is.EqualTo("Bind"),
                     "An unassigned 4-Way output must offer a meaningful destination choice.");
             }
             finally
