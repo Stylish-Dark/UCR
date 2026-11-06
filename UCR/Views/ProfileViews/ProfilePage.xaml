@@ -26,24 +26,8 @@
             <BooleanToVisibilityConverter x:Key="MappingSectionVisibilityConverter"/>
             <!-- Compound bindings display all four physical directions. Their
                  buttons must be as tall as their glyphs, including the down key. -->
-            <Style x:Key="UcrCollapsedInputBindingButton" TargetType="{x:Type Button}"
-                   BasedOn="{StaticResource MaterialDesignFlatButton}">
-                <Setter Property="MinHeight" Value="44"/>
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsCompoundVisual}" Value="True">
-                        <Setter Property="MinHeight" Value="70"/>
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
-            <Style x:Key="UcrCollapsedOutputBindingButton" TargetType="{x:Type Button}"
-                   BasedOn="{StaticResource MaterialDesignFlatButton}">
-                <Setter Property="MinHeight" Value="48"/>
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsCompoundVisual}" Value="True">
-                        <Setter Property="MinHeight" Value="70"/>
-                    </DataTrigger>
-                </Style.Triggers>
-            </Style>
+
+
             <!-- Group controls are plain dark toolbar actions. The application-wide
                  raised-button style drew bright blue outlines around every idle
                  group action, falsely implying four selected buttons. -->
@@ -102,44 +86,9 @@
                 </Setter>
             </Style>
 
-            <Style x:Key="UcrSidebarIconButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
-                <Setter Property="Foreground" Value="#DADADA"/>
-                <Setter Property="Opacity" Value="0.9"/>
-                <Setter Property="Background" Value="Transparent"/>
-                <Style.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Foreground" Value="#FFFFFF"/>
-                        <Setter Property="Background" Value="#303030"/>
-                        <Setter Property="Opacity" Value="1"/>
-                    </Trigger>
-                    <Trigger Property="IsKeyboardFocused" Value="True">
-                        <Setter Property="Foreground" Value="#FFFFFF"/>
-                        <Setter Property="Opacity" Value="1"/>
-                    </Trigger>
-                    <Trigger Property="IsEnabled" Value="False">
-                        <Setter Property="Opacity" Value="0.48"/>
-                    </Trigger>
-                </Style.Triggers>
-            </Style>
 
-            <Style x:Key="UcrProfileActionButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
-                <Setter Property="Foreground" Value="#DEDEDE"/>
-                <Setter Property="Background" Value="#282828"/>
-                <Setter Property="BorderBrush" Value="#3D3D3D"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="Opacity" Value="0.94"/>
-                <Style.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Foreground" Value="#FFFFFF"/>
-                        <Setter Property="Background" Value="#343434"/>
-                        <Setter Property="BorderBrush" Value="#555555"/>
-                        <Setter Property="Opacity" Value="1"/>
-                    </Trigger>
-                    <Trigger Property="IsEnabled" Value="False">
-                        <Setter Property="Opacity" Value="0.48"/>
-                    </Trigger>
-                </Style.Triggers>
-            </Style>
+
+
 
 
         </ResourceDictionary>
