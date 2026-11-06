@@ -9,6 +9,7 @@ using HidWizards.UCR.ViewModels.Presentation;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Core.Utilities;
+using HidWizards.UCR.Utilities;
 using HidWizards.UCR.ViewModels;
 using HidWizards.UCR.ViewModels.ProfileViewModels;
 
@@ -458,27 +459,25 @@ namespace HidWizards.UCR.Views.Controls
         {
             switch ((title ?? string.Empty).Trim().ToUpperInvariant())
             {
-                case "LX": return "Left stick X axis";
-                case "LY": return "Left stick Y axis";
-                case "RX": return "Right stick X axis";
-                case "RY": return "Right stick Y axis";
+                case "LX": return UiLabels.LeftStick + " X";
+                case "LY": return UiLabels.LeftStick + " Y";
+                case "RX": return UiLabels.RightStick + " X";
+                case "RY": return UiLabels.RightStick + " Y";
                 case "LT":
-                case "L2": return "Left trigger";
+                case "L2": return UiLabels.LeftTrigger;
                 case "RT":
-                case "R2": return "Right trigger";
+                case "R2": return UiLabels.RightTrigger;
                 case "LB":
-                case "L1": return "Left shoulder";
+                case "L1": return UiLabels.LeftShoulder;
                 case "RB":
-                case "R1": return "Right shoulder";
+                case "R1": return UiLabels.RightShoulder;
                 case "A":
                 case "B":
                 case "X":
                 case "Y":
-                    // A keyboard key called "A" is not an Xbox face button.
-                    return visualKind == ControlVisualKind.XboxFaceButton ||
-                           visualKind == ControlVisualKind.PlayStationFaceButton
-                        ? "Face button " + title.Trim().ToUpperInvariant()
-                        : title ?? string.Empty;
+                    // Glyph and picker category already establish control type:
+                    // X is X, never "Face button X".
+                    return (title ?? string.Empty).Trim().ToUpperInvariant();
                 default: return title ?? string.Empty;
             }
         }
