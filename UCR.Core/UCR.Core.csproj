@@ -124,21 +124,10 @@
     <Content Include="NLog.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <None Include="NLog.xsd">
-      <SubType>Designer</SubType>
-    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <PropertyGroup>
-    <PreBuildEvent>"$(MSBuildBinPath)\msbuild.exe" /t:restore $(SolutionDir)\submodules\IOWrapper\IOWrapper.sln /v:q
-"$(MSBuildBinPath)\msbuild.exe" $(SolutionDir)\submodules\IOWrapper\IOWrapper.sln /v:q</PreBuildEvent>
-  </PropertyGroup>
-  <PropertyGroup>
-    <PostBuildEvent>xcopy /Y /S "$(SolutionDir)\submodules\IOWrapper\Artifacts" "$(SolutionDir)\dependencies"
-copy /Y "$(SolutionDir)\build\ProviderOverrides\Providers\Core_Interception\IOWrapper.Libraries.PollingDeviceHandler.dll" "$(SolutionDir)\dependencies\Providers\Core_Interception\IOWrapper.Libraries.PollingDeviceHandler.dll" || exit /b 1</PostBuildEvent>
-  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
