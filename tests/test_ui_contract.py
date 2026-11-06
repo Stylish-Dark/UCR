@@ -78,6 +78,13 @@ class UiContractVetoTests(unittest.TestCase):
             'Content="Negate"')
         self.assert_veto("NOT instances using canonical name")
 
+    def test_literal_Block_caption_is_rejected(self):
+        self.modify(
+            "UCR/Views/Controls/DeviceBindingControl.xaml",
+            'Text="{x:Static labels:UiLabels.Block}"',
+            'Text="Block"')
+        self.assert_veto("Block label bypasses UiLabels.Block")
+
     def test_redundant_face_button_caption_is_rejected(self):
         self.modify(
             "UCR/Views/Controls/CompactInputBindingControl.xaml.cs",
