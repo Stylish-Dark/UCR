@@ -16,6 +16,7 @@ using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Views.Dialogs;
 using HidWizards.UCR.ViewModels.Presentation;
+using HidWizards.UCR.Utilities;
 using MaterialDesignThemes.Wpf;
 
 namespace HidWizards.UCR.ViewModels.ProfileViewModels
@@ -103,7 +104,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public string CompoundPrimaryLabel => IsCompound && _owner.InputIsFullStick
             ? (CoreInputs.Any(input => input.DeviceBinding.IsBound)
                 ? (_owner.ResolveCompoundPresetName(CoreInputs, false) ?? "Custom 4-Way") + " ▾"
-                : "Select 4-Way ▾")
+                : UiLabels.Bind)
             : CompoundSummary;
 
         private DirectionalCompassSlotViewModel CompassSlot(int digitalSlot, int analogueIndex, string arrow)
@@ -131,8 +132,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 if (!IsCompound) return string.Empty;
                 if (!CoreInputs.Any(input => input.DeviceBinding.IsBound))
-                    return _owner?.InputIsFullStick == true ? "Choose stick / D-pad ▾"
-                        : _owner?.InputIsTrigger == true ? "Bind" : "Bind";
+                    return UiLabels.Bind;
                 return _owner?.ResolveCompoundPresetName(CoreInputs, false)
                     ?? "Custom 4-Way";
             }
@@ -325,7 +325,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     .ToList();
                 if (slots == null || slots.Count == 0 ||
                     !slots.Any(binding => binding.DeviceBinding.IsBound))
-                    return "Select 4-Way ▾";
+                    return UiLabels.Bind;
                 return ResolveCompoundPresetName(slots, true) ?? "Custom 4-Way";
             }
         }
