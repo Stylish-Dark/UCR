@@ -705,6 +705,11 @@
 
         <!-- Compact actual output cards for the four arms of a D-pad.
              Device selection, binding, inversion, filters and settings remain live. -->
+        <!-- Physical X/Y outputs form a coherent pair; wrap safely in narrow panes. -->
+        <ItemsPanelTemplate x:Key="PairedAxisOutputPanel">
+            <WrapPanel Orientation="Horizontal" ItemWidth="224"/>
+        </ItemsPanelTemplate>
+
         <DataTemplate x:Key="DirectionalOutputDPadCardTemplate">
             <!-- 4-Way output positions are real full-size destination buttons.
                  Their device is chosen once in the OUTPUTS header, not repeated
@@ -1018,6 +1023,14 @@
                             <ItemsControl.Style>
                                 <Style TargetType="{x:Type ItemsControl}">
                                     <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding OutputIsAxis}" Value="True"/>
+                                                <Condition Binding="{Binding Plugins.Count}" Value="2"/>
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="ItemsPanel" Value="{StaticResource PairedAxisOutputPanel}"/>
+                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                        </MultiDataTrigger>
                                         <DataTrigger Binding="{Binding IsCompoundOutput}" Value="True">
                                             <Setter Property="Visibility" Value="Collapsed"/>
                                         </DataTrigger>
@@ -1053,11 +1066,15 @@
                                                        Foreground="#D0D0D0" FontSize="12"
                                                        Margin="2 0 0 5"/>
                                             <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" MinWidth="0"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
-                                                <ItemsControl Grid.Column="0" ItemsSource="{Binding DeviceBindings}">
+                                                <ItemsControl Grid.Row="0" Grid.Column="0" ItemsSource="{Binding DeviceBindings}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
                                                             <local:CompactInputBindingControl
@@ -1069,6 +1086,22 @@
                                                 </ItemsControl>
                                                 <StackPanel Grid.Column="1" Orientation="Horizontal"
                                                     VerticalAlignment="Center" Margin="8 0 0 0">
+                                                    <StackPanel.Style>
+                                                        <Style TargetType="{x:Type StackPanel}">
+                                                            <Style.Triggers>
+                                                                <MultiDataTrigger>
+                                                                    <MultiDataTrigger.Conditions>
+                                                                        <Condition Binding="{Binding DataContext.OutputIsAxis, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="True"/>
+                                                                        <Condition Binding="{Binding DataContext.Plugins.Count, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="2"/>
+                                                                    </MultiDataTrigger.Conditions>
+                                                                    <Setter Property="Grid.Row" Value="1"/>
+                                                                    <Setter Property="Grid.Column" Value="0"/>
+                                                                    <Setter Property="HorizontalAlignment" Value="Right"/>
+                                                                    <Setter Property="Margin" Value="0 3 0 0"/>
+                                                                </MultiDataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </StackPanel.Style>
                                                     <StackPanel Orientation="Vertical"
                                                         Visibility="{Binding QuickInvertVisibility}"
                                                         VerticalAlignment="Center" Margin="0 0 9 0">

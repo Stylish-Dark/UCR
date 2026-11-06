@@ -2141,6 +2141,36 @@ namespace HidWizards.UCR.Tests.UiTests
                     InspectorMode = true, InlineWorkspaceMode = true,
                     DataContext = mapping
                 };
+                namedPresetCard.Measure(new Size(1050, 1100));
+                namedPresetCard.Arrange(new Rect(0, 0, 1050, 1100));
+                namedPresetCard.UpdateLayout();
+                var pairedAxisCards = FindVisualChildren<Border>(namedPresetCard)
+                    .Where(border => border.Name == "OutputBindingCardSurface" && border.IsVisible)
+                    .ToList();
+                Assert.That(pairedAxisCards.Count, Is.EqualTo(2),
+                    "An Axis pair must retain exactly two physical output bindings.");
+                var firstAxisAt = pairedAxisCards[0].TranslatePoint(new Point(0, 0), namedPresetCard);
+                var secondAxisAt = pairedAxisCards[1].TranslatePoint(new Point(0, 0), namedPresetCard);
+                Assert.That(Math.Abs(firstAxisAt.Y - secondAxisAt.Y), Is.LessThanOrEqualTo(3),
+                    "X and Y outputs must form one horizontal pair, not tall independent rows.");
+                Assert.That(secondAxisAt.X - firstAxisAt.X, Is.InRange(215, 230),
+                    "Paired output cards must keep a compact, consistent pitch.");
+                foreach (var axisCard in pairedAxisCards)
+                {
+                    Assert.That(axisCard.ActualWidth, Is.InRange(210, 226),
+                        "Each axis card must retain a readable, non-clipped width.");
+                    Assert.That(FindVisualChildren<CompactInputBindingControl>(axisCard)
+                        .Count(control => control.Visibility == Visibility.Visible), Is.EqualTo(1),
+                        "A paired axis retains its canonical device, Bind, and options controls.");
+                    Assert.That(FindVisualChildren<ToggleButton>(axisCard).Any(toggle =>
+                        string.Equals(toggle.ToolTip as string, "Invert this output",
+                            StringComparison.Ordinal)), Is.True,
+                        "Paired-axis layout must preserve inversion.");
+                    Assert.That(FindVisualChildren<Expander>(axisCard).Any(expander =>
+                        string.Equals(expander.Header as string, "Settings",
+                            StringComparison.Ordinal)), Is.True,
+                        "Paired-axis layout must preserve axis settings.");
+                }
                 CaptureEditorPreview(namedPresetCard, 1050, "UCR-named-fourway-preset-preview.png");
                 var header = mapping.CollapsedInputRows.Single(row =>
                     row.Visuals.Any(visual => visual.CompoundPresetName == "My Movement"));
