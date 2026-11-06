@@ -782,8 +782,7 @@ jobs:
           $manifestPath = '.\\UCR\\bin\\Release\\BUILD-IDENTITY.txt'
           [System.IO.File]::WriteAllLines($manifestPath, $manifest,
             [System.Text.UTF8Encoding]::new($false))
-          if (-not (Select-String -LiteralPath $manifestPath -SimpleMatch
-                  -Pattern "SOURCE COMMIT: $sourceSha" -Quiet)) {
+          if (-not (Select-String -LiteralPath $manifestPath -SimpleMatch -Pattern "SOURCE COMMIT: $sourceSha" -Quiet)) {
             throw 'Build provenance stamp verification failed.'
           }
           Write-Host "QA UCR.exe: $sourceSha SHA256=$sha256 version=$fileVersion"
