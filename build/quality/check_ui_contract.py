@@ -123,10 +123,14 @@ def check(root: Path = ROOT) -> list[str]:
         errors.append("Compact Bind layout bypasses the shared 82px minimum target")
     if 'x:Name="BindButton" MinHeight="36" MinWidth="0"' in compact:
         errors.append("Compact Bind button resets its minimum width to zero")
-    if 'ToolTip="Invert this output"' in mapping.split(
-            '<DataTemplate x:Key="DirectionalOutputDPadCardTemplate">')[1].split(
-            '<DataTemplate x:Key="ButtonMappingEditorTemplate">')[0]:
-        errors.append("4-Way output directions must not have per-arm Invert switches")
+    dpad_start = '<DataTemplate x:Key="DirectionalOutputDPadCardTemplate">'
+    dpad_end = '<DataTemplate x:Key="ButtonMappingEditorTemplate">'
+    if mapping.count(dpad_start) != 1 or mapping.count(dpad_end) != 1:
+        errors.append("Canonical 4-Way output template is missing or duplicated")
+    else:
+        dpad = mapping.split(dpad_start, 1)[1].split(dpad_end, 1)[0]
+        if 'ToolTip="Invert this output"' in dpad:
+            errors.append("4-Way output directions must not have per-arm Invert switches")
     if 'BasedOn="{StaticResource UcrBindActionButton}"' not in compact:
         errors.append("Compact Bind control is not derived from the shared Bind asset")
     if 'Style="{StaticResource UcrBindActionButton}"' not in device:
