@@ -41,8 +41,8 @@
         </Style>
         <Style x:Key="CompactBindSurfaceButton" TargetType="{x:Type Button}">
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Background" Value="#244A87"/>
-            <Setter Property="BorderBrush" Value="#4C80C9"/>
+            <Setter Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -58,10 +58,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="#305DA1"/>
+                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource PrimaryHueLightBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="#16376D"/>
+                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource PrimaryHueDarkBrush}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.4"/>
@@ -74,7 +74,7 @@
         <Style x:Key="CompactBindOptionsButton" TargetType="{x:Type Button}">
             <Setter Property="Foreground" Value="#EAEAEA"/>
             <Setter Property="Background" Value="#303030"/>
-            <Setter Property="BorderBrush" Value="#58749C"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -91,10 +91,10 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Chrome" Property="Background" Value="#414141"/>
-                                <Setter TargetName="Chrome" Property="BorderBrush" Value="#86A3D0"/>
+                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Chrome" Property="Background" Value="#244A87"/>
+                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.4"/>
@@ -125,7 +125,7 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter Property="Foreground" Value="White"/>
-                                <Setter TargetName="TabChrome" Property="Background" Value="#343B45"/>
+                                <Setter TargetName="TabChrome" Property="Background" Value="#343434"/>
                                 <Setter TargetName="TabChrome" Property="BorderBrush"
                                         Value="{DynamicResource PrimaryHueLightBrush}"/>
                             </Trigger>
