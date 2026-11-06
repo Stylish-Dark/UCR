@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Rules target existing x:Name elements in ProfilePage. Properties can be changed without rebuilding. -->
+    <Style x:Key="ProfilePageHeader" TargetType="{x:Type Grid}">
+        <Setter Property="Height" Value="42"/>
+    </Style>
+
+    <Style x:Key="WorkspaceMappingSearch" TargetType="{x:Type TextBox}">
+        <Setter Property="MinHeight" Value="34"/>
+    </Style>
+
+    <Style x:Key="MappingSectionsScrollViewer" TargetType="{x:Type ScrollViewer}">
+        <Setter Property="Padding" Value="0 1 0 4"/>
+    </Style>
+</ResourceDictionary>

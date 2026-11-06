@@ -39,6 +39,7 @@ namespace HidWizards.UCR.Utilities
             }
 
             LoadExternalStyles();
+            LayoutOverrideManager.Load();
         }
 
         private static void LoadExternalStyles()
