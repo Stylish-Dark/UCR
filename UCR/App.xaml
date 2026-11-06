@@ -15,6 +15,117 @@
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Primary/MaterialDesignColor.Blue.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Accent/MaterialDesignColor.Blue.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <!-- Built-in fallbacks for editable toolbar and group controls. -->
+            <Style x:Key="UcrToolbarActionButton" TargetType="{x:Type Button}">
+                    <Setter Property="Width" Value="38"/>
+                    <Setter Property="Height" Value="36"/>
+                    <Setter Property="Margin" Value="2"/>
+                    <Setter Property="Padding" Value="5"/>
+                    <Setter Property="Background" Value="#292929"/>
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="{x:Type Button}">
+                                <Border x:Name="ActionSurface" CornerRadius="3"
+                                        Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        SnapsToDevicePixels="True">
+                                    <ContentPresenter RecognizesAccessKey="True"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      Margin="{TemplateBinding Padding}"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="ActionSurface" Property="Background" Value="#383838"/>
+                                        <Setter TargetName="ActionSurface" Property="BorderBrush" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="ActionSurface" Property="Background" Value="#15469A"/>
+                                    </Trigger>
+                                    <Trigger Property="IsKeyboardFocused" Value="True">
+                                        <Setter TargetName="ActionSurface" Property="BorderThickness" Value="2"/>
+                                    </Trigger>
+                                    <Trigger Property="IsEnabled" Value="False">
+                                        <Setter Property="Opacity" Value="0.42"/>
+                                        <Setter Property="Cursor" Value="Arrow"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                    </Style>
+
+            <Style x:Key="UcrGroupAction" TargetType="{x:Type Button}">
+                    <Setter Property="Width" Value="30"/>
+                    <Setter Property="Height" Value="30"/>
+                    <Setter Property="Margin" Value="2 0"/>
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="Foreground" Value="#D5D5D5"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                    <Setter Property="Template">
+                    <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="Chrome" Background="#292929"
+                            BorderBrush="#505050" BorderThickness="1"
+                            CornerRadius="3">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#3B3B3B"/>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="#8B8B8B"/>
+                            <Setter Property="Foreground" Value="#FFFFFF"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#1C4A91"/>
+                            <Setter TargetName="Chrome" Property="BorderBrush" Value="#5D91DF"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.36"/>
+                            <Setter Property="Cursor" Value="Arrow"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                    </Setter.Value>
+                    </Setter>
+                    </Style>
+
+            <Style x:Key="UcrGroupBlockSwitch" TargetType="{x:Type ToggleButton}">
+                    <Setter Property="Width" Value="36"/>
+                    <Setter Property="Height" Value="20"/>
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Template">
+                    <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ToggleButton}">
+                    <Grid Width="36" Height="20">
+                        <Border x:Name="Track" Background="#4B4B4B"
+                                BorderBrush="#777777" BorderThickness="1"
+                                CornerRadius="10"/>
+                        <Ellipse x:Name="Thumb" Width="14" Height="14"
+                                 HorizontalAlignment="Left" VerticalAlignment="Center"
+                                 Margin="3 0 0 0" Fill="#E9E9E9"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Track" Property="Background" Value="#2359AA"/>
+                            <Setter TargetName="Track" Property="BorderBrush" Value="#5895EF"/>
+                            <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right"/>
+                            <Setter TargetName="Thumb" Property="Margin" Value="0 0 3 0"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                    </Setter.Value>
+                    </Setter>
+                    </Style>
             <!-- Built-in styles for editable compact binding buttons. -->
             <Style x:Key="CompactBindSurfaceButton" TargetType="{x:Type Button}">
                 <Setter Property="Foreground" Value="White"/>

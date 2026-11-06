@@ -101,4 +101,34 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <Style x:Key="UcrGroupBlockSwitch" TargetType="{x:Type ToggleButton}">
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+            <Setter.Value>
+            <ControlTemplate TargetType="{x:Type ToggleButton}">
+            <Grid Width="36" Height="20">
+                <Border x:Name="Track" Background="#4B4B4B"
+                        BorderBrush="#777777" BorderThickness="1"
+                        CornerRadius="10"/>
+                <Ellipse x:Name="Thumb" Width="14" Height="14"
+                         HorizontalAlignment="Left" VerticalAlignment="Center"
+                         Margin="3 0 0 0" Fill="#E9E9E9"/>
+            </Grid>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter TargetName="Track" Property="Background" Value="#2359AA"/>
+                    <Setter TargetName="Track" Property="BorderBrush" Value="#5895EF"/>
+                    <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right"/>
+                    <Setter TargetName="Thumb" Property="Margin" Value="0 0 3 0"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.4"/>
+                </Trigger>
+            </ControlTemplate.Triggers>
+            </ControlTemplate>
+            </Setter.Value>
+            </Setter>
+            </Style>
 </ResourceDictionary>
