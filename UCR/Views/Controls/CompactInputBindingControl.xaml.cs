@@ -90,10 +90,15 @@ namespace HidWizards.UCR.Views.Controls
             BindingGrid.ColumnDefinitions[2].Width = new GridLength(left ? deviceColumnWidth : 42);
             Grid.SetColumn(BindingActionGroup, left ? 0 : 1);
             Grid.SetColumnSpan(BindingActionGroup, 2);
+            // The minimum is a property of Bind, NOT of a physical grid
+            // column. When the menu moves left, move the minimum with Bind.
+            var bindMinWidth = (double)FindResource("UcrBindMinWidth");
             BindingActionGroup.ColumnDefinitions[0].Width = left
                 ? new GridLength(42) : new GridLength(1, GridUnitType.Star);
+            BindingActionGroup.ColumnDefinitions[0].MinWidth = left ? 42 : bindMinWidth;
             BindingActionGroup.ColumnDefinitions[1].Width = left
                 ? new GridLength(1, GridUnitType.Star) : new GridLength(42);
+            BindingActionGroup.ColumnDefinitions[1].MinWidth = left ? bindMinWidth : 42;
             Grid.SetColumn(MenuButton, left ? 0 : 1);
             Grid.SetColumn(BindSurface, left ? 1 : 0);
             Grid.SetColumn(DeviceSelectionBox, left ? 2 : 0);
