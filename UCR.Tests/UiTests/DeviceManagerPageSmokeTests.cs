@@ -1842,7 +1842,7 @@ namespace HidWizards.UCR.Tests.UiTests
                 .Single(button => string.Equals(button.ToolTip as string, "LX", StringComparison.Ordinal));
             var leftAxisCaption = ((StackPanel)leftAxisButton.Content).Children
                 .OfType<TextBlock>().Single();
-            Assert.That(leftAxisCaption.Text, Is.EqualTo("Left stick X axis"),
+            Assert.That(leftAxisCaption.Text, Is.EqualTo("Left stick X"),
                 "The rendered output picker must not repeat the bare LX glyph as its label.");
             Assert.That(directions, Does.Contain("D-pad Up"));
             Assert.That(directions, Does.Contain("Left Stick Up"));
