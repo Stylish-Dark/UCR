@@ -69,7 +69,7 @@
                 <ColumnDefinition Width="40"/>
             </Grid.ColumnDefinitions>
             <Grid Grid.Column="0">
-            <Button x:Name="UiBind"
+            <Button 
                     HorizontalAlignment="Stretch"
                     Content="{Binding BindButtonText}"
                     IsEnabled="{Binding BindingEnabled}"

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Style x:Key="UiBind" TargetType="{x:Type Button}">
+    <Style x:Key="BindButton" TargetType="{x:Type Button}">
         <Setter Property="MinWidth" Value="110"/>
         <Setter Property="Margin" Value="0"/>
     </Style>
