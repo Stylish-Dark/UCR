@@ -1112,11 +1112,6 @@
                             </StackPanel>
                         </Border>
                         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0 7 0 2">
-                            <Button Content="+ Filter" Height="34" Padding="10 2" Margin="3 0 7 0"
-                                Click="AddMappingFilter_OnClick" IsEnabled="{Binding ButtonsEnabled}"
-                                HorizontalAlignment="Left" Foreground="#FFFFFF" Background="#343434"
-                                BorderBrush="#555555" BorderThickness="1"
-                                ToolTip="Add a filter to this mapping"/>
                             <Button Content="+ Add output" Click="AddPlugin_OnClick"
                                 Visibility="{Binding LegacyOutputAddVisibility}"
                                 Height="34" Padding="12 3" Margin="0"
