@@ -234,15 +234,6 @@
       <DependentUpon>ProfilePage.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\ProfileViews\ProfilePage.BatchMappings.cs" />
-    <DesignData Include="SampleData\ProfileViewModelSampleData.xaml">
-      <SubType>Designer</SubType>
-    </DesignData>
-    <DesignData Include="SampleData\MappingControlSampleData.xaml">
-      <SubType>Designer</SubType>
-    </DesignData>
-    <DesignData Include="SampleData\DashboardSampleData.xaml">
-      <SubType>Designer</SubType>
-    </DesignData>
     <Page Include="Views\Controls\DeviceBindingControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
