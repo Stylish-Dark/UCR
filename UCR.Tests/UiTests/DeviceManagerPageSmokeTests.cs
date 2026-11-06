@@ -2217,6 +2217,11 @@ namespace HidWizards.UCR.Tests.UiTests
                         "Choose filter or physical output", StringComparison.Ordinal)).ToList();
                 Assert.That(filterRouteButtons.Count, Is.EqualTo(1),
                     "The Filter destination selector must be available in FILTERS.");
+                Assert.That(FindVisualChildren<Button>(filterSection).Any(button =>
+                    string.Equals(button.ToolTip as string,
+                        "Remove this filter destination", StringComparison.Ordinal) &&
+                    button.IsEnabled), Is.True,
+                    "Moving a Filter destination must preserve its existing removal action.");
                 Assert.That(FindVisualChildren<Button>(physicalOutputSurface).Any(button =>
                     string.Equals(button.ToolTip as string,
                         "Choose filter or physical output", StringComparison.Ordinal)), Is.False,
