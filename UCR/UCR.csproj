@@ -415,6 +415,9 @@
     <Content Include="Assets\Theme\accents.ini">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Assets\Styles\switches.xaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <EmbeddedResource Include="Assets\Fonts\DeviceSymbols-v7.ttf">
       <LogicalName>HidWizards.UCR.Assets.Fonts.DeviceSymbols-v7.ttf</LogicalName>
     </EmbeddedResource>
