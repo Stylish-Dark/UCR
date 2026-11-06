@@ -19,6 +19,17 @@ jobs:
         with:
           submodules: false
 
+      - name: Establish offline UI contract checker
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Reject duplicate UI assets and unauthorised naming before compilation
+        shell: pwsh
+        run: |
+          python .\build\quality\check_ui_contract.py
+          if ($LASTEXITCODE -ne 0) { throw 'Canonical UI contract rejected this source revision.' }
+
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v3
         with:
