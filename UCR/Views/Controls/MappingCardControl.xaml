@@ -1175,6 +1175,11 @@
                                                 BorderBrush="#666666" BorderThickness="1"
                                                 Click="FilterDestinationSelector_OnClick"
                                                 ToolTip="Choose filter or physical output"/>
+                                            <Button Style="{StaticResource UcrDeleteItemButton}" Margin="8 0 0 0"
+                                                Click="RemoveOutput_OnClick"
+                                                IsEnabled="{Binding CanRemove}"
+                                                Visibility="{Binding CanRemove, Converter={StaticResource CompoundVisibilityConverter}}"
+                                                ToolTip="Remove this filter destination"/>
                                             <Expander Header="Settings" Margin="10 0 0 0"
                                                 Expanded="OutputSettings_OnExpanded"
                                                 Visibility="{Binding InlineSettingsVisibility}"
