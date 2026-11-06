@@ -32,7 +32,7 @@
                         <ColumnDefinition Width="50"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <Button Grid.Column="0" Width="22" Height="22" Margin="0 0 2 0"
+                    <Button x:Name="UiPrimaryDevice" Grid.Column="0" Width="22" Height="22" Margin="0 0 2 0"
                             Style="{StaticResource PrimaryDeviceButtonStyle}"
                             ToolTip="{Binding PrimaryToolTip}" Click="PrimaryDevice_OnClick">
                         <Ellipse Width="10" Height="10" StrokeThickness="1.5">
@@ -89,19 +89,19 @@
             </Grid.RowDefinitions>
             <TextBlock Grid.Column="0" Text="{Binding Title, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type UserControl}}}" Margin="8 9 4 3" Style="{StaticResource MaterialDesignSubheadingTextBlock}"/>
             <StackPanel Grid.Column="1" FlowDirection="RightToLeft" HorizontalAlignment="Right" Orientation="Horizontal" Margin="4 0">
-                <Button ToolTip="Remove device"
+                <Button x:Name="UiRemoveDevice" ToolTip="Remove device"
                     Style="{StaticResource MaterialDesignCardButton}"
                     Click="RemoveDevice_OnClick"
                     IsEnabled="{Binding IsRemoveEnabled}">
                     <materialDesign:PackIcon Kind="Trash" Width="20" Height="20"/>
                 </Button>
-                <Button ToolTip="Manage device configuration"
+                <Button x:Name="UiConfigureDevice" ToolTip="Manage device configuration"
                         Style="{StaticResource MaterialDesignCardButton}"
                         Click="ManageDeviceConfiguration_OnClick"
                         IsEnabled="{Binding IsConfigurationEnabled}">
                     <materialDesign:PackIcon Kind="Cog" Width="20" Height="20"/>
                 </Button>
-                <Button ToolTip="Add device"
+                <Button x:Name="UiAddDevice" ToolTip="Add device"
                         Style="{StaticResource MaterialDesignCardButton}"
                         Click="AddDevice_OnClick">
                     <materialDesign:PackIcon Kind="Plus" Width="20" Height="20"/>
