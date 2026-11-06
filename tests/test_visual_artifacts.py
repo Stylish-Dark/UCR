@@ -85,7 +85,7 @@ class VisualGuardTests(unittest.TestCase):
     def test_full_project_manifest_includes_every_produced_state(self):
         actual_manifest = MODULE.parents[2] / "build/quality/expected_screenshots.txt"
         names = guard.manifest_names(actual_manifest)
-        self.assertEqual(len(names), 22)
+        self.assertEqual(len(names), 24)
         self.assertIn("UCR-two-button-full-circles-preview.png", names)
         self.assertIn("UCR-output-picker-single-axis-preview.png", names)
 
