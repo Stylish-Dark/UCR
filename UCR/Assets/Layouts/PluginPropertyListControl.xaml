@@ -3,25 +3,4 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Style x:Key="UiProperties" TargetType="{x:Type ItemsControl}"></Style>
 
-    <Style x:Key="UiBooleanProperty" TargetType="{x:Type ToggleButton}"></Style>
-
-    <Style x:Key="UiNumberProperty" TargetType="{x:Type TextBox}">
-        <Setter Property="Width" Value="50"/>
-        <Setter Property="Height" Value="25"/>
-    </Style>
-
-    <Style x:Key="UiDecimalProperty" TargetType="{x:Type TextBox}">
-        <Setter Property="Width" Value="50"/>
-        <Setter Property="Height" Value="25"/>
-    </Style>
-
-    <Style x:Key="UiTextProperty" TargetType="{x:Type TextBox}">
-        <Setter Property="Width" Value="200"/>
-        <Setter Property="Height" Value="25"/>
-    </Style>
-
-    <Style x:Key="UiFilterNameProperty" TargetType="{x:Type TextBox}">
-        <Setter Property="Width" Value="220"/>
-        <Setter Property="Height" Value="28"/>
-    </Style>
 </ResourceDictionary>
