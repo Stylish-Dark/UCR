@@ -120,10 +120,10 @@
                    Text="Only bindings in the checked mapping groups are changed. Unchecked groups stay unchanged."/>
 
         <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 18 0 0">
-            <Button Content="REPLACE" IsDefault="True" IsEnabled="{Binding CanApply}"
+            <Button x:Name="UiReplace" Content="REPLACE" IsDefault="True" IsEnabled="{Binding CanApply}"
                     Style="{StaticResource UcrDialogRaisedButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" CommandParameter="{Binding ViewModel}"/>
-            <Button Content="CANCEL" IsCancel="True" Margin="8 0 0 0"
+            <Button x:Name="UiCancel" Content="CANCEL" IsCancel="True" Margin="8 0 0 0"
                     Style="{StaticResource UcrDialogFlatButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"/>
         </StackPanel>
