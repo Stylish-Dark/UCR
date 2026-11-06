@@ -190,13 +190,13 @@
         <!-- Bind and options form ONE compact, intrinsic-width action group.
              A lone Bind command must not stretch into a 600px blue slab. -->
         <Grid x:Name="BindingActionGroup" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2"
-              HorizontalAlignment="Left" MinWidth="80" MaxWidth="300" MinHeight="36">
+              HorizontalAlignment="Left" MinWidth="124" MaxWidth="300" MinHeight="36">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" MinWidth="38"/>
+                <ColumnDefinition Width="*" MinWidth="{StaticResource UcrBindMinWidth}"/>
                 <ColumnDefinition Width="42"/>
             </Grid.ColumnDefinitions>
         <Grid x:Name="BindSurface" Grid.Column="0" Margin="0" ClipToBounds="True">
-            <Button x:Name="BindButton" MinHeight="36" MinWidth="0" Padding="2 0"
+            <Button x:Name="BindButton" MinHeight="36" Padding="2 0"
                     IsEnabled="{Binding CanBindCurrentDevice}"
                     Click="BindButton_OnClick"
                     PreviewMouseLeftButtonDown="BindButton_OnPreviewMouseLeftButtonDown"
