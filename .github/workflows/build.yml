@@ -603,12 +603,16 @@ jobs:
 
           # WPF theme resources are owned by the dispatcher that creates App.
           # Isolate device-row materialization in a fresh NUnit process.
-          & $runner $tests --noresult --workers=0 --where "test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton && test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DirectionalTypeSelectorsRenderIndependentlyAndRestoreBindingBanks"
+          & $runner $tests --noresult --workers=0 --where "test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton && test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DirectionalTypeSelectorsRenderIndependentlyAndRestoreBindingBanks && test != HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.WasdPresetBindsOnlyItsOrGroupAndSurvivesAxisRoundTrip"
           if ($LASTEXITCODE -ne 0) { throw "Main UCR tests failed: $LASTEXITCODE" }
           & $runner $tests --noresult --workers=0 --where "test == HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DeviceManagerPageMaterializesRealDeviceRowAndColourButton"
           if ($LASTEXITCODE -ne 0) { throw "Isolated device-row UI test failed: $LASTEXITCODE" }
           & $runner $tests --noresult --workers=0 --where "test == HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.DirectionalTypeSelectorsRenderIndependentlyAndRestoreBindingBanks"
           if ($LASTEXITCODE -ne 0) { throw "Directional type WPF test failed: $LASTEXITCODE" }
+          # The expanded axis Settings template creates TextBox controls;
+          # it must run with WPF resources on the same fresh STA dispatcher.
+          & $runner $tests --noresult --workers=0 --where "test == HidWizards.UCR.Tests.UiTests.DeviceManagerPageSmokeTests.WasdPresetBindsOnlyItsOrGroupAndSurvivesAxisRoundTrip"
+          if ($LASTEXITCODE -ne 0) { throw "Isolated paired-axis WPF test failed: $LASTEXITCODE" }
           $visualCaptures = @(
             'UCR-directional-preview.png',
             'UCR-button-button-preview.png',
@@ -619,7 +623,7 @@ jobs:
             'UCR-filter-output-preview.png',
             'UCR-digital-dpad-preview.png',
             'UCR-typed-conditions-preview.png',
-            'UCR-named-fourway-preset-preview.png', 'UCR-named-fourway-header-preview.png',
+            'UCR-named-fourway-preset-preview.png', 'UCR-paired-axis-narrow-preview.png', 'UCR-paired-axis-settings-preview.png', 'UCR-named-fourway-header-preview.png',
             'UCR-workspace-collapsed-preview.png',
             'UCR-workspace-expanded-preview.png',
             'UCR-workspace-multi-expanded-preview.png',
@@ -663,6 +667,8 @@ jobs:
             UCR-digital-dpad-preview.png
             UCR-typed-conditions-preview.png
             UCR-named-fourway-preset-preview.png
+            UCR-paired-axis-narrow-preview.png
+            UCR-paired-axis-settings-preview.png
             UCR-named-fourway-header-preview.png
             UCR-workspace-collapsed-preview.png
             UCR-workspace-expanded-preview.png
@@ -680,7 +686,7 @@ jobs:
       - name: Expose WPF previews for actual visual review
         shell: pwsh
         run: |
-          foreach ($name in @('UCR-directional-preview.png', 'UCR-button-button-preview.png', 'UCR-button-trigger-preview.png', 'UCR-button-axis-preview.png', 'UCR-fourway-conditions-preview.png', 'UCR-fourway-to-fourway-preview.png', 'UCR-filter-output-preview.png', 'UCR-digital-dpad-preview.png', 'UCR-typed-conditions-preview.png', 'UCR-named-fourway-preset-preview.png', 'UCR-named-fourway-header-preview.png', 'UCR-workspace-collapsed-preview.png', 'UCR-workspace-expanded-preview.png', 'UCR-workspace-multi-expanded-preview.png', 'UCR-profile-sidebar-presets-preview.png', 'UCR-profile-devices-detail-preview.png', 'UCR-fourway-preset-editor-preview.png', 'UCR-profile-sidebar-stress-preview.png', 'UCR-output-picker-axes-preview.png', 'UCR-output-picker-directions-preview.png', 'UCR-output-picker-single-axis-preview.png', 'UCR-two-button-full-circles-preview.png')) {
+          foreach ($name in @('UCR-directional-preview.png', 'UCR-button-button-preview.png', 'UCR-button-trigger-preview.png', 'UCR-button-axis-preview.png', 'UCR-fourway-conditions-preview.png', 'UCR-fourway-to-fourway-preview.png', 'UCR-filter-output-preview.png', 'UCR-digital-dpad-preview.png', 'UCR-typed-conditions-preview.png', 'UCR-named-fourway-preset-preview.png', 'UCR-paired-axis-narrow-preview.png', 'UCR-paired-axis-settings-preview.png', 'UCR-named-fourway-header-preview.png', 'UCR-workspace-collapsed-preview.png', 'UCR-workspace-expanded-preview.png', 'UCR-workspace-multi-expanded-preview.png', 'UCR-profile-sidebar-presets-preview.png', 'UCR-profile-devices-detail-preview.png', 'UCR-fourway-preset-editor-preview.png', 'UCR-profile-sidebar-stress-preview.png', 'UCR-output-picker-axes-preview.png', 'UCR-output-picker-directions-preview.png', 'UCR-output-picker-single-axis-preview.png', 'UCR-two-button-full-circles-preview.png')) {
             if (-not (Test-Path -LiteralPath $name)) { continue }
             $base64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path $name).Path))
             Write-Host "UCR_UI_CAPTURE_BEGIN:$name"
