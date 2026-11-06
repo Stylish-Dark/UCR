@@ -2209,7 +2209,22 @@ namespace HidWizards.UCR.Tests.UiTests
                     .Single(expander => string.Equals(expander.Header as string,
                         "Settings", StringComparison.Ordinal));
                 axisSettings.IsExpanded = true;
-                CaptureEditorPreview(namedPresetCard, 740, "UCR-paired-axis-settings-preview.png");
+                // Expanded settings materialize lazily. A fresh 740px viewport
+                // captures the entire resulting page, not the stale collapsed
+                // DesiredSize that would cut off the second axis and FILTERS.
+                CaptureWorkspacePreview(namedPresetCard, 740, 740,
+                    "UCR-paired-axis-settings-preview.png");
+                var filtersBelowAxes = FindVisualChildren<Border>(namedPresetCard)
+                    .Single(border => border.Name == "MappingFiltersSurface");
+                var expandedSecondAxis = narrowAxisCards[1].TranslatePoint(
+                    new Point(0, narrowAxisCards[1].ActualHeight), namedPresetCard).Y;
+                var filtersTop = filtersBelowAxes.TranslatePoint(
+                    new Point(0, 0), namedPresetCard).Y;
+                var filtersBottom = filtersTop + filtersBelowAxes.ActualHeight;
+                Assert.That(expandedSecondAxis, Is.LessThanOrEqualTo(filtersTop + 2),
+                    "Expanding axis settings must not overlap the FILTERS pane.");
+                Assert.That(filtersBottom, Is.LessThan(740),
+                    "The full expanded editor must fit inside its QA capture.");
                 var header = mapping.CollapsedInputRows.Single(row =>
                     row.Visuals.Any(visual => visual.CompoundPresetName == "My Movement"));
                 Assert.That(header.Visuals[0].ControlKind, Is.EqualTo(ControlVisualKind.CompoundKeys),

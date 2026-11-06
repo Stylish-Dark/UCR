@@ -8,6 +8,8 @@ UCR-filter-output-preview.png
 UCR-digital-dpad-preview.png
 UCR-typed-conditions-preview.png
 UCR-named-fourway-preset-preview.png
+UCR-paired-axis-narrow-preview.png
+UCR-paired-axis-settings-preview.png
 UCR-named-fourway-header-preview.png
 UCR-workspace-collapsed-preview.png
 UCR-workspace-expanded-preview.png
