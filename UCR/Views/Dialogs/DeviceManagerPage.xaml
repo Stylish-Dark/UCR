@@ -22,7 +22,7 @@
         </Grid.RowDefinitions>
         <Grid Grid.Row="0" Background="#202020">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-            <Button Grid.Column="0" Width="36" Height="34" Margin="8 3 9 3" Click="Back_OnClick"
+            <Button x:Name="UiDeviceBack" Grid.Column="0" Width="36" Height="34" Margin="8 3 9 3" Click="Back_OnClick"
                     Style="{StaticResource UcrNavigationBackButton}" ToolTip="Back to profiles (Alt+Left)">
                 <materialDesign:PackIcon Kind="ArrowLeft" Width="23" Height="23" Foreground="#FFFFFF"/>
             </Button>
@@ -43,9 +43,9 @@
             </Grid.ColumnDefinitions>
             <TextBlock Grid.Column="0" Text="Devices" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignTitleTextBlock}" VerticalAlignment="Center"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <Button Content="WINDOWS DEVICES" Click="OpenWindowsDevices_OnClick" Margin="0 0 6 0"
+                <Button x:Name="UiDeviceOpenWindows" Content="WINDOWS DEVICES" Click="OpenWindowsDevices_OnClick" Margin="0 0 6 0"
                         Style="{StaticResource DevicePageTextButton}" ToolTip="Open Windows Device Manager for live hardware removal or driver management"/>
-                <Button Content="{Binding DetectionButtonText}" Click="DetectDevice_OnClick"
+                <Button x:Name="UiDeviceDetect" Content="{Binding DetectionButtonText}" Click="DetectDevice_OnClick"
                         Style="{StaticResource DevicePageTextButton}" ToolTip="Identify an input device by pressing one of its buttons or keys"/>
             </StackPanel>
         </Grid>
@@ -233,15 +233,15 @@
                                     </Button.Style>
                                     <materialDesign:PackIcon Kind="Trash" Width="22" Height="22"/>
                                 </Button>
-                                <Button ToolTip="Remove this exact device instance from Windows (administrator approval required)"
+                                <Button x:Name="UiDeviceRemoveWindows" ToolTip="Remove this exact device instance from Windows (administrator approval required)"
                                         Style="{StaticResource DeviceRowIconButton}" IsEnabled="{Binding CanRemoveFromWindows}"
                                         Click="RemoveFromWindows_OnClick" >
                                     <materialDesign:PackIcon Kind="Usb" Width="22" Height="22"/>
                                 </Button>
-                                <Button ToolTip="Move up (Alt+Up while editing the name)" Style="{StaticResource DeviceRowIconButton}" IsEnabled="{Binding CanPersist}" Click="MoveUp_OnClick" >
+                                <Button x:Name="UiDeviceMoveUp" ToolTip="Move up (Alt+Up while editing the name)" Style="{StaticResource DeviceRowIconButton}" IsEnabled="{Binding CanPersist}" Click="MoveUp_OnClick" >
                                     <materialDesign:PackIcon Kind="ArrowUp" Width="22" Height="22"/>
                                 </Button>
-                                <Button ToolTip="Move down (Alt+Down while editing the name)" Style="{StaticResource DeviceRowIconButton}" IsEnabled="{Binding CanPersist}" Click="MoveDown_OnClick" >
+                                <Button x:Name="UiDeviceMoveDown" ToolTip="Move down (Alt+Down while editing the name)" Style="{StaticResource DeviceRowIconButton}" IsEnabled="{Binding CanPersist}" Click="MoveDown_OnClick" >
                                     <materialDesign:PackIcon Kind="ArrowDown" Width="22" Height="22"/>
                                 </Button>
                             </StackPanel>
@@ -252,8 +252,8 @@
         </ListView>
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 14 0 0">
-            <Button Content="SAVE" IsDefault="True" Style="{StaticResource UcrDialogRaisedButton}" Click="Save_OnClick"/>
-            <Button Content="CANCEL" Margin="8 0 0 0" Style="{StaticResource DevicePageTextButton}" Click="Cancel_OnClick"/>
+            <Button x:Name="UiDeviceSave" Content="SAVE" IsDefault="True" Style="{StaticResource UcrDialogRaisedButton}" Click="Save_OnClick"/>
+            <Button x:Name="UiDeviceCancel" Content="CANCEL" Margin="8 0 0 0" Style="{StaticResource DevicePageTextButton}" Click="Cancel_OnClick"/>
         </StackPanel>
         </Grid>
     </Grid>

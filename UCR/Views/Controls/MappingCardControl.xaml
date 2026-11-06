@@ -93,7 +93,7 @@
         <DataTemplate x:Key="MappingBindingVisualTemplate">
             <!-- A real hit-testable button owns each glyph. No click handler on a broad
                  preview panel: the user can only rebind the actual token they click. -->
-            <Button Padding="0" Background="Transparent" BorderThickness="0" Focusable="True"
+            <Button x:Name="UiMappingQuickBind" Padding="0" Background="Transparent" BorderThickness="0" Focusable="True"
                     Cursor="Hand" ToolTip="{Binding ToolTip}" Click="QuickBindGlyph_OnClick"
                     PreviewMouseLeftButtonDown="QuickBindGlyph_OnPreviewMouseLeftButtonDown"
                     PreviewMouseRightButtonDown="QuickBindGlyph_OnPreviewMouseRightButtonDown">
@@ -459,7 +459,7 @@
                                          blue strip consuming the width of the entire input pane. -->
                                     <StackPanel Orientation="Horizontal" Margin="3 4 3 3"
                                                 Visibility="{Binding StandaloneCompoundVisibility}">
-                                        <Button Content="{Binding CompoundPrimaryLabel}" Click="CompoundPrimaryBind_OnClick"
+                                        <Button x:Name="UiMappingCompoundBind" Content="{Binding CompoundPrimaryLabel}" Click="CompoundPrimaryBind_OnClick"
                                                 ToolTip="Bind the axis or choose a complete preset"
                                                 HorizontalContentAlignment="Center"
                                                 HorizontalAlignment="Left" MinWidth="154" MaxWidth="300"
@@ -472,7 +472,7 @@
                                                 </DataTemplate>
                                             </Button.ContentTemplate>
                                         </Button>
-                                        <Button Content="⋮" FontSize="20" Width="38"
+                                        <Button x:Name="UiMappingCompoundMenu" Content="⋮" FontSize="20" Width="38"
                                                 Visibility="{Binding CompoundAdvancedMenuVisibility}"
                                                 Click="CompoundBindingsMenu_OnClick"
                                                 ToolTip="Compound binding options"
@@ -549,7 +549,7 @@
                                                 Content="{Binding LeftDirection}"
                                                 ContentTemplate="{StaticResource SpatialDirectionalInputSlotTemplate}"
                                                 Visibility="{Binding LeftDirectionVisibility}"/>
-                                            <Button Grid.Row="1" Grid.Column="1" Content="Preset ▾"
+                                            <Button x:Name="UiMappingPreset" Grid.Row="1" Grid.Column="1" Content="Preset ▾"
                                                     FontSize="11" FontWeight="SemiBold"
                                                     Height="40" Margin="1" Padding="4 2"
                                                     Foreground="#FFFFFF" Click="CompoundPreset_OnClick"
@@ -635,7 +635,7 @@
                         <ItemsControl Grid.Column="0" ItemsSource="{Binding DeviceBindings}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Button Height="44" MinWidth="90" Margin="0 1 0 2" Padding="3 2"
+                                    <Button x:Name="UiMappingCompassBind" Height="44" MinWidth="90" Margin="0 1 0 2" Padding="3 2"
                                             Click="CompassOutputBind_OnClick"
                                             IsEnabled="{Binding BindingEnabled}"
                                             ToolTip="Choose output control"
@@ -800,7 +800,7 @@
                                 </ContentControl.Style>
                             </ContentControl>
                         </Border>
-                        <Button Grid.Row="2" Content="+OR" Click="AddCondition_OnClick"
+                        <Button x:Name="UiMappingAddOrCondition" Grid.Row="2" Content="+OR" Click="AddCondition_OnClick"
                                 Height="34" HorizontalAlignment="Left" Padding="12 3"
                                 Margin="2 6 0 0" IsEnabled="{Binding ButtonsEnabled}"
                                 Visibility="{Binding SupportsNativeInputExpression, Converter={StaticResource CompoundVisibilityConverter}}"
@@ -896,7 +896,7 @@
                                         DataContext="{Binding Plugins[0].DeviceBindings[0]}"
                                         DeviceBinding="{Binding DeviceBinding}"
                                         ToolTip="{Binding DataContext.FourWayOutputDeviceLabel, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"/>
-                                    <Button Width="34" Height="34" Margin="12 0 0 0"
+                                    <Button x:Name="UiMappingRemoveCompoundOutput" Width="34" Height="34" Margin="12 0 0 0"
                                             Style="{StaticResource UcrDeleteItemButton}"
                                             Visibility="{Binding CompoundOutputRemoveVisibility}"
                                             Click="RemoveCompoundOutput_OnClick"
@@ -1018,7 +1018,7 @@
                                                 </ItemsControl>
                                                 <!-- Replaces the physical-device selector when this output is a filter.
                                                      It occupies the same destination slot; no extra selection tier. -->
-                                                <Button Grid.Column="0" Content="F   Filter ▼"
+                                                <Button x:Name="UiMappingDestination" Grid.Column="0" Content="F   Filter ▼"
                                                         Width="140" Height="36" HorizontalAlignment="Left"
                                                         Margin="0 0 0 5" Padding="8 3"
                                                         Foreground="#FFFFFF" Background="#303030"
@@ -1038,7 +1038,7 @@
                                                             IsChecked="{Binding QuickInvert, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                             ToolTip="Invert this output"/>
                                                     </StackPanel>
-                                                    <Button Style="{StaticResource UcrDeleteItemButton}"
+                                                    <Button x:Name="UiMappingRemoveOutput" Style="{StaticResource UcrDeleteItemButton}"
                                                         Click="RemoveOutput_OnClick" IsEnabled="{Binding CanRemove}"
                                                         Visibility="{Binding CanRemove, Converter={StaticResource CompoundVisibilityConverter}}"
                                                         ToolTip="Remove this output slot"/>
@@ -1101,12 +1101,12 @@
                             </StackPanel>
                         </Border>
                         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0 7 0 2">
-                            <Button Content="+ Filter" Height="34" Padding="10 2" Margin="3 0 7 0"
+                            <Button x:Name="UiMappingAddFilter" Content="+ Filter" Height="34" Padding="10 2" Margin="3 0 7 0"
                                 Click="AddMappingFilter_OnClick" IsEnabled="{Binding ButtonsEnabled}"
                                 HorizontalAlignment="Left" Foreground="#FFFFFF" Background="#343434"
                                 BorderBrush="#555555" BorderThickness="1"
                                 ToolTip="Add a filter to this mapping"/>
-                            <Button Content="+ Add output" Click="AddPlugin_OnClick"
+                            <Button x:Name="UiMappingAddOutput" Content="+ Add output" Click="AddPlugin_OnClick"
                                 Visibility="{Binding LegacyOutputAddVisibility}"
                                 Height="34" Padding="12 3" Margin="0"
                                 HorizontalAlignment="Left" IsEnabled="{Binding ButtonsEnabled}"
