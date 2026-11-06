@@ -52,15 +52,28 @@ namespace HidWizards.UCR.Utilities
                 try
                 {
                     var dictionary = new ResourceDictionary { Source = new Uri(Path.GetFullPath(file)) };
-                    var count = 0;
+                    // Validate an entire file before changing any live application resources.
+                    // A malformed replacement must leave every built-in style intact.
+                    var overrides = new List<KeyValuePair<string, Style>>();
                     foreach (DictionaryEntry entry in dictionary)
                     {
                         var key = entry.Key as string;
-                        if (key == null || !(entry.Value is Style)) continue;
-                        Application.Current.Resources[key] = entry.Value;
-                        count++;
+                        var style = entry.Value as Style;
+                        if (key == null || style == null) continue;
+
+                        var fallback = Application.Current.Resources[key] as Style;
+                        if (fallback != null && fallback.TargetType != style.TargetType)
+                            throw new InvalidDataException("External style " + key
+                                + " has an incompatible target type; expected " + fallback.TargetType);
+
+                        style.Seal();
+                        overrides.Add(new KeyValuePair<string, Style>(key, style));
                     }
-                    Logger.Info("Loaded " + count + " external UI style(s) from " + file);
+
+                    foreach (var item in overrides)
+                        Application.Current.Resources[item.Key] = item.Value;
+
+                    Logger.Info("Loaded " + overrides.Count + " external UI style(s) from " + file);
                 }
                 catch (Exception exception)
                 {
