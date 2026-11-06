@@ -123,6 +123,7 @@
                     ToolTip="Stop the active profile to edit this binding."
                     ToolTipService.ShowOnDisabled="True"
                     Name="BindButton"
+                    Style="{StaticResource UcrBindActionButton}"
                     Margin="0"
                     Click="BindButton_OnClick"
                     PreviewMouseRightButtonUp="BindButton_OnMouseRightButtonUp"
@@ -150,7 +151,7 @@
                     ToolTip="Stop the active profile to edit this binding." ToolTipService.ShowOnDisabled="True"
                     Click="BindMenuButton_OnClick"
                     Width="40" Padding="0"
-                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    Style="{StaticResource UcrBindOptionsButton}"
                     materialDesign:ShadowAssist.ShadowEdges="Top, Right, Bottom">
                 <materialDesign:PackIcon Kind="DotsVertical" Width="20" Height="20"/>
             </Button>
