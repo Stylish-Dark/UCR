@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:HidWizards.UCR.Views.Controls"
+             xmlns:labels="clr-namespace:HidWizards.UCR.Utilities"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:plugin="clr-namespace:HidWizards.UCR.Views.Controls.Plugin"
              mc:Ignorable="d"
@@ -364,7 +365,7 @@
                                                         <local:CompactInputBindingControl Grid.Column="0"
                                                             DeviceBinding="{Binding DeviceBinding}"
                                                             DataContext="{Binding}"/>
-                                                        <ToggleButton Grid.Column="1" Content="NOT" Width="54" Height="30"
+                                                        <ToggleButton Grid.Column="1" Content="{x:Static labels:UiLabels.Not}" Width="54" Height="30"
                                                             Margin="4 0 8 0" IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
                                                             Click="InputNegated_OnClick"
                                                             Style="{StaticResource MappingNotToggle}"
@@ -423,7 +424,7 @@
                     Click="BindDirectionalSlot_OnClick" IsEnabled="{Binding BindingEnabled}"
                     ToolTip="{Binding DeviceBindingName}" Foreground="#FFFFFF">
                 <Button.Style>
-                    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource UcrBindActionButton}">
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsCapturing}" Value="True">
                                 <Setter Property="Background" Value="#D77A16"/>
@@ -453,7 +454,7 @@
                         ToolTip="{Binding PhysicalBinding.DeviceBindingName}"
                         Foreground="#FFFFFF">
                     <Button.Style>
-                        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource UcrBindActionButton}">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding PhysicalBinding.IsCapturing}" Value="True">
                                     <Setter Property="Background" Value="#D77A16"/>
@@ -471,7 +472,7 @@
                                    TextAlignment="Center"/>
                     </StackPanel>
                 </Button>
-                <ToggleButton Content="NOT" Width="53" Height="24" Padding="1"
+                <ToggleButton Content="{x:Static labels:UiLabels.Not}" Width="53" Height="24" Padding="1"
                               Margin="0 2 0 0" HorizontalAlignment="Center"
                               Visibility="{Binding PhysicalBinding.DirectionalNegationVisibility}"
                               IsChecked="{Binding PhysicalBinding.InputExpressionNegated, Mode=OneWay}"
@@ -551,7 +552,7 @@
                                                 HorizontalContentAlignment="Center"
                                                 HorizontalAlignment="Left" MinWidth="154" MaxWidth="300"
                                                 Height="38" Foreground="#FFFFFF"
-                                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                                Style="{StaticResource UcrBindActionButton}"
                                                 FontWeight="SemiBold" Padding="8 3">
                                             <Button.ContentTemplate>
                                                 <DataTemplate>
@@ -580,7 +581,7 @@
                                                 DataContext="{Binding CoreInputs[0]}"
                                                 DeviceBinding="{Binding DeviceBinding}"
                                                 HorizontalAlignment="Stretch"/>
-                                            <ToggleButton Grid.Column="1" Content="NOT" Width="48" Height="32"
+                                            <ToggleButton Grid.Column="1" Content="{x:Static labels:UiLabels.Not}" Width="48" Height="32"
                                                 Margin="6 0 0 0" Padding="2 0"
                                                 DataContext="{Binding CoreInputs[0]}"
                                                 IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
@@ -671,7 +672,7 @@
                                                             DeviceBinding="{Binding DeviceBinding}"
                                                             HorizontalAlignment="Stretch"/>
                                                     </StackPanel>
-                                                    <ToggleButton Grid.Column="1" Content="NOT" Width="48" Height="32"
+                                                    <ToggleButton Grid.Column="1" Content="{x:Static labels:UiLabels.Not}" Width="48" Height="32"
                                                         Margin="5 15 0 0" Padding="2 0"
                                                         IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
                                                         Click="InputNegated_OnClick"
@@ -727,7 +728,7 @@
                                             IsEnabled="{Binding BindingEnabled}"
                                             ToolTip="Choose output control"
                                             Foreground="#FFFFFF"
-                                            Style="{StaticResource MaterialDesignRaisedButton}"
+                                            Style="{StaticResource UcrBindActionButton}"
                                             HorizontalContentAlignment="Stretch">
                                         <TextBlock Text="{Binding CompactBindButtonText}"
                                                    TextAlignment="Center"
@@ -1005,7 +1006,7 @@
                                                 HorizontalContentAlignment="Center"
                                                 HorizontalAlignment="Left" Padding="8 3"
                                                 FontWeight="SemiBold" Foreground="#FFFFFF"
-                                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                                Style="{StaticResource UcrBindActionButton}"
                                                 ToolTip="Choose a complete 4-Way output destination">
                                             <Button.ContentTemplate>
                                                 <DataTemplate>
