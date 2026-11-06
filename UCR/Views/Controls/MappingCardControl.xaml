@@ -794,10 +794,10 @@
                                             Foreground="#FFFFFF" Background="#353535"
                                             BorderBrush="#5C5C5C" BorderThickness="1"
                                             ToolTip="Toggle output filter"/>
-                                    <Button Content="×" Click="RemoveOutputFilter_OnClick"
-                                            Height="26" Width="23" Padding="0"
-                                            IsEnabled="{Binding IsEnabled}" Foreground="#FF6868"
-                                            Background="#353535" BorderBrush="#5C5C5C"
+                                    <Button Click="RemoveOutputFilter_OnClick"
+                                            Height="26" Width="26" Padding="0"
+                                            IsEnabled="{Binding IsEnabled}"
+                                            Style="{StaticResource UcrDeleteItemButton}"
                                             ToolTip="Remove filter"/>
                                 </StackPanel>
                             </DataTemplate>
