@@ -15,6 +15,38 @@
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Primary/MaterialDesignColor.Blue.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Accent/MaterialDesignColor.Blue.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <!-- Built-in NOT toggle fallback; editable version in Assets/Styles/switches.xaml. -->
+            <Style x:Key="MappingNotToggle" TargetType="{x:Type ToggleButton}">
+                        <Setter Property="Foreground" Value="#FFFFFF"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="Cursor" Value="Hand"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                    <Border x:Name="NotSurface" Background="#343434" CornerRadius="3"
+                                        BorderBrush="#666666" BorderThickness="1">
+                                        <ContentPresenter HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="NotSurface" Property="Background"
+                                                Value="{DynamicResource PrimaryHueMidBrush}"/>
+                                            <Setter TargetName="NotSurface" Property="BorderBrush"
+                                                Value="{DynamicResource PrimaryHueLightBrush}"/>
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="NotSurface" Property="BorderBrush"
+                                                Value="{DynamicResource PrimaryHueLightBrush}"/>
+                                        </Trigger>
+                                        <Trigger Property="IsEnabled" Value="False">
+                                            <Setter Property="Opacity" Value="0.4"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
             <!-- Shared across compact single inputs and grouped directional inputs.
                  It must be application-scoped: grouped rows are outside the child
                  CompactInputBindingControl resource dictionary. -->

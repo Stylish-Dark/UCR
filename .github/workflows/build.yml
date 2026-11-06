@@ -588,7 +588,7 @@ jobs:
               throw 'External switch styles were not copied to the deployed runtime.'
             }
             $startupLog = Join-Path $logDirectory 'UCR-latest.log'
-            if (-not (Select-String -LiteralPath $startupLog -Pattern 'Loaded 1 external UI style(s)' -SimpleMatch -Quiet)) {
+            if (-not (Select-String -LiteralPath $startupLog -Pattern 'Loaded 2 external UI style(s)' -SimpleMatch -Quiet)) {
               throw 'External switch style did not load. Check UCR-latest.log for a fallback warning.'
             }
             $buttons = Join-Path $runtime 'Assets\Styles\buttons.xaml'
