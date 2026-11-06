@@ -179,8 +179,10 @@ namespace HidWizards.UCR.Tests.UiTests
                 var menuRight = menuLeft + menu.ActualWidth;
 
                 Assert.That(menu.ActualWidth, Is.GreaterThanOrEqualTo(40));
-                Assert.That(actionGroup.ActualWidth, Is.LessThanOrEqualTo(301),
-                    "The Bind/options group must retain compact, intrinsic width.");
+                Assert.That(bind.ActualWidth, Is.GreaterThanOrEqualTo(81),
+                    "A Bind button must remain a full-sized action, not a clipped sliver.");
+                Assert.That(actionGroup.ActualWidth, Is.InRange(123, 301),
+                    "The Bind/options group must be compact without crushing its Bind target.");
                 if (menuOnLeft)
                 {
                     Assert.That(menuRight, Is.EqualTo(bindLeft).Within(2),
