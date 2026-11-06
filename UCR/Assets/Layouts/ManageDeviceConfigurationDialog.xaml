@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style x:Key="UiSave" TargetType="{x:Type Button}">
+        <Setter Property="MinWidth" Value="76"/>
+    </Style>
+
+    <Style x:Key="UiCancel" TargetType="{x:Type Button}">
+        <Setter Property="Margin" Value="0 0 8 0"/>
+    </Style>
+
+    <Style x:Key="DeviceConfigurationShell" TargetType="{x:Type Border}">
+        <Setter Property="CornerRadius" Value="7"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+</ResourceDictionary>

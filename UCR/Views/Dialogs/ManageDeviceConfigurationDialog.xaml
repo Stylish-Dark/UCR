@@ -123,14 +123,14 @@
 
             <Border Grid.Row="2" Background="#202020" BorderBrush="#343434" BorderThickness="0 1 0 0" Padding="16 11">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="CANCEL" IsCancel="True" Margin="0 0 8 0"
+                    <Button x:Name="UiCancel" Content="CANCEL" IsCancel="True" Margin="0 0 8 0"
                             Style="{StaticResource UcrDialogFlatButton}"
                             Command="{x:Static wpf:DialogHost.CloseDialogCommand}">
                         <Button.CommandParameter>
                             <dashboard:ManageDeviceConfigurationViewModel/>
                         </Button.CommandParameter>
                     </Button>
-                    <Button Content="SAVE" IsDefault="True" MinWidth="76"
+                    <Button x:Name="UiSave" Content="SAVE" IsDefault="True" MinWidth="76"
                             Style="{StaticResource UcrDialogRaisedButton}"
                             Command="{x:Static wpf:DialogHost.CloseDialogCommand}"
                             CommandParameter="{Binding ViewModel}"/>
