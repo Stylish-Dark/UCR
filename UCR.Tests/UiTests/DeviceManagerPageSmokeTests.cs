@@ -2172,6 +2172,44 @@ namespace HidWizards.UCR.Tests.UiTests
                         "Paired-axis layout must preserve axis settings.");
                 }
                 CaptureEditorPreview(namedPresetCard, 1050, "UCR-named-fourway-preset-preview.png");
+
+                // Narrow editors may not fit both 224px axis cards. Wrapping
+                // must remain inside OUTPUTS, with neither axis clipped.
+                namedPresetCard.Measure(new Size(740, double.PositiveInfinity));
+                namedPresetCard.Arrange(new Rect(0, 0, 740,
+                    Math.Ceiling(namedPresetCard.DesiredSize.Height)));
+                namedPresetCard.UpdateLayout();
+                var narrowOutputPane = FindVisualChildren<Border>(namedPresetCard)
+                    .Single(border => border.Name == "OutputBodySurface");
+                var narrowAxisCards = FindVisualChildren<Border>(namedPresetCard)
+                    .Where(border => border.Name == "OutputBindingCardSurface" &&
+                        border.Visibility == Visibility.Visible).ToList();
+                Assert.That(narrowAxisCards.Count, Is.EqualTo(2));
+                var narrowFirst = narrowAxisCards[0].TranslatePoint(new Point(), namedPresetCard);
+                var narrowSecond = narrowAxisCards[1].TranslatePoint(new Point(), namedPresetCard);
+                var narrowPaneLeft = narrowOutputPane.TranslatePoint(new Point(), namedPresetCard).X;
+                var narrowPaneRight = narrowPaneLeft + narrowOutputPane.ActualWidth;
+                Assert.That(narrowSecond.Y, Is.GreaterThan(narrowFirst.Y + 30),
+                    "Paired axes must wrap into separate rows when the pane is narrow.");
+                foreach (var axisCard in narrowAxisCards)
+                {
+                    var axisLeft = axisCard.TranslatePoint(new Point(), namedPresetCard).X;
+                    Assert.That(axisLeft, Is.GreaterThanOrEqualTo(narrowPaneLeft - 2),
+                        "Wrapped output axes must not bleed into the input pane.");
+                    Assert.That(axisLeft + axisCard.ActualWidth,
+                        Is.LessThanOrEqualTo(narrowPaneRight + 2),
+                        "Wrapped output axes must stay inside the output pane.");
+                }
+                CaptureEditorPreview(namedPresetCard, 740, "UCR-paired-axis-narrow-preview.png");
+
+                // Expand an actual output-settings panel and capture its real
+                // content. Do not replace the user's settings with a mockup.
+                var expandedAxis = narrowAxisCards[0];
+                var axisSettings = FindVisualChildren<Expander>(expandedAxis)
+                    .Single(expander => string.Equals(expander.Header as string,
+                        "Settings", StringComparison.Ordinal));
+                axisSettings.IsExpanded = true;
+                CaptureEditorPreview(namedPresetCard, 740, "UCR-paired-axis-settings-preview.png");
                 var header = mapping.CollapsedInputRows.Single(row =>
                     row.Visuals.Any(visual => visual.CompoundPresetName == "My Movement"));
                 Assert.That(header.Visuals[0].ControlKind, Is.EqualTo(ControlVisualKind.CompoundKeys),
