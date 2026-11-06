@@ -28,6 +28,29 @@ direct-to-master/no-PR instruction in this repository.
   is activated by the repository owner, candidate-branch discipline is a written
   instruction, **not** an unbypassable GitHub permission barrier. State this clearly.
 
+### Execution-budget stop rule — mandatory
+
+Do not gamble with a tool, execution or context limit. The available
+budget cannot be measured to a mathematical 99% certainty; when uncertain,
+stop **before** starting another substantial operation. Work in bounded,
+coherent batches, commit each completed batch to the isolated candidate
+branch, record the last commit SHA and test status, then return control
+to the owner. Never leave an uncommitted multi-file refactor waiting for
+automatic continuation. Do not promise background work or automatic
+resumption. A deliberately incomplete but clean checkpoint is preferable
+to a stuck session.
+
+### Canonical architecture — mandatory
+
+All shared Bind, NOT, Block and Bind-options controls must reference the
+single application-level assets in `UCR/App.xaml`. All common button labels
+must originate from `UCR/Utilities/UiLabels.cs`, not independently invented
+strings in individual views. Consult `quality/UI_CONTRACT.md`. Run the
+offline `build/quality/check_ui_contract.py` **before** Windows compilation.
+An assistant may not silence a failing contract by duplicating styles,
+changing the checker, or reintroducing descriptive labels. Only the
+owner may authorise a new UI component variant or wording.
+
 ### Limits on aesthetic discretion
 
 The owner specifies design. Implementers may repair measurable defects but may not
