@@ -19,7 +19,7 @@
         <TextBlock Grid.Row="1" Margin="4" Text="{Binding Description}" Style="{DynamicResource MaterialDesignBody1TextBlock}"/>
         <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Grid.Row="2"
                     Margin="0 12 0 0">
-            <Button IsDefault="True" 
+            <Button x:Name="UiYes" IsDefault="True" 
                     Style="{StaticResource UcrDialogRaisedButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" 
                     Content="Yes">
@@ -27,14 +27,14 @@
                     <MessageBoxResult>Yes</MessageBoxResult>
                 </Button.CommandParameter>
             </Button>
-            <Button Margin="8 0 0 0" Style="{StaticResource UcrDialogFlatButton}"
+            <Button x:Name="UiNo" Margin="8 0 0 0" Style="{StaticResource UcrDialogFlatButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" 
                     Content="No">
                 <Button.CommandParameter>
                     <MessageBoxResult>No</MessageBoxResult>
                 </Button.CommandParameter>
             </Button>
-            <Button IsCancel="True" Margin="8 0 0 0" Style="{StaticResource UcrDialogFlatButton}"
+            <Button x:Name="UiCancel" IsCancel="True" Margin="8 0 0 0" Style="{StaticResource UcrDialogFlatButton}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
                     Content="Cancel">
                 <Button.CommandParameter>

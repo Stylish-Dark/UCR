@@ -23,7 +23,7 @@
                       SelectedItem="{Binding SelectedExistingFilter, Mode=TwoWay}"
                       materialDesign:HintAssist.Hint="Existing filter"
                       MinWidth="320"/>
-            <Button Content="+ Create new" HorizontalAlignment="Left" Margin="0 8 0 0"
+            <Button x:Name="UiCreateFilter" Content="+ Create new" HorizontalAlignment="Left" Margin="0 8 0 0"
                     Click="NewFilter_OnClick" ToolTip="Enter a new filter name">
                 <Button.Style>
                     <Style TargetType="Button" BasedOn="{StaticResource UcrDialogFlatButton}">
@@ -38,13 +38,13 @@
             </Button>
         </StackPanel>
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 18 0 0">
-            <Button Content="ADD"
+            <Button x:Name="UiAdd" Content="ADD"
                     IsDefault="True"
                     Style="{StaticResource UcrDialogRaisedButton}"
                     IsEnabled="{Binding HasSelection}"
                     Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}"
                     CommandParameter="{Binding ViewModel}"/>
-            <Button Content="CANCEL"
+            <Button x:Name="UiCancel" Content="CANCEL"
                     IsCancel="True"
                     Margin="8 0 0 0"
                     Style="{StaticResource UcrDialogFlatButton}"
