@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using HidWizards.UCR.Core.Utilities;
@@ -34,6 +36,36 @@ namespace HidWizards.UCR.Utilities
         public static string CurrentAccentName { get; private set; } = "Blue";
         public static Color CurrentAccentColor => (Find(CurrentAccentName) ?? Find("Blue")).Color;
         public static double CurrentUiScale { get; private set; } = 1.0;
+
+        // External accent colours can be edited without recompiling.
+        // Missing and invalid entries retain the compiled defaults.
+        public static void LoadPaletteOverrides()
+        {
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Theme", "accents.ini");
+            if (!File.Exists(path)) return;
+
+            var loaded = 0;
+            foreach (var sourceLine in File.ReadAllLines(path))
+            {
+                var line = sourceLine.Trim();
+                if (line.Length == 0 || line.StartsWith("#") || line.StartsWith(";")) continue;
+                var equals = line.IndexOf('=');
+                if (equals <= 0) continue;
+                var palette = Find(line.Substring(0, equals).Trim());
+                var hex = line.Substring(equals + 1).Trim();
+                if (palette == null || hex.Length != 7 || hex[0] != '#') continue;
+
+                byte red, green, blue;
+                if (!byte.TryParse(hex.Substring(1, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out red)
+                    || !byte.TryParse(hex.Substring(3, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out green)
+                    || !byte.TryParse(hex.Substring(5, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out blue))
+                    continue;
+
+                palette.Color = Color.FromRgb(red, green, blue);
+                loaded++;
+            }
+            Logger.Info("Loaded " + loaded + " editable accent colours from " + path);
+        }
 
         public static void ApplySavedAccent()
         {
