@@ -13,11 +13,13 @@ direct-to-master/no-PR instruction in this repository.
   receive the actual approved executable; a PR by itself is not delivery.
 - Keep one active candidate per affected UI component. Re-read latest branch SHA
   before editing; do not let independent chats redesign the same surface in parallel.
-- Do not publish or present an executable as approved without a successful build,
-  complete unique WPF capture set, all geometry/behavior assertions, and a completed
-  independent review for the **same exact SHA**.
-- A failed or unavailable independent reviewer means NOT APPROVED. Never re-label
-  an internal QA artifact as approved, delete a failing test, regenerate reference
+- Do not publish or present an executable as approved without a successful
+  build, complete unique WPF evidence, all geometry/behaviour assertions,
+  protected master and the full set of **owner-approved** screenshot baselines
+  for the **same exact SHA**.
+- Do not use external API keys or paid AI reviewer services for UCR quality
+  gating. Local component/label checks are mandatory. Never re-label an
+  internal QA artifact as approved, delete a failing test, regenerate approved
   screenshots to match a bad candidate, or waive a visual rejection.
 - The only owner-facing GitHub artifact to identify as approved has the
   `UCR-APPROVED-Windows-<SHA>` prefix and comes from the `publish-approved`
