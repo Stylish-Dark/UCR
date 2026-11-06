@@ -736,27 +736,6 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>
-                    <ItemsControl ItemsSource="{Binding Filters}" Margin="0 4 0 0">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal" Margin="0 0 3 0">
-                                    <Button Content="{Binding Name}" Click="ToggleOutputFilter_OnClick"
-                                            Height="26" Padding="4 1" IsEnabled="{Binding IsEnabled}"
-                                            Foreground="#FFFFFF" Background="#353535"
-                                            BorderBrush="#5C5C5C" BorderThickness="1"
-                                            ToolTip="Toggle output filter"/>
-                                    <Button Content="×" Click="RemoveOutputFilter_OnClick"
-                                            Height="26" Width="23" Padding="0"
-                                            IsEnabled="{Binding IsEnabled}" Foreground="#FF6868"
-                                            Background="#353535" BorderBrush="#5C5C5C"
-                                            ToolTip="Remove filter"/>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
                     <Expander Header="Settings" Margin="0 3 0 0"
                               Expanded="OutputSettings_OnExpanded"
                               Visibility="{Binding InlineSettingsVisibility}"
@@ -780,6 +759,7 @@
         <DataTemplate x:Key="ButtonMappingEditorTemplate">
             <Border Margin="2 0 2 3" Padding="6 5" Background="#202020"
                 BorderBrush="#303030" BorderThickness="0 1 0 0">
+                <StackPanel>
                 <UniformGrid VerticalAlignment="Top">
                     <UniformGrid.Style>
                         <Style TargetType="{x:Type UniformGrid}">
@@ -794,6 +774,9 @@
                                     <Setter Property="Columns" Value="1"/>
                                     <Setter Property="Grid.IsSharedSizeScope" Value="False"/>
                                 </MultiDataTrigger>
+                                <DataTrigger Binding="{Binding OutputIsFilter}" Value="True">
+                                    <Setter Property="Columns" Value="1"/>
+                                </DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </UniformGrid.Style>
@@ -892,6 +875,9 @@
                             <Style TargetType="{x:Type Grid}">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding InspectorSection, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="Inputs">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding OutputIsFilter}" Value="True">
                                         <Setter Property="Visibility" Value="Collapsed"/>
                                     </DataTrigger>
                                 </Style.Triggers>
@@ -1058,6 +1044,9 @@
                                                         <Setter Property="Background" Value="Transparent"/>
                                                         <Setter Property="BorderThickness" Value="0"/>
                                                     </DataTrigger>
+                                                    <DataTrigger Binding="{Binding OutputType}" Value="Filter">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </Border.Style>
@@ -1081,16 +1070,6 @@
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
-                                                <!-- Replaces the physical-device selector when this output is a filter.
-                                                     It occupies the same destination slot; no extra selection tier. -->
-                                                <Button Grid.Column="0" Content="F   Filter ▼"
-                                                        Width="140" Height="36" HorizontalAlignment="Left"
-                                                        Margin="0 0 0 5" Padding="8 3"
-                                                        Foreground="#FFFFFF" Background="#303030"
-                                                        BorderBrush="#666666" BorderThickness="1"
-                                                        Visibility="{Binding FilterDestinationSelectorVisibility}"
-                                                        Click="FilterDestinationSelector_OnClick"
-                                                        ToolTip="Change this output to a physical device or keep Filter"/>
                                                 <StackPanel Grid.Column="1" Orientation="Horizontal"
                                                     VerticalAlignment="Center" Margin="8 0 0 0">
                                                     <StackPanel Orientation="Vertical"
@@ -1109,39 +1088,6 @@
                                                         ToolTip="Remove this output slot"/>
                                                 </StackPanel>
                                             </Grid>
-                                            <StackPanel Orientation="Horizontal" Margin="0 5 0 0">
-                                                <StackPanel.Style>
-                                                    <Style TargetType="{x:Type StackPanel}">
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Filters.Count}" Value="0">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </StackPanel.Style>
-                                                <ItemsControl ItemsSource="{Binding Filters}" Margin="0">
-                                                    <ItemsControl.ItemsPanel>
-                                                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
-                                                    </ItemsControl.ItemsPanel>
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <StackPanel Orientation="Horizontal" Margin="0 0 5 0">
-                                                                <Button Content="{Binding Name}" Click="ToggleOutputFilter_OnClick"
-                                                                    Height="29" Padding="8 1" IsEnabled="{Binding IsEnabled}"
-                                                                    Foreground="#FFFFFF" Background="#353535"
-                                                                    BorderBrush="#5C5C5C" BorderThickness="1"
-                                                                    ToolTip="Toggle filter inversion"/>
-                                                                <Button Content="×" Click="RemoveOutputFilter_OnClick"
-                                                                    Height="29" Width="26" Padding="0"
-                                                                    IsEnabled="{Binding IsEnabled}"
-                                                                    Foreground="#FF6868" FontSize="18"
-                                                                    Background="#353535" BorderBrush="#5C5C5C"
-                                                                    BorderThickness="1" ToolTip="Remove filter"/>
-                                                            </StackPanel>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                            </StackPanel>
                                             <Expander Header="Settings" Margin="0 6 0 0"
                                                 Expanded="OutputSettings_OnExpanded"
                                                 Visibility="{Binding InlineSettingsVisibility}"
@@ -1180,6 +1126,122 @@
                         </StackPanel>
                     </Grid>
                 </UniformGrid>
+                <!-- Filters are a distinct mapping operation, not physical output
+                     controls. The underlying plugin and saved mapping remain unchanged. -->
+                <Border x:Name="MappingFiltersSurface" Background="#252525"
+                        BorderBrush="#414141" BorderThickness="1" CornerRadius="3"
+                        Margin="6 7 6 2" Padding="7 5">
+                    <Border.Style>
+                        <Style TargetType="{x:Type Border}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding InspectorSection, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="Inputs">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <Grid Height="32">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <materialDesign:PackIcon Kind="Filter" Width="15" Height="15"
+                                    Foreground="{StaticResource MappingTypeFilterBrush}"/>
+                                <TextBlock Text="FILTERS" Margin="7 0 0 0" FontSize="12"
+                                    Foreground="#D5D5D5" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="+ Filter" Height="30" Padding="10 2"
+                                Click="AddMappingFilter_OnClick" IsEnabled="{Binding ButtonsEnabled}"
+                                Foreground="#FFFFFF" Background="#343434" BorderBrush="#555555"
+                                BorderThickness="1" ToolTip="Add a filter to this mapping"/>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding Plugins}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0 3 0 0">
+                                        <!-- Filter destinations are edited here; never in OUTPUTS. -->
+                                        <StackPanel Orientation="Horizontal" Margin="0 1 0 3"
+                                            x:Name="FilterRouteRow">
+                                            <StackPanel.Style>
+                                                <Style TargetType="{x:Type StackPanel}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding OutputType}" Value="Filter">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <Button Content="Filter ▼" Width="140" Height="36"
+                                                Padding="8 3" HorizontalAlignment="Left"
+                                                Foreground="#FFFFFF" Background="#303030"
+                                                BorderBrush="#666666" BorderThickness="1"
+                                                Click="FilterDestinationSelector_OnClick"
+                                                ToolTip="Choose filter or physical output"/>
+                                            <Expander Header="Settings" Margin="10 0 0 0"
+                                                Expanded="OutputSettings_OnExpanded"
+                                                Visibility="{Binding InlineSettingsVisibility}"
+                                                Foreground="#D0D0D0">
+                                                <ItemsControl ItemsSource="{Binding InlinePropertyGroups}" Margin="6 4">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Visibility="{Binding ShowPropertyList}">
+                                                                <TextBlock Text="{Binding GroupName}"
+                                                                    FontWeight="SemiBold" Foreground="#DADADA"/>
+                                                                <plugin:PluginPropertyListControl DataContext="{Binding}"/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </Expander>
+                                        </StackPanel>
+                                        <!-- Gates attached to physical outputs are displayed
+                                             only here, with their actual target association. -->
+                                        <StackPanel x:Name="FilterChipsRow" Margin="0 2 0 0">
+                                            <StackPanel.Style>
+                                                <Style TargetType="{x:Type StackPanel}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Filters.Count}" Value="0">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <TextBlock Text="{Binding DirectionalSlotLabel}" FontSize="11"
+                                                Foreground="#C3C3C3" Margin="1 0 0 2"
+                                                Visibility="{Binding DirectionalSlotVisibility}"/>
+                                            <ItemsControl ItemsSource="{Binding Filters}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal" Margin="0 0 5 0">
+                                                            <Button Content="{Binding Name}" Click="ToggleOutputFilter_OnClick"
+                                                                Height="29" Padding="8 1" IsEnabled="{Binding IsEnabled}"
+                                                                Foreground="#FFFFFF" Background="#353535"
+                                                                BorderBrush="#5C5C5C" BorderThickness="1"
+                                                                ToolTip="Toggle filter inversion"/>
+                                                            <Button Content="×" Click="RemoveOutputFilter_OnClick"
+                                                                Height="29" Width="26" Padding="0"
+                                                                IsEnabled="{Binding IsEnabled}"
+                                                                Foreground="#FF6868" FontSize="18"
+                                                                Background="#353535" BorderBrush="#5C5C5C"
+                                                                BorderThickness="1" ToolTip="Remove filter"/>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+                </StackPanel>
             </Border>
         </DataTemplate>
 
