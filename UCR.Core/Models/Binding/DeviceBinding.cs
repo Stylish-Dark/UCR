@@ -386,13 +386,10 @@ namespace HidWizards.UCR.Core.Models.Binding
 
         public void ClearBinding()
         {
-            KeyType = 0;
-            KeyValue = 0;
-            KeySubValue = 0;
-            DeviceConfigurationGuid = Guid.Empty;
-            InvertInput = false;
-            IsBound = false;
-            Profile.Context.ContextChanged();
+            // Use the normal mutation paths so the device selector and controls
+            // refresh, and stale Block / compound-preset state cannot survive a clear.
+            SetDeviceConfigurationGuid(Guid.Empty, false);
+            SetInvertInput(false);
         }
 
         private void OnEndBindModeHandler(DeviceBinding deviceBinding)

@@ -62,11 +62,13 @@ namespace HidWizards.UCR.Views.Controls
         private void BuildContextMenu()
         {
             BindMenu = new ObservableCollection<ContextMenuItem>();
+            if (DeviceBinding == null) return;
             var deviceConfiguration = GetSelectedDeviceConfiguration();
-            if (deviceConfiguration?.Device == null || DeviceBinding?.Profile?.Context == null) return;
-            BindMenu = BuildMenu(
-                deviceConfiguration.Device.GetDeviceBindingMenu(DeviceBinding.Profile.Context, DeviceBinding.DeviceIoType),
-                deviceConfiguration.Guid);
+            if (deviceConfiguration?.Device != null && DeviceBinding.Profile?.Context != null)
+                BindMenu = BuildMenu(
+                    deviceConfiguration.Device.GetDeviceBindingMenu(DeviceBinding.Profile.Context, DeviceBinding.DeviceIoType),
+                    deviceConfiguration.Guid);
+            // Clearing must remain available even when a saved device is disconnected.
             BindMenu.Add(CreateClearCommandMenuItem());
         }
 
@@ -292,14 +294,24 @@ namespace HidWizards.UCR.Views.Controls
 
         private void DeviceNumberBox_OnSelected(object sender, RoutedEventArgs e)
         {
-            if (!HasLoaded) return;
-            if (DeviceSelectionBox.SelectedItem == null) return;
-
-            var selectedDeviceConfiguration = GetSelectedDeviceConfiguration();
-            if (selectedDeviceConfiguration == null) return;
-
+            if (!HasLoaded || DeviceBinding == null) return;
             var viewModel = DataContext as DeviceBindingViewModel;
-            viewModel?.ChangeDeviceConfiguration(selectedDeviceConfiguration.Guid);
+            if (viewModel == null || viewModel.IsRefreshingDeviceChoices) return;
+            var selected = DeviceSelectionBox.SelectedItem as ComboBoxItemViewModel;
+            if (selected == null || selected.Value == DeviceBinding.DeviceConfigurationGuid) return;
+
+            if (selected.Value == Guid.Empty)
+            {
+                // The input selector's explicit "Any input device" choice must work.
+                // Output destinations cannot be implicitly erased by the placeholder.
+                if (DeviceBinding.DeviceIoType != DeviceIoType.Input) return;
+            }
+            else if (GetSelectedDeviceConfiguration() == null)
+            {
+                return;
+            }
+
+            viewModel.ChangeDeviceConfiguration(selected.Value);
             LoadContextMenu();
         }
 

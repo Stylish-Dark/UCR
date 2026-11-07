@@ -557,7 +557,8 @@ namespace HidWizards.UCR.Core.Managers
                 requiredCategory = _deviceDetectionRequiredCategory;
             }
 
-            if (bindingReport == null) return;
+            if (providerDescriptor == null || deviceDescriptor == null ||
+                bindingReport?.BindingDescriptor == null) return;
 
             var category = DeviceBinding.MapCategory(bindingReport.Category);
             if (requiredCategory.HasValue)
@@ -620,7 +621,9 @@ namespace HidWizards.UCR.Core.Managers
                     return value != 0;
                 case DeviceBindingCategory.Range:
                     var wideValue = Functions.WideAbs(value);
-                    return Constants.AxisMaxValue * 0.4 < wideValue && Constants.AxisMaxValue * 0.6 > wideValue;
+                    // Accept deliberate movement through the full travel range,
+                    // including a stick held against its physical stop.
+                    return wideValue > Constants.AxisMaxValue * 0.4;
                 default:
                     return false;
             }
