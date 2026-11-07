@@ -141,6 +141,13 @@ namespace HidWizards.UCR.Core.Managers
                     _bindModeRuntimeDevices[deviceConfiguration.Guid] = runtimeDevice;
                 }
 
+                // Never show a fake waiting state when every selected input device
+                // is disconnected or otherwise unavailable to its provider.
+                if (_deviceConfigurationList.Count == 0)
+                    throw new InvalidOperationException(
+                        "No available input device can be detected. Select a connected device " +
+                        "in the device dropdown, or check the device/provider connection.");
+
                 BindingTimer?.Stop();
                 BindingTimer = new DispatcherTimer(DispatcherPriority.Background, _dispatcher);
                 BindingTimer.Tick += BindingTimerOnTick;
