@@ -429,6 +429,31 @@ jobs:
             throw 'The Windows build did not produce UCR.exe.'
           }
 
+      - name: Verify packaged external UI assets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = '.\UCR\bin\Release\Assets'
+          $files = @(
+            Get-ChildItem '.\UCR\Assets\Styles' -Filter '*.xaml' -File
+            Get-ChildItem '.\UCR\Assets\Layouts' -File
+            Get-ChildItem '.\UCR\Assets\Theme' -Filter '*.ini' -File
+            Get-ChildItem '.\UCR\Assets\Glyphs' -Filter '*.ini' -File
+          )
+          foreach ($source in $files) {
+            $section = Split-Path -Leaf $source.Directory.FullName
+            $destination = Join-Path (Join-Path $root $section) $source.Name
+            if (-not (Test-Path -LiteralPath $destination -PathType Leaf)) {
+              throw "External UI asset missing from Windows build: $section\$($source.Name)"
+            }
+            $expected = (Get-FileHash -LiteralPath $source.FullName -Algorithm SHA256).Hash
+            $actual = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash
+            if ($expected -ne $actual) {
+              throw "Outdated external UI asset in Windows build: $section\$($source.Name)"
+            }
+          }
+          Write-Host "Verified $($files.Count) editable UI files are packaged byte-for-byte."
+
       - name: Upload Windows build
         uses: actions/upload-artifact@v7
         with:
