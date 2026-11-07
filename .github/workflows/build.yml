@@ -19,6 +19,62 @@ jobs:
         with:
           submodules: false
 
+      - name: Validate external UI asset targets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $views = Get-ChildItem .\UCR\Views -Filter *.xaml -Recurse -File
+          $allXaml = Get-ChildItem .\UCR -Filter *.xaml -Recurse -File
+          $allMarkup = ($allXaml | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join [Environment]::NewLine
+          $failures = [System.Collections.Generic.List[string]]::new()
+          $checked = 0
+
+          foreach ($asset in Get-ChildItem .\UCR\Assets\Layouts -Filter *.xaml -File) {
+            $matching = @($views | Where-Object { $_.BaseName -eq $asset.BaseName })
+            if ($matching.Count -ne 1) {
+              $failures.Add("Layout $($asset.Name) has $($matching.Count) compiled view matches.")
+              continue
+            }
+            [xml]$document = Get-Content -LiteralPath $asset.FullName -Raw
+            $source = Get-Content -LiteralPath $matching[0].FullName -Raw
+            foreach ($entry in $document.DocumentElement.ChildNodes) {
+              if ($entry.NodeType -ne [System.Xml.XmlNodeType]::Element) { continue }
+              $key = $entry.GetAttribute('Key', 'http://schemas.microsoft.com/winfx/2006/xaml')
+              if ([string]::IsNullOrWhiteSpace($key)) {
+                $failures.Add("$($asset.Name): unnamed layout entry.")
+                continue
+              }
+              $name = if ($entry.LocalName -eq 'String') { ($key -split '\.')[0] } else { $key }
+              if ($source -notmatch ('\b(?:x:Name|Name)\s*=\s*["'']' + [regex]::Escape($name) + '["'']')) {
+                $failures.Add("$($asset.Name): target '$name' does not exist in $($matching[0].Name).")
+              }
+              $checked++
+            }
+          }
+
+          foreach ($asset in Get-ChildItem .\UCR\Assets\Styles -Filter *.xaml -File) {
+            [xml]$document = Get-Content -LiteralPath $asset.FullName -Raw
+            foreach ($entry in $document.DocumentElement.ChildNodes) {
+              if ($entry.NodeType -ne [System.Xml.XmlNodeType]::Element) { continue }
+              $key = $entry.GetAttribute('Key', 'http://schemas.microsoft.com/winfx/2006/xaml')
+              if ($entry.LocalName -ne 'Style' -or [string]::IsNullOrWhiteSpace($key)) {
+                $failures.Add("$($asset.Name): unsupported or unnamed external style.")
+                continue
+              }
+              $usage = '\{(?:StaticResource|DynamicResource)\s+' + [regex]::Escape($key) + '\}'
+              if ($allMarkup -notmatch $usage) {
+                $failures.Add("$($asset.Name): '$key' is never referenced by UCR XAML.")
+              }
+              $checked++
+            }
+          }
+
+          if ($failures.Count) {
+            $failures | ForEach-Object { Write-Error $_ }
+            throw "$($failures.Count) external UI asset validation failure(s)."
+          }
+          Write-Host "Verified $checked external UI asset targets and references."
+
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v3
         with:
