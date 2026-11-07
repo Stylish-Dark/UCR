@@ -118,6 +118,10 @@ namespace HidWizards.UCR.Views.Controls
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             UpdateMenuPosition();
+            // Apply the loose XAML geometry to these exact named controls after the
+            // view's internal layout has been configured.
+            HidWizards.UCR.Utilities.LayoutOverrideManager.ApplyToView(this,
+                BindingGrid, DeviceSelectionBox, BindingActionGroup, BindSurface, BindButton, MenuButton);
             var viewModel = DataContext as DeviceBindingViewModel;
             viewModel?.EnsureSelectedDevicePreviewLoaded();
             _loaded = true;

@@ -80,65 +80,87 @@ namespace HidWizards.UCR.Utilities
             _registered = true;
         }
 
+        // Component constructors can also invoke this directly, making external layout
+        // application deterministic even for controls created inside data templates.
+        internal static void ApplyToView(FrameworkElement view, params FrameworkElement[] elements)
+        {
+            if (view == null || elements == null) return;
+            var viewName = view.GetType().Name;
+            foreach (var element in elements)
+                ApplyRule(viewName, element);
+        }
+
         private static void ApplyOnLoaded(object sender, RoutedEventArgs e)
         {
             var element = sender as FrameworkElement;
-            if (element == null || !ReferenceEquals(sender, e.OriginalSource)) return;
+            if (element == null) return;
 
             Dictionary<string, string> properties;
             if (NamedProperties.TryGetValue(element.GetType().Name, out properties))
                 ApplyNamedProperties(element, properties);
 
             if (string.IsNullOrEmpty(element.Name)) return;
-
-            // Nearest matching view wins, even when a view contains another user control.
+            // A Loaded event is also routed through template parents; don't rely
+            // on OriginalSource matching every named descendant.
             for (FrameworkElement owner = element; owner != null; owner = GetParent(owner))
+                if (ApplyRule(owner.GetType().Name, element)) return;
+        }
+
+        private static bool ApplyRule(string viewName, FrameworkElement element)
+        {
+            if (element == null || string.IsNullOrEmpty(element.Name)) return false;
+            Dictionary<string, Style> styles;
+            Style rule;
+            if (!Layouts.TryGetValue(viewName, out styles)
+                || !styles.TryGetValue(element.Name, out rule)) return false;
+
+            try
             {
-                Dictionary<string, Style> styles;
-                Style rule;
-                if (!Layouts.TryGetValue(owner.GetType().Name, out styles)
-                    || !styles.TryGetValue(element.Name, out rule)) continue;
+                if (!rule.TargetType.IsAssignableFrom(element.GetType()))
+                    throw new InvalidDataException("Expected " + rule.TargetType.Name
+                        + " but found " + element.GetType().Name);
 
-                try
+                var updates = new List<KeyValuePair<DependencyProperty, object>>();
+                foreach (Setter setter in rule.Setters)
                 {
-                    if (!rule.TargetType.IsAssignableFrom(element.GetType()))
-                        throw new InvalidDataException("Expected " + rule.TargetType.Name
-                            + " but found " + element.GetType().Name);
-
-                    // Convert and validate all values before changing any properties.
-                    var updates = new List<KeyValuePair<DependencyProperty, object>>();
-                    foreach (Setter setter in rule.Setters)
+                    object value = setter.Value;
+                    var raw = value as string;
+                    if (raw != null && setter.Property.PropertyType != typeof(string))
                     {
-                        object value = setter.Value;
-                        var raw = value as string;
-                        if (raw != null && setter.Property.PropertyType != typeof(string))
-                        {
-                            var converter = TypeDescriptor.GetConverter(setter.Property.PropertyType);
-                            if (!converter.CanConvertFrom(typeof(string)))
-                                throw new InvalidDataException("Cannot convert layout value for " + setter.Property.Name);
-                            value = converter.ConvertFrom(null, CultureInfo.InvariantCulture, raw);
-                        }
-                        if (!setter.Property.IsValidValue(value))
-                            throw new InvalidDataException("Invalid layout value for " + setter.Property.Name);
-                        updates.Add(new KeyValuePair<DependencyProperty, object>(setter.Property, value));
+                        var converter = TypeDescriptor.GetConverter(setter.Property.PropertyType);
+                        if (!converter.CanConvertFrom(typeof(string)))
+                            throw new InvalidDataException("Cannot convert layout value for " + setter.Property.Name);
+                        value = converter.ConvertFrom(null, CultureInfo.InvariantCulture, raw);
                     }
-
-                    // SetCurrentValue takes precedence over compiled literals without removing
-                    // existing bindings, event handlers, templates or interaction logic.
-                    foreach (var update in updates)
-                        element.SetCurrentValue(update.Key, update.Value);
+                    if (!setter.Property.IsValidValue(value))
+                        throw new InvalidDataException("Invalid layout value for " + setter.Property.Name);
+                    updates.Add(new KeyValuePair<DependencyProperty, object>(setter.Property, value));
                 }
-                catch (Exception exception)
+
+                foreach (var update in updates)
+                    element.SetCurrentValue(update.Key, update.Value);
+
+                // One record per named control, not one record per mapping instance.
+                if (viewName == "CompactInputBindingControl" && element.Name == "BindingActionGroup")
                 {
-                    var identity = owner.GetType().Name + "." + element.Name;
                     lock (Reported)
                     {
-                        if (!Reported.Add(identity)) return;
+                        if (Reported.Add("applied:" + viewName + "." + element.Name))
+                            Logger.Info("Applied external binding group geometry: alignment="
+                                + element.HorizontalAlignment + ", maxWidth=" + element.MaxWidth);
                     }
-                    Logger.Warn("Ignoring invalid external layout for " + identity, exception);
                 }
-                return;
             }
+            catch (Exception exception)
+            {
+                var identity = viewName + "." + element.Name;
+                lock (Reported)
+                {
+                    if (!Reported.Add(identity)) return true;
+                }
+                Logger.Warn("Ignoring invalid external layout for " + identity, exception);
+            }
+            return true;
         }
 
         private static void ApplyNamedProperties(FrameworkElement view, Dictionary<string, string> properties)

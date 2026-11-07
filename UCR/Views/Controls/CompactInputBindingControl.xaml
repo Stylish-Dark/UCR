@@ -159,13 +159,13 @@
         <!-- Bind and options form ONE compact, intrinsic-width action group.
              A lone Bind command must not stretch into a 600px blue slab. -->
         <Grid x:Name="BindingActionGroup" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2"
-              HorizontalAlignment="Left" MinWidth="80" MaxWidth="300" MinHeight="36">
+              HorizontalAlignment="Stretch" MinWidth="80" MinHeight="50">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="38"/>
                 <ColumnDefinition Width="42"/>
             </Grid.ColumnDefinitions>
         <Grid x:Name="BindSurface" Grid.Column="0" Margin="0" ClipToBounds="True">
-            <Button x:Name="BindButton" MinHeight="36" MinWidth="0" Padding="2 0"
+            <Button x:Name="BindButton" MinHeight="50" MinWidth="0" Padding="10 2"
                     IsEnabled="{Binding CanBindCurrentDevice}"
                     Click="BindButton_OnClick"
                     PreviewMouseLeftButtonDown="BindButton_OnPreviewMouseLeftButtonDown"
@@ -207,7 +207,7 @@
             </ProgressBar>
         </Grid>
 
-        <Button Grid.Column="1" x:Name="MenuButton" Margin="0" Width="42" MinHeight="36" Padding="0"
+        <Button Grid.Column="1" x:Name="MenuButton" Margin="0" Width="42" MinHeight="50" Padding="0"
                 IsEnabled="{Binding BindingEnabled}" Click="MenuButton_OnClick"
                 Style="{StaticResource CompactBindOptionsButton}"
                 ToolTip="Binding options">
