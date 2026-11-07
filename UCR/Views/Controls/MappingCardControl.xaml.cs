@@ -745,7 +745,9 @@ namespace HidWizards.UCR.Views.Controls
 
         private void DirectionalCapture_OnPreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
-            var input = (sender as FrameworkElement)?.DataContext as DeviceBindingViewModel;
+            var data = (sender as FrameworkElement)?.DataContext;
+            var input = (data as DirectionalCompassSlotViewModel)?.PhysicalBinding ??
+                        data as DeviceBindingViewModel;
             if (input?.DeviceBinding?.IsInBindMode != true) return;
             input.DeviceBinding.CancelBindMode();
             e.Handled = true;

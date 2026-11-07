@@ -142,11 +142,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             get
             {
-                // Detection is available before choosing a device. Guid.Empty means
-                // listen to every input device added to the profile; a nonempty GUID
-                // limits detection to that device in BindingManager.
-                if (DeviceBinding == null) return false;
-                return DeviceBinding.DeviceIoType == DeviceIoType.Input || BindingEnabled;
+                // A blank input-device selection is permitted, but an active profile
+                // must not bypass the editor's disabled state to start detection.
+                return DeviceBinding != null && BindingEnabled;
             }
         }
 
@@ -872,7 +870,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(CanBindCurrentDevice));
                 if (_selectedPreviewLoaded && !_deviceListLoaded)
                     LoadSelectedDevicePreview();
-                OnPropertyChanged(nameof(CompactBindButtonText));
                 OnPropertyChanged(nameof(BindButtonText));
                 OnPropertyChanged(nameof(CompactBindButtonText));
                 OnPropertyChanged(nameof(ShowBlock));

@@ -122,23 +122,32 @@ namespace HidWizards.UCR.Core.Managers
                     }
 
                     Logger.Debug($"Bind mode enabling detection: provider={runtimeDevice.ProviderName}, handle={runtimeDevice.DeviceHandle}, instance={runtimeDevice.DeviceNumber}, configuration={deviceConfiguration.Guid}");
+                    var escapeKeys = new List<DeviceBindingInfo>();
                     if (deviceBinding.DeviceBindingCategory == DeviceBindingCategory.Momentary || _autoDetectInputCategory)
                     {
                         try
                         {
-                            var escapeKeys = new List<DeviceBindingInfo>();
                             FindEscapeKeys(deviceConfiguration.Device.GetDeviceBindingMenu(
                                 _context, DeviceIoType.Input), escapeKeys);
-                            if (escapeKeys.Count > 0) _escapeInputs[deviceConfiguration.Guid] = escapeKeys;
                         }
                         catch (Exception exception)
                         {
                             Logger.Debug(exception, "No Escape key lookup available for binding device");
                         }
                     }
-                    _context.IOController.SetDetectionMode(DetectionMode.Bind, GetProviderDescriptor(runtimeDevice), GetDeviceDescriptor(runtimeDevice), InputChanged);
-                    _deviceConfigurationList.Add(deviceConfiguration);
-                    _bindModeRuntimeDevices[deviceConfiguration.Guid] = runtimeDevice;
+
+                    // A provider can report input synchronously as detection starts.
+                    // Register its exact configuration before enabling the callback.
+                    lock (bindmodeLock)
+                    {
+                        if (!bindmodeActive || !ReferenceEquals(_deviceBinding, deviceBinding)) return;
+                        _deviceConfigurationList.Add(deviceConfiguration);
+                        _bindModeRuntimeDevices[deviceConfiguration.Guid] = runtimeDevice;
+                        if (escapeKeys.Count > 0) _escapeInputs[deviceConfiguration.Guid] = escapeKeys;
+                    }
+                    _context.IOController.SetDetectionMode(DetectionMode.Bind,
+                        GetProviderDescriptor(runtimeDevice), GetDeviceDescriptor(runtimeDevice), InputChanged);
+                    if (!IsBindModeActive) return;
                 }
 
                 // Never show a fake waiting state when every selected input device
@@ -305,15 +314,12 @@ namespace HidWizards.UCR.Core.Managers
             var pendingInput = TryReserveDetectedInput(providerDescriptor, deviceDescriptor, bindingReport, value);
             if (pendingInput == null) return;
 
-            if (_dispatcher.CheckAccess())
-            {
-                CommitDetectedInput(pendingInput);
-                return;
-            }
-
             try
             {
-                _dispatcher.BeginInvoke(new Action(() => CommitDetectedInput(pendingInput)), DispatcherPriority.Input);
+                // Always queue completion, even for synchronous UI-thread provider callbacks.
+                // Ending detection inside SetDetectionMode would re-enter that provider.
+                _dispatcher.BeginInvoke(new Action(() => CommitDetectedInput(pendingInput)),
+                    DispatcherPriority.Input);
             }
             catch (InvalidOperationException exception)
             {
