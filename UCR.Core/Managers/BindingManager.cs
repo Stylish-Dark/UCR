@@ -337,7 +337,7 @@ namespace HidWizards.UCR.Core.Managers
             lock (bindmodeLock)
             {
                 if (!bindmodeActive || bindCommitPending || _deviceBinding == null ||
-                    providerDescriptor == null || deviceDescriptor == null ||
+                    providerDescriptor == null ||
                     bindingReport?.BindingDescriptor == null) return null;
 
                 var category = DeviceBinding.MapCategory(bindingReport.Category);

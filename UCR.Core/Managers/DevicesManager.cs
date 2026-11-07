@@ -557,7 +557,7 @@ namespace HidWizards.UCR.Core.Managers
                 requiredCategory = _deviceDetectionRequiredCategory;
             }
 
-            if (providerDescriptor == null || deviceDescriptor == null ||
+            if (providerDescriptor == null ||
                 bindingReport?.BindingDescriptor == null) return;
 
             var category = DeviceBinding.MapCategory(bindingReport.Category);
