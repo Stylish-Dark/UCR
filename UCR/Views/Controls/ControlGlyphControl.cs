@@ -303,21 +303,22 @@ namespace HidWizards.UCR.Views.Controls
         private static void DrawCompoundStick(DrawingContext dc, Rect b,
             Brush accent, string label)
         {
-            var center = new Point(b.Left + b.Width * 0.42, b.Top + b.Height * 0.50);
+            // The stick identity belongs INSIDE the cap, never outside the rings.
+            // Both left and right compound stick glyphs use the same geometry.
+            var center = new Point(b.Left + b.Width / 2.0, b.Top + b.Height / 2.0);
             var radius = Math.Min(b.Height, b.Width) * 0.37;
             var baseBrush = new SolidColorBrush(Color.FromRgb(31, 31, 31));
             var capBrush = new SolidColorBrush(Color.FromRgb(59, 59, 59));
             dc.DrawEllipse(baseBrush, Pen(accent, 1.8), center, radius, radius);
             dc.DrawEllipse(capBrush, Pen(accent, 1.35), center, radius * 0.70, radius * 0.70);
-            var span = radius * 0.36;
-            dc.DrawLine(Pen(accent, 1.55),
-                new Point(center.X - span, center.Y), new Point(center.X + span, center.Y));
-            dc.DrawLine(Pen(accent, 1.55),
-                new Point(center.X, center.Y - span), new Point(center.X, center.Y + span));
             if (!string.IsNullOrWhiteSpace(label))
+            {
+                var capRadius = radius * 0.70;
                 DrawCenteredText(dc, label, accent,
-                    new Rect(b.Left + b.Width * 0.79, b.Top, b.Width * 0.20, b.Height),
-                    b.Height * 0.36, FontWeights.Bold);
+                    new Rect(center.X - capRadius, center.Y - capRadius,
+                        capRadius * 2, capRadius * 2),
+                    capRadius * 1.15, FontWeights.Bold);
+            }
         }
 
         private static void DrawDPad(DrawingContext dc, Rect b, Brush accent, string label)
