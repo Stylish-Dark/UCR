@@ -46,6 +46,7 @@ namespace HidWizards.UCR.Core.Managers
         private bool bindmodeActive;
         private bool bindCommitPending;
         private bool _autoDetectInputCategory;
+        private bool _captureFromAnyConfiguredInputDevice;
         private DateTime bindAcceptAfterUtc = DateTime.MaxValue;
 
         public bool IsBindModeActive
@@ -75,7 +76,7 @@ namespace HidWizards.UCR.Core.Managers
             return selectedDeviceGuid == Guid.Empty || selectedDeviceGuid == candidateDeviceGuid;
         }
 
-        public void BeginBindMode(DeviceBinding deviceBinding, bool autoDetectInputCategory = false)
+        public void BeginBindMode(DeviceBinding deviceBinding, bool autoDetectInputCategory = false, bool captureFromAnyConfiguredInputDevice = false)
         {
             if (deviceBinding == null) throw new ArgumentNullException(nameof(deviceBinding));
 
@@ -83,7 +84,7 @@ namespace HidWizards.UCR.Core.Managers
             // INotifyPropertyChanged mutations are serialized back onto that dispatcher.
             if (!_dispatcher.CheckAccess())
             {
-                _dispatcher.BeginInvoke(new Action(() => BeginBindMode(deviceBinding, autoDetectInputCategory)), DispatcherPriority.Input);
+                _dispatcher.BeginInvoke(new Action(() => BeginBindMode(deviceBinding, autoDetectInputCategory, captureFromAnyConfiguredInputDevice)), DispatcherPriority.Input);
                 return;
             }
 
@@ -98,6 +99,7 @@ namespace HidWizards.UCR.Core.Managers
             {
                 _deviceBinding = deviceBinding;
                 _autoDetectInputCategory = autoDetectInputCategory && deviceBinding.DeviceIoType == DeviceIoType.Input;
+                _captureFromAnyConfiguredInputDevice = captureFromAnyConfiguredInputDevice && deviceBinding.DeviceIoType == DeviceIoType.Input;
                 _deviceConfigurationList = new List<DeviceConfiguration>();
                 _bindModeRuntimeDevices = new Dictionary<Guid, Device>();
                 _escapeInputs = new Dictionary<Guid, List<DeviceBindingInfo>>();
@@ -112,7 +114,8 @@ namespace HidWizards.UCR.Core.Managers
             {
                 foreach (var deviceConfiguration in deviceBinding.Profile.GetDeviceConfigurationList(deviceBinding.DeviceIoType))
                 {
-                    if (!IsEligibleBindDevice(deviceBinding.DeviceConfigurationGuid, deviceConfiguration.Guid))
+                    if (!_captureFromAnyConfiguredInputDevice &&
+                        !IsEligibleBindDevice(deviceBinding.DeviceConfigurationGuid, deviceConfiguration.Guid))
                         continue;
                     var runtimeDevice = _context.DevicesManager.ResolveDevice(deviceConfiguration.Device, deviceBinding.DeviceIoType);
                     if (runtimeDevice == null)
@@ -225,6 +228,7 @@ namespace HidWizards.UCR.Core.Managers
 
                 bindmodeActive = false;
                 _autoDetectInputCategory = false;
+                _captureFromAnyConfiguredInputDevice = false;
                 bindCommitPending = false;
                 bindAcceptAfterUtc = DateTime.MaxValue;
                 endingBinding = _deviceBinding;
@@ -340,7 +344,8 @@ namespace HidWizards.UCR.Core.Managers
 
                 var deviceConfiguration = FindDeviceConfiguration(providerDescriptor, deviceDescriptor);
                 if (deviceConfiguration == null ||
-                    !IsEligibleBindDevice(_deviceBinding.DeviceConfigurationGuid, deviceConfiguration.Guid))
+                    (!_captureFromAnyConfiguredInputDevice &&
+                     !IsEligibleBindDevice(_deviceBinding.DeviceConfigurationGuid, deviceConfiguration.Guid)))
                     return null;
 
                 List<DeviceBindingInfo> escapeKeys;

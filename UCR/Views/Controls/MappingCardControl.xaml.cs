@@ -733,7 +733,10 @@ namespace HidWizards.UCR.Views.Controls
             {
                 input.ExpressionMapping?.EnableInputExpression();
                 input.DeviceBinding.DeviceBindingCategory = input.DeviceBindingCategory;
-                input.DeviceBinding.EnterBindMode(autoDetectInputCategory: true);
+                // Capture real physical input from any configured profile device.
+                // The binding manager commits the source device that delivered the key.
+                input.DeviceBinding.EnterBindMode(autoDetectInputCategory: true,
+                    captureFromAnyConfiguredInputDevice: true);
             }
             catch (Exception exception)
             {
