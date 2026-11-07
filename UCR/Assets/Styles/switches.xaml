@@ -118,8 +118,8 @@
             </Grid>
             <ControlTemplate.Triggers>
                 <Trigger Property="IsChecked" Value="True">
-                    <Setter TargetName="Track" Property="Background" Value="#2359AA"/>
-                    <Setter TargetName="Track" Property="BorderBrush" Value="#5895EF"/>
+                    <Setter TargetName="Track" Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
+                    <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
                     <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right"/>
                     <Setter TargetName="Thumb" Property="Margin" Value="0 0 3 0"/>
                 </Trigger>

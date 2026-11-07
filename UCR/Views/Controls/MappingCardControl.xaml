@@ -293,7 +293,7 @@
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
                                         <StackPanel Orientation="Horizontal" Margin="2 3 0 0">
-                                            <Button Content="+ Add input"
+                                            <Button Content="+ Input"
                                                 Height="29" Padding="8 2" Margin="0 0 7 0"
                                                 Click="AddInputToCondition_OnClick"
                                                 IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
@@ -602,7 +602,7 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                    <Button Content="+ Add input" Click="AddInputToCondition_OnClick"
+                                    <Button Content="+ Input" Click="AddInputToCondition_OnClick"
                                         Height="29" HorizontalAlignment="Left" Padding="8 2"
                                         Margin="2 5 0 0"
                                         IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
@@ -803,7 +803,7 @@
                                 </ContentControl.Style>
                             </ContentControl>
                         </Border>
-                        <Button x:Name="UiMappingAddOrCondition" Grid.Row="2" Content="+OR" Click="AddCondition_OnClick"
+                        <Button x:Name="UiMappingAddOrCondition" Grid.Row="2" Content="+ OR" Click="AddCondition_OnClick"
                                 Height="34" HorizontalAlignment="Left" Padding="12 3"
                                 Margin="2 6 0 0" IsEnabled="{Binding ButtonsEnabled}"
                                 Visibility="{Binding SupportsNativeInputExpression, Converter={StaticResource CompoundVisibilityConverter}}"
@@ -1109,7 +1109,7 @@
                                 HorizontalAlignment="Left" Foreground="#FFFFFF" Background="#343434"
                                 BorderBrush="#555555" BorderThickness="1"
                                 ToolTip="Add a filter to this mapping"/>
-                            <Button x:Name="UiMappingAddOutput" Content="+ Add output" Click="AddPlugin_OnClick"
+                            <Button x:Name="UiMappingAddOutput" Content="+ Output" Click="AddPlugin_OnClick"
                                 Visibility="{Binding LegacyOutputAddVisibility}"
                                 Height="34" Padding="12 3" Margin="0"
                                 HorizontalAlignment="Left" IsEnabled="{Binding ButtonsEnabled}"
@@ -1125,34 +1125,35 @@
         <DataTemplate x:Key="ExpandedMappingBodyTemplate"><ContentControl Content="{Binding}" ContentTemplate="{StaticResource ButtonMappingEditorTemplate}" HorizontalContentAlignment="Stretch"/></DataTemplate>
     </UserControl.Resources>
 
-    <Border Margin="0 3 0 5" Background="#242424" CornerRadius="6" SnapsToDevicePixels="True">
+    <Border Margin="0 3 0 5" CornerRadius="6" SnapsToDevicePixels="True">
         <Border.Style>
             <Style TargetType="Border">
                 <Setter Property="BorderBrush" Value="#3A3A3A"/>
-                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="BorderThickness" Value="2"/>
+                <Setter Property="Background" Value="#242424"/>
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding IsExpanded}" Value="True">
-                        <Setter Property="BorderBrush" Value="#5579BE"/>
+                        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueMidBrush}"/>
                         <Setter Property="BorderThickness" Value="2"/>
-                        <Setter Property="Background" Value="#202735"/>
+                        <Setter Property="Background" Value="#2A2A2A"/>
                     </DataTrigger>
                     <DataTrigger Binding="{Binding IsSelectedMapping}" Value="True">
-                        <Setter Property="BorderBrush" Value="#78A5FF"/>
-                        <Setter Property="BorderThickness" Value="2.5"/>
-                        <Setter Property="Background" Value="#202735"/>
+                        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                        <Setter Property="BorderThickness" Value="2"/>
+                        <Setter Property="Background" Value="#2A2A2A"/>
                     </DataTrigger>
                     <MultiDataTrigger>
                         <MultiDataTrigger.Conditions>
                             <Condition Binding="{Binding IsSelectedMapping}" Value="True"/>
                             <Condition Binding="{Binding IsExpanded}" Value="True"/>
                         </MultiDataTrigger.Conditions>
-                        <Setter Property="BorderBrush" Value="#78A5FF"/>
-                        <Setter Property="BorderThickness" Value="2.5"/>
+                        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                        <Setter Property="BorderThickness" Value="2"/>
                     </MultiDataTrigger>
 
                     <DataTrigger Binding="{Binding IsFilterReferenceHighlighted}" Value="True">
                         <Setter Property="BorderBrush" Value="#4B7150"/>
-                        <Setter Property="BorderThickness" Value="1.5"/>
+                        <Setter Property="BorderThickness" Value="2"/>
                     </DataTrigger>
                     <DataTrigger Binding="{Binding IsFilterDefinitionHighlighted}" Value="True">
                         <Setter Property="BorderBrush" Value="{StaticResource MappingTypeFilterBrush}"/>

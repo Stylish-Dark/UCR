@@ -348,7 +348,7 @@
                                 </Border>
                             </Expander.Header>
                             <StackPanel Margin="8 5">
-                                <Button x:Name="UiInspectorAddPreset" Content="+ New preset" Height="30" HorizontalAlignment="Left"
+                                <Button x:Name="UiInspectorAddPreset" Content="+ Preset" Height="30" HorizontalAlignment="Left"
                                         Padding="9 3" Margin="0 0 0 5"
                                         IsEnabled="{Binding CanEditProfile}"
                                         Click="AddCompoundPreset_OnClick"

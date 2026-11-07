@@ -772,6 +772,12 @@ namespace HidWizards.UCR.ViewModels.Presentation
         {
             if (string.IsNullOrWhiteSpace(leaf)) return (keyValue + 1).ToString();
             var value = leaf.Trim();
+            // Controller descriptions such as "Face button X" describe a single
+            // control: the glyph needs X, not the meaningless truncation "FACE".
+            var faceButton = System.Text.RegularExpressions.Regex.Match(value,
+                @"^Face\s+buttons?\s+([A-Za-z0-9]{1,3})$",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (faceButton.Success) return faceButton.Groups[1].Value.ToUpperInvariant();
             value = value.Replace("Button ", "B").Replace("Buttons ", "B");
             if (value.Length <= 4) return value.ToUpperInvariant();
             return value.Substring(0, 4).ToUpperInvariant();
