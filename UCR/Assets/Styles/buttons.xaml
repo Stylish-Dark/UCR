@@ -345,4 +345,11 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <!-- Optional output picker styling. The picker also works if this external style is absent. -->
+    <Style x:Key="OutputPickerTabStyle" TargetType="{x:Type TabItem}">
+        <Setter Property="Foreground" Value="#EEEEEE"/>
+        <Setter Property="Background" Value="#303030"/>
+        <Setter Property="Padding" Value="14 7"/>
+        <Setter Property="MinHeight" Value="32"/>
+    </Style>
 </ResourceDictionary>

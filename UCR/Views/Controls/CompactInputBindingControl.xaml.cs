@@ -190,7 +190,17 @@ namespace HidWizards.UCR.Views.Controls
 
         private async void BindButton_OnClick(object sender, RoutedEventArgs e)
         {
-            if (DeviceBinding == null) return;
+            // DataContext can arrive after construction. Do not silently ignore a click.
+            if (DeviceBinding == null)
+                DeviceBinding = (DataContext as DeviceBindingViewModel)?.DeviceBinding;
+            if (DeviceBinding == null)
+            {
+                Logger.Warn("Bind button was clicked without a device binding.");
+                HidWizards.UCR.Utilities.DarkMessageBox.Show(
+                    "This binding is not initialized. Reopen the mapping and try again.",
+                    "Binding unavailable", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             if (DeviceBinding.IsInBindMode)
             {
                 DeviceBinding.CancelBindMode();
@@ -206,6 +216,8 @@ namespace HidWizards.UCR.Views.Controls
 
             // Keyboard outputs use pressed-key capture; controllers retain the
             // graphical picker with trigger and axis-specific choices.
+            try
+            {
             var configuration = GetSelectedDeviceConfiguration();
             if (DeviceVisualCatalog.Describe(configuration, DeviceBinding.Profile, DeviceIoType.Output).Kind ==
                 DeviceVisualKind.Keyboard)
@@ -219,6 +231,14 @@ namespace HidWizards.UCR.Views.Controls
                 }
             }
             ShowOutputPicker(BindButton);
+            }
+            catch (Exception exception)
+            {
+                Logger.Error("Unable to open output binding picker", exception);
+                HidWizards.UCR.Utilities.DarkMessageBox.Show(
+                    "Could not open the output picker: " + exception.GetBaseException().Message,
+                    "Output picker unavailable", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void BindButton_OnPreviewMouseLeftButtonDown(object sender,
@@ -747,7 +767,7 @@ namespace HidWizards.UCR.Views.Controls
                 tabs.Items.Add(new TabItem
                 {
                     Header = category.Title,
-                    Style = (Style)FindResource("OutputPickerTabStyle"),
+                    Style = TryFindResource("OutputPickerTabStyle") as Style,
                     Content = new ScrollViewer
                     {
                         Content = category.Items,
