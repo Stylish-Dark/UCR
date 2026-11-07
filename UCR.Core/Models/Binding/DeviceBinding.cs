@@ -362,7 +362,7 @@ namespace HidWizards.UCR.Core.Models.Binding
                 Profile?.Context?.BindingManager?.CancelBindMode(this);
         }
 
-        public void EnterBindMode(bool autoDetectInputCategory = false, bool captureFromAnyConfiguredInputDevice = false)
+        public void EnterBindMode(bool autoDetectInputCategory = false)
         {
             if (IsInBindMode) return;
 
@@ -374,7 +374,7 @@ namespace HidWizards.UCR.Core.Models.Binding
 
             try
             {
-                Profile.Context.BindingManager.BeginBindMode(this, autoDetectInputCategory, captureFromAnyConfiguredInputDevice);
+                Profile.Context.BindingManager.BeginBindMode(this, autoDetectInputCategory);
             }
             catch
             {
