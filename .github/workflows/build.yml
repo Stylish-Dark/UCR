@@ -26,6 +26,7 @@ jobs:
           $views = Get-ChildItem .\UCR\Views -Filter *.xaml -Recurse -File
           $allXaml = Get-ChildItem .\UCR -Filter *.xaml -Recurse -File
           $allMarkup = ($allXaml | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join [Environment]::NewLine
+          $codeReferences = (Get-ChildItem .\UCR -Filter *.cs -Recurse -File | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join [Environment]::NewLine
           $failures = [System.Collections.Generic.List[string]]::new()
           $checked = 0
 
@@ -62,7 +63,8 @@ jobs:
                 continue
               }
               $usage = '\{(?:StaticResource|DynamicResource)\s+' + [regex]::Escape($key) + '\}'
-              if ($allMarkup -notmatch $usage) {
+              $codeUsage = '(?:FindResource|TryFindResource)\s*\(\s*"' + [regex]::Escape($key) + '"\s*\)'
+              if ($allMarkup -notmatch $usage -and $codeReferences -notmatch $codeUsage) {
                 $failures.Add("$($asset.Name): '$key' is never referenced by UCR XAML.")
               }
               $checked++
