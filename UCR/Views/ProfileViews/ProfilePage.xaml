@@ -924,7 +924,7 @@
                                                                                                                 Foreground="#FFFFFF" TextAlignment="Center"
                                                                                                                 HorizontalAlignment="Center" MaxWidth="96"
                                                                                                                 TextTrimming="CharacterEllipsis"
-                                                                                                                Visibility="{Binding IsCompoundVisual, Converter={StaticResource MappingSectionVisibilityConverter}}"/>
+                                                                                                                Visibility="Collapsed"/>
                                                                                                     </StackPanel>
                                                                                                 </Button>
                                                                                             </StackPanel>
@@ -975,7 +975,7 @@
                                                                                     <TextBlock Text="{Binding CompoundPresetName}" FontSize="12" FontWeight="SemiBold" Margin="8 0 0 0" VerticalAlignment="Center"
                                                                                                Foreground="#FFFFFF" HorizontalAlignment="Center"
                                                                                                TextAlignment="Center" MaxWidth="96" TextTrimming="CharacterEllipsis"
-                                                                                               Visibility="{Binding IsCompoundVisual, Converter={StaticResource MappingSectionVisibilityConverter}}"/>
+                                                                                               Visibility="Collapsed"/>
                                                                                 </StackPanel>
                                                                             </Button>
                                                                         </DataTemplate>
