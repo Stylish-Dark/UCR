@@ -589,7 +589,7 @@
                                     ToolTip="Add mapping" Style="{StaticResource UcrProfileActionButton}">
                                 <materialDesign:PackIcon Kind="Plus" Width="19" Height="19"/>
                             </Button>
-                            <Button x:Name="UiWorkspaceMore" Content="···" Width="36" Height="34" Padding="0"
+                            <Button x:Name="UiWorkspaceMore" Width="36" Height="34" Padding="0"
                                     BorderBrush="{DynamicResource PrimaryHueLightBrush}" BorderThickness="1"
                                     Click="WorkspaceMore_OnClick" ToolTip="Mapping and group tools"
                                     Style="{StaticResource UcrProfileActionButton}">
@@ -610,6 +610,7 @@
                                         <MenuItem Header="Expand groups" Click="ExpandAllMappings_OnClick"/>
                                     </ContextMenu>
                                 </Button.ContextMenu>
+                                <materialDesign:PackIcon Kind="DotsVertical" Width="20" Height="20"/>
                             </Button>
                         </StackPanel>
                     </Grid>

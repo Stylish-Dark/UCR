@@ -475,13 +475,15 @@
                                                 </DataTemplate>
                                             </Button.ContentTemplate>
                                         </Button>
-                                        <Button x:Name="UiMappingCompoundMenu" Content="⋮" FontSize="20" Width="38"
+                                        <Button x:Name="UiMappingCompoundMenu" Width="38"
                                                 Visibility="{Binding CompoundAdvancedMenuVisibility}"
                                                 Click="CompoundBindingsMenu_OnClick"
                                                 ToolTip="Compound binding options"
                                                 Height="38" Margin="3 0 0 0" Padding="0"
                                                 Foreground="#FFFFFF"
-                                                Style="{StaticResource MaterialDesignRaisedButton}"/>
+                                                Style="{StaticResource MaterialDesignRaisedButton}">
+                                            <materialDesign:PackIcon Kind="DotsVertical" Width="20" Height="20"/>
+                                        </Button>
                                     </StackPanel>
                                     <!-- 4-Way occupies the single compound control above.
                                          Individual implementation channels are not separate user bindings. -->
