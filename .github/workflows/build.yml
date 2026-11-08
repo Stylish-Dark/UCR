@@ -620,6 +620,20 @@ jobs:
                       Start-Sleep -Milliseconds 900
                       [UcrWindowCapture]::Capture(
                           $handle, (Join-Path $directory 'UCR-axis-to-axis.png')) | Out-Null
+                      # Expand the real output settings panel.
+                      [UcrWindowCapture]::ClickAt($handle, 647, 525)
+                      Start-Sleep -Milliseconds 800
+                      [UcrWindowCapture]::Capture(
+                          $handle, (Join-Path $directory 'UCR-axis-settings.png')) | Out-Null
+                      # Exercise four-way input and output representations.
+                      [UcrWindowCapture]::ClickAt($handle, 469, 402)
+                      Start-Sleep -Milliseconds 850
+                      [UcrWindowCapture]::Capture(
+                          $handle, (Join-Path $directory 'UCR-fourway-input.png')) | Out-Null
+                      [UcrWindowCapture]::ClickAt($handle, 652, 402)
+                      Start-Sleep -Milliseconds 850
+                      [UcrWindowCapture]::Capture(
+                          $handle, (Join-Path $directory 'UCR-fourway-output.png')) | Out-Null
                   }
               }
               Start-Sleep -Seconds 2
