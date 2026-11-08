@@ -505,8 +505,10 @@ jobs:
                           g.Clear(Color.Black);
                           IntPtr dc = g.GetHdc();
                           try {
-                              if (!PrintWindow(hwnd, dc, 2) && !PrintWindow(hwnd, dc, 0))
-                                  throw new Exception("PrintWindow could not render UCR");
+                              g.ReleaseHdc(dc);
+                              dc = IntPtr.Zero;
+                              g.CopyFromScreen(r.Left, r.Top, 0, 0, new Size(w, h));
+                              dc = g.GetHdc();
                           } finally { g.ReleaseHdc(dc); }
                       }
                       var colors = new HashSet<int>();
