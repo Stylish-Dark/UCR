@@ -1161,7 +1161,15 @@ namespace HidWizards.UCR.Views.Controls
             if (mapping.IsTypedDirectionalMapping)
             {
                 if (selectedRepresentation == 0) return false;
-                if (mapping.Mapping.EffectiveOutputRepresentation != selectedRepresentation)
+                if (mapping.OutputIsFullStick)
+                {
+                    // A 4-Way destination is a complete bank. Selecting a single
+                    // control cannot replace the whole bank with a one-sided type.
+                    var currentCategory = original.Plugin.Outputs.FirstOrDefault()
+                        ?.DeviceBindingCategory;
+                    if (currentCategory != requested) return false;
+                }
+                else if (mapping.Mapping.EffectiveOutputRepresentation != selectedRepresentation)
                 {
                     // Trigger and Button share the selector but remain distinct
                     // physical signal types, so never turn a trigger into an Axis.
