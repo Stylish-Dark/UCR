@@ -548,6 +548,29 @@
             <system:Double x:Key="UcrLayoutWindowMinWidth">1200</system:Double>
             <system:Double x:Key="UcrUiScale">1.0</system:Double>
 
+            <!-- Required by MappingCardControl.xaml even when an editable external
+                 stylesheet fails to load. Keep this core style compiled. -->
+            <Style x:Key="UcrMappingSecondaryActionButton" TargetType="{x:Type Button}"
+                   BasedOn="{StaticResource MaterialDesignFlatButton}">
+                <Setter Property="Height" Value="34"/>
+                <Setter Property="MinWidth" Value="66"/>
+                <Setter Property="Padding" Value="10 3"/>
+                <Setter Property="Foreground" Value="#ECECEC"/>
+                <Setter Property="Background" Value="#303030"/>
+                <Setter Property="BorderBrush" Value="#666666"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="#3C3C3C"/>
+                        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.4"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
             <!-- A dedicated delete-button template avoids MaterialDesign's icon scaling/clipping.
                  Two fixed-size strokes always render a legible red X, even when disabled. -->
             <Style x:Key="UcrDeleteCrossButton" TargetType="{x:Type Button}">
