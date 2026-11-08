@@ -261,9 +261,11 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <Border x:Name="MappingFiltersPanel" Grid.Row="0" Margin="0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
+                    <ContentControl x:Name="AutoApplyDockHost" Grid.Row="0" Margin="0 0 0 8"/>
+                    <Border x:Name="MappingFiltersPanel" Grid.Row="2" Margin="0" Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
                         <Expander IsExpanded="True" HorizontalContentAlignment="Stretch" Background="#202020">
                             <Expander.Header>
                                 <Border Background="#242424" BorderBrush="{StaticResource MappingTypeFilterBrush}" BorderThickness="3 0 0 0" Padding="10 8">
@@ -329,7 +331,7 @@
                         </Expander>
                     </Border>
 
-                    <Border x:Name="CompoundPresetsPanel" Grid.Row="1" Margin="0 8 0 0"
+                    <Border x:Name="CompoundPresetsPanel" Grid.Row="3" Margin="0 8 0 0"
                             Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
                         <Expander IsExpanded="False" HorizontalContentAlignment="Stretch"
                                   Background="#202020">
@@ -396,7 +398,7 @@
                         </Expander>
                     </Border>
 
-                    <Border x:Name="ProfileDevicesPanel" Grid.Row="2" Margin="0 8 0 0" Background="#202020"
+                    <Border x:Name="ProfileDevicesPanel" Grid.Row="1" Margin="0 8 0 0" Background="#202020"
                             BorderBrush="#383838" BorderThickness="1" CornerRadius="4" VerticalAlignment="Top">
                         <Expander x:Name="ProfileDevicesExpander" IsExpanded="True" ToolTip="Expand or collapse configured devices"
                                   HorizontalContentAlignment="Stretch"

@@ -25,6 +25,7 @@ namespace HidWizards.UCR.Views.ProfileViews
     public partial class ProfilePage : UserControl, IDisposable
     {
         public Guid ProfileGuid => Profile.Guid;
+        public ContentControl AutoApplyPanelHost => AutoApplyDockHost;
         private Context Context { get; }
         internal Profile Profile { get; }
         private ProfileViewModel ProfileViewModel { get; }
@@ -118,7 +119,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             ProfileDevicesPanel.ClearValue(DataContextProperty);
             if (_deviceOriginalParent != null)
             {
-                Grid.SetRow(ProfileDevicesPanel, 2);
+                Grid.SetRow(ProfileDevicesPanel, 1);
                 _deviceOriginalParent.Children.Add(ProfileDevicesPanel);
                 _deviceOriginalParent = null;
             }

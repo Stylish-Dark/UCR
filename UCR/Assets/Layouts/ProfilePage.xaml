@@ -14,6 +14,10 @@
     <Style x:Key="MappingSectionsScrollViewer" TargetType="{x:Type ScrollViewer}">
         <Setter Property="Padding" Value="0 1 0 4"/>
     </Style>
+    <sys:String x:Key="AutoApplyDockHost.Margin">0 0 0 8</sys:String>
+    <sys:String x:Key="ProfileDevicesPanel.Grid.Row">1</sys:String>
+    <sys:String x:Key="MappingFiltersPanel.Grid.Row">2</sys:String>
+    <sys:String x:Key="CompoundPresetsPanel.Grid.Row">3</sys:String>
     <sys:String x:Key="ProfileInspectorColumn.Width">410</sys:String>
     <sys:String x:Key="ProfileInspectorColumn.MinWidth">390</sys:String>
 </ResourceDictionary>

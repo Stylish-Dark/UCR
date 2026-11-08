@@ -43,6 +43,8 @@ namespace HidWizards.UCR.Views
         private bool _exitRequested;
         private IDisposable _navigationPage;
         private ProfilePage _embeddedProfilePage;
+        private Panel _autoApplyOriginalParent;
+        private Thickness _autoApplyOriginalMargin;
         private Profile _embeddedProfile;
         private bool _workspaceReady;
         private readonly Dictionary<Guid, ProfilePage> _profileCache = new Dictionary<Guid, ProfilePage>();
@@ -513,6 +515,7 @@ namespace HidWizards.UCR.Views
                 optionsTab.Content = null;
             ProfileSummaryPanel.DataContext = _dashboardViewModel;
             page.AttachProfileOptions(ProfileSummaryPanel);
+            DockAutoApplyPanel(page);
             WorkspaceTabs.SelectedIndex = 0;
             _embeddedProfilePage = page;
             _embeddedProfile = profile;
@@ -532,9 +535,39 @@ namespace HidWizards.UCR.Views
             }
         }
 
+        private void DockAutoApplyPanel(ProfilePage page)
+        {
+            if (page == null || AutoApplyRulesPanel == null) return;
+            // Preserve the original executable-rule controls and their MainWindow handlers.
+            // Only their visual parent changes; the dashboard bindings stay intact.
+            UndockAutoApplyPanel(_embeddedProfilePage);
+            var parent = AutoApplyRulesPanel.Parent as Panel;
+            if (parent == null) return;
+            _autoApplyOriginalParent = parent;
+            _autoApplyOriginalMargin = AutoApplyRulesPanel.Margin;
+            parent.Children.Remove(AutoApplyRulesPanel);
+            AutoApplyRulesPanel.Margin = new Thickness(0);
+            AutoApplyRulesPanel.DataContext = _dashboardViewModel;
+            page.AutoApplyPanelHost.Content = AutoApplyRulesPanel;
+        }
+
+        private void UndockAutoApplyPanel(ProfilePage page)
+        {
+            if (page == null || _autoApplyOriginalParent == null) return;
+            page.AutoApplyPanelHost.Content = null;
+            page.AutoApplyPanelHost.UpdateLayout();
+            AutoApplyRulesPanel.ClearValue(FrameworkElement.DataContextProperty);
+            AutoApplyRulesPanel.Margin = _autoApplyOriginalMargin;
+            Grid.SetRow(AutoApplyRulesPanel, 2);
+            Grid.SetColumnSpan(AutoApplyRulesPanel, 2);
+            _autoApplyOriginalParent.Children.Add(AutoApplyRulesPanel);
+            _autoApplyOriginalParent = null;
+        }
+
         private void ReleaseEmbeddedProfile()
         {
             if (_embeddedProfilePage == null) return;
+            UndockAutoApplyPanel(_embeddedProfilePage);
             _embeddedProfilePage.UndockProfileFilters();
             ProfileDeviceEditorHost.Content = null;
             ProfileDeviceEditorHost.Visibility = Visibility.Collapsed;
