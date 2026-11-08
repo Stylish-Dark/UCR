@@ -213,14 +213,22 @@ namespace HidWizards.UCR.Core.Models
         internal void PrepareMapping(FilterState filterState, Guid runtimeScopeGuid)
         {
             InputCache = new List<short>();
-            DeviceBindings.ForEach(_ => InputCache.Add(0));
+            // Providers expose physical triggers as signed values:
+            // -32768 is released; +32767 is fully pressed.
+            var triggerInput = EffectiveInputRepresentation == 4;
+            for (var i = 0; i < DeviceBindings.Count; i++)
+            {
+                var binding = DeviceBindings[i];
+                InputCache.Add(triggerInput && binding.IsBound &&
+                    !binding.IsDirectionalAndCondition ? short.MinValue : (short)0);
+            }
             Multiplexer = new List<CallbackMultiplexer>();
             for (var i = 0; i < DeviceBindings.Count; i++)
             {
                 var cm = new CallbackMultiplexer(InputCache, i, Update);
                 Multiplexer.Add(cm);
                 DeviceBindings[i].Callback = cm.Update;
-                DeviceBindings[i].CurrentValue = 0;
+                DeviceBindings[i].CurrentValue = InputCache[i];
             }
 
             _lastInputExpressionValue = null;
@@ -331,7 +339,14 @@ namespace HidWizards.UCR.Core.Models
             {
                 var plugin = Plugins[index];
                 if (plugin.IsFiltered()) continue;
-                plugin.Update(new[] { selected[index] });
+                // A logical trigger is 0..+32767; output providers expect
+                // the complete signed Range with -32768 as released.
+                var routed = outputType == 4 &&
+                    plugin.InputCategories.Count > 0 &&
+                    plugin.InputCategories[0].Category == DeviceBindingCategory.Range
+                        ? ToPhysicalTriggerValue(selected[index])
+                        : selected[index];
+                plugin.Update(new[] { routed });
             }
         }
 
@@ -381,20 +396,21 @@ namespace HidWizards.UCR.Core.Models
         {
             short x = 0, y = 0;
             if (capacity == 1)
-                x = ReadDirectionalSource(inputValues, inputBindings, 0, inputType == 3);
+                x = ReadDirectionalSource(inputValues, inputBindings, 0,
+                    inputType == 3, inputType == 4);
             else if (inputType == 4)
             {
-                // One trigger drives one positive axis direction. In 4-Way
-                // capacity, four independent triggers form opposed X/Y pairs.
+                // Four independent one-sided triggers form opposed X/Y pairs.
+                // Normalise each physical signed Range before combining them.
                 if (capacity == 4)
                 {
-                    x = ClampDirectional((int)Math.Max(0, (int)ReadDirectionalSource(inputValues, inputBindings, 1, false)) -
-                        Math.Max(0, (int)ReadDirectionalSource(inputValues, inputBindings, 0, false)));
-                    y = ClampDirectional((int)Math.Max(0, (int)ReadDirectionalSource(inputValues, inputBindings, 3, false)) -
-                        Math.Max(0, (int)ReadDirectionalSource(inputValues, inputBindings, 2, false)));
+                    x = ClampDirectional((int)ReadDirectionalSource(inputValues, inputBindings, 1, false, true) -
+                        ReadDirectionalSource(inputValues, inputBindings, 0, false, true));
+                    y = ClampDirectional((int)ReadDirectionalSource(inputValues, inputBindings, 3, false, true) -
+                        ReadDirectionalSource(inputValues, inputBindings, 2, false, true));
                 }
                 else
-                    x = (short)Math.Max(0, (int)ReadDirectionalSource(inputValues, inputBindings, 0, false));
+                    x = ReadDirectionalSource(inputValues, inputBindings, 0, false, true);
             }
             else if (inputType == 3)
             {
@@ -452,8 +468,25 @@ namespace HidWizards.UCR.Core.Models
             return (short)Math.Max(short.MinValue, Math.Min(short.MaxValue, value));
         }
 
+        // The physical signed range (-32768..32767) represents 0..100%
+        // on a trigger, while the same range is -100..100% on a stick.
+        // Convert only for a trigger, never for a bidirectional axis.
+        internal static short ToLogicalTriggerValue(short physical)
+        {
+            return (short)(((long)((int)physical - short.MinValue) *
+                short.MaxValue + 32767) / 65535);
+        }
+
+        internal static short ToPhysicalTriggerValue(short logical)
+        {
+            var value = Math.Max(0, (int)logical);
+            return (short)(((long)value * 65535 + 16383) / short.MaxValue +
+                short.MinValue);
+        }
+
         private static short ReadDirectionalSource(IList<short> inputValues,
-            IList<DeviceBinding> inputBindings, int index, bool digital)
+            IList<DeviceBinding> inputBindings, int index, bool digital,
+            bool trigger = false)
         {
             if (index < 0 || index >= inputValues.Count || index >= inputBindings.Count)
                 return 0;
@@ -461,10 +494,12 @@ namespace HidWizards.UCR.Core.Models
             var source = inputBindings[index];
             if (!digital)
             {
-                // A digitally captured control can still drive a positive
-                // analogue direction; use full travel, not the raw 0/1 value.
-                return source.InputExpressionInputKind == 0
-                    ? (short)(value != 0 ? short.MaxValue : 0) : value;
+                // A digital button also drives full analogue travel.
+                if (source.InputExpressionInputKind == 0)
+                    return (short)(value != 0 ? short.MaxValue : 0);
+                if (trigger)
+                    return source.IsBound ? ToLogicalTriggerValue(value) : (short)0;
+                return value;
             }
             // NOT on an unassigned direction must never synthesize a pressed
             // control merely because the empty input cache reads as zero.
