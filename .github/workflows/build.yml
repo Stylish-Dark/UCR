@@ -588,13 +588,27 @@ jobs:
               $editorLabels | Set-Content -LiteralPath (Join-Path $directory 'Profile-UI-elements.txt')
 
               # Exercise the actual mapping-creation control and capture populated UI.
-              $addMapping = $root.FindFirst(
+              # Some WPF template buttons do not expose x:Name as AutomationId.
+              # Locate the visible '+' in the mapping header, not the profile '+'.
+              $buttons = $root.FindAll(
                   [System.Windows.Automation.TreeScope]::Descendants,
                   (New-Object System.Windows.Automation.PropertyCondition(
-                      [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
-                      'UiWorkspaceAddMapping')))
+                      [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+                      [System.Windows.Automation.ControlType]::Button)))
+              $addMapping = $null
+              foreach ($candidate in $buttons) {
+                  try {
+                      $rect = $candidate.Current.BoundingRectangle
+                      $name = $candidate.Current.Name
+                      if ($name -eq '+' -and $rect.Width -gt 20 -and
+                          $rect.Left -gt 550 -and $rect.Top -lt 250) {
+                          $addMapping = $candidate
+                          break
+                      }
+                  } catch {}
+              }
               if ($null -eq $addMapping) {
-                  throw 'Could not find Add Mapping in the profile editor.'
+                  throw 'Could not locate visible Add Mapping button in mapping header.'
               }
               $addMappingInvoke = $addMapping.GetCurrentPattern(
                   [System.Windows.Automation.InvokePattern]::Pattern)
