@@ -586,6 +586,38 @@ jobs:
                   } catch {}
               }
               $editorLabels | Set-Content -LiteralPath (Join-Path $directory 'Profile-UI-elements.txt')
+
+              # Exercise the actual mapping-creation control and capture populated UI.
+              $addMapping = $root.FindFirst(
+                  [System.Windows.Automation.TreeScope]::Descendants,
+                  (New-Object System.Windows.Automation.PropertyCondition(
+                      [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
+                      'UiWorkspaceAddMapping')))
+              if ($null -eq $addMapping) {
+                  throw 'Could not find Add Mapping in the profile editor.'
+              }
+              $addMappingInvoke = $addMapping.GetCurrentPattern(
+                  [System.Windows.Automation.InvokePattern]::Pattern)
+              for ($i = 0; $i -lt 3; $i++) {
+                  $addMappingInvoke.Invoke()
+                  Start-Sleep -Milliseconds 1100
+              }
+              Start-Sleep -Seconds 2
+              $populated = Join-Path $directory 'UCR-mappings.png'
+              $populatedColors = [UcrWindowCapture]::Capture($handle, $populated)
+              $populatedElements = $root.FindAll(
+                  [System.Windows.Automation.TreeScope]::Subtree,
+                  [System.Windows.Automation.Condition]::TrueCondition)
+              $mappingLabels = @()
+              foreach ($element in $populatedElements) {
+                  try {
+                      $name = $element.Current.Name
+                      if ($name) { $mappingLabels += $name }
+                  } catch {}
+              }
+              $mappingLabels | Set-Content -LiteralPath (Join-Path $directory 'Mapping-UI-elements.txt')
+              Write-Host "Captured populated mappings: $populated ($populatedColors colors)"
+
               Write-Host "Captured live profile editor: $profilePath ($profileColors colors, $($editorElements.Count) UIA elements)"
           }
           catch {
