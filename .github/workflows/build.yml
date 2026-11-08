@@ -458,7 +458,7 @@ jobs:
 
       - name: Capture UCR UI on Windows runner
         id: visual_audit
-        shell: pwsh
+        shell: powershell
         continue-on-error: true
         timeout-minutes: 3
         run: |
