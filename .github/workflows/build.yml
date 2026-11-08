@@ -599,6 +599,13 @@ jobs:
               }
               $editorLabels | Set-Content -LiteralPath (Join-Path $directory 'Profile-UI-elements.txt')
 
+              # Open the actual output-device picker so the visual audit can
+              # configure a controller before testing four-way destinations.
+              [UcrWindowCapture]::ClickAt($handle, 1106, 324)
+              Start-Sleep -Milliseconds 950
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-output-device-picker.png')) | Out-Null
+
               # Exercise the actual mapping-creation control and capture populated UI.
               # WPF mapping header controls are not exposed by UIA on this
               # runner. Click the actual rendered '+' at its captured location.
