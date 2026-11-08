@@ -606,6 +606,10 @@ jobs:
               for ($i = 0; $i -lt 3; $i++) {
                   [UcrWindowCapture]::ClickAt($handle, 704, 171)
                   Start-Sleep -Milliseconds 1250
+                  if ($i -eq 0) {
+                      [UcrWindowCapture]::Capture(
+                          $handle, (Join-Path $directory 'UCR-one-mapping.png')) | Out-Null
+                  }
               }
               Start-Sleep -Seconds 2
               $populated = Join-Path $directory 'UCR-mappings.png'
