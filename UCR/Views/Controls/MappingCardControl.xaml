@@ -561,22 +561,30 @@
                                          Individual implementation channels are not separate user bindings. -->
                                     <StackPanel Visibility="{Binding ButtonPairVisibility}">
                                         <!-- Ordinary one-button mapping: preserve the full selector. -->
-                                        <Grid Visibility="{Binding SingleButtonVisibility}">
+                                        <Grid Visibility="{Binding SingleButtonVisibility}" Margin="0 0 0 3">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" MinWidth="0"/>
-                                                <ColumnDefinition Width="60"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
                                             <local:CompactInputBindingControl Grid.Column="0"
                                                 DataContext="{Binding CoreInputs[0]}"
                                                 DeviceBinding="{Binding DeviceBinding}"
                                                 HorizontalAlignment="Stretch"/>
                                             <ToggleButton Grid.Column="1" Content="NOT" Width="48" Height="32"
-                                                Margin="6 0 0 0" Padding="2 0"
+                                                Margin="6 0 4 0" Padding="2 0"
                                                 DataContext="{Binding CoreInputs[0]}"
                                                 IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
                                                 Click="InputNegated_OnClick"
                                                 Style="{StaticResource MappingNotToggle}"
                                                 ToolTip="Negate this input condition"/>
+                                            <Button Grid.Column="2" Width="30" Height="30" Padding="0"
+                                                DataContext="{Binding CoreInputs[0]}"
+                                                Click="RemoveExpressionInput_OnClick"
+                                                IsEnabled="{Binding CanRemoveExpressionInput}"
+                                                Visibility="{Binding CanRemoveExpressionInput, Converter={StaticResource CompoundVisibilityConverter}}"
+                                                Style="{StaticResource UcrDeleteItemButton}"
+                                                ToolTip="Remove this input"/>
                                         </Grid>
                                         <!-- Two buttons driving one axis use the same regular binding
                                              controls as ordinary input rows. No compass or preset menu. -->
