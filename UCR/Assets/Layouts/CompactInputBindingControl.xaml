@@ -3,27 +3,27 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!-- Shared input/output binding geometry; edit and restart UCR. -->
     <Style x:Key="BindingGrid" TargetType="{x:Type Grid}">
-        <Setter Property="MinHeight" Value="50"/>
+        <Setter Property="MinHeight" Value="38"/>
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
     </Style>
     <Style x:Key="DeviceSelectionBox" TargetType="{x:Type ComboBox}">
-        <Setter Property="Height" Value="50"/>
+        <Setter Property="Height" Value="38"/>
     </Style>
     <Style x:Key="BindingActionGroup" TargetType="{x:Type Grid}">
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
         <Setter Property="MaxWidth" Value="1600"/>
-        <Setter Property="MinHeight" Value="50"/>
+        <Setter Property="MinHeight" Value="38"/>
     </Style>
     <Style x:Key="BindSurface" TargetType="{x:Type Grid}">
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
-        <Setter Property="MinHeight" Value="50"/>
+        <Setter Property="MinHeight" Value="38"/>
     </Style>
     <Style x:Key="BindButton" TargetType="{x:Type Button}">
-        <Setter Property="MinHeight" Value="50"/>
+        <Setter Property="MinHeight" Value="38"/>
         <Setter Property="Padding" Value="10 2"/>
     </Style>
     <Style x:Key="MenuButton" TargetType="{x:Type Button}">
         <Setter Property="Width" Value="42"/>
-        <Setter Property="MinHeight" Value="50"/>
+        <Setter Property="MinHeight" Value="38"/>
     </Style>
 </ResourceDictionary>
