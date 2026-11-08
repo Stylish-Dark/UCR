@@ -549,7 +549,7 @@ namespace HidWizards.UCR.Views.Controls
                 var item = new MenuItem
                 {
                     Header = CompoundChoiceHeader(
-                        selected.Destination + "  ·  " + selected.DeviceTitle, kind, controls)
+                        selected.Destination, kind, controls)
                 };
                 item.Click += (sender, args) =>
                 {
