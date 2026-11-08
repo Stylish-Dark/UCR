@@ -630,7 +630,7 @@ jobs:
                       Start-Sleep -Milliseconds 850
                       [UcrWindowCapture]::Capture(
                           $handle, (Join-Path $directory 'UCR-fourway-input.png')) | Out-Null
-                      [UcrWindowCapture]::ClickAt($handle, 652, 402)
+                      [UcrWindowCapture]::ClickAt($handle, 636, 397)
                       Start-Sleep -Milliseconds 850
                       [UcrWindowCapture]::Capture(
                           $handle, (Join-Path $directory 'UCR-fourway-output.png')) | Out-Null
