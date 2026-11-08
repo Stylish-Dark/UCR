@@ -46,43 +46,30 @@
         </Setter>
     </Style>
 
-    <Style x:Key="UcrDeleteItemButton" TargetType="{x:Type Button}">
-        <Setter Property="Width" Value="36"/>
+    <!-- One cross geometry for every deletion surface. -->
+    <Style x:Key="UcrDeleteItemButton" TargetType="{x:Type Button}"
+           BasedOn="{StaticResource UcrDeleteCrossButton}"/>
+
+    <!-- Neutral actions are secondary to selected mapping types and bind buttons. -->
+    <Style x:Key="UcrMappingSecondaryActionButton" TargetType="{x:Type Button}"
+           BasedOn="{StaticResource MaterialDesignFlatButton}">
         <Setter Property="Height" Value="34"/>
-        <Setter Property="Padding" Value="0"/>
-        <Setter Property="Background" Value="#333333"/>
-        <Setter Property="BorderBrush" Value="#606060"/>
+        <Setter Property="MinWidth" Value="66"/>
+        <Setter Property="Padding" Value="10 3"/>
+        <Setter Property="Foreground" Value="#ECECEC"/>
+        <Setter Property="Background" Value="#303030"/>
+        <Setter Property="BorderBrush" Value="#666666"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Focusable" Value="True"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="{x:Type Button}">
-                    <Border x:Name="DeleteChrome"
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="3" SnapsToDevicePixels="True">
-                        <Grid Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <materialDesign:PackIcon Kind="Close" Width="21" Height="21"
-                                                     Foreground="#FF7979" HorizontalAlignment="Center"
-                                                     VerticalAlignment="Center" IsHitTestVisible="False"/>
-                        </Grid>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="DeleteChrome" Property="Background" Value="#463030"/>
-                            <Setter TargetName="DeleteChrome" Property="BorderBrush" Value="#B85555"/>
-                        </Trigger>
-                        <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="DeleteChrome" Property="Background" Value="#552D2D"/>
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="DeleteChrome" Property="Opacity" Value="0.55"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#3C3C3C"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.4"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
     <Style x:Key="CompactBindSurfaceButton" TargetType="{x:Type Button}">
         <Setter Property="Foreground" Value="White"/>
