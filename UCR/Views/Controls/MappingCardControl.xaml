@@ -325,11 +325,20 @@
                                                             Style="{StaticResource MappingNotToggle}"
                                                             ToolTip="Negate this Boolean input condition"/>
                                                         <Button Grid.Column="2" Click="RemoveExpressionInput_OnClick"
-                                                            IsEnabled="{Binding CanRemoveExpressionInput}"
-                                                            Visibility="{Binding CanRemoveExpressionInput, Converter={StaticResource CompoundVisibilityConverter}}"
+                                                            IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
                                                             ToolTip="Remove input condition"
                                                             ToolTipService.ShowOnDisabled="True"
-                                                            Style="{StaticResource UcrDeleteItemButton}" Width="32" Height="32" Padding="0" Margin="2 0 0 0"/>
+                                                            Width="32" Height="32" Padding="0" Margin="2 0 0 0">
+                                                            <Button.Style>
+                                                                <Style TargetType="Button" BasedOn="{StaticResource UcrDeleteItemButton}">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding DataContext.DeviceBindings.Count, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="1">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Button.Style>
+                                                        </Button>
                                                     </Grid>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
@@ -342,13 +351,7 @@
                                                 Foreground="#FFFFFF"
                                                 ToolTip="Add another AND input to this group">
                                                 <Button.Style>
-                                                    <Style TargetType="Button" BasedOn="{StaticResource UcrMappingSecondaryActionButton}">
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding DataContext.InputConditions.Count, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="1">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource UcrMappingSecondaryActionButton}"/>
                                                 </Button.Style>
                                             </Button>
                                             <Button Content="Remove group" Click="RemoveCondition_OnClick"
@@ -661,14 +664,8 @@
                                         IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
                                         ToolTip="Require another independent condition in this OR group">
                                         <Button.Style>
-                                            <Style TargetType="Button" BasedOn="{StaticResource UcrMappingSecondaryActionButton}">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding DataContext.InputConditions.Count, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="1">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource UcrMappingSecondaryActionButton}"/>
+                                                </Button.Style>
                                     </Button>
                                 </StackPanel>
                             </Border>
@@ -771,7 +768,7 @@
         <DataTemplate x:Key="ButtonMappingEditorTemplate">
             <Border Margin="2 0 2 3" Padding="6 5" Background="#202020"
                 BorderBrush="#303030" BorderThickness="0 1 0 0">
-                <UniformGrid VerticalAlignment="Stretch">
+                <UniformGrid VerticalAlignment="Top">
                     <UniformGrid.Style>
                         <Style TargetType="{x:Type UniformGrid}">
                             <Setter Property="Columns" Value="2"/>
@@ -788,10 +785,10 @@
                             </Style.Triggers>
                         </Style>
                     </UniformGrid.Style>
-                    <Grid Margin="0 0 6 5" VerticalAlignment="Stretch">
+                    <Grid Margin="0 0 6 5" VerticalAlignment="Top">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" SharedSizeGroup="UcrHeaderRow"/>
-                            <RowDefinition Height="*" MinHeight="150"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto" SharedSizeGroup="UcrActionsRow"/>
                         </Grid.RowDefinitions>
                         <Grid.Style>
@@ -833,7 +830,7 @@
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                             </StackPanel>
                         </Grid>
-                        <Border x:Name="InputBodySurface" Grid.Row="1" VerticalAlignment="Stretch">
+                        <Border x:Name="InputBodySurface" Grid.Row="1" VerticalAlignment="Top">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Setter Property="BorderThickness" Value="1"/>
@@ -849,7 +846,7 @@
                                 </Style>
                             </Border.Style>
                             <ContentControl x:Name="InputBodyHost" Content="{Binding}"
-                                            HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                                            HorizontalContentAlignment="Stretch" VerticalContentAlignment="Top">
                                 <ContentControl.Style>
                                     <Style TargetType="{x:Type ContentControl}">
                                         <Setter Property="ContentTemplate" Value="{StaticResource ButtonExistingInputsTemplate}"/>
@@ -866,26 +863,6 @@
                             </ContentControl>
                         </Border>
                         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="2 7 0 2">
-                            <Button Content="+ Input" Click="AddInputToCondition_OnClick"
-                                    DataContext="{Binding InputConditions[0]}"
-                                    Margin="0 0 7 0"
-                                    IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
-                                    ToolTip="Add an AND condition to this input group">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource UcrMappingSecondaryActionButton}">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                        <Style.Triggers>
-                                            <MultiDataTrigger>
-                                                <MultiDataTrigger.Conditions>
-                                                    <Condition Binding="{Binding DataContext.InputConditions.Count, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="1"/>
-                                                    <Condition Binding="{Binding DataContext.SupportsNativeInputExpression, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="True"/>
-                                                </MultiDataTrigger.Conditions>
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                            </MultiDataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
                             <Button x:Name="UiMappingAddOrCondition" Content="+ OR" Click="AddCondition_OnClick"
                                     Margin="0" IsEnabled="{Binding ButtonsEnabled}"
                                     Visibility="{Binding SupportsNativeInputExpression, Converter={StaticResource CompoundVisibilityConverter}}"
@@ -893,10 +870,10 @@
                                     ToolTip="Add another complete alternative input set"/>
                         </StackPanel>
                     </Grid>
-                    <Grid Margin="6 0 0 5" VerticalAlignment="Stretch">
+                    <Grid Margin="6 0 0 5" VerticalAlignment="Top">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" SharedSizeGroup="UcrHeaderRow"/>
-                            <RowDefinition Height="*" MinHeight="150"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto" SharedSizeGroup="UcrActionsRow"/>
                         </Grid.RowDefinitions>
                         <Grid.Style>
@@ -948,7 +925,7 @@
                             </StackPanel>
 
                         </Grid>
-                        <Border x:Name="OutputBodySurface" Grid.Row="1" VerticalAlignment="Stretch">
+                        <Border x:Name="OutputBodySurface" Grid.Row="1" VerticalAlignment="Top">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Setter Property="BorderThickness" Value="1"/>
