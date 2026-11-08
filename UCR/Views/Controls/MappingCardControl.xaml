@@ -316,9 +316,27 @@
                                                             <ColumnDefinition Width="Auto"/>
                                                             <ColumnDefinition Width="Auto"/>
                                                         </Grid.ColumnDefinitions>
-                                                        <local:CompactInputBindingControl Grid.Column="0"
-                                                            DeviceBinding="{Binding DeviceBinding}"
-                                                            DataContext="{Binding}"/>
+                                                        <StackPanel Grid.Column="0">
+                                                            <local:CompactInputBindingControl
+                                                                DeviceBinding="{Binding DeviceBinding}"
+                                                                DataContext="{Binding}"/>
+                                                            <!-- Analogue AND/OR conditions need a visible
+                                                                 threshold; button inputs have no such setting. -->
+                                                            <StackPanel Margin="5 4 5 1"
+                                                                        Visibility="{Binding ThresholdConditionVisibility}">
+                                                                <DockPanel LastChildFill="False">
+                                                                    <TextBlock Text="Threshold" FontSize="11"
+                                                                               Foreground="#CFCFCF" DockPanel.Dock="Left"/>
+                                                                    <TextBlock Text="{Binding AxisThresholdPercent, StringFormat={}{0}%}"
+                                                                               FontSize="11" Foreground="#CFCFCF"
+                                                                               DockPanel.Dock="Right"/>
+                                                                </DockPanel>
+                                                                <Slider Minimum="1" Maximum="100"
+                                                                        TickFrequency="1" IsSnapToTickEnabled="True"
+                                                                        Value="{Binding AxisThresholdPercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                        ToolTip="Axis threshold for this analogue input condition"/>
+                                                            </StackPanel>
+                                                        </StackPanel>
                                                         <ToggleButton Grid.Column="1" Content="NOT" Width="54" Height="30"
                                                             Margin="4 0 8 0" IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
                                                             Click="InputNegated_OnClick"
