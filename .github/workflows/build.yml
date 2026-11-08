@@ -482,6 +482,18 @@ jobs:
               private static extern bool GetWindowRect(IntPtr hwnd, out Rect rectangle);
               [DllImport("user32.dll")]
               private static extern bool PrintWindow(IntPtr hwnd, IntPtr dc, uint flags);
+              [DllImport("user32.dll")]
+              private static extern bool SetCursorPos(int x, int y);
+              [DllImport("user32.dll")]
+              private static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
+              public static void ClickAt(IntPtr hwnd, int x, int y) {
+                  Rect r;
+                  if (!GetWindowRect(hwnd, out r)) throw new Exception("Window rect unavailable");
+                  SetCursorPos(r.Left + x, r.Top + y);
+                  System.Threading.Thread.Sleep(120);
+                  mouse_event(2, 0, 0, 0, UIntPtr.Zero);
+                  mouse_event(4, 0, 0, 0, UIntPtr.Zero);
+              }
               public static int Capture(IntPtr hwnd, string filename) {
                   Rect r;
                   if (!GetWindowRect(hwnd, out r)) throw new Exception("GetWindowRect failed");
@@ -588,33 +600,12 @@ jobs:
               $editorLabels | Set-Content -LiteralPath (Join-Path $directory 'Profile-UI-elements.txt')
 
               # Exercise the actual mapping-creation control and capture populated UI.
-              # Some WPF template buttons do not expose x:Name as AutomationId.
-              # Locate the visible '+' in the mapping header, not the profile '+'.
-              $buttons = $root.FindAll(
-                  [System.Windows.Automation.TreeScope]::Descendants,
-                  (New-Object System.Windows.Automation.PropertyCondition(
-                      [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
-                      [System.Windows.Automation.ControlType]::Button)))
-              $addMapping = $null
-              foreach ($candidate in $buttons) {
-                  try {
-                      $rect = $candidate.Current.BoundingRectangle
-                      $name = $candidate.Current.Name
-                      if ($name -eq '+' -and $rect.Width -gt 20 -and
-                          $rect.Left -gt 550 -and $rect.Top -lt 250) {
-                          $addMapping = $candidate
-                          break
-                      }
-                  } catch {}
-              }
-              if ($null -eq $addMapping) {
-                  throw 'Could not locate visible Add Mapping button in mapping header.'
-              }
-              $addMappingInvoke = $addMapping.GetCurrentPattern(
-                  [System.Windows.Automation.InvokePattern]::Pattern)
+              # WPF mapping header controls are not exposed by UIA on this
+              # runner. Click the actual rendered '+' at its captured location.
+              # Relative to the captured 1200x740 UCR window, not the desktop.
               for ($i = 0; $i -lt 3; $i++) {
-                  $addMappingInvoke.Invoke()
-                  Start-Sleep -Milliseconds 1100
+                  [UcrWindowCapture]::ClickAt($handle, 704, 171)
+                  Start-Sleep -Milliseconds 1250
               }
               Start-Sleep -Seconds 2
               $populated = Join-Path $directory 'UCR-mappings.png'
