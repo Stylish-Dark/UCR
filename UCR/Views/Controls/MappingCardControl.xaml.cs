@@ -1151,17 +1151,21 @@ namespace HidWizards.UCR.Views.Controls
             if (original == null) return false;
             var index = mapping.Plugins.IndexOf(original);
             var requested = selectedControl.DeviceBindingCategory;
+            var configuration = mapping.ProfileViewModel.Profile.GetDeviceConfiguration(
+                DeviceIoType.Output, deviceGuid);
+            var isTrigger = requested == DeviceBindingCategory.Range &&
+                DeviceVisualCatalog.IsKnownTriggerAxis(configuration,
+                    mapping.ProfileViewModel.Profile, DeviceIoType.Output, selectedControl.KeyValue);
+            var selectedRepresentation = requested == DeviceBindingCategory.Momentary ? 3 :
+                requested == DeviceBindingCategory.Range ? (isTrigger ? 4 : 2) : 0;
             if (mapping.IsTypedDirectionalMapping)
             {
-                var expected = mapping.Mapping.EffectiveOutputRepresentation == 3
-                    ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
-                if (requested != expected)
+                if (selectedRepresentation == 0) return false;
+                if (mapping.Mapping.EffectiveOutputRepresentation != selectedRepresentation)
                 {
-                    // The actual control wins over the selected expectation.
-                    // Reconfigure the output representation before binding it.
-                    var newType = requested == DeviceBindingCategory.Range ? 2 :
-                        requested == DeviceBindingCategory.Momentary ? 3 : 0;
-                    if (newType == 0 || !mapping.SetOutputRepresentation(newType)) return false;
+                    // Trigger and Button share the selector but remain distinct
+                    // physical signal types, so never turn a trigger into an Axis.
+                    if (!mapping.SetOutputRepresentation(selectedRepresentation)) return false;
                     index = Math.Min(index, mapping.Plugins.Count - 1);
                     original = mapping.Plugins[index];
                 }
@@ -1207,7 +1211,9 @@ namespace HidWizards.UCR.Views.Controls
                     invert.SetValue(destinationPlugin.Plugin, direction < 0, null);
             }
             destination.RefreshDeviceList();
-            mapping.InferOutputTypeFromAssignment(requested);
+            mapping.InferOutputTypeFromAssignment(requested,
+                isTrigger || DeviceVisualCatalog.IsTriggerBinding(destination.DeviceBinding,
+                    mapping.ProfileViewModel.Profile));
             mapping.ProfileViewModel.Profile.Context.ContextChanged();
             return true;
         }

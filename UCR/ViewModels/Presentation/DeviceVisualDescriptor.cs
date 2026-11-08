@@ -318,6 +318,27 @@ namespace HidWizards.UCR.ViewModels.Presentation
             }
         }
 
+        // Trigger identity is physical metadata, not a fourth selector category.
+        // An arbitrary Range control must never be treated as a trigger.
+        public static bool IsTriggerBinding(DeviceBinding binding, Profile profile)
+        {
+            return binding?.IsBound == true &&
+                   binding.DeviceBindingCategory == DeviceBindingCategory.Range &&
+                   DescribeBinding(binding, DeviceBindingCategory.Range, profile).ControlKind ==
+                       ControlVisualKind.Trigger;
+        }
+
+        // Before a destination is assigned, known controller axis indices allow
+        // us to distinguish triggers from stick axes without guessing from Range.
+        public static bool IsKnownTriggerAxis(DeviceConfiguration configuration, Profile profile,
+            DeviceIoType io, int keyValue)
+        {
+            if (configuration?.Device == null) return false;
+            var kind = Describe(configuration, profile, io).Kind;
+            return (IsXbox(kind) || IsPlayStation(kind)) &&
+                   (keyValue == 4 || keyValue == 5);
+        }
+
         public static BindingVisualDescriptor DescribeBinding(DeviceBinding binding, DeviceBindingCategory category, Profile profile)
         {
             if (binding == null)
@@ -443,7 +464,10 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
             if (category == DeviceBindingCategory.Range || category == DeviceBindingCategory.Delta)
             {
-                result.ControlKind = ControlVisualKind.Axis;
+                result.ControlKind = category == DeviceBindingCategory.Range &&
+                    (lower.Contains("trigger") || lower == "lt" || lower == "rt" ||
+                     lower == "l2" || lower == "r2")
+                    ? ControlVisualKind.Trigger : ControlVisualKind.Axis;
                 result.ControlLabel = ShortAxisLabel(leaf);
                 result.ControlBrush = result.Device?.AccentBrush ?? NeutralBrush;
                 return;
