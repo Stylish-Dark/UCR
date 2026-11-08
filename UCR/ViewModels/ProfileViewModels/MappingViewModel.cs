@@ -528,9 +528,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (!ButtonsEnabled || input?.IsBound != true ||
                 input.DeviceIoType != DeviceIoType.Input) return false;
-            // Capturing an extra AND key must never convert the mapping's
-            // shared directional input representation to Button or Axis.
-            if (input.IsDirectionalAndCondition) return false;
+            // Capturing an AND guard or an individual 4-Way direction must
+            // not replace the mapping's complete logical input control.
+            if (input.IsDirectionalAndCondition ||
+                (IsTypedDirectionalMapping && InputIsFullStick)) return false;
             var physical = input.DeviceBindingCategory;
             if (physical != DeviceBindingCategory.Momentary &&
                 physical != DeviceBindingCategory.Range) return false;
@@ -562,6 +563,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!ButtonsEnabled ||
                 (physical != DeviceBindingCategory.Momentary &&
                  physical != DeviceBindingCategory.Range)) return false;
+            // A 4-Way destination consists of multiple physical controls.
+            // Rebinding an individual direction never changes the entire type.
+            if (IsTypedDirectionalMapping && OutputIsFullStick) return true;
             var representation = physical == DeviceBindingCategory.Momentary ? 3 :
                 isTrigger ? 4 : 2;
             if (!IsTypedDirectionalMapping && physical == DeviceBindingCategory.Range)
