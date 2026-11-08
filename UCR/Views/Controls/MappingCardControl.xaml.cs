@@ -653,6 +653,31 @@ namespace HidWizards.UCR.Views.Controls
             (DataContext as MappingViewModel)?.AddCondition();
         }
 
+        private void MappingEditorColumns_OnSizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            // Keep input and output editors usable in the narrow middle workspace.
+            // Two columns need room for device, Bind, NOT and Remove controls.
+            if (sender is UniformGrid editor)
+            {
+                var singleInspector = InspectorMode && !InlineWorkspaceMode;
+                var desired = singleInspector || e.NewSize.Width < 650 ? 1 : 2;
+                if (editor.Columns != desired)
+                    editor.Columns = desired;
+            }
+        }
+
+        private void RemoveOrClearInput_OnClick(object sender, RoutedEventArgs e)
+        {
+            var binding = (sender as FrameworkElement)?.DataContext as DeviceBindingViewModel;
+            if (binding?.DeviceBinding == null) return;
+            var mapping = DataContext as MappingViewModel;
+            if (mapping == null || !mapping.ButtonsEnabled) return;
+            if (binding.CanRemoveExpressionInput)
+                mapping.RemoveExpressionInput(binding);
+            else
+                binding.DeviceBinding.ClearBinding();
+        }
+
         private void RemoveExpressionInput_OnClick(object sender, RoutedEventArgs e)
         {
             var binding = (sender as FrameworkElement)?.DataContext as DeviceBindingViewModel;

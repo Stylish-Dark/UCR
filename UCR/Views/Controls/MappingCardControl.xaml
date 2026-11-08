@@ -580,11 +580,9 @@
                                                 ToolTip="Negate this input condition"/>
                                             <Button Grid.Column="2" Width="30" Height="30" Padding="0"
                                                 DataContext="{Binding CoreInputs[0]}"
-                                                Click="RemoveExpressionInput_OnClick"
-                                                IsEnabled="{Binding CanRemoveExpressionInput}"
-                                                Visibility="{Binding CanRemoveExpressionInput, Converter={StaticResource CompoundVisibilityConverter}}"
+                                                Click="RemoveOrClearInput_OnClick"
                                                 Style="{StaticResource UcrDeleteItemButton}"
-                                                ToolTip="Remove this input"/>
+                                                ToolTip="Remove input (or clear the final binding)"/>
                                         </Grid>
                                         <!-- Two buttons driving one axis use the same regular binding
                                              controls as ordinary input rows. No compass or preset menu. -->
@@ -794,7 +792,7 @@
         <DataTemplate x:Key="ButtonMappingEditorTemplate">
             <Border Margin="2 0 2 3" Padding="6 5" Background="#202020"
                 BorderBrush="#303030" BorderThickness="0 1 0 0">
-                <UniformGrid VerticalAlignment="Top">
+                <UniformGrid VerticalAlignment="Top" SizeChanged="MappingEditorColumns_OnSizeChanged">
                     <UniformGrid.Style>
                         <Style TargetType="{x:Type UniformGrid}">
                             <Setter Property="Columns" Value="2"/>
@@ -811,7 +809,7 @@
                             </Style.Triggers>
                         </Style>
                     </UniformGrid.Style>
-                    <Grid Margin="0 0 6 5" VerticalAlignment="Top">
+                    <Grid Margin="3 0 3 5" VerticalAlignment="Top">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" SharedSizeGroup="UcrHeaderRow"/>
                             <RowDefinition Height="Auto"/>
@@ -896,7 +894,7 @@
                                     ToolTip="Add another complete alternative input set"/>
                         </StackPanel>
                     </Grid>
-                    <Grid Margin="6 0 0 5" VerticalAlignment="Top">
+                    <Grid Margin="3 0 3 5" VerticalAlignment="Top">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" SharedSizeGroup="UcrHeaderRow"/>
                             <RowDefinition Height="Auto"/>
