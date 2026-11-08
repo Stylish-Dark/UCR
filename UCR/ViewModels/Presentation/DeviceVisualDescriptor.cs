@@ -322,10 +322,15 @@ namespace HidWizards.UCR.ViewModels.Presentation
         // An arbitrary Range control must never be treated as a trigger.
         public static bool IsTriggerBinding(DeviceBinding binding, Profile profile)
         {
-            return binding?.IsBound == true &&
-                   binding.DeviceBindingCategory == DeviceBindingCategory.Range &&
-                   DescribeBinding(binding, DeviceBindingCategory.Range, profile).ControlKind ==
-                       ControlVisualKind.Trigger;
+            if (binding?.IsBound != true ||
+                binding.DeviceBindingCategory != DeviceBindingCategory.Range) return false;
+            if (DescribeBinding(binding, DeviceBindingCategory.Range, profile).ControlKind ==
+                ControlVisualKind.Trigger) return true;
+            // Even an unrecognised device can expose an unambiguous physical
+            // trigger name. Generic X/Y/Z axes are never inferred as triggers.
+            var leaf = ExtractLeaf(SafeBoundName(binding)).Trim().ToLowerInvariant();
+            return leaf.Contains("trigger") || leaf == "lt" || leaf == "rt" ||
+                   leaf == "l2" || leaf == "r2";
         }
 
         // Before a destination is assigned, known controller axis indices allow

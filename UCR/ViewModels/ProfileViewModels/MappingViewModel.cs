@@ -425,6 +425,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool CanChooseOutputTrigger => ButtonsEnabled;
         private void RefreshDirectionalAvailability()
         {
+            // First assignment and clearing a trigger can change the Button
+            // glyph without changing its selected logical representation.
+            OnPropertyChanged(nameof(InputButtonChoiceGlyph));
+            OnPropertyChanged(nameof(OutputButtonChoiceGlyph));
             OnPropertyChanged(nameof(HasAssignedControl));
             OnPropertyChanged(nameof(CanChooseInputButton));
             OnPropertyChanged(nameof(CanChooseOutputButton));
