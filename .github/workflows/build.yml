@@ -554,6 +554,39 @@ jobs:
               }
               Write-Host "Captured actual UCR window: $outFile ($uniqueColors distinct sampled colors)"
               Write-Host "UI automation elements: $($elements.Count); named: $($labels.Count)"
+
+              # An empty runner has no profiles. Invoke the real Add Profile
+              # control so the actual embedded mapping editor and sidebar render.
+              $addProfile = $root.FindFirst(
+                  [System.Windows.Automation.TreeScope]::Descendants,
+                  (New-Object System.Windows.Automation.PropertyCondition(
+                      [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
+                      'UiProfilesAdd')))
+              if ($null -eq $addProfile) {
+                  throw 'Could not find the real Add Profile button by AutomationId.'
+              }
+              $invoke = $addProfile.GetCurrentPattern(
+                  [System.Windows.Automation.InvokePattern]::Pattern)
+              $invoke.Invoke()
+              Start-Sleep -Seconds 4
+              $process.Refresh()
+              if ($process.HasExited) {
+                  throw 'UCR crashed after creating the visual-audit profile.'
+              }
+              $profilePath = Join-Path $directory 'UCR-profile.png'
+              $profileColors = [UcrWindowCapture]::Capture($handle, $profilePath)
+              $editorElements = $root.FindAll(
+                  [System.Windows.Automation.TreeScope]::Subtree,
+                  [System.Windows.Automation.Condition]::TrueCondition)
+              $editorLabels = @()
+              foreach ($element in $editorElements) {
+                  try {
+                      $name = $element.Current.Name
+                      if ($name) { $editorLabels += $name }
+                  } catch {}
+              }
+              $editorLabels | Set-Content -LiteralPath (Join-Path $directory 'Profile-UI-elements.txt')
+              Write-Host "Captured live profile editor: $profilePath ($profileColors colors, $($editorElements.Count) UIA elements)"
           }
           catch {
               $_ | Out-String | Set-Content -LiteralPath (Join-Path $directory 'capture-error.txt')
