@@ -220,7 +220,9 @@ namespace HidWizards.UCR.Core.Models
             {
                 var binding = DeviceBindings[i];
                 InputCache.Add(triggerInput && binding.IsBound &&
-                    !binding.IsDirectionalAndCondition ? short.MinValue : (short)0);
+                    !binding.IsDirectionalAndCondition &&
+                    binding.DeviceBindingCategory == DeviceBindingCategory.Range &&
+                    binding.InputExpressionInputKind != 0 ? short.MinValue : (short)0);
             }
             Multiplexer = new List<CallbackMultiplexer>();
             for (var i = 0; i < DeviceBindings.Count; i++)
