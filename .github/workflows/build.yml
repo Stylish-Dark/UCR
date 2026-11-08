@@ -483,6 +483,8 @@ jobs:
               [DllImport("user32.dll")]
               private static extern bool PrintWindow(IntPtr hwnd, IntPtr dc, uint flags);
               [DllImport("user32.dll")]
+              public static extern bool MoveWindow(IntPtr hwnd, int x, int y, int width, int height, bool repaint);
+              [DllImport("user32.dll")]
               private static extern bool SetCursorPos(int x, int y);
               [DllImport("user32.dll")]
               private static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
@@ -603,10 +605,15 @@ jobs:
 
               # Open the actual output-device picker so the visual audit can
               # configure a controller before testing four-way destinations.
+              [UcrWindowCapture]::MoveWindow($handle, -390, 0, 1200, 740, $true) | Out-Null
+              Start-Sleep -Milliseconds 400
               [UcrWindowCapture]::ClickAt($handle, 1106, 324)
               Start-Sleep -Milliseconds 950
               [UcrWindowCapture]::Capture(
                   $handle, (Join-Path $directory 'UCR-output-device-picker.png')) | Out-Null
+
+              [UcrWindowCapture]::MoveWindow($handle, 0, 0, 1200, 740, $true) | Out-Null
+              Start-Sleep -Milliseconds 400
 
               # Exercise the actual mapping-creation control and capture populated UI.
               # WPF mapping header controls are not exposed by UIA on this
