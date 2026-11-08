@@ -342,21 +342,12 @@
                                                             Click="InputNegated_OnClick"
                                                             Style="{StaticResource MappingNotToggle}"
                                                             ToolTip="Negate this Boolean input condition"/>
-                                                        <Button Grid.Column="2" Click="RemoveExpressionInput_OnClick"
+                                                        <Button Grid.Column="2" Click="RemoveOrClearInput_OnClick"
                                                             IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
-                                                            ToolTip="Remove input condition"
+                                                            ToolTip="Remove input (or clear the final binding)"
                                                             ToolTipService.ShowOnDisabled="True"
-                                                            Width="32" Height="32" Padding="0" Margin="2 0 0 0">
-                                                            <Button.Style>
-                                                                <Style TargetType="Button" BasedOn="{StaticResource UcrDeleteItemButton}">
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding DataContext.DeviceBindings.Count, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="1">
-                                                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </Button.Style>
-                                                        </Button>
+                                                            Width="32" Height="32" Padding="0" Margin="2 0 0 0"
+                                                            Style="{StaticResource UcrDeleteItemButton}"/>
                                                     </Grid>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
