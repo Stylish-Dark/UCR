@@ -609,6 +609,17 @@ jobs:
                   if ($i -eq 0) {
                       [UcrWindowCapture]::Capture(
                           $handle, (Join-Path $directory 'UCR-one-mapping.png')) | Out-Null
+                      # The visible output representation selector is at (690,403)
+                      # in the captured 1200x740 window. Select an axis output.
+                      [UcrWindowCapture]::ClickAt($handle, 691, 403)
+                      Start-Sleep -Milliseconds 900
+                      [UcrWindowCapture]::Capture(
+                          $handle, (Join-Path $directory 'UCR-axis-output.png')) | Out-Null
+                      # Switch the input representation to an axis as well.
+                      [UcrWindowCapture]::ClickAt($handle, 505, 403)
+                      Start-Sleep -Milliseconds 900
+                      [UcrWindowCapture]::Capture(
+                          $handle, (Join-Path $directory 'UCR-axis-to-axis.png')) | Out-Null
                   }
               }
               Start-Sleep -Seconds 2
