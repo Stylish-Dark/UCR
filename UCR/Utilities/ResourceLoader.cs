@@ -67,11 +67,11 @@ namespace HidWizards.UCR.Utilities
                             throw new InvalidDataException("External style " + key
                                 + " has an incompatible target type; expected " + fallback.TargetType);
 
-                        // Keep compiled base styling when a replaceable asset only supplies
-                        // the specialized setters. The external file does not have to
-                        // resolve application-wide MaterialDesign base styles itself.
-                        if (fallback != null && style.BasedOn == null && fallback.BasedOn != null)
-                            style.BasedOn = fallback.BasedOn;
+                        // External styles extend their compiled defaults rather
+                        // than recreating templates and state triggers. Keep the
+                        // previous Style object as the base before replacing its key.
+                        if (fallback != null && style.BasedOn == null)
+                            style.BasedOn = fallback;
 
                         style.Seal();
                         overrides.Add(new KeyValuePair<string, Style>(key, style));
