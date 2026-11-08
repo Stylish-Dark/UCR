@@ -46,6 +46,13 @@
                     <Ellipse Grid.Row="1" Grid.Column="1" Width="6" Height="6" HorizontalAlignment="Center" VerticalAlignment="Center"
                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"/>
                 </Grid>
+                <Canvas x:Name="FourWayDPad" Width="26" Height="23"
+                        Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Path Data="M 9,2 L 17,2 L 17,8 L 23,8 L 23,15 L 17,15 L 17,21 L 9,21 L 9,15 L 3,15 L 3,8 L 9,8 Z"
+                          Fill="Transparent"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"
+                          StrokeThickness="1.8" StrokeLineJoin="Round"/>
+                </Canvas>
                 <!-- Two unchanged solid dots. Keep explicit insets on every side:
                      the old glyph's right edge was flattened by clipping. -->
                 <Canvas x:Name="TwoDots" Width="26" Height="23" ClipToBounds="False"
@@ -60,6 +67,10 @@
                 </Canvas>
             </Grid>
             <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding}" Value="✣">
+                    <Setter TargetName="SingleGlyph" Property="Visibility" Value="Collapsed"/>
+                    <Setter TargetName="FourWayDPad" Property="Visibility" Value="Visible"/>
+                </DataTrigger>
                 <DataTrigger Binding="{Binding}" Value="↔↔">
                     <Setter TargetName="SingleGlyph" Property="Visibility" Value="Collapsed"/>
                     <Setter TargetName="StackedAxes" Property="Visibility" Value="Visible"/>
@@ -774,7 +785,7 @@
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
                                         Margin="6 0 0 0">
-                                <RadioButton Content="✣" Tag="1"
+                                <RadioButton Content="✣" Tag="1" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
                                              ToolTip="4-Way input" Click="InputRepresentation_OnClick"
                                              IsChecked="{Binding InputIsFullStick, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseInputFourWay}"
@@ -888,7 +899,7 @@
                                     <materialDesign:PackIcon Kind="Filter" Width="17" Height="17"
                                         Foreground="{StaticResource MappingTypeFilterBrush}"/>
                                 </RadioButton>
-                                <RadioButton Content="✣" Tag="1"
+                                <RadioButton Content="✣" Tag="1" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
                                              ToolTip="4-Way output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsFullStick, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseOutputFourWay}"

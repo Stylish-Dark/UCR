@@ -427,6 +427,7 @@
                     </Style>
             <!-- Built-in fallbacks for replaceable mapping selector and output inversion styles. -->
     <Style x:Key="DirectionalTypeChoice" TargetType="{x:Type RadioButton}">
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
         <Setter Property="Width" Value="34"/>
         <Setter Property="Height" Value="28"/>
         <Setter Property="Margin" Value="1 0"/>
@@ -446,6 +447,9 @@
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="Surface" Property="Background" Value="{DynamicResource PrimaryHueMidBrush}"/>
                             <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Surface" Property="BorderBrush" Value="#E0E0E0"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="Surface" Property="Background" Value="#1C1C1C"/>
