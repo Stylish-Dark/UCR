@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
 using Newtonsoft.Json;
@@ -17,6 +19,7 @@ namespace HidWizards.UCR.Core.Managers
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private readonly string _cacheRoot;
+        private readonly object _cacheLock = new object();
         private readonly Dictionary<string, List<Device>> _providerCache =
             new Dictionary<string, List<Device>>(StringComparer.OrdinalIgnoreCase);
 
@@ -61,27 +64,35 @@ namespace HidWizards.UCR.Core.Managers
         public List<Device> LoadProvider(string provider)
         {
             if (string.IsNullOrWhiteSpace(provider)) return new List<Device>();
-            if (_providerCache.TryGetValue(provider, out var cached)) return cached;
-
-            var result = new List<Device>();
-            string[] files;
-            try
+            lock (_cacheLock)
             {
-                files = Directory.GetFiles(GetProviderDirectory(provider), "*.json", SearchOption.TopDirectoryOnly);
-            }
-            catch (DirectoryNotFoundException)
-            {
-                return result;
-            }
+                if (_providerCache.TryGetValue(provider, out var cached)) return cached;
 
-            foreach (var file in files)
-            {
-                var device = Read(provider, file);
-                if (device != null) result.Add(device);
-            }
+                var result = new Dictionary<string, Device>(StringComparer.OrdinalIgnoreCase);
+                string[] files;
+                try
+                {
+                    files = Directory.GetFiles(GetProviderDirectory(provider), "*.json", SearchOption.TopDirectoryOnly);
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    return new List<Device>();
+                }
 
-            _providerCache[provider] = result;
-            return result;
+                foreach (var file in files)
+                {
+                    var device = Read(provider, file);
+                    if (device == null) continue;
+                    var canonicalName = GetDeviceFileName(device);
+                    if (!result.ContainsKey(canonicalName) ||
+                        string.Equals(Path.GetFileName(file), canonicalName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        result[canonicalName] = device;
+                    }
+                }
+
+                return _providerCache[provider] = result.Values.ToList();
+            }
         }
 
         public bool Save(Device device, List<DeviceBindingNode> bindingMenu)
@@ -90,57 +101,87 @@ namespace HidWizards.UCR.Core.Managers
             var providerDirectory = GetProviderDirectory(device.ProviderName);
             Directory.CreateDirectory(providerDirectory);
 
-            using (var streamWriter = new StreamWriter(GetDevicePath(device)))
+            var path = Path.Combine(providerDirectory, GetDeviceFileName(device));
+            var temporary = path + ".tmp-" + Guid.NewGuid().ToString("N");
+            lock (_cacheLock)
             {
-                var cache = new DeviceCache
+                try
                 {
-                    Title = device.Title,
-                    ProviderName = device.ProviderName,
-                    DeviceHandle = device.DeviceHandle,
-                    DeviceNumber = device.DeviceNumber,
-                    HidPath = device.HidPath,
-                    DeviceBindingMenu = bindingMenu
-                };
-                new JsonSerializer().Serialize(streamWriter, cache);
-            }
+                    var cache = new DeviceCache
+                    {
+                        Title = device.Title,
+                        ProviderName = device.ProviderName,
+                        DeviceHandle = device.DeviceHandle,
+                        DeviceNumber = device.DeviceNumber,
+                        HidPath = device.HidPath,
+                        DeviceBindingMenu = bindingMenu
+                    };
+                    using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                    using (var writer = new StreamWriter(stream))
+                    {
+                        new JsonSerializer().Serialize(writer, cache);
+                        writer.Flush();
+                        stream.Flush(true);
+                    }
 
-            _providerCache.Remove(device.ProviderName);
-            return true;
+                    if (File.Exists(path))
+                        File.Replace(temporary, path, null);
+                    else
+                        File.Move(temporary, path);
+
+                    _providerCache.Remove(device.ProviderName);
+                    return true;
+                }
+                finally
+                {
+                    try
+                    {
+                        File.Delete(temporary);
+                    }
+                    catch (Exception exception)
+                    {
+                        Logger.Warn(exception, "Failed to remove temporary device cache file: " + temporary);
+                    }
+                }
+            }
         }
 
         public int RemoveOverlapping(IEnumerable<Device> liveDevices)
         {
-            var live = (liveDevices ?? Enumerable.Empty<Device>()).Where(device => device != null).ToList();
-            if (live.Count == 0) return 0;
-
             var removed = 0;
-            var providers = live.Select(device => device.ProviderName)
-                .Where(provider => !string.IsNullOrWhiteSpace(provider))
-                .Distinct(StringComparer.OrdinalIgnoreCase);
+            var providers = (liveDevices ?? Enumerable.Empty<Device>())
+                .Where(device => !string.IsNullOrWhiteSpace(device?.ProviderName))
+                .GroupBy(device => device.ProviderName, StringComparer.OrdinalIgnoreCase);
 
-            foreach (var provider in providers)
+            lock (_cacheLock)
             {
-                var directory = GetProviderDirectory(provider);
-                if (!Directory.Exists(directory)) continue;
-
-                foreach (var path in Directory.GetFiles(directory, "*.json", SearchOption.TopDirectoryOnly))
+                foreach (var provider in providers)
                 {
-                    var cached = Read(provider, path);
-                    if (cached == null) continue;
-                    if (!live.Any(liveDevice => DeviceIdentity.CacheRepresentsLiveEndpoint(cached, liveDevice))) continue;
+                    var directory = GetProviderDirectory(provider.Key);
+                    if (!Directory.Exists(directory)) continue;
 
-                    try
+                    var replacements = provider.Select(device => new { Device = device, Name = GetDeviceFileName(device) })
+                        .Where(record => File.Exists(Path.Combine(directory, record.Name))).ToList();
+                    var current = new HashSet<string>(replacements.Select(record => record.Name), StringComparer.OrdinalIgnoreCase);
+                    foreach (var path in Directory.GetFiles(directory, "*.json", SearchOption.TopDirectoryOnly))
                     {
-                        File.Delete(path);
-                        removed++;
+                        if (current.Contains(Path.GetFileName(path))) continue;
+                        var cached = Read(provider.Key, path);
+                        if (cached == null || !replacements.Any(record => RepresentsSameEndpoint(cached, record.Device))) continue;
+
+                        try
+                        {
+                            File.Delete(path);
+                            removed++;
+                        }
+                        catch (Exception exception)
+                        {
+                            Logger.Error(exception, "Failed to remove stale device cache: " + path);
+                        }
                     }
-                    catch (Exception exception)
-                    {
-                        Logger.Error(exception, "Failed to remove stale device cache: " + path);
-                    }
+
+                    _providerCache.Remove(provider.Key);
                 }
-
-                _providerCache.Remove(provider);
             }
 
             return removed;
@@ -148,7 +189,18 @@ namespace HidWizards.UCR.Core.Managers
 
         public void ClearMemoryCache()
         {
-            _providerCache.Clear();
+            lock (_cacheLock)
+            {
+                _providerCache.Clear();
+            }
+        }
+
+        private static bool RepresentsSameEndpoint(Device cached, Device live)
+        {
+            if (!string.IsNullOrWhiteSpace(cached.HidPath) && !string.IsNullOrWhiteSpace(live.HidPath))
+                return DeviceIdentity.CacheRepresentsLiveEndpoint(cached, live);
+
+            return DeviceIdentity.DescriptorEquals(cached, live);
         }
 
         private Device Read(string provider, string path)
@@ -157,7 +209,7 @@ namespace HidWizards.UCR.Core.Managers
 
             try
             {
-                using (var fileStream = new FileStream(path, FileMode.Open))
+                using (var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete))
                 using (var reader = new StreamReader(fileStream))
                 {
                     var cache = JsonConvert.DeserializeObject<DeviceCache>(reader.ReadToEnd());
@@ -178,20 +230,22 @@ namespace HidWizards.UCR.Core.Managers
                 Logger.Error(exception, $"Invalid JSON in provider cache: {provider}. Path: {path}");
             }
 
-            try
-            {
-                File.Delete(path);
-            }
-            catch (Exception exception)
-            {
-                Logger.Error(exception, $"Failed to delete invalid cache file: {path}");
-            }
             return null;
         }
 
-        private string GetDevicePath(Device device)
+        private static string GetDeviceFileName(Device device)
         {
-            return Path.Combine(GetProviderDirectory(device.ProviderName), device.GetHashCode() + ".json");
+            var identity = JsonConvert.SerializeObject(new
+            {
+                Handle = device.DeviceHandle,
+                Number = device.DeviceNumber,
+                HidPath = device.HidPath?.ToUpperInvariant()
+            });
+            using (var sha256 = SHA256.Create())
+            {
+                return BitConverter.ToString(sha256.ComputeHash(Encoding.UTF8.GetBytes(identity)))
+                    .Replace("-", string.Empty) + ".json";
+            }
         }
 
         private string GetProviderDirectory(string provider)

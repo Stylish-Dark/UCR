@@ -1,5 +1,4 @@
-﻿using System;
-using System.Reflection;
+﻿using System.Reflection;
 using HidWizards.UCR.Core.Attributes;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
@@ -20,7 +19,6 @@ namespace HidWizards.UCR.Plugins.Remapper
         private readonly CircularDeadZoneHelper _circularDeadZoneHelper = new CircularDeadZoneHelper();
         private readonly DeadZoneHelper _deadZoneHelper = new DeadZoneHelper();
         private readonly SensitivityHelper _sensitivityHelper = new SensitivityHelper();
-        private double _linearSensitivityScaleFactor;
 
         [PluginGui("Invert X", Group = "X axis")]
         public bool InvertX { get; set; }
@@ -57,7 +55,7 @@ namespace HidWizards.UCR.Plugins.Remapper
             _deadZoneHelper.Percentage = DeadZone;
             _circularDeadZoneHelper.Percentage = DeadZone;
             _sensitivityHelper.Percentage = Sensitivity;
-            _linearSensitivityScaleFactor = ((double)Sensitivity / 100);
+            _sensitivityHelper.IsLinear = Linear;
         }
 
         public override void Update(params short[] values)
@@ -78,20 +76,9 @@ namespace HidWizards.UCR.Plugins.Remapper
             }
             if (Sensitivity != 100)
             {
-                if (Linear)
-                {
-                    outputValues[0] = (short) (outputValues[0] * _linearSensitivityScaleFactor);
-                    outputValues[1] = (short) (outputValues[1] * _linearSensitivityScaleFactor);
-                }
-                else
-                {
-                    outputValues[0] = _sensitivityHelper.ApplyRangeSensitivity(outputValues[0]);
-                    outputValues[1] = _sensitivityHelper.ApplyRangeSensitivity(outputValues[1]);
-                }
+                outputValues[0] = _sensitivityHelper.ApplyRangeSensitivity(outputValues[0]);
+                outputValues[1] = _sensitivityHelper.ApplyRangeSensitivity(outputValues[1]);
             }
-
-            outputValues[0] = Functions.ClampAxisRange(outputValues[0]);
-            outputValues[1] = Functions.ClampAxisRange(outputValues[1]);
 
             if (InvertX) outputValues[0] = Functions.Invert(outputValues[0]);
             if (InvertY) outputValues[1] = Functions.Invert(outputValues[1]);

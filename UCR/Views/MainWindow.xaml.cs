@@ -64,9 +64,20 @@ namespace HidWizards.UCR.Views
             DataContext = _dashboardViewModel;
             Context = context;
             InitializeComponent();
+            context.SubscriptionsManager.PropertyChanged += SubscriptionsManager_OnPropertyChanged;
             InitializeTrayIcon();
             _autoProfileMonitor = new AutoProfileMonitor(context);
             Loaded += MainWindow_OnWorkspaceLoaded;
+        }
+
+        private void SubscriptionsManager_OnPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(SubscriptionsManager.IsTransitionInProgress)) return;
+            // The dispatcher stays responsive during HidHide I/O, but these editors must not
+            // change bindings or device configuration in the subscription state being staged.
+            var canEdit = !Context.SubscriptionsManager.IsTransitionInProgress;
+            ProfileEditorHost.IsEnabled = canEdit;
+            NavigationHost.IsEnabled = canEdit;
         }
 
         private void MainWindow_OnWorkspaceLoaded(object sender, RoutedEventArgs e)
@@ -363,25 +374,23 @@ namespace HidWizards.UCR.Views
             ActivateSelectedProfile(true);
         }
 
-        private void ActivateSelectedProfile(bool alongside)
+        private async void ActivateSelectedProfile(bool alongside)
         {
-            if (!GetSelectedItem(out var profileItem)) return;
+            if (Context.SubscriptionsManager.IsTransitionInProgress || !GetSelectedItem(out var profileItem)) return;
             var success = alongside
-                ? Context.SubscriptionsManager.ActivateProfileAlongside(profileItem.Profile)
-                : Context.SubscriptionsManager.ActivateProfile(profileItem.Profile);
+                ? await Context.SubscriptionsManager.ActivateProfileAlongsideAsync(profileItem.Profile)
+                : await Context.SubscriptionsManager.ActivateProfileAsync(profileItem.Profile);
             if (success) return;
 
             HidWizards.UCR.Utilities.DarkMessageBox.Show(
-                alongside
-                    ? "The additional Profile could not be activated. The profiles that were already running have been restored."
-                    : (Context.SubscriptionsManager.LastActivationError ?? "The profile could not be activated. Check its configured input and output devices."),
+                Context.SubscriptionsManager.LastActivationError ?? "The profile could not be activated. See the log for more details.",
                 "Profile failed to activate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
         }
 
-        private void DeactivateProfile(object sender, RoutedEventArgs e)
+        private async void DeactivateProfile(object sender, RoutedEventArgs e)
         {
             if (!GetSelectedItem(out var profileItem)) return;
-            if (!Context.SubscriptionsManager.DeactivateProfile(profileItem.Profile))
+            if (!await Context.SubscriptionsManager.DeactivateProfileAsync(profileItem.Profile))
             {
                 HidWizards.UCR.Utilities.DarkMessageBox.Show("The Profile could not be deactivated, see the log for more details",
                     "Profile failed to deactivate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
@@ -420,11 +429,11 @@ namespace HidWizards.UCR.Views
             rule.Executable = Path.GetFileName(dialog.FileName);
         }
 
-        private void DeactivateCurrentProfile()
+        private async void DeactivateCurrentProfile()
         {
-            if (Context.ActiveProfiles.Count == 0) return;
+            if (!Context.SubscriptionsManager.CanStopProfiles) return;
 
-            if (!Context.SubscriptionsManager.DeactivateCurrentProfile())
+            if (!await Context.SubscriptionsManager.DeactivateCurrentProfileAsync())
             {
                 // TODO Move to dialog
                 HidWizards.UCR.Utilities.DarkMessageBox.Show("The active Profile could not be deactivated, see the log for more details", "Profile failed to deactivate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
@@ -650,7 +659,7 @@ namespace HidWizards.UCR.Views
             var result = (bool?)await DialogHost.Show(dialog, "RootDialog");
             if (result == null || !result.Value) return;
 
-            if (profileItem.Profile.IsActive() && !Context.SubscriptionsManager.DeactivateProfile(profileItem.Profile))
+            if (!await Context.SubscriptionsManager.DeactivateProfileAsync(profileItem.Profile))
             {
                 HidWizards.UCR.Utilities.DarkMessageBox.Show(this,
                     "The profile could not be stopped cleanly. See the log for more details.",
@@ -915,7 +924,7 @@ namespace HidWizards.UCR.Views
             ImportProfileListFromPath(dialog.FileName);
         }
 
-        private void ImportProfileListFromPath(string fileName)
+        private async void ImportProfileListFromPath(string fileName)
         {
             var choice = HidWizards.UCR.Utilities.DarkMessageBox.Show(this,
                 "How should the imported profile list be applied?\n\n" +
@@ -931,7 +940,7 @@ namespace HidWizards.UCR.Views
 
             try
             {
-                var importedCount = Context.ProfilesManager.ImportProfileList(fileName, mode);
+                var importedCount = await Context.ProfilesManager.ImportProfileListAsync(fileName, mode);
                 if (mode == ProfileListImportMode.Replace)
                 {
                     _dashboardViewModel.SelectedProfileItem = null;
@@ -960,6 +969,7 @@ namespace HidWizards.UCR.Views
         internal void PrepareForShutdown()
         {
             _autoProfileMonitor?.Dispose();
+            Context.SubscriptionsManager.PropertyChanged -= SubscriptionsManager_OnPropertyChanged;
             CloseNavigationPage(false);
             ClearEmbeddedProfileCache();
             if (_trayIcon != null) _trayIcon.Visible = false;
@@ -998,7 +1008,7 @@ namespace HidWizards.UCR.Views
             exitMenuItem.Click += (sender, args) => Dispatcher.BeginInvoke((Action)ExitFromTray);
             contextMenu.Opening += (sender, args) =>
             {
-                _stopCurrentProfileMenuItem.Enabled = Context.ActiveProfiles.Count > 0;
+                _stopCurrentProfileMenuItem.Enabled = Context.SubscriptionsManager.CanStopProfiles;
             };
             contextMenu.Items.Add(_stopCurrentProfileMenuItem);
             contextMenu.Items.Add(exitMenuItem);
@@ -1073,6 +1083,7 @@ namespace HidWizards.UCR.Views
         protected override void OnClosed(EventArgs e)
         {
             _autoProfileMonitor?.Dispose();
+            Context.SubscriptionsManager.PropertyChanged -= SubscriptionsManager_OnPropertyChanged;
 
             if (_trayIcon != null)
             {
@@ -1164,7 +1175,8 @@ namespace HidWizards.UCR.Views
                 handled = true;
                 return new IntPtr(1);
             }
-            if (!string.IsNullOrEmpty(argsString)) Context.ParseCommandLineArguments(argsString.Split(';'));
+            if (!string.IsNullOrEmpty(argsString))
+                Dispatcher.BeginInvoke(new Action(async () => await Context.ParseCommandLineArgumentsAsync(argsString.Split(';'))));
             RestoreFromTray();
             return IntPtr.Zero;
         }

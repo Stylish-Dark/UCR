@@ -218,19 +218,27 @@ namespace HidWizards.UCR.Views.Controls
             // graphical picker with trigger and axis-specific choices.
             try
             {
-            var configuration = GetSelectedDeviceConfiguration();
-            if (DeviceVisualCatalog.Describe(configuration, DeviceBinding.Profile, DeviceIoType.Output).Kind ==
-                DeviceVisualKind.Keyboard)
-            {
-                var mappingCard = FindAncestor<MappingCardControl>(this);
-                var bindingViewModel = DataContext as DeviceBindingViewModel;
-                if (mappingCard != null && bindingViewModel != null)
+                var configuration = GetSelectedOutputConfiguration();
+                if (configuration?.Device == null)
                 {
-                    await mappingCard.OpenQuickOutputPickerAsync(bindingViewModel, BindButton);
+                    HidWizards.UCR.Utilities.DarkMessageBox.Show(
+                        "Choose an available output device before binding a control.",
+                        "Output device unavailable", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
-            }
-            ShowOutputPicker(BindButton);
+
+                if (DeviceVisualCatalog.Describe(configuration, DeviceBinding.Profile, DeviceIoType.Output).Kind ==
+                    DeviceVisualKind.Keyboard)
+                {
+                    var mappingCard = FindAncestor<MappingCardControl>(this);
+                    var bindingViewModel = DataContext as DeviceBindingViewModel;
+                    if (mappingCard != null && bindingViewModel != null)
+                    {
+                        await mappingCard.OpenQuickOutputPickerAsync(bindingViewModel, BindButton);
+                        return;
+                    }
+                }
+                ShowOutputPicker(BindButton, configuration);
             }
             catch (Exception exception)
             {
@@ -271,7 +279,7 @@ namespace HidWizards.UCR.Views.Controls
                         DataContext as DeviceBindingViewModel, MenuButton);
                     return;
                 }
-                ShowOutputPicker(MenuButton);
+                ShowOutputPicker(MenuButton, GetSelectedOutputConfiguration());
                 return;
             }
             BuildContextMenu();
@@ -510,11 +518,10 @@ namespace HidWizards.UCR.Views.Controls
         }
 
         // Output controls come directly from the selected device's provider descriptors.
-        private void ShowOutputPicker(FrameworkElement target)
+        private void ShowOutputPicker(FrameworkElement target, DeviceConfiguration config)
         {
             if (_outputPicker != null) _outputPicker.IsOpen = false;
-            var config = GetSelectedDeviceConfiguration();
-            if (config?.Device == null || DeviceBinding?.Profile?.Context == null) return;
+            if (config?.Device == null || DeviceBinding.Profile.Context == null) return;
 
             var popup = new Popup
             {
@@ -536,7 +543,8 @@ namespace HidWizards.UCR.Views.Controls
                 as MappingViewModel;
             // Every output control remains selectable. Picking another category
             // automatically updates the mapping's inferred representation.
-            var nodes = config.Device.GetDeviceBindingMenu(DeviceBinding.Profile.Context,
+            var outputDevice = config.Device;
+            var nodes = outputDevice.GetDeviceBindingMenu(DeviceBinding.Profile.Context,
                 DeviceIoType.Output);
             var controls = FlattenControls(nodes)
                 .Where(node => node.DeviceBindingInfo != null &&
@@ -607,7 +615,7 @@ namespace HidWizards.UCR.Views.Controls
                     {
                         // Apply before closing. Replacing the output plug-in can
                         // invalidate the old binding view-model during a deferred callback.
-                        if (card.ApplyOutputControlChoice(bindingVm, config.Guid, selectedInfo))
+                        if (card.ApplyOutputControlChoice(bindingVm, config.Guid, outputDevice, selectedInfo))
                             popup.IsOpen = false;
                     }
                 };
@@ -677,7 +685,7 @@ namespace HidWizards.UCR.Views.Controls
                             var bindingVm = DataContext as DeviceBindingViewModel;
                             if (card != null && bindingVm != null)
                             {
-                                if (card.ApplyOutputControlChoice(bindingVm, config.Guid, selectedInfo, selectedSign))
+                                if (card.ApplyOutputControlChoice(bindingVm, config.Guid, outputDevice, selectedInfo, selectedSign))
                                     popup.IsOpen = false;
                             }
                         };
@@ -847,13 +855,11 @@ namespace HidWizards.UCR.Views.Controls
             };
         }
 
-        private DeviceConfiguration GetSelectedDeviceConfiguration()
+        private DeviceConfiguration GetSelectedOutputConfiguration()
         {
-            if (DeviceBinding?.Profile == null) return null;
-            var selected = DeviceSelectionBox?.SelectedItem as ComboBoxItemViewModel;
-            var configurationGuid = selected?.Value ?? DeviceBinding.DeviceConfigurationGuid;
-            var configuration = DeviceBinding.Profile.GetDeviceConfiguration(DeviceBinding.DeviceIoType, configurationGuid);
-            return configuration ?? DeviceBinding.Profile.GetPrimaryDeviceConfiguration(DeviceBinding.DeviceIoType);
+            var configurationGuid = DeviceBinding.DeviceConfigurationGuid;
+            if (configurationGuid == Guid.Empty) return null;
+            return DeviceBinding.Profile?.GetDeviceConfiguration(DeviceIoType.Output, configurationGuid);
         }
     }
 }

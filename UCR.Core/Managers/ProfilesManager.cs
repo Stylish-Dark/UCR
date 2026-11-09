@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
 using HidWizards.UCR.Core.Models;
@@ -238,42 +239,52 @@ namespace HidWizards.UCR.Core.Managers
         /// </summary>
         public int ImportProfileList(string filePath, ProfileListImportMode mode, List<Type> pluginTypes = null)
         {
+            var package = ReadProfileListImport(filePath, pluginTypes);
+            if (mode == ProfileListImportMode.Replace && _context.ActiveProfiles.Count > 0 &&
+                !_context.SubscriptionsManager.DeactivateCurrentProfile())
+                throw new InvalidOperationException("The active profiles could not be deactivated before replacing the profile list.");
+            return ApplyProfileListImport(package, mode);
+        }
+
+        public Task<int> ImportProfileListAsync(string filePath, ProfileListImportMode mode, List<Type> pluginTypes = null)
+        {
+            var package = ReadProfileListImport(filePath, pluginTypes);
+            if (mode == ProfileListImportMode.Replace)
+                return _context.SubscriptionsManager.StopBeforeReplacingProfilesAsync(() => ApplyProfileListImport(package, mode));
+            return Task.FromResult(ApplyProfileListImport(package, mode));
+        }
+
+        private ProfileExportPackage ReadProfileListImport(string filePath, List<Type> pluginTypes)
+        {
             ValidateFilePath(filePath);
             var package = DeserializeProfileListPackage(filePath, pluginTypes);
             ValidatePackage(package, ProfileExportKind.ProfileList);
+            return package;
+        }
 
+        private int ApplyProfileListImport(ProfileExportPackage package, ProfileListImportMode mode)
+        {
             if (mode == ProfileListImportMode.Merge)
             {
                 RegenerateIdentities(package.Profiles);
                 _context.DevicesManager.MergeDeviceAliases(package.DeviceAliases, false);
-                foreach (var profile in package.Profiles)
-                {
-                    profile.PostLoad(_context);
-                    profile.MigrateLegacyChildProfilesToMappingGroups();
-                    _profiles.Add(profile);
-                }
             }
             else if (mode == ProfileListImportMode.Replace)
             {
-                if (_context.ActiveProfiles.Count > 0 && !_context.SubscriptionsManager.DeactivateCurrentProfile())
-                {
-                    throw new InvalidOperationException("The active profiles could not be deactivated before replacing the profile list.");
-                }
-
                 _profiles.Clear();
                 _context.DevicesManager.ReplaceDeviceAliases(package.DeviceAliases);
-                foreach (var profile in package.Profiles)
-                {
-                    profile.PostLoad(_context);
-                    profile.MigrateLegacyChildProfilesToMappingGroups();
-                    _profiles.Add(profile);
-                }
             }
             else
             {
                 throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown profile-list import mode.");
             }
 
+            foreach (var profile in package.Profiles)
+            {
+                profile.PostLoad(_context);
+                profile.MigrateLegacyChildProfilesToMappingGroups();
+                _profiles.Add(profile);
+            }
             _context.ContextChanged();
             return package.Profiles.Count;
         }

@@ -23,10 +23,22 @@ namespace HidWizards.UCR.Plugins.Remapper
         public override void Update(params short[] values)
         {
             if (values == null || values.Length < 4) return;
-            WriteOutput(0, (short)((InvertY ? values[1] : values[0]) != 0 ? 1 : 0));
-            WriteOutput(1, (short)((InvertY ? values[0] : values[1]) != 0 ? 1 : 0));
-            WriteOutput(2, (short)((InvertX ? values[3] : values[2]) != 0 ? 1 : 0));
-            WriteOutput(3, (short)((InvertX ? values[2] : values[3]) != 0 ? 1 : 0));
+            WriteDirectionPair(0, values[InvertY ? 1 : 0] != 0, values[InvertY ? 0 : 1] != 0);
+            WriteDirectionPair(2, values[InvertX ? 3 : 2] != 0, values[InvertX ? 2 : 3] != 0);
+        }
+
+        private void WriteDirectionPair(int negativeOutput, bool negativePressed, bool positivePressed)
+        {
+            // Release the opposite direction first so a switch cannot emit both at once.
+            if (positivePressed && !negativePressed)
+            {
+                WriteOutput(negativeOutput, 0);
+                WriteOutput(negativeOutput + 1, 1);
+                return;
+            }
+
+            WriteOutput(negativeOutput + 1, 0);
+            WriteOutput(negativeOutput, (short)(negativePressed && !positivePressed ? 1 : 0));
         }
     }
 }

@@ -298,25 +298,31 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         #region Profile
 
-        private void ActivateProfile(object sender, RoutedEventArgs e)
+        private async void ActivateProfile(object sender, RoutedEventArgs e)
         {
-            if (!Profile.ActivateProfile())
+            if (!await Context.SubscriptionsManager.ActivateProfileAsync(Profile))
             {
-                HidWizards.UCR.Utilities.DarkMessageBox.Show("The Profile could not be activated, see the log for more details", "Profile failed to activate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                HidWizards.UCR.Utilities.DarkMessageBox.Show(Context.SubscriptionsManager.LastActivationError ??
+                    "The profile could not be activated. See the log for more details.", "Profile failed to activate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
             }
         }
 
-        private void ActivateProfileAlongside(object sender, RoutedEventArgs e)
+        private async void ActivateProfileAlongside(object sender, RoutedEventArgs e)
         {
-            if (!Profile.ActivateProfileAlongside())
+            if (!await Context.SubscriptionsManager.ActivateProfileAlongsideAsync(Profile))
             {
-                HidWizards.UCR.Utilities.DarkMessageBox.Show("The additional Profile could not be activated. The profiles that were already running have been restored.", "Profile failed to activate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                HidWizards.UCR.Utilities.DarkMessageBox.Show(Context.SubscriptionsManager.LastActivationError ??
+                    "The profile could not be activated. See the log for more details.", "Profile failed to activate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
             }
         }
 
-        private void DeactivateProfile(object sender, RoutedEventArgs e)
+        private async void DeactivateProfile(object sender, RoutedEventArgs e)
         {
-            Profile.Deactivate();
+            if (!await Context.SubscriptionsManager.DeactivateProfileAsync(Profile))
+            {
+                HidWizards.UCR.Utilities.DarkMessageBox.Show("The profile could not be stopped cleanly. See the log for more details.",
+                    "Profile failed to deactivate!", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+            }
         }
 
         #endregion

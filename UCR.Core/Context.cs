@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Xml.Serialization;
 using HidWizards.IOWrapper.Core;
@@ -48,7 +49,6 @@ namespace HidWizards.UCR.Core
         internal bool IsNotSaved { get; private set; }
         internal IOController IOController { get; set; }
         [XmlIgnore] internal ContextStore Store { get; private set; }
-        private OptionSet options;
         public Context() : this(ContextStore.CreateDefault())
         {
         }
@@ -57,7 +57,6 @@ namespace HidWizards.UCR.Core
         {
             Store = store ?? throw new ArgumentNullException(nameof(store));
             Init();
-            SetCommandLineOptions();
         }
 
         private void Init()
@@ -82,24 +81,33 @@ namespace HidWizards.UCR.Core
             BindingManager = new BindingManager(this);
         }
 
-        private void SetCommandLineOptions()
+        private List<Profile> GetCommandLineProfiles(IEnumerable<string> args)
         {
-            options = new OptionSet {
-                { "p|profile=", "The profile to search for", FindAndLoadProfile }
+            var profiles = new List<Profile>();
+            var options = new OptionSet
+            {
+                { "p|profile=", "The profile to search for", profileString =>
+                    {
+                        Logger.Debug($"Searching for profile to load: {{{profileString}}}");
+                        var profile = ProfilesManager.FindProfile(profileString.Split(',').ToList());
+                        if (profile != null) profiles.Add(profile);
+                    }
+                }
             };
-        }
-
-        private void FindAndLoadProfile(string profileString)
-        {
-            Logger.Debug($"Searching for profile to load: {{{profileString}}}");
-            var search = profileString.Split(',').ToList();
-            var profile = ProfilesManager.FindProfile(search);
-            if (profile != null) SubscriptionsManager.ActivateProfile(profile);
+            options.Parse(args);
+            return profiles;
         }
 
         public void ParseCommandLineArguments(IEnumerable<string> args)
         {
-            options.Parse(args);
+            foreach (var profile in GetCommandLineProfiles(args))
+                SubscriptionsManager.ActivateProfile(profile);
+        }
+
+        public async Task ParseCommandLineArgumentsAsync(IEnumerable<string> args)
+        {
+            foreach (var profile in GetCommandLineProfiles(args))
+                await SubscriptionsManager.ActivateProfileAsync(profile);
         }
 
         public List<Plugin> GetPlugins()
@@ -202,6 +210,14 @@ namespace HidWizards.UCR.Core
             BindingManager?.Dispose();
             SubscriptionsManager.Dispose();
             IOController?.Dispose();
+        }
+
+        public async Task DisposeAsync()
+        {
+            DevicesManager?.CancelInputDeviceDetection();
+            BindingManager?.Dispose();
+            try { await SubscriptionsManager.DisposeAsync(); }
+            finally { IOController?.Dispose(); }
         }
 
         public static T DeepClone<T>(T obj)

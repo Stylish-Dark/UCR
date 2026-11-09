@@ -73,6 +73,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 DeviceBindingCategory = value == 0 ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
                 SelectCompatibleInputDeviceAfterTypeChange();
                 OnPropertyChanged(nameof(DeviceBindingCategory));
+                OnPropertyChanged(nameof(BindingActionToolTip));
                 OnPropertyChanged(nameof(ShowInvertInput));
                 OnPropertyChanged(nameof(CanBindCurrentDevice));
                 OnPropertyChanged(nameof(DirectionalNegationVisibility));
@@ -252,11 +253,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
-        public string BindingActionToolTip => DeviceBinding.DeviceIoType == DeviceIoType.Output
-            ? "Choose a supported output control from this device."
+        public string BindingActionToolTip => DeviceBinding?.DeviceIoType == DeviceIoType.Output
+            ? "Choose an output control from this device."
             : DeviceBindingCategory == DeviceBindingCategory.Range
-                ? "Move the joystick or squeeze a trigger to detect its axis. Press Esc to cancel."
-                : "Press an input control to bind it. Press Esc to cancel.";
+                ? "Click to bind an input axis."
+                : "Click to bind an input control.";
 
         public bool MenuOnLeft => DeviceBinding?.InputDirectionSlot == 1 ||
             DeviceBinding?.InputDirectionSlot == 3;
@@ -337,8 +338,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Input)
                     return "Bind";
                 if (string.IsNullOrWhiteSpace(label)) return label;
-                var playStationButton = DeviceVisualCatalog.GetDirectInputPlayStationBindingLabel(DeviceBinding);
-                if (playStationButton != null) return playStationButton;
+                var directInputLabel = DeviceVisualCatalog.GetDirectInputBindingLabel(DeviceBinding, label);
+                if (directInputLabel != null) return directInputLabel;
                 // The device picker already identifies the device and the binding
                 // menu owns category names. In a compact slot, show the control:
                 // "Axes, LS X+" -> "LS X+", "Buttons, A" -> "A". Preserve
@@ -825,6 +826,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 RefreshDeviceList();
                 OnPropertyChanged(nameof(InputExpressionInputKind));
                 OnPropertyChanged(nameof(DeviceBindingCategory));
+                OnPropertyChanged(nameof(BindingActionToolTip));
                 OnPropertyChanged(nameof(InputTypeDetailsVisibility));
             }
 

@@ -1,4 +1,5 @@
-﻿using HidWizards.UCR.Core.Attributes;
+﻿using System.Threading;
+using HidWizards.UCR.Core.Attributes;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
 
@@ -18,15 +19,26 @@ namespace HidWizards.UCR.Plugins.Filter
         public FilterMode FilterStateUp { get; set; }
 
 
+        private int _pressed;
+
         public ButtonToFilter()
         {
             FilterStateDown = FilterMode.Active;
             FilterStateUp = FilterMode.Inactive;
         }
 
+        public override void OnDeactivate()
+        {
+            Interlocked.Exchange(ref _pressed, 0);
+        }
+
         public override void Update(params short[] values)
         {
-            ChangeState(values[0] == 0 ? FilterStateUp : FilterStateDown);
+            var pressed = values[0] == 0 ? 0 : 1;
+            var previous = Interlocked.Exchange(ref _pressed, pressed);
+            var state = pressed == 0 ? FilterStateUp : FilterStateDown;
+            if (state != FilterMode.Toggle || previous != pressed)
+                ChangeState(state);
         }
 
         private void ChangeState(FilterMode filterState)

@@ -4,6 +4,8 @@ using System.Linq;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Threading;
 using HidWizards.IOWrapper.DataTransferObjects;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Models;
@@ -33,15 +35,23 @@ namespace HidWizards.UCR.Core.Managers
         internal SubscriptionState SubscriptionState { get; set; }
         private readonly Context _context;
         private readonly ExclusiveDeviceModeManager _exclusiveMode;
+        private readonly Dispatcher _dispatcher;
+        private readonly SemaphoreSlim _transitionGate = new SemaphoreSlim(1);
+        private readonly List<Func<bool>> _failedUnsubscriptions = new List<Func<bool>>();
+        private bool _exclusiveCleanupPending;
+        private bool _disposed;
         private const int EmergencyStopHoldMilliseconds = 3000;
+        private const string DirectInputProviderName = "SharpDX_DirectInput";
         private readonly object _emergencyStopLock = new object();
         private readonly Dictionary<string, Timer> _emergencyStopTimers = new Dictionary<string, Timer>(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _emergencyStopDeviceKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private int _emergencyStopInProgress;
+        private int _emergencyStopGeneration;
 
         public SubscriptionsManager(Context context)
         {
             _context = context;
+            _dispatcher = Dispatcher.CurrentDispatcher;
             _exclusiveMode = new ExclusiveDeviceModeManager();
         }
 
@@ -65,74 +75,219 @@ namespace HidWizards.UCR.Core.Managers
 
         public string LastActivationError { get; private set; }
 
+        public Task RecoverExclusiveModeAsync()
+        {
+            return _exclusiveMode.RecoverAsync();
+        }
+
+        public bool IsTransitionInProgress => _transitionGate.CurrentCount == 0;
+        public bool IsAutomaticTransition { get; private set; }
+        public bool CanStopProfiles => IsTransitionInProgress || _context.ActiveProfiles.Count > 0 ||
+                                       _failedUnsubscriptions.Count > 0 || _exclusiveCleanupPending;
+
         public bool ActivateProfile(Profile profile, bool refreshDevices = true)
         {
-            if (profile == null) return false;
+            return RunSynchronously(() => ActivateProfileCoreAsync(profile, refreshDevices, false));
+        }
+
+        public Task<bool> ActivateProfileAsync(Profile profile, bool refreshDevices = true)
+        {
+            return RunTransitionAsync(() => ActivateProfileCoreAsync(profile, refreshDevices, true));
+        }
+
+        private Task<bool> ActivateProfileCoreAsync(Profile profile, bool refreshDevices, bool runHidHideInBackground)
+        {
+            if (profile == null) return Task.FromResult(false);
             var activeProfiles = GetActiveProfiles();
             var alreadyExclusive = activeProfiles.Count == 1 && activeProfiles[0].Guid == profile.Guid;
-            if (alreadyExclusive && !refreshDevices) return true;
+            if (alreadyExclusive && !refreshDevices) return Task.FromResult(true);
 
             Logger.Info((alreadyExclusive ? "Rebuilding active profile after device refresh: {" : "Activating profile exclusively: {") +
                         profile.ProfileBreadCrumbs() + "}");
-            return RebuildActiveProfiles(new List<Profile> { profile }, refreshDevices, profile);
+            return RebuildActiveProfilesAsync(new List<Profile> { profile }, refreshDevices, profile, runHidHideInBackground);
         }
 
         public bool ActivateProfileAlongside(Profile profile, bool refreshDevices = true)
         {
-            if (profile == null) return false;
+            return RunSynchronously(() => ActivateAlongsideCoreAsync(profile, refreshDevices, false));
+        }
+
+        public Task<bool> ActivateProfileAlongsideAsync(Profile profile, bool refreshDevices = true)
+        {
+            return RunTransitionAsync(() => ActivateAlongsideCoreAsync(profile, refreshDevices, true));
+        }
+
+        public Task ActivateAutomaticProfileAsync(Profile profile, Func<bool> shouldActivate, Action<bool> completed)
+        {
+            return RunAutomaticTransitionAsync(shouldActivate, () => ActivateAlongsideCoreAsync(profile, true, true), completed);
+        }
+
+        public Task DeactivateAutomaticProfileAsync(Profile profile, Func<bool> shouldDeactivate, Action<bool> completed)
+        {
+            return RunAutomaticTransitionAsync(shouldDeactivate, () => DeactivateProfileCoreAsync(profile, true), completed);
+        }
+
+        private Task RunAutomaticTransitionAsync(Func<bool> shouldRun, Func<Task<bool>> operation, Action<bool> completed)
+        {
+            return RunTransitionAsync(async () =>
+            {
+                if (!shouldRun()) return false;
+                IsAutomaticTransition = true;
+                try
+                {
+                    var success = await operation();
+                    completed(success);
+                    return success;
+                }
+                finally
+                {
+                    IsAutomaticTransition = false;
+                }
+            });
+        }
+
+        private Task<bool> ActivateAlongsideCoreAsync(Profile profile, bool refreshDevices, bool runHidHideInBackground)
+        {
+            if (profile == null) return Task.FromResult(false);
             var targetProfiles = GetActiveProfiles().ToList();
             var alreadyActive = targetProfiles.Any(active => active.Guid == profile.Guid);
             if (!alreadyActive) targetProfiles.Add(profile);
-            else if (!refreshDevices) return true;
+            else if (!refreshDevices) return Task.FromResult(true);
 
-            Logger.Info((alreadyActive ? "Rebuilding multi-profile runtime: {" : "Explicitly adding profile alongside active set: {") +
+            Logger.Info((alreadyActive ? "Rebuilding multi-profile runtime: {" : "Adding profile alongside active set: {") +
                         profile.ProfileBreadCrumbs() + "}");
-            return RebuildActiveProfiles(targetProfiles, refreshDevices, profile);
+            return RebuildActiveProfilesAsync(targetProfiles, refreshDevices, profile, runHidHideInBackground);
         }
 
         public bool RefreshActiveProfile(Profile profile)
         {
-            if (profile == null || !IsProfileActive(profile.Guid)) return false;
+            return RunSynchronously(() => RefreshActiveProfileCoreAsync(profile, false));
+        }
+
+        public Task<bool> RefreshActiveProfileAsync(Profile profile)
+        {
+            return RunTransitionAsync(() => RefreshActiveProfileCoreAsync(profile, true));
+        }
+
+        private Task<bool> RefreshActiveProfileCoreAsync(Profile profile, bool runHidHideInBackground)
+        {
+            if (profile == null || !IsProfileActive(profile.Guid)) return Task.FromResult(false);
             Logger.Info("Refreshing active profile after runtime configuration change: {" +
                         profile.ProfileBreadCrumbs() + "}");
-            return RebuildActiveProfiles(GetActiveProfiles().ToList(), false, profile);
+            return RebuildActiveProfilesAsync(GetActiveProfiles().ToList(), false, profile, runHidHideInBackground);
         }
 
         public bool DeactivateProfile(Profile profile)
         {
+            return RunSynchronously(() => DeactivateProfileCoreAsync(profile, false));
+        }
+
+        public Task<bool> DeactivateProfileAsync(Profile profile)
+        {
+            return RunTransitionAsync(() => DeactivateProfileCoreAsync(profile, true));
+        }
+
+        private async Task<bool> DeactivateProfileCoreAsync(Profile profile, bool runHidHideInBackground)
+        {
             if (profile == null) return true;
             var activeProfiles = GetActiveProfiles();
             var targetProfiles = activeProfiles.Where(active => active.Guid != profile.Guid).ToList();
-            if (targetProfiles.Count == activeProfiles.Count) return true;
+            if (targetProfiles.Count == activeProfiles.Count)
+            {
+                // The logical profile may already be inactive after an incomplete stop. Retry any
+                // outstanding provider cleanup and reconcile HidHide if the runtime is empty.
+                var cleaned = RetryFailedUnsubscriptions();
+                return (targetProfiles.Count > 0 || await ReleaseExclusiveModeAsync(runHidHideInBackground)) && cleaned;
+            }
+
             Logger.Info("Removing profile from active set: {" + profile.ProfileBreadCrumbs() + "}");
-            return RebuildActiveProfiles(targetProfiles, false, profile);
+            var stopped = await RebuildActiveProfilesAsync(targetProfiles, false, profile, runHidHideInBackground);
+            return stopped && _failedUnsubscriptions.Count == 0;
         }
 
         public bool DeactivateCurrentProfile()
         {
-            CancelEmergencyStopTimers();
-            if (SubscriptionState == null)
-            {
-                _context.SetActiveProfiles(Enumerable.Empty<Profile>());
-                ProfileActive = false;
-                return _exclusiveMode.Apply(Enumerable.Empty<Profile>());
-            }
-
-            var state = SubscriptionState;
-            var success = !state.IsActive || DeactivateProfile(state);
-            SubscriptionState = null;
-            _context.SetActiveProfiles(Enumerable.Empty<Profile>());
-            ProfileActive = false;
-            _context.OnActiveProfileChangedEvent(null);
-            return _exclusiveMode.Apply(Enumerable.Empty<Profile>()) && success;
+            return RunSynchronously(() => StopAllProfilesCoreAsync(false));
         }
 
-        private bool RebuildActiveProfiles(IList<Profile> targetProfiles, bool refreshDevices, Profile changedProfile)
+        public Task<bool> DeactivateCurrentProfileAsync()
+        {
+            return RunTransitionAsync(() => StopAllProfilesCoreAsync(true));
+        }
+
+        internal Task<T> StopBeforeReplacingProfilesAsync<T>(Func<T> replace)
+        {
+            return RunTransitionAsync(async () =>
+            {
+                if (!await StopAllProfilesCoreAsync(true))
+                    throw new InvalidOperationException("The active profiles could not be deactivated before replacing the profile list.");
+                return replace();
+            });
+        }
+
+        private Task<bool> StopAllProfilesCoreAsync(bool runHidHideInBackground)
+        {
+            CancelEmergencyStopTimers();
+            return RebuildActiveProfilesAsync(new List<Profile>(), false, null, runHidHideInBackground);
+        }
+
+        private bool RunSynchronously(Func<Task<bool>> operation)
+        {
+            _dispatcher.VerifyAccess();
+            if (_disposed || !_transitionGate.Wait(0)) return false;
+            try
+            {
+                return operation().GetAwaiter().GetResult();
+            }
+            finally
+            {
+                _transitionGate.Release();
+            }
+        }
+
+        private async Task<T> RunTransitionAsync<T>(Func<Task<T>> operation)
+        {
+            _dispatcher.VerifyAccess();
+            await _transitionGate.WaitAsync();
+            try
+            {
+                if (_disposed) return default(T);
+                NotifyTransitionState();
+                return await operation();
+            }
+            finally
+            {
+                _transitionGate.Release();
+                NotifyTransitionState();
+            }
+        }
+
+        private void NotifyTransitionState()
+        {
+            OnPropertyChanged(nameof(IsTransitionInProgress));
+            OnPropertyChanged(nameof(CanStopProfiles));
+        }
+
+        private Task<bool> ApplyExclusiveModeAsync(IList<Profile> profiles, bool runInBackground)
+        {
+            return runInBackground ? _exclusiveMode.ApplyAsync(profiles) : Task.FromResult(_exclusiveMode.Apply(profiles));
+        }
+
+        private async Task<bool> ReleaseExclusiveModeAsync(bool runInBackground)
+        {
+            var released = await ApplyExclusiveModeAsync(new List<Profile>(), runInBackground);
+            _exclusiveCleanupPending = !released;
+            return released;
+        }
+
+        private async Task<bool> RebuildActiveProfilesAsync(IList<Profile> targetProfiles, bool refreshDevices,
+            Profile changedProfile, bool runHidHideInBackground)
         {
             LastActivationError = null;
             targetProfiles = NormalizeProfiles(targetProfiles);
             var previousProfiles = NormalizeProfiles(GetActiveProfiles().ToList());
             var previousState = SubscriptionState;
+            var pendingCleanupSuccess = RetryFailedUnsubscriptions();
 
             if (refreshDevices)
             {
@@ -152,10 +307,10 @@ namespace HidWizards.UCR.Core.Managers
                 SubscriptionState = null;
                 _context.SetActiveProfiles(Enumerable.Empty<Profile>());
                 ProfileActive = false;
-                var released = _exclusiveMode.Apply(Enumerable.Empty<Profile>());
+                var released = await ReleaseExclusiveModeAsync(runHidHideInBackground);
                 if (!released) Logger.Error("Exclusive Device Mode cleanup failed on profile stop.");
                 _context.OnActiveProfileChangedEvent(changedProfile);
-                return stopSuccess && released;
+                return stopSuccess && released && pendingCleanupSuccess;
             }
 
             foreach (var profile in targetProfiles)
@@ -191,32 +346,32 @@ namespace HidWizards.UCR.Core.Managers
                 if (candidate.IsActive) DeactivateProfile(candidate);
                 SubscriptionState = null;
 
-                if (previousProfiles.Count > 0 && RestorePreviousProfiles(previousProfiles, changedProfile))
+                if (previousProfiles.Count > 0 && await RestorePreviousProfilesAsync(previousProfiles, changedProfile, runHidHideInBackground))
                 {
                     Logger.Warn("Previous active profile set restored after activation failure.");
                 }
                 else
                 {
-                    ClearFailedState(null, changedProfile);
+                    if (previousProfiles.Count > 0) LastActivationError += " The previous profiles could not be restored.";
+                    await ClearFailedStateAsync(changedProfile, runHidHideInBackground);
                 }
                 return false;
             }
 
             // Hide the physical controller only after its input subscriptions exist.
             // If HidHide is unavailable, do not claim the requested exclusive profile started.
-            if (!_exclusiveMode.Apply(targetProfiles))
+            if (!await ApplyExclusiveModeAsync(targetProfiles, runHidHideInBackground))
             {
                 LastActivationError = "Exclusive Device Mode could not be applied. Check HidHide availability and device permissions.";
                 Logger.Error("Unable to apply Exclusive Device Mode; restoring the previous profile.");
                 DeactivateProfile(candidate);
                 SubscriptionState = null;
-                if (previousProfiles.Count > 0 && RestorePreviousProfiles(previousProfiles, changedProfile))
-                    return false;
-                // A failed HidHide write may have partially hidden a controller.
-                // Recover our ownership journal before leaving UCR inactive.
-                if (!_exclusiveMode.Apply(Enumerable.Empty<Profile>()))
-                    Logger.Error("Exclusive Device Mode cleanup failed after activation rollback.");
-                ClearFailedState(null, changedProfile);
+                if (previousProfiles.Count > 0)
+                {
+                    if (await RestorePreviousProfilesAsync(previousProfiles, changedProfile, runHidHideInBackground)) return false;
+                    LastActivationError += " The previous profiles could not be restored.";
+                }
+                await ClearFailedStateAsync(changedProfile, runHidHideInBackground);
                 return false;
             }
             FinalizeNewState(targetProfiles, candidate, changedProfile);
@@ -255,7 +410,8 @@ namespace HidWizards.UCR.Core.Managers
             return null;
         }
 
-        private bool RestorePreviousProfiles(IList<Profile> previousProfiles, Profile changedProfile)
+        private async Task<bool> RestorePreviousProfilesAsync(IList<Profile> previousProfiles, Profile changedProfile,
+            bool runHidHideInBackground)
         {
             var rollback = BuildSubscriptionState(previousProfiles);
             if (rollback == null) return false;
@@ -265,15 +421,22 @@ namespace HidWizards.UCR.Core.Managers
                 return false;
             }
 
-            if (!_exclusiveMode.Apply(previousProfiles))
+            if (!await ApplyExclusiveModeAsync(previousProfiles, runHidHideInBackground))
+            {
                 Logger.Error("Unable to restore Exclusive Device Mode for previous profiles.");
+                DeactivateProfile(rollback);
+                return false;
+            }
             FinalizeNewState(previousProfiles, rollback, changedProfile);
             return true;
         }
 
-        private void ClearFailedState(SubscriptionState state, Profile changedProfile)
+        private async Task ClearFailedStateAsync(Profile changedProfile, bool runHidHideInBackground)
         {
-            if (state != null && state.IsActive) DeactivateProfile(state);
+            // A failed driver operation may have changed the cloak before it failed. Recover the
+            // ownership journal before reporting that no profiles are active.
+            if (!await ReleaseExclusiveModeAsync(runHidHideInBackground))
+                Logger.Error("Exclusive Device Mode cleanup failed after activation rollback.");
             SubscriptionState = null;
             _context.SetActiveProfiles(Enumerable.Empty<Profile>());
             ProfileActive = false;
@@ -282,12 +445,15 @@ namespace HidWizards.UCR.Core.Managers
 
         private void FinalizeNewState(IList<Profile> profiles, SubscriptionState subscriptionState, Profile changedProfile)
         {
+            _exclusiveCleanupPending = false;
             SubscriptionState = subscriptionState;
             _context.SetActiveProfiles(profiles);
 
             foreach (var mapping in subscriptionState.MappingSubscriptions)
             {
                 if (mapping.Overriden) continue;
+                if (mapping.PluginSubscriptions.Any(subscription => subscription.Plugin.InitializeFromAxisSnapshot))
+                    SeedDirectInputAxisSnapshots(mapping);
                 foreach (var pluginSubscription in mapping.PluginSubscriptions)
                 {
                     pluginSubscription.Plugin.InitializeCacheValues();
@@ -300,6 +466,46 @@ namespace HidWizards.UCR.Core.Managers
             Logger.Info("Active profile set rebuilt: " + string.Join(", ", profiles.Select(profile => profile.Title)));
         }
 
+        private void SeedDirectInputAxisSnapshots(MappingSubscription mapping)
+        {
+            var axes = mapping.DeviceBindingSubscriptions.Where(subscription =>
+            {
+                var request = subscription.SubscribedRequest;
+                return request != null && request.BindingDescriptor.Type == BindingType.Axis &&
+                       string.Equals(request.ProviderDescriptor.ProviderName, DirectInputProviderName,
+                           StringComparison.OrdinalIgnoreCase);
+            }).ToList();
+            if (axes.Count == 0) return;
+
+            // The snapshot API is additive. Older DirectInput builds continue to supply inputs
+            // through the existing callbacks, with no dependency on this optional method.
+            var provider = _context.IOController.GetProvider(axes[0].SubscribedRequest.ProviderDescriptor.ProviderName);
+            var readAxis = provider?.GetType().GetMethod("TryGetCurrentAxis", new[]
+            {
+                typeof(DeviceDescriptor), typeof(BindingDescriptor), typeof(short).MakeByRefType()
+            });
+            if (readAxis == null || readAxis.ReturnType != typeof(bool)) return;
+
+            foreach (var axis in axes)
+            {
+                var request = axis.SubscribedRequest;
+                var arguments = new object[] { request.DeviceDescriptor, request.BindingDescriptor, (short)0 };
+                short? value = null;
+                try
+                {
+                    if ((bool)readAxis.Invoke(provider, arguments)) value = (short)arguments[2];
+                }
+                catch (Exception exception)
+                {
+                    Logger.Warn(exception, "Unable to read the initial DirectInput axis value.");
+                }
+
+                // A live report takes precedence. If neither source has a sample, leave the
+                // filter uninitialised until its first real report instead of toggling on zero.
+                mapping.Mapping.SeedInitialAxisSnapshot(axis.DeviceBinding, value);
+            }
+        }
+
         public bool DeactivateProfile(SubscriptionState state)
         {
             if (state == null) return true;
@@ -310,7 +516,7 @@ namespace HidWizards.UCR.Core.Managers
             // Block Unmapped Inputs. Remove these first so normal input is restored immediately.
             foreach (var safetySubscription in state.SafetyInputSubscriptions.ToList())
             {
-                success &= UnsubscribeDeviceBindingInput(state, safetySubscription);
+                success &= UnsubscribeDeviceBindingInput(safetySubscription);
             }
             state.SafetyInputSubscriptions.Clear();
 
@@ -320,7 +526,7 @@ namespace HidWizards.UCR.Core.Managers
 
                 foreach (var deviceBindingSubscription in mappingSubscription.DeviceBindingSubscriptions)
                 {
-                    success &= UnsubscribeDeviceBindingInput(state, deviceBindingSubscription);
+                    success &= UnsubscribeDeviceBindingInput(deviceBindingSubscription);
                 }
 
                 foreach (var pluginSubscription in mappingSubscription.PluginSubscriptions)
@@ -334,10 +540,10 @@ namespace HidWizards.UCR.Core.Managers
             {
                 foreach (var shadowDeviceSubscription in deviceConfigurationSubscription.ShadowDeviceSubscriptions)
                 {
-                    success &= UnsubscribeOutput(state, shadowDeviceSubscription);
+                    success &= UnsubscribeOutput(shadowDeviceSubscription);
                 }
 
-                success &= UnsubscribeOutput(state, deviceConfigurationSubscription.DeviceSubscription);
+                success &= UnsubscribeOutput(deviceConfigurationSubscription.DeviceSubscription);
             }
 
             state.IsActive = false;
@@ -632,10 +838,13 @@ namespace HidWizards.UCR.Core.Managers
                 Timer existing;
                 if (value != 0)
                 {
-                    if (_emergencyStopTimers.TryGetValue(deviceKey, out existing)) return;
-                    _emergencyStopTimers[deviceKey] = new Timer(
-                        ignored => TriggerEmergencyStop(deviceKey), null,
-                        EmergencyStopHoldMilliseconds, Timeout.Infinite);
+                    if (_emergencyStopTimers.ContainsKey(deviceKey)) return;
+                    var generation = _emergencyStopGeneration;
+                    Timer timer = null;
+                    timer = new Timer(ignored => QueueEmergencyStop(deviceKey, timer, generation), null,
+                        Timeout.Infinite, Timeout.Infinite);
+                    _emergencyStopTimers.Add(deviceKey, timer);
+                    timer.Change(EmergencyStopHoldMilliseconds, Timeout.Infinite);
                     return;
                 }
 
@@ -645,23 +854,32 @@ namespace HidWizards.UCR.Core.Managers
             }
         }
 
-        private void TriggerEmergencyStop(string deviceKey)
+        private void QueueEmergencyStop(string deviceKey, Timer expiredTimer, int generation)
         {
             lock (_emergencyStopLock)
             {
-                Timer timer;
-                if (_emergencyStopTimers.TryGetValue(deviceKey, out timer))
-                {
-                    _emergencyStopTimers.Remove(deviceKey);
-                    timer.Dispose();
-                }
+                Timer current;
+                if (!_emergencyStopTimers.TryGetValue(deviceKey, out current) || !ReferenceEquals(current, expiredTimer)) return;
+                _emergencyStopTimers.Remove(deviceKey);
+                expiredTimer.Dispose();
+            }
+
+            _dispatcher.BeginInvoke(DispatcherPriority.Send, new Action(() => TriggerEmergencyStopAsync(generation)));
+        }
+
+        private async void TriggerEmergencyStopAsync(int generation)
+        {
+            lock (_emergencyStopLock)
+            {
+                if (generation != _emergencyStopGeneration) return;
             }
 
             if (Interlocked.Exchange(ref _emergencyStopInProgress, 1) != 0) return;
             try
             {
                 Logger.Warn("Emergency stop triggered: Esc held for three seconds.");
-                DeactivateCurrentProfile();
+                if (!await DeactivateCurrentProfileAsync())
+                    Logger.Error("Emergency stop could not cleanly stop all profiles.");
             }
             catch (Exception exception)
             {
@@ -677,6 +895,7 @@ namespace HidWizards.UCR.Core.Managers
         {
             lock (_emergencyStopLock)
             {
+                _emergencyStopGeneration++;
                 foreach (var timer in _emergencyStopTimers.Values) timer.Dispose();
                 _emergencyStopTimers.Clear();
                 _emergencyStopDeviceKeys.Clear();
@@ -733,8 +952,10 @@ namespace HidWizards.UCR.Core.Managers
                 }
 
                 deviceSubscription.ResolvedDevice = runtimeDevice;
-                return _context.IOController.SubscribeInput(GetInputSubscriptionRequest(state,
-                    deviceBindingSubscription));
+                var request = GetInputSubscriptionRequest(state, deviceBindingSubscription);
+                if (!_context.IOController.SubscribeInput(request)) return false;
+                deviceBindingSubscription.SubscribedRequest = request;
+                return true;
             }
             catch (Exception e)
             {
@@ -743,12 +964,12 @@ namespace HidWizards.UCR.Core.Managers
             }
         }
 
-        private bool UnsubscribeDeviceBindingInput(SubscriptionState state, InputSubscription deviceBindingSubscription)
+        private bool UnsubscribeDeviceBindingInput(InputSubscription deviceBindingSubscription)
         {
-            if (deviceBindingSubscription?.DeviceBinding == null || !deviceBindingSubscription.DeviceBinding.IsBound)
-                return true;
-            if (deviceBindingSubscription.DeviceSubscription?.ResolvedDevice == null) return true;
-            return _context.IOController.UnsubscribeInput(GetInputSubscriptionRequest(state, deviceBindingSubscription));
+            var request = deviceBindingSubscription?.SubscribedRequest;
+            if (request == null) return true;
+            deviceBindingSubscription.SubscribedRequest = null;
+            return UnsubscribeOrQueue(() => _context.IOController.UnsubscribeInput(request));
         }
 
         private bool SubscribeOutput(SubscriptionState state, DeviceSubscription deviceSubscription,
@@ -776,10 +997,10 @@ namespace HidWizards.UCR.Core.Managers
             }
 
             deviceSubscription.ResolvedDevice = runtimeDevice;
-            var success = _context.IOController.SubscribeOutput(GetOutputSubscriptionRequest(state.StateGuid, deviceSubscription));
-
-            if (!success) Logger.Error($"Failed to subscribe output device. Provider might be unavailable: {{{configuredDevice.LogName()}}}");
-
+            var request = GetOutputSubscriptionRequest(state.StateGuid, deviceSubscription);
+            var success = _context.IOController.SubscribeOutput(request);
+            if (success) deviceSubscription.SubscribedOutputRequest = request;
+            else Logger.Error($"Failed to subscribe output device. Provider might be unavailable: {{{configuredDevice.LogName()}}}");
             return success;
         }
 
@@ -797,16 +1018,39 @@ namespace HidWizards.UCR.Core.Managers
             return resolvedDevice;
         }
 
-        private bool UnsubscribeOutput(SubscriptionState state, DeviceSubscription deviceSubscription)
+        private bool UnsubscribeOutput(DeviceSubscription deviceSubscription)
         {
+            var request = deviceSubscription?.SubscribedOutputRequest;
+            if (request == null) return true;
             Logger.Debug($"Unsubscribing output device: {{{deviceSubscription.Device.LogName()}}}");
-            if (deviceSubscription.ResolvedDevice == null) return true;
-            if (string.IsNullOrEmpty(deviceSubscription.ResolvedDevice.ProviderName) || string.IsNullOrEmpty(deviceSubscription.ResolvedDevice.DeviceHandle))
+            deviceSubscription.SubscribedOutputRequest = null;
+            return UnsubscribeOrQueue(() => _context.IOController.UnsubscribeOutput(request));
+        }
+
+        private bool UnsubscribeOrQueue(Func<bool> unsubscribe)
+        {
+            if (TryUnsubscribe(unsubscribe)) return true;
+            _failedUnsubscriptions.Add(unsubscribe);
+            return false;
+        }
+
+        private bool RetryFailedUnsubscriptions()
+        {
+            _failedUnsubscriptions.RemoveAll(unsubscribe => TryUnsubscribe(unsubscribe));
+            return _failedUnsubscriptions.Count == 0;
+        }
+
+        private static bool TryUnsubscribe(Func<bool> unsubscribe)
+        {
+            try
             {
-                Logger.Error($"Failed to unsubscribe output device. Providername or devicehandle missing from: {{{deviceSubscription.ResolvedDevice.LogName()}}}");
+                return unsubscribe();
+            }
+            catch (Exception exception)
+            {
+                Logger.Error(exception, "Failed to remove a device subscription");
                 return false;
             }
-            return _context.IOController.UnsubscribeOutput(GetOutputSubscriptionRequest(state.StateGuid, deviceSubscription));
         }
 
         #endregion
@@ -875,12 +1119,31 @@ namespace HidWizards.UCR.Core.Managers
 
         #endregion
 
+        public Task DisposeAsync()
+        {
+            return RunTransitionAsync(async () =>
+            {
+                try
+                {
+                    await StopAllProfilesCoreAsync(true);
+                }
+                finally
+                {
+                    _disposed = true;
+                    await Task.Run(() => _exclusiveMode.Dispose());
+                }
+                return true;
+            });
+        }
+
         public void Dispose()
         {
-            if (SubscriptionState != null)
+            if (_disposed) return;
+            if (SubscriptionState != null || _failedUnsubscriptions.Count != 0 || _exclusiveCleanupPending)
             {
                 DeactivateCurrentProfile();
             }
+            _disposed = true;
             _exclusiveMode.Dispose();
         }
 

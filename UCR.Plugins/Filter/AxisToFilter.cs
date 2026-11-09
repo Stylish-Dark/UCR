@@ -24,7 +24,9 @@ namespace HidWizards.UCR.Plugins.Filter
         [PluginGui("Filter state exiting range")]
         public FilterMode FilterStateExiting { get; set; }
 
-        private short _lastLocation;
+        private readonly object _transitionLock = new object();
+        private bool _active;
+        private bool? _wasInside;
 
 
         public AxisToFilter()
@@ -33,18 +35,41 @@ namespace HidWizards.UCR.Plugins.Filter
             FilterStateEntering = FilterMode.Inactive;
             RangeLowerBound = -50;
             RangeUpperBound = 50;
-            _lastLocation = 0;
+        }
+
+        public override bool InitializeFromAxisSnapshot => true;
+
+        public override void OnActivate()
+        {
+            lock (_transitionLock)
+            {
+                _active = true;
+                _wasInside = null;
+                // An input provider may already have reported a value while subscribing.
+                if (!IsFiltered() && TryReadPrimaryInput(out var value))
+                    ApplyInput(value);
+            }
+        }
+
+        public override void OnDeactivate()
+        {
+            lock (_transitionLock) _active = false;
         }
 
         public override void Update(params short[] values)
         {
-            var lastWasInside = IsWithinBounds(_lastLocation);
-            var newIsInside = IsWithinBounds(values[0]);
-            _lastLocation = values[0];
+            lock (_transitionLock)
+            {
+                if (_active) ApplyInput(values[0]);
+            }
+        }
 
-            if (lastWasInside == newIsInside) return;
-            if (!newIsInside) ChangeState(FilterStateExiting);
-            if (newIsInside) ChangeState(FilterStateEntering);
+        private void ApplyInput(short value)
+        {
+            var isInside = IsWithinBounds(value);
+            if (_wasInside == isInside) return;
+            _wasInside = isInside;
+            ChangeState(isInside ? FilterStateEntering : FilterStateExiting);
         }
 
         private bool IsWithinBounds(short value)

@@ -428,6 +428,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
         {
             var kind = result.Device?.Kind ?? DeviceVisualKind.Unknown;
             var lower = (leaf ?? string.Empty).Trim().ToLowerInvariant();
+            var directInput = IsDirectInput(device);
 
             if (kind == DeviceVisualKind.Keyboard)
             {
@@ -475,13 +476,16 @@ namespace HidWizards.UCR.ViewModels.Presentation
                     (lower.Contains("trigger") || lower == "lt" || lower == "rt" ||
                      lower == "l2" || lower == "r2")
                     ? ControlVisualKind.Trigger : ControlVisualKind.Axis;
-                result.ControlLabel = ShortAxisLabel(leaf);
+                result.ControlLabel = directInput && binding.KeyType == 0
+                    ? DirectInputAxisLabel(binding.KeyValue, leaf) : ShortAxisLabel(leaf);
                 result.ControlBrush = result.Device?.AccentBrush ?? NeutralBrush;
                 return;
             }
 
             result.ControlKind = ControlVisualKind.Button;
-            result.ControlLabel = CleanGenericLabel(leaf, binding.KeyValue);
+            result.ControlLabel = directInput
+                ? DirectInputButtonLabel(device, binding, leaf, kind) ?? CleanGenericLabel(leaf, binding.KeyValue)
+                : CleanGenericLabel(leaf, binding.KeyValue);
             result.ControlBrush = result.Device?.AccentBrush ?? NeutralBrush;
         }
 
@@ -489,6 +493,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
             DeviceBindingCategory category, string leaf, DeviceVisualKind deviceKind, Device device)
         {
             var lower = (leaf ?? string.Empty).ToLowerInvariant();
+            var directInput = IsDirectInput(device);
             if (lower.Contains("dpad") || lower.Contains("d-pad") || lower.Contains("pov") || lower == "up" || lower == "right" || lower == "down" || lower == "left")
             {
                 result.ControlKind = ControlVisualKind.DPad;
@@ -499,28 +504,21 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
             if (category == DeviceBindingCategory.Range)
             {
-                var axisLabel = KnownAxisLabelFromName(lower, deviceKind) ?? KnownAxisLabel(binding.KeyValue, deviceKind);
+                var namedAxis = KnownAxisLabelFromName(lower, deviceKind);
+                var axisLabel = namedAxis ?? (directInput
+                    ? DirectInputAxisLabel(binding.KeyValue, leaf)
+                    : KnownAxisLabel(binding.KeyValue, deviceKind));
                 result.ControlKind = axisLabel == "LT" || axisLabel == "RT" || axisLabel == "L2" || axisLabel == "R2"
                     ? ControlVisualKind.Trigger
-                    : ControlVisualKind.StickAxis;
+                    : directInput && namedAxis == null ? ControlVisualKind.Axis : ControlVisualKind.StickAxis;
                 result.ControlLabel = axisLabel;
                 result.ControlBrush = result.Device.AccentBrush;
                 return;
             }
 
-            // DirectInput uses JoystickOffset indices for KeyValue, NOT button
-            // ordinals. Resolve the provider's 1-based button name before deciding
-            // on a face glyph: Button 2 is Cross on a DualSense, not B50.
-            var directInput = device != null && string.Equals(device.ProviderName,
-                "SharpDX_DirectInput", StringComparison.OrdinalIgnoreCase);
-            var directInputButton = directInput && (deviceKind == DeviceVisualKind.PlayStation5 ||
-                deviceKind == DeviceVisualKind.PlayStation4)
-                ? DirectInputPlayStationButtonLabel(leaf) ??
-                  DirectInputPlayStationButtonFromOffset(binding) : null;
-            var button = directInputButton ??
-                KnownButtonLabelFromName(lower, deviceKind) ??
-                (directInput ? (int.TryParse(leaf, out var buttonIndex)
-                    ? "B" + buttonIndex : leaf) : KnownButtonLabel(binding.KeyValue, deviceKind));
+            var button = directInput
+                ? DirectInputButtonLabel(device, binding, leaf, deviceKind) ?? leaf
+                : KnownButtonLabelFromName(lower, deviceKind) ?? KnownButtonLabel(binding.KeyValue, deviceKind);
             result.ControlLabel = button;
             if ((button == "A" || button == "B" || button == "X" || button == "Y") &&
                 IsXbox(deviceKind))
@@ -548,13 +546,30 @@ namespace HidWizards.UCR.ViewModels.Presentation
             result.ControlBrush = result.Device.AccentBrush;
         }
 
-        // SharpDX DirectInput reports literal 1-based HID button titles, but
-        // stores JoystickOffset (often 48+) as KeyValue. Never interpret those
-        // offsets as face-button ordinals.
-        private static string DirectInputPlayStationButtonLabel(string leaf)
+        private static bool IsDirectInput(Device device)
         {
-            int button;
-            if (!int.TryParse(leaf, out button)) return null;
+            return string.Equals(device?.ProviderName, "SharpDX_DirectInput", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // SharpDX JoystickOffset values are byte offsets within DIJOYSTATE, not axis ordinals.
+        private static string DirectInputAxisLabel(int offset, string leaf)
+        {
+            switch (offset)
+            {
+                case 0: return "X";
+                case 4: return "Y";
+                case 8: return "Z";
+                case 12: return "Rx";
+                case 16: return "Ry";
+                case 20: return "Rz";
+                case 24: return "S1";
+                case 28: return "S2";
+                default: return IsMissingBindingName(leaf) ? "AX" : ShortAxisLabel(leaf);
+            }
+        }
+
+        private static string DirectInputPlayStationButtonLabel(int button, bool hasMuteButton)
+        {
             switch (button)
             {
                 case 1: return "□";
@@ -571,36 +586,64 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 case 12: return "R3";
                 case 13: return "PS";
                 case 14: return "TP";
-                case 15: return "MUTE";
+                case 15: return hasMuteButton ? "MUTE" : null;
                 default: return null;
             }
         }
 
-        // JoystickOffset.Buttons0 is 48 in SharpDX DirectInput. Retain
-        // recognizable labels for saved bindings when the controller is offline
-        // and its provider menu is temporarily unavailable.
-        private static string DirectInputPlayStationButtonFromOffset(DeviceBinding binding)
+        private static string DirectInputButtonLabel(Device device, DeviceBinding binding, string leaf,
+            DeviceVisualKind kind)
         {
-            if (binding == null || binding.KeyType != 1 || binding.KeyValue < 48 ||
-                binding.KeyValue > 62) return null;
-            return DirectInputPlayStationButtonLabel((binding.KeyValue - 47).ToString());
+            // Button numbers run from 1 to 128 at JoystickOffset.Buttons0 through Buttons127.
+            const int firstButtonOffset = 48;
+            if (binding.KeyType != 1 || binding.KeyValue < firstButtonOffset ||
+                binding.KeyValue >= firstButtonOffset + 128) return null;
+
+            var button = binding.KeyValue - firstButtonOffset + 1;
+            var namedButton = IsXbox(kind) || IsPlayStation(kind)
+                ? KnownButtonLabelFromName(leaf.ToLowerInvariant(), kind) : null;
+            if (namedButton != null) return namedButton;
+            if (!IsMissingBindingName(leaf) && !int.TryParse(leaf, out _)) return leaf;
+
+            // The generic DirectInput provider supplies numbers only. Use a Sony-specific
+            // button order only when the device has a matching hardware identity.
+            var hardware = device.DeviceHandle + " " + device.HidPath;
+            var dualSense = ContainsAny(hardware, "VID_054C&PID_0CE6", "VID_054C&PID_0DF2");
+            var dualShock4 = ContainsAny(hardware, "VID_054C&PID_05C4", "VID_054C&PID_09CC");
+            if (dualSense || dualShock4)
+            {
+                var symbol = DirectInputPlayStationButtonLabel(button, dualSense);
+                if (symbol != null) return symbol;
+            }
+            return "B" + button;
         }
 
-        public static string GetDirectInputPlayStationBindingLabel(DeviceBinding binding)
+        private static bool IsMissingBindingName(string name)
         {
-            if (binding?.IsBound != true || binding.DeviceIoType != DeviceIoType.Input ||
-                binding.DeviceBindingCategory != DeviceBindingCategory.Momentary)
+            return string.IsNullOrWhiteSpace(name) ||
+                name.Equals("Bind", StringComparison.OrdinalIgnoreCase) ||
+                name.Equals("Device unavailable", StringComparison.OrdinalIgnoreCase) ||
+                name.Equals("Device not connected", StringComparison.OrdinalIgnoreCase) ||
+                name.Equals("Unknown input", StringComparison.OrdinalIgnoreCase) ||
+                name.Equals("Bound control", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static string GetDirectInputBindingLabel(DeviceBinding binding, string boundName)
+        {
+            if (binding?.IsBound != true || binding.DeviceIoType != DeviceIoType.Input)
                 return null;
             var device = binding.Profile?.GetDeviceConfiguration(DeviceIoType.Input,
                 binding.DeviceConfigurationGuid)?.Device;
-            if (device == null || !string.Equals(device.ProviderName,
-                "SharpDX_DirectInput", StringComparison.OrdinalIgnoreCase))
-                return null;
+            if (!IsDirectInput(device)) return null;
+            var leaf = ExtractLeaf(boundName);
             var kind = Describe(device, DeviceIoType.Input).Kind;
-            if (kind != DeviceVisualKind.PlayStation4 && kind != DeviceVisualKind.PlayStation5)
-                return null;
-            return DirectInputPlayStationButtonLabel(ExtractLeaf(SafeBoundName(binding))) ??
-                DirectInputPlayStationButtonFromOffset(binding);
+            if (binding.DeviceBindingCategory == DeviceBindingCategory.Range && binding.KeyType == 0)
+            {
+                return KnownAxisLabelFromName(leaf.ToLowerInvariant(), kind) ??
+                    DirectInputAxisLabel(binding.KeyValue, leaf);
+            }
+            return binding.DeviceBindingCategory == DeviceBindingCategory.Momentary
+                ? DirectInputButtonLabel(device, binding, leaf, kind) : null;
         }
 
         private static string KnownButtonLabelFromName(string lower, DeviceVisualKind kind)
@@ -845,12 +888,14 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
         private static string ShortMouseLabel(string leaf)
         {
-            var lower = (leaf ?? string.Empty).ToLowerInvariant();
+            var lower = (leaf ?? string.Empty).Trim().ToLowerInvariant();
             if (lower.Contains("left")) return "L";
             if (lower.Contains("right")) return "R";
             if (lower.Contains("middle")) return "M";
-            if (lower.Contains("xbutton1") || lower.Contains("button 4") || lower.EndsWith("4")) return "4";
-            if (lower.Contains("xbutton2") || lower.Contains("button 5") || lower.EndsWith("5")) return "5";
+            if (lower == "xbutton1" || lower == "side button 1") return "4";
+            if (lower == "xbutton2" || lower == "side button 2") return "5";
+            var number = System.Text.RegularExpressions.Regex.Match(lower, @"^(?:(?:mouse\s*)?buttons?\s*)?([0-9]+)$");
+            if (number.Success) return number.Groups[1].Value;
             return CleanGenericLabel(leaf, 0);
         }
 

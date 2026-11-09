@@ -270,8 +270,11 @@ namespace HidWizards.UCR.Core.Models.Binding
             KeyValue = value;
             KeySubValue = subValue;
             if (bindingChanged) CompoundPresetName = string.Empty;
+            var clearBlock = Block && !IsBlockable();
+            if (clearBlock) Block = false;
             IsBound = true;
             Profile.Context.ContextChanged();
+            if (clearBlock) OnPropertyChanged(nameof(Block));
 
             // Rebinding an already-bound control leaves IsBound=true, so its setter emits no
             // notification. The UI uses that notification to rebuild the binding label/glyph.

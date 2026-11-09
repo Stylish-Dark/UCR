@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Xml.Serialization;
+using HidWizards.UCR.Core.Utilities;
 
 namespace HidWizards.UCR.Core.Models
 {
@@ -34,8 +35,21 @@ namespace HidWizards.UCR.Core.Models
                 if (Profile != null && context?.SubscriptionsManager != null &&
                     context.SubscriptionsManager.IsProfileActive(Profile.Guid))
                 {
-                    context.SubscriptionsManager.RefreshActiveProfile(Profile);
+                    RefreshActiveProfile(Profile);
                 }
+            }
+        }
+
+        private static async void RefreshActiveProfile(Profile profile)
+        {
+            try
+            {
+                if (!await profile.Context.SubscriptionsManager.RefreshActiveProfileAsync(profile))
+                    Logger.Warn("The active profile could not be refreshed after changing a mapping group.");
+            }
+            catch (Exception exception)
+            {
+                Logger.Error("Refreshing the active profile after a mapping-group change failed.", exception);
             }
         }
 

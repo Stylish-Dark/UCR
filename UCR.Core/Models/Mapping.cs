@@ -239,6 +239,34 @@ namespace HidWizards.UCR.Core.Models
             Plugins.ForEach(p => p.RuntimeMapping = this);
         }
 
+        internal void SeedInitialAxisSnapshot(DeviceBinding binding, short? value)
+        {
+            var index = DeviceBindings.IndexOf(binding);
+            if (index < 0 || Multiplexer == null) return;
+            if (binding.InvertInput && value.HasValue) value = Utilities.Functions.Invert(value.Value);
+            Multiplexer[index].SeedInitialValue(value);
+        }
+
+        private bool AwaitingInitialAxisSnapshot => Multiplexer.Any(input => input.AwaitingInitialValue);
+
+        internal bool TryReadPrimaryInput(DeviceBindingCategory expectedCategory, out short value)
+        {
+            value = 0;
+            if (InputCache == null || InputCache.Count == 0 || AwaitingInitialAxisSnapshot) return false;
+            if (!UseInputExpression)
+            {
+                if (!DeviceBindings[0].IsBound) return false;
+                value = AdaptPositionalInput(InputCache[0], DeviceBindings[0], expectedCategory);
+                return true;
+            }
+
+            if (!DeviceBindings.Any(binding => binding.IsBound)) return false;
+            value = expectedCategory == DeviceBindingCategory.Range
+                ? EvaluateAnalogueInputExpression(InputCache)
+                : EvaluateInputExpression(InputCache);
+            return true;
+        }
+
         internal Mapping GetOverridenMapping()
         {
             var parentProfile = Profile?.ParentProfile;
@@ -282,7 +310,8 @@ namespace HidWizards.UCR.Core.Models
             {
                 foreach (var plugin in Plugins)
                 {
-                    if (plugin.IsFiltered()) continue;
+                    if (plugin.IsFiltered() ||
+                        plugin.InitializeFromAxisSnapshot && AwaitingInitialAxisSnapshot) continue;
                     var values = InputCache.ToArray();
                     // Preserve positional inputs for multi-channel legacy plugins, while
                     // allowing each physical slot to bind a different signal category.
@@ -314,7 +343,8 @@ namespace HidWizards.UCR.Core.Models
                     outputValue = EvaluateDirectionalAxis(InputCache, rangeIndex++ == 0 ? 0 : 1);
                 else if (isRange)
                     rangeIndex++;
-                if (plugin.IsFiltered()) continue;
+                if (plugin.IsFiltered() ||
+                    plugin.InitializeFromAxisSnapshot && AwaitingInitialAxisSnapshot) continue;
                 if (!isRange && !digitalChanged) continue;
                 plugin.Update(new[] { isRange ? outputValue : digital });
             }
@@ -340,7 +370,8 @@ namespace HidWizards.UCR.Core.Models
             for (var index = 0; index < Math.Min(Plugins.Count, selected.Count); index++)
             {
                 var plugin = Plugins[index];
-                if (plugin.IsFiltered()) continue;
+                if (plugin.IsFiltered() ||
+                    plugin.InitializeFromAxisSnapshot && AwaitingInitialAxisSnapshot) continue;
                 // A logical trigger is 0..+32767; output providers expect
                 // the complete signed Range with -32768 as released.
                 var routed = outputType == 4 &&
@@ -375,10 +406,8 @@ namespace HidWizards.UCR.Core.Models
                 // conditions pass. A missing gate binding cannot accidentally
                 // activate a route through NOT on an unassigned input.
                 var guards = group.Where(index => inputBindings[index].IsDirectionalAndCondition);
-                if (guards.Any(index => !inputBindings[index].IsBound ||
-                    ((AdaptPositionalInput(inputValues[index], inputBindings[index],
-                        DeviceBindingCategory.Momentary) != 0) ==
-                        inputBindings[index].InputExpressionNegated))) continue;
+                if (guards.Any(index => !EvaluateOrdinaryCondition(
+                    inputBindings[index], inputValues[index]))) continue;
 
                 var values = positions.Take(slotsPerGroup).Select(index => inputValues[index]).ToList();
                 var bindings = positions.Take(slotsPerGroup)
@@ -496,19 +525,15 @@ namespace HidWizards.UCR.Core.Models
             var source = inputBindings[index];
             if (!digital)
             {
+                if (!source.IsBound) return 0;
                 // A digital button also drives full analogue travel.
                 if (source.InputExpressionInputKind == 0)
                     return (short)(value != 0 ? short.MaxValue : 0);
                 if (trigger)
-                    return source.IsBound ? ToLogicalTriggerValue(value) : (short)0;
+                    return ToLogicalTriggerValue(value);
                 return value;
             }
-            // NOT on an unassigned direction must never synthesize a pressed
-            // control merely because the empty input cache reads as zero.
-            if (source.InputExpressionNegated && !source.IsBound) return 0;
-            var pressed = AdaptPositionalInput(value, source, DeviceBindingCategory.Momentary) != 0;
-            if (source.InputExpressionNegated) pressed = !pressed;
-            return pressed ? (short)1 : (short)0;
+            return EvaluateOrdinaryCondition(source, value) ? (short)1 : (short)0;
         }
 
         internal static short AdaptPositionalInput(short value, DeviceBinding binding,
@@ -558,32 +583,26 @@ namespace HidWizards.UCR.Core.Models
             if (values == null || !UseInputExpression) return 0;
             var count = Math.Min(values.Count, DeviceBindings.Count);
             foreach (var group in Enumerable.Range(0, count)
-                .GroupBy(i => DeviceBindings[i].InputExpressionGroup).OrderBy(g => g.Key))
+                .GroupBy(i => Math.Max(0, DeviceBindings[i].InputExpressionGroup)).OrderBy(g => g.Key))
             {
                 var directions = group.Where(i => DeviceBindings[i].InputDirectionSlot > 0).ToList();
                 if (directions.Count == 0) continue;
                 var allowed = group.Where(i => DeviceBindings[i].InputDirectionSlot == 0)
                     .All(i => EvaluateOrdinaryCondition(DeviceBindings[i], values[i]));
-                if (!allowed) continue;
+                if (!allowed || !IsDirectionalGroupActive(directions, values)) continue;
 
                 int amount = 0;
                 foreach (var i in directions)
                 {
-                    var slot = DeviceBindings[i].InputDirectionSlot;
+                    var binding = DeviceBindings[i];
+                    var slot = binding.InputDirectionSlot;
                     if (axis == 0 && slot > 2 || axis == 1 && slot < 3) continue;
                     var raw = values[i];
-                    var threshold = DeviceBindings[i].InputExpressionAxisThreshold;
-                    var magnitude = DeviceBindings[i].InputExpressionInputKind == 0
-                        ? (raw != 0 ? short.MaxValue : 0)
-                        : Math.Abs((int)raw) >= threshold ? Math.Abs((int)raw) : 0;
+                    if (!IsPhysicalConditionActive(binding, raw)) continue;
+                    var magnitude = binding.InputExpressionInputKind == 0
+                        ? short.MaxValue : Math.Abs((int)raw);
                     amount += slot == 1 || slot == 3 ? -magnitude : magnitude;
                 }
-                // NOT negates the logical condition; it must not reverse the
-                // joystick direction (the output plugin has its own Invert setting).
-                var anyDirection = directions.Any(i => values[i] != 0);
-                var active = DeviceBindings[directions[0]].InputExpressionNegated
-                    ? !anyDirection : anyDirection;
-                if (!active) continue;
                 // A satisfied OR group owns both X and Y, including a neutral
                 // component. Do not combine X from one group with Y from another.
                 return (short)Math.Max(short.MinValue, Math.Min(short.MaxValue, amount));
@@ -591,13 +610,25 @@ namespace HidWizards.UCR.Core.Models
             return 0;
         }
 
+        private bool IsDirectionalGroupActive(IList<int> directions, IList<short> values)
+        {
+            var anyDirection = directions.Any(i => IsPhysicalConditionActive(DeviceBindings[i], values[i]));
+            // Group-wide NOT must have a physical source, and it never reverses the direction.
+            return DeviceBindings[directions[0]].InputExpressionNegated
+                ? !anyDirection && directions.Any(i => DeviceBindings[i].IsBound)
+                : anyDirection;
+        }
+
+        private static bool IsPhysicalConditionActive(DeviceBinding binding, short raw)
+        {
+            return binding.IsBound &&
+                   AdaptPositionalInput(raw, binding, DeviceBindingCategory.Momentary) != 0;
+        }
+
         private static bool EvaluateOrdinaryCondition(DeviceBinding binding, short raw)
         {
-            var threshold = Math.Max(1, binding.InputExpressionAxisThreshold);
-            var active = binding.InputExpressionInputKind == 1 ? raw >= threshold :
-                binding.InputExpressionInputKind == 2 ? raw <= -threshold :
-                binding.InputExpressionInputKind == 3 ? Math.Abs((int)raw) >= threshold : raw != 0;
-            return binding.InputExpressionNegated ? !active : active;
+            return binding.IsBound &&
+                   IsPhysicalConditionActive(binding, raw) != binding.InputExpressionNegated;
         }
 
         // The first satisfied OR group wins. A non-negated continuous axis in that group
@@ -619,9 +650,7 @@ namespace HidWizards.UCR.Core.Models
                         .All(i => EvaluateOrdinaryCondition(DeviceBindings[i], values[i]));
                     if (!allowed) continue;
                     var directions = group.Where(i => DeviceBindings[i].InputDirectionSlot > 0).ToList();
-                    var active = directions.Any(i => values[i] != 0);
-                    if (DeviceBindings[directions[0]].InputExpressionNegated) active = !active;
-                    if (!active) continue;
+                    if (!IsDirectionalGroupActive(directions, values)) continue;
                     analogue = forAnalogue ? EvaluateDirectionalAxis(values, 0) : (short)1;
                     return true;
                 }
@@ -634,34 +663,17 @@ namespace HidWizards.UCR.Core.Models
                 {
                     var binding = DeviceBindings[index];
                     var raw = values[index];
-                    var threshold = Math.Max(1, Math.Min(32767, binding.InputExpressionAxisThreshold));
-                    bool termTrue;
-                    switch (binding.InputExpressionInputKind)
-                    {
-                        case 1:
-                            termTrue = raw >= threshold;
-                            break;
-                        case 2:
-                            termTrue = raw <= -threshold;
-                            break;
-                        case 3:
-                            termTrue = forAnalogue || Math.Abs((int)raw) >= threshold;
-                            if (forAnalogue && !binding.InputExpressionNegated && !driverPresent)
-                            {
-                                driverPresent = true;
-                                driverValue = raw;
-                            }
-                            break;
-                        default:
-                            termTrue = raw != 0;
-                            break;
-                    }
-
-                    if (binding.InputExpressionNegated) termTrue = !termTrue;
-                    if (!termTrue)
+                    var isAnalogueDriver = forAnalogue && binding.InputExpressionInputKind == 3;
+                    var termTrue = isAnalogueDriver || IsPhysicalConditionActive(binding, raw);
+                    if (!binding.IsBound || termTrue == binding.InputExpressionNegated)
                     {
                         groupTrue = false;
                         break;
+                    }
+                    if (isAnalogueDriver && !driverPresent)
+                    {
+                        driverPresent = true;
+                        driverValue = raw;
                     }
                 }
 
@@ -679,10 +691,14 @@ namespace HidWizards.UCR.Core.Models
 
         public bool SupportsNativeInputExpression()
         {
-            return Plugins != null && Plugins.Count > 0 && Plugins.All(plugin =>
-                plugin.InputCategories != null && plugin.InputCategories.Count == 1 &&
-                (plugin.InputCategories[0].Category == DeviceBindingCategory.Momentary ||
-                 plugin.InputCategories[0].Category == DeviceBindingCategory.Range));
+            return Plugins != null && Plugins.Count > 0 && Plugins.All(SupportsExpressionInput);
+        }
+
+        private static bool SupportsExpressionInput(Plugin plugin)
+        {
+            return plugin.InputCategories != null && plugin.InputCategories.Count == 1 &&
+                   (plugin.InputCategories[0].Category == DeviceBindingCategory.Momentary ||
+                    plugin.InputCategories[0].Category == DeviceBindingCategory.Range);
         }
 
         public bool EnableInputExpression()
@@ -873,10 +889,7 @@ namespace HidWizards.UCR.Core.Models
                 {
                     // Once an expression can provide a digital state or analogue drive,
                     // the output plugin's input signature no longer restricts its choice.
-                    plugins = plugins.FindAll(p => p.InputCategories != null &&
-                        p.InputCategories.Count == 1 &&
-                        (p.InputCategories[0].Category == DeviceBindingCategory.Momentary ||
-                         p.InputCategories[0].Category == DeviceBindingCategory.Range));
+                    plugins = plugins.FindAll(SupportsExpressionInput);
                 }
                 else
                 {
@@ -890,8 +903,9 @@ namespace HidWizards.UCR.Core.Models
         public bool AddPlugin(Plugin plugin)
         {
             if (plugin == null) return false;
+            if (UseInputExpression && !SupportsExpressionInput(plugin)) return false;
             if (Plugins.Count > 0 && !plugin.HasSameInputCategories(Plugins[0]) &&
-                !UseInputExpression && !EnableInputExpression())
+                (!SupportsExpressionInput(plugin) || !EnableInputExpression()))
                 return false;
             if (Plugins.Count == 0 && DeviceBindings.Count == 0)
             {

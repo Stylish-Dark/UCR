@@ -35,6 +35,10 @@ namespace HidWizards.UCR.Core.Managers
         private static readonly TimeSpan DeviceDetectionArmDelay = TimeSpan.FromMilliseconds(350);
         private readonly object _deviceDetectionLock = new object();
         private TaskCompletionSource<DetectedInputControl> _deviceDetectionCompletion;
+        private bool _deviceDetectionArming;
+        private bool _deviceDetectionFinishPending;
+        private bool _deviceDetectionStopping;
+        private DetectedInputControl _deviceDetectionPendingInput;
         private List<Device> _deviceDetectionDevices;
         private Timer _deviceDetectionTimer;
         private CancellationTokenRegistration _deviceDetectionCancellation;
@@ -466,6 +470,7 @@ namespace HidWizards.UCR.Core.Managers
             DeviceBindingCategory? requiredCategory)
         {
             if (timeout <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
+            cancellationToken.ThrowIfCancellationRequested();
             if (_context.BindingManager != null && _context.BindingManager.IsBindModeActive)
             {
                 throw new InvalidOperationException("Finish the current binding operation before detecting an input.");
@@ -482,18 +487,20 @@ namespace HidWizards.UCR.Core.Managers
             // produced input so it can distinguish churn from a genuinely second identical device.
             var devices = GetRawAvailableDeviceList(DeviceIoType.Input, false);
             Logger.Debug("Input-device detection armed after live refresh for " + devices.Count + " raw input endpoint(s).");
-            if (devices.Count == 0) return Task.FromResult<DetectedInputControl>(null);
+            if (devices.Count == 0)
+                throw new InvalidOperationException("No input devices are available for detection.");
 
             TaskCompletionSource<DetectedInputControl> completion;
             lock (_deviceDetectionLock)
             {
-                if (_deviceDetectionCompletion != null)
+                if (_deviceDetectionCompletion != null || _deviceDetectionStopping)
                 {
                     throw new InvalidOperationException("Input detection is already running.");
                 }
 
                 completion = new TaskCompletionSource<DetectedInputControl>();
                 _deviceDetectionCompletion = completion;
+                _deviceDetectionArming = true;
                 _deviceDetectionDevices = devices;
                 _deviceDetectionAcceptAfterUtc = DateTime.UtcNow.Add(DeviceDetectionArmDelay);
                 _deviceDetectionRequiredCategory = requiredCategory;
@@ -501,12 +508,16 @@ namespace HidWizards.UCR.Core.Managers
 
             try
             {
+                var armed = 0;
                 foreach (var device in devices)
                 {
                     try
                     {
                         _context.IOController.SetDetectionMode(DetectionMode.Bind,
-                            GetProviderDescriptor(device), GetDeviceDescriptor(device), DeviceDetectionInputChanged);
+                            GetProviderDescriptor(device), GetDeviceDescriptor(device),
+                            (provider, descriptor, report, value) =>
+                                DeviceDetectionInputChanged(completion, provider, descriptor, report, value));
+                        armed++;
                     }
                     catch (Exception exception)
                     {
@@ -515,23 +526,35 @@ namespace HidWizards.UCR.Core.Managers
                     }
                 }
 
+                if (armed == 0)
+                    throw new InvalidOperationException("Input detection could not start on any device. Check the UCR log for details.");
+
+                DetectedInputControl pendingInput;
                 lock (_deviceDetectionLock)
                 {
-                    if (_deviceDetectionCompletion == completion)
+                    _deviceDetectionArming = false;
+                    if (!_deviceDetectionFinishPending && !cancellationToken.IsCancellationRequested)
                     {
-                        _deviceDetectionTimer = new Timer(_ => CompleteDeviceDetection(null), null, timeout,
-                            Timeout.InfiniteTimeSpan);
+                        _deviceDetectionTimer = new Timer(_ => CompleteDeviceDetection(null, completion),
+                            null, timeout, Timeout.InfiniteTimeSpan);
                         if (cancellationToken.CanBeCanceled)
                         {
                             _deviceDetectionCancellation = cancellationToken.Register(() =>
-                                ThreadPool.QueueUserWorkItem(_ => CompleteDeviceDetection(null)));
+                                ThreadPool.QueueUserWorkItem(_ => CompleteDeviceDetection(null, completion)));
                         }
+                        return completion.Task;
                     }
+                    pendingInput = cancellationToken.IsCancellationRequested ? null : _deviceDetectionPendingInput;
                 }
+                CompleteDeviceDetection(pendingInput, completion);
             }
             catch
             {
-                CompleteDeviceDetection(null);
+                lock (_deviceDetectionLock)
+                {
+                    if (_deviceDetectionCompletion == completion) _deviceDetectionArming = false;
+                }
+                CompleteDeviceDetection(null, completion);
                 throw;
             }
 
@@ -543,15 +566,16 @@ namespace HidWizards.UCR.Core.Managers
             CompleteDeviceDetection(null);
         }
 
-        private void DeviceDetectionInputChanged(ProviderDescriptor providerDescriptor,
-            DeviceDescriptor deviceDescriptor, BindingReport bindingReport, short value)
+        private void DeviceDetectionInputChanged(TaskCompletionSource<DetectedInputControl> completion,
+            ProviderDescriptor providerDescriptor, DeviceDescriptor deviceDescriptor, BindingReport bindingReport,
+            short value)
         {
             List<Device> devices;
             DateTime acceptAfter;
             DeviceBindingCategory? requiredCategory;
             lock (_deviceDetectionLock)
             {
-                if (_deviceDetectionCompletion == null) return;
+                if (_deviceDetectionCompletion != completion || _deviceDetectionFinishPending) return;
                 devices = _deviceDetectionDevices;
                 acceptAfter = _deviceDetectionAcceptAfterUtc;
                 requiredCategory = _deviceDetectionRequiredCategory;
@@ -596,7 +620,7 @@ namespace HidWizards.UCR.Core.Managers
             };
 
             Logger.Debug($"Detected input: provider={device.ProviderName}, handle={device.DeviceHandle}, instance={device.DeviceNumber}, control={detected.ControlTitle}, category={category}, type={descriptor.Type}, index={descriptor.Index}, subIndex={descriptor.SubIndex}");
-            ThreadPool.QueueUserWorkItem(_ => CompleteDeviceDetection(detected));
+            ThreadPool.QueueUserWorkItem(_ => CompleteDeviceDetection(detected, completion));
         }
 
         private static bool IsPointerDetectionDevice(Device device)
@@ -629,7 +653,8 @@ namespace HidWizards.UCR.Core.Managers
             }
         }
 
-        private void CompleteDeviceDetection(DetectedInputControl detectedInput)
+        private void CompleteDeviceDetection(DetectedInputControl detectedInput,
+            TaskCompletionSource<DetectedInputControl> expectedCompletion = null)
         {
             TaskCompletionSource<DetectedInputControl> completion;
             List<Device> devices;
@@ -639,13 +664,26 @@ namespace HidWizards.UCR.Core.Managers
             lock (_deviceDetectionLock)
             {
                 completion = _deviceDetectionCompletion;
-                if (completion == null) return;
+                if (completion == null || (expectedCompletion != null && completion != expectedCompletion)) return;
 
+                // Providers can report input before every endpoint has been armed. Defer
+                // teardown until setup finishes so no later endpoint is left in bind mode.
+                if (_deviceDetectionArming)
+                {
+                    if (!_deviceDetectionFinishPending || detectedInput == null)
+                        _deviceDetectionPendingInput = detectedInput;
+                    _deviceDetectionFinishPending = true;
+                    return;
+                }
+
+                _deviceDetectionStopping = true;
                 devices = _deviceDetectionDevices ?? new List<Device>();
                 timer = _deviceDetectionTimer;
                 cancellation = _deviceDetectionCancellation;
 
                 _deviceDetectionCompletion = null;
+                _deviceDetectionFinishPending = false;
+                _deviceDetectionPendingInput = null;
                 _deviceDetectionDevices = null;
                 _deviceDetectionTimer = null;
                 _deviceDetectionCancellation = default(CancellationTokenRegistration);
@@ -670,6 +708,10 @@ namespace HidWizards.UCR.Core.Managers
                 }
             }
 
+            lock (_deviceDetectionLock)
+            {
+                _deviceDetectionStopping = false;
+            }
             completion.TrySetResult(detectedInput);
         }
 
@@ -1376,15 +1418,13 @@ namespace HidWizards.UCR.Core.Managers
             RefreshDeviceList();
             var availableDeviceList = GetAvailableDeviceList(DeviceIoType.Input, false);
 
-            // Remove obsolete cache copies for endpoints that are live now before writing current
-            // provider descriptors. Disconnected-device caches remain available for old binding menus.
-            _deviceCacheStore.RemoveOverlapping(availableDeviceList);
-
             foreach (var device in availableDeviceList)
             {
                 success &= _deviceCacheStore.Save(device, GetDeviceBindingMenu(device, DeviceIoType.Input, false));
             }
 
+            // Retire obsolete copies only after their replacements have been published.
+            if (success) _deviceCacheStore.RemoveOverlapping(availableDeviceList);
             _deviceCacheStore.ClearMemoryCache();
             return success;
         }

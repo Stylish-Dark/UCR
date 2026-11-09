@@ -172,12 +172,13 @@
                     PreviewMouseRightButtonDown="BindButton_OnPreviewMouseRightButtonDown"
                     Foreground="#FFFFFF"
                     HorizontalContentAlignment="Stretch"
-                    materialDesign:TransitionAssist.DisableTransitions="True"
-                    ToolTip="Waiting for input: click again, right-click or press Esc to cancel">
+                    materialDesign:TransitionAssist.DisableTransitions="True">
                 <Button.Style>
                     <Style TargetType="{x:Type Button}" BasedOn="{StaticResource CompactBindSurfaceButton}">
+                        <Setter Property="ToolTip" Value="{Binding BindingActionToolTip}"/>
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsCapturing}" Value="True">
+                                <Setter Property="ToolTip" Value="Waiting for input. Click again, right-click or press Esc to cancel."/>
                                 <Setter Property="Background" Value="#9A4D16"/>
                                 <Setter Property="BorderBrush" Value="#F0B869"/>
                                 <Setter Property="BorderThickness" Value="2"/>

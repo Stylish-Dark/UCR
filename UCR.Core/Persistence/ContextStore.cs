@@ -14,10 +14,13 @@ namespace HidWizards.UCR.Core.Persistence
     internal sealed class ContextStore
     {
         private const int SchemaVersion = 1;
+        private const int SnapshotSchemaVersion = 2;
         private const int BackupLimitPerFile = 5;
         private const string StateFileName = "state.json";
         private const string DevicesFileName = "devices.json";
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+
+        private readonly object _saveLock = new object();
 
         public string RootPath { get; }
         public string ProfilesRoot { get; }
@@ -64,7 +67,7 @@ namespace HidWizards.UCR.Core.Persistence
 
             if (File.Exists(StatePath) || GetBackupFiles(StatePath).Any())
             {
-                return LoadLive(serializer, additionalPluginTypes);
+                return LoadLive(serializer);
             }
 
             if (HasNewStoreConfigurationEvidence())
@@ -85,18 +88,22 @@ namespace HidWizards.UCR.Core.Persistence
         internal bool MatchesPersistedConfiguration(Context context, List<Type> additionalPluginTypes)
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
-            if (!File.Exists(StatePath) || !File.Exists(DevicesPath)) return false;
+            if (!File.Exists(StatePath)) return false;
 
             var pluginTypes = GetPluginTypes(additionalPluginTypes);
             var serializer = new UcrJsonSerializer(pluginTypes);
-            var profileIds = ValidateProfileIds(context.Profiles);
+            var persistedState = JObject.Parse(ReadSharedText(StatePath));
+            if (persistedState.Value<int>("schemaVersion") == SnapshotSchemaVersion)
+            {
+                return JToken.DeepEquals(JToken.Parse(serializer.Serialize(CreateSnapshot(context))), persistedState);
+            }
 
+            if (!File.Exists(DevicesPath)) return false;
             var currentState = JToken.Parse(serializer.Serialize(new StateFile
             {
                 SchemaVersion = SchemaVersion,
-                ProfileOrder = profileIds
+                ProfileOrder = ValidateProfileIds(context.Profiles)
             }));
-            var persistedState = JToken.Parse(File.ReadAllText(StatePath, Encoding.UTF8));
             if (!JToken.DeepEquals(currentState, persistedState)) return false;
 
             var currentDevices = JToken.Parse(serializer.Serialize(new DevicesFile
@@ -130,65 +137,72 @@ namespace HidWizards.UCR.Core.Persistence
             var pluginTypes = GetPluginTypes(additionalPluginTypes);
             var serializer = new UcrJsonSerializer(pluginTypes);
 
-            Directory.CreateDirectory(RootPath);
-            Directory.CreateDirectory(ProfilesRoot);
-            Directory.CreateDirectory(CacheRoot);
-            Directory.CreateDirectory(BackupsRoot);
-
-            var profileIds = ValidateProfileIds(context.Profiles);
-            foreach (var profile in context.Profiles)
+            lock (_saveLock)
             {
-                var record = new ProfileFile
-                {
-                    SchemaVersion = SchemaVersion,
-                    Profile = profile
-                };
-                var path = GetProfilePath(profile.Guid);
-                var serializedProfile = serializer.Serialize(record);
-                GuardAgainstLostOutputs(path, serializedProfile);
-                AtomicWrite(path, serializedProfile, json =>
-                {
-                    ValidateProfileJsonShape(json);
-                    ValidateProfileFile(serializer.Deserialize<ProfileFile>(json), profile.Guid);
-                });
+                Directory.CreateDirectory(CacheRoot);
+
+                var snapshot = CreateSnapshot(context);
+                var serialized = serializer.Serialize(snapshot);
+                GuardAgainstLostOutputs(snapshot, JObject.Parse(serialized));
+
+                // One replacement publishes the ordered profiles and aliases together.
+                AtomicWrite(StatePath, serialized, json => ReadSnapshot(json, serializer));
+                return true;
             }
-
-            var aliases = CleanDeviceAliases(context.DeviceAliases);
-
-            var devices = new DevicesFile
-            {
-                SchemaVersion = SchemaVersion,
-                DeviceAliases = aliases
-            };
-            AtomicWrite(DevicesPath, serializer.Serialize(devices), json => ValidateDevicesFile(serializer.Deserialize<DevicesFile>(json)));
-
-            // State is deliberately committed last. It is the manifest that defines the ordered live set.
-            var state = new StateFile
-            {
-                SchemaVersion = SchemaVersion,
-                ProfileOrder = profileIds
-            };
-            AtomicWrite(StatePath, serializer.Serialize(state), json => ValidateStateFile(serializer.Deserialize<StateFile>(json)));
-
-            CleanupOrphanProfiles(profileIds);
-            return true;
         }
 
-        private static void GuardAgainstLostOutputs(string path, string replacement)
+        private static StateFile CreateSnapshot(Context context)
         {
-            if (!File.Exists(path)) return;
+            ValidateProfileIds(context.Profiles);
+            return new StateFile
+            {
+                SchemaVersion = SnapshotSchemaVersion,
+                Profiles = context.Profiles.ToList(),
+                DeviceAliases = CleanDeviceAliases(context.DeviceAliases)
+            };
+        }
+
+        private void GuardAgainstLostOutputs(StateFile snapshot, JObject replacement)
+        {
+            var previousState = TryReadJsonObject(StatePath);
+            var previousProfiles = previousState?["profiles"] as JArray;
+            var previousById = new Dictionary<Guid, JObject>();
+            if (previousProfiles != null)
+            {
+                foreach (var profile in previousProfiles.OfType<JObject>())
+                {
+                    if (Guid.TryParse((string)profile["guid"], out var profileId))
+                        previousById[profileId] = profile;
+                }
+            }
+
+            var replacementProfiles = (JArray)replacement["profiles"];
+
+            for (var index = 0; index < snapshot.Profiles.Count; index++)
+            {
+                var profileId = snapshot.Profiles[index].Guid;
+                JObject previous;
+                if (previousProfiles == null)
+                    previous = TryReadJsonObject(GetProfilePath(profileId))?["profile"] as JObject;
+                else
+                    previousById.TryGetValue(profileId, out previous);
+                if (previous != null)
+                    GuardAgainstLostOutputs(previous, (JObject)replacementProfiles[index]);
+            }
+        }
+
+        private static JObject TryReadJsonObject(string path)
+        {
+            if (!File.Exists(path)) return null;
+            try { return JObject.Parse(ReadSharedText(path)); }
+            catch (JsonException) { return null; }
+        }
+
+        private static void GuardAgainstLostOutputs(JObject previous, JObject current)
+        {
             // A normal deletion or one cleared binding is allowed. A large unexplained
             // drop of bound outputs with mappings still present is likely deserialization
             // damage and must not silently overwrite the recoverable JSON.
-            JObject previous;
-            JObject current;
-            try
-            {
-                previous = JObject.Parse(File.ReadAllText(path, Encoding.UTF8));
-                current = JObject.Parse(replacement);
-            }
-            catch (JsonException) { return; }
-
             Func<JObject, int> boundOutputs = json => json.Descendants().OfType<JObject>()
                 .Where(obj => obj["outputs"] is JArray)
                 .SelectMany(obj => (JArray)obj["outputs"])
@@ -211,35 +225,23 @@ namespace HidWizards.UCR.Core.Persistence
             // files while leaving the folder behind. Only actual recoverable backup files count.
             if (GetBackupFiles(DevicesPath).Any()) return true;
 
+            var migrationArchives = Path.Combine(BackupsRoot, "Legacy");
+            if (Directory.Exists(migrationArchives) &&
+                Directory.GetFiles(migrationArchives, "context-*.xml", SearchOption.TopDirectoryOnly).Length > 0)
+                return true;
+
             var profileBackups = Path.Combine(BackupsRoot, "Profiles");
             return Directory.Exists(profileBackups) && Directory.GetFiles(profileBackups, "*.json", SearchOption.AllDirectories).Length > 0;
         }
 
-        private Context LoadLive(UcrJsonSerializer serializer, List<Type> additionalPluginTypes)
+        private Context LoadLive(UcrJsonSerializer serializer)
         {
-            var state = ReadWithBackup(StatePath, serializer.Deserialize<StateFile>, ValidateStateFile);
-            var profiles = new List<Profile>();
-            foreach (var profileId in state.ProfileOrder)
-            {
-                var path = GetProfilePath(profileId);
-                var record = ReadWithBackup(path, json =>
-                {
-                    ValidateProfileJsonShape(json);
-                    return serializer.Deserialize<ProfileFile>(json);
-                }, value => ValidateProfileFile(value, profileId));
-                profiles.Add(record.Profile);
-            }
-            ValidateProfileIds(profiles);
-
-            // devices.json is written before state.json on every successful save. Once a manifest exists,
-            // a missing devices file is corruption, not an intentionally empty alias list.
-            var devices = ReadWithBackup(DevicesPath, serializer.Deserialize<DevicesFile>, ValidateDevicesFile);
-
+            var snapshot = ReadWithBackup(StatePath, json => ReadConfiguration(json, serializer));
             var context = new Context(this);
             context.Profiles.Clear();
-            context.Profiles.AddRange(profiles);
+            context.Profiles.AddRange(snapshot.Profiles);
             context.DeviceAliases.Clear();
-            context.DeviceAliases.AddRange(devices.DeviceAliases ?? new List<DeviceAlias>());
+            context.DeviceAliases.AddRange(snapshot.DeviceAliases);
             context.PostLoad();
 
             // Do not save changes during startup. Even migration/repair output stays
@@ -248,6 +250,50 @@ namespace HidWizards.UCR.Core.Persistence
                 Logger.Info("Post-load configuration repairs are pending explicit save.");
 
             return context;
+        }
+
+        private StateFile ReadConfiguration(string json, UcrJsonSerializer serializer)
+        {
+            var state = serializer.Deserialize<StateFile>(json);
+            if (state?.SchemaVersion == SnapshotSchemaVersion)
+                return ReadSnapshot(json, serializer, state);
+
+            ValidateStateFile(state);
+            var profiles = new List<Profile>();
+            foreach (var profileId in state.ProfileOrder)
+            {
+                var path = GetProfilePath(profileId);
+                var record = ReadWithBackup(path, profileJson =>
+                {
+                    ValidateProfileJsonShape(profileJson);
+                    return serializer.Deserialize<ProfileFile>(profileJson);
+                }, value => ValidateProfileFile(value, profileId));
+                profiles.Add(record.Profile);
+            }
+            ValidateProfileIds(profiles);
+
+            var devices = ReadWithBackup(DevicesPath, serializer.Deserialize<DevicesFile>, ValidateDevicesFile);
+            state.Profiles = profiles;
+            state.DeviceAliases = devices.DeviceAliases;
+            return state;
+        }
+
+        private static StateFile ReadSnapshot(string json, UcrJsonSerializer serializer, StateFile snapshot = null)
+        {
+            var root = JObject.Parse(json);
+            foreach (var token in RequireArray(root, "profiles", "state snapshot"))
+            {
+                var profile = token as JObject;
+                if (profile == null) throw new InvalidDataException("State snapshot contains a non-object profile.");
+                ValidateProfileJsonObject(profile);
+            }
+            RequireArray(root, "deviceAliases", "state snapshot");
+
+            snapshot = snapshot ?? serializer.Deserialize<StateFile>(json);
+            if (snapshot?.SchemaVersion != SnapshotSchemaVersion)
+                throw new InvalidDataException("Unsupported UCR state snapshot schema version.");
+            ValidateProfileIds(snapshot.Profiles);
+            return snapshot;
         }
 
         private Context MigrateAdjacentLegacyContext(UcrJsonSerializer serializer, List<Type> additionalPluginTypes)
@@ -273,7 +319,7 @@ namespace HidWizards.UCR.Core.Persistence
                 Save(migrated, additionalPluginTypes);
 
                 // Do not call this migration complete until the new live store can actually be read back.
-                var verified = LoadLive(serializer, additionalPluginTypes);
+                var verified = LoadLive(serializer);
                 ValidateMigrationRoundTrip(migrated, verified, serializer);
 
                 MigrateLegacyCacheBestEffort();
@@ -292,22 +338,13 @@ namespace HidWizards.UCR.Core.Persistence
 
         private void RollbackFailedLegacyMigrationBestEffort()
         {
-            var candidates = new List<string> { StatePath, DevicesPath };
-            if (Directory.Exists(ProfilesRoot))
+            try
             {
-                candidates.AddRange(Directory.GetFiles(ProfilesRoot, "*.json", SearchOption.TopDirectoryOnly));
+                File.Delete(StatePath);
             }
-
-            foreach (var path in candidates)
+            catch (Exception exception)
             {
-                try
-                {
-                    if (File.Exists(path)) File.Delete(path);
-                }
-                catch (Exception exception)
-                {
-                    Logger.Warn(exception, "Failed to roll back partial UCR migration file: " + path);
-                }
+                Logger.Warn(exception, "Failed to roll back the UCR migration snapshot: " + StatePath);
             }
         }
 
@@ -333,7 +370,16 @@ namespace HidWizards.UCR.Core.Persistence
                     if (File.Exists(destination)) continue;
                     var destinationDirectory = Path.GetDirectoryName(destination);
                     if (!string.IsNullOrWhiteSpace(destinationDirectory)) Directory.CreateDirectory(destinationDirectory);
-                    File.Copy(fullSource, destination, false);
+                    var temporary = destination + ".tmp-" + Guid.NewGuid().ToString("N");
+                    try
+                    {
+                        File.Copy(fullSource, temporary, false);
+                        File.Move(temporary, destination);
+                    }
+                    finally
+                    {
+                        File.Delete(temporary);
+                    }
                 }
             }
             catch (Exception exception)
@@ -623,15 +669,24 @@ namespace HidWizards.UCR.Core.Persistence
             return Path.Combine(ProfilesRoot, profileId.ToString("D") + ".json");
         }
 
-        private T ReadWithBackup<T>(string livePath, Func<string, T> deserialize, Action<T> validate)
+        private static string ReadSharedText(string path)
+        {
+            using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete))
+            using (var reader = new StreamReader(stream, Encoding.UTF8))
+            {
+                return reader.ReadToEnd();
+            }
+        }
+
+        private T ReadWithBackup<T>(string livePath, Func<string, T> deserialize, Action<T> validate = null)
         {
             Exception liveFailure = null;
             if (File.Exists(livePath))
             {
                 try
                 {
-                    var live = deserialize(File.ReadAllText(livePath, Encoding.UTF8));
-                    validate(live);
+                    var live = deserialize(ReadSharedText(livePath));
+                    validate?.Invoke(live);
                     return live;
                 }
                 catch (Exception exception)
@@ -645,8 +700,8 @@ namespace HidWizards.UCR.Core.Persistence
             {
                 try
                 {
-                    var value = deserialize(File.ReadAllText(backup, Encoding.UTF8));
-                    validate(value);
+                    var value = deserialize(ReadSharedText(backup));
+                    validate?.Invoke(value);
                     Logger.Warn("Recovered UCR data from backup: " + backup);
                     return value;
                 }
@@ -685,15 +740,26 @@ namespace HidWizards.UCR.Core.Persistence
 
                 if (File.Exists(livePath))
                 {
-                    var current = File.ReadAllText(livePath, Encoding.UTF8);
+                    var current = ReadSharedText(livePath);
                     if (string.Equals(current, written, StringComparison.Ordinal))
                     {
                         File.Delete(tempPath);
                         return;
                     }
 
-                    BackupExisting(livePath);
-                    File.Replace(tempPath, livePath, null);
+                    var backupDirectory = GetBackupDirectory(livePath);
+                    Directory.CreateDirectory(backupDirectory);
+                    var backupPath = Path.Combine(backupDirectory,
+                        DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff") + "-" + Guid.NewGuid().ToString("N") + Path.GetExtension(livePath));
+                    File.Replace(tempPath, livePath, backupPath);
+                    try
+                    {
+                        PruneBackups(backupDirectory);
+                    }
+                    catch (Exception exception)
+                    {
+                        Logger.Warn(exception, "Failed to enumerate old UCR backups: " + backupDirectory);
+                    }
                 }
                 else
                 {
@@ -711,18 +777,6 @@ namespace HidWizards.UCR.Core.Persistence
                     Logger.Warn(exception, "Failed to remove UCR temporary persistence file: " + tempPath);
                 }
             }
-        }
-
-        private void BackupExisting(string livePath)
-        {
-            if (!File.Exists(livePath)) return;
-            var directory = GetBackupDirectory(livePath);
-            Directory.CreateDirectory(directory);
-            var extension = Path.GetExtension(livePath);
-            var backupPath = Path.Combine(directory,
-                DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff") + "-" + Guid.NewGuid().ToString("N").Substring(0, 8) + extension);
-            File.Copy(livePath, backupPath, false);
-            PruneBackups(directory);
         }
 
         private IEnumerable<string> GetBackupFiles(string livePath)
@@ -769,27 +823,6 @@ namespace HidWizards.UCR.Core.Persistence
             }
         }
 
-        private void CleanupOrphanProfiles(ICollection<Guid> liveProfileIds)
-        {
-            if (!Directory.Exists(ProfilesRoot)) return;
-            var expected = new HashSet<string>(liveProfileIds.Select(id => id.ToString("D") + ".json"), StringComparer.OrdinalIgnoreCase);
-            foreach (var file in Directory.GetFiles(ProfilesRoot, "*.json", SearchOption.TopDirectoryOnly))
-            {
-                if (expected.Contains(Path.GetFileName(file))) continue;
-                try
-                {
-                    BackupExisting(file);
-                    File.Delete(file);
-                }
-                catch (Exception exception)
-                {
-                    // The manifest has already committed successfully. An obsolete locked file is harmless
-                    // and must not turn a successful save into a user-visible failure.
-                    Logger.Warn(exception, "Failed to remove obsolete UCR profile file: " + file);
-                }
-            }
-        }
-
         private static List<Type> GetPluginTypes(List<Type> additionalPluginTypes)
         {
             var plugins = new PluginsManager("Plugins");
@@ -804,6 +837,8 @@ namespace HidWizards.UCR.Core.Persistence
         {
             public int SchemaVersion { get; set; }
             public List<Guid> ProfileOrder { get; set; }
+            public List<Profile> Profiles { get; set; }
+            public List<DeviceAlias> DeviceAliases { get; set; }
         }
 
         internal sealed class DevicesFile

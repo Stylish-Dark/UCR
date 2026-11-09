@@ -59,6 +59,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
     {
         public string Title { get; set; }
         public Guid DeviceConfigurationGuid { get; set; }
+        internal Device OutputDevice { get; set; }
         public int KeyType { get; set; }
         public int KeyValue { get; set; }
         public int KeySubValue { get; set; }
@@ -3530,6 +3531,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 {
                     Title = node.Title,
                     DeviceConfigurationGuid = configuration.Guid,
+                    OutputDevice = configuration.Device,
                     KeyType = info.KeyType,
                     KeyValue = info.KeyValue,
                     KeySubValue = info.KeySubValue,
@@ -3547,6 +3549,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var bindingViewModel = ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
             if (bindingViewModel?.DeviceBinding == null || !bindingViewModel.BindingEnabled) return false;
 
+            var configuration = ResolveQuickOutputConfiguration(bindingViewModel);
+            if (configuration?.Device == null || configuration.Guid != option.DeviceConfigurationGuid ||
+                !ReferenceEquals(configuration.Device, option.OutputDevice)) return false;
+
             var binding = bindingViewModel.DeviceBinding;
             binding.DeviceBindingCategory = bindingViewModel.DeviceBindingCategory;
             binding.SetDeviceConfigurationGuid(option.DeviceConfigurationGuid);
@@ -3562,9 +3568,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             bindingViewModel.EnsureDeviceListLoaded();
             var binding = bindingViewModel.DeviceBinding;
             var configurationGuid = binding.DeviceConfigurationGuid;
-            if (configurationGuid == Guid.Empty && bindingViewModel.SelectedDevice != null)
+            if (configurationGuid == Guid.Empty && !binding.IsBound && bindingViewModel.SelectedDevice != null)
                 configurationGuid = bindingViewModel.SelectedDevice.Value;
-            if (configurationGuid == Guid.Empty)
+            if (configurationGuid == Guid.Empty && !binding.IsBound)
                 configurationGuid = ProfileViewModel.Profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output)?.Guid ?? Guid.Empty;
 
             return ProfileViewModel.Profile.GetDeviceConfiguration(DeviceIoType.Output, configurationGuid);
@@ -3590,6 +3596,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return false;
             }
 
+            var outputDevice = configuration.Device;
+            var category = bindingViewModel.DeviceBindingCategory;
             var timeout = TimeSpan.FromSeconds(5);
             var cancellation = new CancellationTokenSource();
             _quickOutputDetectionCancellation = cancellation;
@@ -3598,7 +3606,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             try
             {
                 var detected = await ProfileViewModel.Profile.Context.DevicesManager.DetectInputControlAsync(
-                    bindingViewModel.DeviceBindingCategory, timeout, cancellation.Token);
+                    category, timeout, cancellation.Token);
 
                 if (cancellation.IsCancellationRequested)
                 {
@@ -3611,7 +3619,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     return false;
                 }
 
-                return ApplyDetectedOutputControl(bindingViewModel, configuration, detected);
+                var currentBinding = ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
+                var currentConfiguration = ResolveQuickOutputConfiguration(currentBinding);
+                if (!ButtonsEnabled || !ReferenceEquals(currentBinding, bindingViewModel) ||
+                    !bindingViewModel.BindingEnabled || bindingViewModel.DeviceBindingCategory != category ||
+                    currentConfiguration?.Guid != configuration.Guid ||
+                    !ReferenceEquals(currentConfiguration.Device, outputDevice))
+                {
+                    QuickOutputDetectionStatus = "Output selection changed during capture.";
+                    return false;
+                }
+
+                return ApplyDetectedOutputControl(bindingViewModel, currentConfiguration, detected);
             }
             catch (InvalidOperationException exception)
             {

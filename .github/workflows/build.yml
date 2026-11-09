@@ -167,6 +167,15 @@ jobs:
           $ErrorActionPreference = 'Stop'
           .\build\ProviderPatches\Apply-IOWrapperInputOrdering.ps1 -IOWrapperRoot .\submodules\IOWrapper
 
+      - name: Read DirectInput axis state at subscription startup
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git -C .\submodules\IOWrapper apply "$PWD\build\ProviderPatches\DirectInputAxisSnapshot.patch"
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Unable to apply the DirectInput axis snapshot patch.'
+          }
+
       - name: Harden Core Interception hotplug handling
         shell: pwsh
         run: |

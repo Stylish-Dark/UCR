@@ -103,6 +103,9 @@ namespace HidWizards.UCR.Core.Models
 
         #region Life cycle
         
+        [XmlIgnore]
+        public virtual bool InitializeFromAxisSnapshot => false;
+
         public virtual void OnActivate()
         {
 
@@ -134,6 +137,15 @@ namespace HidWizards.UCR.Core.Models
         #endregion
 
         #region Plugin methods
+
+        protected bool TryReadPrimaryInput(out short value)
+        {
+            if (RuntimeMapping != null)
+                return RuntimeMapping.TryReadPrimaryInput(InputCategories[0].Category, out value);
+
+            value = 0;
+            return false;
+        }
 
         protected void WriteOutput(int number, short value)
         {
@@ -318,7 +330,7 @@ namespace HidWizards.UCR.Core.Models
 
         public bool HasSameInputCategories(Plugin other)
         {
-            if (InputCategories.Count > other.InputCategories.Count) return false;
+            if (other == null || InputCategories.Count != other.InputCategories.Count) return false;
             for (var i = 0; i < InputCategories.Count; i++)
             {
                 if (InputCategories[i].Category != other.InputCategories[i].Category) return false;

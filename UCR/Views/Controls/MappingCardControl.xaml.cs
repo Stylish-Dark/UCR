@@ -1170,7 +1170,7 @@ namespace HidWizards.UCR.Views.Controls
         }
 
         internal bool ApplyOutputControlChoice(DeviceBindingViewModel binding, Guid deviceGuid,
-            DeviceBindingInfo selectedControl, int direction = 0)
+            Device outputDevice, DeviceBindingInfo selectedControl, int direction = 0)
         {
             var mapping = DataContext as MappingViewModel;
             if (mapping?.ButtonsEnabled != true || binding?.DeviceBinding == null || selectedControl == null)
@@ -1183,6 +1183,8 @@ namespace HidWizards.UCR.Views.Controls
             var requested = selectedControl.DeviceBindingCategory;
             var configuration = mapping.ProfileViewModel.Profile.GetDeviceConfiguration(
                 DeviceIoType.Output, deviceGuid);
+            if (configuration?.Device == null || !ReferenceEquals(configuration.Device, outputDevice) ||
+                binding.DeviceBinding.DeviceConfigurationGuid != deviceGuid) return false;
             var isTrigger = requested == DeviceBindingCategory.Range &&
                 DeviceVisualCatalog.IsKnownTriggerAxis(configuration,
                     mapping.ProfileViewModel.Profile, DeviceIoType.Output, selectedControl.KeyValue);

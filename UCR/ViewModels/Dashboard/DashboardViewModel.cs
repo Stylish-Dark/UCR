@@ -20,7 +20,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
         public Visibility ProfileDetailsActive => SelectedProfileItem != null ? Visibility.Visible : Visibility.Hidden;
         public bool CanActivateProfile => SelectedProfileItem?.Profile != null;
         public bool CanDeactivateProfile => SelectedProfileItem?.Profile?.IsActive() == true;
-        public bool CanDeactivateAllProfiles => Context != null && Context.ActiveProfiles.Count > 0;
+        public bool CanDeactivateAllProfiles => Context?.SubscriptionsManager.CanStopProfiles == true;
         public ProfileDeviceListControlViewModel InputDeviceControlViewModel { get; set; }
         public ProfileDeviceListControlViewModel OutputDeviceControlViewModel { get; set; }
 
@@ -85,6 +85,11 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             ProfileList = ProfileItem.GetProfileTree(context.Profiles);
             RebuildProfileView();
             context.ActiveProfileChangedEvent += OnActiveProfileChangedEvent;
+            context.SubscriptionsManager.PropertyChanged += (sender, args) =>
+            {
+                if (args.PropertyName == nameof(Context.SubscriptionsManager.CanStopProfiles))
+                    OnPropertyChanged(nameof(CanDeactivateAllProfiles));
+            };
             context.DeviceAliasesChangedEvent += OnDeviceAliasesChangedEvent;
             context.ProfileDevicesChangedEvent += OnProfileDevicesChangedEvent;
         }

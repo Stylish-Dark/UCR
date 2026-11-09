@@ -5,8 +5,6 @@ namespace HidWizards.UCR.Core.Utilities.AxisHelpers
     public class SensitivityHelper
     {
         private double _scaleFactor;
-        private double _axisRange;
-        private double _sens;
 
         public int Percentage
         {
@@ -31,22 +29,23 @@ namespace HidWizards.UCR.Core.Utilities.AxisHelpers
         private void PrecalculateValues()
         {
             _scaleFactor = _percentage / 100d;
-            _axisRange = Constants.AxisMaxValue - Constants.AxisMinValue;
-            _sens = _scaleFactor / 100d;
         }
 
         public short ApplyRangeSensitivity(short value)
         {
-            if (IsLinear) return Functions.ClampAxisRange((int) Math.Round(value * _scaleFactor));
+            if (IsLinear)
+            {
+                var scaled = value * _scaleFactor;
+                return (short)Math.Round(Math.Max(Constants.AxisMinValue,
+                    Math.Min(Constants.AxisMaxValue, scaled)));
+            }
 
-            // Map value to -1 .. 1
-            double val11 = (((value - Constants.AxisMinValue) / _axisRange) * 2d) - 1d;
-            // calculate (Sensitivity * Value) + ( (1-Sensitivity) * Value^3 )
-            double valout = (_sens * val11) + ((1d - _sens) * Math.Pow(val11, 3d));
-            // Map value back to AxisRange
-            value = (short) Math.Round(((valout + 1d) / 2d) * _axisRange + (1d * Constants.AxisMinValue));
-
-            return value;
+            // Normalize each half of the axis separately to keep zero neutral.
+            // At 100% the linear term is exactly the input and the cubic term is zero.
+            var endpoint = value < 0 ? Constants.AxisMinValue : Constants.AxisMaxValue;
+            var magnitude = (double)value / endpoint;
+            var shaped = magnitude * (_scaleFactor + (1d - _scaleFactor) * magnitude * magnitude);
+            return (short)Math.Round(Math.Max(0d, Math.Min(1d, shaped)) * endpoint);
         }
 
     }

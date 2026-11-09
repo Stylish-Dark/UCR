@@ -173,6 +173,63 @@ if (-not $core.Contains($pollMarker)) {
     $core = [regex]::Replace($core, $pollPattern, $pollReplacement, 1)
 }
 
+$detectionMarker = 'Report a failed bind request without pausing other live devices.'
+if (-not $core.Contains($detectionMarker)) {
+    $detectionPattern = '(?ms)^        public void SetDetectionMode\(DetectionMode detectionMode, DeviceDescriptor deviceDescriptor, Action<ProviderDescriptor, DeviceDescriptor, BindingReport, short> callback = null\)\r?\n        \{\r?\n.*?^        \}'
+    if (([regex]::Matches($core, $detectionPattern)).Count -ne 1) {
+        throw 'Expected exactly one Core_Interception.SetDetectionMode method body.'
+    }
+
+    $detectionReplacement = @(
+        '        public void SetDetectionMode(DetectionMode detectionMode, DeviceDescriptor deviceDescriptor, Action<ProviderDescriptor, DeviceDescriptor, BindingReport, short> callback = null)',
+        '        {',
+        '            lock (_lockObj)',
+        '            {',
+        '                int devId;',
+        '                try',
+        '                {',
+        '                    devId = _deviceLibrary.GetInputDeviceIdentifier(deviceDescriptor);',
+        '                }',
+        '                catch',
+        '                {',
+        '                    // Report a failed bind request without pausing other live devices.',
+        '                    if (detectionMode == DetectionMode.Bind) throw;',
+        '                    return;',
+        '                }',
+        '',
+        '                SetPollThreadState(false);',
+        '                try',
+        '                {',
+        '                    if (HelperFunctions.IsKeyboard(devId))',
+        '                    {',
+        '                        if (detectionMode == DetectionMode.Bind)',
+        '                            EnsureMonitoredKeyboardExists(devId, deviceDescriptor);',
+        '                        else if (!_monitoredKeyboards.ContainsKey(devId))',
+        '                            return;',
+        '                        _monitoredKeyboards[devId].SetDetectionMode(detectionMode);',
+        '                    }',
+        '                    else',
+        '                    {',
+        '                        if (detectionMode == DetectionMode.Bind)',
+        '                            EnsureMonitoredMouseExists(devId, deviceDescriptor);',
+        '                        else if (!_monitoredMice.ContainsKey(devId))',
+        '                            return;',
+        '                        _monitoredMice[devId].SetDetectionMode(detectionMode);',
+        '                    }',
+        '',
+        '                    if (detectionMode == DetectionMode.Bind) _bindModeCallback = callback;',
+        '                }',
+        '                finally',
+        '                {',
+        '                    StartPollingIfNeeded();',
+        '                }',
+        '            }',
+        '        }'
+    ) -join $nl
+
+    $core = [regex]::Replace($core, $detectionPattern, $detectionReplacement, 1)
+}
+
 Set-Content -LiteralPath $corePath -Value $core -Encoding UTF8
 
 $library = Get-Content -LiteralPath $libraryPath -Raw
@@ -202,6 +259,9 @@ if (-not $verifiedCore.Contains($refreshMarker)) {
 if (-not $verifiedCore.Contains($pollMarker) -or -not $verifiedCore.Contains($providerLogMarker)) {
     throw 'Core_Interception hotplug patch verification failed: durable callback diagnostics missing.'
 }
+if (-not $verifiedCore.Contains($detectionMarker)) {
+    throw 'Core_Interception hotplug patch verification failed: unavailable bind endpoints must report failure.'
+}
 if (-not $verifiedCore.Contains('finally')) {
     throw 'Core_Interception hotplug patch verification failed: poll finally barrier missing.'
 }
@@ -209,4 +269,4 @@ if (-not $verifiedLibrary.Contains($goodBoundsCs) -or $verifiedLibrary.Contains(
     throw 'Core_Interception hotplug patch verification failed: instance bounds check is not fixed.'
 }
 
-Write-Host 'Applied Core_Interception hotplug safety: synchronized refresh, durable callback diagnostics, exception barrier, and instance bounds fix.'
+Write-Host 'Applied Core_Interception hotplug safety: synchronized refresh, durable callback diagnostics, exception barrier, bind failure reporting, and instance bounds fix.'

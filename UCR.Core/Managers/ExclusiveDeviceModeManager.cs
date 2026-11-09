@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using HidWizards.UCR.Core.Models;
 using Newtonsoft.Json.Linq;
@@ -28,39 +29,64 @@ namespace HidWizards.UCR.Core.Managers
         private bool _addedApplication;
         private bool _enabledCloak;
         private bool _recoveryFailed;
+        private bool _sessionInitialized;
         private bool _disposed;
 
-        public ExclusiveDeviceModeManager()
+        public Task RecoverAsync()
         {
-            try { RecoverStaleSession(); }
-            catch (Exception exception)
+            // Startup calls this on the retained context only. Contexts temporarily constructed
+            // during migration and deserialization must not read or recover the driver's journal.
+            return Task.Run(() =>
             {
-                _recoveryFailed = true;
-                Logger.Error(exception, "Could not recover previous HidHide session; exclusive mode is unavailable until recovery succeeds.");
-            }
+                lock (_sync)
+                {
+                    if (_disposed) return;
+                    try { InitializeSession(); }
+                    catch (Exception exception)
+                    {
+                        Logger.Error(exception, "Could not recover previous HidHide session; exclusive mode is unavailable until recovery succeeds.");
+                    }
+                }
+            });
         }
 
         public bool Apply(IEnumerable<Profile> profiles)
         {
-            lock (_sync) return ApplyCore(profiles);
+            List<string> requested;
+            return TryGetRequestedInstances(profiles, out requested) && ApplyInstances(requested);
         }
 
-        private bool ApplyCore(IEnumerable<Profile> profiles)
+        public Task<bool> ApplyAsync(IEnumerable<Profile> profiles)
         {
+            // The editor owns the mutable profile/device models. The worker receives only a snapshot.
+            List<string> requested;
+            if (!TryGetRequestedInstances(profiles, out requested)) return Task.FromResult(false);
+            if (requested.Count == 0 && Monitor.TryEnter(_sync))
+            {
+                try
+                {
+                    if (_disposed) return Task.FromResult(false);
+                    if (_sessionInitialized && !_recoveryFailed && _owned.Count == 0 && !_addedApplication && !_enabledCloak)
+                        return Task.FromResult(true);
+                }
+                finally
+                {
+                    Monitor.Exit(_sync);
+                }
+            }
+            return Task.Run(() => ApplyInstances(requested));
+        }
+
+        private bool ApplyInstances(List<string> requested)
+        {
+            lock (_sync) return !_disposed && ApplyCore(requested);
+        }
+
+        private static bool TryGetRequestedInstances(IEnumerable<Profile> profiles, out List<string> requested)
+        {
+            requested = new List<string>();
             try
             {
-                // Never overwrite an unrecovered ownership journal. Doing so could
-                // permanently strand a previously hidden controller.
-                if (_recoveryFailed)
-                {
-                    RecoverStaleSession();
-                    _owned.Clear();
-                    _addedApplication = false;
-                    _enabledCloak = false;
-                    _recoveryFailed = false;
-                }
-
-                var requested = new List<string>();
                 foreach (var profile in profiles ?? Enumerable.Empty<Profile>())
                 {
                     if (profile == null) continue;
@@ -69,7 +95,7 @@ namespace HidWizards.UCR.Core.Managers
                         if (config?.ExclusiveMode != true) continue;
                         var device = config.Device;
                         if (device == null || device.IsCache ||
-                            device.ProviderName.StartsWith("Core_Interception", StringComparison.OrdinalIgnoreCase))
+                            (device.ProviderName ?? string.Empty).StartsWith("Core_Interception", StringComparison.OrdinalIgnoreCase))
                             throw new InvalidOperationException("Exclusive mode requires a live physical HID controller.");
 
                         var instance = NormalizeInstancePath(device.HidPath);
@@ -78,6 +104,38 @@ namespace HidWizards.UCR.Core.Managers
                         requested.Add(instance);
                     }
                 }
+                return true;
+            }
+            catch (Exception exception)
+            {
+                Logger.Error(exception, "Unable to determine the requested Exclusive Device Mode configuration.");
+                return false;
+            }
+        }
+
+        private void InitializeSession()
+        {
+            if (!_sessionInitialized)
+            {
+                _recoveryFailed = File.Exists(_journal);
+                _sessionInitialized = true;
+            }
+            if (!_recoveryFailed) return;
+
+            RecoverStaleSession();
+            _owned.Clear();
+            _addedApplication = false;
+            _enabledCloak = false;
+            _recoveryFailed = false;
+        }
+
+        private bool ApplyCore(IList<string> requested)
+        {
+            try
+            {
+                // Never overwrite an unrecovered ownership journal. Doing so could
+                // permanently strand a previously hidden controller.
+                InitializeSession();
 
                 if (requested.Count == 0 && _owned.Count == 0 && !_addedApplication && !_enabledCloak)
                     return true;
@@ -158,7 +216,7 @@ namespace HidWizards.UCR.Core.Managers
             {
                 if (_disposed) return;
                 _disposed = true;
-                if (!ApplyCore(Enumerable.Empty<Profile>()))
+                if (_sessionInitialized && !ApplyCore(new List<string>()))
                     Logger.Error("HidHide cleanup failed; recovery journal retained for next launch.");
             }
         }
@@ -385,17 +443,20 @@ namespace HidWizards.UCR.Core.Managers
                     RedirectStandardOutput = true,
                     RedirectStandardError = true
                 };
+                var timeout = TimeSpan.FromSeconds(10);
+                var elapsed = Stopwatch.StartNew();
                 process.Start();
                 // Drain both pipes concurrently to avoid deadlocking on verbose
                 // inventory output or an error from the HidHide driver.
                 Task<string> stdout = process.StandardOutput.ReadToEndAsync();
                 Task<string> stderr = process.StandardError.ReadToEndAsync();
-                if (!process.WaitForExit(10000))
+                if (!process.WaitForExit(Math.Max(0, (int)(timeout - elapsed.Elapsed).TotalMilliseconds)))
                 {
                     try { process.Kill(); } catch { }
                     throw new TimeoutException("HidHideCLI did not respond within ten seconds.");
                 }
-                Task.WaitAll(stdout, stderr);
+                if (!Task.WaitAll(new Task[] { stdout, stderr }, Math.Max(0, (int)(timeout - elapsed.Elapsed).TotalMilliseconds)))
+                    throw new TimeoutException("HidHideCLI did not close its output streams within ten seconds.");
                 if (process.ExitCode != 0)
                     throw new InvalidOperationException("HidHideCLI failed (" + process.ExitCode + "): " + stderr.Result);
                 return stdout.Result;

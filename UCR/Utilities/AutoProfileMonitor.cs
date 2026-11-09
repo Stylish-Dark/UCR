@@ -27,7 +27,7 @@ namespace HidWizards.UCR.Utilities
         private readonly HashSet<Guid> _suppressedProfileGuids = new HashSet<Guid>();
         private readonly Dictionary<Guid, DateTime> _nextActivationAttemptUtc = new Dictionary<Guid, DateTime>();
         private readonly HashSet<Guid> _ownedProfileGuids = new HashSet<Guid>();
-        private bool _autoOperationInProgress;
+        private readonly HashSet<Guid> _failedStopGuids = new HashSet<Guid>();
         private bool _evaluationInProgress;
         private bool _disposed;
 
@@ -44,7 +44,7 @@ namespace HidWizards.UCR.Utilities
 
         private async void OnTimerTick(object sender, EventArgs e)
         {
-            if (_disposed || _autoOperationInProgress || _evaluationInProgress) return;
+            if (_disposed || _evaluationInProgress) return;
 
             _evaluationInProgress = true;
             try
@@ -59,7 +59,7 @@ namespace HidWizards.UCR.Utilities
                 // Do not enumerate every process on the machine when auto-apply is unused.
                 if (enabledRules.Count == 0)
                 {
-                    ApplyEvaluation(profiles, new List<RunningApplication>());
+                    await ApplyEvaluationAsync(profiles, new List<RunningApplication>());
                     return;
                 }
 
@@ -74,7 +74,7 @@ namespace HidWizards.UCR.Utilities
                 // The dispatcher was free while the scan ran, so profiles/rules may have been edited
                 // or removed. Re-resolve the live profile set before applying any state changes.
                 profiles = EnumerateProfiles(_context.Profiles).ToList();
-                ApplyEvaluation(profiles, runningApplications);
+                await ApplyEvaluationAsync(profiles, runningApplications);
             }
             catch (Exception exception)
             {
@@ -86,89 +86,107 @@ namespace HidWizards.UCR.Utilities
             }
         }
 
-        private void ApplyEvaluation(IList<Profile> profiles, IList<RunningApplication> runningApplications)
+        private async Task ApplyEvaluationAsync(IList<Profile> profiles, IList<RunningApplication> runningApplications)
         {
-            if (_disposed || _autoOperationInProgress) return;
+            if (_disposed) return;
 
             ClearExpiredRuntimeState(profiles, runningApplications);
 
-            var eligibleProfiles = profiles.Where(profile => IsEligible(profile, runningApplications)).ToList();
-            var eligibleGuids = new HashSet<Guid>(eligibleProfiles.Select(profile => profile.Guid));
-
             foreach (var ownedGuid in _ownedProfileGuids.ToList())
             {
-                if (eligibleGuids.Contains(ownedGuid)) continue;
+                if (_disposed) return;
                 var ownedProfile = profiles.FirstOrDefault(profile => profile.Guid == ownedGuid);
-                if (ownedProfile != null && ownedProfile.IsActive()) StopOwnedProfile(ownedProfile);
-                _ownedProfileGuids.Remove(ownedGuid);
+                if (ownedProfile == null)
+                {
+                    _ownedProfileGuids.Remove(ownedGuid);
+                    _failedStopGuids.Remove(ownedGuid);
+                    continue;
+                }
+
+                if (IsEligible(ownedProfile, runningApplications) && ownedProfile.IsActive())
+                {
+                    _failedStopGuids.Remove(ownedGuid);
+                    continue;
+                }
+
+                await StopOwnedProfileAsync(ownedProfile, runningApplications);
             }
 
-            foreach (var profile in eligibleProfiles)
+            foreach (var profile in profiles)
             {
-                if (profile.IsActive()) continue;
-                ActivateAutomatically(profile);
+                if (_disposed) return;
+                if (profile.IsActive() || _failedStopGuids.Contains(profile.Guid) || !IsEligible(profile, runningApplications)) continue;
+                await ActivateAutomaticallyAsync(profile, runningApplications);
             }
         }
 
-        private void ActivateAutomatically(Profile profile)
+        private async Task ActivateAutomaticallyAsync(Profile profile, IList<RunningApplication> runningApplications)
         {
             DateTime nextAttemptUtc;
             if (_nextActivationAttemptUtc.TryGetValue(profile.Guid, out nextAttemptUtc) && DateTime.UtcNow < nextAttemptUtc) return;
 
-            _autoOperationInProgress = true;
             try
             {
-                if (_context.SubscriptionsManager.ActivateProfile(profile))
-                {
-                    _ownedProfileGuids.Add(profile.Guid);
-                    _nextActivationAttemptUtc.Remove(profile.Guid);
-                    Logger.Info("Auto-applied profile '" + profile.ProfileBreadCrumbs() + "'.");
-                }
-                else
-                {
-                    _nextActivationAttemptUtc[profile.Guid] = DateTime.UtcNow.Add(FailedActivationRetryDelay);
-                    Logger.Warn("Auto-apply failed for profile '" + profile.ProfileBreadCrumbs() + "'; retrying in 5 seconds.");
-                }
+                await _context.SubscriptionsManager.ActivateAutomaticProfileAsync(profile, () =>
+                    !_disposed && !profile.IsActive() && IsEligible(profile, runningApplications) &&
+                    EnumerateProfiles(_context.Profiles).Contains(profile), success =>
+                    {
+                        if (_disposed) return;
+                        if (success)
+                        {
+                            _ownedProfileGuids.Add(profile.Guid);
+                            _nextActivationAttemptUtc.Remove(profile.Guid);
+                            Logger.Info("Auto-applied profile '" + profile.ProfileBreadCrumbs() + "'.");
+                        }
+                        else
+                        {
+                            _nextActivationAttemptUtc[profile.Guid] = DateTime.UtcNow.Add(FailedActivationRetryDelay);
+                            Logger.Warn("Auto-apply failed for profile '" + profile.ProfileBreadCrumbs() + "'; retrying in 5 seconds.");
+                        }
+                    });
             }
             catch (Exception exception)
             {
                 _nextActivationAttemptUtc[profile.Guid] = DateTime.UtcNow.Add(FailedActivationRetryDelay);
                 Logger.Error("Auto-apply failed for profile '" + profile.ProfileBreadCrumbs() + "'; retrying in 5 seconds.", exception);
             }
-            finally
-            {
-                _autoOperationInProgress = false;
-            }
         }
 
-        private void StopOwnedProfile(Profile profile)
+        private async Task StopOwnedProfileAsync(Profile profile, IList<RunningApplication> runningApplications)
         {
-            if (profile == null) return;
-            var profileName = profile.ProfileBreadCrumbs();
-            _autoOperationInProgress = true;
             try
             {
-                var success = _context.SubscriptionsManager.DeactivateProfile(profile);
-                if (success) Logger.Info("Auto-stopped profile '" + profileName + "' because none of its application rules are running.");
-                else Logger.Warn("Auto-stop completed with unsubscribe errors for profile '" + profileName + "'.");
+                await _context.SubscriptionsManager.DeactivateAutomaticProfileAsync(profile, () =>
+                    !_disposed && _ownedProfileGuids.Contains(profile.Guid) &&
+                    (!IsEligible(profile, runningApplications) || (_failedStopGuids.Contains(profile.Guid) && !profile.IsActive())),
+                    success =>
+                    {
+                        if (success)
+                        {
+                            _ownedProfileGuids.Remove(profile.Guid);
+                            _failedStopGuids.Remove(profile.Guid);
+                            Logger.Info("Auto-stopped profile '" + profile.ProfileBreadCrumbs() + "'.");
+                        }
+                        else
+                        {
+                            _failedStopGuids.Add(profile.Guid);
+                            Logger.Warn("Auto-stop could not cleanly stop profile '" + profile.ProfileBreadCrumbs() + "'; it will retry.");
+                        }
+                    });
             }
             catch (Exception exception)
             {
-                Logger.Error("Auto-stop failed for profile '" + profileName + "'.", exception);
-            }
-            finally
-            {
-                _ownedProfileGuids.Remove(profile.Guid);
-                _autoOperationInProgress = false;
+                if (_ownedProfileGuids.Contains(profile.Guid)) _failedStopGuids.Add(profile.Guid);
+                Logger.Error("Auto-stop failed for profile '" + profile.ProfileBreadCrumbs() + "'.", exception);
             }
         }
 
         private void OnActiveProfileChanged(Profile profile)
         {
-            if (_disposed || _autoOperationInProgress || _ownedProfileGuids.Count == 0) return;
+            if (_disposed || _context.SubscriptionsManager.IsAutomaticTransition || _ownedProfileGuids.Count == 0) return;
 
             var manuallyStopped = _ownedProfileGuids
-                .Where(guid => !_context.ActiveProfiles.Any(active => active.Guid == guid))
+                .Where(guid => !_failedStopGuids.Contains(guid) && !_context.ActiveProfiles.Any(active => active.Guid == guid))
                 .ToList();
             foreach (var guid in manuallyStopped)
             {
@@ -221,7 +239,7 @@ namespace HidWizards.UCR.Utilities
             return RuleMatches(rule, new RunningApplication
             {
                 ExecutableName = NormalizeExecutableName(executableName),
-                CommandLine = commandLine ?? string.Empty
+                CommandLine = commandLine
             });
         }
 
@@ -233,7 +251,7 @@ namespace HidWizards.UCR.Utilities
                 !string.Equals(expectedExecutable, application.ExecutableName, StringComparison.OrdinalIgnoreCase)) return false;
 
             var arguments = (rule.Arguments ?? string.Empty).Trim();
-            if (arguments.Length == 0) return true;
+            if (arguments.Length == 0 || application.ExecutableOnlyFallback) return true;
             return (application.CommandLine ?? string.Empty).IndexOf(arguments, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
@@ -249,6 +267,7 @@ namespace HidWizards.UCR.Utilities
 
         private static List<RunningApplication> GetRunningApplications(bool includeCommandLines)
         {
+            var executableOnlyFallback = false;
             if (includeCommandLines)
             {
                 try
@@ -258,6 +277,7 @@ namespace HidWizards.UCR.Utilities
                 catch (Exception exception)
                 {
                     Logger.Warn("Unable to query process command lines; falling back to executable-only matching.", exception);
+                    executableOnlyFallback = true;
                 }
             }
 
@@ -275,7 +295,8 @@ namespace HidWizards.UCR.Utilities
                 try
                 {
                     var name = NormalizeExecutableName(process.ProcessName);
-                    if (!string.IsNullOrWhiteSpace(name)) result.Add(new RunningApplication { ExecutableName = name, CommandLine = string.Empty });
+                    if (!string.IsNullOrWhiteSpace(name))
+                        result.Add(new RunningApplication { ExecutableName = name, ExecutableOnlyFallback = executableOnlyFallback });
                 }
                 catch { }
                 finally { process.Dispose(); }
@@ -343,6 +364,7 @@ namespace HidWizards.UCR.Utilities
         {
             public string ExecutableName { get; set; }
             public string CommandLine { get; set; }
+            public bool ExecutableOnlyFallback { get; set; }
         }
     }
 }

@@ -41,7 +41,7 @@ namespace HidWizards.UCR
         private bool _shutdownCleanupComplete;
         private bool _disposed;
 
-        protected override void OnStartup(StartupEventArgs e)
+        protected override async void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
             RuntimePathManager.NormalizeWorkingDirectory();
@@ -95,7 +95,10 @@ namespace HidWizards.UCR
 
                     RunStartupStage("Checking plugins...", CheckForBlockedDll);
 
-                    RunStartupStage("Processing command line...", () => context.ParseCommandLineArguments(e.Args));
+                    UpdateSplash("Checking Exclusive Device Mode...");
+                    await context.SubscriptionsManager.RecoverExclusiveModeAsync();
+                    UpdateSplash("Processing command line...");
+                    await context.ParseCommandLineArgumentsAsync(e.Args);
 
                     UpdateSplash("Opening UCR...");
                     var windowStage = Stopwatch.StartNew();
@@ -501,7 +504,7 @@ namespace HidWizards.UCR
             return handles.Distinct();
         }
 
-        public void ShutdownWithProgress(Window mainWindow, bool saveContext)
+        public async void ShutdownWithProgress(Window mainWindow, bool saveContext)
         {
             if (_shutdownInProgress) return;
             _shutdownInProgress = true;
@@ -522,11 +525,20 @@ namespace HidWizards.UCR
                 // perform a second implicit write during the shutdown sequence.
                 UpdateShutdownProgress(15);
                 UpdateShutdownProgress(35);
-                RunShutdownStage("Stopping input and output services...", 70, () =>
+                UpdateShutdownSplash("Stopping input and output services...");
+                try
                 {
-                    context?.Dispose();
+                    if (context != null) await context.DisposeAsync();
+                }
+                catch (Exception exception)
+                {
+                    Logger.Error("Stopping input and output services during shutdown failed.", exception);
+                }
+                finally
+                {
                     context = null;
-                });
+                }
+                UpdateShutdownProgress(70);
                 RunShutdownStage("Releasing system hooks...", 88, () =>
                 {
                     _hidGuardianClient?.Dispose();

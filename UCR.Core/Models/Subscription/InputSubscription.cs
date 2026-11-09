@@ -1,4 +1,5 @@
 ﻿using System;
+using HidWizards.IOWrapper.DataTransferObjects;
 using HidWizards.UCR.Core.Models.Binding;
 
 namespace HidWizards.UCR.Core.Models.Subscription
@@ -11,6 +12,7 @@ namespace HidWizards.UCR.Core.Models.Subscription
         public Guid DeviceBindingSubscriptionGuid { get; set; }
         public bool IsOverwritten { get; set; }
         public DeviceSubscription DeviceSubscription { get; }
+        internal InputSubscriptionRequest SubscribedRequest { get; set; }
 
         public InputSubscription(Mapping mapping, DeviceBinding deviceBinding, Profile profile, Guid subscriptionStateGuid)
         {

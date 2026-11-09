@@ -1,0 +1,110 @@
+--- a/Source/Core Providers/SharpDX_DirectInput/DiDeviceHandler.cs
++++ b/Source/Core Providers/SharpDX_DirectInput/DiDeviceHandler.cs
+@@ -1,4 +1,5 @@
+ ﻿using System;
++using System.Collections.Concurrent;
+ using System.Threading;
+ using Hidwizards.IOWrapper.Libraries.DeviceHandlers.Devices;
+ using Hidwizards.IOWrapper.Libraries.DeviceLibrary;
+@@ -14,6 +15,8 @@
+         private readonly IInputDeviceLibrary<Guid> _deviceLibrary;
+         private readonly DirectInput _diInstance = new DirectInput();
+         private readonly Guid _instanceGuid;
++        private readonly DiAxisProcessor _axisProcessor = new DiAxisProcessor();
++        private readonly ConcurrentDictionary<int, short> _axisValues = new ConcurrentDictionary<int, short>();
+         private readonly Logger _logger = new Logger("SharpDX_DirectInput DeviceHandler");
+ 
+         public DiDeviceHandler(DeviceDescriptor deviceDescriptor, EventHandler<DeviceDescriptor> deviceEmptyHandler, EventHandler<BindModeUpdate> bindModeHandler, IInputDeviceLibrary<Guid> deviceLibrary) 
+@@ -24,7 +27,7 @@
+             // All Buttons share one Update Processor
+             UpdateProcessors.Add((BindingType.Button, 0), new DiButtonProcessor());
+             // All Axes share one Update Processor
+-            UpdateProcessors.Add((BindingType.Axis, 0), new DiAxisProcessor());
++            UpdateProcessors.Add((BindingType.Axis, 0), _axisProcessor);
+             // POVs are derived, so have one Update Processor each (DI supports max of 4)
+             UpdateProcessors.Add((BindingType.POV, 0), new DiPoVProcessor());
+             UpdateProcessors.Add((BindingType.POV, 1), new DiPoVProcessor());
+@@ -52,6 +55,47 @@
+             return (bindingDescriptor.Type, index);
+         }
+ 
++        internal bool TryGetCurrentAxis(BindingDescriptor binding, out short value)
++        {
++            value = 0;
++            return binding.Type == BindingType.Axis && binding.SubIndex == 0 &&
++                   _axisValues.TryGetValue(binding.Index, out value);
++        }
++
++        private void CaptureInitialAxes(Joystick joystick)
++        {
++            _axisValues.Clear();
++            try
++            {
++                joystick.Poll();
++                var state = joystick.GetCurrentState();
++                foreach (var axis in joystick.GetObjects(DeviceObjectTypeFlags.AbsoluteAxis))
++                {
++                    switch ((JoystickOffset)axis.Offset)
++                    {
++                        case JoystickOffset.X: RememberAxis(JoystickOffset.X, state.X); break;
++                        case JoystickOffset.Y: RememberAxis(JoystickOffset.Y, state.Y); break;
++                        case JoystickOffset.Z: RememberAxis(JoystickOffset.Z, state.Z); break;
++                        case JoystickOffset.RotationX: RememberAxis(JoystickOffset.RotationX, state.RotationX); break;
++                        case JoystickOffset.RotationY: RememberAxis(JoystickOffset.RotationY, state.RotationY); break;
++                        case JoystickOffset.RotationZ: RememberAxis(JoystickOffset.RotationZ, state.RotationZ); break;
++                        case JoystickOffset.Sliders0: RememberAxis(JoystickOffset.Sliders0, state.Sliders[0]); break;
++                        case JoystickOffset.Sliders1: RememberAxis(JoystickOffset.Sliders1, state.Sliders[1]); break;
++                    }
++                }
++            }
++            catch (SharpDX.SharpDXException exception)
++            {
++                // A snapshot is optional. Buffered subscriptions still work on devices that reject it.
++                _logger.Log($"Unable to snapshot axes for {DeviceDescriptor}: {exception.Message}");
++            }
++        }
++
++        private void RememberAxis(JoystickOffset offset, int raw)
++        {
++            _axisValues[(int)offset] = (short)_axisProcessor.UnsignedToSigned(raw);
++        }
++
+         protected override void PollThread()
+         {
+             Joystick joystick = null;
+@@ -71,6 +115,7 @@
+                         joystick = new Joystick(_diInstance, _instanceGuid);
+                         joystick.Properties.BufferSize = 128;
+                         joystick.Acquire();
++                        CaptureInitialAxes(joystick);
+                         break;
+                     }
+ 
+@@ -84,6 +129,8 @@
+                         var data = joystick.GetBufferedData();
+                         foreach (var state in data)
+                         {
++                            if (Utilities.OffsetToType(state.Offset) == BindingType.Axis)
++                                RememberAxis(state.Offset, state.Value);
+                             ProcessUpdate(state);
+                         }
+ 
+--- a/Source/Core Providers/SharpDX_DirectInput/SharpDX_DirectInput.cs
++++ b/Source/Core Providers/SharpDX_DirectInput/SharpDX_DirectInput.cs
+@@ -86,6 +86,16 @@
+             }
+         }
+ 
++        // Optional read used by UCR before initialising an axis filter. It never invokes bind
++        // detection or a subscriber callback, and it does not wait for the polling thread.
++        public bool TryGetCurrentAxis(DeviceDescriptor device, BindingDescriptor binding, out short value)
++        {
++            value = 0;
++            return _activeDevices.TryGetValue(device, out var handler) &&
++                   handler is DiDeviceHandler joystick &&
++                   joystick.TryGetCurrentAxis(binding, out value);
++        }
++
+         public bool UnsubscribeInput(InputSubscriptionRequest subReq)
+         {
+             lock (_lockObj)
