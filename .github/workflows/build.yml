@@ -652,6 +652,8 @@ jobs:
 
               # Inspect the real profile input-device selector with a cached
               # DualSense HID fixture. Escape closes the modal before mapping tests.
+              [UcrWindowCapture]::MoveWindow($handle, -390, 0, 1200, 740, $true) | Out-Null
+              Start-Sleep -Milliseconds 400
               [UcrWindowCapture]::ClickAt($handle, 1106, 290)
               Start-Sleep -Milliseconds 850
               [UcrWindowCapture]::Capture(
@@ -659,6 +661,8 @@ jobs:
               Add-Type -AssemblyName System.Windows.Forms
               [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
               Start-Sleep -Milliseconds 450
+              [UcrWindowCapture]::MoveWindow($handle, 0, 0, 1200, 740, $true) | Out-Null
+              Start-Sleep -Milliseconds 350
 
               # Exercise the actual mapping-creation control and capture populated UI.
               # WPF mapping header controls are not exposed by UIA on this
