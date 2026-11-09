@@ -467,6 +467,41 @@ jobs:
           New-Item -ItemType Directory -Path $directory -Force | Out-Null
           $exe = (Resolve-Path '.\UCR\bin\Release\UCR.exe').Path
 
+          # Runner-only cached DirectInput controller. It never enters the packaged
+          # build and cannot be mistaken for hardware-backed capture.
+          $cache = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'UCR\Cache\SharpDX_DirectInput'
+          New-Item -ItemType Directory -Path $cache -Force | Out-Null
+          $dualSense = @{
+            Title = 'DualSense Wireless Controller (visual audit)'
+            ProviderName = 'SharpDX_DirectInput'
+            DeviceHandle = 'UCR_DUALSENSE_VISUAL_AUDIT'
+            DeviceNumber = 0
+            HidPath = 'HID\VID_054C&PID_0CE6'
+            DeviceBindingMenu = @(
+              @{
+                Title = 'Buttons'
+                ChildrenNodes = @(
+                  @{
+                    Title = '1'
+                    DeviceBindingInfo = @{
+                      KeyType = 1; KeyValue = 48; KeySubValue = 0
+                      DeviceBindingCategory = 1; Blockable = $false
+                    }
+                  },
+                  @{
+                    Title = '2'
+                    DeviceBindingInfo = @{
+                      KeyType = 1; KeyValue = 49; KeySubValue = 0
+                      DeviceBindingCategory = 1; Blockable = $false
+                    }
+                  }
+                )
+              }
+            )
+          }
+          $dualSense | ConvertTo-Json -Depth 15 |
+            Set-Content -LiteralPath (Join-Path $cache 'dualsense-visual-audit.json') -Encoding UTF8
+
           # Capture the real compiled WPF window, not a generated mockup
           # or a screenshot from the user's computer.
           Add-Type -ReferencedAssemblies @('System.Drawing') -TypeDefinition @'
@@ -614,6 +649,16 @@ jobs:
 
               [UcrWindowCapture]::MoveWindow($handle, 0, 0, 1200, 740, $true) | Out-Null
               Start-Sleep -Milliseconds 400
+
+              # Inspect the real profile input-device selector with a cached
+              # DualSense HID fixture. Escape closes the modal before mapping tests.
+              [UcrWindowCapture]::ClickAt($handle, 1106, 290)
+              Start-Sleep -Milliseconds 850
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-DualSense-add-device.png')) | Out-Null
+              Add-Type -AssemblyName System.Windows.Forms
+              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+              Start-Sleep -Milliseconds 450
 
               # Exercise the actual mapping-creation control and capture populated UI.
               # WPF mapping header controls are not exposed by UIA on this
