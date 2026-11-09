@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Threading;
@@ -35,16 +34,13 @@ namespace HidWizards.UCR.Core.Managers
         private readonly Context _context;
         private List<DeviceConfiguration> _deviceConfigurationList;
         private Dictionary<Guid, Device> _bindModeRuntimeDevices;
-        // Resolved once on entering capture. The input callback can cancel
-        // Escape before it gets committed as a physical binding.
-        private Dictionary<Guid, List<DeviceBindingInfo>> _escapeInputs =
-            new Dictionary<Guid, List<DeviceBindingInfo>>();
         private DeviceBinding _deviceBinding;
         private DispatcherTimer BindingTimer;
         private readonly object bindmodeLock = new object();
         private readonly Dispatcher _dispatcher;
         private bool bindmodeActive;
-        private bool bindCommitPending;
+        private PendingBindInput _pendingBindInput;
+        private int _bindGeneration;
         private bool _autoDetectInputCategory;
         private DateTime bindAcceptAfterUtc = DateTime.MaxValue;
 
@@ -94,14 +90,15 @@ namespace HidWizards.UCR.Core.Managers
 
             if (bindmodeActive) EndBindMode();
 
+            int generation;
             lock (bindmodeLock)
             {
+                generation = ++_bindGeneration;
                 _deviceBinding = deviceBinding;
                 _autoDetectInputCategory = autoDetectInputCategory && deviceBinding.DeviceIoType == DeviceIoType.Input;
                 _deviceConfigurationList = new List<DeviceConfiguration>();
                 _bindModeRuntimeDevices = new Dictionary<Guid, Device>();
-                _escapeInputs = new Dictionary<Guid, List<DeviceBindingInfo>>();
-                bindCommitPending = false;
+                _pendingBindInput = null;
                 bindAcceptAfterUtc = DateTime.UtcNow.Add(BindArmDelay);
                 bindmodeActive = true;
             }
@@ -122,31 +119,34 @@ namespace HidWizards.UCR.Core.Managers
                     }
 
                     Logger.Debug($"Bind mode enabling detection: provider={runtimeDevice.ProviderName}, handle={runtimeDevice.DeviceHandle}, instance={runtimeDevice.DeviceNumber}, configuration={deviceConfiguration.Guid}");
-                    var escapeKeys = new List<DeviceBindingInfo>();
-                    if (deviceBinding.DeviceBindingCategory == DeviceBindingCategory.Momentary || _autoDetectInputCategory)
-                    {
-                        try
-                        {
-                            FindEscapeKeys(deviceConfiguration.Device.GetDeviceBindingMenu(
-                                _context, DeviceIoType.Input), escapeKeys);
-                        }
-                        catch (Exception exception)
-                        {
-                            Logger.Debug(exception, "No Escape key lookup available for binding device");
-                        }
-                    }
-
-                    // A provider can report input synchronously as detection starts.
-                    // Register its exact configuration before enabling the callback.
+                    // Providers can report synchronously. Register provisionally and discard
+                    // both the endpoint and its queued reservation if arming fails.
                     lock (bindmodeLock)
                     {
-                        if (!bindmodeActive || !ReferenceEquals(_deviceBinding, deviceBinding)) return;
+                        if (!bindmodeActive || generation != _bindGeneration) return;
+                        if (FindDeviceConfiguration(GetProviderDescriptor(runtimeDevice),
+                            GetDeviceDescriptor(runtimeDevice)) != null) continue;
                         _deviceConfigurationList.Add(deviceConfiguration);
                         _bindModeRuntimeDevices[deviceConfiguration.Guid] = runtimeDevice;
-                        if (escapeKeys.Count > 0) _escapeInputs[deviceConfiguration.Guid] = escapeKeys;
                     }
-                    _context.IOController.SetDetectionMode(DetectionMode.Bind,
-                        GetProviderDescriptor(runtimeDevice), GetDeviceDescriptor(runtimeDevice), InputChanged);
+                    try
+                    {
+                        _context.IOController.SetDetectionMode(DetectionMode.Bind,
+                            GetProviderDescriptor(runtimeDevice), GetDeviceDescriptor(runtimeDevice),
+                            (provider, device, report, value) => InputChanged(generation, provider, device, report, value));
+                    }
+                    catch (Exception exception)
+                    {
+                        lock (bindmodeLock)
+                        {
+                            _deviceConfigurationList.Remove(deviceConfiguration);
+                            _bindModeRuntimeDevices.Remove(deviceConfiguration.Guid);
+                            if (_pendingBindInput?.DeviceConfigurationGuid == deviceConfiguration.Guid)
+                                _pendingBindInput = null;
+                        }
+                        Logger.Warn(exception, "Could not arm binding for " + runtimeDevice.LogName());
+                        RestoreSubscriptionMode(runtimeDevice);
+                    }
                     if (!IsBindModeActive) return;
                 }
 
@@ -172,21 +172,6 @@ namespace HidWizards.UCR.Core.Managers
             }
         }
 
-        private static void FindEscapeKeys(IEnumerable<DeviceBindingNode> nodes,
-            List<DeviceBindingInfo> matches)
-        {
-            if (nodes == null) return;
-            foreach (var node in nodes)
-            {
-                if (node == null) continue;
-                if (node.IsBinding && node.DeviceBindingInfo != null &&
-                    (string.Equals(node.Title, "Escape", StringComparison.OrdinalIgnoreCase) ||
-                     string.Equals(node.Title, "Esc", StringComparison.OrdinalIgnoreCase)))
-                    matches.Add(node.DeviceBindingInfo);
-                FindEscapeKeys(node.ChildrenNodes, matches);
-            }
-        }
-
         private void BindingTimerOnTick(object sender, EventArgs e)
         {
             BindModeProgress = _bindModeProgress - BindModeTick;
@@ -196,7 +181,7 @@ namespace HidWizards.UCR.Core.Managers
             {
                 // Once a provider callback has reserved a real input, never let a cosmetic UI timer
                 // cancel it while the final model mutation is queued on the dispatcher.
-                if (bindCommitPending) return;
+                if (_pendingBindInput != null) return;
             }
             EndBindMode();
         }
@@ -234,14 +219,13 @@ namespace HidWizards.UCR.Core.Managers
 
                 bindmodeActive = false;
                 _autoDetectInputCategory = false;
-                bindCommitPending = false;
+                _pendingBindInput = null;
                 bindAcceptAfterUtc = DateTime.MaxValue;
                 endingBinding = _deviceBinding;
                 configurations = new List<DeviceConfiguration>(_deviceConfigurationList);
                 runtimeDevices = new Dictionary<Guid, Device>(_bindModeRuntimeDevices);
                 _deviceConfigurationList = new List<DeviceConfiguration>();
                 _bindModeRuntimeDevices = new Dictionary<Guid, Device>();
-                _escapeInputs = new Dictionary<Guid, List<DeviceBindingInfo>>();
                 _deviceBinding = null;
             }
 
@@ -253,15 +237,7 @@ namespace HidWizards.UCR.Core.Managers
                 Device runtimeDevice;
                 if (!runtimeDevices.TryGetValue(deviceConfiguration.Guid, out runtimeDevice)) continue;
 
-                try
-                {
-                    _context.IOController.SetDetectionMode(DetectionMode.Subscription,
-                        GetProviderDescriptor(runtimeDevice), GetDeviceDescriptor(runtimeDevice));
-                }
-                catch (Exception exception)
-                {
-                    Logger.Error(exception, $"Failed to leave bind mode for provider={runtimeDevice.ProviderName}, handle={runtimeDevice.DeviceHandle}, instance={runtimeDevice.DeviceNumber}");
-                }
+                RestoreSubscriptionMode(runtimeDevice);
             }
 
             try
@@ -271,6 +247,19 @@ namespace HidWizards.UCR.Core.Managers
             catch (Exception exception)
             {
                 Logger.Error(exception, $"Bind-mode completion handler failed for binding={endingBinding?.Guid}");
+            }
+        }
+
+        private void RestoreSubscriptionMode(Device runtimeDevice)
+        {
+            try
+            {
+                _context.IOController.SetDetectionMode(DetectionMode.Subscription,
+                    GetProviderDescriptor(runtimeDevice), GetDeviceDescriptor(runtimeDevice));
+            }
+            catch (Exception exception)
+            {
+                Logger.Error(exception, "Could not leave bind mode for " + runtimeDevice.LogName());
             }
         }
 
@@ -305,13 +294,13 @@ namespace HidWizards.UCR.Core.Managers
             public DeviceBindingCategory Category { get; set; }
         }
 
-        private void InputChanged(ProviderDescriptor providerDescriptor, DeviceDescriptor deviceDescriptor, BindingReport bindingReport, short value)
+        private void InputChanged(int generation, ProviderDescriptor providerDescriptor, DeviceDescriptor deviceDescriptor, BindingReport bindingReport, short value)
         {
             // Reserve the first valid physical input on the provider callback thread. The old path
             // marshalled the whole callback to WPF before reserving it, so a busy UI could make a
             // perfectly real key/button press arrive late enough to look "missed". Only the tiny
             // model mutation is dispatched now; detection itself wins immediately.
-            var pendingInput = TryReserveDetectedInput(providerDescriptor, deviceDescriptor, bindingReport, value);
+            var pendingInput = TryReserveDetectedInput(generation, providerDescriptor, deviceDescriptor, bindingReport, value);
             if (pendingInput == null) return;
 
             try
@@ -326,7 +315,7 @@ namespace HidWizards.UCR.Core.Managers
                 Logger.Error(exception, "Could not marshal detected input to the UCR dispatcher");
                 lock (bindmodeLock)
                 {
-                    if (ReferenceEquals(_deviceBinding, pendingInput.Binding)) bindCommitPending = false;
+                    if (ReferenceEquals(_pendingBindInput, pendingInput)) _pendingBindInput = null;
                 }
             }
         }
@@ -339,12 +328,12 @@ namespace HidWizards.UCR.Core.Managers
                 : detected == expected;
         }
 
-        private PendingBindInput TryReserveDetectedInput(ProviderDescriptor providerDescriptor,
+        private PendingBindInput TryReserveDetectedInput(int generation, ProviderDescriptor providerDescriptor,
             DeviceDescriptor deviceDescriptor, BindingReport bindingReport, short value)
         {
             lock (bindmodeLock)
             {
-                if (!bindmodeActive || bindCommitPending || _deviceBinding == null ||
+                if (!bindmodeActive || generation != _bindGeneration || _pendingBindInput != null || _deviceBinding == null ||
                     providerDescriptor == null ||
                     bindingReport?.BindingDescriptor == null) return null;
 
@@ -359,18 +348,6 @@ namespace HidWizards.UCR.Core.Managers
                     !IsEligibleBindDevice(_deviceBinding.DeviceConfigurationGuid, deviceConfiguration.Guid))
                     return null;
 
-                List<DeviceBindingInfo> escapeKeys;
-                if (_escapeInputs.TryGetValue(deviceConfiguration.Guid, out escapeKeys) &&
-                    escapeKeys.Any(key => key.KeyType == (int)bindingReport.BindingDescriptor.Type &&
-                                          key.KeyValue == bindingReport.BindingDescriptor.Index &&
-                                          key.KeySubValue == bindingReport.BindingDescriptor.SubIndex))
-                {
-                    var cancelled = _deviceBinding;
-                    _dispatcher.BeginInvoke(new Action(() => CancelBindMode(cancelled)),
-                        DispatcherPriority.Input);
-                    return null;
-                }
-
                 // The click that opened bind mode can only contaminate pointer bindings. Keyboard,
                 // controller and other device input is accepted immediately instead of being thrown
                 // away by the former blanket 150ms arm delay.
@@ -380,8 +357,7 @@ namespace HidWizards.UCR.Core.Managers
                     return null;
                 }
 
-                bindCommitPending = true;
-                return new PendingBindInput
+                _pendingBindInput = new PendingBindInput
                 {
                     Binding = _deviceBinding,
                     DeviceConfigurationGuid = deviceConfiguration.Guid,
@@ -394,6 +370,7 @@ namespace HidWizards.UCR.Core.Managers
                     Value = value,
                     Category = category
                 };
+                return _pendingBindInput;
             }
         }
 
@@ -420,7 +397,7 @@ namespace HidWizards.UCR.Core.Managers
 
             lock (bindmodeLock)
             {
-                if (!bindmodeActive || !bindCommitPending || !ReferenceEquals(_deviceBinding, pendingInput.Binding))
+                if (!bindmodeActive || !ReferenceEquals(_pendingBindInput, pendingInput))
                     return;
             }
 
@@ -449,7 +426,7 @@ namespace HidWizards.UCR.Core.Managers
             catch (Exception exception)
             {
                 Logger.Error(exception, "Failed to commit detected input binding");
-                lock (bindmodeLock) bindCommitPending = false;
+                lock (bindmodeLock) _pendingBindInput = null;
                 EndBindMode();
             }
         }

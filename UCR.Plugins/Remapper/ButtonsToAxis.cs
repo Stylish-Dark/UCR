@@ -16,24 +16,10 @@ namespace HidWizards.UCR.Plugins.Remapper
 
         public override void Update(params short[] values)
         {
-            short value;
-
-            if (values[0] == 1 && values[1] == 1)
-            {
-                value = 0;
-            }
-            else if (values[0] == 1)
-            {
-                value = Constants.AxisMaxValue;
-            }
-            else if (values[1] == 1)
-            {
-                value = Constants.AxisMinValue;
-            }
-            else
-            {
-                value = 0;
-            }
+            var positive = values[0] != 0;
+            var negative = values[1] != 0;
+            var value = positive == negative ? (short)0 :
+                positive ? short.MaxValue : short.MinValue;
 
             if (Invert) value = Functions.Invert(value);
             WriteOutput(0, value);

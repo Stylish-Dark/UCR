@@ -487,8 +487,11 @@ namespace HidWizards.UCR.Core.Models
                 }
             }
 
-            var group = new MappingGroup(this, GetUniqueMappingGroupTitle(relativeTitle))
+            // Set initial state before attaching the group. The Enabled setter otherwise
+            // marks the live context dirty and may rebuild a profile with the same saved ID.
+            var group = new MappingGroup
             {
+                Title = GetUniqueMappingGroupTitle(relativeTitle),
                 Enabled = false,
                 Mappings = effectiveMappings
             };
@@ -849,7 +852,7 @@ namespace HidWizards.UCR.Core.Models
             OnPropertyChanged(nameof(BlockAllUnmappedInputs));
         }
 
-        internal void PostLoad(Context context, Profile parentProfile = null)
+        internal void PostLoad(Context context, Profile parentProfile = null, bool markMigrationDirty = true)
         {
             ParentProfile = parentProfile;
             if (ChildProfiles == null) ChildProfiles = new List<Profile>();
@@ -898,7 +901,8 @@ namespace HidWizards.UCR.Core.Models
 
             // Top-level legacy trees are converted as part of attachment, before any dashboard or
             // runtime code can observe them. ParentProfile is retained only for old import paths.
-            if (parentProfile == null && MigrateLegacyChildProfilesToMappingGroups()) Context?.ContextChanged();
+            if (parentProfile == null && MigrateLegacyChildProfilesToMappingGroups() && markMigrationDirty)
+                Context?.ContextChanged();
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

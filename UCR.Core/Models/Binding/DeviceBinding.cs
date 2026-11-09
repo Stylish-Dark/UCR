@@ -49,6 +49,11 @@ namespace HidWizards.UCR.Core.Models.Binding
         [DefaultValue(false)]
         public bool InvertInput { get; set; }
 
+        // A selected stick direction consumes only its half of the signed output range.
+        [XmlAttribute]
+        [DefaultValue(0)]
+        public int OutputAxisDirection { get; set; }
+
         // The user-selected compound preset label is persisted with its physical channels.
         // Rebinding a channel invalidates that selection; older profiles infer it from keys.
         [XmlAttribute]
@@ -206,6 +211,7 @@ namespace HidWizards.UCR.Core.Models.Binding
                 KeyValue = 0;
                 KeySubValue = 0;
                 CompoundPresetName = string.Empty;
+                OutputAxisDirection = 0;
                 Block = false;
                 IsBound = false;
             }
@@ -269,7 +275,11 @@ namespace HidWizards.UCR.Core.Models.Binding
             KeyType = type;
             KeyValue = value;
             KeySubValue = subValue;
-            if (bindingChanged) CompoundPresetName = string.Empty;
+            if (bindingChanged)
+            {
+                CompoundPresetName = string.Empty;
+                OutputAxisDirection = 0;
+            }
             var clearBlock = Block && !IsBlockable();
             if (clearBlock) Block = false;
             IsBound = true;
@@ -355,6 +365,9 @@ namespace HidWizards.UCR.Core.Models.Binding
 
         public void WriteOutput(short value)
         {
+            if (DeviceIoType == DeviceIoType.Output && DeviceBindingCategory == DeviceBindingCategory.Range &&
+                (OutputAxisDirection < 0 && value > 0 || OutputAxisDirection > 0 && value < 0))
+                value = 0;
             CurrentValue = value;
             OutputSink?.Invoke(value);
         }

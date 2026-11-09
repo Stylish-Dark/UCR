@@ -15,7 +15,7 @@ namespace HidWizards.UCR.Utilities
     /// <summary>
     /// Watches configured application rules and owns only the profile activations that it starts.
     /// A profile may match any of several executables. Optional arguments narrow a rule to processes
-    /// whose command line contains that argument string.
+    /// whose argument text contains that string.
     /// </summary>
     public sealed class AutoProfileMonitor : IDisposable
     {
@@ -64,11 +64,14 @@ namespace HidWizards.UCR.Utilities
                 }
 
                 var includeCommandLines = enabledRules.Any(rule => !string.IsNullOrWhiteSpace(rule.Arguments));
+                var pathNames = new HashSet<string>(enabledRules
+                    .Where(rule => RequiresExecutablePath(rule.Executable))
+                    .Select(rule => NormalizeExecutableName(rule.Executable)), StringComparer.OrdinalIgnoreCase);
 
                 // Process enumeration (especially Win32_Process/WMI for command lines) can block for
                 // noticeable periods. Keep that work off the WPF dispatcher, then resume here for the
                 // actual profile state changes and UI-facing events.
-                var runningApplications = await Task.Run(() => GetRunningApplications(includeCommandLines));
+                var runningApplications = await Task.Run(() => GetRunningApplications(includeCommandLines, pathNames));
                 if (_disposed) return;
 
                 // The dispatcher was free while the scan ran, so profiles/rules may have been edited
@@ -103,7 +106,7 @@ namespace HidWizards.UCR.Utilities
                     continue;
                 }
 
-                if (IsEligible(ownedProfile, runningApplications) && ownedProfile.IsActive())
+                if (GetEligibility(ownedProfile, runningApplications) != MatchStatus.NoMatch && ownedProfile.IsActive())
                 {
                     _failedStopGuids.Remove(ownedGuid);
                     continue;
@@ -158,7 +161,7 @@ namespace HidWizards.UCR.Utilities
             {
                 await _context.SubscriptionsManager.DeactivateAutomaticProfileAsync(profile, () =>
                     !_disposed && _ownedProfileGuids.Contains(profile.Guid) &&
-                    (!IsEligible(profile, runningApplications) || (_failedStopGuids.Contains(profile.Guid) && !profile.IsActive())),
+                    (GetEligibility(profile, runningApplications) == MatchStatus.NoMatch || !profile.IsActive()),
                     success =>
                     {
                         if (success)
@@ -198,24 +201,36 @@ namespace HidWizards.UCR.Utilities
 
         private bool IsEligible(Profile profile, IList<RunningApplication> runningApplications)
         {
-            if (profile == null || !profile.AutoActivateEnabled || _suppressedProfileGuids.Contains(profile.Guid)) return false;
-            return GetRules(profile).Any(rule => IsConfigured(rule) && runningApplications.Any(app => RuleMatches(rule, app)));
+            return profile != null && !_suppressedProfileGuids.Contains(profile.Guid) &&
+                   GetEligibility(profile, runningApplications) == MatchStatus.Match;
+        }
+
+        private static MatchStatus GetEligibility(Profile profile, IList<RunningApplication> runningApplications)
+        {
+            if (profile?.AutoActivateEnabled != true) return MatchStatus.NoMatch;
+            var rules = GetRules(profile).Where(IsConfigured).ToList();
+            if (rules.Count == 0) return MatchStatus.NoMatch;
+            if (runningApplications == null) return MatchStatus.Unknown;
+
+            var result = MatchStatus.NoMatch;
+            foreach (var rule in rules)
+            foreach (var application in runningApplications)
+            {
+                var match = GetRuleMatch(rule, application);
+                if (match == MatchStatus.Match) return match;
+                if (match == MatchStatus.Unknown) result = match;
+            }
+            return result;
         }
 
         private void ClearExpiredRuntimeState(IEnumerable<Profile> profiles, IList<RunningApplication> runningApplications)
         {
-            var configuredAndRunning = new HashSet<Guid>();
-            foreach (var profile in profiles)
-            {
-                if (!profile.AutoActivateEnabled) continue;
-                if (GetRules(profile).Any(rule => IsConfigured(rule) && runningApplications.Any(app => RuleMatches(rule, app))))
-                    configuredAndRunning.Add(profile.Guid);
-            }
-
-            foreach (var profileGuid in _suppressedProfileGuids.ToList())
-                if (!configuredAndRunning.Contains(profileGuid)) _suppressedProfileGuids.Remove(profileGuid);
+            var possiblyRunning = new HashSet<Guid>(profiles
+                .Where(profile => GetEligibility(profile, runningApplications) != MatchStatus.NoMatch)
+                .Select(profile => profile.Guid));
+            _suppressedProfileGuids.RemoveWhere(profileGuid => !possiblyRunning.Contains(profileGuid));
             foreach (var profileGuid in _nextActivationAttemptUtc.Keys.ToList())
-                if (!configuredAndRunning.Contains(profileGuid)) _nextActivationAttemptUtc.Remove(profileGuid);
+                if (!possiblyRunning.Contains(profileGuid)) _nextActivationAttemptUtc.Remove(profileGuid);
         }
 
         internal static IEnumerable<ProfileApplicationRule> GetRules(Profile profile)
@@ -239,20 +254,69 @@ namespace HidWizards.UCR.Utilities
             return RuleMatches(rule, new RunningApplication
             {
                 ExecutableName = NormalizeExecutableName(executableName),
+                ExecutablePath = RequiresExecutablePath(executableName) ? executableName : null,
                 CommandLine = commandLine
             });
         }
 
         private static bool RuleMatches(ProfileApplicationRule rule, RunningApplication application)
         {
-            if (rule == null || application == null) return false;
+            return GetRuleMatch(rule, application) == MatchStatus.Match;
+        }
+
+        private static MatchStatus GetRuleMatch(ProfileApplicationRule rule, RunningApplication application)
+        {
+            if (rule == null) return MatchStatus.NoMatch;
+            if (application == null) return MatchStatus.Unknown;
+
             var expectedExecutable = NormalizeExecutableName(rule.Executable);
             if (string.IsNullOrWhiteSpace(expectedExecutable) ||
-                !string.Equals(expectedExecutable, application.ExecutableName, StringComparison.OrdinalIgnoreCase)) return false;
+                !string.Equals(expectedExecutable, application.ExecutableName, StringComparison.OrdinalIgnoreCase))
+                return MatchStatus.NoMatch;
+
+            if (RequiresExecutablePath(rule.Executable))
+            {
+                var observedPath = NormalizeExecutablePath(application.ExecutablePath);
+                if (observedPath == null) return MatchStatus.Unknown;
+                if (!string.Equals(NormalizeExecutablePath(rule.Executable), observedPath, StringComparison.OrdinalIgnoreCase))
+                    return MatchStatus.NoMatch;
+            }
 
             var arguments = (rule.Arguments ?? string.Empty).Trim();
-            if (arguments.Length == 0 || application.ExecutableOnlyFallback) return true;
-            return (application.CommandLine ?? string.Empty).IndexOf(arguments, StringComparison.OrdinalIgnoreCase) >= 0;
+            if (arguments.Length == 0) return MatchStatus.Match;
+            if (string.IsNullOrWhiteSpace(application.CommandLine)) return MatchStatus.Unknown;
+            var observedArguments = ReadArguments(application);
+            if (observedArguments == null) return MatchStatus.Unknown;
+            return observedArguments.IndexOf(arguments, StringComparison.OrdinalIgnoreCase) >= 0
+                ? MatchStatus.Match : MatchStatus.NoMatch;
+        }
+
+        private static string ReadArguments(RunningApplication application)
+        {
+            var command = application.CommandLine.TrimStart();
+            var executablePath = application.ExecutablePath;
+            // CreateProcess can supply an unquoted path with spaces when the executable is
+            // also given separately. Use the reported executable path to find its boundary.
+            if (!string.IsNullOrWhiteSpace(executablePath) &&
+                command.Length >= executablePath.Length &&
+                (command.Length == executablePath.Length || char.IsWhiteSpace(command[executablePath.Length])) &&
+                string.Equals(command.Substring(0, executablePath.Length).Replace('/', '\\'),
+                    executablePath.Replace('/', '\\'), StringComparison.OrdinalIgnoreCase))
+                return command.Substring(executablePath.Length).TrimStart();
+
+            var quoted = false;
+            var index = 0;
+            while (index < command.Length)
+            {
+                if (command[index] == '"') quoted = !quoted;
+                else if (!quoted && char.IsWhiteSpace(command[index])) break;
+                index++;
+            }
+            // When executable details are unavailable, an unquoted path with spaces
+            // cannot be split at the first space unless that token names this process.
+            if (quoted || !string.Equals(NormalizeExecutableName(command.Substring(0, index)),
+                    application.ExecutableName, StringComparison.OrdinalIgnoreCase)) return null;
+            return command.Substring(index).TrimStart();
         }
 
         private static IEnumerable<Profile> EnumerateProfiles(IEnumerable<Profile> roots)
@@ -265,19 +329,17 @@ namespace HidWizards.UCR.Utilities
             }
         }
 
-        private static List<RunningApplication> GetRunningApplications(bool includeCommandLines)
+        private static List<RunningApplication> GetRunningApplications(bool includeCommandLines, ISet<string> pathNames)
         {
-            var executableOnlyFallback = false;
-            if (includeCommandLines)
+            if (includeCommandLines || pathNames?.Count > 0)
             {
                 try
                 {
-                    return GetRunningApplicationsWithCommandLines();
+                    return GetRunningApplicationsFromWmi(includeCommandLines);
                 }
                 catch (Exception exception)
                 {
-                    Logger.Warn("Unable to query process command lines; falling back to executable-only matching.", exception);
-                    executableOnlyFallback = true;
+                    Logger.Warn("Unable to query process details. Rules requiring unavailable information will wait for a readable process.", exception);
                 }
             }
 
@@ -287,7 +349,7 @@ namespace HidWizards.UCR.Utilities
             catch (Exception exception)
             {
                 Logger.Error("Unable to enumerate running processes for auto-profile detection.", exception);
-                return result;
+                return null;
             }
 
             foreach (var process in processes)
@@ -295,19 +357,33 @@ namespace HidWizards.UCR.Utilities
                 try
                 {
                     var name = NormalizeExecutableName(process.ProcessName);
-                    if (!string.IsNullOrWhiteSpace(name))
-                        result.Add(new RunningApplication { ExecutableName = name, ExecutableOnlyFallback = executableOnlyFallback });
+                    if (string.IsNullOrWhiteSpace(name)) continue;
+                    var application = new RunningApplication { ExecutableName = name };
+                    if (pathNames?.Contains(name) == true)
+                    {
+                        try { application.ExecutablePath = process.MainModule?.FileName; }
+                        catch (System.ComponentModel.Win32Exception) { }
+                        catch (InvalidOperationException) { }
+                        catch (NotSupportedException) { }
+                    }
+                    result.Add(application);
                 }
-                catch { }
+                catch (InvalidOperationException) { } // The process exited during enumeration.
+                catch (Exception)
+                {
+                    // Preserve existing ownership/suppression if one process could not be identified.
+                    result.Add(null);
+                }
                 finally { process.Dispose(); }
             }
             return result;
         }
 
-        private static List<RunningApplication> GetRunningApplicationsWithCommandLines()
+        private static List<RunningApplication> GetRunningApplicationsFromWmi(bool includeCommandLines)
         {
             var result = new List<RunningApplication>();
-            using (var searcher = new ManagementObjectSearcher("SELECT Name, CommandLine FROM Win32_Process"))
+            var properties = includeCommandLines ? "Name, ExecutablePath, CommandLine" : "Name, ExecutablePath";
+            using (var searcher = new ManagementObjectSearcher("SELECT " + properties + " FROM Win32_Process"))
             using (var collection = searcher.Get())
             {
                 foreach (ManagementObject process in collection)
@@ -319,7 +395,8 @@ namespace HidWizards.UCR.Utilities
                         result.Add(new RunningApplication
                         {
                             ExecutableName = name,
-                            CommandLine = process["CommandLine"] as string ?? string.Empty
+                            ExecutablePath = process["ExecutablePath"] as string,
+                            CommandLine = includeCommandLines ? process["CommandLine"] as string : null
                         });
                     }
                     finally
@@ -337,7 +414,7 @@ namespace HidWizards.UCR.Utilities
             var trimmed = value.Trim().Trim('"');
             try
             {
-                var fileName = Path.GetFileName(trimmed);
+                var fileName = Path.GetFileName(trimmed.Replace('\\', '/'));
                 if (string.IsNullOrWhiteSpace(fileName)) return null;
                 return fileName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
                     ? fileName.Substring(0, fileName.Length - 4)
@@ -351,6 +428,28 @@ namespace HidWizards.UCR.Utilities
             }
         }
 
+        private static bool RequiresExecutablePath(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return false;
+            var path = value.Trim().Trim('"').Replace('/', '\\');
+            return path.StartsWith(@"\\", StringComparison.Ordinal) ||
+                   (path.Length > 2 && char.IsLetter(path[0]) && path[1] == ':' && path[2] == '\\');
+        }
+
+        private static string NormalizeExecutablePath(string value)
+        {
+            if (!RequiresExecutablePath(value)) return null;
+            var path = value.Trim().Trim('"');
+            try
+            {
+                if (Path.IsPathRooted(path)) path = Path.GetFullPath(path);
+            }
+            catch (ArgumentException) { return null; }
+            catch (NotSupportedException) { return null; }
+            catch (PathTooLongException) { return null; }
+            return path.Replace('/', '\\');
+        }
+
         public void Dispose()
         {
             if (_disposed) return;
@@ -360,11 +459,13 @@ namespace HidWizards.UCR.Utilities
             _context.ActiveProfileChangedEvent -= OnActiveProfileChanged;
         }
 
+        private enum MatchStatus { NoMatch, Unknown, Match }
+
         private sealed class RunningApplication
         {
             public string ExecutableName { get; set; }
             public string CommandLine { get; set; }
-            public bool ExecutableOnlyFallback { get; set; }
+            public string ExecutablePath { get; set; }
         }
     }
 }

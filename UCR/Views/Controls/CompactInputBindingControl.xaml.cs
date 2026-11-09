@@ -271,23 +271,38 @@ namespace HidWizards.UCR.Views.Controls
             // partly scrolled-off row leaves Block/NOT underneath the fixed footer.
             BringIntoView();
             if (DeviceBinding?.DeviceIoType == DeviceIoType.Output)
-            {
-                var card = FindAncestor<MappingCardControl>(this);
-                if (card != null)
-                {
-                    card.ShowOutputCategoryMenuForBinding(
-                        DataContext as DeviceBindingViewModel, MenuButton);
-                    return;
-                }
-                ShowOutputPicker(MenuButton, GetSelectedOutputConfiguration());
-                return;
-            }
-            BuildContextMenu();
+                PopulateOutputOptions();
+            else
+                BuildContextMenu();
             Ddl.PlacementTarget = MenuButton;
             // The inspector has a docked footer and a constrained scroll viewport.
             // Open the binding menu upwards so it cannot cover the footer or clipped rows.
             Ddl.Placement = PlacementMode.Top;
             Ddl.IsOpen = true;
+        }
+
+        private void PopulateOutputOptions()
+        {
+            Ddl.Items.Clear();
+            var binding = DeviceBinding;
+            var choose = new MenuItem
+            {
+                Header = "Choose output control",
+                Foreground = Brushes.White,
+                IsEnabled = GetSelectedOutputConfiguration()?.Device != null
+            };
+            choose.Click += (sender, args) => Dispatcher.BeginInvoke(
+                new Action(() => BindButton_OnClick(sender, args)), System.Windows.Threading.DispatcherPriority.Background);
+            Ddl.Items.Add(choose);
+
+            var clear = new MenuItem
+            {
+                Header = "Clear binding",
+                Foreground = Brushes.White,
+                IsEnabled = binding.IsBound
+            };
+            clear.Click += (sender, args) => binding.ClearBinding();
+            Ddl.Items.Add(clear);
         }
 
         private void BuildContextMenu()
@@ -320,39 +335,26 @@ namespace HidWizards.UCR.Views.Controls
             var profile = binding?.Profile;
             if (profile != null)
             {
-                var configuration = profile.GetDeviceConfiguration(DeviceIoType.Input,
-                    binding.DeviceConfigurationGuid)
-                    ?? profile.GetPrimaryDeviceConfiguration(DeviceIoType.Input);
-                if (configuration?.Device != null)
+                var configurations = profile.GetDeviceConfigurationList(DeviceIoType.Input)
+                    .Where(configuration => configuration?.Device != null &&
+                        (binding.DeviceConfigurationGuid == Guid.Empty ||
+                         binding.DeviceConfigurationGuid == configuration.Guid))
+                    .ToList();
+                foreach (var configuration in configurations)
                 {
-                    var nodes = configuration.Device.GetDeviceBindingMenu(profile.Context,
-                        DeviceIoType.Input);
-                    foreach (var node in nodes)
+                    if (configurations.Count == 1)
                     {
-                        // Providers may nest POV1/POV2 under a redundant POV category.
-                        // Present the actual POV controls directly in the category menu.
-                        if (IsRedundantPovRoot(node))
-                        {
-                            foreach (var pov in node.ChildrenNodes)
-                            {
-                                var item = BuildInputMenuItem(pov, configuration.Guid, binding);
-                                if (item != null) menu.Items.Add(item);
-                            }
-                        }
-                        else if (IsKeyboardRoot(node))
-                        {
-                            foreach (var group in DeviceBindingControl.BuildKeyboardCategories(node.ChildrenNodes))
-                            {
-                                var item = BuildInputMenuItem(group, configuration.Guid, binding);
-                                if (item != null) menu.Items.Add(item);
-                            }
-                        }
-                        else
-                        {
-                            var item = BuildInputMenuItem(node, configuration.Guid, binding);
-                            if (item != null) menu.Items.Add(item);
-                        }
+                        AddInputControls(menu.Items, profile, configuration, binding);
+                        continue;
                     }
+
+                    var device = new MenuItem
+                    {
+                        Header = configuration.GetFullTitleForProfile(profile),
+                        Foreground = Brushes.White
+                    };
+                    AddInputControls(device.Items, profile, configuration, binding);
+                    if (device.HasItems) menu.Items.Add(device);
                 }
             }
             if (menu.Items.Count > 0) menu.Items.Add(new Separator());
@@ -360,6 +362,23 @@ namespace HidWizards.UCR.Views.Controls
                 IsEnabled = binding?.IsBound == true };
             clear.Click += (s, e) => binding?.ClearBinding();
             menu.Items.Add(clear);
+        }
+
+        private static void AddInputControls(ItemCollection items, Profile profile,
+            DeviceConfiguration configuration, DeviceBinding binding)
+        {
+            var nodes = configuration.Device.GetDeviceBindingMenu(profile.Context, DeviceIoType.Input);
+            foreach (var node in nodes)
+            {
+                var controls = IsRedundantPovRoot(node) ? node.ChildrenNodes
+                    : IsKeyboardRoot(node) ? DeviceBindingControl.BuildKeyboardCategories(node.ChildrenNodes)
+                    : new List<DeviceBindingNode> { node };
+                foreach (var control in controls)
+                {
+                    var item = BuildInputMenuItem(control, configuration.Guid, binding);
+                    if (item != null) items.Add(item);
+                }
+            }
         }
 
         private static bool IsRedundantPovRoot(DeviceBindingNode node)
@@ -460,6 +479,7 @@ namespace HidWizards.UCR.Views.Controls
             ControlVisualKind visualKind, string title)
         {
             if (category == DeviceBindingCategory.Range) return "Axes";
+            if (category == DeviceBindingCategory.Event) return "Events";
             if (category != DeviceBindingCategory.Momentary) return null;
             var label = (title ?? string.Empty).Trim().ToLowerInvariant();
             var isDirection = visualKind == ControlVisualKind.DPad ||
@@ -546,19 +566,24 @@ namespace HidWizards.UCR.Views.Controls
             var outputDevice = config.Device;
             var nodes = outputDevice.GetDeviceBindingMenu(DeviceBinding.Profile.Context,
                 DeviceIoType.Output);
-            var controls = FlattenControls(nodes)
-                .Where(node => node.DeviceBindingInfo != null &&
-                    (node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary ||
-                     node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Range))
-                .ToList();
+            var currentCategory = DeviceBinding.DeviceBindingCategory;
+            var currentPlugin = mapping?.Plugins.FirstOrDefault(plugin => plugin.DeviceBindings.Any(binding =>
+                ReferenceEquals(binding.DeviceBinding, DeviceBinding)));
+            var restrictCategory = currentCategory == DeviceBindingCategory.Event ||
+                currentPlugin?.DeviceBindings.Count > 1;
             var buttons = new WrapPanel { Width = 440 };
             var directionals = new WrapPanel { Width = 440 };
             var axes = new WrapPanel { Width = 440 };
+            var events = new WrapPanel { Width = 440 };
+            string selectedCategory = null;
 
-            foreach (var node in controls)
+            foreach (var node in FlattenControls(nodes))
             {
                 var info = node.DeviceBindingInfo;
-                if (info == null) continue;
+                if (info == null || (restrictCategory && info.DeviceBindingCategory != currentCategory))
+                    continue;
+                if (info.DeviceBindingCategory == DeviceBindingCategory.Event && currentCategory != DeviceBindingCategory.Event)
+                    continue;
                 var temporary = new DeviceBinding
                 {
                     Profile = DeviceBinding.Profile,
@@ -573,7 +598,12 @@ namespace HidWizards.UCR.Views.Controls
                 var visual = DeviceVisualCatalog.DescribeBinding(
                     temporary, info.DeviceBindingCategory, DeviceBinding.Profile);
                 var title = node.Title ?? "";
-                var lower = title.ToLowerInvariant();
+                var category = OutputPickerCategory(info.DeviceBindingCategory, visual.ControlKind, title);
+                if (category == null) continue;
+                var isSelectedControl = DeviceBinding.IsBound && DeviceBinding.KeyType == info.KeyType &&
+                    DeviceBinding.KeyValue == info.KeyValue && DeviceBinding.KeySubValue == info.KeySubValue;
+                if (isSelectedControl) selectedCategory = category;
+
                 var row = new StackPanel { Orientation = Orientation.Horizontal };
                 row.Children.Add(new ControlGlyphControl
                 {
@@ -619,11 +649,10 @@ namespace HidWizards.UCR.Views.Controls
                             popup.IsOpen = false;
                     }
                 };
-                var category = OutputPickerCategory(
-                    info.DeviceBindingCategory, visual.ControlKind, title);
                 if (category == "Axes") axes.Children.Add(choice);
                 else if (category == "Directions") directionals.Children.Add(choice);
                 else if (category == "Buttons") buttons.Children.Add(choice);
+                else if (category == "Events") events.Children.Add(choice);
 
                 // Each stick axis also offers its two signed directions. A selected
                 // direction configures the same underlying range axis, with an
@@ -632,6 +661,8 @@ namespace HidWizards.UCR.Views.Controls
                 if (info.DeviceBindingCategory == DeviceBindingCategory.Range &&
                     (axis == "LX" || axis == "LY" || axis == "RX" || axis == "RY"))
                 {
+                    if (isSelectedControl && DeviceBinding.OutputAxisDirection != 0)
+                        selectedCategory = "Directions";
                     var stick = axis.StartsWith("L", StringComparison.Ordinal) ? "Left Stick" : "Right Stick";
                     var horizontal = axis.EndsWith("X", StringComparison.Ordinal);
                     foreach (var direction in new[] {
@@ -758,14 +789,15 @@ namespace HidWizards.UCR.Views.Controls
                 foreach (var item in new[] { lb, rb, lt, rt }) buttons.Children.Insert(index++, item);
             }
 
-            var selectedTab = PreferredOutputPickerTab(DeviceBinding.DeviceBindingCategory,
+            var selectedTab = PreferredOutputPickerTab(currentCategory,
                 buttons.Children.Count, directionals.Children.Count, axes.Children.Count);
-            var preferredCategory = new[] { "Buttons", "Directions", "Axes" }[selectedTab];
+            var preferredCategory = selectedCategory ?? new[] { "Buttons", "Directions", "Axes" }[selectedTab];
             var tabs = new TabControl { Background = Brushes.Transparent };
             foreach (var category in new[] {
                 new { Title = "Buttons", Items = buttons },
                 new { Title = "Directions", Items = directionals },
-                new { Title = "Axes", Items = axes }
+                new { Title = "Axes", Items = axes },
+                new { Title = "Events", Items = events }
             })
             {
                 var count = category.Items.Children.Count;

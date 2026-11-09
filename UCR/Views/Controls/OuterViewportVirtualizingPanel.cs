@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows.Threading;
@@ -104,8 +105,33 @@ namespace HidWizards.UCR.Views.Controls
         protected override void OnItemsChanged(object sender, ItemsChangedEventArgs args)
         {
             base.OnItemsChanged(sender, args);
+            switch (args.Action)
+            {
+                case NotifyCollectionChangedAction.Remove:
+                case NotifyCollectionChangedAction.Replace:
+                    RemoveChangedVisuals(args.Position.Index, args.ItemUICount);
+                    break;
+                case NotifyCollectionChangedAction.Move:
+                    RemoveChangedVisuals(args.OldPosition.Index, args.ItemUICount);
+                    break;
+                case NotifyCollectionChangedAction.Reset:
+                    foreach (var row in _realized.Values.OfType<FrameworkElement>())
+                        row.SizeChanged -= RealizedRowOnSizeChanged;
+                    break;
+            }
             _itemsDirty = true;
             InvalidateMeasure();
+        }
+
+        private void RemoveChangedVisuals(int index, int count)
+        {
+            if (index < 0 || count <= 0 || index + count > InternalChildren.Count) return;
+            for (var offset = 0; offset < count; offset++)
+                if (InternalChildren[index + offset] is FrameworkElement row)
+                    row.SizeChanged -= RealizedRowOnSizeChanged;
+            // The generator already handled the collection change. Only its old
+            // visual children still belong to this panel.
+            RemoveInternalChildRange(index, count);
         }
 
         private double EstimatedHeight(object item, double width)
@@ -136,17 +162,22 @@ namespace HidWizards.UCR.Views.Controls
             return offsets;
         }
 
-        private void ReconcileExisting(ItemCollection items)
+        private void ReconcileExisting(ItemsControl owner, ItemCollection items)
         {
             _realized.Clear();
-            // An ItemsSource move or filter may change indices while keeping WPF
-            // containers. Find each survivor by its current DataContext.
-            for (var childIndex = 0; childIndex < InternalChildren.Count; childIndex++)
+            var generator = owner.ItemContainerGenerator;
+            for (var childIndex = InternalChildren.Count - 1; childIndex >= 0; childIndex--)
             {
                 var child = InternalChildren[childIndex];
-                var item = (child as FrameworkElement)?.DataContext;
-                var index = item == null ? -1 : items.IndexOf(item);
-                if (index >= 0) _realized[index] = child;
+                var index = generator.IndexFromContainer(child);
+                if (index >= 0 && index < items.Count && !_realized.ContainsKey(index))
+                {
+                    _realized.Add(index, child);
+                    continue;
+                }
+
+                if (child is FrameworkElement stale) stale.SizeChanged -= RealizedRowOnSizeChanged;
+                RemoveInternalChildRange(childIndex, 1);
             }
 
             // Device events and scrolling only move the viewport; don't allocate
@@ -233,7 +264,7 @@ namespace HidWizards.UCR.Views.Controls
                 width = Math.Max(1, owner.ActualWidth);
             width = Math.Max(1, width);
             _lastWidth = width;
-            ReconcileExisting(items);
+            ReconcileExisting(owner, items);
             var offsets = BuildOffsets(items, width);
 
             var first = 0;

@@ -12,6 +12,8 @@ using System.Windows;
 using System.Windows.Threading;
 using HidWizards.UCR.Core;
 using HidWizards.UCR.Core.Models;
+using HidWizards.UCR.Core.Persistence;
+using System.ComponentModel.Composition;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Utilities;
 using HidWizards.UCR.Views;
@@ -27,7 +29,6 @@ namespace HidWizards.UCR
         private Context context;
         private HidGuardianClient _hidGuardianClient;
         private SingleGlobalInstance mutex;
-        private bool _forwardToSameVersion = true;
         private Thread _splashThread;
         private SplashWindow _splashWindow;
         private ManualResetEventSlim _splashReady;
@@ -44,6 +45,8 @@ namespace HidWizards.UCR
         protected override async void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+            // Startup can await without a main window, including during version handover.
+            ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown;
             RuntimePathManager.NormalizeWorkingDirectory();
             Logger.InitializeSession();
             AppDomain.CurrentDomain.UnhandledException += AppDomain_CurrentDomain_UnhandledException;
@@ -63,23 +66,15 @@ namespace HidWizards.UCR
             mutex = new SingleGlobalInstance();
             if (!mutex.HasHandle)
             {
-                try
-                {
-                    if (TryReplaceDifferentVersion())
-                        Logger.Info("Previous UCR build exited; starting this version.");
-                }
+                try { await HandleExistingInstanceAsync(e.Args); }
                 catch (Exception exception)
                 {
-                    // Another instance can deny process/version inspection. Do not crash this instance.
-                    Logger.Error("Could not inspect or replace the previous UCR instance.", exception);
+                    Logger.Error("Could not inspect the running UCR instance.", exception);
                 }
             }
             if (mutex.HasHandle)
             {
                 Logger.Info("Launching UCR");
-                // The splash is a real Window on its own dispatcher. Keep shutdown explicit until the
-                // actual MainWindow has been assigned so closing the splash can never terminate UCR.
-                ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown;
                 _startupStopwatch.Restart();
                 StartSplash();
 
@@ -91,9 +86,17 @@ namespace HidWizards.UCR
                         _hidGuardianClient.WhitelistProcess();
                     });
 
-                    InitializeUcr();
+                    UpdateSplash("Checking plugins and device providers...");
+                    if (!await EnsureRequiredRuntimeComponentsAsync())
+                    {
+                        CloseSplash();
+                        Shutdown(1);
+                        return;
+                    }
 
-                    RunStartupStage("Checking plugins...", CheckForBlockedDll);
+                    RunStartupStage("Loading interface resources...", () => new ResourceLoader().Load());
+                    try { CreatePortableVersionBackup(); }
+                    catch (Exception exception) { Logger.Error("Portable version backup failed; UCR will continue to open.", exception); }
 
                     UpdateSplash("Checking Exclusive Device Mode...");
                     await context.SubscriptionsManager.RecoverExclusiveModeAsync();
@@ -122,77 +125,111 @@ namespace HidWizards.UCR
             }
             else
             {
-                if (_forwardToSameVersion)
-                    SendArgs(string.Join(";", e.Args));
-                else
-                    Logger.Warn("A newer UCR build is already running. The older build will not replace it.");
-                Current.Shutdown();
+                Shutdown();
             }
         }
 
-        private bool TryReplaceDifferentVersion()
+        private async Task HandleExistingInstanceAsync(string[] args)
         {
-            var ourVersion = new Version(FileVersionInfo.GetVersionInfo(
-                Assembly.GetExecutingAssembly().Location).FileVersion);
-            var others = GetProcesses().Where(p => p.Id != Process.GetCurrentProcess().Id).ToArray();
-            if (others.Length == 0) return mutex.TryAcquire(1000);
-            foreach (var process in others)
+            if (mutex.TryAcquire(0)) return;
+
+            var assembly = Assembly.GetExecutingAssembly();
+            var identity = assembly.GetName();
+            var metadata = FileVersionInfo.GetVersionInfo(assembly.Location);
+            var ourVersion = new Version(metadata.FileVersion);
+            using (var current = Process.GetCurrentProcess())
             {
+                var candidates = Process.GetProcessesByName(current.ProcessName);
                 try
                 {
-                    var fileVersion = FileVersionInfo.GetVersionInfo(process.MainModule.FileName).FileVersion;
-                    Version existingVersion;
-                    if (!Version.TryParse(fileVersion, out existingVersion))
-                        return false;
-                    if (existingVersion == ourVersion)
+                    foreach (var process in candidates)
                     {
-                        _forwardToSameVersion = true;
-                        return false;
+                        try
+                        {
+                            if (process.Id == current.Id || process.SessionId != current.SessionId ||
+                                !TryReadUcrProcessVersion(process.MainModule.FileName, identity, metadata,
+                                    out var existingVersion)) continue;
+
+                            if (process.HasExited) continue;
+                            var processId = process.Id;
+                            if (existingVersion == ourVersion)
+                            {
+                                var deadline = Stopwatch.StartNew();
+                                do
+                                {
+                                    if (await Task.Run(() => SendCopyData(processId, string.Join(";", args))))
+                                        return;
+                                    if (process.HasExited) break;
+                                    await Task.Delay(150);
+                                } while (deadline.Elapsed < TimeSpan.FromSeconds(5));
+                                continue;
+                            }
+
+                            if (existingVersion > ourVersion)
+                            {
+                                Logger.Warn("A newer UCR build is already running.");
+                                return;
+                            }
+
+                            // Only a UCR main window can acknowledge the version replacement message.
+                            if (!await Task.Run(() => SendCopyData(processId, "UCR_INTERNAL_VERSION_REPLACE")))
+                                continue;
+
+                            Logger.Info("Waiting for UCR " + processId + " to finish its normal shutdown.");
+                            var exited = await Task.Run(() => process.WaitForExit(15000));
+                            if (exited && mutex.TryAcquire(0))
+                            {
+                                Logger.Info("Previous UCR build exited; starting this version.");
+                                return;
+                            }
+
+                            Logger.Warn("Previous UCR build did not complete version handover in time.");
+                            DarkMessageBox.Show("Close the running UCR instance, then open this build again.",
+                                "UCR version handover", MessageBoxButton.OK, MessageBoxImage.Information);
+                            return;
+                        }
+                        catch (Exception exception)
+                        {
+                            Logger.Warn("Could not verify or contact a UCR instance.", exception);
+                        }
                     }
                 }
-                catch (Exception exception)
+                finally
                 {
-                    Logger.Warn("Could not verify previous UCR version; leaving it running.", exception);
-                    return false;
+                    foreach (var candidate in candidates) candidate.Dispose();
                 }
             }
 
-            foreach (var process in others)
-            {
-                try
-                {
-                    Logger.Info("Requesting shutdown of UCR " + process.Id + " before version replacement.");
-                    // Future versions understand this message and perform their normal save/cleanup.
-                    SendUpgradeMessage(process.Id);
-                    if (!process.WaitForExit(7000))
-                    {
-                        foreach (var handle in GetTopLevelWindowHandles(process.Id))
-                            PostMessage(handle, 0x0010, IntPtr.Zero, IntPtr.Zero);
-                    }
-                    if (!process.WaitForExit(4000))
-                    {
-                        Logger.Warn("Previous UCR build did not release its mutex; stopping it.");
-                        process.Kill();
-                        process.WaitForExit(5000);
-                    }
-                }
-                catch (Exception exception)
-                {
-                    Logger.Error("Cannot replace earlier UCR process.", exception);
-                    return false;
-                }
-            }
-            return mutex.TryAcquire(5000);
+            if (mutex.TryAcquire(0)) return;
+            Logger.Warn("Could not contact the UCR instance holding the single-instance mutex.");
+            DarkMessageBox.Show("Another UCR instance is still running. Close it before starting this build.",
+                "UCR is already running", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private void SendUpgradeMessage(int processId)
+        private static bool TryReadUcrProcessVersion(string candidatePath, AssemblyName identity,
+            FileVersionInfo metadata, out Version version)
         {
-            var command = "UCR_INTERNAL_VERSION_REPLACE";
+            version = null;
+            var candidateIdentity = AssemblyName.GetAssemblyName(candidatePath);
+            if (!string.Equals(candidateIdentity.Name, identity.Name, StringComparison.OrdinalIgnoreCase) ||
+                !(candidateIdentity.GetPublicKeyToken() ?? new byte[0]).SequenceEqual(
+                    identity.GetPublicKeyToken() ?? new byte[0])) return false;
+
+            var candidateVersion = FileVersionInfo.GetVersionInfo(candidatePath);
+            return !string.IsNullOrWhiteSpace(metadata.ProductName) &&
+                   !string.IsNullOrWhiteSpace(metadata.CompanyName) &&
+                   string.Equals(candidateVersion.ProductName, metadata.ProductName, StringComparison.Ordinal) &&
+                   string.Equals(candidateVersion.CompanyName, metadata.CompanyName, StringComparison.Ordinal) &&
+                   Version.TryParse(candidateVersion.FileVersion, out version);
+        }
+
+        private static bool SendCopyData(int processId, string message)
+        {
             var data = new NativeMethods.COPYDATASTRUCT
             {
                 dwData = new IntPtr(2),
-                cbData = command.Length + 1,
-                lpData = Marshal.StringToHGlobalAnsi(command)
+                cbData = Encoding.Default.GetByteCount(message) + 1,
+                lpData = Marshal.StringToHGlobalAnsi(message)
             };
             IntPtr memory = IntPtr.Zero;
             try
@@ -201,24 +238,24 @@ namespace HidWizards.UCR
                 Marshal.StructureToPtr(data, memory, false);
                 foreach (var handle in GetTopLevelWindowHandles(processId))
                 {
-                    IntPtr unused;
-                    SendMessageTimeout(handle, (uint)NativeMethods.WM_COPYDATA, IntPtr.Zero,
-                        memory, 0x0002, 1500, out unused);
+                    NativeMethods.GetWindowThreadProcessId(handle, out var ownerProcessId);
+                    if (ownerProcessId != (uint)processId) continue;
+                    var delivered = SendMessageTimeout(handle, NativeMethods.WM_COPYDATA, IntPtr.Zero,
+                        memory, 0x0002, 1500, out var result) != IntPtr.Zero;
+                    if (delivered && result == new IntPtr(1)) return true;
                 }
+                return false;
             }
             finally
             {
                 if (memory != IntPtr.Zero) Marshal.FreeCoTaskMem(memory);
-                if (data.lpData != IntPtr.Zero) Marshal.FreeHGlobal(data.lpData);
+                Marshal.FreeHGlobal(data.lpData);
             }
         }
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern IntPtr SendMessageTimeout(IntPtr window, uint message, IntPtr wParam,
             IntPtr lParam, uint flags, uint timeout, out IntPtr result);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
 
         private void PreserveOriginalProfileFilesForVersion()
         {
@@ -290,7 +327,6 @@ namespace HidWizards.UCR
 
         private void InitializeUcr()
         {
-            RunStartupStage("Loading interface resources...", () => new ResourceLoader().Load());
             RunStartupStage("Initializing device providers and loading profiles...", () =>
             {
                 // Backups are important, but locked Documents folders, invalid profile titles or
@@ -298,8 +334,6 @@ namespace HidWizards.UCR
                 try { PreserveOriginalProfileFilesForVersion(); }
                 catch (Exception exception) { Logger.Error("Pre-load backup failed; original JSON files were not modified by the backup.", exception); }
                 context = Context.Load();
-                try { CreatePortableVersionBackup(); }
-                catch (Exception exception) { Logger.Error("Portable version backup failed; UCR will continue to open.", exception); }
                 Logger.SetDiagnosticContextProvider(BuildDiagnosticContextSnapshot);
             });
         }
@@ -399,96 +433,90 @@ namespace HidWizards.UCR
             }
         }
 
-        private void CheckForBlockedDll()
+        private bool HasRequiredRuntimeComponents()
         {
             var mappingPluginsLoaded = context.GetPlugins().Count != 0;
-            var deviceProvidersLoaded = context.DevicesManager.HasLoadedProviderReports();
-            if (mappingPluginsLoaded && deviceProvidersLoaded) return;
+            var deviceProvidersLoaded = context.DevicesManager.HasLoadedProviderReports(requireBothDirections: true);
+            if (mappingPluginsLoaded && deviceProvidersLoaded) return true;
 
             Logger.Warn($"Required runtime component check failed. Mapping plugins loaded: {mappingPluginsLoaded}; device provider reports loaded: {deviceProvidersLoaded}.");
-            var result = HidWizards.UCR.Utilities.DarkMessageBox.Show("UCR could not load one or more required plugin/provider DLLs. Do you want to unblock the UCR files and retry?", "Unblock files?", MessageBoxButton.YesNo, MessageBoxImage.Question);
-            if (result != MessageBoxResult.Yes) return;
-
-            UpdateSplash("Unblocking UCR files...");
-            var process = new Process
-            {
-                StartInfo =
-                {
-                    FileName = "UCR_unblocker.exe",
-                    UseShellExecute = true,
-                    Arguments = $"\"{Environment.CurrentDirectory}\"",
-                    CreateNoWindow = true
-                }
-            };
-            process.Start();
-            process.WaitForExit(1000 * 60 * 5);
-
-            var exitCode = process.ExitCode;
-            if (exitCode != 0)
-            {
-                HidWizards.UCR.Utilities.DarkMessageBox.Show("UCR failed to unblock the required files", "Failed to unblock", MessageBoxButton.OK, MessageBoxImage.Error);
-                Current.Shutdown();
-            }
-
-            InitializeUcr();
-            if (context.GetPlugins().Count == 0 || !context.DevicesManager.HasLoadedProviderReports())
-            {
-                Logger.Error("Required UCR plugins/providers are still unavailable after the unblock retry.");
-            }
+            return false;
         }
 
-        private static Process[] GetProcesses()
+        private bool TryInitializeRuntime()
         {
-            return Process.GetProcessesByName(Process.GetCurrentProcess().ProcessName);
-        }
-
-        private void SendArgs(string args)
-        {
-            Logger.Info($"UCR is already running, sending args: {{{args}}}");
-            // Find the window with the name of the main form
-            var processes = GetProcesses();
-            processes = processes.Where(p => p.Id != Process.GetCurrentProcess().Id).ToArray();
-            if (processes.Length == 0) return;
-
-            IntPtr ptrCopyData = IntPtr.Zero;
             try
             {
-                // Create the data structure and fill with data
-                NativeMethods.COPYDATASTRUCT copyData = new NativeMethods.COPYDATASTRUCT
-                {
-                    dwData = new IntPtr(2),
-                    cbData = args.Length + 1,
-                    lpData = Marshal.StringToHGlobalAnsi(args)
-                };
-                // Just a number to identify the data type
-                // One extra byte for the \0 character
-
-                // Allocate memory for the data and copy
-                ptrCopyData = Marshal.AllocCoTaskMem(Marshal.SizeOf(copyData));
-                Marshal.StructureToPtr(copyData, ptrCopyData, false);
-
-                // MainWindowHandle can be zero when UCR is hidden to the tray. Enumerate all
-                // top-level windows owned by the existing process so a second launch can always
-                // reach the hidden WPF main window and ask it to surface itself.
-                foreach (var proc in processes)
-                {
-                    foreach (var handle in GetTopLevelWindowHandles(proc.Id))
-                    {
-                        NativeMethods.SendMessage(handle, NativeMethods.WM_COPYDATA, IntPtr.Zero, ptrCopyData);
-                    }
-                }
-
+                InitializeUcr();
+                return HasRequiredRuntimeComponents();
             }
-            catch (Exception e)
+            catch (Exception exception) when (exception is MissingPersistedPluginException ||
+                exception is CompositionException || exception is ReflectionTypeLoadException ||
+                exception is FileLoadException || exception is BadImageFormatException)
             {
-                Logger.Error("Unable to send args to existing process", e);
+                Logger.Warn("Unable to load required UCR runtime components.", exception);
+                return false;
             }
-            finally
+        }
+
+        private async Task<bool> EnsureRequiredRuntimeComponentsAsync()
+        {
+            if (TryInitializeRuntime()) return true;
+
+            var result = DarkMessageBox.Show(
+                "UCR could not load the required mapping plugins or device providers. Unblock the UCR files and retry?",
+                "Unblock files?", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (result != MessageBoxResult.Yes) return false;
+
+            UpdateSplash("Unblocking UCR files...");
+            var directory = AppDomain.CurrentDomain.BaseDirectory;
+            try
             {
-                // Free the allocated memory after the control has been returned
-                if (ptrCopyData != IntPtr.Zero)
-                    Marshal.FreeCoTaskMem(ptrCopyData);
+                var exitCode = await Task.Run(() => RunUnblocker(directory, 5 * 60 * 1000));
+                if (!exitCode.HasValue)
+                    return ReportUnblockFailure("The file unblocker timed out.");
+                if (exitCode.Value != 0)
+                    return ReportUnblockFailure("The file unblocker failed (exit code " + exitCode.Value + ").");
+
+                // The first attempt may have successfully loaded only some providers.
+                // Dispose that context before composing a replacement.
+                var previousContext = context;
+                context = null;
+                previousContext?.Dispose();
+                if (TryInitializeRuntime()) return true;
+
+                return ReportUnblockFailure("The required mapping plugins or device providers are still unavailable after unblocking.");
             }
+            catch (Exception exception)
+            {
+                Logger.Error("Unable to complete UCR file unblocking and runtime recovery.", exception);
+                return ReportUnblockFailure("UCR could not reload its required components. See the UCR log for details.");
+            }
+        }
+
+        private static int? RunUnblocker(string directory, int timeoutMilliseconds)
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Path.Combine(directory, "UCR_unblocker.exe"),
+                WorkingDirectory = directory,
+                // Appending "." avoids a trailing backslash escaping the closing quote.
+                Arguments = $"\"{Path.Combine(directory, ".")}\" --non-interactive",
+                UseShellExecute = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            };
+            using (var process = Process.Start(startInfo))
+            {
+                if (process == null) throw new InvalidOperationException("Could not start the UCR file unblocker.");
+                return process.WaitForExit(timeoutMilliseconds) ? (int?)process.ExitCode : null;
+            }
+        }
+
+        private static bool ReportUnblockFailure(string message)
+        {
+            Logger.Error(message);
+            DarkMessageBox.Show(message, "UCR could not start", MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
         }
 
         private static IEnumerable<IntPtr> GetTopLevelWindowHandles(int processId)
@@ -671,12 +699,21 @@ namespace HidWizards.UCR
             _disposed = true;
             CloseSplash();
             CloseShutdownSplash();
-            mutex?.Dispose();
-            mutex = null;
-            context?.Dispose();
-            context = null;
-            _hidGuardianClient?.Dispose();
-            _hidGuardianClient = null;
+            try
+            {
+                context?.Dispose();
+            }
+            finally
+            {
+                context = null;
+                try { _hidGuardianClient?.Dispose(); }
+                finally
+                {
+                    _hidGuardianClient = null;
+                    mutex?.Dispose();
+                    mutex = null;
+                }
+            }
         }
 
         private void App_OnExit(object sender, ExitEventArgs e)

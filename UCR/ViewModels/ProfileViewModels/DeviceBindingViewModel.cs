@@ -253,11 +253,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
-        public string BindingActionToolTip => DeviceBinding?.DeviceIoType == DeviceIoType.Output
-            ? "Choose an output control from this device."
-            : DeviceBindingCategory == DeviceBindingCategory.Range
-                ? "Click to bind an input axis."
-                : "Click to bind an input control.";
+        public string BindingActionToolTip => IsCapturing
+            ? "Waiting for input. Click again or right-click to cancel."
+            : DeviceBinding?.DeviceIoType == DeviceIoType.Output
+                ? "Choose an output control from this device."
+                : DeviceBindingCategory == DeviceBindingCategory.Range
+                    ? "Click to bind an input axis."
+                    : "Click to bind an input control.";
 
         public bool MenuOnLeft => DeviceBinding?.InputDirectionSlot == 1 ||
             DeviceBinding?.InputDirectionSlot == 3;
@@ -344,7 +346,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 // menu owns category names. In a compact slot, show the control:
                 // "Axes, LS X+" -> "LS X+", "Buttons, A" -> "A". Preserve
                 // meaningful multi-part control names such as "POV 1, Up".
-                foreach (var group in new[] { "Keys", "Buttons", "Axes", "Axis", "Buttons / Axes" })
+                foreach (var group in new[] { "Keys", "Buttons", "Axes", "Axis", "Buttons / Axes", "POVs" })
                 {
                     if (!label.StartsWith(group, StringComparison.OrdinalIgnoreCase)) continue;
                     var suffix = label.Substring(group.Length);
@@ -843,6 +845,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
                 OnPropertyChanged(nameof(ShowButtonPreview));
                 OnPropertyChanged(nameof(IsCapturing));
+                OnPropertyChanged(nameof(BindingActionToolTip));
             }
 
             if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.IsBound), StringComparison.Ordinal)

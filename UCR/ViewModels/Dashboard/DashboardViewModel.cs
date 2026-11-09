@@ -74,7 +74,8 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         public string ActiveProfileBreadCrumbs => Context == null || Context.ActiveProfiles.Count == 0
             ? "None"
-            : string.Join(" + ", Context.ActiveProfiles.Select(profile => profile.Title));
+            : string.Join(" + ", Context.ActiveProfiles.Select(profile => profile.Title)) +
+              (Context.SubscriptionsManager.HasOutputWriteFailures ? " · Output error" : string.Empty);
 
         private Context Context { get; set; }
 
@@ -89,6 +90,8 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             {
                 if (args.PropertyName == nameof(Context.SubscriptionsManager.CanStopProfiles))
                     OnPropertyChanged(nameof(CanDeactivateAllProfiles));
+                else if (args.PropertyName == nameof(Context.SubscriptionsManager.HasOutputWriteFailures))
+                    OnPropertyChanged(nameof(ActiveProfileBreadCrumbs));
             };
             context.DeviceAliasesChangedEvent += OnDeviceAliasesChangedEvent;
             context.ProfileDevicesChangedEvent += OnProfileDevicesChangedEvent;

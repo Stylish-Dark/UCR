@@ -1,61 +1,102 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 using HidWizards.UCR.Core.Utilities;
 
 namespace HidWizards.UCR.Core.Models.Subscription
 {
     public class FilterState
     {
-        public Dictionary<string, bool> FilterRuntimeDictionary { get; set; }
+        private readonly object _gate = new object();
+        private readonly Dictionary<string, bool> _values = new Dictionary<string, bool>();
+        private readonly Queue<KeyValuePair<string, bool>> _pendingChanges = new Queue<KeyValuePair<string, bool>>();
+        private bool _dispatching;
 
         public delegate void FilterStateChanged(string filterName, bool value);
         public event FilterStateChanged FilterStateChangedEvent;
 
-        public FilterState()
+        internal void Define(string filterName)
         {
-            FilterRuntimeDictionary = new Dictionary<string, bool>();
+            lock (_gate)
+            {
+                if (!_values.ContainsKey(filterName)) _values.Add(filterName, false);
+            }
+        }
+
+        public bool TryGetValue(string filterName, out bool value)
+        {
+            lock (_gate) return _values.TryGetValue(filterName, out value);
         }
 
         public void SetFilterState(string filterName, bool value)
         {
-            if (string.IsNullOrWhiteSpace(filterName))
-            {
-                Logger.Warn("Ignored an attempt to write an unnamed filter state");
-                return;
-            }
-
-            bool previousValue;
-            if (!FilterRuntimeDictionary.TryGetValue(filterName, out previousValue))
-            {
-                Logger.Error("Ignored an attempt to write undefined filter state: " + filterName, null);
-                return;
-            }
-            if (previousValue == value) return;
-
-            FilterRuntimeDictionary[filterName] = value;
-            FilterStateChangedEvent?.Invoke(filterName, value);
+            ChangeState(filterName, value);
         }
 
         public void ToggleFilterState(string filterName)
         {
+            ChangeState(filterName, null);
+        }
+
+        private void ChangeState(string filterName, bool? requestedValue)
+        {
             if (string.IsNullOrWhiteSpace(filterName))
             {
-                Logger.Warn("Ignored an attempt to toggle an unnamed filter state");
+                Logger.Warn("Ignored an attempt to change an unnamed filter state");
                 return;
             }
 
-            bool previousValue;
-            if (!FilterRuntimeDictionary.TryGetValue(filterName, out previousValue))
+            lock (_gate)
             {
-                Logger.Error("Ignored an attempt to toggle undefined filter state: " + filterName, null);
-                return;
+                if (!_values.TryGetValue(filterName, out var previousValue))
+                {
+                    Logger.Error("Ignored an attempt to change undefined filter state: " + filterName, null);
+                    return;
+                }
+
+                var value = requestedValue ?? !previousValue;
+                if (value == previousValue) return;
+                _values[filterName] = value;
+                if (FilterStateChangedEvent == null) return;
+                _pendingChanges.Enqueue(new KeyValuePair<string, bool>(filterName, value));
+                if (_dispatching) return;
+                _dispatching = true;
             }
 
-            FilterRuntimeDictionary[filterName] = !previousValue;
-            FilterStateChangedEvent?.Invoke(filterName, FilterRuntimeDictionary[filterName]);
+            // Input providers call mappings synchronously. A filter writer must not
+            // take another mapping's lock from inside that provider's callback.
+            ThreadPool.QueueUserWorkItem(_ => DispatchChanges());
+        }
+
+        private void DispatchChanges()
+        {
+            while (true)
+            {
+                KeyValuePair<string, bool> change;
+                lock (_gate)
+                {
+                    if (_pendingChanges.Count == 0)
+                    {
+                        _dispatching = false;
+                        return;
+                    }
+                    change = _pendingChanges.Dequeue();
+                }
+
+                var observers = FilterStateChangedEvent?.GetInvocationList();
+                if (observers == null) continue;
+                foreach (FilterStateChanged observer in observers)
+                {
+                    try
+                    {
+                        observer(change.Key, change.Value);
+                    }
+                    catch (Exception exception)
+                    {
+                        Logger.Error("A filter-state observer failed: " + change.Key, exception);
+                    }
+                }
+            }
         }
     }
 }

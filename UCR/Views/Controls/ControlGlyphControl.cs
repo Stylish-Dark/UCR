@@ -108,7 +108,7 @@ namespace HidWizards.UCR.Views.Controls
                     DrawFilter(dc, b, accent);
                     break;
                 case ControlVisualKind.DeviceUnavailable:
-                    // No synthetic warning icon for a temporarily unavailable device.
+                    DrawDeviceUnavailable(dc, b, accent);
                     break;
                 case ControlVisualKind.Unbound:
                     DrawUnbound(dc, b, accent);
@@ -497,13 +497,31 @@ namespace HidWizards.UCR.Views.Controls
                 Math.Max(8, b.Height * 0.48), FontWeights.Bold);
         }
 
+        private static void DrawDeviceUnavailable(DrawingContext dc, Rect b, Brush accent)
+        {
+            var size = Math.Min(b.Width, b.Height) * 0.70;
+            var center = new Point(b.Left + b.Width / 2.0, b.Top + b.Height / 2.0);
+            var half = size / 2.0;
+            var triangle = new StreamGeometry();
+            using (var ctx = triangle.Open())
+            {
+                ctx.BeginFigure(new Point(center.X, center.Y - half), false, true);
+                ctx.LineTo(new Point(center.X + half, center.Y + half), true, false);
+                ctx.LineTo(new Point(center.X - half, center.Y + half), true, false);
+            }
+            triangle.Freeze();
+            dc.DrawGeometry(null, Pen(accent, 1.35), triangle);
+            DrawCenteredText(dc, "!", accent, new Rect(center.X - half,
+                center.Y - half + size * 0.20, size, size * 0.80),
+                Math.Max(7, size * 0.54), FontWeights.Bold);
+        }
+
         private static void DrawUnbound(DrawingContext dc, Rect b, Brush accent)
         {
             var rect = new Rect(b.Left + 2, b.Top + 3, Math.Max(1, b.Width - 4), Math.Max(1, b.Height - 6));
             var pen = Pen(new SolidColorBrush(Color.FromRgb(105, 105, 105)), 1.0);
             dc.DrawRoundedRectangle(null, pen, rect, 3, 3);
-            // Unassigned quick glyphs retain the question mark; Bind belongs to editor actions.
-            DrawCenteredText(dc, "?", new SolidColorBrush(Color.FromRgb(188, 188, 188)), rect,
+            DrawCenteredText(dc, "+", new SolidColorBrush(Color.FromRgb(188, 188, 188)), rect,
                 Math.Min(13, b.Height * 0.35), FontWeights.SemiBold);
         }
 

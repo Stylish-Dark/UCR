@@ -545,7 +545,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 DeviceVisualCatalog.IsTriggerBinding(input, ProfileViewModel.Profile) ? 4 : 2;
             if (!IsTypedDirectionalMapping && physical == DeviceBindingCategory.Range)
             {
-                if (physicalRepresentation == 2) Mapping.DirectionalCapacity = 2;
                 return SetInputRepresentation(physicalRepresentation);
             }
             if (IsTypedDirectionalMapping)
@@ -575,7 +574,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 isTrigger ? 4 : 2;
             if (!IsTypedDirectionalMapping && physical == DeviceBindingCategory.Range)
             {
-                if (!isTrigger) Mapping.DirectionalCapacity = 2;
                 return SetOutputRepresentation(representation);
             }
             if (IsTypedDirectionalMapping &&
@@ -617,6 +615,93 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private bool SetRepresentation(int value, bool inputSide)
         {
             if (!ButtonsEnabled || value < 1 || value > 4) return false;
+            var capacity = Mapping.DirectionalCapacity;
+            var compoundInput = Mapping.CompoundDigitalInput;
+            var inputRepresentation = Mapping.InputRepresentation;
+            var outputRepresentation = Mapping.OutputRepresentation;
+            var inputExpression = Mapping.UseInputExpression;
+            var inputs = Mapping.DeviceBindings;
+            var plugins = Mapping.Plugins;
+            var inputBanks = Mapping.InactiveInputRepresentations;
+            var outputBanks = Mapping.InactiveOutputRepresentations;
+            Mapping.InactiveInputRepresentations = inputBanks?.ToList();
+            Mapping.InactiveOutputRepresentations = outputBanks?.ToList();
+
+            var committed = false;
+            try
+            {
+                if (!ApplyRepresentationModel(value, inputSide)) return false;
+                if (ReferenceEquals(inputs, Mapping.DeviceBindings) &&
+                    ReferenceEquals(plugins, Mapping.Plugins)) return true;
+                committed = true;
+            }
+            catch (Exception exception)
+            {
+                Logger.Error("Unable to prepare a mapping representation change.", exception);
+                return false;
+            }
+            finally
+            {
+                if (!committed)
+                {
+                    Mapping.DirectionalCapacity = capacity;
+                    Mapping.CompoundDigitalInput = compoundInput;
+                    Mapping.InputRepresentation = inputRepresentation;
+                    Mapping.OutputRepresentation = outputRepresentation;
+                    Mapping.UseInputExpression = inputExpression;
+                    Mapping.DeviceBindings = inputs;
+                    Mapping.Plugins = plugins;
+                    Mapping.InactiveInputRepresentations = inputBanks;
+                    Mapping.InactiveOutputRepresentations = outputBanks;
+                }
+            }
+
+            if (!ReferenceEquals(plugins, Mapping.Plugins)) RebuildDirectionalOutputEditors();
+            if (!ReferenceEquals(inputs, Mapping.DeviceBindings)) RebuildDirectionalEditors();
+            ProfileViewModel.Profile.Context.ContextChanged();
+            OnPropertyChanged(nameof(DirectionalCapacity));
+            OnPropertyChanged(nameof(InputRepresentation));
+            OnPropertyChanged(nameof(OutputRepresentation));
+            OnPropertyChanged(nameof(InputIsFullStick));
+            OnPropertyChanged(nameof(InputIsAxis));
+            OnPropertyChanged(nameof(InputIsButton));
+            OnPropertyChanged(nameof(InputIsTrigger));
+            OnPropertyChanged(nameof(IsCompoundInput));
+            OnPropertyChanged(nameof(CompoundBlockEnabled));
+            OnPropertyChanged(nameof(CanBlockCompound));
+            OnPropertyChanged(nameof(OutputIsFullStick));
+            OnPropertyChanged(nameof(OutputIsAxis));
+            OnPropertyChanged(nameof(OutputIsButton));
+            OnPropertyChanged(nameof(OutputIsTrigger));
+            OnPropertyChanged(nameof(OutputIsFilter));
+            OnPropertyChanged(nameof(InputButtonChoiceGlyph));
+            OnPropertyChanged(nameof(OutputButtonChoiceGlyph));
+            OnPropertyChanged(nameof(InputAxisChoiceGlyph));
+            OnPropertyChanged(nameof(OutputAxisChoiceGlyph));
+            OnPropertyChanged(nameof(InputDirectionalSlotCount));
+            OnPropertyChanged(nameof(CompoundBindingSummary));
+            OnPropertyChanged(nameof(IsDigitalCompoundInput));
+            OnPropertyChanged(nameof(OutputDirectionalSlotCount));
+            OnPropertyChanged(nameof(IsCompoundOutput));
+            OnPropertyChanged(nameof(CompoundOutputSummary));
+            OnPropertyChanged(nameof(FourWayOutputDeviceVisibility));
+            OnPropertyChanged(nameof(CompoundOutputRemoveVisibility));
+            OnPropertyChanged(nameof(FourWayOutputDeviceLabel));
+            OnPropertyChanged(nameof(IsTypedDirectionalMapping));
+            OnPropertyChanged(nameof(IsFullStickInput));
+            OnPropertyChanged(nameof(IsFullStickOutput));
+            OnPropertyChanged(nameof(InputDirectionalGroupTitle));
+            OnPropertyChanged(nameof(OutputDirectionalGroupTitle));
+            RefreshDirectionalAvailability();
+            OnPropertyChanged(nameof(TypedDirectionalVisibility));
+            OnPropertyChanged(nameof(LegacyOutputAddVisibility));
+            RefreshInputExpressionPresentation();
+            RefreshCollapsedSummary();
+            return true;
+        }
+
+        private bool ApplyRepresentationModel(int value, bool inputSide)
+        {
             var currentInput = Mapping.EffectiveInputRepresentation;
             var currentOutput = Mapping.EffectiveOutputRepresentation;
             var wantedInput = inputSide ? value : currentInput;
@@ -660,14 +745,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     if (Mapping.DeviceBindings.Count == Mapping.RequiredInputBindingSlots)
                         return true;
                 }
-                if (!SwitchDirectionalInputs(value)) return false;
+                if (!SwitchDirectionalInputs(value, false)) return false;
                 if (capacityChanged || Mapping.Plugins.Count !=
                     Mapping.RequiredOutputBindingSlots)
                 {
                     var otherType = Mapping.EffectiveOutputRepresentation;
                     // Materialise the inferred representation without changing
                     // the visible choice; keep the original legacy output bank.
-                    if (!SwitchDirectionalOutputs(otherType)) return false;
+                    if (!SwitchDirectionalOutputs(otherType, false)) return false;
                 }
             }
             else
@@ -676,57 +761,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     !OutputIsFilter &&
                     Mapping.Plugins.Count == Mapping.RequiredOutputBindingSlots)
                     return true;
-                if (!SwitchDirectionalOutputs(value)) return false;
+                if (!SwitchDirectionalOutputs(value, false)) return false;
                 if (capacityChanged || Mapping.DeviceBindings.Count != Mapping.RequiredInputBindingSlots)
                 {
                     var otherType = Mapping.EffectiveInputRepresentation;
                     // Keep the old input representation in its legacy bank.
-                    if (!SwitchDirectionalInputs(otherType)) return false;
+                    if (!SwitchDirectionalInputs(otherType, false)) return false;
                 }
             }
-            ProfileViewModel.Profile.Context.ContextChanged();
-            OnPropertyChanged(nameof(DirectionalCapacity));
-            OnPropertyChanged(nameof(InputRepresentation));
-            OnPropertyChanged(nameof(OutputRepresentation));
-            OnPropertyChanged(nameof(InputIsFullStick));
-            OnPropertyChanged(nameof(InputIsAxis));
-            OnPropertyChanged(nameof(InputIsButton));
-            OnPropertyChanged(nameof(InputIsTrigger));
-            OnPropertyChanged(nameof(IsCompoundInput));
-            OnPropertyChanged(nameof(CompoundBlockEnabled));
-            OnPropertyChanged(nameof(CanBlockCompound));
-            OnPropertyChanged(nameof(OutputIsFullStick));
-            OnPropertyChanged(nameof(OutputIsAxis));
-            OnPropertyChanged(nameof(OutputIsButton));
-            OnPropertyChanged(nameof(OutputIsTrigger));
-            OnPropertyChanged(nameof(OutputIsFilter));
-            OnPropertyChanged(nameof(InputButtonChoiceGlyph));
-            OnPropertyChanged(nameof(OutputButtonChoiceGlyph));
-            OnPropertyChanged(nameof(InputAxisChoiceGlyph));
-            OnPropertyChanged(nameof(OutputAxisChoiceGlyph));
-            OnPropertyChanged(nameof(InputDirectionalSlotCount));
-            OnPropertyChanged(nameof(CompoundBindingSummary));
-            OnPropertyChanged(nameof(IsDigitalCompoundInput));
-            OnPropertyChanged(nameof(OutputDirectionalSlotCount));
-            OnPropertyChanged(nameof(IsCompoundOutput));
-            OnPropertyChanged(nameof(CompoundOutputSummary));
-            OnPropertyChanged(nameof(FourWayOutputDeviceVisibility));
-            OnPropertyChanged(nameof(CompoundOutputRemoveVisibility));
-            OnPropertyChanged(nameof(FourWayOutputDeviceLabel));
-            OnPropertyChanged(nameof(IsTypedDirectionalMapping));
-            OnPropertyChanged(nameof(IsFullStickInput));
-            OnPropertyChanged(nameof(IsFullStickOutput));
-            OnPropertyChanged(nameof(InputDirectionalGroupTitle));
-            OnPropertyChanged(nameof(OutputDirectionalGroupTitle));
-            RefreshDirectionalAvailability();
-            OnPropertyChanged(nameof(TypedDirectionalVisibility));
-            OnPropertyChanged(nameof(LegacyOutputAddVisibility));
-            RefreshInputExpressionPresentation();
-            RefreshCollapsedSummary();
             return true;
         }
 
-        private bool SwitchDirectionalInputs(int representation)
+        private bool SwitchDirectionalInputs(int representation, bool rebuildEditors = true)
         {
             var profile = ProfileViewModel.Profile;
             var capacity = Mapping.EffectiveDirectionalCapacity;
@@ -859,11 +905,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 .ThenBy(input => input.IsDirectionalAndCondition ? 1 : 0).ToList();
             Mapping.InputRepresentation = representation;
             Mapping.UseInputExpression = true;
-            RebuildDirectionalEditors();
+            if (rebuildEditors) RebuildDirectionalEditors();
             return true;
         }
 
-        private bool SwitchDirectionalOutputs(int representation)
+        private bool SwitchDirectionalOutputs(int representation, bool rebuildEditors = true)
         {
             var profile = ProfileViewModel.Profile;
             var required = Mapping.CompoundDigitalOutput && representation == 1 &&
@@ -872,13 +918,21 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (required < 1) return false;
             if (Mapping.InactiveOutputRepresentations == null)
                 Mapping.InactiveOutputRepresentations = new List<DirectionalOutputBank>();
-            var bank = Mapping.InactiveOutputRepresentations.FirstOrDefault(item =>
-                item.Representation == representation &&
-                item.Plugins != null && item.Plugins.Count == required);
             var previous = Mapping.Plugins.ToList();
             var priorType = Mapping.OutputRepresentation;
+            var isButton = representation == 3 || (Mapping.CompoundDigitalOutput && representation == 1);
+            var category = isButton ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
+            var bank = Mapping.InactiveOutputRepresentations.FirstOrDefault(item =>
+                item.FilterRestoreKey == Guid.Empty && item.Representation == representation &&
+                item.Plugins?.Count == required && item.Plugins.All(plugin => HasPhysicalOutputCategory(plugin, category)));
+            var restored = previous.Count == required
+                ? RestoreLegacyPhysicalOutputs(previous, category, representation) : null;
             List<Plugin> next;
-            if (bank != null && bank.Plugins != null && bank.Plugins.Count == required)
+            if (restored != null)
+            {
+                next = restored;
+            }
+            else if (bank != null)
             {
                 next = bank.Plugins;
                 Mapping.InactiveOutputRepresentations.Remove(bank);
@@ -886,8 +940,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             else
             {
                 // As above, capacity changes require a complete destination bank.
-                var isButton = representation == 3 ||
-                    (Mapping.CompoundDigitalOutput && representation == 1);
                 var pluginName = isButton ? "Button to Button" : "Axis to Axis";
                 var template = profile.Context.GetPlugins().FirstOrDefault(item =>
                     string.Equals(item.PluginName, pluginName, StringComparison.OrdinalIgnoreCase));
@@ -917,10 +969,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                             previousPlugin.Outputs[0].IsBound)
                         {
                             var source = previousPlugin.Outputs[0];
-                            plugin.Outputs[0].SetDeviceConfigurationGuid(
-                                source.DeviceConfigurationGuid, false);
-                            plugin.Outputs[0].SetKeyTypeValue(
-                                source.KeyType, source.KeyValue, source.KeySubValue);
+                            CopyPhysicalOutput(source, plugin.Outputs[0]);
+                            // A single button already assigned to the negative half still
+                            // drives that side when the typed bank uses an Axis to Axis plugin.
+                            if (source.OutputAxisDirection < 0 &&
+                                previousPlugin.InputCategories.FirstOrDefault().Category == DeviceBindingCategory.Momentary)
+                            {
+                                var invert = plugin.GetType().GetProperty("Invert");
+                                if (invert?.PropertyType == typeof(bool) && invert.CanWrite)
+                                    invert.SetValue(plugin, true, null);
+                            }
                         }
                         SelectCompatibleOutputDevices(plugin,
                             previousPlugin.Outputs.Select(output =>
@@ -930,26 +988,35 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 }
             }
 
-            Mapping.InactiveOutputRepresentations.RemoveAll(item =>
-                item.Representation == priorType &&
-                item.Plugins != null && item.Plugins.Count == previous.Count);
-            Mapping.InactiveOutputRepresentations.Add(new DirectionalOutputBank
+            if (previous.Any(plugin => !IsFilterOutput(plugin)))
             {
-                Representation = priorType,
-                Plugins = previous
-            });
+                Mapping.InactiveOutputRepresentations.RemoveAll(item =>
+                    item.FilterRestoreKey == Guid.Empty && item.Representation == priorType &&
+                    item.Plugins != null && item.Plugins.Count == previous.Count);
+                Mapping.InactiveOutputRepresentations.Add(new DirectionalOutputBank
+                {
+                    Representation = priorType,
+                    Plugins = previous
+                });
+            }
+            Mapping.Plugins = next;
+            Mapping.OutputRepresentation = representation;
+            if (rebuildEditors) RebuildDirectionalOutputEditors();
+            return true;
+        }
+
+        private void RebuildDirectionalOutputEditors()
+        {
             foreach (var vm in Plugins.ToList())
             {
-                foreach (var input in vm.DeviceBindings)
-                    input.PropertyChanged -= SummaryBindingOnPropertyChanged;
+                foreach (var binding in vm.DeviceBindings)
+                    binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
                 vm.Dispose();
             }
             Plugins.Clear();
-            Mapping.Plugins = next;
-            Mapping.OutputRepresentation = representation;
-            foreach (var plugin in next)
+            foreach (var plugin in Mapping.Plugins)
             {
-                plugin.SetProfile(profile);
+                plugin.SetProfile(ProfileViewModel.Profile);
                 var vm = new PluginViewModel(this, plugin);
                 Plugins.Add(vm);
                 foreach (var binding in vm.DeviceBindings)
@@ -957,7 +1024,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             RefreshHeaderState();
             ProfileViewModel.RefreshFilterReferenceLabels();
-            return true;
         }
 
         public string MappingTitle => Mapping.FullTitle;
@@ -3122,92 +3188,159 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return true;
         }
 
-        // Swap only the chosen output plugin, never the mapping's shared input bindings.
         public bool ChangeAllOutputTypes(Plugin replacementTemplate)
         {
-            if (!ButtonsEnabled || replacementTemplate == null || Plugins.Count == 0) return false;
-            var candidates = GetCompatiblePluginOptions();
-            if (!candidates.Any(candidate => candidate.Plugin.GetType() == replacementTemplate.GetType()))
-                return false;
-            var selectingFilter = string.Equals(replacementTemplate.Group, "Filter",
-                StringComparison.OrdinalIgnoreCase);
-            if (selectingFilter && !OutputIsFilter)
-            {
-                // Filter is a logical output category. Keep the previously assigned
-                // physical destinations in a representation bank, so switching back
-                // restores them rather than silently wiping the user's bindings.
-                if (Mapping.InactiveOutputRepresentations == null)
-                    Mapping.InactiveOutputRepresentations = new List<DirectionalOutputBank>();
-                var representation = Mapping.EffectiveOutputRepresentation;
-                var count = Mapping.Plugins.Count;
-                Mapping.InactiveOutputRepresentations.RemoveAll(bank =>
-                    bank.Representation == representation &&
-                    bank.Plugins?.Count == count);
-                Mapping.InactiveOutputRepresentations.Add(new DirectionalOutputBank
-                {
-                    Representation = representation,
-                    Plugins = Mapping.Plugins.ToList()
-                });
-            }
-            // Apply the common category to each destination. Individual output type changes
-            // remain available in the row's optional settings.
-            var success = true;
-            foreach (var output in Plugins.ToList())
-                success &= ChangeOutputType(output, replacementTemplate);
-            return success;
+            return ChangeOutputTypes(Plugins.ToList(), replacementTemplate);
         }
 
+        // Replace only the requested output rows. Shared input bindings belong to the mapping.
         public bool ChangeOutputType(PluginViewModel original, Plugin replacementTemplate)
         {
-            if (!ButtonsEnabled || original == null || replacementTemplate == null) return false;
-            var index = Plugins.IndexOf(original);
-            if (index < 0 || index >= Mapping.Plugins.Count) return false;
-            if (!Mapping.GetPluginList().Any(option => option.GetType() == replacementTemplate.GetType()))
-                return false;
-            if (original.Plugin.GetType() == replacementTemplate.GetType()) return true;
-            if (!Mapping.UseInputExpression &&
-                !original.Plugin.HasSameInputCategories(replacementTemplate) &&
-                !Mapping.EnableInputExpression())
+            return ChangeOutputTypes(new[] { original }, replacementTemplate);
+        }
+
+        private bool ChangeOutputTypes(IList<PluginViewModel> originals, Plugin replacementTemplate)
+        {
+            if (!ButtonsEnabled || replacementTemplate == null || originals.Count == 0 ||
+                !Mapping.GetPluginList().Any(option => option.GetType() == replacementTemplate.GetType()))
                 return false;
 
-            var replacement = ProfileViewModel.Profile.Context.PluginManager.GetNewPlugin(replacementTemplate);
-            replacement.SetProfile(ProfileViewModel.Profile);
-            replacement.Filters = original.Plugin.Filters.ToList();
-            // Preserve the actual destination when both plugins produce the same
-            // output category, rather than wiping an already-bound controller axis.
-            for (var position = 0; position < Math.Min(original.Plugin.Outputs.Count, replacement.Outputs.Count); position++)
+            var indices = originals.Select(original => original == null ? -1 : Plugins.IndexOf(original)).ToList();
+            if (indices.Any(index => index < 0 || index >= Mapping.Plugins.Count)) return false;
+            var changes = indices.Where(index => Mapping.Plugins[index].GetType() != replacementTemplate.GetType())
+                .ToList();
+            if (changes.Count == 0) return true;
+
+            var enableInputExpression = !Mapping.UseInputExpression && changes.Any(index =>
+                !Mapping.Plugins[index].HasSameInputCategories(replacementTemplate));
+            if (enableInputExpression && (!Mapping.SupportsNativeInputExpression() || Mapping.DeviceBindings.Count != 1))
+                return false;
+
+            var banks = Mapping.InactiveOutputRepresentations?.ToList() ?? new List<DirectionalOutputBank>();
+            var selectingFilter = IsFilterOutput(replacementTemplate);
+            var category = replacementTemplate.OutputCategories.FirstOrDefault().Category;
+            var prepared = new List<KeyValuePair<int, PluginViewModel>>();
+            try
             {
-                var previous = original.Plugin.Outputs[position];
-                var target = replacement.Outputs[position];
-                if (previous.IsBound &&
-                    original.Plugin.OutputCategories[position].Category == replacement.OutputCategories[position].Category)
+                // Create and validate every replacement before touching the live collection.
+                foreach (var index in changes)
                 {
-                    target.SetDeviceConfigurationGuid(previous.DeviceConfigurationGuid, false);
-                    target.SetKeyTypeValue(previous.KeyType, previous.KeyValue, previous.KeySubValue);
+                    var previous = Mapping.Plugins[index];
+                    var replacement = selectingFilter ? null : FindSavedPhysicalOutput(previous, category, banks);
+                    if (replacement == null)
+                    {
+                        replacement = ProfileViewModel.Profile.Context.PluginManager.GetNewPlugin(replacementTemplate);
+                        replacement.SetProfile(ProfileViewModel.Profile);
+                        replacement.Filters = previous.Filters.ToList();
+                        replacement.FilterRestoreKey = previous.FilterRestoreKey;
+                        for (var position = 0; position < Math.Min(previous.Outputs.Count, replacement.Outputs.Count); position++)
+                        {
+                            if (previous.Outputs[position].IsBound &&
+                                previous.OutputCategories[position].Category == replacement.OutputCategories[position].Category)
+                                CopyPhysicalOutput(previous.Outputs[position], replacement.Outputs[position]);
+                        }
+                        SelectCompatibleOutputDevices(replacement,
+                            previous.Outputs.Select(binding => binding.DeviceConfigurationGuid).ToList());
+                    }
+
+                    if (selectingFilter && !IsFilterOutput(previous) && previous.Outputs.Count > 0)
+                    {
+                        var key = previous.FilterRestoreKey == Guid.Empty ? Guid.NewGuid() : previous.FilterRestoreKey;
+                        replacement.FilterRestoreKey = key;
+                        banks.RemoveAll(bank => bank.FilterRestoreKey == key);
+                        banks.Add(new DirectionalOutputBank { FilterRestoreKey = key, Plugins = new List<Plugin> { previous } });
+                    }
+                    prepared.Add(new KeyValuePair<int, PluginViewModel>(index, new PluginViewModel(this, replacement)));
                 }
             }
-            SelectCompatibleOutputDevices(replacement,
-                original.Plugin.Outputs.Select(binding => binding.DeviceConfigurationGuid).ToList());
-            var replacementViewModel = new PluginViewModel(this, replacement);
-            foreach (var binding in original.DeviceBindings)
-                binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
-            original.Dispose();
-            Mapping.Plugins[index] = replacement;
-            Plugins[index] = replacementViewModel;
-            foreach (var binding in replacementViewModel.DeviceBindings)
-                SubscribeSummaryBinding(binding);
+            catch (Exception exception)
+            {
+                foreach (var item in prepared) item.Value.Dispose();
+                Logger.Error("Unable to prepare the output type change.", exception);
+                return false;
+            }
+
+            if (enableInputExpression && !Mapping.EnableInputExpression())
+            {
+                foreach (var item in prepared) item.Value.Dispose();
+                return false;
+            }
+
+            Mapping.InactiveOutputRepresentations = banks;
+            foreach (var item in prepared)
+                Mapping.Plugins[item.Key] = item.Value.Plugin;
+            foreach (var item in prepared)
+            {
+                var old = Plugins[item.Key];
+                foreach (var binding in old.DeviceBindings)
+                    binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
+                old.Dispose();
+                Plugins[item.Key] = item.Value;
+                foreach (var binding in item.Value.DeviceBindings)
+                    SubscribeSummaryBinding(binding);
+            }
             ProfileViewModel.Profile.PruneUndefinedFilterReferencesRecursive();
             ProfileViewModel.Profile.Context.ContextChanged();
             RefreshHeaderState();
             RefreshCollapsedSummary();
             ProfileViewModel.RefreshFilterReferenceLabels();
             RefreshInputExpressionPresentation();
-            // Output selection never implicitly changes the number of inputs.
-            // A previous axis choice may have left an unwanted paired input behind.
-            if (!HasAxisOutput && Mapping.DeviceBindings.Any(input => input.InputDirectionSlot > 0))
+            // Remove unused paired-input presentation after the entire batch is installed.
+            if (!HasAxisOutput && Mapping.DeviceBindings.Any(input => input.InputDirectionSlot > 0) &&
+                !selectingFilter)
                 RestoreBooleanInputsAfterAxis();
-            Logger.Info("Changed output type in mapping '" + MappingTitle + "' to " + replacement.PluginName);
+            Logger.Info("Changed output type in mapping '" + MappingTitle + "' to " + replacementTemplate.PluginName);
             return true;
+        }
+
+        private static bool IsFilterOutput(Plugin plugin) =>
+            string.Equals(plugin.Group, "Filter", StringComparison.OrdinalIgnoreCase);
+
+        private static bool HasPhysicalOutputCategory(Plugin plugin, DeviceBindingCategory category) =>
+            plugin != null && plugin.OutputCategories.Count > 0 &&
+            plugin.OutputCategories.All(output => output.Category == category);
+
+        private Plugin FindSavedPhysicalOutput(Plugin current, DeviceBindingCategory category,
+            List<DirectionalOutputBank> banks, int? representation = null)
+        {
+            if (current.FilterRestoreKey != Guid.Empty)
+            {
+                var bank = banks.FirstOrDefault(item => item.FilterRestoreKey == current.FilterRestoreKey);
+                var saved = bank?.Plugins?.SingleOrDefault();
+                if (saved == null || !HasPhysicalOutputCategory(saved, category)) return null;
+                banks.Remove(bank);
+                return saved;
+            }
+
+            if (!IsFilterOutput(current)) return null;
+            var index = Mapping.Plugins.IndexOf(current);
+            // Older builds saved one whole bank. Leave it available for its other rows.
+            var legacy = banks.LastOrDefault(item => item.FilterRestoreKey == Guid.Empty &&
+                (!representation.HasValue || item.Representation == representation.Value) &&
+                item.Plugins?.Count == Mapping.Plugins.Count && item.Plugins[index] != null &&
+                HasPhysicalOutputCategory(item.Plugins[index], category));
+            return legacy?.Plugins[index].Duplicate();
+        }
+
+        private List<Plugin> RestoreLegacyPhysicalOutputs(IList<Plugin> current,
+            DeviceBindingCategory category, int representation)
+        {
+            if (!current.All(IsFilterOutput)) return null;
+            var banks = Mapping.InactiveOutputRepresentations.ToList();
+            var next = current.Select(plugin => FindSavedPhysicalOutput(plugin, category, banks, representation)).ToList();
+            if (next.Any(plugin => plugin == null)) return null;
+            Mapping.InactiveOutputRepresentations = banks;
+            return next;
+        }
+
+        private static void CopyPhysicalOutput(DeviceBinding source, DeviceBinding destination)
+        {
+            destination.DeviceConfigurationGuid = source.DeviceConfigurationGuid;
+            destination.KeyType = source.KeyType;
+            destination.KeyValue = source.KeyValue;
+            destination.KeySubValue = source.KeySubValue;
+            destination.OutputAxisDirection = source.OutputAxisDirection;
+            destination.IsBound = source.IsBound;
         }
 
         private void RestoreBooleanInputsAfterAxis()
@@ -3248,9 +3381,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var selected = compatible.FirstOrDefault(device => device.Guid == preference)
                     ?? compatible.FirstOrDefault(device => device.Guid == primary?.Guid)
                     ?? compatible.FirstOrDefault();
-                if (selected != null && (!plugin.Outputs[index].IsBound ||
-                    plugin.Outputs[index].DeviceConfigurationGuid != selected.Guid))
-                    plugin.Outputs[index].SetDeviceConfigurationGuid(selected.Guid, false);
+                if (selected != null && !plugin.Outputs[index].IsBound)
+                    plugin.Outputs[index].DeviceConfigurationGuid = selected.Guid;
             }
         }
 
@@ -3948,7 +4080,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 viewModel.InputExpressionNegated;
             descriptor.IsCapturing = viewModel.DeviceBinding?.IsInBindMode == true;
             if (descriptor.IsCapturing)
-                descriptor.ToolTip = "LISTENING — press Esc or right-click to cancel";
+                descriptor.ToolTip = "LISTENING — right-click to cancel";
             var binding = viewModel.DeviceBinding;
             if (binding == null || !descriptor.IsBound || descriptor.Device == null) return descriptor;
 

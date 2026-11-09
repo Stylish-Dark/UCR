@@ -239,8 +239,8 @@ namespace HidWizards.UCR.Core.Managers
         /// </summary>
         public int ImportProfileList(string filePath, ProfileListImportMode mode, List<Type> pluginTypes = null)
         {
-            var package = ReadProfileListImport(filePath, pluginTypes);
-            if (mode == ProfileListImportMode.Replace && _context.ActiveProfiles.Count > 0 &&
+            var package = PrepareProfileListImport(filePath, mode, pluginTypes);
+            if (mode == ProfileListImportMode.Replace && _context.SubscriptionsManager.CanStopProfiles &&
                 !_context.SubscriptionsManager.DeactivateCurrentProfile())
                 throw new InvalidOperationException("The active profiles could not be deactivated before replacing the profile list.");
             return ApplyProfileListImport(package, mode);
@@ -248,44 +248,58 @@ namespace HidWizards.UCR.Core.Managers
 
         public Task<int> ImportProfileListAsync(string filePath, ProfileListImportMode mode, List<Type> pluginTypes = null)
         {
-            var package = ReadProfileListImport(filePath, pluginTypes);
+            var package = PrepareProfileListImport(filePath, mode, pluginTypes);
             if (mode == ProfileListImportMode.Replace)
                 return _context.SubscriptionsManager.StopBeforeReplacingProfilesAsync(() => ApplyProfileListImport(package, mode));
             return Task.FromResult(ApplyProfileListImport(package, mode));
         }
 
-        private ProfileExportPackage ReadProfileListImport(string filePath, List<Type> pluginTypes)
+        private ProfileExportPackage PrepareProfileListImport(string filePath, ProfileListImportMode mode, List<Type> pluginTypes)
         {
+            if (mode != ProfileListImportMode.Merge && mode != ProfileListImportMode.Replace)
+                throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown profile-list import mode.");
+
             ValidateFilePath(filePath);
             var package = DeserializeProfileListPackage(filePath, pluginTypes);
             ValidatePackage(package, ProfileExportKind.ProfileList);
+            if (mode == ProfileListImportMode.Merge) RegenerateIdentities(package.Profiles);
+
+            // Materialize and attach the entire import before changing the live list, alias
+            // presentation, or running profiles. A bad plugin or legacy group can throw here.
+            foreach (var profile in package.Profiles)
+                profile.PostLoad(_context, markMigrationDirty: false);
+            ContextStore.ValidateProfileIds(package.Profiles);
             return package;
         }
 
         private int ApplyProfileListImport(ProfileExportPackage package, ProfileListImportMode mode)
         {
-            if (mode == ProfileListImportMode.Merge)
+            var replace = mode == ProfileListImportMode.Replace;
+            var aliases = replace ? new List<DeviceAlias>() :
+                (_context.DeviceAliases ?? Enumerable.Empty<DeviceAlias>()).ToList();
+            var aliasesChanged = replace;
+            foreach (var imported in package.DeviceAliases)
             {
-                RegenerateIdentities(package.Profiles);
-                _context.DevicesManager.MergeDeviceAliases(package.DeviceAliases, false);
-            }
-            else if (mode == ProfileListImportMode.Replace)
-            {
-                _profiles.Clear();
-                _context.DevicesManager.ReplaceDeviceAliases(package.DeviceAliases);
-            }
-            else
-            {
-                throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown profile-list import mode.");
+                if (!replace && aliases.Any(existing => DevicesManager.AliasIdentityEquals(existing, imported))) continue;
+                var clone = imported.Clone();
+                clone.DefaultOutlineColor = null;
+                aliases.Add(clone);
+                aliasesChanged = true;
             }
 
-            foreach (var profile in package.Profiles)
-            {
-                profile.PostLoad(_context);
-                profile.MigrateLegacyChildProfilesToMappingGroups();
-                _profiles.Add(profile);
-            }
+            var profileCount = replace ? package.Profiles.Count : checked(_profiles.Count + package.Profiles.Count);
+            if (_profiles.Capacity < profileCount) _profiles.Capacity = profileCount;
+            if (replace) _profiles.Clear();
+            _profiles.AddRange(package.Profiles);
+            if (aliasesChanged) _context.DeviceAliases = aliases;
             _context.ContextChanged();
+
+            // Observers see the committed profiles and aliases together.
+            if (aliasesChanged)
+            {
+                try { _context.OnDeviceAliasesChangedEvent(); }
+                catch (Exception exception) { Logger.Error(exception, "An observer failed to refresh imported device aliases."); }
+            }
             return package.Profiles.Count;
         }
 
@@ -404,10 +418,27 @@ namespace HidWizards.UCR.Core.Managers
         private static void SerializePackage(string filePath, ProfileExportPackage package, List<Type> pluginTypes)
         {
             var serializer = Context.GetXmlSerializer(pluginTypes, typeof(ProfileExportPackage));
-            using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
-            using (var writer = new StreamWriter(fileStream, new UTF8Encoding(false)))
+            var destination = Path.GetFullPath(filePath);
+            var temporary = Path.Combine(Path.GetDirectoryName(destination), ".ucr-export-" + Guid.NewGuid().ToString("N") + ".tmp");
+            try
             {
-                serializer.Serialize(writer, package);
+                using (var fileStream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                {
+                    using (var writer = new StreamWriter(fileStream, new UTF8Encoding(false), 4096, true))
+                        serializer.Serialize(writer, package);
+                    fileStream.Flush(true);
+                }
+
+                if (File.Exists(destination))
+                    File.Replace(temporary, destination, null);
+                else
+                    File.Move(temporary, destination);
+            }
+            finally
+            {
+                try { File.Delete(temporary); }
+                catch (IOException exception) { Logger.Warn(exception, "Unable to clean up temporary profile export."); }
+                catch (UnauthorizedAccessException exception) { Logger.Warn(exception, "Unable to clean up temporary profile export."); }
             }
         }
 
@@ -768,44 +799,33 @@ namespace HidWizards.UCR.Core.Managers
 
         #endregion
 
-        /// <summary>
-        /// Breadth-first search for nested profiles
-        /// Find first search result and looks for the next result in the children
-        /// </summary>
-        /// <param name="search">List of profiles to search for nested under each other</param>
-        /// <returns>The most specific profile found in the chain, otherwise null</returns>
+        /// <summary>Finds a title anywhere, or matches an explicit root-to-child path.</summary>
         public Profile FindProfile(List<string> search)
         {
             if (search == null || search.Count == 0) return null;
-            Logger.Debug($"Searching for profile: {{{string.Join(",", search)}}}");
-
-            Profile foundProfile = null;
-            var searchIndex = 0;
-            var queue = new Queue<Profile>(_profiles.Where(profile => profile != null));
-
-            while (queue.Count > 0 && searchIndex < search.Count)
+            var candidates = _profiles.Where(profile => profile != null);
+            if (search.Count > 1)
             {
-                var profile = queue.Dequeue();
-                if (string.Equals(profile.Title, search[searchIndex], StringComparison.CurrentCultureIgnoreCase))
+                foreach (var segment in search.Take(search.Count - 1))
                 {
-                    foundProfile = profile;
-                    searchIndex++;
-                    if (searchIndex == search.Count)
-                    {
-                        Logger.Debug($"Found profile: {{{profile.ProfileBreadCrumbs()}}}");
-                        return profile;
-                    }
-
-                    Logger.Trace($"Found intermediate profile: {{{profile.ProfileBreadCrumbs()}}}. Remaining search: {{{string.Join(",", search.Skip(searchIndex))}}}");
-                    queue.Clear();
+                    candidates = candidates.Where(profile =>
+                            string.Equals(profile.Title, segment, StringComparison.CurrentCultureIgnoreCase))
+                        .SelectMany(profile => profile.ChildProfiles ?? Enumerable.Empty<Profile>())
+                        .Where(profile => profile != null).ToList();
                 }
-
-                if (profile.ChildProfiles == null) continue;
-                foreach (var child in profile.ChildProfiles.Where(child => child != null)) queue.Enqueue(child);
+                return candidates.FirstOrDefault(profile =>
+                    string.Equals(profile.Title, search[search.Count - 1], StringComparison.CurrentCultureIgnoreCase));
             }
 
-            Logger.Debug($"No profile found for {{{string.Join(",", search)}}}");
-            return foundProfile;
+            var queue = new Queue<Profile>(candidates);
+            while (queue.Count > 0)
+            {
+                var profile = queue.Dequeue();
+                if (string.Equals(profile.Title, search[0], StringComparison.CurrentCultureIgnoreCase)) return profile;
+                foreach (var child in profile.ChildProfiles ?? Enumerable.Empty<Profile>())
+                    if (child != null) queue.Enqueue(child);
+            }
+            return null;
         }
     }
 }

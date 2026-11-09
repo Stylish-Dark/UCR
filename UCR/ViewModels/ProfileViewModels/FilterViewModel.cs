@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Windows;
+using System.Windows.Threading;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Subscription;
@@ -21,7 +21,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool IsEnabled => !_pluginViewModel.MappingViewModel.ProfileViewModel.Profile.IsActive();
         public double ChipOpacity => GetFilterState() ? 1.0 : 0.26;
         private readonly PluginViewModel _pluginViewModel;
+        private readonly Dispatcher _dispatcher = Dispatcher.CurrentDispatcher;
         private FilterState _subscribedFilterState;
+        private bool _disposed;
 
         public FilterViewModel(PluginViewModel pluginViewModel, Filter filter)
         {
@@ -58,6 +60,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             var runtimeName = Mapping.GetRuntimeFilterKey(_pluginViewModel.Plugin.Profile.Guid, Name);
             if (!string.Equals(filterName, runtimeName, StringComparison.InvariantCultureIgnoreCase)) return;
+            if (_dispatcher.CheckAccess()) RefreshFilterIndicator();
+            else if (!_dispatcher.HasShutdownStarted)
+                _dispatcher.BeginInvoke(DispatcherPriority.DataBind, new Action(RefreshFilterIndicator));
+        }
+
+        private void RefreshFilterIndicator()
+        {
+            if (_disposed) return;
             OnPropertyChanged(nameof(ChipIcon));
             OnPropertyChanged(nameof(ChipOpacity));
             OnPropertyChanged(nameof(Name));
@@ -76,7 +86,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             bool value;
             var runtimeName = Mapping.GetRuntimeFilterKey(_pluginViewModel.Plugin.Profile.Guid, Filter.Name);
-            if (!state.FilterState.FilterRuntimeDictionary.TryGetValue(runtimeName, out value)) return false;
+            if (!state.FilterState.TryGetValue(runtimeName, out value)) return false;
             return value ^ Negative;
         }
 
@@ -108,6 +118,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public void Dispose()
         {
+            _disposed = true;
             if (_subscribedFilterState != null)
             {
                 _subscribedFilterState.FilterStateChangedEvent -= OnFilterStateChanged;

@@ -47,10 +47,15 @@ namespace HidWizards.UCR.Utilities
         public void Dispose()
         {
             if (_mutex == null) return;
-            if (HasHandle)
+            try
             {
-                _mutex.ReleaseMutex();
+                if (HasHandle) _mutex.ReleaseMutex();
+            }
+            finally
+            {
+                HasHandle = false;
                 _mutex.Dispose();
+                _mutex = null;
             }
         }
     }

@@ -52,6 +52,7 @@ namespace HidWizards.UCR.Core.Utilities.AxisHelpers
         public short ApplyRangeAntiDeadZone(short value)
         {
             if (value == 0) return 0;
+            if (_percentage == 100) return value < 0 ? short.MinValue : short.MaxValue;
             
             var wideVal = Functions.WideAbs(value);
 

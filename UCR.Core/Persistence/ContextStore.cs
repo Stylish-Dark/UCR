@@ -407,7 +407,7 @@ namespace HidWizards.UCR.Core.Persistence
             }
         }
 
-        private static List<Guid> ValidateProfileIds(IEnumerable<Profile> profiles)
+        internal static List<Guid> ValidateProfileIds(IEnumerable<Profile> profiles)
         {
             var topLevelIds = new List<Guid>();
             var topLevelSeen = new HashSet<Guid>();
@@ -689,6 +689,9 @@ namespace HidWizards.UCR.Core.Persistence
                     validate?.Invoke(live);
                     return live;
                 }
+                // A missing component may be recovered on startup. Do not replace the
+                // profile with an older revision merely because its plugin is unavailable.
+                catch (MissingPersistedPluginException) { throw; }
                 catch (Exception exception)
                 {
                     liveFailure = exception;
@@ -705,6 +708,9 @@ namespace HidWizards.UCR.Core.Persistence
                     Logger.Warn("Recovered UCR data from backup: " + backup);
                     return value;
                 }
+                // A missing component may be recovered on startup. Do not replace the
+                // profile with an older revision merely because its plugin is unavailable.
+                catch (MissingPersistedPluginException) { throw; }
                 catch (Exception exception)
                 {
                     Logger.Warn(exception, "Invalid UCR backup ignored: " + backup);

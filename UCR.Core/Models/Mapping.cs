@@ -18,6 +18,12 @@ namespace HidWizards.UCR.Core.Models
     public class DirectionalOutputBank
     {
         public int Representation { get; set; }
+
+        // A non-empty key makes this bank belong to one output row instead of a whole representation.
+        [XmlAttribute]
+        [DefaultValue(typeof(Guid), "00000000-0000-0000-0000-000000000000")]
+        public Guid FilterRestoreKey { get; set; }
+
         public List<Plugin> Plugins { get; set; } = new List<Plugin>();
     }
 
@@ -141,6 +147,11 @@ namespace HidWizards.UCR.Core.Models
         private List<short> InputCache { get; set; }
         private List<CallbackMultiplexer> Multiplexer { get; set; }
         private short? _lastInputExpressionValue;
+        private readonly object _routingGate = new object();
+        private readonly HashSet<Plugin> _filteredOutputPlugins = new HashSet<Plugin>();
+        private readonly HashSet<string> _runtimeFilterKeys = new HashSet<string>(StringComparer.Ordinal);
+        private bool _filterRoutingActive;
+        private bool _routingStopped;
         
 
         internal bool IsShadowMapping { get; set; }
@@ -212,6 +223,7 @@ namespace HidWizards.UCR.Core.Models
 
         internal void PrepareMapping(FilterState filterState, Guid runtimeScopeGuid)
         {
+            StopFilterRouting();
             InputCache = new List<short>();
             // Providers expose physical triggers as signed values:
             // -32768 is released; +32767 is fully pressed.
@@ -236,7 +248,15 @@ namespace HidWizards.UCR.Core.Models
             _lastInputExpressionValue = null;
             FilterState = filterState;
             RuntimeScopeGuid = runtimeScopeGuid;
-            Plugins.ForEach(p => p.RuntimeMapping = this);
+            foreach (var plugin in Plugins)
+            {
+                plugin.RuntimeMapping = this;
+                plugin.ResetFilterOutputTracking();
+                if (!plugin.HasStatefulOutput) continue;
+                _runtimeFilterKeys.UnionWith(plugin.GetRuntimeFilterKeys());
+                if (plugin.IsFiltered()) _filteredOutputPlugins.Add(plugin);
+            }
+            lock (_routingGate) _routingStopped = false;
         }
 
         internal void SeedInitialAxisSnapshot(DeviceBinding binding, short? value)
@@ -298,27 +318,87 @@ namespace HidWizards.UCR.Core.Models
             return runtimeScopeGuid.ToString("N") + ":" + filterName.Trim().ToLowerInvariant();
         }
 
+        internal void StartFilterRouting()
+        {
+            lock (_routingGate)
+            {
+                if (_filterRoutingActive || _runtimeFilterKeys.Count == 0) return;
+
+                _filterRoutingActive = true;
+                FilterState.FilterStateChangedEvent += OnRuntimeFilterChanged;
+                foreach (var key in _runtimeFilterKeys) RouteInput(key);
+            }
+        }
+
+        internal void StopFilterRouting()
+        {
+            lock (_routingGate)
+            {
+                _routingStopped = true;
+                if (_filterRoutingActive) FilterState.FilterStateChangedEvent -= OnRuntimeFilterChanged;
+                _filterRoutingActive = false;
+                _filteredOutputPlugins.Clear();
+                _runtimeFilterKeys.Clear();
+            }
+        }
+
+        private void OnRuntimeFilterChanged(string key, bool value)
+        {
+            lock (_routingGate)
+            {
+                if (_filterRoutingActive && _runtimeFilterKeys.Contains(key)) RouteInput(key);
+            }
+        }
+
         public void Update(short value)
+        {
+            lock (_routingGate)
+            {
+                if (!_routingStopped) RouteInput();
+            }
+        }
+
+        private void DispatchPlugin(Plugin plugin, short[] values, string changedFilter, bool inputChanged = true)
+        {
+            if (changedFilter != null && (!plugin.HasStatefulOutput || !plugin.UsesRuntimeFilter(changedFilter)))
+                return;
+
+            if (plugin.IsFiltered())
+            {
+                if (plugin.HasStatefulOutput)
+                {
+                    _filteredOutputPlugins.Add(plugin);
+                    if (_filterRoutingActive) plugin.ReleaseFilteredOutputs();
+                }
+                if (changedFilter == null) plugin.ObserveFilteredInput(values);
+                return;
+            }
+
+            if (plugin.InitializeFromAxisSnapshot && AwaitingInitialAxisSnapshot) return;
+            var resumed = _filterRoutingActive && _filteredOutputPlugins.Remove(plugin);
+            if (changedFilter == null && inputChanged) plugin.Update(values);
+            else if (resumed) plugin.ReapplyHeldInput(values);
+        }
+
+        private void RouteInput(string changedFilter = null)
         {
             if ((InputRepresentation != 0 || OutputRepresentation != 0) &&
                 DirectionalCapacity > 0 && Plugins.Count > 0)
             {
-                UpdateDirectionalRouting();
+                UpdateDirectionalRouting(changedFilter);
                 return;
             }
             if (!UseInputExpression)
             {
                 foreach (var plugin in Plugins)
                 {
-                    if (plugin.IsFiltered() ||
-                        plugin.InitializeFromAxisSnapshot && AwaitingInitialAxisSnapshot) continue;
                     var values = InputCache.ToArray();
                     // Preserve positional inputs for multi-channel legacy plugins, while
                     // allowing each physical slot to bind a different signal category.
                     for (var i = 0; i < values.Length && i < plugin.InputCategories.Count; i++)
                         values[i] = AdaptPositionalInput(values[i], DeviceBindings[i],
                             plugin.InputCategories[i].Category);
-                    plugin.Update(values);
+                    DispatchPlugin(plugin, values, changedFilter);
                 }
                 return;
             }
@@ -330,7 +410,7 @@ namespace HidWizards.UCR.Core.Models
             var analogue = EvaluateAnalogueInputExpression(InputCache);
             var digitalChanged = !_lastInputExpressionValue.HasValue ||
                                  _lastInputExpressionValue.Value != digital;
-            _lastInputExpressionValue = digital;
+            if (changedFilter == null) _lastInputExpressionValue = digital;
 
             var directionalFourWay = DeviceBindings.Any(b => b.InputDirectionSlot >= 3);
             var rangeIndex = 0;
@@ -343,10 +423,8 @@ namespace HidWizards.UCR.Core.Models
                     outputValue = EvaluateDirectionalAxis(InputCache, rangeIndex++ == 0 ? 0 : 1);
                 else if (isRange)
                     rangeIndex++;
-                if (plugin.IsFiltered() ||
-                    plugin.InitializeFromAxisSnapshot && AwaitingInitialAxisSnapshot) continue;
-                if (!isRange && !digitalChanged) continue;
-                plugin.Update(new[] { isRange ? outputValue : digital });
+                DispatchPlugin(plugin, new[] { isRange ? outputValue : digital }, changedFilter,
+                    isRange || digitalChanged);
             }
         }
 
@@ -354,7 +432,7 @@ namespace HidWizards.UCR.Core.Models
         // not on the labels or number of controls visible in the editor.
         // Each OR group represents one complete directional source. Never combine
         // X from one group with Y from another or ignore later OR sets.
-        private void UpdateDirectionalRouting()
+        private void UpdateDirectionalRouting(string changedFilter)
         {
             if (InputCache == null || DeviceBindings == null || Plugins == null) return;
             var capacity = EffectiveDirectionalCapacity;
@@ -370,8 +448,6 @@ namespace HidWizards.UCR.Core.Models
             for (var index = 0; index < Math.Min(Plugins.Count, selected.Count); index++)
             {
                 var plugin = Plugins[index];
-                if (plugin.IsFiltered() ||
-                    plugin.InitializeFromAxisSnapshot && AwaitingInitialAxisSnapshot) continue;
                 // A logical trigger is 0..+32767; output providers expect
                 // the complete signed Range with -32768 as released.
                 var routed = outputType == 4 &&
@@ -379,7 +455,7 @@ namespace HidWizards.UCR.Core.Models
                     plugin.InputCategories[0].Category == DeviceBindingCategory.Range
                         ? ToPhysicalTriggerValue(selected[index])
                         : selected[index];
-                plugin.Update(new[] { routed });
+                DispatchPlugin(plugin, new[] { routed }, changedFilter);
             }
         }
 

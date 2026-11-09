@@ -99,13 +99,15 @@ namespace HidWizards.UCR.Core.Managers
             return SortDevices(result);
         }
 
-        public bool HasLoadedProviderReports()
+        public bool HasLoadedProviderReports(bool requireBothDirections = false)
         {
             if (_context.IOController == null) return false;
 
             var inputs = GetProviderReportsResilient(DeviceIoType.Input);
             var outputs = GetProviderReportsResilient(DeviceIoType.Output);
-            return inputs.Count > 0 || outputs.Count > 0;
+            return requireBothDirections
+                ? inputs.Count > 0 && outputs.Count > 0
+                : inputs.Count > 0 || outputs.Count > 0;
         }
 
         private SortedDictionary<string, ProviderReport> GetProviderReportsResilient(DeviceIoType type)

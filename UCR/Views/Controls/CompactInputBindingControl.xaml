@@ -19,7 +19,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <!-- Match the actual selector width (58px normal, 44px compact).
+            <!-- Match the actual selector width (58 DIP normal, 46 DIP compact).
                  Reserving 62px even in compact mode starves paired Bind buttons. -->
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*" MinWidth="0"/>
@@ -45,7 +45,7 @@
                     <Setter Property="Width" Value="58"/>
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding CompactDirectional, RelativeSource={RelativeSource AncestorType={x:Type local:CompactInputBindingControl}}}" Value="True">
-                            <Setter Property="Width" Value="44"/>
+                            <Setter Property="Width" Value="46"/>
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>
@@ -178,7 +178,6 @@
                         <Setter Property="ToolTip" Value="{Binding BindingActionToolTip}"/>
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsCapturing}" Value="True">
-                                <Setter Property="ToolTip" Value="Waiting for input. Click again, right-click or press Esc to cancel."/>
                                 <Setter Property="Background" Value="#9A4D16"/>
                                 <Setter Property="BorderBrush" Value="#F0B869"/>
                                 <Setter Property="BorderThickness" Value="2"/>
@@ -209,9 +208,17 @@
         </Grid>
 
         <Button Grid.Column="1" x:Name="MenuButton" Margin="0" Width="42" MinHeight="38" Padding="0"
-                IsEnabled="{Binding BindingEnabled}" Click="MenuButton_OnClick"
-                Style="{StaticResource CompactBindOptionsButton}"
-                ToolTip="Binding options">
+                IsEnabled="{Binding BindingEnabled}" Click="MenuButton_OnClick">
+            <Button.Style>
+                <Style TargetType="{x:Type Button}" BasedOn="{StaticResource CompactBindOptionsButton}">
+                    <Setter Property="ToolTip" Value="Input binding options"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding DeviceBinding.DeviceIoType}" Value="Output">
+                            <Setter Property="ToolTip" Value="Output binding options"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Button.Style>
             <materialDesign:PackIcon Kind="DotsVertical" Width="20" Height="20"/>
             <Button.ContextMenu>
                 <ContextMenu x:Name="Ddl" Style="{StaticResource MaterialDesignContextMenu}"

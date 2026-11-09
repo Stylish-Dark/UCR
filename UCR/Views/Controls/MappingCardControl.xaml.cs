@@ -914,11 +914,16 @@ namespace HidWizards.UCR.Views.Controls
                     Foreground = Brushes.White,
                     Background = Brushes.Transparent,
                     Padding = new Thickness(10, 6, 14, 6),
+                    IsCheckable = true,
                     IsChecked = current.Plugin.GetType() == selected.Plugin.GetType()
                 };
                 item.Click += (s, args) =>
                 {
-                    if (current.Plugin.GetType() == selected.Plugin.GetType()) return;
+                    if (current.Plugin.GetType() == selected.Plugin.GetType())
+                    {
+                        item.IsChecked = true;
+                        return;
+                    }
                     mapping.ChangeInputType(current, selected.Plugin);
                 };
                 advanced.Items.Add(item);
@@ -943,90 +948,59 @@ namespace HidWizards.UCR.Views.Controls
 
         private void ChangeMappingOutputCategory_OnClick(object sender, RoutedEventArgs e)
         {
-            var button = sender as Button;
-            var mapping = DataContext as MappingViewModel;
-            if (button == null || mapping?.ButtonsEnabled != true || mapping.Plugins.Count == 0) return;
-
-            var options = mapping.GetCompatiblePluginOptions();
-            var analogue = mapping.Mapping.DeviceBindings.Any(input => input.InputExpressionInputKind == 3);
-            var menu = CreateDarkContextMenu(button);
-            menu.Placement = PlacementMode.Bottom;
-
-            var categories = options
-                .Where(option => !string.Equals(option.Plugin.Group, "Axis",
-                    StringComparison.OrdinalIgnoreCase) &&
-                    option.Plugin.InputCategories.All(input => input.Category != DeviceBindingCategory.Range) &&
-                    option.Plugin.OutputCategories.All(output => output.Category != DeviceBindingCategory.Range))
-                .GroupBy(option => option.OutputType, StringComparer.OrdinalIgnoreCase).ToList();
-            foreach (var category in categories)
-            {
-                if (!IsPrimaryOutputCategory(category.Key)) continue;
-                var chosen = PreferredOutputImplementation(category, analogue);
-                if (chosen == null) continue;
-                var item = new MenuItem
-                {
-                    Header = category.Key,
-                    Foreground = Brushes.White, Background = Brushes.Transparent,
-                    Padding = new Thickness(10, 6, 14, 6),
-                    ToolTip = "Set every destination to " + category.Key,
-                    IsChecked = mapping.Plugins.All(p => string.Equals(p.OutputType,
-                        category.Key, StringComparison.OrdinalIgnoreCase))
-                };
-                item.Click += (s, args) => mapping.ChangeAllOutputTypes(chosen.Plugin);
-                menu.Items.Add(item);
-            }
-
-            if (!categories.Any(group => string.Equals(group.Key, "Button",
-                    StringComparison.OrdinalIgnoreCase)) && mapping.Plugins.Count == 1)
-            {
-                var buttonChoice = new MenuItem
-                {
-                    Header = "Button",
-                    Foreground = Brushes.White, Background = Brushes.Transparent,
-                    Padding = new Thickness(10, 6, 14, 6),
-                    ToolTip = "Switch to a button output while preserving existing physical input assignments"
-                };
-                buttonChoice.Click += (s, args) => mapping.ConvertToButtonMapping();
-                menu.Items.Insert(0, buttonChoice);
-            }
-
-            if (menu.Items.Count == 0)
-                menu.Items.Add(new MenuItem { Header = "No compatible output types", IsEnabled = false });
-            menu.IsOpen = true;
+            ShowOutputCategoryMenu(DataContext as MappingViewModel, sender as Button);
         }
 
-        // Shared categorical destination picker. The header right-click and
-        // the binding ellipsis must expose the same category choices.
         internal static void ShowOutputCategoryMenu(MappingViewModel mapping,
             FrameworkElement anchor, PluginViewModel output = null)
         {
-            if (mapping?.ButtonsEnabled != true || anchor == null) return;
+            if (mapping?.ButtonsEnabled != true || anchor == null || mapping.Plugins.Count == 0) return;
             var analogue = mapping.Mapping.DeviceBindings.Any(binding =>
                 binding.InputExpressionInputKind == 3);
             var menu = CreateDarkContextMenu(anchor);
             menu.Placement = PlacementMode.Bottom;
+            var profile = mapping.ProfileViewModel.Profile;
+            var devices = profile.GetDeviceConfigurationList(DeviceIoType.Output);
+            var support = new System.Collections.Generic.Dictionary<DeviceBindingCategory, bool>();
+            bool SupportsCategory(DeviceBindingCategory category)
+            {
+                if (!support.TryGetValue(category, out var available))
+                {
+                    available = devices.Any(device => DeviceBindingViewModel.SupportsOutputCategory(
+                        device, category, profile.Context));
+                    support.Add(category, available);
+                }
+                return available;
+            }
+
             foreach (var group in mapping.GetCompatiblePluginOptions()
                 .Where(option => IsPrimaryOutputCategory(option.OutputType))
                 .GroupBy(option => option.OutputType, StringComparer.OrdinalIgnoreCase))
             {
-                var choice = PreferredOutputImplementation(group, analogue);
-                if (choice == null) continue;
-                var selected = choice;
                 var category = group.Key;
+                var current = output == null
+                    ? mapping.Plugins.All(plugin => string.Equals(plugin.OutputType, category,
+                        StringComparison.OrdinalIgnoreCase))
+                    : string.Equals(output.OutputType, category, StringComparison.OrdinalIgnoreCase);
+                var selected = PreferredOutputImplementation(group.Where(option =>
+                    option.Plugin.OutputCategories.All(definition => SupportsCategory(definition.Category))), analogue);
+                if (selected == null && !current) continue;
+
                 var item = new MenuItem
                 {
                     Header = category,
-                    ToolTip = selected.Description,
-                    IsChecked = output == null
-                        ? mapping.Plugins.All(plugin => string.Equals(plugin.OutputType,
-                            category, StringComparison.OrdinalIgnoreCase))
-                        : string.Equals(output.OutputType, category, StringComparison.OrdinalIgnoreCase),
+                    ToolTip = selected?.Description ?? "No configured device supports this output type",
+                    IsCheckable = true,
+                    IsChecked = current,
+                    FontWeight = current ? FontWeights.Bold : FontWeights.Normal,
                     Foreground = Brushes.White,
                     Background = Brushes.Transparent,
                     Padding = new Thickness(10, 6, 14, 6)
                 };
                 item.Click += (sender, args) =>
                 {
+                    item.IsChecked = current;
+                    if (current || selected == null) return;
                     if (output != null) mapping.ChangeOutputType(output, selected.Plugin);
                     else mapping.ChangeAllOutputTypes(selected.Plugin);
                     mapping.RefreshRepresentationSelections();
@@ -1122,7 +1096,7 @@ namespace HidWizards.UCR.Views.Controls
             menu.Placement = PlacementMode.Bottom;
             menu.Items.Add(new MenuItem
             {
-                Header = "Filter", IsChecked = true, IsEnabled = false,
+                Header = "Filter", IsCheckable = true, IsChecked = true, IsEnabled = false,
                 Foreground = Brushes.White, Background = Brushes.Transparent,
                 Padding = new Thickness(10, 6, 14, 6)
             });
@@ -1180,7 +1154,12 @@ namespace HidWizards.UCR.Views.Controls
                 plugin.DeviceBindings.Any(item => ReferenceEquals(item.DeviceBinding, binding.DeviceBinding)));
             if (original == null) return false;
             var index = mapping.Plugins.IndexOf(original);
+            var outputIndex = original.Plugin.Outputs.IndexOf(binding.DeviceBinding);
+            if (outputIndex < 0 || outputIndex >= original.Plugin.OutputCategories.Count) return false;
             var requested = selectedControl.DeviceBindingCategory;
+            var currentCategory = original.Plugin.OutputCategories[outputIndex].Category;
+            var isPositionalMultiOutput = original.Plugin.Outputs.Count > 1;
+            if (isPositionalMultiOutput && currentCategory != requested) return false;
             var configuration = mapping.ProfileViewModel.Profile.GetDeviceConfiguration(
                 DeviceIoType.Output, deviceGuid);
             if (configuration?.Device == null || !ReferenceEquals(configuration.Device, outputDevice) ||
@@ -1190,28 +1169,29 @@ namespace HidWizards.UCR.Views.Controls
                     mapping.ProfileViewModel.Profile, DeviceIoType.Output, selectedControl.KeyValue);
             var selectedRepresentation = requested == DeviceBindingCategory.Momentary ? 3 :
                 requested == DeviceBindingCategory.Range ? (isTrigger ? 4 : 2) : 0;
-            if (mapping.IsTypedDirectionalMapping)
+            if (selectedRepresentation == 0 && currentCategory != requested) return false;
+            if (mapping.IsTypedDirectionalMapping && !isPositionalMultiOutput && selectedRepresentation != 0)
             {
-                if (selectedRepresentation == 0) return false;
                 if (mapping.OutputIsFullStick)
                 {
                     // A 4-Way destination is a complete bank. Selecting a single
                     // control cannot replace the whole bank with a one-sided type.
-                    var currentCategory = original.Plugin.Outputs.FirstOrDefault()
-                        ?.DeviceBindingCategory;
                     if (currentCategory != requested) return false;
                 }
                 else if (mapping.Mapping.EffectiveOutputRepresentation != selectedRepresentation)
                 {
                     // Trigger and Button share the selector but remain distinct
                     // physical signal types, so never turn a trigger into an Axis.
-                    if (!mapping.SetOutputRepresentation(selectedRepresentation)) return false;
-                    index = Math.Min(index, mapping.Plugins.Count - 1);
+                    var targetCapacity = Math.Max(
+                        mapping.Mapping.EffectiveInputRepresentation == 1 ? 4 :
+                        mapping.Mapping.EffectiveInputRepresentation == 2 ? 2 : 1,
+                        selectedRepresentation == 2 ? 2 : 1);
+                    if (index >= Mapping.RequiredBindingSlots(targetCapacity, selectedRepresentation) ||
+                        !mapping.SetOutputRepresentation(selectedRepresentation)) return false;
                     original = mapping.Plugins[index];
                 }
             }
-            var existing = original.Plugin.Outputs.FirstOrDefault()?.DeviceBindingCategory;
-            if (existing != requested)
+            if (original.Plugin.OutputCategories[outputIndex].Category != requested)
             {
                 var analogue = mapping.Mapping.DeviceBindings.Any(input => input.InputExpressionInputKind == 3);
                 var preferredName = requested == DeviceBindingCategory.Range
@@ -1226,13 +1206,13 @@ namespace HidWizards.UCR.Views.Controls
 
             if (index < 0 || index >= mapping.Plugins.Count) return false;
             var destinationPlugin = mapping.Plugins[index];
-            var destination = destinationPlugin.DeviceBindings.FirstOrDefault(item =>
-                item.DeviceBinding?.DeviceIoType == DeviceIoType.Output);
-            if (destination?.DeviceBinding == null) return false;
-            destination.DeviceBinding.DeviceBindingCategory = requested;
-            destination.DeviceBinding.SetDeviceConfigurationGuid(deviceGuid);
-            destination.DeviceBinding.SetKeyTypeValue(selectedControl.KeyType,
-                selectedControl.KeyValue, selectedControl.KeySubValue);
+            if (outputIndex >= destinationPlugin.DeviceBindings.Count) return false;
+            var destination = destinationPlugin.DeviceBindings[outputIndex];
+            var output = destination.DeviceBinding;
+            output.DeviceBindingCategory = requested;
+            output.SetDeviceConfigurationGuid(deviceGuid);
+            output.SetKeyTypeValue(selectedControl.KeyType, selectedControl.KeyValue, selectedControl.KeySubValue);
+            output.OutputAxisDirection = requested == DeviceBindingCategory.Range ? Math.Sign(direction) : 0;
 
             // A button maps to a signed analogue extreme for the chosen stick direction.
             // Neutral is restored when released; a full axis choice remains unrestricted.
@@ -1244,16 +1224,12 @@ namespace HidWizards.UCR.Views.Controls
                 if (released != null && released.PropertyType == typeof(double))
                     released.SetValue(destinationPlugin.Plugin, 0.0, null);
             }
-            else
-            {
-                var invert = destinationPlugin.Plugin.GetType().GetProperty("Invert");
-                if (invert != null && invert.PropertyType == typeof(bool))
-                    invert.SetValue(destinationPlugin.Plugin, direction < 0, null);
-            }
             destination.RefreshDeviceList();
-            mapping.InferOutputTypeFromAssignment(requested,
-                isTrigger || DeviceVisualCatalog.IsTriggerBinding(destination.DeviceBinding,
-                    mapping.ProfileViewModel.Profile));
+            // A positional multi-output remapper keeps its existing plugin and sibling outputs.
+            if (!isPositionalMultiOutput && destinationPlugin.Plugin.Outputs.Count == 1 &&
+                (mapping.IsTypedDirectionalMapping || currentCategory != requested))
+                mapping.InferOutputTypeFromAssignment(requested,
+                    isTrigger || DeviceVisualCatalog.IsTriggerBinding(output, mapping.ProfileViewModel.Profile));
             mapping.ProfileViewModel.Profile.Context.ContextChanged();
             return true;
         }

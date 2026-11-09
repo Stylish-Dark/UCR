@@ -953,7 +953,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             if ((e.Key == Key.Escape || e.SystemKey == Key.Escape) &&
                 Context.BindingManager.IsBindModeActive)
             {
-                Context.BindingManager.CancelBindMode();
+                // The input provider owns Escape while capturing a binding.
                 e.Handled = true;
                 return;
             }

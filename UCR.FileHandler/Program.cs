@@ -8,25 +8,17 @@ namespace UCR.FileHandler
     {
         static int Main(string[] args)
         {
-            String directory;
-
-            try
-            {
-                directory = args[0];
-            }
-            catch (IndexOutOfRangeException)
-            {
-                directory = Directory.GetCurrentDirectory();
-            }
-
-            var success = FileUnblockManager.UnblockAllProgramFiles(directory);
-
-            if (!success) return -1;
+            var directory = args.Length > 0 ? args[0] : Directory.GetCurrentDirectory();
+            var nonInteractive = args.Length > 1 &&
+                string.Equals(args[1], "--non-interactive", StringComparison.Ordinal);
+            if (!FileUnblockManager.UnblockAllProgramFiles(directory)) return -1;
 
             Console.WriteLine("Successfully unblocked all files in " + directory);
-            Console.WriteLine("Press any key to close...");
-
-            Console.ReadKey();
+            if (!nonInteractive)
+            {
+                Console.WriteLine("Press any key to close...");
+                Console.ReadKey();
+            }
 
             return 0;
         }

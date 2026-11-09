@@ -426,7 +426,7 @@ namespace HidWizards.UCR.Views
             };
 
             if (dialog.ShowDialog(this) != true) return;
-            rule.Executable = Path.GetFileName(dialog.FileName);
+            rule.Executable = dialog.FileName;
         }
 
         private async void DeactivateCurrentProfile()
@@ -1178,7 +1178,8 @@ namespace HidWizards.UCR.Views
             if (!string.IsNullOrEmpty(argsString))
                 Dispatcher.BeginInvoke(new Action(async () => await Context.ParseCommandLineArgumentsAsync(argsString.Split(';'))));
             RestoreFromTray();
-            return IntPtr.Zero;
+            handled = true;
+            return new IntPtr(1);
         }
 
         private void EnableMessageHandling()

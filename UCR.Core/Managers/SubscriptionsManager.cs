@@ -85,6 +85,26 @@ namespace HidWizards.UCR.Core.Managers
         public bool CanStopProfiles => IsTransitionInProgress || _context.ActiveProfiles.Count > 0 ||
                                        _failedUnsubscriptions.Count > 0 || _exclusiveCleanupPending;
 
+        private int _outputHealthNotificationQueued;
+
+        public bool HasOutputWriteFailures => SubscriptionState?.IsActive == true &&
+            SubscriptionState.MappingSubscriptions.Where(mapping => !mapping.Overriden)
+                .SelectMany(mapping => mapping.PluginSubscriptions)
+                .SelectMany(plugin => plugin.OutputSubscriptions)
+                .Any(output => output.WriteFailed);
+
+        internal void NotifyOutputWriteHealthChanged()
+        {
+            if (_dispatcher.HasShutdownStarted || Interlocked.Exchange(ref _outputHealthNotificationQueued, 1) != 0)
+                return;
+
+            _dispatcher.BeginInvoke(new Action(() =>
+            {
+                Interlocked.Exchange(ref _outputHealthNotificationQueued, 0);
+                OnPropertyChanged(nameof(HasOutputWriteFailures));
+            }), DispatcherPriority.Background);
+        }
+
         public bool ActivateProfile(Profile profile, bool refreshDevices = true)
         {
             return RunSynchronously(() => ActivateProfileCoreAsync(profile, refreshDevices, false));
@@ -459,6 +479,7 @@ namespace HidWizards.UCR.Core.Managers
                     pluginSubscription.Plugin.InitializeCacheValues();
                     pluginSubscription.Plugin.OnActivate();
                 }
+                mapping.Mapping.StartFilterRouting();
             }
 
             ProfileActive = profiles.Count > 0;
@@ -524,6 +545,7 @@ namespace HidWizards.UCR.Core.Managers
             {
                 if (mappingSubscription.Overriden) continue;
 
+                mappingSubscription.Mapping.StopFilterRouting();
                 foreach (var deviceBindingSubscription in mappingSubscription.DeviceBindingSubscriptions)
                 {
                     success &= UnsubscribeDeviceBindingInput(deviceBindingSubscription);
@@ -610,12 +632,7 @@ namespace HidWizards.UCR.Core.Managers
             }
 
             foreach (var uniqueFilter in uniqueFilters)
-            {
-                if (!state.FilterState.FilterRuntimeDictionary.ContainsKey(uniqueFilter))
-                {
-                    state.FilterState.FilterRuntimeDictionary.Add(uniqueFilter, false);
-                }
-            }
+                state.FilterState.Define(uniqueFilter);
 
             return true;
         }

@@ -11,6 +11,13 @@ using Newtonsoft.Json.Serialization;
 
 namespace HidWizards.UCR.Core.Persistence
 {
+    internal sealed class MissingPersistedPluginException : InvalidOperationException
+    {
+        internal MissingPersistedPluginException(string typeId)
+            : base("Persisted plugin type is not installed or allowed: " + typeId) { }
+    }
+
+
     internal sealed class UcrJsonSerializer
     {
         private readonly JsonSerializerSettings _settings;
@@ -139,7 +146,7 @@ namespace HidWizards.UCR.Core.Persistence
             Type pluginType;
             if (!_typesById.TryGetValue(typeId, out pluginType))
             {
-                throw new JsonSerializationException("Persisted plugin type is not installed or allowed: " + typeId);
+                throw new MissingPersistedPluginException(typeId);
             }
 
             var data = wrapper["data"] as JObject;

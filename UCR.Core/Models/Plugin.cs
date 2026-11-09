@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.ComponentModel.Composition;
 using System.Linq;
 using System.Linq.Expressions;
@@ -18,6 +19,10 @@ namespace HidWizards.UCR.Core.Models
         /* Persistence */
         public List<DeviceBinding> Outputs { get; }
         public List<Filter> Filters { get; set; }
+
+        [XmlAttribute]
+        [DefaultValue(typeof(Guid), "00000000-0000-0000-0000-000000000000")]
+        public Guid FilterRestoreKey { get; set; }
         
         /* Runtime */
         internal Profile Profile { get; set; }
@@ -26,6 +31,9 @@ namespace HidWizards.UCR.Core.Models
         private List<PluginPropertyGroup> _pluginPropertyGroups;
         internal FilterState FilterState { get; set; }
         internal Mapping RuntimeMapping { get; set; }
+        private readonly object _filterOutputGate = new object();
+        private bool _reapplyingHeldInput;
+        private HashSet<int> _writtenFilterOutputs;
 
         public event Action<string, string> FilterDefinitionChanged;
 
@@ -93,9 +101,12 @@ namespace HidWizards.UCR.Core.Models
         protected Plugin()
         {
             Outputs = new List<DeviceBinding>();
-            foreach (var _ in OutputCategories)
+            foreach (var output in OutputCategories)
             {
-                Outputs.Add(new DeviceBinding(null, Profile, DeviceIoType.Output));
+                Outputs.Add(new DeviceBinding(null, Profile, DeviceIoType.Output)
+                {
+                    DeviceBindingCategory = output.Category
+                });
             }
 
             Filters = new List<Filter>();
@@ -134,6 +145,11 @@ namespace HidWizards.UCR.Core.Models
 
         }
 
+        public virtual void ObserveFilteredInput(params short[] values)
+        {
+
+        }
+
         #endregion
 
         #region Plugin methods
@@ -147,9 +163,83 @@ namespace HidWizards.UCR.Core.Models
             return false;
         }
 
+        private static bool IsStatefulOutput(DeviceBindingCategory category)
+        {
+            return category == DeviceBindingCategory.Momentary || category == DeviceBindingCategory.Range;
+        }
+
+        internal bool HasStatefulOutput => OutputCategories.Any(output => IsStatefulOutput(output.Category));
+
+        internal void ResetFilterOutputTracking()
+        {
+            lock (_filterOutputGate)
+                _writtenFilterOutputs = Filters.Count > 0 && HasStatefulOutput ? new HashSet<int>() : null;
+        }
+
+        internal void ReleaseFilteredOutputs()
+        {
+            if (_writtenFilterOutputs == null) return;
+            lock (_filterOutputGate)
+            {
+                foreach (var index in _writtenFilterOutputs)
+                {
+                    var category = OutputCategories[index].Category;
+                    var output = Outputs[index];
+                    if (!output.IsBound || output.OutputSink == null) continue;
+
+                    // Virtual controller triggers use signed range with a minimum of
+                    // -32768 at rest, whereas centered axes and buttons rest at zero.
+                    var isTrigger = false;
+                    if (category == DeviceBindingCategory.Range)
+                    {
+                        var device = output.Profile?.GetDeviceConfiguration(DeviceIoType.Output,
+                            output.DeviceConfigurationGuid)?.Device;
+                        isTrigger = RuntimeMapping?.OutputRepresentation == 4 ||
+                            ((output.KeyValue == 4 || output.KeyValue == 5) &&
+                             string.Equals(device?.ProviderName, "Core_ViGEm", StringComparison.OrdinalIgnoreCase));
+                    }
+                    // The cached value tracks attempted writes. Even if it is
+                    // already zero, the backend may have rejected the last release.
+                    output.WriteOutput(isTrigger ? short.MinValue : (short)0);
+                }
+                _writtenFilterOutputs.Clear();
+            }
+        }
+
+        internal void ReapplyHeldInput(short[] values)
+        {
+            lock (_filterOutputGate)
+            {
+                _reapplyingHeldInput = true;
+                try
+                {
+                    Update(values);
+                }
+                finally
+                {
+                    _reapplyingHeldInput = false;
+                }
+            }
+        }
+
         protected void WriteOutput(int number, short value)
         {
-            Outputs[number].WriteOutput(value);
+            var output = Outputs[number];
+            if (_writtenFilterOutputs == null)
+            {
+                output.WriteOutput(value);
+                return;
+            }
+
+            lock (_filterOutputGate)
+            {
+                if (IsFiltered()) return;
+                var stateful = IsStatefulOutput(OutputCategories[number].Category);
+                if (_reapplyingHeldInput && !stateful) return;
+                if (stateful && output.IsBound && output.OutputSink != null)
+                    _writtenFilterOutputs.Add(number);
+                output.WriteOutput(value);
+            }
         }
 
         protected long ReadOutput(int number)
@@ -300,10 +390,12 @@ namespace HidWizards.UCR.Core.Models
             while (Outputs.Count < expectedCount)
                 Outputs.Add(new DeviceBinding(null, parentProfile, DeviceIoType.Output));
 
-            foreach (var output in Outputs)
+            for (var index = 0; index < Outputs.Count; index++)
             {
+                var output = Outputs[index];
                 output.Profile = parentProfile;
                 output.DeviceIoType = DeviceIoType.Output;
+                output.DeviceBindingCategory = OutputCategories[index].Category;
             }
         }
 
@@ -317,6 +409,7 @@ namespace HidWizards.UCR.Core.Models
             target.KeySubValue = source.KeySubValue;
             target.Block = source.Block;
             target.InvertInput = source.InvertInput;
+            target.OutputAxisDirection = source.OutputAxisDirection;
         }
 
         #endregion
@@ -434,6 +527,16 @@ namespace HidWizards.UCR.Core.Models
             return PropertyValidationResult.ValidResult;
         }
 
+        internal IEnumerable<string> GetRuntimeFilterKeys()
+        {
+            return Filters.Select(filter => GetFilterName(filter.Name)).Where(key => key != null);
+        }
+
+        internal bool UsesRuntimeFilter(string key)
+        {
+            return GetRuntimeFilterKeys().Contains(key, StringComparer.Ordinal);
+        }
+
         public bool IsFiltered()
         {
             if (Filters.Count == 0) return false;
@@ -442,7 +545,7 @@ namespace HidWizards.UCR.Core.Models
             {
                 var runtimeName = GetFilterName(filter.Name);
                 if (runtimeName == null) continue;
-                RuntimeMapping.FilterState.FilterRuntimeDictionary.TryGetValue(runtimeName, out var filterValue);
+                RuntimeMapping.FilterState.TryGetValue(runtimeName, out var filterValue);
                 if (!(filterValue ^ filter.Negative)) return true;
             }
 

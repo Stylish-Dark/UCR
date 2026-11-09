@@ -146,7 +146,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
         public static DeviceVisualDescriptor Describe(DeviceConfiguration configuration, Profile profile, DeviceIoType ioType)
         {
-            if (configuration == null)
+            if (configuration?.Device == null)
             {
                 return Unavailable("Device unavailable");
             }
@@ -352,10 +352,10 @@ namespace HidWizards.UCR.ViewModels.Presentation
             {
                 return new BindingVisualDescriptor
                 {
-                    Device = Unknown("Device unavailable"),
+                    Device = Unavailable("Device unavailable"),
                     ControlKind = ControlVisualKind.Unbound,
                     ControlBrush = NeutralBrush,
-                    ControlLabel = "?",
+                    ControlLabel = "+",
                     ToolTip = "No binding",
                     IsBound = false,
                     DeviceConfigurationGuid = Guid.Empty,
@@ -373,8 +373,8 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 Device = deviceDescriptor,
                 ControlKind = ControlVisualKind.Unbound,
                 ControlBrush = NeutralBrush,
-                ControlLabel = "?",
-                ToolTip = deviceDescriptor.ToolTip + " — " + boundName,
+                ControlLabel = "+",
+                ToolTip = binding.IsBound ? deviceDescriptor.ToolTip + " — " + boundName : "Not bound",
                 IsBound = binding.IsBound,
                 DeviceConfigurationGuid = binding.DeviceConfigurationGuid,
                 BindingGuid = binding.Guid,
@@ -386,9 +386,9 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
             if (deviceDescriptor.Kind == DeviceVisualKind.Unavailable)
             {
-                result.ControlKind = ControlVisualKind.Unbound;
-                result.ControlBrush = NeutralBrush;
-                result.ControlLabel = "?";
+                result.ControlKind = ControlVisualKind.DeviceUnavailable;
+                result.ControlLabel = "!";
+                result.ToolTip = "Bound control — device unavailable";
                 return result;
             }
 
@@ -397,6 +397,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 result.ControlKind = ControlVisualKind.Unknown;
                 result.ControlBrush = DirectInputBrush;
                 result.ControlLabel = "?";
+                result.ToolTip = "Unknown device type — " + result.ToolTip;
                 return result;
             }
 
@@ -443,7 +444,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 if (category == DeviceBindingCategory.Delta || category == DeviceBindingCategory.Range)
                 {
                     result.ControlKind = ControlVisualKind.Axis;
-                    result.ControlLabel = ShortAxisLabel(leaf);
+                    result.ControlLabel = ShortAxisLabel(leaf, binding.KeyValue);
                     result.ControlBrush = NeutralBrush;
                 }
                 else
@@ -477,7 +478,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
                      lower == "l2" || lower == "r2")
                     ? ControlVisualKind.Trigger : ControlVisualKind.Axis;
                 result.ControlLabel = directInput && binding.KeyType == 0
-                    ? DirectInputAxisLabel(binding.KeyValue, leaf) : ShortAxisLabel(leaf);
+                    ? DirectInputAxisLabel(binding.KeyValue, leaf) : ShortAxisLabel(leaf, binding.KeyValue);
                 result.ControlBrush = result.Device?.AccentBrush ?? NeutralBrush;
                 return;
             }
@@ -564,7 +565,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 case 20: return "Rz";
                 case 24: return "S1";
                 case 28: return "S2";
-                default: return IsMissingBindingName(leaf) ? "AX" : ShortAxisLabel(leaf);
+                default: return IsMissingBindingName(leaf) ? "AX" : ShortAxisLabel(leaf, offset);
             }
         }
 
@@ -899,13 +900,21 @@ namespace HidWizards.UCR.ViewModels.Presentation
             return CleanGenericLabel(leaf, 0);
         }
 
-        private static string ShortAxisLabel(string leaf)
+        private static string ShortAxisLabel(string leaf, int keyValue)
         {
-            if (string.IsNullOrWhiteSpace(leaf)) return "AX";
+            if (IsMissingBindingName(leaf)) return "AX";
             var value = leaf.Trim();
-            value = value.Replace("Axis ", string.Empty).Replace("Axes ", string.Empty);
+            if (value.StartsWith("Axis ", StringComparison.OrdinalIgnoreCase) ||
+                value.StartsWith("Axes ", StringComparison.OrdinalIgnoreCase))
+                value = value.Substring(5).Trim();
             if (value.Length <= 4) return value.ToUpperInvariant();
-            return value.Substring(0, 4).ToUpperInvariant();
+
+            var slider = System.Text.RegularExpressions.Regex.Match(value, @"^Sliders?\s*#?(\d+)$",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (slider.Success) return "S" + slider.Groups[1].Value;
+            // Long provider names can share a prefix. Keep the provider's exact name
+            // in the tooltip and use its distinct binding index in the small glyph.
+            return "A" + ((long)keyValue + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
 
         private static string CleanGenericLabel(string leaf, int keyValue)
