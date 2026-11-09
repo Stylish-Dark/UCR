@@ -875,16 +875,25 @@ namespace HidWizards.UCR.Core.Managers
                 resolvedDevice = ResolveDevice(configuredDevice, availableDevices);
             }
 
-            // Migrate legacy profiles forward only when the match is unambiguous.
-            if (resolvedDevice != null && string.IsNullOrEmpty(configuredDevice.HidPath) &&
-                !string.IsNullOrEmpty(resolvedDevice.HidPath))
+            // Persist a newly resolved HID path only when there is one possible endpoint.
+            // This includes Bluetooth DualSense re-pairing as well as legacy profiles
+            // that did not store an HID path.
+            if (resolvedDevice != null && !string.IsNullOrEmpty(resolvedDevice.HidPath) &&
+                !string.Equals(configuredDevice.HidPath, resolvedDevice.HidPath, StringComparison.OrdinalIgnoreCase))
             {
                 var sameHandleCount = availableDevices.Count(d => d != null &&
                     string.Equals(d.ProviderName, configuredDevice.ProviderName, StringComparison.OrdinalIgnoreCase) &&
                     string.Equals(d.DeviceHandle, configuredDevice.DeviceHandle, StringComparison.OrdinalIgnoreCase));
-
-                if (sameHandleCount == 1)
+                var isDualSense = string.Equals(configuredDevice.ProviderName,
+                    "SharpDX_DirectInput", StringComparison.OrdinalIgnoreCase) &&
+                    !string.IsNullOrWhiteSpace(configuredDevice.DeviceHandle) &&
+                    configuredDevice.DeviceHandle.IndexOf("VID_054C", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                    (configuredDevice.DeviceHandle.IndexOf("PID_0CE6", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                     configuredDevice.DeviceHandle.IndexOf("PID_0DF2", StringComparison.OrdinalIgnoreCase) >= 0);
+                if (sameHandleCount == 1 &&
+                    (string.IsNullOrEmpty(configuredDevice.HidPath) || isDualSense))
                 {
+                    Logger.Info("Updating unambiguous device HID path for {0}.", configuredDevice.LogName());
                     configuredDevice.HidPath = resolvedDevice.HidPath;
                     _context.ContextChanged();
                 }
@@ -927,15 +936,25 @@ namespace HidWizards.UCR.Core.Managers
 
             if (!string.IsNullOrEmpty(configuredDevice.HidPath))
             {
-                // A different non-empty HID path is evidence that this is not the persisted endpoint.
-                // It may be the same unit moved to another port, but it may equally be another identical
-                // unit; without stronger evidence, requiring an explicit re-selection is safer.
-                if (handleMatches.Any(d => !string.IsNullOrEmpty(d.HidPath)))
-                {
-                    return null;
-                }
+                // A wireless DualSense's Windows HID interface path can change after Bluetooth
+                // re-pairing. If exactly one controller with the same Sony product identity
+                // is currently visible, permit reconnection rather than leaving a saved
+                // profile unable to subscribe while manual input capture still works.
+                // Never guess between two identical controllers.
+                var isDualSense = string.Equals(configuredDevice.ProviderName,
+                    "SharpDX_DirectInput", StringComparison.OrdinalIgnoreCase) &&
+                    !string.IsNullOrWhiteSpace(configuredDevice.DeviceHandle) &&
+                    configuredDevice.DeviceHandle.IndexOf("VID_054C", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                    (configuredDevice.DeviceHandle.IndexOf("PID_0CE6", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                     configuredDevice.DeviceHandle.IndexOf("PID_0DF2", StringComparison.OrdinalIgnoreCase) >= 0);
+                if (isDualSense && handleMatches.Count == 1)
+                    return handleMatches[0];
 
-                // Some providers/builds may stop exposing HidPath. Only then fall back to a unique handle.
+                // All other device types retain strict persisted-path identity.
+                if (handleMatches.Any(d => !string.IsNullOrEmpty(d.HidPath)))
+                    return null;
+
+                // Older providers may stop exposing HID paths altogether.
                 return handleMatches.Count == 1 ? handleMatches[0] : null;
             }
 
