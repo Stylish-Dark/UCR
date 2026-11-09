@@ -21,7 +21,13 @@ namespace HidWizards.UCR.Core.Models.Subscription
             SubscriptionStateGuid = subscriptionStateGuid;
             DeviceSubscription = outputDeviceSubscription;
             _outputSink = WriteOutput;
-            deviceBinding.OutputSink = _outputSink;
+            // Candidate states are prepared while the previous profile may still be active.
+            // Do not steal its output callback until this state's devices are subscribed.
+        }
+
+        public void Attach()
+        {
+            DeviceBinding.OutputSink = _outputSink;
         }
 
         public void Detach()
