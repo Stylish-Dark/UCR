@@ -646,6 +646,9 @@ jobs:
               Start-Sleep -Milliseconds 950
               [UcrWindowCapture]::Capture(
                   $handle, (Join-Path $directory 'UCR-output-device-picker.png')) | Out-Null
+              Add-Type -AssemblyName System.Windows.Forms
+              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+              Start-Sleep -Milliseconds 400
 
               [UcrWindowCapture]::MoveWindow($handle, 0, 0, 1200, 740, $true) | Out-Null
               Start-Sleep -Milliseconds 400
