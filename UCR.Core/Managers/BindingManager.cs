@@ -331,6 +331,14 @@ namespace HidWizards.UCR.Core.Managers
             }
         }
 
+        internal static bool IsCompatibleCaptureCategory(DeviceBindingCategory expected,
+            DeviceBindingCategory detected, bool autoDetect)
+        {
+            return autoDetect
+                ? detected == DeviceBindingCategory.Momentary || detected == DeviceBindingCategory.Range
+                : detected == expected;
+        }
+
         private PendingBindInput TryReserveDetectedInput(ProviderDescriptor providerDescriptor,
             DeviceDescriptor deviceDescriptor, BindingReport bindingReport, short value)
         {
@@ -341,8 +349,8 @@ namespace HidWizards.UCR.Core.Managers
                     bindingReport?.BindingDescriptor == null) return null;
 
                 var category = DeviceBinding.MapCategory(bindingReport.Category);
-                if ((!_autoDetectInputCategory && !category.Equals(_deviceBinding.DeviceBindingCategory)) ||
-                    (_autoDetectInputCategory && category != DeviceBindingCategory.Momentary && category != DeviceBindingCategory.Range) ||
+                if (!IsCompatibleCaptureCategory(_deviceBinding.DeviceBindingCategory,
+                        category, _autoDetectInputCategory) ||
                     !IsInputValid(bindingReport.Category, value))
                     return null;
 
