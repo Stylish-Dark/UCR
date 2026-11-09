@@ -639,6 +639,10 @@ jobs:
               Start-Sleep -Seconds 2
               [UcrWindowCapture]::Capture(
                   $handle, (Join-Path $directory 'UCR-DualSense-bound-cross.png')) | Out-Null
+              [UcrWindowCapture]::ClickAt($handle, 730, 341)
+              Start-Sleep -Milliseconds 850
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-DualSense-expanded-cross.png')) | Out-Null
 
               # An empty runner has no profiles. Invoke the real Add Profile
               # control so the actual embedded mapping editor and sidebar render.
