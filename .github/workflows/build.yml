@@ -467,40 +467,66 @@ jobs:
           New-Item -ItemType Directory -Path $directory -Force | Out-Null
           $exe = (Resolve-Path '.\UCR\bin\Release\UCR.exe').Path
 
-          # Runner-only cached DirectInput controller. It never enters the packaged
-          # build and cannot be mistaken for hardware-backed capture.
-          $cache = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'UCR\Cache\SharpDX_DirectInput'
-          New-Item -ItemType Directory -Path $cache -Force | Out-Null
-          $dualSense = @{
-            Title = 'DualSense Wireless Controller (visual audit)'
-            ProviderName = 'SharpDX_DirectInput'
-            DeviceHandle = 'UCR_DUALSENSE_VISUAL_AUDIT'
-            DeviceNumber = 0
-            HidPath = 'HID\VID_054C&PID_0CE6'
-            DeviceBindingMenu = @(
+          # Runner-only saved DualSense binding fixture. No simulated hardware
+          # signal is claimed; this exercises the actual app's persisted glyph.
+          $dataRoot = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'UCR'
+          $profileFolder = Join-Path $dataRoot 'Profiles'
+          New-Item -ItemType Directory -Path $profileFolder -Force | Out-Null
+          $profileId = [guid]::NewGuid().ToString('D')
+          $deviceId = [guid]::NewGuid().ToString('D')
+          $testProfile = @{
+            guid = $profileId
+            title = 'DualSense button verification'
+            childProfiles = @()
+            mappings = @(
               @{
-                Title = 'Buttons'
-                ChildrenNodes = @(
+                title = 'Cross to A'
+                deviceBindings = @(
                   @{
-                    Title = '1'
-                    DeviceBindingInfo = @{
-                      KeyType = 1; KeyValue = 48; KeySubValue = 0
-                      DeviceBindingCategory = 1; Blockable = $false
-                    }
-                  },
+                    isBound = $true
+                    deviceConfigurationGuid = $deviceId
+                    keyType = 1
+                    keyValue = 49
+                    keySubValue = 0
+                  }
+                )
+                plugins = @(
                   @{
-                    Title = '2'
-                    DeviceBindingInfo = @{
-                      KeyType = 1; KeyValue = 49; KeySubValue = 0
-                      DeviceBindingCategory = 1; Blockable = $false
+                    pluginType = 'HidWizards.UCR.Plugins.Remapper.ButtonToButton'
+                    data = @{
+                      outputs = @()
+                      filters = @()
                     }
                   }
                 )
               }
             )
+            mappingGroups = @()
+            inputDeviceConfigurations = @(
+              @{
+                guid = $deviceId
+                device = @{
+                  title = 'DualSense Wireless Controller'
+                  providerName = 'SharpDX_DirectInput'
+                  deviceHandle = 'UCR_DUALSENSE_VISUAL_AUDIT'
+                  deviceNumber = 0
+                  hidPath = 'HID\VID_054C&PID_0CE6'
+                }
+                shadowDevices = @()
+              }
+            )
+            outputDeviceConfigurations = @()
+            autoActivateApplications = @()
           }
-          $dualSense | ConvertTo-Json -Depth 15 |
-            Set-Content -LiteralPath (Join-Path $cache 'dualsense-visual-audit.json') -Encoding UTF8
+          @{ schemaVersion = 1; profileOrder = @($profileId) } |
+            ConvertTo-Json -Depth 20 |
+            Set-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Encoding UTF8
+          @{ schemaVersion = 1; deviceAliases = @() } |
+            ConvertTo-Json -Depth 20 |
+            Set-Content -LiteralPath (Join-Path $dataRoot 'devices.json') -Encoding UTF8
+          @{ schemaVersion = 1; profile = $testProfile } |
+            ConvertTo-Json -Depth 25 |
+            Set-Content -LiteralPath (Join-Path $profileFolder ($profileId + '.json')) -Encoding UTF8
 
           # Capture the real compiled WPF window, not a generated mockup
           # or a screenshot from the user's computer.
@@ -540,13 +566,17 @@ jobs:
                   using (var bitmap = new Bitmap(w, h, PixelFormat.Format32bppArgb)) {
                       using (var g = Graphics.FromImage(bitmap)) {
                           g.Clear(Color.Black);
-                          IntPtr dc = g.GetHdc();
-                          try {
-                              g.ReleaseHdc(dc);
-                              dc = IntPtr.Zero;
+                          bool popup = filename.IndexOf("picker", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              filename.IndexOf("add-device", StringComparison.OrdinalIgnoreCase) >= 0;
+                          if (popup) {
                               g.CopyFromScreen(r.Left, r.Top, 0, 0, new Size(w, h));
-                              dc = g.GetHdc();
-                          } finally { g.ReleaseHdc(dc); }
+                          } else {
+                              IntPtr dc = g.GetHdc();
+                              try {
+                                  if (!PrintWindow(hwnd, dc, 2) && !PrintWindow(hwnd, dc, 0))
+                                      throw new Exception("PrintWindow could not render UCR");
+                              } finally { g.ReleaseHdc(dc); }
+                          }
                       }
                       var colors = new HashSet<int>();
                       for (int y = 8; y < h - 8; y += Math.Max(1, h / 35))
@@ -605,6 +635,10 @@ jobs:
               }
               Write-Host "Captured actual UCR window: $outFile ($uniqueColors distinct sampled colors)"
               Write-Host "UI automation elements: $($elements.Count); named: $($labels.Count)"
+              [UcrWindowCapture]::ClickAt($handle, 165, 157)
+              Start-Sleep -Seconds 2
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-DualSense-bound-cross.png')) | Out-Null
 
               # An empty runner has no profiles. Invoke the real Add Profile
               # control so the actual embedded mapping editor and sidebar render.
