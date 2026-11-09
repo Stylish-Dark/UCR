@@ -515,7 +515,8 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 "SharpDX_DirectInput", StringComparison.OrdinalIgnoreCase);
             var directInputButton = directInput && (deviceKind == DeviceVisualKind.PlayStation5 ||
                 deviceKind == DeviceVisualKind.PlayStation4)
-                ? DirectInputPlayStationButtonLabel(leaf) : null;
+                ? DirectInputPlayStationButtonLabel(leaf) ??
+                  DirectInputPlayStationButtonFromOffset(binding) : null;
             var button = directInputButton ??
                 KnownButtonLabelFromName(lower, deviceKind) ??
                 (directInput ? (int.TryParse(leaf, out var buttonIndex)
@@ -575,6 +576,16 @@ namespace HidWizards.UCR.ViewModels.Presentation
             }
         }
 
+        // JoystickOffset.Buttons0 is 48 in SharpDX DirectInput. Retain
+        // recognizable labels for saved bindings when the controller is offline
+        // and its provider menu is temporarily unavailable.
+        private static string DirectInputPlayStationButtonFromOffset(DeviceBinding binding)
+        {
+            if (binding == null || binding.KeyType != 1 || binding.KeyValue < 48 ||
+                binding.KeyValue > 62) return null;
+            return DirectInputPlayStationButtonLabel((binding.KeyValue - 47).ToString());
+        }
+
         public static string GetDirectInputPlayStationBindingLabel(DeviceBinding binding)
         {
             if (binding?.IsBound != true || binding.DeviceIoType != DeviceIoType.Input ||
@@ -588,7 +599,8 @@ namespace HidWizards.UCR.ViewModels.Presentation
             var kind = Describe(device, DeviceIoType.Input).Kind;
             if (kind != DeviceVisualKind.PlayStation4 && kind != DeviceVisualKind.PlayStation5)
                 return null;
-            return DirectInputPlayStationButtonLabel(ExtractLeaf(SafeBoundName(binding)));
+            return DirectInputPlayStationButtonLabel(ExtractLeaf(SafeBoundName(binding))) ??
+                DirectInputPlayStationButtonFromOffset(binding);
         }
 
         private static string KnownButtonLabelFromName(string lower, DeviceVisualKind kind)
