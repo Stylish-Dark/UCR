@@ -215,7 +215,9 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 return WithConfiguredPresentation(Build(DeviceVisualKind.Mouse, NeutralBrush, title,
                     device.DeviceNumber + 1, true), device, devicesManager);
 
-            if (ContainsAny(searchable, "dualsense", "ps5", "playstation 5", "cfizct"))
+            if (ContainsAny(searchable, "dualsense", "ps5", "playstation 5", "cfizct") ||
+                searchable.Contains("vid_054c") && (searchable.Contains("pid_0ce6") ||
+                    searchable.Contains("pid_0df2")))
                 return WithConfiguredPresentation(Build(DeviceVisualKind.PlayStation5, PlayStationBrush, title, device.DeviceNumber + 1, true), device, devicesManager);
             if (ContainsAny(searchable, "dualshock 4", "ds4", "ps4", "playstation 4", "cuh-zct") ||
                 searchable.Contains("wireless controller") && searchable.Contains("vid_054c"))
