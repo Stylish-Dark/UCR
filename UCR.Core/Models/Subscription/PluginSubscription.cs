@@ -18,9 +18,8 @@ namespace HidWizards.UCR.Core.Models.Subscription
 
             foreach (var deviceBinding in Plugin.Outputs)
             {
-                // OutputSink is runtime-only. A profile rebuild must never leave a binding pointing at
-                // the previous state's DeviceSubscription if this output can no longer be resolved.
-                deviceBinding.OutputSink = null;
+                // Leave the running profile's output callback intact while preparing a
+                // candidate state. ActivateSubscriptionState attaches resolved outputs later.
                 if (!deviceBinding.IsBound) continue;
                 
                 var deviceConfigurationSubscription = outputDeviceConfigurations.FirstOrDefault(configuration => configuration.DeviceConfiguration.Guid == deviceBinding.DeviceConfigurationGuid);

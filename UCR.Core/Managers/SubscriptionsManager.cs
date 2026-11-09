@@ -661,6 +661,52 @@ namespace HidWizards.UCR.Core.Managers
 
             success &= SubscribeUnmappedInputBlockers(state, inputResolutionCache);
 
+            // Candidate construction must never replace the old profile's output sinks.
+            // Install callbacks only after the new output devices and input subscriptions
+            // have been established. A bound output with no target is a failed activation,
+            // not a silently successful profile that produces no output.
+            if (success)
+            {
+                foreach (var mappingSubscription in state.MappingSubscriptions)
+                {
+                    if (mappingSubscription.Overriden) continue;
+                    foreach (var pluginSubscription in mappingSubscription.PluginSubscriptions)
+                    {
+                        var expected = pluginSubscription.Plugin.Outputs.Count(binding => binding.IsBound);
+                        var attached = pluginSubscription.OutputSubscriptions.Count;
+                        if (expected != attached)
+                        {
+                            Logger.Error("Cannot activate mapping '{0}': {1} bound output(s), but only {2} resolved output subscription(s).",
+                                mappingSubscription.Mapping.Title, expected, attached);
+                            success = false;
+                            continue;
+                        }
+                        foreach (var outputSubscription in pluginSubscription.OutputSubscriptions)
+                        {
+                            if (outputSubscription.DeviceSubscription?.SubscribedOutputRequest == null)
+                            {
+                                Logger.Error("Cannot activate mapping '{0}': destination output device is not subscribed.",
+                                    mappingSubscription.Mapping.Title);
+                                success = false;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (success)
+            {
+                foreach (var mappingSubscription in state.MappingSubscriptions)
+                {
+                    if (mappingSubscription.Overriden) continue;
+                    foreach (var pluginSubscription in mappingSubscription.PluginSubscriptions)
+                        foreach (var outputSubscription in pluginSubscription.OutputSubscriptions)
+                            outputSubscription.Attach();
+                }
+            }
+
+            // Mark as active so unsuccessful candidates can be torn down correctly;
+            // the caller checks success and rolls back to the previous profile.
             state.IsActive = true;
             return success;
         }
