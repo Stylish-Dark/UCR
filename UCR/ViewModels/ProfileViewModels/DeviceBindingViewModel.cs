@@ -337,6 +337,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Input)
                     return "Bind";
                 if (string.IsNullOrWhiteSpace(label)) return label;
+                var playStationButton = DeviceVisualCatalog.GetDirectInputPlayStationBindingLabel(DeviceBinding);
+                if (playStationButton != null) return playStationButton;
                 // The device picker already identifies the device and the binding
                 // menu owns category names. In a compact slot, show the control:
                 // "Axes, LS X+" -> "LS X+", "Buttons, A" -> "A". Preserve

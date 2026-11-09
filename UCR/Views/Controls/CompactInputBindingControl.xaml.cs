@@ -409,7 +409,9 @@ namespace HidWizards.UCR.Views.Controls
                 DeviceBinding.DeviceBindingCategory = category;
                 if (DeviceBinding.DeviceIoType == DeviceIoType.Input)
                     (DataContext as DeviceBindingViewModel)?.ExpressionMapping?.EnableInputExpression();
-                DeviceBinding.EnterBindMode(autoDetectInputCategory: DeviceBinding.DeviceIoType == DeviceIoType.Input);
+                // The binding already specifies Momentary or Range. Never let a
+                // button capture auto-promote a drifting DirectInput axis.
+                DeviceBinding.EnterBindMode();
             }
             catch (Exception exception)
             {

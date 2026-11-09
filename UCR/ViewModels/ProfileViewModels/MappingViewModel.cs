@@ -3436,7 +3436,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             try
             {
                 binding.DeviceBindingCategory = bindingViewModel.DeviceBindingCategory;
-                binding.EnterBindMode(autoDetectInputCategory: true);
+                // Respect the selected input representation: a button capture must never
+                // accept unrelated analogue axes (notably noisy DualSense HID sensors).
+                binding.EnterBindMode();
                 if (!binding.IsInBindMode) StopQuickInputDetection();
                 return binding.IsInBindMode;
             }
