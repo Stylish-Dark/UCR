@@ -928,6 +928,47 @@ jobs:
                   $handle, (Join-Path $directory 'UCR-four-way-collapsed.png')) | Out-Null
               Assert-UcrDirectionCross 'UiWorkspaceDirectionBind'
 
+              # Re-open the same mapping as ordinary Button -> Button, then add
+              # a second output. The first output is protected and has a Hidden
+              # delete button; both Bind surfaces must still occupy equal rails.
+              $expand.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 350
+              $buttonOutput = Find-UcrControl 'UiMappingOutputButtonType'
+              $buttonOutput.SetFocus()
+              [System.Windows.Forms.SendKeys]::SendWait(' ')
+              Start-Sleep -Milliseconds 650
+              $inputTitle = Find-UcrControl 'UiInputGroupType'
+              $outputTitle = Find-UcrControl 'UiOutputGroupType'
+              if ([Math]::Abs($inputTitle.Current.BoundingRectangle.Y -
+                              $outputTitle.Current.BoundingRectangle.Y) -gt 9) {
+                  throw 'Input and output group headings do not share a baseline.'
+              }
+
+              Invoke-UcrControl 'UiMappingAddOutput'
+              Start-Sleep -Milliseconds 700
+              $outputBindButtons = @(Get-UcrControls 'BindButton' |
+                  Where-Object { -not $_.Current.IsOffscreen -and
+                      $_.Current.BoundingRectangle.X -gt 600 } |
+                  Sort-Object { $_.Current.BoundingRectangle.Y })
+              if ($outputBindButtons.Count -ne 2) {
+                  throw "Expected two visible output Bind controls, got $($outputBindButtons.Count)."
+              }
+              $a = $outputBindButtons[0].Current.BoundingRectangle
+              $b = $outputBindButtons[1].Current.BoundingRectangle
+              if ([Math]::Abs($a.X - $b.X) -gt 2 -or
+                  [Math]::Abs($a.Width - $b.Width) -gt 2) {
+                  throw "Output rows drift in X or width: $a versus $b"
+              }
+              $visibleRemove = @(Get-UcrControls 'UiMappingRemoveOutput' |
+                  Where-Object { -not $_.Current.IsOffscreen })
+              if ($visibleRemove.Count -ne 1) {
+                  throw "Expected exactly one removable extra output, got $($visibleRemove.Count)."
+              }
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-two-output-layout.png')) | Out-Null
+              $expand.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 350
+
               $editProfile = Find-UcrProfileRow 'Windows audit renamed profile'
               $editProfile.GetCurrentPattern(
                   [System.Windows.Automation.SelectionItemPattern]::Pattern).Select()

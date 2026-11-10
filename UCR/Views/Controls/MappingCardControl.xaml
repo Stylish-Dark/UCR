@@ -940,6 +940,7 @@
                                              IsEnabled="{Binding CanChooseOutputAxis}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                                 <RadioButton Content="{Binding OutputButtonChoiceGlyph}" Tag="3" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
+                                              AutomationProperties.AutomationId="UiMappingOutputButtonType"
                                              ToolTip="Button output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsButton, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseOutputButton}"
