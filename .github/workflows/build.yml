@@ -909,10 +909,9 @@ jobs:
               $directionProfile.GetCurrentPattern(
                   [System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
               Assert-UcrSelectedProfile 'DualSense button verification'
-              # Audit geometry in the same wide, two-column editor users see,
-              # then return to the standard compact viewport for other tests.
-              [UcrWindowCapture]::MoveWindow($handle, 0, 0, 1600, 900, $true) | Out-Null
-              Start-Sleep -Milliseconds 550
+              # The Windows runner's virtual display constrains the app to a
+              # narrow editor. Test only rows whose actual UIA bounds are visible.
+              # The user's full-width two-column layout needs separate evidence.
               $buttonOutput = Find-UcrControl 'UiMappingOutputButtonType'
               $buttonOutput.SetFocus()
               [System.Windows.Forms.SendKeys]::SendWait(' ')
@@ -945,24 +944,26 @@ jobs:
               if ($outputBindButtons.Count -lt 2) {
                   throw "Expected multiple output Bind controls, got $($outputBindButtons.Count)."
               }
-              # Focus the last output to scroll its adjacent row into the
-              # visible viewport; do not infer logical output count from the
-              # physical directional cardinality of the chosen representation.
-              $a = $outputBindButtons[-2].Current.BoundingRectangle
-              $b = $outputBindButtons[-1].Current.BoundingRectangle
               [UcrWindowCapture]::Capture(
                   $handle, (Join-Path $directory 'UCR-two-output-layout.png')) | Out-Null
               $outputBindButtons | ForEach-Object {
                   "Output Bind: $($_.Current.Name) $($_.Current.BoundingRectangle)" |
                       Out-File -LiteralPath (Join-Path $directory 'Output-row-geometry.txt') -Append
               }
-              if ($a.Width -le 0 -or $b.Width -le 0 -or
-                  [Math]::Abs($a.X - $b.X) -gt 2 -or
-                  [Math]::Abs($a.Width - $b.Width) -gt 2) {
-                  throw "Output rows drift in X or width: $a versus $b"
+              # Ignore off-viewport physical channels (Empty UIA bounds);
+              # never misreport those as geometry regressions.
+              $visibleOutputBinds = @($outputBindButtons | Where-Object {
+                  -not $_.Current.IsOffscreen -and
+                  $_.Current.BoundingRectangle.Width -gt 0 })
+              if ($visibleOutputBinds.Count -lt 2) {
+                  throw 'The viewport does not expose two measurable output rows.'
               }
-              [UcrWindowCapture]::MoveWindow($handle, 0, 0, 1200, 740, $true) | Out-Null
-              Start-Sleep -Milliseconds 450
+              $a = $visibleOutputBinds[0].Current.BoundingRectangle
+              $b = $visibleOutputBinds[1].Current.BoundingRectangle
+              if ([Math]::Abs($a.X - $b.X) -gt 2 -or
+                  [Math]::Abs($a.Width - $b.Width) -gt 2) {
+                  throw "Visible output rows drift in X or width: $a versus $b"
+              }
 
               $fourWayOutput = Find-UcrControl 'UiMappingFourWayOutput'
               $fourWayOutput.SetFocus()
