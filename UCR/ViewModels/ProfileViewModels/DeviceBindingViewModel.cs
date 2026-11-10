@@ -539,9 +539,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private static bool IsCompatibleInputDevice(DeviceConfiguration configuration,
             DeviceBindingCategory category, Context context)
         {
-            return configuration?.Device != null &&
-                   (category != DeviceBindingCategory.Range ||
-                    SupportsInputCategory(configuration, category, context));
+            // Capability menus are not authoritative for physical input devices:
+            // some providers expose axes only after initialization or connection.
+            // Keep configured devices selectable; binding capture validates the
+            // actual control rather than hiding the entire device.
+            return configuration?.Device != null;
         }
 
         public static bool SupportsInputCategory(DeviceConfiguration configuration,
