@@ -229,9 +229,9 @@
         </Button>
         </Grid>
 
-        <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Vertical"
+        <StackPanel Grid.Row="0" Grid.Column="3" Style="{StaticResource UcrLabeledSwitchColumn}"
                     Margin="4 0 0 2"
-                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
                     ToolTip="Block this binding">
             <StackPanel.Style>
                 <Style TargetType="{x:Type StackPanel}">
@@ -255,8 +255,8 @@
                     </Style.Triggers>
                 </Style>
             </StackPanel.Style>
-        <TextBlock Foreground="#E2E2E2" FontSize="11" Margin="0 0 0 4"
-                   HorizontalAlignment="Center" TextWrapping="NoWrap">
+        <TextBlock Foreground="#E2E2E2" FontSize="11"
+                   Style="{StaticResource UcrLabeledSwitchCaption}">
             <TextBlock.Style>
                 <Style TargetType="{x:Type TextBlock}">
                     <Setter Property="Text" Value="Block"/>
