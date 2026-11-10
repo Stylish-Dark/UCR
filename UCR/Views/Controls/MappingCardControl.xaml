@@ -530,11 +530,12 @@
                                         </Button>
                                         <StackPanel Grid.Column="2" Orientation="Horizontal"
                                                     VerticalAlignment="Center">
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                            <StackPanel Orientation="Vertical" VerticalAlignment="Center"
                                                         Visibility="{Binding CompoundVisibility}">
                                                 <TextBlock Text="Block" Foreground="#D0D0D0" FontSize="12"
-                                                           VerticalAlignment="Center" Margin="0 0 6 0"/>
+                                                           HorizontalAlignment="Center" Margin="0 0 0 4"/>
                                                 <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
+                                                              HorizontalAlignment="Center"
                                                               IsChecked="{Binding DirectionalBlockEnabled, Mode=OneWay}"
                                                               Click="DirectionalBlock_OnClick"
                                                               ToolTip="Block the assigned controls in this OR set"/>
