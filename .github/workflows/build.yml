@@ -554,6 +554,15 @@ jobs:
               private static extern bool PrintWindow(IntPtr hwnd, IntPtr dc, uint flags);
               [DllImport("user32.dll")]
               public static extern bool MoveWindow(IntPtr hwnd, int x, int y, int width, int height, bool repaint);
+              [DllImport("user32.dll")]
+              private static extern bool SetCursorPos(int x, int y);
+              [DllImport("user32.dll")]
+              private static extern void mouse_event(uint flags, uint x, uint y, uint data, UIntPtr extra);
+              public static void RightClick(int x, int y) {
+                  if (!SetCursorPos(x, y)) throw new Exception("Could not move to the profile row");
+                  mouse_event(8, 0, 0, 0, UIntPtr.Zero);
+                  mouse_event(16, 0, 0, 0, UIntPtr.Zero);
+              }
               public static int Capture(IntPtr hwnd, string filename) {
                   Rect r;
                   if (!GetWindowRect(hwnd, out r)) throw new Exception("GetWindowRect failed");
@@ -646,14 +655,34 @@ jobs:
                   $element = Find-UcrControl $id
                   $element.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($text)
               }
-              function Assert-UcrSelectedProfile([string]$name) {
+              function Get-UcrControls([string]$id) {
+                  $condition = [System.Windows.Automation.PropertyCondition]::new(
+                      [System.Windows.Automation.AutomationElement]::AutomationIdProperty, $id)
+                  return $root.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition)
+              }
+              function Assert-UcrDirectionCross([string]$id) {
+                  $bounds = @(Get-UcrControls $id | Where-Object { -not $_.Current.IsOffscreen } |
+                      ForEach-Object { $_.Current.BoundingRectangle } |
+                      Sort-Object Y, X)
+                  if ($bounds.Count -ne 4 -or
+                      $bounds[0].Y -ge $bounds[1].Y -or $bounds[2].Y -ge $bounds[3].Y -or
+                      [Math]::Abs($bounds[1].Y - $bounds[2].Y) -gt 2 -or
+                      [Math]::Abs($bounds[0].X - $bounds[3].X) -gt 2 -or
+                      $bounds[1].X -ge $bounds[0].X -or $bounds[2].X -le $bounds[0].X) {
+                      throw "Expected four direction buttons arranged in a cross ($id)."
+                  }
+              }
+              function Find-UcrProfileRow([string]$name) {
                   $condition = [System.Windows.Automation.AndCondition]::new(
                       [System.Windows.Automation.PropertyCondition]::new(
                           [System.Windows.Automation.AutomationElement]::NameProperty, $name),
                       [System.Windows.Automation.PropertyCondition]::new(
                           [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
                           [System.Windows.Automation.ControlType]::TreeItem))
-                  $item = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
+                  return $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
+              }
+              function Assert-UcrSelectedProfile([string]$name) {
+                  $item = Find-UcrProfileRow $name
                   if ($null -eq $item -or -not $item.GetCurrentPattern(
                       [System.Windows.Automation.SelectionItemPattern]::Pattern).Current.IsSelected) {
                       throw "Profile tree did not select '$name'."
@@ -766,12 +795,21 @@ jobs:
               }
               $editorLabels | Set-Content -LiteralPath (Join-Path $directory 'Profile-UI-elements.txt')
 
-              Invoke-UcrControl 'UiToolbarProfileOptions'
+              $profileRow = Find-UcrProfileRow 'DualSense button verification'
+              $rowBounds = $profileRow.Current.BoundingRectangle
+              [UcrWindowCapture]::RightClick([int]($rowBounds.Left + 75), [int]($rowBounds.Top + $rowBounds.Height / 2))
               Start-Sleep -Milliseconds 400
               [UcrWindowCapture]::Capture(
-                  $handle, (Join-Path $directory 'UCR-profile-options.png')) | Out-Null
+                  $handle, (Join-Path $directory 'UCR-profile-menu.png')) | Out-Null
               Find-UcrControl 'UiProfileCopy' | Out-Null
               Find-UcrControl 'UiProfileExport' | Out-Null
+              Invoke-UcrControl 'UiProfileCopy'
+              $copyName = (Find-UcrControl 'UiProfileNameInput').GetCurrentPattern(
+                  [System.Windows.Automation.ValuePattern]::Pattern).Current.Value
+              if ($copyName -ne 'DualSense button verification Copy') { throw 'The profile menu targeted the wrong profile.' }
+              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+              Start-Sleep -Milliseconds 400
+              Assert-UcrSelectedProfile 'New profile'
               Invoke-UcrControl 'UiProfileRename'
               Set-UcrText 'UiProfileNameInput' '   '
               Start-Sleep -Milliseconds 350
@@ -787,8 +825,6 @@ jobs:
               if ((Find-UcrControl 'WorkspaceProfileTitle').Current.Name -ne 'Windows audit renamed profile') {
                   throw 'The selected profile and workspace disagree after rename.'
               }
-              Invoke-UcrControl 'UiToolbarProfileOptions'
-
               # Open the actual output-device picker to inspect MIDI identification.
               [UcrWindowCapture]::MoveWindow($handle, -390, 0, 1200, 740, $true) | Out-Null
               Start-Sleep -Milliseconds 400
@@ -896,6 +932,28 @@ jobs:
                   } catch {}
               }
               $mappingLabels | Set-Content -LiteralPath (Join-Path $directory 'Mapping-UI-elements.txt')
+              $directionProfile = Find-UcrProfileRow 'DualSense button verification'
+              $directionProfile.GetCurrentPattern(
+                  [System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+              Assert-UcrSelectedProfile 'DualSense button verification'
+              $fourWayOutput = Find-UcrControl 'UiMappingFourWayOutput'
+              $fourWayOutput.SetFocus()
+              [System.Windows.Forms.SendKeys]::SendWait(' ')
+              Start-Sleep -Milliseconds 550
+              $directions = @(Get-UcrControls 'UiMappingDirectionBind')
+              if ($directions.Count -ne 4) { throw 'Could not find the four expanded direction buttons.' }
+              $directions[0].SetFocus()
+              Start-Sleep -Milliseconds 400
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-four-way-expanded.png')) | Out-Null
+              Assert-UcrDirectionCross 'UiMappingDirectionBind'
+              $expand = @(Get-UcrControls 'UiExpandMapping')[0]
+              $expand.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 450
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-four-way-collapsed.png')) | Out-Null
+              Assert-UcrDirectionCross 'UiWorkspaceDirectionBind'
+
               Write-Host "Captured populated mappings: $populated ($populatedColors colors)"
 
               Write-Host "Captured live profile editor: $profilePath ($profileColors colors, $($editorElements.Count) UIA elements)"

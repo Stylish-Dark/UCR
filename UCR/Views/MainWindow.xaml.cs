@@ -44,8 +44,6 @@ namespace HidWizards.UCR.Views
         private bool _exitRequested;
         private IDisposable _navigationPage;
         private ProfilePage _embeddedProfilePage;
-        private Panel _autoApplyOriginalParent;
-        private Thickness _autoApplyOriginalMargin;
         private Profile _embeddedProfile;
         private bool _workspaceReady;
         private bool _reloadingProfileTree;
@@ -301,6 +299,20 @@ namespace HidWizards.UCR.Views
             _draggedProfileItem = container?.DataContext as ProfileItem;
         }
 
+        private void ProfileTree_OnContextMenuOpening(object sender, ContextMenuEventArgs e)
+        {
+            var row = GetTreeViewItem(e.OriginalSource as DependencyObject);
+            var item = row?.DataContext as ProfileItem;
+            if (item == null && e.CursorLeft < 0) item = ProfileTree.SelectedItem as ProfileItem;
+            if (item?.Profile == null)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            ProfileTree.ContextMenu.DataContext = item;
+        }
+
         private void ProfileTree_OnPreviewMouseMove(object sender, MouseEventArgs e)
         {
             if (e.LeftButton != MouseButtonState.Pressed || _draggedProfileItem == null) return;
@@ -511,30 +523,6 @@ namespace HidWizards.UCR.Views
             OpenProfileWindow(profileItem.Profile);
         }
 
-        private void WorkspaceMappings_OnClick(object sender, RoutedEventArgs e)
-        {
-            _embeddedProfilePage?.ShowWorkspaceInspector();
-        }
-
-        private void WorkspaceDevices_OnClick(object sender, RoutedEventArgs e)
-        {
-            _embeddedProfilePage?.ShowWorkspaceToolbox("Devices");
-        }
-
-        private void WorkspaceFilters_OnClick(object sender, RoutedEventArgs e)
-        {
-            _embeddedProfilePage?.ShowWorkspaceToolbox("Filters");
-        }
-
-        private void WorkspaceOptions_OnClick(object sender, RoutedEventArgs e)
-        {
-            if (_embeddedProfilePage == null) return;
-            if (_embeddedProfilePage.ProfileOptionsHost.Visibility == Visibility.Visible)
-                _embeddedProfilePage.ShowWorkspaceInspector();
-            else
-                _embeddedProfilePage.ShowWorkspaceToolbox("Profile options");
-        }
-
         private void OpenProfileWindow(Profile profile)
         {
             if (profile == null) return;
@@ -554,21 +542,18 @@ namespace HidWizards.UCR.Views
                 // Embedded pages have no Back/Discard action; avoid a costly XML snapshot
                 // of every mapping every time another profile is selected.
                 page = new ProfilePage(Context, profile, true);
+                page.RenameRequested += RenameProfile;
                 _profileCache[profile.Guid] = page;
             }
             _profileRecency.Remove(profile.Guid);
             _profileRecency.AddLast(profile.Guid);
             page.UseEmbeddedLayout();
-            // Move the existing, fully functional settings panel into the right
-            // details tab. It stays visible alongside the profiles/mapping list.
-            ProfileOptionsStorage.Content = null;
-            ProfileSummaryPanel.DataContext = _dashboardViewModel;
-            page.AttachProfileOptions(ProfileSummaryPanel, ProfileGroupOptions);
-            DockAutoApplyPanel(page);
+            AutoApplyRulesStorage.Content = null;
+            AutoApplyRulesPanel.DataContext = _dashboardViewModel;
+            page.AutoApplyPanelHost.Content = AutoApplyRulesPanel;
             _embeddedProfilePage = page;
             _embeddedProfile = profile;
             ProfileEditorHost.Content = page;
-            page.DockProfileFilters(ProfileFiltersHost);
             ProfileDeviceOverview.Visibility = Visibility.Collapsed;
             ProfileDeviceEditorHost.Visibility = Visibility.Collapsed;
             page.ResumeEmbeddedVisuals();
@@ -583,45 +568,14 @@ namespace HidWizards.UCR.Views
             }
         }
 
-        private void DockAutoApplyPanel(ProfilePage page)
-        {
-            if (page == null || AutoApplyRulesPanel == null) return;
-            // Preserve the original executable-rule controls and their MainWindow handlers.
-            // Only their visual parent changes; the dashboard bindings stay intact.
-            UndockAutoApplyPanel(_embeddedProfilePage);
-            var parent = AutoApplyRulesPanel.Parent as Panel;
-            if (parent == null) return;
-            _autoApplyOriginalParent = parent;
-            _autoApplyOriginalMargin = AutoApplyRulesPanel.Margin;
-            parent.Children.Remove(AutoApplyRulesPanel);
-            AutoApplyRulesPanel.Margin = new Thickness(0);
-            AutoApplyRulesPanel.DataContext = _dashboardViewModel;
-            page.AutoApplyPanelHost.Content = AutoApplyRulesPanel;
-        }
-
-        private void UndockAutoApplyPanel(ProfilePage page)
-        {
-            if (page == null || _autoApplyOriginalParent == null) return;
-            page.AutoApplyPanelHost.Content = null;
-            page.AutoApplyPanelHost.UpdateLayout();
-            AutoApplyRulesPanel.ClearValue(FrameworkElement.DataContextProperty);
-            AutoApplyRulesPanel.Margin = _autoApplyOriginalMargin;
-            Grid.SetRow(AutoApplyRulesPanel, 2);
-            Grid.SetColumnSpan(AutoApplyRulesPanel, 2);
-            _autoApplyOriginalParent.Children.Add(AutoApplyRulesPanel);
-            _autoApplyOriginalParent = null;
-        }
-
         private void ReleaseEmbeddedProfile()
         {
             if (_embeddedProfilePage == null) return;
-            UndockAutoApplyPanel(_embeddedProfilePage);
-            _embeddedProfilePage.UndockProfileFilters();
+            _embeddedProfilePage.AutoApplyPanelHost.Content = null;
+            _embeddedProfilePage.AutoApplyPanelHost.UpdateLayout();
             ProfileDeviceEditorHost.Content = null;
             ProfileDeviceEditorHost.Visibility = Visibility.Collapsed;
             ProfileDeviceOverview.Visibility = Visibility.Collapsed;
-            _embeddedProfilePage.DetachProfileOptions();
-            ProfileGroupOptions.ClearValue(DataContextProperty);
             _embeddedProfilePage.SuspendEmbeddedVisuals();
             ProfileEditorHost.Content = null;
             _embeddedProfilePage = null;
@@ -683,7 +637,7 @@ namespace HidWizards.UCR.Views
 
         private async void CopyProfile(object sender, RoutedEventArgs e)
         {
-            if (!GetSelectedItem(out var profileItem)) return;
+            if (!((sender as MenuItem)?.CommandParameter is ProfileItem profileItem)) return;
             var dialog = new StringDialog("Copy profile", "Profile name", profileItem.Profile.Title + " Copy");
             var result = (bool?)await DialogHost.Show(dialog, "RootDialog");
             if (result != true || string.IsNullOrWhiteSpace(dialog.Value)) return;
@@ -874,7 +828,7 @@ namespace HidWizards.UCR.Views
 
         private void ExportProfile(object sender, RoutedEventArgs e)
         {
-            if (!GetSelectedItem(out var profileItem)) return;
+            if (!((sender as MenuItem)?.CommandParameter is ProfileItem profileItem)) return;
 
             var dialog = new SaveFileDialog
             {

@@ -42,14 +42,14 @@
     <Style x:Key="UcrProfileActionButton" TargetType="{x:Type Button}">
             <Setter Property="Foreground" Value="#DEDEDE"/>
             <Setter Property="Background" Value="#282828"/>
-            <Setter Property="BorderBrush" Value="#3D3D3D"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Opacity" Value="0.94"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Foreground" Value="#FFFFFF"/>
                     <Setter Property="Background" Value="#343434"/>
-                    <Setter Property="BorderBrush" Value="#555555"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
                     <Setter Property="Opacity" Value="1"/>
                 </Trigger>
                 <Trigger Property="IsEnabled" Value="False">

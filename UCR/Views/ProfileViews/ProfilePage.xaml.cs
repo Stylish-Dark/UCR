@@ -104,7 +104,6 @@ namespace HidWizards.UCR.Views.ProfileViews
             ProfileDevicesScrollViewer.MaxHeight = 205;
             target.Content = ProfileDevicesPanel;
             _deviceDock = target;
-            ShowInspectorTab(InspectorTabs.SelectedIndex);
         }
 
         public void UndockProfileDevices()
@@ -124,7 +123,6 @@ namespace HidWizards.UCR.Views.ProfileViews
                 _deviceOriginalParent.Children.Add(ProfileDevicesPanel);
                 _deviceOriginalParent = null;
             }
-            if (!_disposed) ShowInspectorTab(InspectorTabs.SelectedIndex);
         }
 
         public event EventHandler BackRequested;
@@ -1291,7 +1289,6 @@ namespace HidWizards.UCR.Views.ProfileViews
             mapping.RefreshFilterDefinitionPresentation();
             ProfileViewModel.RefreshFilterReferenceLabels();
             ProfileViewModel.SelectedMapping = mapping;
-            ShowWorkspaceInspector();
             Dispatcher.BeginInvoke((Action)(() => ScrollMappingIntoView(mapping)), DispatcherPriority.Background);
         }
 
@@ -1302,92 +1299,11 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (definingMapping != null) ScrollMappingIntoView(definingMapping);
         }
 
-        // Profile settings use the actual existing settings controls, embedded inside
-        // the right inspector instead of navigating away from the mapping workspace.
-        public void DockRightWorkspacePanels()
-        {
-            // The sidebar owns Filters; do not move them to a second host.
-        }
+        internal event RoutedEventHandler RenameRequested;
 
-        public void UndockRightWorkspacePanels()
+        private void RenameProfile_OnClick(object sender, RoutedEventArgs e)
         {
-            UndockProfileFilters();
-        }
-
-        public void DockProfileFilters(ContentControl target)
-        {
-            // Intentionally keep Filters in the unified workspace sidebar.
-        }
-
-        public void UndockProfileFilters()
-        {
-            // No separate dock exists.
-        }
-
-        public void AttachProfileOptions(UIElement options, FrameworkElement groupOptions)
-        {
-            groupOptions.DataContext = ProfileViewModel;
-            ProfileOptionsHost.Content = options;
-        }
-
-        public void DetachProfileOptions()
-        {
-            ProfileOptionsHost.Content = null;
-        }
-
-        private bool _switchingInspectorTab;
-
-        private void InspectorTabs_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (e.Source != InspectorTabs || _switchingInspectorTab || _disposed) return;
-            ShowInspectorTab(InspectorTabs.SelectedIndex);
-        }
-
-        private void SelectInspectorTab(int index)
-        {
-            if (InspectorTabs == null || InspectorTabs.SelectedIndex == index) return;
-            _switchingInspectorTab = true;
-            try { InspectorTabs.SelectedIndex = index; }
-            finally { _switchingInspectorTab = false; }
-        }
-
-        private void ShowInspectorTab(int index)
-        {
-            if (_disposed || SidebarGrid == null || SelectedMappingInspector == null
-                || ProfileOptionsHost == null) return;
-            var showOptions = index == 3;
-            SelectedMappingInspector.Visibility = Visibility.Collapsed;
-            // The sidebar and profile settings are mutually exclusive surfaces.
-            // Hiding only their contents leaves an overlay that intercepts clicks.
-            SidebarScrollViewer.Visibility = showOptions ? Visibility.Collapsed : Visibility.Visible;
-            SidebarGrid.Visibility = showOptions ? Visibility.Collapsed : Visibility.Visible;
-            ProfileOptionsHost.Visibility = showOptions ? Visibility.Visible : Visibility.Collapsed;
-            ProfileOptionsHost.IsHitTestVisible = showOptions;
-            DockedDevicesNotice.Visibility = Visibility.Collapsed;
-            MappingFiltersPanel.Visibility = Visibility.Visible;
-            CompoundPresetsPanel.Visibility = Visibility.Visible;
-            ProfileDevicesPanel.Visibility = Visibility.Visible;
-        }
-
-        public void ShowWorkspaceInspector()
-        {
-            if (_disposed) return;
-            SelectInspectorTab(1);
-            ShowInspectorTab(1);
-        }
-
-        public void ShowWorkspaceToolbox(string section)
-        {
-            // Mapping creation lives only in the '+' toolbar. The three sidebar
-            // sections share one scroll surface; profile options are a separate tab.
-            if (section == "Profile options")
-            {
-                SelectInspectorTab(3);
-                ShowInspectorTab(3);
-                return;
-            }
-            ShowWorkspaceInspector();
-            if (section == "Devices") ProfileDevicesExpander.IsExpanded = true;
+            RenameRequested?.Invoke(this, e);
         }
 
         private void DeleteSelectedMapping_OnClick(object sender, RoutedEventArgs e)
@@ -1422,7 +1338,6 @@ namespace HidWizards.UCR.Views.ProfileViews
             }
             ProfileViewModel.SelectedMapping = mapping;
             mapping.IsExpanded = true;
-            ShowWorkspaceInspector();
             Dispatcher.BeginInvoke((Action)(() => ScrollMappingIntoView(mapping)), DispatcherPriority.Background);
         }
 
@@ -1619,9 +1534,6 @@ namespace HidWizards.UCR.Views.ProfileViews
             var selected = (sender as ListView)?.SelectedItem as MappingViewModel;
             if (selected == null) return;
             ProfileViewModel.SelectedMapping = selected;
-            // Selecting a row does not hijack another inspector tab.
-            if (InspectorTabs.SelectedIndex == 0)
-                ShowWorkspaceInspector();
         }
 
         private MappingViewModel AddNamedFilterMapping(Plugin template, string name)
@@ -1642,7 +1554,6 @@ namespace HidWizards.UCR.Views.ProfileViews
             mapping.RefreshFilterDefinitionPresentation();
             ProfileViewModel.RefreshFilterReferenceLabels();
             ProfileViewModel.SelectedMapping = mapping;
-            ShowWorkspaceInspector();
             Dispatcher.BeginInvoke((Action)(() => ScrollMappingIntoView(mapping)), DispatcherPriority.Background);
             return mapping;
         }

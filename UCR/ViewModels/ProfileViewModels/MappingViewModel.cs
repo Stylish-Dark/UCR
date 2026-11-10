@@ -266,8 +266,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
     {
         public List<BindingVisualDescriptor> Visuals { get; set; }
         public bool StartsAlternative { get; set; }
-        public Visibility AlternativeDividerVisibility =>
-            StartsAlternative ? Visibility.Visible : Visibility.Collapsed;
+        public bool IsDirectionalCompass { get; set; }
+        public bool ContinuesWithGuard { get; set; }
+        public string DividerLabel => StartsAlternative ? "OR" : ContinuesWithGuard ? "AND" : string.Empty;
+        public Visibility DividerVisibility =>
+            StartsAlternative || ContinuesWithGuard ? Visibility.Visible : Visibility.Collapsed;
     }
 
     public class MappingViewModel : INotifyPropertyChanged, IDisposable
@@ -1089,6 +1092,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public string CollapsedSummary => _collapsedSummary;
         public List<BindingVisualDescriptor> CollapsedInputVisuals => _collapsedInputVisuals;
         public List<CollapsedConditionVisualRow> CollapsedInputRows => _collapsedInputRows;
+        public bool HasCollapsedInputCompass { get; private set; }
         public List<CollapsedConditionVisualRow> CollapsedOutputRows => _collapsedOutputRows;
         public List<BindingVisualDescriptor> CollapsedOutputVisuals => _collapsedOutputVisuals;
 
@@ -1276,6 +1280,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             _collapsedSummary = BuildCollapsedSummary();
             _collapsedInputVisuals = BuildCollapsedInputVisuals();
             _collapsedInputRows = BuildCollapsedInputRows();
+            HasCollapsedInputCompass = _collapsedInputRows.Any(row => row.IsDirectionalCompass);
             _collapsedOutputVisuals = BuildCollapsedOutputVisuals();
             _collapsedOutputRows = _collapsedOutputVisuals.Select(visual =>
                 new CollapsedConditionVisualRow
@@ -1286,6 +1291,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(CollapsedSummary));
             OnPropertyChanged(nameof(CollapsedInputVisuals));
             OnPropertyChanged(nameof(CollapsedInputRows));
+            OnPropertyChanged(nameof(HasCollapsedInputCompass));
             OnPropertyChanged(nameof(CollapsedOutputRows));
             OnPropertyChanged(nameof(CollapsedOutputVisuals));
             OnPropertyChanged(nameof(InputLogicSummary));
@@ -3966,6 +3972,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     });
                     continue;
                 }
+                var compass = BuildCollapsedCompass(bindings, groupIndex > 0);
+                if (compass != null)
+                {
+                    result.Add(compass);
+                    bindings = bindings.Where(binding => !compass.Visuals.Any(
+                        direction => direction.BindingGuid == binding.DeviceBinding.Guid)).ToList();
+                }
+
                 var visuals = new List<BindingVisualDescriptor>();
                 for (var i = 0; i < bindings.Count; i++)
                 {
@@ -3975,19 +3989,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                         visual.JoinSymbol = "∨";
                     visuals.Add(visual);
                 }
-                // Four independent directions are one visual row, not an AND
-                // expression split 3+1. Keep every glyph separately clickable.
-                var fourWay = Plugins.Count == 1 && Plugins[0].IsFourButtonAxis;
-                if (fourWay)
-                    for (var index = 1; index < visuals.Count; index++)
-                        visuals[index].JoinSymbol = "·";
-                var chunkSize = fourWay || bindings.Any(binding =>
+                var chunkSize = bindings.Any(binding =>
                     binding.DeviceBinding.InputDirectionSlot > 0) ? 4 : 3;
                 for (var start = 0; start < visuals.Count; start += chunkSize)
                     result.Add(new CollapsedConditionVisualRow
                     {
                         Visuals = visuals.Skip(start).Take(chunkSize).ToList(),
-                        StartsAlternative = groupIndex > 0 && start == 0
+                        StartsAlternative = compass == null && groupIndex > 0 && start == 0,
+                        ContinuesWithGuard = compass != null && start == 0
                     });
             }
             if (result.Count == 0)
@@ -4000,6 +4009,46 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     }
                 });
             return result;
+        }
+
+        private CollapsedConditionVisualRow BuildCollapsedCompass(
+            List<DeviceBindingViewModel> bindings, bool startsAlternative)
+        {
+            var directions = bindings.Where(binding => !binding.DeviceBinding.IsDirectionalAndCondition &&
+                    binding.DeviceBinding.InputDirectionSlot > 0)
+                .OrderBy(binding => binding.DeviceBinding.InputDirectionSlot).ToList();
+            if (!directions.Select(binding => binding.DeviceBinding.InputDirectionSlot)
+                    .SequenceEqual(new[] { 1, 2, 3, 4 }))
+            {
+                // Legacy four-button routes store Up, Down, Left, Right in plugin order.
+                if (directions.Count != 0 || bindings.Count != 4 ||
+                    Plugins.Count != 1 || !Plugins[0].IsFourButtonAxis) return null;
+                directions = new List<DeviceBindingViewModel> { bindings[2], bindings[3], bindings[0], bindings[1] };
+            }
+
+            return new CollapsedConditionVisualRow
+            {
+                StartsAlternative = startsAlternative,
+                IsDirectionalCompass = true,
+                Visuals = new List<BindingVisualDescriptor>
+                {
+                    DescribeCompassSlot(directions[2], "Up", 0, 1),
+                    DescribeCompassSlot(directions[0], "Left", 1, 0),
+                    DescribeCompassSlot(directions[1], "Right", 1, 2),
+                    DescribeCompassSlot(directions[3], "Down", 2, 1)
+                }
+            };
+        }
+
+        private BindingVisualDescriptor DescribeCompassSlot(DeviceBindingViewModel binding,
+            string direction, int row, int column)
+        {
+            var visual = DescribeCollapsedBinding(binding);
+            visual.DirectionalName = direction;
+            visual.DirectionalRow = row;
+            visual.DirectionalColumn = column;
+            visual.ToolTip = direction + " — " + visual.ToolTip;
+            return visual;
         }
 
         private static List<CollapsedConditionVisualRow> ChunkVisuals(List<BindingVisualDescriptor> visuals)

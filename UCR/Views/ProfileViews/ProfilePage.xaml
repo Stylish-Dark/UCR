@@ -184,74 +184,23 @@
                 </Grid.ColumnDefinitions>
                 <Border Grid.Row="0" Grid.ColumnSpan="2" Padding="20 12 20 13"
                         Background="#202020" BorderBrush="#383838" BorderThickness="0 0 0 1">
-                    <StackPanel>
+                    <Grid HorizontalAlignment="Left">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
                         <TextBlock x:Name="WorkspaceProfileTitle" Text="{Binding Profile.Title}"
-                                   FontSize="22" FontWeight="SemiBold" Foreground="White" Margin="0 4 0 1"
+                                   FontSize="22" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"
                                    TextTrimming="CharacterEllipsis" ToolTip="{Binding Profile.Title}"/>
-                    </StackPanel>
+                        <Button x:Name="UiProfileRename" Grid.Column="1" Width="28" Height="28"
+                                Margin="8 0 0 0" Padding="4" AutomationProperties.Name="Rename profile"
+                                ToolTip="Rename profile" Click="RenameProfile_OnClick"
+                                Style="{StaticResource UcrToolbarActionButton}">
+                            <materialDesign:PackIcon Kind="Pencil" Width="16" Height="16"/>
+                        </Button>
+                    </Grid>
                 </Border>
 
-                <!-- Real, mutually exclusive tabs remain visible in the right inspector.
-                     Selection changes the pane below, never the entire workspace. -->
-                <TabControl x:Name="InspectorTabs" Grid.Row="0" Grid.Column="1"
-                            Height="38" VerticalAlignment="Center" HorizontalAlignment="Right" Visibility="Collapsed"
-                            Margin="0 0 12 0" SelectedIndex="1"
-                            Background="#202020" BorderBrush="Transparent" BorderThickness="0"
-                            Panel.ZIndex="4" SelectionChanged="InspectorTabs_OnSelectionChanged">
-                    <TabControl.Resources>
-                        <Style TargetType="{x:Type TabItem}">
-                            <Setter Property="Foreground" Value="#C7C7C7"/>
-                            <Setter Property="Background" Value="Transparent"/>
-                            <Setter Property="Padding" Value="12 7"/>
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="{x:Type TabItem}">
-                                        <Border x:Name="TabSurface" Padding="{TemplateBinding Padding}"
-                                                Background="{TemplateBinding Background}"
-                                                BorderBrush="Transparent" BorderThickness="0 0 0 2"
-                                                Cursor="Hand" Margin="0 0 2 0">
-                                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center"
-                                                              VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsSelected" Value="True">
-                                                <Setter Property="Foreground" Value="#FFFFFF"/>
-                                                <Setter TargetName="TabSurface" Property="Background" Value="#303A48"/>
-                                                <Setter TargetName="TabSurface" Property="BorderBrush" Value="#55749C"/>
-                                            </Trigger>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="TabSurface" Property="Background" Value="#343434"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </TabControl.Resources>
-                    <TabItem Header="Mappings" Visibility="Collapsed"/>
-                    <TabItem Header="Devices"/>
-                    <TabItem Header="Filters"/>
-                    <TabItem Header="Profile options"/>
-                </TabControl>
-                <!-- One sidebar owns Filters, presets and Devices. -->
-                <ContentControl x:Name="ProfileOptionsHost" Grid.Row="1" Grid.Column="1"
-                                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
-                                Visibility="Collapsed" IsHitTestVisible="False"/>
-                <!-- Device management remains in the bottom-left sidebar; the
-                     Devices tab points to its location instead of duplicating it. -->
-                <Border x:Name="DockedDevicesNotice" Grid.Row="1" Grid.Column="1"
-                        Margin="14 12 14 0" VerticalAlignment="Top"
-                        Background="#262626" BorderBrush="#3B3B3B"
-                        BorderThickness="1" CornerRadius="3" Padding="14 12"
-                        Visibility="Collapsed">
-                    <StackPanel>
-                        <TextBlock Text="Profile devices" FontSize="16" FontWeight="SemiBold"
-                                   Foreground="White"/>
-                        <TextBlock Text="Device controls are below Profiles on the left."
-                                   FontSize="13" Foreground="#BBBBBB"
-                                   Margin="0 6 0 0" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Border>
                 <ScrollViewer x:Name="SidebarScrollViewer" Grid.Row="1" Grid.Column="1"
                               Margin="12 8 12 8"
                               VerticalScrollBarVisibility="Auto"
@@ -402,6 +351,22 @@
 
                     <Border x:Name="ProfileDevicesPanel" Grid.Row="1" Margin="0 8 0 0" Background="#202020"
                             BorderBrush="#383838" BorderThickness="1" CornerRadius="4" VerticalAlignment="Top">
+                        <Border.Resources>
+                            <Style x:Key="ProfileDeviceActionButton" TargetType="Button" BasedOn="{StaticResource UcrToolbarActionButton}">
+                                <Setter Property="Width" Value="26"/>
+                                <Setter Property="Height" Value="26"/>
+                                <Setter Property="Margin" Value="2 0 0 0"/>
+                                <Setter Property="Padding" Value="3"/>
+                                <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
+                            </Style>
+                            <Style x:Key="ProfileDeviceName" TargetType="TextBlock">
+                                <Setter Property="FontSize" Value="12.5"/>
+                                <Setter Property="Margin" Value="2 0 0 0"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                <Setter Property="ToolTip" Value="{Binding Title}"/>
+                            </Style>
+                        </Border.Resources>
                         <Expander x:Name="ProfileDevicesExpander" IsExpanded="True" ToolTip="Expand or collapse configured devices"
                                   HorizontalContentAlignment="Stretch"
                                   VerticalAlignment="Top" Background="#202020">
@@ -427,16 +392,16 @@
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                         <TextBlock Text="INPUT" FontSize="10.5" FontWeight="SemiBold" Opacity="0.68" VerticalAlignment="Center"/>
                                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
-                                            <Button ToolTip="Detect and add input device (press Esc or click again to cancel)" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="DetectProfileInputDevice_OnClick">
+                                            <Button ToolTip="Detect and add input device (press Esc or click again to cancel)" Style="{StaticResource ProfileDeviceActionButton}" Click="DetectProfileInputDevice_OnClick">
                                                 <materialDesign:PackIcon Kind="Radar" Width="15" Height="15"/>
                                             </Button>
-                                            <Button x:Name="UiProfileAddInputDevice" ToolTip="Add input device" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="AddProfileInputDevice_OnClick">
+                                            <Button x:Name="UiProfileAddInputDevice" ToolTip="Add input device" Style="{StaticResource ProfileDeviceActionButton}" Click="AddProfileInputDevice_OnClick">
                                                 <materialDesign:PackIcon Kind="Plus" Width="15" Height="15"/>
                                             </Button>
-                                            <Button x:Name="UiProfileRemoveInputDevice" ToolTip="Remove selected input device" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="RemoveProfileInputDevice_OnClick" IsEnabled="{Binding InputDeviceControlViewModel.IsRemoveEnabled}">
+                                            <Button x:Name="UiProfileRemoveInputDevice" ToolTip="Remove selected input device" Style="{StaticResource ProfileDeviceActionButton}" Click="RemoveProfileInputDevice_OnClick" IsEnabled="{Binding InputDeviceControlViewModel.IsRemoveEnabled}">
                                                 <materialDesign:PackIcon Kind="Minus" Width="15" Height="15"/>
                                             </Button>
-                                            <Button ToolTip="Configure selected input device" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="ManageProfileInputDevice_OnClick" IsEnabled="{Binding InputDeviceControlViewModel.IsConfigurationEnabled}">
+                                            <Button ToolTip="Configure selected input device" Style="{StaticResource ProfileDeviceActionButton}" Click="ManageProfileInputDevice_OnClick" IsEnabled="{Binding InputDeviceControlViewModel.IsConfigurationEnabled}">
                                                 <materialDesign:PackIcon Kind="Cog" Width="15" Height="15"/>
                                             </Button>
                                         </StackPanel>
@@ -459,20 +424,16 @@
                                                             <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueLightBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueLightBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
                                                         </Ellipse>
                                                     </Button>
-<ContentControl Grid.Column="1" Content="{Binding Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
-                                                                    Width="44" Height="28" VerticalAlignment="Center"/>
-                                                    <TextBlock Grid.Column="2" Text="{Binding SidebarTitle}" Margin="6 0 0 0"
-                                                                FontSize="12.5" TextWrapping="Wrap" LineStackingStrategy="BlockLineHeight"
-                                                                LineHeight="17" MaxHeight="34"
-                                                                TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                                                    <StackPanel Grid.Column="3" Orientation="Horizontal">
-                                                        <CheckBox IsChecked="{Binding ExclusiveMode, Mode=TwoWay}"
-                                                                  IsEnabled="{Binding CanUseExclusiveMode}" Margin="4 0 3 0"
-                                                                  VerticalAlignment="Center"
-                                                                  ToolTip="Exclusive Mode: hide this physical HID controller from games while its profile runs (requires HidHide)">
-                                                            <materialDesign:PackIcon Kind="EyeOff" Width="15" Height="15" Foreground="{DynamicResource PrimaryHueLightBrush}"/>
-                                                        </CheckBox>
-                                                    </StackPanel>
+                                                    <ContentControl Grid.Column="1" Content="{Binding Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
+                                                                    VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding SidebarTitle}" Style="{StaticResource ProfileDeviceName}"/>
+                                                    <CheckBox Grid.Column="3" IsChecked="{Binding ExclusiveMode, Mode=TwoWay}"
+                                                              Visibility="{Binding CanUseExclusiveMode, Converter={StaticResource MappingSectionVisibilityConverter}}"
+                                                              IsEnabled="{Binding CanEditConfiguration}" Margin="4 0 3 0"
+                                                              VerticalAlignment="Center" ToolTipService.ShowOnDisabled="True"
+                                                              ToolTip="Exclusive Mode: hide this physical HID controller from games while its profile runs (requires HidHide)">
+                                                        <materialDesign:PackIcon Kind="EyeOff" Width="15" Height="15" Foreground="{DynamicResource PrimaryHueLightBrush}"/>
+                                                    </CheckBox>
                                                 </Grid>
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
@@ -504,13 +465,13 @@
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                             <TextBlock Text="OUTPUT" FontSize="10.5" FontWeight="SemiBold" Opacity="0.68" VerticalAlignment="Center"/>
                                             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                                <Button x:Name="UiProfileAddOutputDevice" ToolTip="Add output device" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="AddProfileOutputDevice_OnClick">
+                                                <Button x:Name="UiProfileAddOutputDevice" ToolTip="Add output device" Style="{StaticResource ProfileDeviceActionButton}" Click="AddProfileOutputDevice_OnClick">
                                                     <materialDesign:PackIcon Kind="Plus" Width="15" Height="15"/>
                                                 </Button>
-                                                <Button x:Name="UiProfileRemoveOutputDevice" ToolTip="Remove selected output device" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="RemoveProfileOutputDevice_OnClick" IsEnabled="{Binding OutputDeviceControlViewModel.IsRemoveEnabled}">
+                                                <Button x:Name="UiProfileRemoveOutputDevice" ToolTip="Remove selected output device" Style="{StaticResource ProfileDeviceActionButton}" Click="RemoveProfileOutputDevice_OnClick" IsEnabled="{Binding OutputDeviceControlViewModel.IsRemoveEnabled}">
                                                     <materialDesign:PackIcon Kind="Minus" Width="15" Height="15"/>
                                                 </Button>
-                                                <Button ToolTip="Configure selected output device" Width="25" Height="25" Padding="3" Style="{StaticResource UcrSidebarIconButton}" Click="ManageProfileOutputDevice_OnClick" IsEnabled="{Binding OutputDeviceControlViewModel.IsConfigurationEnabled}">
+                                                <Button ToolTip="Configure selected output device" Style="{StaticResource ProfileDeviceActionButton}" Click="ManageProfileOutputDevice_OnClick" IsEnabled="{Binding OutputDeviceControlViewModel.IsConfigurationEnabled}">
                                                     <materialDesign:PackIcon Kind="Cog" Width="15" Height="15"/>
                                                 </Button>
                                             </StackPanel>
@@ -519,7 +480,7 @@
                                                  ItemsSource="{Binding OutputDeviceControlViewModel.Devices}"
                                                  SelectedItem="{Binding OutputDeviceControlViewModel.SelectedDeviceConfiguration, Mode=TwoWay}"
                                                  BorderThickness="0" Background="Transparent" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled">
-   <ListBox.ItemContainerStyle>
+                                         <ListBox.ItemContainerStyle>
                                              <Style TargetType="{x:Type ListBoxItem}">
                                                  <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                                              </Style>
@@ -533,12 +494,9 @@
                                                                 <Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="Transparent"/><Style.Triggers><DataTrigger Binding="{Binding IsPrimary}" Value="True"><Setter Property="Fill" Value="{DynamicResource PrimaryHueLightBrush}"/><Setter Property="Stroke" Value="{DynamicResource PrimaryHueLightBrush}"/></DataTrigger></Style.Triggers></Style></Ellipse.Style>
                                                             </Ellipse>
                                                         </Button>
-<ContentControl Grid.Column="1" Content="{Binding Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
-                                                                    Width="44" Height="28" VerticalAlignment="Center"/>
-                                                    <TextBlock Grid.Column="2" Text="{Binding SidebarTitle}" Margin="6 0 0 0"
-                                                                FontSize="12.5" TextWrapping="Wrap" LineStackingStrategy="BlockLineHeight"
-                                                                LineHeight="17" MaxHeight="34"
-                                                                TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                        <ContentControl Grid.Column="1" Content="{Binding Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
+                                                                        VerticalAlignment="Center"/>
+                                                        <TextBlock Grid.Column="2" Text="{Binding SidebarTitle}" Style="{StaticResource ProfileDeviceName}"/>
                                                     </Grid>
                                                 </DataTemplate>
                                             </ListBox.ItemTemplate>
@@ -799,9 +757,8 @@
                                                 </ListView.Style>
                                                 <ListView.ItemTemplate>
                                                     <DataTemplate>
-                                                        <!-- All rows use identical proportional columns. Name, input,
-                                                             arrow and output stay aligned across every mapping;
-                                                             the glyphs are centred WITHIN their own columns. -->
+                                                        <!-- Ordinary routes share one header row. The compass gets a
+                                                             second row so the direction targets have room to bind. -->
                                                         <Border Margin="0 2" Padding="10 4" CornerRadius="4"
                                                                 Background="#252525" BorderBrush="#393939"
                                                                 BorderThickness="1" HorizontalAlignment="Stretch">
@@ -818,7 +775,11 @@
                                                                     <ColumnDefinition Width="40"/>
                                                                     <ColumnDefinition Width="44"/>
                                                                 </Grid.ColumnDefinitions>
-                                                                <Grid Grid.Column="0" VerticalAlignment="Center" Margin="3 0 8 0">
+                                                                <Grid.RowDefinitions>
+                                                                    <RowDefinition Height="*"/>
+                                                                    <RowDefinition Height="Auto"/>
+                                                                </Grid.RowDefinitions>
+                                                                <Grid x:Name="MappingTitleArea" Grid.Column="0" VerticalAlignment="Center" Margin="3 0 8 0">
                                                                     <Grid.ColumnDefinitions>
                                                                         <ColumnDefinition Width="Auto"/>
                                                                         <ColumnDefinition Width="*" MinWidth="0"/>
@@ -849,7 +810,8 @@
                                                                                Foreground="White" FontSize="18" FontWeight="SemiBold"
                                                                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                                                                ToolTip="{Binding MappingTitle}"/>
-                                                                    <Button Grid.Column="2" Width="28" Height="30" Margin="6 0 0 0" Padding="3" Background="Transparent" BorderThickness="0"
+                                                                    <Button Grid.Column="2" Width="28" Height="30" Margin="6 0 0 0" Padding="3"
+                                                                            Style="{StaticResource UcrToolbarActionButton}"
                                                                             IsEnabled="{Binding ButtonsEnabled}" ToolTip="Rename mapping" Click="RenameMappingRow_OnClick">
                                                                         <materialDesign:PackIcon Kind="Pencil" Width="15" Height="15" Foreground="#C0C0C0"/>
                                                                     </Button>
@@ -857,7 +819,7 @@
                                                                 <!-- Render the real AND/OR expression. The previous flat
                                                                      CollapsedInputVisuals list falsely showed OR terms
                                                                      as if they belonged to one AND group. -->
-                                                                <ItemsControl Grid.Column="1" ItemsSource="{Binding CollapsedInputRows}"
+                                                                <ItemsControl x:Name="MappingInputSummary" Grid.Column="1" ItemsSource="{Binding CollapsedInputRows}"
                                                                               HorizontalAlignment="Stretch" VerticalAlignment="Center"
                                                                               ClipToBounds="False">
                                                                     <ItemsControl.ItemsPanel>
@@ -868,25 +830,67 @@
                                                                     <ItemsControl.ItemTemplate>
                                                                         <DataTemplate>
                                                                             <StackPanel HorizontalAlignment="Stretch" Margin="0 1">
-                                                                                <TextBlock Text="OR" HorizontalAlignment="Center"
+                                                                                <TextBlock Text="{Binding DividerLabel}" HorizontalAlignment="Center"
                                                                                            Foreground="#AFAFAF" FontWeight="SemiBold"
                                                                                            FontSize="11" Margin="0 3 0 3"
-                                                                                           Visibility="{Binding AlternativeDividerVisibility}"/>
+                                                                                           Visibility="{Binding DividerVisibility}"/>
                                                                                 <!-- Constrain each AND group to its available column width.
                                                                                      At large UI scale, shrink the glyph group rather than
                                                                                      clipping its first and last controls. -->
                                                                                 <Viewbox Stretch="Uniform" StretchDirection="DownOnly"
                                                                                          Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
                                                                                          HorizontalAlignment="Center">
+                                                                                <Viewbox.Style>
+                                                                                    <Style TargetType="Viewbox">
+                                                                                        <Style.Triggers>
+                                                                                            <DataTrigger Binding="{Binding IsDirectionalCompass}" Value="True">
+                                                                                                <Setter Property="MaxHeight" Value="84"/>
+                                                                                            </DataTrigger>
+                                                                                        </Style.Triggers>
+                                                                                    </Style>
+                                                                                </Viewbox.Style>
                                                                                 <ItemsControl ItemsSource="{Binding Visuals}"
                                                                                               HorizontalAlignment="Center"
                                                                                               AlternationCount="100">
-                                                                                    <ItemsControl.ItemsPanel>
-                                                                                        <ItemsPanelTemplate>
-                                                                                            <StackPanel Orientation="Horizontal"
-                                                                                                        HorizontalAlignment="Center"/>
-                                                                                        </ItemsPanelTemplate>
-                                                                                    </ItemsControl.ItemsPanel>
+                                                                                    <ItemsControl.Style>
+                                                                                        <Style TargetType="ItemsControl">
+                                                                                            <Setter Property="ItemsPanel">
+                                                                                                <Setter.Value>
+                                                                                                    <ItemsPanelTemplate>
+                                                                                                        <StackPanel Orientation="Horizontal"/>
+                                                                                                    </ItemsPanelTemplate>
+                                                                                                </Setter.Value>
+                                                                                            </Setter>
+                                                                                            <Style.Triggers>
+                                                                                                <DataTrigger Binding="{Binding IsDirectionalCompass}" Value="True">
+                                                                                                    <Setter Property="ItemsPanel">
+                                                                                                        <Setter.Value>
+                                                                                                            <ItemsPanelTemplate>
+                                                                                                                <Grid>
+                                                                                                                    <Grid.ColumnDefinitions>
+                                                                                                                        <ColumnDefinition Width="Auto"/>
+                                                                                                                        <ColumnDefinition Width="Auto"/>
+                                                                                                                        <ColumnDefinition Width="Auto"/>
+                                                                                                                    </Grid.ColumnDefinitions>
+                                                                                                                    <Grid.RowDefinitions>
+                                                                                                                        <RowDefinition Height="Auto"/>
+                                                                                                                        <RowDefinition Height="Auto"/>
+                                                                                                                        <RowDefinition Height="Auto"/>
+                                                                                                                    </Grid.RowDefinitions>
+                                                                                                                </Grid>
+                                                                                                            </ItemsPanelTemplate>
+                                                                                                        </Setter.Value>
+                                                                                                    </Setter>
+                                                                                                </DataTrigger>
+                                                                                            </Style.Triggers>
+                                                                                        </Style>
+                                                                                    </ItemsControl.Style>
+                                                                                    <ItemsControl.ItemContainerStyle>
+                                                                                        <Style TargetType="ContentPresenter">
+                                                                                            <Setter Property="Grid.Row" Value="{Binding DirectionalRow}"/>
+                                                                                            <Setter Property="Grid.Column" Value="{Binding DirectionalColumn}"/>
+                                                                                        </Style>
+                                                                                    </ItemsControl.ItemContainerStyle>
                                                                                     <ItemsControl.ItemTemplate>
                                                                                         <DataTemplate>
                                                                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -896,6 +900,9 @@
                                                                                                         <Style TargetType="TextBlock">
                                                                                                             <Setter Property="Visibility" Value="Visible"/>
                                                                                                             <Style.Triggers>
+                                                                                                                <DataTrigger Binding="{Binding IsDirectionalSlot}" Value="True">
+                                                                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                                                </DataTrigger>
                                                                                                                 <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ContentPresenter}, Path=(ItemsControl.AlternationIndex)}"
                                                                                                                              Value="0">
                                                                                                                     <Setter Property="Visibility" Value="Collapsed"/>
@@ -905,11 +912,20 @@
                                                                                                     </TextBlock.Style>
                                                                                                 </TextBlock>
                                                                                                 <Button x:Name="UiWorkspaceBindInput" MinWidth="62" Margin="2 1" Padding="0" Background="Transparent"
-                                                                                                       Style="{StaticResource UcrCollapsedInputBindingButton}"
                                                                                                       BorderThickness="0" Cursor="Hand" Focusable="True"
+                                                                                                      AutomationProperties.Name="{Binding ToolTip}"
                                                                                                       ToolTip="{Binding ToolTip}" Click="QuickBindWorkspaceInput_OnClick"
                                                                                                       PreviewMouseLeftButtonDown="QuickBindWorkspaceInput_OnPreviewMouseLeftButtonDown"
                                                                                                       PreviewMouseRightButtonDown="QuickBindWorkspaceInput_OnPreviewMouseRightButtonDown">
+                                                                                                    <Button.Style>
+                                                                                                        <Style TargetType="Button" BasedOn="{StaticResource UcrCollapsedInputBindingButton}">
+                                                                                                            <Style.Triggers>
+                                                                                                                <DataTrigger Binding="{Binding IsDirectionalSlot}" Value="True">
+                                                                                                                    <Setter Property="AutomationProperties.AutomationId" Value="UiWorkspaceDirectionBind"/>
+                                                                                                                </DataTrigger>
+                                                                                                            </Style.Triggers>
+                                                                                                        </Style>
+                                                                                                    </Button.Style>
                                                                                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                                                                     <Grid>
                                                                                                     <controls:ControlGlyphControl Kind="{Binding ControlKind}"
@@ -982,10 +998,10 @@
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
                                                                 </ItemsControl>
-                                                                <TextBlock Grid.Column="2" Text="→" Foreground="#BBBBBB"
+                                                                <TextBlock x:Name="MappingSummaryArrow" Grid.Column="2" Text="→" Foreground="#BBBBBB"
                                                                            FontSize="22" VerticalAlignment="Center"
                                                                            HorizontalAlignment="Center"/>
-                                                                <ItemsControl Grid.Column="3" ItemsSource="{Binding CollapsedOutputVisuals}"
+                                                                <ItemsControl x:Name="MappingOutputSummary" Grid.Column="3" ItemsSource="{Binding CollapsedOutputVisuals}"
                                                                               HorizontalAlignment="Stretch" VerticalAlignment="Center">
                                                                     <ItemsControl.ItemsPanel>
                                                                         <ItemsPanelTemplate>
@@ -995,13 +1011,14 @@
                                                                     </ItemsControl.ItemsPanel>
                                                                     <ItemsControl.ItemTemplate>
                                                                         <DataTemplate>
-                                                                            <Button x:Name="UiWorkspaceBindOutput" Padding="0" BorderThickness="0" Background="Transparent" Cursor="Hand"
-                                                                                    Focusable="True" Margin="2 3 2 5"
+                                                                            <Button x:Name="UiWorkspaceBindOutput" Padding="2 0" BorderThickness="0" Background="Transparent" Cursor="Hand"
+                                                                                    Focusable="True" Margin="0 3 0 5"
+                                                                                    MaxWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
                                                                                     Style="{StaticResource UcrCollapsedOutputBindingButton}"
                                                                                     ClipToBounds="False" ToolTip="{Binding ToolTip}"
                                                                                     Click="QuickBindWorkspaceOutput_OnClick"
                                                                                     PreviewMouseRightButtonDown="QuickBindWorkspaceOutput_OnPreviewMouseRightButtonDown">
-                                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                                                <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
                                                                                     <controls:ControlGlyphControl Kind="{Binding ControlKind}"
                                                                                                                   AccentBrush="{Binding ControlBrush}"
                                                                                                                   Label="{Binding ControlLabel}">
@@ -1018,11 +1035,7 @@
                                                                                             </Style>
                                                                                         </controls:ControlGlyphControl.Style>
                                                                                     </controls:ControlGlyphControl>
-                                                                                    <TextBlock Text="{Binding CompoundPresetName}" FontSize="12" FontWeight="SemiBold" Margin="8 0 0 0" VerticalAlignment="Center"
-                                                                                               Foreground="#FFFFFF" HorizontalAlignment="Center"
-                                                                                               TextAlignment="Center" MaxWidth="96" TextTrimming="CharacterEllipsis"
-                                                                                               Visibility="Collapsed"/>
-                                                                                </StackPanel>
+                                                                                </Viewbox>
                                                                             </Button>
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
@@ -1037,9 +1050,8 @@
                                                                 <Button x:Name="UiWorkspaceToggleEditor" Grid.Column="5" Width="36" Height="34" Padding="0"
                                                                         AutomationProperties.AutomationId="UiExpandMapping" AutomationProperties.Name="Expand or collapse mapping"
                                                                         HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                                        Background="#303030" BorderBrush="#626262" BorderThickness="1" Focusable="False" Cursor="Hand"
+                                                                        Background="#303030" Style="{StaticResource UcrToolbarActionButton}"
                                                                         ToolTip="Expand or collapse mapping Inputs and Outputs" Click="ToggleInlineMapping_OnClick">
-                                                                    <Button.Template><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Button.Template>
                                                                     <Grid Width="23" Height="23" IsHitTestVisible="False">
                                                                         <Path Stroke="#E7EFFC" StrokeThickness="2.4" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Data="M 5,9 L 11.5,15 L 18,9">
                                                                             <Path.Style><Style TargetType="Path"><Setter Property="RenderTransform"><Setter.Value><RotateTransform CenterX="11.5" CenterY="12" Angle="0"/></Setter.Value></Setter><Style.Triggers><DataTrigger Binding="{Binding IsExpanded}" Value="True"><Setter Property="RenderTransform"><Setter.Value><RotateTransform CenterX="11.5" CenterY="12" Angle="180"/></Setter.Value></Setter></DataTrigger></Style.Triggers></Style></Path.Style>
@@ -1071,6 +1083,17 @@
                                                                 </ContentControl>
                                                             </StackPanel>
                                                         </Border>
+                                                        <DataTemplate.Triggers>
+                                                            <DataTrigger Binding="{Binding HasCollapsedInputCompass}" Value="True">
+                                                                <Setter TargetName="MappingTitleArea" Property="Grid.ColumnSpan" Value="4"/>
+                                                                <Setter TargetName="MappingInputSummary" Property="Grid.Row" Value="1"/>
+                                                                <Setter TargetName="MappingInputSummary" Property="Grid.Column" Value="0"/>
+                                                                <Setter TargetName="MappingInputSummary" Property="Grid.ColumnSpan" Value="2"/>
+                                                                <Setter TargetName="MappingSummaryArrow" Property="Grid.Row" Value="1"/>
+                                                                <Setter TargetName="MappingOutputSummary" Property="Grid.Row" Value="1"/>
+                                                                <Setter TargetName="MappingOutputSummary" Property="Grid.ColumnSpan" Value="3"/>
+                                                            </DataTrigger>
+                                                        </DataTemplate.Triggers>
                                                     </DataTemplate>
                                                 </ListView.ItemTemplate>
                                             </ListView>

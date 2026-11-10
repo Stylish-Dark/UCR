@@ -392,16 +392,18 @@
         <!-- Each OR alternative owns exactly one complete logical directional set.
              Compound sets use one visible binding, while Button sets expose the
              two/four independently assignable physical directions. -->
-        <!-- Each arrow remains a real physical binding, not a decorative direction.
-             The outer-side ellipsis opens that same binding's full category menu. -->
+        <!-- Each arrow is an independent binding. Right-click opens its binding menu. -->
         <DataTemplate x:Key="SpatialDirectionalInputSlotTemplate">
-            <Button Width="94" Height="44" Margin="1" Padding="3 2"
+            <Button Height="44" MinWidth="0" Margin="1" Padding="3 2"
+                    AutomationProperties.AutomationId="UiMappingDirectionBind"
+                    AutomationProperties.Name="{Binding DeviceBindingName}"
+                    HorizontalContentAlignment="Stretch"
                     Click="BindDirectionalSlot_OnClick"
                     PreviewMouseRightButtonDown="DirectionalCapture_OnPreviewMouseRightButtonDown"
                     IsEnabled="{Binding BindingEnabled}"
                     ToolTip="{Binding DeviceBindingName}" Foreground="#FFFFFF">
                 <Button.Style>
-                    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource UcrAccentOutlineButton}">
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsCapturing}" Value="True">
                                 <Setter Property="Background" Value="#D77A16"/>
@@ -411,12 +413,12 @@
                         </Style.Triggers>
                     </Style>
                 </Button.Style>
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="{Binding DirectionalGlyph}" FontSize="18" FontWeight="SemiBold"
-                               HorizontalAlignment="Center"/>
+                               TextAlignment="Center"/>
                     <TextBlock Text="{Binding CompactBindButtonText}" FontSize="13"
                                TextTrimming="CharacterEllipsis" MaxWidth="79"
-                               HorizontalAlignment="Center"/>
+                               TextAlignment="Center"/>
                 </StackPanel>
             </Button>
         </DataTemplate>
@@ -530,7 +532,7 @@
                                                 HorizontalContentAlignment="Center"
                                                 HorizontalAlignment="Left" MinWidth="154" MaxWidth="300"
                                                 Height="38" Foreground="#FFFFFF"
-                                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                                Style="{StaticResource UcrAccentOutlineButton}"
                                                 FontWeight="SemiBold" Padding="8 3">
                                             <Button.ContentTemplate>
                                                 <DataTemplate>
@@ -544,7 +546,7 @@
                                                 ToolTip="Compound binding options"
                                                 Height="38" Margin="3 0 0 0" Padding="0"
                                                 Foreground="#FFFFFF"
-                                                Style="{StaticResource MaterialDesignRaisedButton}">
+                                                Style="{StaticResource UcrAccentOutlineButton}">
                                             <materialDesign:PackIcon Kind="DotsVertical" Width="20" Height="20"/>
                                         </Button>
                                     </StackPanel>
@@ -602,24 +604,26 @@
                                         </ItemsControl>
                                         <!-- Two or four independent directions surround a preset.
                                              Slot identity and OR membership come from the model. -->
-                                        <Grid HorizontalAlignment="Center" Margin="0 2 0 2"
+                                        <Grid HorizontalAlignment="Stretch" MaxWidth="294" Margin="0 2 0 2"
                                               Visibility="{Binding DirectionalButtonsVisibility}">
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="98"/>
-                                                <ColumnDefinition Width="98"/>
-                                                <ColumnDefinition Width="98"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
                                             <Grid.RowDefinitions>
                                                 <!-- Empty up/down slots contribute no height in 2-Way mode. -->
                                                 <RowDefinition Height="Auto"/>
-                                                <RowDefinition Height="44"/>
+                                                <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="Auto"/>
                                             </Grid.RowDefinitions>
                                             <ContentControl Grid.Row="0" Grid.Column="1" Tag="↑"
+                                                HorizontalContentAlignment="Stretch"
                                                 Content="{Binding UpDirection}"
                                                 ContentTemplate="{StaticResource SpatialDirectionalInputSlotTemplate}"
                                                 Visibility="{Binding UpDirectionVisibility}"/>
                                             <ContentControl Grid.Row="1" Grid.Column="0" Tag="←"
+                                                HorizontalContentAlignment="Stretch"
                                                 Content="{Binding LeftDirection}"
                                                 ContentTemplate="{StaticResource SpatialDirectionalInputSlotTemplate}"
                                                 Visibility="{Binding LeftDirectionVisibility}"/>
@@ -627,14 +631,17 @@
                                                     FontSize="11" FontWeight="SemiBold"
                                                     Height="40" Margin="1" Padding="4 2"
                                                     Foreground="#FFFFFF" Click="CompoundPreset_OnClick"
-                                                    Style="{StaticResource MaterialDesignRaisedButton}"
+                                                    MinWidth="0" VerticalAlignment="Center"
+                                                    Style="{StaticResource UcrAccentOutlineButton}"
                                                     IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
                                                     ToolTip="Choose WASD, arrows, D-pad, joystick or face-button compound control"/>
                                             <ContentControl Grid.Row="1" Grid.Column="2" Tag="→"
+                                                HorizontalContentAlignment="Stretch"
                                                 Content="{Binding RightDirection}"
                                                 ContentTemplate="{StaticResource SpatialDirectionalInputSlotTemplate}"
                                                 Visibility="{Binding RightDirectionVisibility}"/>
                                             <ContentControl Grid.Row="2" Grid.Column="1" Tag="↓"
+                                                HorizontalContentAlignment="Stretch"
                                                 Content="{Binding DownDirection}"
                                                 ContentTemplate="{StaticResource SpatialDirectionalInputSlotTemplate}"
                                                 Visibility="{Binding DownDirectionVisibility}"/>
@@ -712,12 +719,12 @@
                         <ItemsControl Grid.Column="0" ItemsSource="{Binding DeviceBindings}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Button x:Name="UiMappingCompassBind" Height="44" MinWidth="90" Margin="0 1 0 2" Padding="3 2"
+                                    <Button x:Name="UiMappingCompassBind" Height="44" MinWidth="0" Margin="0 1 0 2" Padding="3 2"
                                             Click="CompassOutputBind_OnClick"
                                             IsEnabled="{Binding BindingEnabled}"
                                             ToolTip="Choose output control"
                                             Foreground="#FFFFFF"
-                                            Style="{StaticResource MaterialDesignRaisedButton}"
+                                            Style="{StaticResource UcrAccentOutlineButton}"
                                             HorizontalContentAlignment="Stretch">
                                         <TextBlock Text="{Binding CompactBindButtonText}"
                                                    TextAlignment="Center"
@@ -943,7 +950,8 @@
                                     <materialDesign:PackIcon Kind="Filter" Width="17" Height="17"
                                         Foreground="{StaticResource MappingTypeFilterBrush}"/>
                                 </RadioButton>
-                                <RadioButton Content="✣" Tag="1" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
+                                <RadioButton x:Name="UiMappingFourWayOutput" Content="✣" Tag="1" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
+                                             AutomationProperties.Name="4-Way output"
                                              ToolTip="4-Way output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsFullStick, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseOutputFourWay}"
@@ -1005,7 +1013,7 @@
                                                 HorizontalContentAlignment="Center"
                                                 HorizontalAlignment="Left" Padding="8 3"
                                                 FontWeight="SemiBold" Foreground="#FFFFFF"
-                                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                                Style="{StaticResource UcrAccentOutlineButton}"
                                                 ToolTip="Choose a complete 4-Way output destination">
                                             <Button.ContentTemplate>
                                                 <DataTemplate>

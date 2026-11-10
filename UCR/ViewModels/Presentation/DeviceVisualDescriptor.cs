@@ -85,6 +85,10 @@ namespace HidWizards.UCR.ViewModels.Presentation
         public bool IsCompoundVisual { get; set; }
         public string CompoundPresetName { get; set; }
         public string JoinSymbol { get; set; } = "+";
+        public string DirectionalName { get; set; }
+        public bool IsDirectionalSlot => !string.IsNullOrEmpty(DirectionalName);
+        public int DirectionalRow { get; set; }
+        public int DirectionalColumn { get; set; }
         public string ToolTip { get; set; }
         public bool IsBound { get; set; }
         public bool IsCapturing { get; set; }

@@ -14,17 +14,19 @@
                     <DataTemplate>
                         <StackPanel Margin="8 0">
                             <Separator Margin="0" Visibility="{Binding SeparatorVisibility}" Style="{StaticResource MaterialDesignSeparator}"/>
-                            <Grid Width="Auto" MouseDown="Device_OnMouseDown">
+                            <Grid MouseDown="Device_OnMouseDown" ToolTip="{Binding Title}">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="48"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <ContentControl Grid.Column="0" Content="{Binding Visual}" ContentTemplate="{StaticResource DeviceSymbolTemplate}"
-                                                Width="44" Height="28" Margin="0 0 8 0" VerticalAlignment="Center"/>
-<StackPanel Grid.Column="1" Margin="0 12">
-                                    <TextBlock Text="{Binding Title}" Foreground="#FFFFFF" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
-                                    <TextBlock Text="{Binding ProviderName}" Foreground="#D0D0D0" Style="{StaticResource MaterialDesignCaptionTextBlock}"/>
+                                                VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="1" Margin="4 9 4 9">
+                                    <TextBlock Text="{Binding Title}" Foreground="#FFFFFF"
+                                               TextTrimming="CharacterEllipsis" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
+                                    <TextBlock Text="{Binding ProviderName}" Foreground="#D0D0D0"
+                                               TextTrimming="CharacterEllipsis" Style="{StaticResource MaterialDesignCaptionTextBlock}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="4 0 0 0">
                                     <TextBlock Text="DETECTED" Foreground="{DynamicResource PrimaryHueMidBrush}" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center">
@@ -43,7 +45,7 @@
                                               AutomationProperties.Name="{Binding Title}" Style="{StaticResource MaterialDesignCheckBox}"
                                               IsChecked="{Binding Checked}" HorizontalAlignment="Center"/>
                                 </StackPanel>
-                                <materialDesign:Ripple Grid.Column="0" Grid.ColumnSpan="3" Feedback="{DynamicResource MaterialDesignFlatButtonRipple}" ToolTip="{Binding Title}"/>
+                                <materialDesign:Ripple Grid.Column="0" Grid.ColumnSpan="3" Feedback="{DynamicResource MaterialDesignFlatButtonRipple}"/>
                             </Grid>
                         </StackPanel>
                     </DataTemplate>

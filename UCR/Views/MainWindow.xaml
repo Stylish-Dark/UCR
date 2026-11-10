@@ -36,26 +36,6 @@
     <Window.Resources>
         <ResourceDictionary>
             <converter:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
-            <!-- This style is also used by ProfilePage, but MainWindow cannot resolve
-                 resources scoped to that child view during InitializeComponent. -->
-            <Style x:Key="UcrProfileActionButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
-                <Setter Property="Foreground" Value="#DEDEDE"/>
-                <Setter Property="Background" Value="#282828"/>
-                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="Opacity" Value="0.94"/>
-                <Style.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Foreground" Value="#FFFFFF"/>
-                        <Setter Property="Background" Value="#343434"/>
-                        <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
-                        <Setter Property="Opacity" Value="1"/>
-                    </Trigger>
-                    <Trigger Property="IsEnabled" Value="False">
-                        <Setter Property="Opacity" Value="0.48"/>
-                    </Trigger>
-                </Style.Triggers>
-            </Style>
             <DataTemplate x:Key="DeviceSymbolTemplate">
                 <controls:DeviceSymbolControl SymbolText="{Binding SymbolText}"
                                               Foreground="{Binding BadgeTextBrush}"
@@ -187,11 +167,10 @@
                     <Button x:Name="UiToolbarLogs" Style="{StaticResource UcrToolbarActionButton}" ToolTip="Open diagnostic logs" Click="OpenLogs_OnClick">
                         <materialDesign:PackIcon Kind="FileDocumentOutline" Width="20" Height="20"/>
                     </Button>
-                    <Button x:Name="UiToolbarProfileOptions" Content="Profile options" Width="Auto" Padding="10 5"
-                            Style="{StaticResource UcrToolbarActionButton}" IsEnabled="{Binding CanActivateProfile}"
-                            ToolTip="Show or hide options for the selected profile" Click="WorkspaceOptions_OnClick"/>
-                    <Button x:Name="UiToolbarHelp" Content="Help" Width="Auto" Padding="10 5"
-                            Style="{StaticResource UcrToolbarActionButton}" Click="ContextMenuButton_OnClick">
+                    <Button x:Name="UiToolbarHelp" AutomationProperties.Name="Help and About"
+                            Style="{StaticResource UcrToolbarActionButton}" ToolTip="Help and About"
+                            Click="ContextMenuButton_OnClick">
+                        <TextBlock Text="?" FontSize="19" FontWeight="SemiBold"/>
                         <Button.ContextMenu>
                             <ContextMenu Style="{StaticResource MaterialDesignContextMenu}">
                                 <MenuItem x:Name="UiHelpContents" Header="Help contents" Click="Help_OnClick"/>
@@ -236,20 +215,20 @@
                             <TextBlock Grid.Column="0" Margin="8 7 4 4" Style="{StaticResource MaterialDesignTitleTextBlock}">Profiles</TextBlock>
                             <StackPanel Grid.Column="2" HorizontalAlignment="Right" Orientation="Horizontal" Margin="2 0 6 0">
                                 <Button x:Name="UiProfilesAdd" ToolTip="Add profile" Width="36" Height="34" Padding="4"
-                                        Style="{StaticResource UcrAccentOutlineButton}" Click="AddProfile">
+                                        Style="{StaticResource UcrToolbarActionButton}" Click="AddProfile">
                                     <materialDesign:PackIcon Kind="Plus" Width="23" Height="23"/>
                                 </Button>
-                                <Button x:Name="UiProfilesImport" ToolTip="Import profile" Style="{StaticResource MaterialDesignCardButton}"
+                                <Button x:Name="UiProfilesImport" ToolTip="Import profile" Style="{StaticResource UcrToolbarActionButton}" Width="36" Height="34" Padding="4"
                                         Click="ImportProfile">
                                     <materialDesign:PackIcon Kind="FileImport" Width="20" Height="20"/>
                                 </Button>
                                 <Button ToolTip="Group profiles by input device"
-                                        Style="{StaticResource MaterialDesignCardButton}"
+                                        Style="{StaticResource UcrToolbarActionButton}" Width="36" Height="34" Padding="4"
                                         Click="ToggleProfileGrouping_OnClick">
                                     <materialDesign:PackIcon Kind="ViewList" Width="20" Height="20"/>
                                 </Button>
                                 <Button x:Name="UiProfilesDelete" ToolTip="Delete selected profile"
-                                        Style="{StaticResource MaterialDesignCardButton}"
+                                        Style="{StaticResource UcrToolbarActionButton}" Width="36" Height="34" Padding="4"
                                         IsEnabled="{Binding CanActivateProfile}" Click="RemoveProfile">
                                     <materialDesign:PackIcon Kind="TrashCanOutline" Width="20" Height="20"/>
                                 </Button>
@@ -265,7 +244,19 @@
                                   DragOver="ProfileTree_OnDragOver"
                                   Drop="ProfileTree_OnDrop"
                                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                  SelectedItemChanged="ProfileTree_OnSelectedItemChanged">
+                                  SelectedItemChanged="ProfileTree_OnSelectedItemChanged" ContextMenuOpening="ProfileTree_OnContextMenuOpening">
+                            <TreeView.ContextMenu>
+                                <ContextMenu Style="{StaticResource MaterialDesignContextMenu}">
+                                    <MenuItem Header="Copy profile" AutomationProperties.AutomationId="UiProfileCopy"
+                                              CommandParameter="{Binding}" Click="CopyProfile">
+                                        <MenuItem.Icon><materialDesign:PackIcon Kind="ContentCopy"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <MenuItem Header="Export profile" AutomationProperties.AutomationId="UiProfileExport"
+                                              CommandParameter="{Binding}" Click="ExportProfile">
+                                        <MenuItem.Icon><materialDesign:PackIcon Kind="FileExport"/></MenuItem.Icon>
+                                    </MenuItem>
+                                </ContextMenu>
+                            </TreeView.ContextMenu>
                             <TreeView.Style>
                                 <Style TargetType="TreeView" BasedOn="{StaticResource MaterialDesignTreeView}">
                                     <Style.Triggers>
@@ -497,154 +488,66 @@
                 <Grid x:Name="WorkspaceTabs" Grid.Column="2" Margin="2 0 0 0">
                     <ContentControl x:Name="ProfileEditorHost"
                                     HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
-                    <ContentControl x:Name="ProfileOptionsStorage" Visibility="Collapsed">
-                <Grid x:Name="ProfileSummaryPanel" Visibility="Visible">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <materialDesign:Card Grid.Column="0" Background="#242424">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <Border Grid.Row="0" Grid.ColumnSpan="2" Height="3" VerticalAlignment="Top" Background="{DynamicResource PrimaryHueMidBrush}"/>
-                            <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="8 6 8 4">
-                                <TextBlock Text="{Binding SelectedProfileItem.Title}" TextTrimming="CharacterEllipsis"
-                                           ToolTip="{Binding SelectedProfileItem.Title}"
-                                           Style="{StaticResource MaterialDesignTitleTextBlock}" Foreground="#FFFFFF"/>
-                                <WrapPanel Margin="0 4 0 0">
-                                    <Button x:Name="UiProfileRename" Content="Rename" ToolTip="Rename profile"
-                                            Style="{StaticResource UcrProfileActionButton}" Margin="0 0 4 4" Padding="8 4"
-                                            Click="RenameProfile"/>
-                                    <Button x:Name="UiProfileCopy" Content="Copy" ToolTip="Copy profile"
-                                            Style="{StaticResource UcrProfileActionButton}" Margin="0 0 4 4" Padding="8 4"
-                                            Click="CopyProfile"/>
-                                    <Button x:Name="UiProfileExport" Content="Export" ToolTip="Export profile"
-                                            Style="{StaticResource UcrProfileActionButton}" Margin="0 0 4 4" Padding="8 4"
-                                            Click="ExportProfile"/>
-                                    <Button ToolTip="Activate profile" IsEnabled="{Binding CanActivateProfile}"
-                                            Style="{StaticResource MaterialDesignCardButton}" Foreground="#BDBDBD" Click="ActivateProfile">
-                                        <materialDesign:PackIcon Kind="Play" Width="20" Height="20"/>
+                    <ContentControl x:Name="AutoApplyRulesStorage" Visibility="Collapsed">
+                        <Border x:Name="AutoApplyRulesPanel" Padding="8 7" Background="#212121" CornerRadius="2">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox Grid.Column="0" VerticalAlignment="Center" Foreground="White"
+                                              Content="Auto apply to EXE"
+                                              IsChecked="{Binding SelectedProfileItem.Profile.AutoActivateEnabled, Mode=TwoWay}"
+                                              ToolTip="Automatically activates this profile while any configured application rule matches."/>
+                                    <Button Grid.Column="1" Width="30" Height="28" Padding="4" Margin="6 0 0 0"
+                                            IsEnabled="{Binding SelectedProfileItem.Profile.AutoActivateEnabled}"
+                                            ToolTip="Add application rule" Click="AddAutoActivateApplication_OnClick"
+                                            Style="{StaticResource UcrToolbarActionButton}">
+                                        <materialDesign:PackIcon Kind="Plus" Width="17" Height="17"/>
                                     </Button>
-                                    <Button ToolTip="Edit profile"
-                                            Style="{StaticResource MaterialDesignCardButton}" Foreground="#BDBDBD" Click="WorkspaceMappings_OnClick">
-                                        <materialDesign:PackIcon Kind="AccountEdit" Width="20" Height="20"/>
-                                    </Button>
-                                    <Button ToolTip="Delete profile"
-                                            Style="{StaticResource MaterialDesignCardButton}" Foreground="#BDBDBD" Click="RemoveProfile">
-                                        <materialDesign:PackIcon Kind="Trash" Width="20" Height="20"/>
-                                    </Button>
-                                </WrapPanel>
-                            </StackPanel>
-                            <Separator Grid.Row="1" Grid.ColumnSpan="2" Margin="8 0 8 4" Height="4"  Style="{StaticResource MaterialDesignDarkSeparator}" />
-                            <Border x:Name="AutoApplyRulesPanel" Grid.Row="2" Grid.ColumnSpan="2" Margin="8 2 8 6" Padding="8 7" Background="#212121" CornerRadius="2">
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-                                    <Grid Grid.Row="0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <CheckBox Grid.Column="0" VerticalAlignment="Center" Foreground="White"
-                                                  Content="Auto apply to EXE"
-                                                  IsChecked="{Binding SelectedProfileItem.Profile.AutoActivateEnabled, Mode=TwoWay}"
-                                                  ToolTip="Automatically activates this profile while any configured application rule matches."/>
-                                        <Button Grid.Column="1" Width="30" Height="28" Padding="4" Margin="6 0 0 0"
-                                                IsEnabled="{Binding SelectedProfileItem.Profile.AutoActivateEnabled}"
-                                                ToolTip="Add application rule" Click="AddAutoActivateApplication_OnClick"
-                                                Style="{StaticResource MaterialDesignFlatButton}">
-                                            <materialDesign:PackIcon Kind="Plus" Width="17" Height="17"/>
-                                        </Button>
-                                    </Grid>
-                                    <ScrollViewer Grid.Row="1" Margin="0 6 0 0" MaxHeight="116" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                                        <ItemsControl ItemsSource="{Binding SelectedProfileItem.Profile.AutoActivateApplications}"
-                                                      IsEnabled="{Binding SelectedProfileItem.Profile.AutoActivateEnabled}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Grid Margin="0 2">
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="1.1*"/>
-                                                            <ColumnDefinition Width="1*"/>
-                                                            <ColumnDefinition Width="30"/>
-                                                            <ColumnDefinition Width="30"/>
-                                                        </Grid.ColumnDefinitions>
-                                                        <TextBox Grid.Column="0" Margin="0 0 5 0" Padding="6 3" VerticalContentAlignment="Center"
-                                                                 Background="#2B2B2B" Foreground="White" CaretBrush="White"
-                                                                 Text="{Binding Executable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                 materialDesign:HintAssist.Hint="Executable (game.exe)"/>
-                                                        <TextBox Grid.Column="1" Margin="0 0 5 0" Padding="6 3" VerticalContentAlignment="Center"
-                                                                 Background="#2B2B2B" Foreground="White" CaretBrush="White"
-                                                                 Text="{Binding Arguments, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                 materialDesign:HintAssist.Hint="Optional parameters"/>
-                                                        <Button Grid.Column="2" Width="28" Height="28" Padding="4" Margin="0 0 2 0"
-                                                                ToolTip="Choose executable" Click="BrowseAutoActivateExecutable"
-                                                                Style="{StaticResource MaterialDesignFlatButton}">
-                                                            <materialDesign:PackIcon Kind="Folder" Width="16" Height="16"/>
-                                                        </Button>
-                                                        <Button Grid.Column="3" Width="28" Height="28" Padding="4"
-                                                                ToolTip="Remove application rule" Click="RemoveAutoActivateApplication_OnClick"
-                                                                Style="{StaticResource MaterialDesignFlatButton}">
-                                                            <materialDesign:PackIcon Kind="Close" Width="16" Height="16"/>
-                                                        </Button>
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </ScrollViewer>
                                 </Grid>
-                            </Border>
-                            <Border x:Name="ProfileGroupOptions" Grid.Row="3" Grid.ColumnSpan="2" Margin="8 0 8 6" Padding="8 7"
-                                    Background="#212121" CornerRadius="2" BorderBrush="#363636" BorderThickness="1">
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-                                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0 0 0 5">
-                                        <materialDesign:PackIcon Kind="FolderOutline" Width="16" Height="16" Margin="0 0 6 0"
-                                                                 Foreground="{DynamicResource PrimaryHueLightBrush}" VerticalAlignment="Center"/>
-                                        <TextBlock Text="Mapping groups" FontSize="13.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding MappingSections.Count, StringFormat={}  {0}}" FontSize="11.5"
-                                                   Opacity="0.45" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                    <ScrollViewer Grid.Row="1" MaxHeight="92" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                                        <ItemsControl ItemsSource="{Binding MappingSections}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <CheckBox Margin="2 2" Foreground="White" Content="{Binding Title}"
-                                                              IsChecked="{Binding Enabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                              ToolTip="Toggle this mapping group. If the profile is running, the change applies immediately."/>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </ScrollViewer>
-                                </Grid>
-                            </Border>
-                            <Grid Grid.Row="4" Grid.ColumnSpan="2" Margin="0 0 0 4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <controls:ProfileDeviceListControl Title="Input devices" MinHeight="200" Margin="8 4 4 4" DataContext="{Binding InputDeviceControlViewModel}"/>
-                                <controls:ProfileDeviceListControl Title="Output devices" Grid.Column="1" MinHeight="200" Margin="4 4 8 4" DataContext="{Binding OutputDeviceControlViewModel}"/>
+                                <ScrollViewer Grid.Row="1" Margin="0 6 0 0" MaxHeight="116" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <ItemsControl ItemsSource="{Binding SelectedProfileItem.Profile.AutoActivateApplications}"
+                                                  IsEnabled="{Binding SelectedProfileItem.Profile.AutoActivateEnabled}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0 2">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="1.1*"/>
+                                                        <ColumnDefinition Width="1*"/>
+                                                        <ColumnDefinition Width="30"/>
+                                                        <ColumnDefinition Width="30"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox Grid.Column="0" Margin="0 0 5 0" Padding="6 3" VerticalContentAlignment="Center"
+                                                             Background="#2B2B2B" Foreground="White" CaretBrush="White"
+                                                             Text="{Binding Executable, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                             materialDesign:HintAssist.Hint="Executable (game.exe)"/>
+                                                    <TextBox Grid.Column="1" Margin="0 0 5 0" Padding="6 3" VerticalContentAlignment="Center"
+                                                             Background="#2B2B2B" Foreground="White" CaretBrush="White"
+                                                             Text="{Binding Arguments, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                             materialDesign:HintAssist.Hint="Optional parameters"/>
+                                                    <Button Grid.Column="2" Width="28" Height="28" Padding="4" Margin="0 0 2 0"
+                                                            ToolTip="Choose executable" Click="BrowseAutoActivateExecutable"
+                                                            Style="{StaticResource UcrToolbarActionButton}">
+                                                        <materialDesign:PackIcon Kind="Folder" Width="16" Height="16"/>
+                                                    </Button>
+                                                    <Button Grid.Column="3" Width="28" Height="28" Padding="4"
+                                                            ToolTip="Remove application rule" Click="RemoveAutoActivateApplication_OnClick"
+                                                            Style="{StaticResource UcrToolbarActionButton}">
+                                                        <materialDesign:PackIcon Kind="Close" Width="16" Height="16"/>
+                                                    </Button>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
                             </Grid>
-                            <ContentControl x:Name="ProfileFiltersHost" Grid.Row="5" Grid.ColumnSpan="2" Margin="8 4 8 8" HorizontalContentAlignment="Stretch"/>
-                        </Grid>
-                    </materialDesign:Card>
-                </Grid>
+                        </Border>
                     </ContentControl>
                 </Grid>
             </Grid>
