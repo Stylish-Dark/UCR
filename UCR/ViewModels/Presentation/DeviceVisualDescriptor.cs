@@ -415,6 +415,9 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
             var leaf = ExtractLeaf(boundName);
             PopulateControl(result, binding, category, leaf, configuration?.Device);
+            if (IsDirectInput(configuration?.Device) && IsRawControlId(binding, boundName) &&
+                !string.IsNullOrWhiteSpace(result.ControlLabel))
+                result.ToolTip = deviceDescriptor.ToolTip + " — " + result.ControlLabel;
             return result;
         }
 
@@ -616,7 +619,8 @@ namespace HidWizards.UCR.ViewModels.Presentation
             var namedButton = IsXbox(kind) || IsPlayStation(kind)
                 ? KnownButtonLabelFromName(leaf.ToLowerInvariant(), kind) : null;
             if (namedButton != null) return namedButton;
-            if (!IsMissingBindingName(leaf) && !int.TryParse(leaf, out _)) return leaf;
+            if (!IsMissingBindingName(leaf) && !IsRawControlId(binding, leaf) &&
+                !int.TryParse(leaf, out _)) return leaf;
 
             // The generic DirectInput provider supplies numbers only. Use a Sony-specific
             // button order only when the device has a matching hardware identity.
@@ -630,6 +634,10 @@ namespace HidWizards.UCR.ViewModels.Presentation
             }
             return "B" + button;
         }
+
+        private static bool IsRawControlId(DeviceBinding binding, string name) =>
+            string.Equals(name, $"Control {binding.KeyType}:{binding.KeyValue}:{binding.KeySubValue}",
+                StringComparison.Ordinal);
 
         private static bool IsMissingBindingName(string name)
         {
@@ -648,7 +656,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
             var device = binding.Profile?.GetDeviceConfiguration(DeviceIoType.Input,
                 binding.DeviceConfigurationGuid)?.Device;
             if (!IsDirectInput(device)) return null;
-            var leaf = ExtractLeaf(boundName);
+            var leaf = IsRawControlId(binding, boundName) ? string.Empty : ExtractLeaf(boundName);
             var kind = Describe(device, DeviceIoType.Input).Kind;
             if (binding.DeviceBindingCategory == DeviceBindingCategory.Range && binding.KeyType == 0)
             {
