@@ -116,6 +116,20 @@ jobs:
               $columnStyle.GetAttribute('BasedOn') -notlike '*UcrLabeledSwitchColumn*') {
             throw 'Compact Block switch must use the shared vertical column contract.'
           }
+          # The legacy binding editor uses the same caption-above-switch rule.
+          [xml]$legacyXml = Get-Content .\UCR\Views\Controls\DeviceBindingControl.xaml -Raw
+          $legacyCaptions = @($legacyXml.SelectNodes(
+            "//*[local-name()='TextBlock' and (@Text='Block' or @Text='Reverse')]"))
+          if ($legacyCaptions.Count -ne 2) { throw 'Expected both legacy binding switch captions.' }
+          foreach ($caption in $legacyCaptions) {
+            $column = $caption.ParentNode
+            if ($column.LocalName -ne 'StackPanel' -or
+                $column.GetAttribute('Style') -notlike '*UcrLabeledSwitchColumn*' -or
+                $caption.GetAttribute('Style') -notlike '*UcrLabeledSwitchCaption*' -or
+                @($column.SelectNodes("./*[local-name()='ToggleButton']")).Count -ne 1) {
+              throw 'Legacy switch caption must sit above its switch in the shared vertical column.'
+            }
+          }
 
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v3
