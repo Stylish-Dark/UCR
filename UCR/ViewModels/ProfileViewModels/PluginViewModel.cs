@@ -17,8 +17,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public MappingViewModel MappingViewModel { get; }
         public Plugin Plugin { get; set; }
         public string OutputType => IsFourButtonAxis ? "Axis" : new SimplePluginViewModel(Plugin).OutputType;
-        public Visibility DirectionalSlotVisibility => MappingViewModel.IsTypedDirectionalMapping
-            ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility DirectionalSlotVisibility =>
+            MappingViewModel.IsTypedDirectionalMapping && MappingViewModel.DirectionalCapacity > 1 &&
+            (MappingViewModel.DirectionalCapacity == 4 ||
+             MappingViewModel.Mapping.EffectiveOutputRepresentation == 3)
+                ? Visibility.Visible : Visibility.Collapsed;
         public string DirectionalSlotLabel
         {
             get

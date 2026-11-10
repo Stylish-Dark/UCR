@@ -760,7 +760,7 @@
                                                         <Border Margin="0 2" Padding="10 4" CornerRadius="4"
                                                                 Background="#252525" BorderBrush="#393939"
                                                                 BorderThickness="1" HorizontalAlignment="Stretch">
-                                                            <StackPanel><Grid Height="82" HorizontalAlignment="Stretch">
+                                                            <StackPanel><Grid Height="72" HorizontalAlignment="Stretch">
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="1.55*" MinWidth="162"/>
                                                                     <ColumnDefinition Width="1.05*" MinWidth="0"/>
@@ -769,7 +769,7 @@
                                                                     <ColumnDefinition Width="40"/>
                                                                     <ColumnDefinition Width="44"/>
                                                                 </Grid.ColumnDefinitions>
-                                                                <Grid x:Name="MappingTitleArea" Grid.Column="0" VerticalAlignment="Center" Margin="3 0 8 0">
+                                                                <Grid x:Name="MappingTitleArea" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="3 0 8 0">
                                                                     <Grid.ColumnDefinitions>
                                                                         <ColumnDefinition Width="Auto"/>
                                                                         <ColumnDefinition Width="*" MinWidth="0"/>
@@ -809,7 +809,7 @@
                                                                 <!-- Render the real AND/OR expression. The previous flat
                                                                      CollapsedInputVisuals list falsely showed OR terms
                                                                      as if they belonged to one AND group. -->
-                                                                <Viewbox Grid.Column="1" MaxHeight="78" Stretch="Uniform"
+                                                                <Viewbox Grid.Column="1" MaxHeight="72" Stretch="Uniform"
                                                                          StretchDirection="DownOnly" VerticalAlignment="Center">
                                                                 <ItemsControl ItemsSource="{Binding CollapsedInputRows}">
                                                                     <ItemsControl.ItemsPanel>
@@ -892,14 +892,14 @@
                                                                                                       PreviewMouseLeftButtonDown="QuickBindWorkspaceInput_OnPreviewMouseLeftButtonDown"
                                                                                                       PreviewMouseRightButtonDown="QuickBindWorkspaceInput_OnPreviewMouseRightButtonDown">
                                                                                                     <Button.Style>
-                                                                                                        <Style TargetType="Button" BasedOn="{StaticResource UcrBindingButton}">
+                                                                                                        <Style TargetType="Button" BasedOn="{StaticResource UcrMappingGlyphButton}">
                                                                                                             <Setter Property="Width" Value="58"/>
                                                                                                             <Setter Property="Height" Value="44"/>
                                                                                                             <Style.Triggers>
                                                                                                                 <DataTrigger Binding="{Binding IsDirectionalSlot}" Value="True">
                                                                                                                     <Setter Property="AutomationProperties.AutomationId" Value="UiWorkspaceDirectionBind"/>
                                                                                                                     <Setter Property="Width" Value="42"/>
-                                                                                                                    <Setter Property="Height" Value="24"/>
+                                                                                                                    <Setter Property="Height" Value="22"/>
                                                                                                                 </DataTrigger>
                                                                                                             </Style.Triggers>
                                                                                                         </Style>
@@ -985,7 +985,7 @@
                                                                 <TextBlock x:Name="MappingSummaryArrow" Grid.Column="2" Text="→" Foreground="#BBBBBB"
                                                                            FontSize="22" VerticalAlignment="Center"
                                                                            HorizontalAlignment="Center"/>
-                                                                <Viewbox Grid.Column="3" MaxHeight="78" Stretch="Uniform"
+                                                                <Viewbox Grid.Column="3" MaxHeight="72" Stretch="Uniform"
                                                                          StretchDirection="DownOnly" VerticalAlignment="Center">
                                                                 <ItemsControl ItemsSource="{Binding CollapsedOutputVisuals}">
                                                                     <ItemsControl.ItemsPanel>
@@ -997,7 +997,7 @@
                                                                         <DataTemplate>
                                                                             <Button x:Name="UiWorkspaceBindOutput" Width="62" Height="46" Padding="2 0"
                                                                                     Focusable="True" Margin="2 0"
-                                                                                    Style="{StaticResource UcrBindingButton}"
+                                                                                    Style="{StaticResource UcrMappingGlyphButton}"
                                                                                     ClipToBounds="False" ToolTip="{Binding ToolTip}"
                                                                                     Click="QuickBindWorkspaceOutput_OnClick"
                                                                                     PreviewMouseRightButtonDown="QuickBindWorkspaceOutput_OnPreviewMouseRightButtonDown">

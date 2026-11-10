@@ -145,7 +145,7 @@ namespace HidWizards.UCR.Views.Controls
 
             // These are only off-screen estimates. Visible rows are always measured
             // using their original, unmodified WPF templates, then cached precisely.
-            const double header = 92.0;
+            const double header = 82.0;
             if (mapping?.IsExpanded != true) return header;
             var inputSlots = mapping.DeviceBindings?.Count ?? 1;
             var outputs = mapping.Plugins?.Count ?? 1;

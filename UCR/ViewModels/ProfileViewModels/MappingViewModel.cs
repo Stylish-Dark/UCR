@@ -100,13 +100,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public Visibility StandaloneCompoundVisibility =>
             IsCompound ? Visibility.Visible : Visibility.Collapsed;
         public Visibility CompoundAdvancedMenuVisibility =>
-            IsCompound && !_owner.InputIsFullStick
+            IsCompound && !_owner.InputIsFullStick && CoreInputs.Count == 1
                 ? Visibility.Visible : Visibility.Collapsed;
+
+        public string CompoundPrimaryToolTip => _owner?.InputIsFullStick == true
+            ? "Choose a complete 4-Way input"
+            : CoreInputs.Count == 1 ? CoreInputs[0].BindingActionToolTip : "Choose an input channel";
+
         public string CompoundPrimaryLabel => IsCompound && _owner.InputIsFullStick
             ? (CoreInputs.Any(input => input.DeviceBinding.IsBound)
                 ? (_owner.ResolveCompoundPresetName(CoreInputs, false) ?? "Custom 4-Way") + " ▾"
                 : "Select ▾")
-            : CompoundSummary;
+            : CoreInputs.Count > 1 ? CompoundSummary + " ▾" : CompoundSummary;
 
         private DirectionalCompassSlotViewModel CompassSlot(int digitalSlot, int analogueIndex, string arrow)
         {
@@ -132,11 +137,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             get
             {
                 if (!IsCompound) return string.Empty;
-                if (!CoreInputs.Any(input => input.DeviceBinding.IsBound))
-                    return _owner?.InputIsFullStick == true ? "Choose stick / D-pad ▾"
-                        : _owner?.InputIsTrigger == true ? "Bind" : "Bind";
-                return _owner?.ResolveCompoundPresetName(CoreInputs, false)
-                    ?? "Custom 4-Way";
+                var labels = CoreInputs.Select(input => input.CompactBindButtonText).ToArray();
+                return labels.Length == 0 ? "Bind" : string.Join(" / ", labels);
             }
         }
         public string CompoundDeviceLabel
@@ -163,6 +165,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompoundSummary)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompoundPrimaryLabel)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompoundPrimaryToolTip)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompoundDeviceLabel)));
         }
 
@@ -1390,6 +1393,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (property == nameof(DeviceBindingViewModel.CompactBindButtonText))
             {
                 OnPropertyChanged(nameof(CompoundBindingSummary));
+                foreach (var group in InputConditions)
+                    group.RefreshCompoundSummary();
                 return;
             }
             switch (property)

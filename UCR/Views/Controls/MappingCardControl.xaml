@@ -135,7 +135,7 @@
         <DataTemplate x:Key="MappingBindingVisualTemplate">
             <!-- A real hit-testable button owns each glyph. No click handler on a broad
                  preview panel: the user can only rebind the actual token they click. -->
-            <Button x:Name="UiMappingQuickBind" Padding="0" Style="{StaticResource UcrBindingButton}" Focusable="True"
+            <Button x:Name="UiMappingQuickBind" Padding="0" Style="{StaticResource UcrMappingGlyphButton}" Focusable="True"
                     Cursor="Hand" ToolTip="{Binding ToolTip}" Click="QuickBindGlyph_OnClick"
                     PreviewMouseLeftButtonDown="QuickBindGlyph_OnPreviewMouseLeftButtonDown"
                     PreviewMouseRightButtonDown="QuickBindGlyph_OnPreviewMouseRightButtonDown">
@@ -533,7 +533,7 @@
                                     <StackPanel Orientation="Horizontal" Margin="3 4 3 3"
                                                 Visibility="{Binding StandaloneCompoundVisibility}">
                                         <Button x:Name="UiMappingCompoundBind" Content="{Binding CompoundPrimaryLabel}" Click="CompoundPrimaryBind_OnClick"
-                                                ToolTip="Bind the axis or choose a complete preset"
+                                                ToolTip="{Binding CompoundPrimaryToolTip}"
                                                 HorizontalContentAlignment="Center"
                                                 HorizontalAlignment="Left" MinWidth="154" MaxWidth="300"
                                                 Height="38" Foreground="#FFFFFF"

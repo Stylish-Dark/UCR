@@ -1369,9 +1369,10 @@ namespace HidWizards.UCR.Views.Controls
                 }
                 return;
             }
-            // One compound 4-Way selection, even when routing internally
-            // requires multiple physical channels.
-            ShowQuickCompoundInputMenu(mapping, button, group.GroupIndex);
+            if (mapping.InputIsFullStick)
+                ShowQuickCompoundInputMenu(mapping, button, group.GroupIndex);
+            else
+                CompoundBindingsMenu_OnClick(sender, e);
         }
 
         private void CompoundBindingsMenu_OnClick(object sender, RoutedEventArgs e)
