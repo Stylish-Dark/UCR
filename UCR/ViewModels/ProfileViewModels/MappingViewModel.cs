@@ -483,6 +483,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ? "4-Way" : Mapping.EffectiveInputRepresentation == 2 ? "Axis" : "Button";
         public string OutputDirectionalGroupTitle => Mapping.EffectiveOutputRepresentation == 1
             ? "4-Way" : Mapping.EffectiveOutputRepresentation == 2 ? "Axis" : "Button";
+        // Display one type heading per ordinary output group, not one per row.
+        // A filter destination must never be mislabelled as a Button.
+        public string OutputBodyGroupTitle => OutputIsFilter ? "Filter" : OutputDirectionalGroupTitle;
         public Visibility TypedDirectionalVisibility => IsTypedDirectionalMapping
             ? Visibility.Visible : Visibility.Collapsed;
         public Visibility LegacyOutputAddVisibility => Visibility.Visible;
@@ -632,6 +635,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(OutputButtonChoiceGlyph));
             OnPropertyChanged(nameof(InputAxisChoiceGlyph));
             OnPropertyChanged(nameof(OutputAxisChoiceGlyph));
+            OnPropertyChanged(nameof(OutputBodyGroupTitle));
         }
 
         public bool SetInputRepresentation(int value)
@@ -725,6 +729,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(IsFullStickOutput));
             OnPropertyChanged(nameof(InputDirectionalGroupTitle));
             OnPropertyChanged(nameof(OutputDirectionalGroupTitle));
+            OnPropertyChanged(nameof(OutputBodyGroupTitle));
             RefreshDirectionalAvailability();
             OnPropertyChanged(nameof(TypedDirectionalVisibility));
             OnPropertyChanged(nameof(LegacyOutputAddVisibility));
@@ -3516,6 +3521,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(MappingOutputTypeLabel));
             OnPropertyChanged(nameof(MappingInputTypeLabel));
             OnPropertyChanged(nameof(MappingOutputCategoryDisplay));
+            OnPropertyChanged(nameof(OutputBodyGroupTitle));
             OnPropertyChanged(nameof(HasAxisOutput));
             OnPropertyChanged(nameof(DirectionalPresetsVisibility));
             OnPropertyChanged(nameof(DefinedFilterName));
