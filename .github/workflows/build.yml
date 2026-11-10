@@ -934,10 +934,11 @@ jobs:
               $addOutput.GetCurrentPattern(
                   [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
               Start-Sleep -Milliseconds 650
-              # Identify output bind actions below the group title. The Windows
-              # audit uses a narrow stacked editor, unlike the user's wide view.
+              # Bind actions are identified by their actual Output caption.
+              # The viewport scrolls when Add Output receives focus, so do
+              # not compare their new screen Y with a stale heading rectangle.
               $outputBindButtons = @(Get-UcrControls 'BindButton' |
-                  Where-Object { $_.Current.BoundingRectangle.Y -gt $outputRect.Y -and
+                  Where-Object { $_.Current.Name -eq 'Output' -and
                       $_.Current.BoundingRectangle.X -gt 400 } |
                   Sort-Object { $_.Current.BoundingRectangle.Y })
               if ($outputBindButtons.Count -ne 2) {
