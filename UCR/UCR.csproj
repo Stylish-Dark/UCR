@@ -133,6 +133,8 @@
     <Compile Include="ViewModels\ProfileViewModels\MappingViewModel.Presentation.cs" />
     <Compile Include="ViewModels\ProfileViewModels\MappingViewModel.InputConditions.cs" />
     <Compile Include="ViewModels\ProfileViewModels\MappingViewModel.DirectionalPresets.cs" />
+    <Compile Include="ViewModels\ProfileViewModels\MappingViewModel.Representations.cs" />
+    <Compile Include="ViewModels\ProfileViewModels\MappingViewModel.OutputRouting.cs" />
     <Compile Include="ViewModels\ProfileViewModels\MappingViewModel.cs" />
     <Compile Include="ViewModels\ProfileViewModels\MappingGroupViewModel.cs" />
     <Compile Include="ViewModels\ProfileViewModels\ProfileViewModel.cs" />
