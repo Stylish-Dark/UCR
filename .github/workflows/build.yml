@@ -736,10 +736,18 @@ jobs:
                   $handle, (Join-Path $directory 'UCR-DualSense-bound-cross.png')) | Out-Null
               Invoke-UcrControl 'UiExpandMapping'
               Start-Sleep -Milliseconds 850
-              Find-UcrControl 'UiInputBindingOptions' | Out-Null
+              # The canonical binding control has no visible ellipsis: options
+              # are opened by right-clicking the Bind action itself.
+              if (@(Get-UcrControls 'UiInputBindingOptions' | Where-Object { -not $_.Current.IsOffscreen }).Count -ne 0) {
+                  throw 'An obsolete binding ellipsis is still visible.'
+              }
+              $inputBind = Find-UcrControl 'BindButton'
               [UcrWindowCapture]::Capture(
                   $handle, (Join-Path $directory 'UCR-DualSense-expanded-cross.png')) | Out-Null
-              Invoke-UcrControl 'UiInputBindingOptions'
+              $bindRect = $inputBind.Current.BoundingRectangle
+              [UcrWindowCapture]::RightClick(
+                  [int]($bindRect.X + $bindRect.Width / 2),
+                  [int]($bindRect.Y + $bindRect.Height / 2))
               Find-UcrElement $nameProperty 'Clear binding' | Out-Null
               [UcrWindowCapture]::Capture(
                   $handle, (Join-Path $directory 'UCR-input-binding-menu.png')) | Out-Null
