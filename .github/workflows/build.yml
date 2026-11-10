@@ -88,6 +88,35 @@ jobs:
           }
           Write-Host 'No added output type heading.'
 
+          # Enforce the existing symbol-first layout contract in source, without
+          # launching UI automation: switch captions must sit ABOVE switches.
+          [xml]$mappingXml = Get-Content .\UCR\Views\Controls\MappingCardControl.xaml -Raw
+          $blocks = @($mappingXml.SelectNodes("//*[local-name()='TextBlock' and @Text='Block']"))
+          if ($blocks.Count -lt 1) { throw 'Mapping Block label missing.' }
+          foreach ($label in $blocks) {
+            $column = $label.ParentNode
+            if ($column.LocalName -ne 'StackPanel' -or
+                $column.GetAttribute('Style') -notlike '*UcrLabeledSwitchColumn*' -or
+                @($column.SelectNodes("./*[local-name()='ToggleButton']")).Count -ne 1) {
+              throw 'Block caption must be above its switch in a shared vertical column.'
+            }
+          }
+          [xml]$compactXml = Get-Content .\UCR\Views\Controls\CompactInputBindingControl.xaml -Raw
+          $compactBlock = $compactXml.SelectSingleNode(
+            "//*[local-name()='TextBlock.Style']/*[local-name()='Style']/*[local-name()='Setter' and @Property='Text' and @Value='Block']")
+          if ($null -eq $compactBlock -or
+              $compactBlock.ParentNode.GetAttribute('BasedOn') -notlike '*UcrLabeledSwitchCaption*') {
+            throw 'Compact Block caption must use the shared caption contract.'
+          }
+          $compactColumn = $compactBlock.ParentNode.ParentNode.ParentNode.ParentNode
+          $columnStyle = $compactColumn.SelectSingleNode(
+            "./*[local-name()='StackPanel.Style']/*[local-name()='Style']")
+          if ($compactColumn.LocalName -ne 'StackPanel' -or
+              $null -eq $columnStyle -or
+              $columnStyle.GetAttribute('BasedOn') -notlike '*UcrLabeledSwitchColumn*') {
+            throw 'Compact Block switch must use the shared vertical column contract.'
+          }
+
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v3
         with:
