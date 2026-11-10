@@ -298,7 +298,11 @@ namespace HidWizards.UCR.Core.Models.Binding
 
         public bool IsBlockable()
         {
-            var device = Profile.GetDeviceConfiguration(DeviceIoType, DeviceConfigurationGuid)?.Device;
+            return IsBlockable(Profile.GetDeviceConfiguration(DeviceIoType, DeviceConfigurationGuid)?.Device);
+        }
+
+        internal bool IsBlockable(Device device)
+        {
             if (device == null) return false;
 
             // Configured devices normally already carry their provider's binding menu.

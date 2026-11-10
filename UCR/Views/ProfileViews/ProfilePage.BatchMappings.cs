@@ -20,17 +20,19 @@ namespace HidWizards.UCR.Views.ProfileViews
         private bool _batchRunning;
 
         internal bool IsBatchCapturing => _batchRunning && _batchCancellation?.IsCancellationRequested == false;
+        private bool CanEditBatchMappings => !_disposed && !Profile.IsActive() &&
+                                             !Context.SubscriptionsManager.IsTransitionInProgress;
 
         private async void BatchCapture_OnClick(object sender, RoutedEventArgs e)
         {
-            if (_batchRunning || _disposed || Profile.IsActive()) return;
+            if (_batchRunning || !CanEditBatchMappings) return;
             _batchMappings.Clear();
             await RunBatchSessionAsync(false);
         }
 
         private async void BatchAssign_OnClick(object sender, RoutedEventArgs e)
         {
-            if (_batchRunning || _disposed || Profile.IsActive()) return;
+            if (_batchRunning || !CanEditBatchMappings) return;
             var currentMappings = new HashSet<MappingViewModel>(ProfileViewModel.MappingsList);
             _batchMappings.RemoveAll(mapping => !currentMappings.Contains(mapping) || !HasUnassignedOutput(mapping));
 
@@ -40,8 +42,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             {
                 foreach (var mapping in ProfileViewModel.MappingsList)
                 {
-                    if (HasUnassignedOutput(mapping) &&
-                        string.Equals(mapping.MappingRoute, "Button to Button", StringComparison.OrdinalIgnoreCase))
+                    if (HasUnassignedOutput(mapping))
                         _batchMappings.Add(mapping);
                 }
             }
@@ -60,7 +61,8 @@ namespace HidWizards.UCR.Views.ProfileViews
         private static bool HasUnassignedOutput(MappingViewModel mapping)
         {
             var binding = mapping.Plugins.FirstOrDefault()?.DeviceBindings.FirstOrDefault()?.DeviceBinding;
-            return binding != null && !binding.IsBound;
+            return binding != null && !binding.IsBound &&
+                   string.Equals(mapping.MappingRoute, "Button to Button", StringComparison.OrdinalIgnoreCase);
         }
 
         private void BatchFinish_OnClick(object sender, RoutedEventArgs e)
@@ -109,13 +111,11 @@ namespace HidWizards.UCR.Views.ProfileViews
             }
         }
 
-        private DeviceBindingNode FindBatchControl(Device device, DeviceIoType ioType, string title)
+        private DeviceBindingNode FindBatchControl(Device device, DeviceIoType ioType, DetectedInputControl detected)
         {
-            if (device == null || string.IsNullOrWhiteSpace(title)) return null;
-            return FlattenBatchMenu(Context.DevicesManager.GetDeviceBindingMenu(device, ioType))
-                .FirstOrDefault(node =>
-                    node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary &&
-                    string.Equals(node.Title, title, StringComparison.OrdinalIgnoreCase));
+            if (device == null) return null;
+            var controls = FlattenBatchMenu(Context.DevicesManager.GetDeviceBindingMenu(device, ioType));
+            return detected.FindEquivalentControl(device, controls);
         }
 
         private DeviceConfiguration FindBatchInput(DetectedInputControl detected)
@@ -126,27 +126,36 @@ namespace HidWizards.UCR.Views.ProfileViews
                     DevicesManager.PersistedIdentityEquals(item.Device, detected.Device));
         }
 
-        private DeviceConfiguration FindBatchOutput(DetectedInputControl detected, out DeviceBindingNode bindingNode)
+        private DeviceConfiguration FindBatchOutput(DeviceBinding binding, DetectedInputControl detected,
+            out DeviceBindingNode bindingNode)
         {
             bindingNode = null;
-            var configurations = Profile.GetDeviceConfigurationList(DeviceIoType.Output);
-            if (detected?.Device == null || configurations == null) return null;
+            if (detected?.Device == null) return null;
+
+            // An explicitly selected destination remains the destination even
+            // when the physical button used to select the control comes from another device.
+            if (binding.DeviceConfigurationGuid != Guid.Empty)
+            {
+                var selected = Profile.GetDeviceConfiguration(DeviceIoType.Output, binding.DeviceConfigurationGuid);
+                bindingNode = FindBatchControl(selected?.Device, DeviceIoType.Output, detected);
+                return bindingNode == null ? null : selected;
+            }
 
             // Prefer a configured output that represents the exact device being pressed.
-            foreach (var candidate in configurations)
+            foreach (var candidate in Profile.GetDeviceConfigurationList(DeviceIoType.Output))
             {
                 if (candidate?.Device == null ||
                     !DevicesManager.PersistedIdentityEquals(candidate.Device, detected.Device)) continue;
-                var node = FindBatchControl(candidate.Device, DeviceIoType.Output, detected.ControlTitle);
+                var node = FindBatchControl(candidate.Device, DeviceIoType.Output, detected);
                 if (node == null) continue;
                 bindingNode = node;
                 return candidate;
             }
 
-            // Virtual outputs (for example ViGEm) are not physical input endpoints.
-            // Resolve the same named control on the profile's primary virtual output.
+            // Virtual outputs are not physical input endpoints. Resolve the equivalent
+            // control on the primary output when no destination was selected.
             var primary = Profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output);
-            bindingNode = FindBatchControl(primary?.Device, DeviceIoType.Output, detected.ControlTitle);
+            bindingNode = FindBatchControl(primary?.Device, DeviceIoType.Output, detected);
             return bindingNode == null ? null : primary;
         }
 
@@ -184,7 +193,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                 if (!assign && buttonPlugin == null)
                     throw new InvalidOperationException("The Button to Button plugin is unavailable.");
 
-                while (!token.IsCancellationRequested && !_disposed && !Profile.IsActive() &&
+                while (!token.IsCancellationRequested && CanEditBatchMappings &&
                        (!assign || completed < _batchMappings.Count))
                 {
                     BatchStatus.Text = assign
@@ -197,13 +206,13 @@ namespace HidWizards.UCR.Views.ProfileViews
                     // Expiration simply re-arms the listener; Finish explicitly ends the session.
                     var detected = await Context.DevicesManager.DetectInputControlAsync(
                         DeviceBindingCategory.Momentary, TimeSpan.FromSeconds(20), token);
-                    if (token.IsCancellationRequested || _disposed) break;
+                    if (token.IsCancellationRequested || !CanEditBatchMappings) break;
                     if (detected == null) continue;
 
                     if (!assign)
                     {
                         var input = FindBatchInput(detected);
-                        var node = FindBatchControl(input?.Device, DeviceIoType.Input, detected.ControlTitle);
+                        var node = FindBatchControl(input?.Device, DeviceIoType.Input, detected);
                         if (input == null || node == null)
                         {
                             BatchStatus.Text = "Add the detected device under profile INPUT devices first.";
@@ -239,11 +248,11 @@ namespace HidWizards.UCR.Views.ProfileViews
                             break;
                         }
                         DeviceBindingNode node;
-                        var configuration = FindBatchOutput(detected, out node);
+                        var configuration = FindBatchOutput(output.DeviceBinding, detected, out node);
                         if (configuration == null || node == null)
                         {
-                            BatchStatus.Text = "No configured output has this control: " +
-                                               detected.ControlTitle + ". Configure the destination output device first.";
+                            BatchStatus.Text = "The destination has no equivalent for " + detected.ControlTitle +
+                                               ". Press another control or finish to change the output device.";
                             await Task.Delay(700, token);
                             continue;
                         }
@@ -256,7 +265,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                         output.RefreshDeviceList();
                         mapping.RefreshCollapsedSummary();
                         completed++;
-                        BatchStatus.Text = "Assigned: " + mapping.MappingTitle + " -> " + detected.ControlTitle;
+                        BatchStatus.Text = "Assigned: " + mapping.MappingTitle + " -> " + node.Title;
                     }
                     await Task.Delay(110, token);
                 }

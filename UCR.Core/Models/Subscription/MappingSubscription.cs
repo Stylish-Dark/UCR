@@ -28,13 +28,15 @@ namespace HidWizards.UCR.Core.Models.Subscription
             Mapping = mapping;
             SourceMapping = sourceMapping;
             Overriden = false;
+            var groupBlocksInputs = profile.GetMappingGroup(sourceMapping)?.BlockInputs ?? profile.MainBlockInputs;
             DeviceBindingSubscriptions = new List<InputSubscription>();
             foreach (var mappingDeviceBinding in Mapping.DeviceBindings)
             {
                 if (!mappingDeviceBinding.IsBound) continue;
 
                 // Preserve invalid bound references so candidate validation can report them.
-                DeviceBindingSubscriptions.Add(new InputSubscription(mapping, mappingDeviceBinding, profile, subscriptionStateGuid));
+                DeviceBindingSubscriptions.Add(new InputSubscription(mapping, mappingDeviceBinding, profile,
+                    subscriptionStateGuid, groupBlocksInputs));
             }
 
             PluginSubscriptions = new List<PluginSubscription>();

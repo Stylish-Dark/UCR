@@ -18,6 +18,13 @@ namespace HidWizards.UCR.Core.Managers
     {
         public Device Device { get; set; }
         public string ControlTitle { get; set; }
+        internal BindingDescriptor? BindingDescriptor { get; set; }
+
+        internal DeviceBindingNode FindEquivalentControl(Device target, IEnumerable<DeviceBindingNode> controls)
+        {
+            return DeviceBindingCompatibility.FindEquivalentMomentaryControl(
+                Device, BindingDescriptor, ControlTitle, target, controls);
+        }
     }
 
     public class DevicesManager
@@ -619,7 +626,13 @@ namespace HidWizards.UCR.Core.Managers
             var detected = new DetectedInputControl
             {
                 Device = device,
-                ControlTitle = bindingReport.Title ?? string.Empty
+                ControlTitle = bindingReport.Title ?? string.Empty,
+                BindingDescriptor = new BindingDescriptor
+                {
+                    Type = descriptor.Type,
+                    Index = descriptor.Index,
+                    SubIndex = descriptor.SubIndex
+                }
             };
 
             Logger.Debug($"Detected input: provider={device.ProviderName}, handle={device.DeviceHandle}, instance={device.DeviceNumber}, control={detected.ControlTitle}, category={category}, type={descriptor.Type}, index={descriptor.Index}, subIndex={descriptor.SubIndex}");

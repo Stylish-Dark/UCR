@@ -32,6 +32,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool CanActivateProfile => Profile != null;
         public bool CanDeactivateProfile => Profile.IsActive();
         public bool CanEditProfile => !Profile.IsActive();
+        public bool IsFilterNameReadOnly =>
+            Profile?.Context?.SubscriptionsManager?.IsProfileLayerActive(Profile.Guid) == true;
         public bool IsProfileActive => Profile.IsActive();
         public string EditLockReason => IsProfileActive ? "Profile is running — stop it to edit mappings." : null;
         public ObservableCollection<MappingViewModel> MappingsList { get; set; }
@@ -132,6 +134,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void ContextOnActiveProfileChangedEvent(Profile profile)
         {
+            OnPropertyChanged(nameof(IsFilterNameReadOnly));
             var isActive = Profile.IsActive();
             if (isActive == _lastKnownActiveState) return;
             _lastKnownActiveState = isActive;

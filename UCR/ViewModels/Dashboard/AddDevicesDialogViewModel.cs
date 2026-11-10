@@ -25,6 +25,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         public DeviceSelectControlViewModel Devices { get; set; }
         public AddDevicesDialogViewModel ViewModel { get; set; }
+        public bool HasSelection => Devices?.Devices.Any(device => device.Checked) == true;
         public bool CanDetectDevice => _deviceIoType == DeviceIoType.Input && _devicesManager != null;
         public bool IsDetecting
         {
@@ -60,6 +61,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             _devicesManager = devicesManager;
             _deviceIoType = deviceIoType;
             Devices = new DeviceSelectControlViewModel($"Add {(deviceIoType == DeviceIoType.Input ? "input" : "output")} devices", devices, deviceIoType, devicesManager);
+            foreach (var device in Devices.Devices) device.PropertyChanged += DeviceOnPropertyChanged;
             ViewModel = this;
         }
 
@@ -102,6 +104,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                 if (item == null)
                 {
                     item = new DeviceViewModel(logicalDevice, _deviceIoType, _devicesManager);
+                    item.PropertyChanged += DeviceOnPropertyChanged;
                     Devices.Devices.Add(item);
                 }
 
@@ -134,10 +137,19 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             return DeviceIdentity.SelectionEquals(left, right);
         }
 
+        private void DeviceOnPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(DeviceViewModel.Checked)) OnPropertyChanged(nameof(HasSelection));
+        }
+
         public void Dispose()
         {
             if (_disposed) return;
             _disposed = true;
+            if (Devices != null)
+            {
+                foreach (var device in Devices.Devices) device.PropertyChanged -= DeviceOnPropertyChanged;
+            }
             if (_detectionCancellation != null)
             {
                 _detectionCancellation.Cancel();

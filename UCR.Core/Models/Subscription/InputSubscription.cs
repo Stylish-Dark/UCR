@@ -12,15 +12,23 @@ namespace HidWizards.UCR.Core.Models.Subscription
         public Guid DeviceBindingSubscriptionGuid { get; set; }
         public bool IsOverwritten { get; set; }
         public DeviceSubscription DeviceSubscription { get; }
+        internal bool GroupBlocksInputs { get; }
         internal InputSubscriptionRequest SubscribedRequest { get; set; }
 
         public InputSubscription(Mapping mapping, DeviceBinding deviceBinding, Profile profile, Guid subscriptionStateGuid)
+            : this(mapping, deviceBinding, profile, subscriptionStateGuid, false)
+        {
+        }
+
+        internal InputSubscription(Mapping mapping, DeviceBinding deviceBinding, Profile profile, Guid subscriptionStateGuid,
+            bool groupBlocksInputs)
         {
             DeviceBinding = deviceBinding;
             Profile = profile;
             SubscriptionStateGuid = subscriptionStateGuid;
             DeviceBindingSubscriptionGuid = Guid.NewGuid();
             IsOverwritten = false;
+            GroupBlocksInputs = groupBlocksInputs;
 
             var deviceConfiguration = GetDeviceConfiguration();
             if (deviceConfiguration == null) return;

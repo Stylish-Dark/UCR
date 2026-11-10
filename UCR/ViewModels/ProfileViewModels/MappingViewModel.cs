@@ -1358,13 +1358,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var boundLabelChanged = property == nameof(DeviceBindingViewModel.BindButtonText);
             if (boundLabelChanged && changed?.DeviceBinding?.IsBound == true)
             {
-                // Preserve the group/compound blocking policy for newly captured keys.
-                var section = ProfileViewModel.MappingSections?.FirstOrDefault(group =>
-                    group.Mappings.Contains(this));
-                if (section?.BlockInputs == true && !changed.DeviceBinding.Block &&
-                    changed.DeviceBinding.IsBlockable())
-                    changed.DeviceBinding.SetBlock(true);
-
+                // Keep individual blocking settings consistent within compound inputs.
                 var member = changed.DeviceBinding;
                 if (member.InputDirectionSlot > 0 && !member.Block &&
                     Mapping.DeviceBindings.Any(other =>

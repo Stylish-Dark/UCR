@@ -25,6 +25,7 @@ namespace HidWizards.UCR.Views.ProfileViews
     {
         public Guid ProfileGuid => Profile.Guid;
         public ContentControl AutoApplyPanelHost => AutoApplyDockHost;
+        internal bool BlocksActivationShortcut => RootDialog.IsOpen || BatchOverlay.IsVisible;
         private Context Context { get; }
         internal Profile Profile { get; }
         private ProfileViewModel ProfileViewModel { get; }
@@ -998,17 +999,11 @@ namespace HidWizards.UCR.Views.ProfileViews
                 return;
             }
 
-            if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) ==
-                (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.Enter)
+            if (!BlocksActivationShortcut && !Context.BindingManager.IsBindModeActive &&
+                MainWindow.TryGetProfileActivationShortcut(e, out var alongside))
             {
-                ActivateProfileAlongside(this, new RoutedEventArgs());
-                e.Handled = true;
-                return;
-            }
-
-            if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control && e.Key == Key.Enter)
-            {
-                ActivateProfile(this, new RoutedEventArgs());
+                if (alongside) ActivateProfileAlongside(this, e);
+                else ActivateProfile(this, e);
                 e.Handled = true;
                 return;
             }
@@ -1225,7 +1220,7 @@ namespace HidWizards.UCR.Views.ProfileViews
         private void AddFilter_OnClick(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
-            if (button == null || !ProfileViewModel.CanEditProfile) return;
+            if (button == null || PluginProperty.FilterNamesAreLocked(Profile)) return;
 
             var menu = new ContextMenu
             {
@@ -1249,7 +1244,7 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private async System.Threading.Tasks.Task CreateNamedFilterAsync(string pluginName)
         {
-            if (Profile.IsActive()) return;
+            if (PluginProperty.FilterNamesAreLocked(Profile)) return;
             var filterTemplate = Context.GetPlugins().FirstOrDefault(plugin =>
                 string.Equals(plugin.PluginName, pluginName, StringComparison.OrdinalIgnoreCase));
             if (filterTemplate == null)
@@ -1261,7 +1256,7 @@ namespace HidWizards.UCR.Views.ProfileViews
 
             var dialog = new StringDialog("Create filter", "Filter name", "New filter");
             var accepted = (bool?)await DialogHost.Show(dialog, ProfileViewModel.ProfileDialogIdentifier);
-            if (accepted != true) return;
+            if (accepted != true || PluginProperty.FilterNamesAreLocked(Profile)) return;
             var name = dialog.Value?.Trim();
             if (string.IsNullOrWhiteSpace(name)) return;
             if (Profile.GetFilters().Any(existing =>
@@ -1631,6 +1626,7 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private MappingViewModel AddNamedFilterMapping(Plugin template, string name)
         {
+            if (PluginProperty.FilterNamesAreLocked(Profile)) return null;
             var mapping = ProfileViewModel.AddMappingToSelectedSection(ProfileViewModel.GetNextMappingTitle());
             if (mapping == null) return null;
             mapping.AddPlugin(template);

@@ -1,5 +1,5 @@
-﻿using System.Globalization;
-using System.Text.RegularExpressions;
+﻿using System;
+using System.Globalization;
 using System.Windows.Controls;
 using HidWizards.UCR.Views.Controls.Plugin;
 
@@ -11,20 +11,30 @@ namespace HidWizards.UCR.Utilities.Validators
 
         public override ValidationResult Validate(object value, CultureInfo cultureInfo)
         {
-            var text = (string) value;
-            if (text == null) return new ValidationResult(false, "No input");
+            var text = value as string;
+            if (string.IsNullOrWhiteSpace(text)) return new ValidationResult(false, "Enter a whole number.");
 
-            var regex = new Regex(@"^[-+]?[0-9]+(\.?[0-9]+)?$");
-            if (!regex.IsMatch(text)) return new ValidationResult(false, "Invalid input for number");
-
-            if (int.TryParse(text, out var result))
+            var property = PluginPropertyDependencyObject?.PluginProperty;
+            if (property == null) return new ValidationResult(false, "The setting is unavailable.");
+            object number;
+            try
             {
-                var propertyValidationResult = PluginPropertyDependencyObject.PluginProperty.Validate(result);
-                if (!propertyValidationResult.IsValid)
-                    return new ValidationResult(false, propertyValidationResult.ErrorMessage);
+                // Match the type and culture used by PluginProperty when saving the value.
+                number = Convert.ChangeType(text, property.PropertyInfo.PropertyType, CultureInfo.InvariantCulture);
+            }
+            catch (FormatException)
+            {
+                return new ValidationResult(false, "Enter a whole number.");
+            }
+            catch (OverflowException)
+            {
+                return new ValidationResult(false, "The number is outside the supported range.");
             }
 
-            return ValidationResult.ValidResult;
+            var propertyValidationResult = property.Validate(number);
+            return propertyValidationResult.IsValid
+                ? ValidationResult.ValidResult
+                : new ValidationResult(false, propertyValidationResult.ErrorMessage);
         }
     }
 }

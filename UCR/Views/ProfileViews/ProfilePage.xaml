@@ -281,7 +281,7 @@
                             <StackPanel>
                             <Button x:Name="UiInspectorAddFilter" Content="Add filter" Height="32" Padding="10 4"
                                     Margin="10 9 8 2" HorizontalAlignment="Left"
-                                    Click="AddFilter_OnClick" IsEnabled="{Binding CanEditProfile}"
+                                    Click="AddFilter_OnClick" IsEnabled="{Binding IsFilterNameReadOnly, Converter={StaticResource InverseBooleanConverter}}"
                                     ToolTip="Create a filter" Style="{StaticResource UcrProfileActionButton}"/>
                             <ListBox x:Name="FilterDefinitionList" Margin="8" MaxHeight="150" ItemsSource="{Binding FilterDefinitions}"
                                      BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -741,7 +741,7 @@
                                                                       AutomationProperties.Name="Block inputs"
                                                                       IsChecked="{Binding BlockInputs, Mode=TwoWay}"
                                                                       IsEnabled="{Binding CanEdit}"
-                                                                      ToolTip="Block all mapped physical inputs in this group when the provider supports blocking"/>
+                                                                      ToolTip="Block all supported inputs in this group while it runs. Individual Block settings are preserved."/>
                                                     </StackPanel>
                                                 </Grid>
                                             </Border>

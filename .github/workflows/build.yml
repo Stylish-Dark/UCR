@@ -565,6 +565,7 @@ jobs:
                           g.Clear(Color.Black);
                           bool popup = filename.IndexOf("picker", StringComparison.OrdinalIgnoreCase) >= 0 ||
                               filename.IndexOf("add-device", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              filename.IndexOf("about-dialog", StringComparison.OrdinalIgnoreCase) >= 0 ||
                               filename.IndexOf("profile-rename", StringComparison.OrdinalIgnoreCase) >= 0 ||
                               filename.IndexOf("-menu", StringComparison.OrdinalIgnoreCase) >= 0;
                           if (popup) {
@@ -729,6 +730,27 @@ jobs:
               if ((Find-UcrControl 'WorkspaceProfileTitle').Current.Name -ne 'New profile') {
                   throw 'The workspace did not open the newly selected profile.'
               }
+              $search = Find-UcrControl 'WorkspaceMappingSearch'
+              $search.SetFocus()
+              [System.Windows.Forms.SendKeys]::SendWait('^{ENTER}')
+              [System.Windows.Forms.SendKeys]::SendWait('^+{ENTER}')
+              Start-Sleep -Milliseconds 550
+              if ((Find-UcrControl 'UiToolbarStop').Current.IsEnabled) {
+                  throw 'A profile activation shortcut ran while the mapping search box had focus.'
+              }
+              Invoke-UcrControl 'UiToolbarHelp'
+              Invoke-UcrControl 'UiAbout'
+              Find-UcrControl 'UiAboutSourceLink' | Out-Null
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-about-dialog.png')) | Out-Null
+              $closeAbout = Find-UcrControl 'UiClose'
+              $closeAbout.SetFocus()
+              [System.Windows.Forms.SendKeys]::SendWait('^{ENTER}')
+              Start-Sleep -Milliseconds 350
+              Invoke-UcrControl 'UiClose'
+              if ((Find-UcrControl 'UiToolbarStop').Current.IsEnabled) {
+                  throw 'A profile activation shortcut ran through a modal dialog.'
+              }
               $editorElements = $root.FindAll(
                   [System.Windows.Automation.TreeScope]::Subtree,
                   [System.Windows.Automation.Condition]::TrueCondition)
@@ -771,6 +793,23 @@ jobs:
               Start-Sleep -Milliseconds 950
               [UcrWindowCapture]::Capture(
                   $handle, (Join-Path $directory 'UCR-output-device-picker.png')) | Out-Null
+              if ((Find-UcrControl 'UiConfirmAddDevices').Current.IsEnabled) {
+                  throw 'Add Devices accepts an empty selection.'
+              }
+              $deviceChoice = Find-UcrControl 'UiAddDeviceChoice'
+              $deviceToggle = $deviceChoice.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
+              $deviceToggle.Toggle()
+              Start-Sleep -Milliseconds 350
+              if (-not (Find-UcrControl 'UiConfirmAddDevices').Current.IsEnabled) {
+                  throw 'Add Devices stays disabled after selecting a device.'
+              }
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-output-device-picker-selected.png')) | Out-Null
+              $deviceToggle.Toggle()
+              Start-Sleep -Milliseconds 350
+              if ((Find-UcrControl 'UiConfirmAddDevices').Current.IsEnabled) {
+                  throw 'Add Devices stays enabled after clearing the last device.'
+              }
               [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
               Start-Sleep -Milliseconds 400
 
@@ -800,6 +839,30 @@ jobs:
               [UcrWindowCapture]::Capture(
                   $handle, (Join-Path $directory 'UCR-batch-assign.png')) | Out-Null
               Invoke-UcrControl 'UiFinishBatchMappings'
+
+              Invoke-UcrControl 'UiInspectorAddFilter'
+              $buttonFilter = Find-UcrElement $nameProperty 'Button filter'
+              $buttonFilter.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Invoke-UcrControl 'UiProfileNameAccept'
+              Invoke-UcrControl 'UiToolbarSave'
+              Invoke-UcrControl 'UiExpandMapping'
+              $settings = Find-UcrControl 'UiMappingOutputSettings'
+              $settings.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
+              $filterName = Find-UcrControl 'UiFilterName'
+              $filterName.SetFocus()
+              Set-UcrText 'UiFilterName' 'Saved without leaving focus'
+              if (-not $filterName.Current.HasKeyboardFocus) {
+                  throw 'The filter editor did not receive keyboard focus.'
+              }
+              [System.Windows.Forms.SendKeys]::SendWait('^s')
+              Start-Sleep -Milliseconds 650
+              $savedProfile = Get-ChildItem -LiteralPath $profileFolder -Filter '*.json' |
+                  Select-String -Pattern '"filterName"\s*:\s*"Saved without leaving focus"' -List
+              if (-not $savedProfile -or -not $filterName.Current.HasKeyboardFocus) {
+                  throw 'Ctrl+S did not persist the edited filter name while the name editor kept focus.'
+              }
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-filter-name-saved.png')) | Out-Null
 
               # Exercise the actual mapping-creation control and capture populated UI.
               for ($i = 0; $i -lt 3; $i++) {

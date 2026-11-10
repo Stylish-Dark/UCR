@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Xml.Serialization;
 using HidWizards.IOWrapper.DataTransferObjects;
+using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models.Binding;
 using NLog;
 
@@ -314,6 +316,104 @@ namespace HidWizards.UCR.Core.Models
         private const string ViGEmProvider = "Core_ViGEm";
         private const string ViGEmXbox360 = "xb360";
         private const string ViGEmDs4 = "ds4";
+
+        private enum GamepadButtonLayout
+        {
+            Unknown,
+            XInput,
+            ViGEm,
+            SonyDirectInput
+        }
+
+        internal static DeviceBindingNode FindEquivalentMomentaryControl(Device sourceDevice,
+            BindingDescriptor? sourceBinding, string sourceTitle, Device targetDevice,
+            IEnumerable<DeviceBindingNode> targetControls)
+        {
+            if (sourceDevice == null || targetDevice == null || targetControls == null) return null;
+
+            var momentaryControls = targetControls.Where(node =>
+                node?.DeviceBindingInfo?.DeviceBindingCategory == DeviceBindingCategory.Momentary);
+            if (sourceBinding.HasValue)
+            {
+                var binding = sourceBinding.Value;
+                if (DevicesManager.PersistedIdentityEquals(sourceDevice, targetDevice))
+                {
+                    var native = UniqueControl(momentaryControls.Where(node =>
+                        node.DeviceBindingInfo.KeyType == (int)binding.Type &&
+                        node.DeviceBindingInfo.KeyValue == binding.Index &&
+                        node.DeviceBindingInfo.KeySubValue == binding.SubIndex));
+                    if (native != null) return native;
+                }
+
+                var position = GetSharedGamepadPosition(GetGamepadButtonLayout(sourceDevice),
+                    binding.Type, binding.Index, binding.SubIndex);
+                var targetLayout = GetGamepadButtonLayout(targetDevice);
+                if (position.HasValue && targetLayout != GamepadButtonLayout.Unknown)
+                {
+                    return UniqueControl(momentaryControls.Where(node => GetSharedGamepadPosition(targetLayout,
+                        (BindingType)node.DeviceBindingInfo.KeyType, node.DeviceBindingInfo.KeyValue,
+                        node.DeviceBindingInfo.KeySubValue) == position));
+                }
+            }
+
+            return string.IsNullOrWhiteSpace(sourceTitle) ? null : UniqueControl(momentaryControls.Where(node =>
+                string.Equals(node.Title, sourceTitle, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        private static DeviceBindingNode UniqueControl(IEnumerable<DeviceBindingNode> candidates)
+        {
+            var matches = candidates.Take(2).ToList();
+            return matches.Count == 1 ? matches[0] : null;
+        }
+
+        private static GamepadButtonLayout GetGamepadButtonLayout(Device device)
+        {
+            if (IsViGEmController(device)) return GamepadButtonLayout.ViGEm;
+            if (string.Equals(device.ProviderName, "SharpDX_XInput", StringComparison.OrdinalIgnoreCase))
+                return GamepadButtonLayout.XInput;
+            if (!string.Equals(device.ProviderName, "SharpDX_DirectInput", StringComparison.OrdinalIgnoreCase))
+                return GamepadButtonLayout.Unknown;
+
+            // DirectInput alone has no common button order. Only use the established
+            // Sony layout when the provider supplies a matching hardware identity.
+            var hardware = device.DeviceHandle + " " + device.HidPath;
+            var sonyProducts = new[] { "VID_054C&PID_0CE6", "VID_054C&PID_0DF2", "VID_054C&PID_05C4", "VID_054C&PID_09CC" };
+            return sonyProducts.Any(product => hardware.IndexOf(product, StringComparison.OrdinalIgnoreCase) >= 0)
+                ? GamepadButtonLayout.SonyDirectInput : GamepadButtonLayout.Unknown;
+        }
+
+        private static int? GetSharedGamepadPosition(GamepadButtonLayout layout, BindingType type, int index, int subIndex)
+        {
+            if (layout == GamepadButtonLayout.Unknown) return null;
+            if (type == BindingType.POV)
+            {
+                // ViGEm uses Index for Up/Right/Down/Left. Physical XInput and Sony
+                // DirectInput encode the same direction in SubIndex on their first POV.
+                var direction = layout == GamepadButtonLayout.ViGEm
+                    ? (subIndex == 0 ? index : -1) : (index == 0 ? subIndex : -1);
+                return direction >= 0 && direction < 4 ? 10 + direction : (int?)null;
+            }
+            if (type != BindingType.Button || subIndex != 0) return null;
+
+            // XInput and both pinned ViGEm layouts share the first ten button positions.
+            if (layout != GamepadButtonLayout.SonyDirectInput)
+                return index >= 0 && index < 10 ? index : (int?)null;
+
+            switch (index - 48) // DirectInput Buttons0 starts at byte offset 48.
+            {
+                case 0: return 2; // Square / X
+                case 1: return 0; // Cross / A
+                case 2: return 1; // Circle / B
+                case 3: return 3; // Triangle / Y
+                case 4: return 4; // L1 / LB
+                case 5: return 5; // R1 / RB
+                case 8: return 8; // Share / Back
+                case 9: return 9; // Options / Start
+                case 10: return 6; // L3 / LS
+                case 11: return 7; // R3 / RS
+                default: return null;
+            }
+        }
 
         public static DeviceBindingTransferCompatibility Evaluate(Device sourceDevice, Device targetDevice,
             Context context, DeviceIoType deviceIoType, DeviceBinding deviceBinding,

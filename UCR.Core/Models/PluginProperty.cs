@@ -13,6 +13,17 @@ namespace HidWizards.UCR.Core.Models
         public string Group { get; }
 
         public PropertyInfo PropertyInfo { get; }
+        internal bool IsFilterDefinition =>
+            string.Equals(PropertyInfo.Name, "FilterName", StringComparison.Ordinal) &&
+            string.Equals(Plugin.Group, "Filter", StringComparison.OrdinalIgnoreCase);
+
+        internal static bool FilterNamesAreLocked(Profile profile)
+        {
+            var subscriptions = profile?.Context?.SubscriptionsManager;
+            return subscriptions != null &&
+                (subscriptions.IsTransitionInProgress || subscriptions.IsProfileLayerActive(profile.Guid));
+        }
+
         public dynamic Property
         {
             get => PropertyInfo.GetValue(Plugin);
@@ -20,12 +31,13 @@ namespace HidWizards.UCR.Core.Models
             {
                 var previousValue = PropertyInfo.GetValue(Plugin);
                 if (Equals(value, previousValue)) return;
+                if (IsFilterDefinition && FilterNamesAreLocked(Plugin.Profile))
+                    throw new InvalidOperationException("Stop profiles using this filter before renaming it.");
 
                 var convertedValue = Convert.ChangeType(value, PropertyInfo.PropertyType, CultureInfo.InvariantCulture);
                 PropertyInfo.SetValue(Plugin, convertedValue);
 
-                if (string.Equals(PropertyInfo.Name, "FilterName", StringComparison.Ordinal) &&
-                    string.Equals(Plugin.Group, "Filter", StringComparison.OrdinalIgnoreCase))
+                if (IsFilterDefinition)
                 {
                     var oldName = previousValue as string;
                     var newName = convertedValue as string;

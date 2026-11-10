@@ -172,6 +172,7 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             if (result?.Devices == null) return;
 
             var deviceConfigurations = result.Devices.GetSelectedDevices().Select(d => new DeviceConfiguration(d.Device)).ToList();
+            if (deviceConfigurations.Count == 0) return;
             _profile.AddDeviceConfigurations(deviceConfigurations, _deviceIoType);
             foreach (var deviceConfiguration in deviceConfigurations)
             {

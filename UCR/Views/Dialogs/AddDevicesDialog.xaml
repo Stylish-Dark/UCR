@@ -40,7 +40,8 @@
                 <controls:DeviceSelectControl x:Name="DeviceSelector" Grid.Row="1" DataContext="{Binding Devices}"/>
                 <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Grid.Row="2"
                             Margin="8">
-                <Button x:Name="UiAdd" IsDefault="True" 
+                <Button x:Name="UiAdd" AutomationProperties.AutomationId="UiConfirmAddDevices"
+                            IsDefault="True" IsEnabled="{Binding HasSelection}"
                             Command="{x:Static materialDesign:DialogHost.CloseDialogCommand}" 
                             Content="ADD" CommandParameter="{Binding ViewModel}" Style="{StaticResource UcrDialogRaisedButton}">
                 </Button>

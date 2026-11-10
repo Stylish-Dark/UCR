@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -120,19 +121,12 @@ namespace HidWizards.UCR.Views
                 return;
             }
 
-            if (RootDialog.Visibility == Visibility.Visible &&
-                (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) ==
-                (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.Enter)
+            if (RootDialog.IsVisible && !RootDialog.IsOpen && !AppearancePopup.IsOpen &&
+                _embeddedProfilePage?.BlocksActivationShortcut != true &&
+                !Context.BindingManager.IsBindModeActive &&
+                TryGetProfileActivationShortcut(e, out var alongside))
             {
-                ActivateSelectedProfile(true);
-                e.Handled = true;
-                return;
-            }
-
-            if (RootDialog.Visibility == Visibility.Visible &&
-                Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Enter)
-            {
-                ActivateSelectedProfile(false);
+                ActivateSelectedProfile(alongside);
                 e.Handled = true;
                 return;
             }
@@ -165,6 +159,17 @@ namespace HidWizards.UCR.Views
                 OpenProfileWindow(_dashboardViewModel.SelectedProfileItem.Profile);
                 e.Handled = true;
             }
+        }
+
+        internal static bool TryGetProfileActivationShortcut(KeyEventArgs args, out bool alongside)
+        {
+            var modifiers = args.KeyboardDevice.Modifiers;
+            alongside = modifiers == (ModifierKeys.Control | ModifierKeys.Shift);
+            var focused = args.KeyboardDevice.FocusedElement;
+            return args.Key == Key.Enter &&
+                   (modifiers == ModifierKeys.Control || alongside) &&
+                   !(focused is TextBoxBase) && !(focused is PasswordBox) &&
+                   !(focused is ComboBox comboBox && comboBox.IsEditable);
         }
 
         private static void FocusFirst(FrameworkElement element)
