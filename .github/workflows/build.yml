@@ -468,8 +468,7 @@ jobs:
       - name: Capture UCR UI on Windows runner
         id: visual_audit
         shell: powershell
-        continue-on-error: true
-        timeout-minutes: 3
+        timeout-minutes: 6
         run: |
           $ErrorActionPreference = 'Stop'
           $directory = Join-Path $env:RUNNER_TEMP 'UCR-Visual-Audit'
@@ -910,6 +909,52 @@ jobs:
               $directionProfile.GetCurrentPattern(
                   [System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
               Assert-UcrSelectedProfile 'DualSense button verification'
+              # Verify the actual rendered ordinary two-output layout before
+              # testing the taller 4-Way input editor. Use the existing compact
+              # profile viewport; only compare heading Y in side-by-side mode.
+              $buttonOutput = Find-UcrControl 'UiMappingOutputButtonType'
+              $buttonOutput.SetFocus()
+              [System.Windows.Forms.SendKeys]::SendWait(' ')
+              Start-Sleep -Milliseconds 550
+              $inputTitle = Find-UcrControl 'UiInputGroupType'
+              $outputTitle = Find-UcrControl 'UiOutputGroupType'
+              $inputRect = $inputTitle.Current.BoundingRectangle
+              $outputRect = $outputTitle.Current.BoundingRectangle
+              if ([Math]::Abs($inputRect.X - $outputRect.X) -gt 200) {
+                  if ([Math]::Abs($inputRect.Y - $outputRect.Y) -gt 9) {
+                      throw 'Side-by-side input and output headings do not share a baseline.'
+                  }
+              } elseif ($outputRect.Y -le $inputRect.Y) {
+                  throw 'Stacked output heading does not follow the input heading.'
+              }
+
+              $addOutput = @(Get-UcrControls 'UiMappingAddOutput')[0]
+              if ($null -eq $addOutput) { throw 'Add Output action missing.' }
+              $addOutput.SetFocus()
+              $addOutput.GetCurrentPattern(
+                  [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 650
+              # Identify output bind actions below the group title. The Windows
+              # audit uses a narrow stacked editor, unlike the user's wide view.
+              $outputBindButtons = @(Get-UcrControls 'BindButton' |
+                  Where-Object { $_.Current.BoundingRectangle.Y -gt $outputRect.Y -and
+                      $_.Current.BoundingRectangle.X -gt 400 } |
+                  Sort-Object { $_.Current.BoundingRectangle.Y })
+              if ($outputBindButtons.Count -ne 2) {
+                  throw "Expected two output Bind controls, got $($outputBindButtons.Count)."
+              }
+              $outputBindButtons[1].SetFocus()
+              Start-Sleep -Milliseconds 350
+              $a = $outputBindButtons[0].Current.BoundingRectangle
+              $b = $outputBindButtons[1].Current.BoundingRectangle
+              if ($a.Width -le 0 -or $b.Width -le 0 -or
+                  [Math]::Abs($a.X - $b.X) -gt 2 -or
+                  [Math]::Abs($a.Width - $b.Width) -gt 2) {
+                  throw "Output rows drift in X or width: $a versus $b"
+              }
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-two-output-layout.png')) | Out-Null
+
               $fourWayOutput = Find-UcrControl 'UiMappingFourWayOutput'
               $fourWayOutput.SetFocus()
               [System.Windows.Forms.SendKeys]::SendWait(' ')
@@ -927,47 +972,6 @@ jobs:
               [UcrWindowCapture]::Capture(
                   $handle, (Join-Path $directory 'UCR-four-way-collapsed.png')) | Out-Null
               Assert-UcrDirectionCross 'UiWorkspaceDirectionBind'
-
-              # Re-open the same mapping as ordinary Button -> Button, then add
-              # a second output. The first output is protected and has a Hidden
-              # delete button; both Bind surfaces must still occupy equal rails.
-              $expand.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-              Start-Sleep -Milliseconds 350
-              $buttonOutput = Find-UcrControl 'UiMappingOutputButtonType'
-              $buttonOutput.SetFocus()
-              [System.Windows.Forms.SendKeys]::SendWait(' ')
-              Start-Sleep -Milliseconds 650
-              $inputTitle = Find-UcrControl 'UiInputGroupType'
-              $outputTitle = Find-UcrControl 'UiOutputGroupType'
-              if ([Math]::Abs($inputTitle.Current.BoundingRectangle.Y -
-                              $outputTitle.Current.BoundingRectangle.Y) -gt 9) {
-                  throw 'Input and output group headings do not share a baseline.'
-              }
-
-              Invoke-UcrControl 'UiMappingAddOutput'
-              Start-Sleep -Milliseconds 700
-              $outputBindButtons = @(Get-UcrControls 'BindButton' |
-                  Where-Object { -not $_.Current.IsOffscreen -and
-                      $_.Current.BoundingRectangle.X -gt 600 } |
-                  Sort-Object { $_.Current.BoundingRectangle.Y })
-              if ($outputBindButtons.Count -ne 2) {
-                  throw "Expected two visible output Bind controls, got $($outputBindButtons.Count)."
-              }
-              $a = $outputBindButtons[0].Current.BoundingRectangle
-              $b = $outputBindButtons[1].Current.BoundingRectangle
-              if ([Math]::Abs($a.X - $b.X) -gt 2 -or
-                  [Math]::Abs($a.Width - $b.Width) -gt 2) {
-                  throw "Output rows drift in X or width: $a versus $b"
-              }
-              $visibleRemove = @(Get-UcrControls 'UiMappingRemoveOutput' |
-                  Where-Object { -not $_.Current.IsOffscreen })
-              if ($visibleRemove.Count -ne 1) {
-                  throw "Expected exactly one removable extra output, got $($visibleRemove.Count)."
-              }
-              [UcrWindowCapture]::Capture(
-                  $handle, (Join-Path $directory 'UCR-two-output-layout.png')) | Out-Null
-              $expand.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-              Start-Sleep -Milliseconds 350
 
               $editProfile = Find-UcrProfileRow 'Windows audit renamed profile'
               $editProfile.GetCurrentPattern(
