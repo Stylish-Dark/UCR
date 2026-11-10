@@ -488,12 +488,13 @@
                                     </Style>
                                 </Border.Style>
                                 <StackPanel>
-                                    <Grid Margin="3 0 0 7">
+                                    <Grid Margin="3 0 0 7" MinHeight="40">
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*" MinWidth="0"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                                             <TextBlock Text="OR" Visibility="{Binding OrLabelVisibility}"
                                                        FontSize="12" Foreground="#C6C6C6"
                                                        FontWeight="SemiBold" Margin="0 0 9 0"/>
@@ -508,9 +509,27 @@
                                                     DeviceOnly="True"/>
                                             </Border>
                                         </StackPanel>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                        <Button x:Name="UiMappingCompoundBind" Grid.Column="1"
+                                                Content="{Binding CompoundPrimaryLabel}"
+                                                Click="CompoundPrimaryBind_OnClick"
+                                                PreviewMouseRightButtonDown="CompoundPrimaryBind_OnPreviewMouseRightButtonDown"
+                                                Visibility="{Binding StandaloneCompoundVisibility}"
+                                                ToolTip="{Binding CompoundPrimaryToolTip}"
+                                                HorizontalContentAlignment="Stretch"
+                                                HorizontalAlignment="Stretch"
+                                                MinWidth="0" Height="38" Margin="7 0 8 0"
+                                                Foreground="#FFFFFF"
+                                                Style="{StaticResource UcrBindingButton}"
+                                                FontWeight="SemiBold" Padding="8 3">
+                                            <Button.ContentTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding}" TextAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                </DataTemplate>
+                                            </Button.ContentTemplate>
+                                        </Button>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal"
                                                     VerticalAlignment="Center">
-
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
                                                         Visibility="{Binding CompoundVisibility}">
                                                 <TextBlock Text="Block" Foreground="#D0D0D0" FontSize="12"
@@ -528,26 +547,6 @@
                                                     Visibility="{Binding OrLabelVisibility}"/>
                                         </StackPanel>
                                     </Grid>
-                                    <!-- One compound input is one compact binding action, not a
-                                         blue strip consuming the width of the entire input pane. -->
-                                    <StackPanel Orientation="Horizontal" Margin="3 4 3 3"
-                                                Visibility="{Binding StandaloneCompoundVisibility}">
-                                        <Button x:Name="UiMappingCompoundBind" Content="{Binding CompoundPrimaryLabel}" Click="CompoundPrimaryBind_OnClick"
-                                                 PreviewMouseRightButtonDown="CompoundPrimaryBind_OnPreviewMouseRightButtonDown"
-                                                ToolTip="{Binding CompoundPrimaryToolTip}"
-                                                HorizontalContentAlignment="Center"
-                                                HorizontalAlignment="Left" MinWidth="154" MaxWidth="300"
-                                                Height="38" Foreground="#FFFFFF"
-                                                Style="{StaticResource UcrBindingButton}"
-                                                FontWeight="SemiBold" Padding="8 3">
-                                            <Button.ContentTemplate>
-                                                <DataTemplate>
-                                                    <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" MaxWidth="268"/>
-                                                </DataTemplate>
-                                            </Button.ContentTemplate>
-                                        </Button>
-                                        <!-- Binding options are available by right-clicking the compound Bind button. -->
-                                    </StackPanel>
                                     <!-- 4-Way occupies the single compound control above.
                                          Individual implementation channels are not separate user bindings. -->
                                     <StackPanel Visibility="{Binding ButtonPairVisibility}">
