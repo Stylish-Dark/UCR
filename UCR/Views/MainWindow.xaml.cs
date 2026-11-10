@@ -558,7 +558,7 @@ namespace HidWizards.UCR.Views
             // details tab. It stays visible alongside the profiles/mapping list.
             ProfileOptionsStorage.Content = null;
             ProfileSummaryPanel.DataContext = _dashboardViewModel;
-            page.AttachProfileOptions(ProfileSummaryPanel);
+            page.AttachProfileOptions(ProfileSummaryPanel, ProfileGroupOptions);
             DockAutoApplyPanel(page);
             _embeddedProfilePage = page;
             _embeddedProfile = profile;
@@ -616,6 +616,7 @@ namespace HidWizards.UCR.Views
             ProfileDeviceEditorHost.Visibility = Visibility.Collapsed;
             ProfileDeviceOverview.Visibility = Visibility.Collapsed;
             _embeddedProfilePage.DetachProfileOptions();
+            ProfileGroupOptions.ClearValue(DataContextProperty);
             _embeddedProfilePage.SuspendEmbeddedVisuals();
             ProfileEditorHost.Content = null;
             _embeddedProfilePage = null;

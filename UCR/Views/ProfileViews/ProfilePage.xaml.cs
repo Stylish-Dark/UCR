@@ -1329,8 +1329,9 @@ namespace HidWizards.UCR.Views.ProfileViews
             // No separate dock exists.
         }
 
-        public void AttachProfileOptions(UIElement options)
+        public void AttachProfileOptions(UIElement options, FrameworkElement groupOptions)
         {
+            groupOptions.DataContext = ProfileViewModel;
             ProfileOptionsHost.Content = options;
         }
 

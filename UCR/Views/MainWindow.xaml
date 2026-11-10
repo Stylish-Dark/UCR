@@ -606,7 +606,7 @@
                                     </ScrollViewer>
                                 </Grid>
                             </Border>
-                            <Border Grid.Row="3" Grid.ColumnSpan="2" Margin="8 0 8 6" Padding="8 7"
+                            <Border x:Name="ProfileGroupOptions" Grid.Row="3" Grid.ColumnSpan="2" Margin="8 0 8 6" Padding="8 7"
                                     Background="#212121" CornerRadius="2" BorderBrush="#363636" BorderThickness="1">
                                 <Grid>
                                     <Grid.RowDefinitions>
@@ -617,11 +617,11 @@
                                         <materialDesign:PackIcon Kind="FolderOutline" Width="16" Height="16" Margin="0 0 6 0"
                                                                  Foreground="{DynamicResource PrimaryHueLightBrush}" VerticalAlignment="Center"/>
                                         <TextBlock Text="Mapping groups" FontSize="13.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding SelectedProfileItem.Profile.MappingGroups.Count, StringFormat={}  {0}}" FontSize="11.5"
+                                        <TextBlock Text="{Binding MappingSections.Count, StringFormat={}  {0}}" FontSize="11.5"
                                                    Opacity="0.45" VerticalAlignment="Center"/>
                                     </StackPanel>
                                     <ScrollViewer Grid.Row="1" MaxHeight="92" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                                        <ItemsControl ItemsSource="{Binding SelectedProfileItem.Profile.MappingGroups}">
+                                        <ItemsControl ItemsSource="{Binding MappingSections}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
                                                     <CheckBox Margin="2 2" Foreground="White" Content="{Binding Title}"

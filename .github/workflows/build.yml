@@ -554,18 +554,6 @@ jobs:
               private static extern bool PrintWindow(IntPtr hwnd, IntPtr dc, uint flags);
               [DllImport("user32.dll")]
               public static extern bool MoveWindow(IntPtr hwnd, int x, int y, int width, int height, bool repaint);
-              [DllImport("user32.dll")]
-              private static extern bool SetCursorPos(int x, int y);
-              [DllImport("user32.dll")]
-              private static extern void mouse_event(uint flags, uint dx, uint dy, uint data, UIntPtr extra);
-              public static void ClickAt(IntPtr hwnd, int x, int y) {
-                  Rect r;
-                  if (!GetWindowRect(hwnd, out r)) throw new Exception("Window rect unavailable");
-                  SetCursorPos(r.Left + x, r.Top + y);
-                  System.Threading.Thread.Sleep(120);
-                  mouse_event(2, 0, 0, 0, UIntPtr.Zero);
-                  mouse_event(4, 0, 0, 0, UIntPtr.Zero);
-              }
               public static int Capture(IntPtr hwnd, string filename) {
                   Rect r;
                   if (!GetWindowRect(hwnd, out r)) throw new Exception("GetWindowRect failed");
@@ -716,10 +704,18 @@ jobs:
               [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
 
               Set-UcrText 'WorkspaceMappingSearch' 'No such mapping'
-              Find-UcrElement $nameProperty 'No mappings match your search.' | Out-Null
+              Start-Sleep -Milliseconds 500
               [UcrWindowCapture]::Capture(
                   $handle, (Join-Path $directory 'UCR-mapping-search.png')) | Out-Null
+              $visibleMappings = $root.FindAll(
+                  [System.Windows.Automation.TreeScope]::Descendants,
+                  [System.Windows.Automation.PropertyCondition]::new(
+                      [System.Windows.Automation.AutomationElement]::AutomationIdProperty, 'UiMappingTitle'))
+              foreach ($mapping in $visibleMappings) {
+                  if (-not $mapping.Current.IsOffscreen) { throw 'Search did not hide a nonmatching mapping.' }
+              }
               Set-UcrText 'WorkspaceMappingSearch' ''
+              Find-UcrControl 'UiMappingTitle' | Out-Null
 
               Invoke-UcrControl 'UiProfilesAdd'
               Start-Sleep -Seconds 4
@@ -728,11 +724,11 @@ jobs:
                   throw 'UCR crashed after creating the visual-audit profile.'
               }
               $profilePath = Join-Path $directory 'UCR-profile.png'
+              $profileColors = [UcrWindowCapture]::Capture($handle, $profilePath)
               Assert-UcrSelectedProfile 'New profile'
               if ((Find-UcrControl 'WorkspaceProfileTitle').Current.Name -ne 'New profile') {
                   throw 'The workspace did not open the newly selected profile.'
               }
-              $profileColors = [UcrWindowCapture]::Capture($handle, $profilePath)
               $editorElements = $root.FindAll(
                   [System.Windows.Automation.TreeScope]::Subtree,
                   [System.Windows.Automation.Condition]::TrueCondition)
@@ -746,18 +742,19 @@ jobs:
               $editorLabels | Set-Content -LiteralPath (Join-Path $directory 'Profile-UI-elements.txt')
 
               Invoke-UcrControl 'UiToolbarProfileOptions'
-              Find-UcrControl 'UiProfileCopy' | Out-Null
-              Find-UcrControl 'UiProfileExport' | Out-Null
+              Start-Sleep -Milliseconds 400
               [UcrWindowCapture]::Capture(
                   $handle, (Join-Path $directory 'UCR-profile-options.png')) | Out-Null
+              Find-UcrControl 'UiProfileCopy' | Out-Null
+              Find-UcrControl 'UiProfileExport' | Out-Null
               Invoke-UcrControl 'UiProfileRename'
               Set-UcrText 'UiProfileNameInput' '   '
               Start-Sleep -Milliseconds 350
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-profile-rename.png')) | Out-Null
               if ((Find-UcrControl 'UiProfileNameAccept').Current.IsEnabled) {
                   throw 'Rename accepts a whitespace-only name.'
               }
-              [UcrWindowCapture]::Capture(
-                  $handle, (Join-Path $directory 'UCR-profile-rename.png')) | Out-Null
               Set-UcrText 'UiProfileNameInput' 'Windows audit renamed profile'
               Invoke-UcrControl 'UiProfileNameAccept'
               Start-Sleep -Milliseconds 600
@@ -767,8 +764,7 @@ jobs:
               }
               Invoke-UcrControl 'UiToolbarProfileOptions'
 
-              # Open the actual output-device picker so the visual audit can
-              # configure a controller before testing four-way destinations.
+              # Open the actual output-device picker to inspect MIDI identification.
               [UcrWindowCapture]::MoveWindow($handle, -390, 0, 1200, 740, $true) | Out-Null
               Start-Sleep -Milliseconds 400
               Invoke-UcrControl 'UiProfileAddOutputDevice'
