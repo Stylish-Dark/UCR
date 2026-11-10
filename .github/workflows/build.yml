@@ -941,20 +941,27 @@ jobs:
                   Where-Object { $_.Current.Name -eq 'Output' -and
                       $_.Current.BoundingRectangle.X -gt 400 } |
                   Sort-Object { $_.Current.BoundingRectangle.Y })
-              if ($outputBindButtons.Count -ne 2) {
-                  throw "Expected two output Bind controls, got $($outputBindButtons.Count)."
+              if ($outputBindButtons.Count -lt 2) {
+                  throw "Expected multiple output Bind controls, got $($outputBindButtons.Count)."
               }
-              $outputBindButtons[1].SetFocus()
+              # Focus the last output to scroll its adjacent row into the
+              # visible viewport; do not infer logical output count from the
+              # physical directional cardinality of the chosen representation.
+              $outputBindButtons[-1].SetFocus()
               Start-Sleep -Milliseconds 350
-              $a = $outputBindButtons[0].Current.BoundingRectangle
-              $b = $outputBindButtons[1].Current.BoundingRectangle
+              $a = $outputBindButtons[-2].Current.BoundingRectangle
+              $b = $outputBindButtons[-1].Current.BoundingRectangle
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-two-output-layout.png')) | Out-Null
+              $outputBindButtons | ForEach-Object {
+                  "Output Bind: $($_.Current.Name) $($_.Current.BoundingRectangle)" |
+                      Out-File -LiteralPath (Join-Path $directory 'Output-row-geometry.txt') -Append
+              }
               if ($a.Width -le 0 -or $b.Width -le 0 -or
                   [Math]::Abs($a.X - $b.X) -gt 2 -or
                   [Math]::Abs($a.Width - $b.Width) -gt 2) {
                   throw "Output rows drift in X or width: $a versus $b"
               }
-              [UcrWindowCapture]::Capture(
-                  $handle, (Join-Path $directory 'UCR-two-output-layout.png')) | Out-Null
 
               $fourWayOutput = Find-UcrControl 'UiMappingFourWayOutput'
               $fourWayOutput.SetFocus()
