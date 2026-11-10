@@ -206,7 +206,7 @@
             </ProgressBar>
         </Grid>
 
-        <Button Grid.Column="1" x:Name="MenuButton" Margin="0" Width="42" MinHeight="38" Padding="0"
+        <Button Grid.Column="1" x:Name="MenuButton" Visibility="Collapsed" Margin="0" Width="42" MinHeight="38" Padding="0"
                 AutomationProperties.Name="{Binding ToolTip, RelativeSource={RelativeSource Self}}"
                 IsEnabled="{Binding BindingEnabled}" Click="MenuButton_OnClick">
             <Button.Style>

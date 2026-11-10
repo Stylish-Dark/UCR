@@ -533,6 +533,7 @@
                                     <StackPanel Orientation="Horizontal" Margin="3 4 3 3"
                                                 Visibility="{Binding StandaloneCompoundVisibility}">
                                         <Button x:Name="UiMappingCompoundBind" Content="{Binding CompoundPrimaryLabel}" Click="CompoundPrimaryBind_OnClick"
+                                                 PreviewMouseRightButtonDown="CompoundPrimaryBind_OnPreviewMouseRightButtonDown"
                                                 ToolTip="{Binding CompoundPrimaryToolTip}"
                                                 HorizontalContentAlignment="Center"
                                                 HorizontalAlignment="Left" MinWidth="154" MaxWidth="300"
@@ -545,15 +546,7 @@
                                                 </DataTemplate>
                                             </Button.ContentTemplate>
                                         </Button>
-                                        <Button x:Name="UiMappingCompoundMenu" Width="38"
-                                                Visibility="{Binding CompoundAdvancedMenuVisibility}"
-                                                Click="CompoundBindingsMenu_OnClick"
-                                                ToolTip="Compound binding options"
-                                                Height="38" Margin="3 0 0 0" Padding="0"
-                                                Foreground="#FFFFFF"
-                                                Style="{StaticResource UcrAccentOutlineButton}">
-                                            <materialDesign:PackIcon Kind="DotsVertical" Width="20" Height="20"/>
-                                        </Button>
+                                        <!-- Binding options are available by right-clicking the compound Bind button. -->
                                     </StackPanel>
                                     <!-- 4-Way occupies the single compound control above.
                                          Individual implementation channels are not separate user bindings. -->
@@ -815,7 +808,7 @@
                     <Grid Margin="3 0 3 5" VerticalAlignment="Top">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" SharedSizeGroup="UcrHeaderRow"/>
-                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto" SharedSizeGroup="UcrBodyRow"/>
                             <RowDefinition Height="Auto" SharedSizeGroup="UcrActionsRow"/>
                         </Grid.RowDefinitions>
                         <Grid.Style>
@@ -857,7 +850,7 @@
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                             </StackPanel>
                         </Grid>
-                        <Border x:Name="InputBodySurface" Grid.Row="1" VerticalAlignment="Top">
+                        <Border x:Name="InputBodySurface" Grid.Row="1" VerticalAlignment="Stretch">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Setter Property="BorderThickness" Value="1"/>
@@ -900,7 +893,7 @@
                     <Grid Margin="3 0 3 5" VerticalAlignment="Top">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" SharedSizeGroup="UcrHeaderRow"/>
-                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto" SharedSizeGroup="UcrBodyRow"/>
                             <RowDefinition Height="Auto" SharedSizeGroup="UcrActionsRow"/>
                         </Grid.RowDefinitions>
                         <Grid.Style>
@@ -953,7 +946,7 @@
                             </StackPanel>
 
                         </Grid>
-                        <Border x:Name="OutputBodySurface" Grid.Row="1" VerticalAlignment="Top">
+                        <Border x:Name="OutputBodySurface" Grid.Row="1" VerticalAlignment="Stretch">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Setter Property="BorderThickness" Value="1"/>
@@ -1006,7 +999,30 @@
                                             </Button.ContentTemplate>
                                         </Button>
                                 </StackPanel>
-                        <!-- Exactly four destination bindings: Up / Left / Right / Down
+                        <!-- The 4-Way output hides physical plugin binding rows, not their axis settings. -->
+                         <ItemsControl ItemsSource="{Binding Plugins}" Margin="4 3 4 4"
+                                       Visibility="{Binding IsCompoundOutput, Converter={StaticResource CompoundVisibilityConverter}}">
+                             <ItemsControl.ItemTemplate>
+                                 <DataTemplate>
+                                     <Expander Header="{Binding InlineSettingsTitle}" Margin="0 3 0 0"
+                                               Expanded="OutputSettings_OnExpanded"
+                                               Visibility="{Binding InlineSettingsVisibility}" Foreground="#D0D0D0">
+                                         <ItemsControl ItemsSource="{Binding InlinePropertyGroups}" Margin="6 4">
+                                             <ItemsControl.ItemTemplate>
+                                                 <DataTemplate>
+                                                     <StackPanel Visibility="{Binding ShowPropertyList}">
+                                                         <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold"
+                                                                    Foreground="#DADADA" Margin="0 2 0 1"/>
+                                                         <plugin:PluginPropertyListControl DataContext="{Binding}"/>
+                                                     </StackPanel>
+                                                 </DataTemplate>
+                                             </ItemsControl.ItemTemplate>
+                                         </ItemsControl>
+                                     </Expander>
+                                 </DataTemplate>
+                             </ItemsControl.ItemTemplate>
+                         </ItemsControl>
+                         <!-- Exactly four destination bindings: Up / Left / Right / Down
                              are positioned spatially, not in a vertical stack. -->
                         <Grid x:Name="OutputDirectionalCompassGrid"
                               Visibility="{Binding OutputDirectionalCompassVisibility}"

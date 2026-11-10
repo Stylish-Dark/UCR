@@ -67,7 +67,8 @@ namespace HidWizards.UCR.Views.Controls
                 return;
             BindingActionGroup.Visibility = DeviceOnly ? Visibility.Collapsed : Visibility.Visible;
             BindSurface.Visibility = DeviceOnly ? Visibility.Collapsed : Visibility.Visible;
-            MenuButton.Visibility = DeviceOnly ? Visibility.Collapsed : Visibility.Visible;
+            // Options live on Bind right-click rather than an adjacent button.
+            MenuButton.Visibility = Visibility.Collapsed;
             BindingGrid.ColumnDefinitions[1].Width = DeviceOnly ?
                 new GridLength(0) : new GridLength(1, GridUnitType.Star);
             BindingGrid.ColumnDefinitions[3].Width = DeviceOnly ?
@@ -80,24 +81,18 @@ namespace HidWizards.UCR.Views.Controls
                 Grid.SetColumn(DeviceSelectionBox, 0);
                 return;
             }
-            var left = MenuOnLeft;
+            // All binding representations obey the same geometry:
+            // device on the left, Bind filling the remaining width.
             var deviceColumnWidth = CompactDirectional ? 48 : 62;
-            // The options control lives INSIDE BindingActionGroup, not directly
-            // in BindingGrid. The previous outer-column assignment misplaced it,
-            // and a 29px column could not accommodate its actual 42px width.
-            BindingGrid.ColumnDefinitions[0].Width = new GridLength(left ? 42 : deviceColumnWidth);
-            BindingGrid.ColumnDefinitions[2].Width = new GridLength(left ? deviceColumnWidth : 42);
-            Grid.SetColumn(BindingActionGroup, left ? 0 : 1);
+            BindingGrid.ColumnDefinitions[0].Width = new GridLength(deviceColumnWidth);
+            BindingGrid.ColumnDefinitions[2].Width = new GridLength(0);
+            Grid.SetColumn(DeviceSelectionBox, 0);
+            Grid.SetColumn(BindingActionGroup, 1);
             Grid.SetColumnSpan(BindingActionGroup, 2);
-            BindingActionGroup.ColumnDefinitions[0].Width = left
-                ? new GridLength(42) : new GridLength(1, GridUnitType.Star);
-            BindingActionGroup.ColumnDefinitions[1].Width = left
-                ? new GridLength(1, GridUnitType.Star) : new GridLength(42);
-            Grid.SetColumn(MenuButton, left ? 0 : 1);
-            Grid.SetColumn(BindSurface, left ? 1 : 0);
-            Grid.SetColumn(DeviceSelectionBox, left ? 2 : 0);
-            // Keep the bind action and ellipsis immediately adjacent, while
-            // swapping the device selector to the opposite outer edge.
+            BindingActionGroup.ColumnDefinitions[0].Width = new GridLength(1, GridUnitType.Star);
+            BindingActionGroup.ColumnDefinitions[1].Width = new GridLength(0);
+            Grid.SetColumn(BindSurface, 0);
+            Grid.SetColumn(MenuButton, 1);
         }
 
         private bool _loaded;
@@ -260,12 +255,19 @@ namespace HidWizards.UCR.Views.Controls
         private void BindButton_OnPreviewMouseRightButtonDown(object sender,
             System.Windows.Input.MouseButtonEventArgs e)
         {
-            if (DeviceBinding?.IsInBindMode != true) return;
-            DeviceBinding.CancelBindMode();
+            if (DeviceBinding?.IsInBindMode == true)
+                DeviceBinding.CancelBindMode();
+            else if ((DataContext as DeviceBindingViewModel)?.BindingEnabled == true)
+                OpenBindingOptions(BindButton);
             e.Handled = true;
         }
 
         private void MenuButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            OpenBindingOptions(BindButton);
+        }
+
+        private void OpenBindingOptions(FrameworkElement anchor)
         {
             // Reveal the whole binding row before opening its options. Otherwise a
             // partly scrolled-off row leaves Block/NOT underneath the fixed footer.
@@ -274,7 +276,7 @@ namespace HidWizards.UCR.Views.Controls
                 PopulateOutputOptions();
             else
                 BuildContextMenu();
-            Ddl.PlacementTarget = MenuButton;
+            Ddl.PlacementTarget = anchor;
             // The inspector has a docked footer and a constrained scroll viewport.
             // Open the binding menu upwards so it cannot cover the footer or clipped rows.
             Ddl.Placement = PlacementMode.Top;

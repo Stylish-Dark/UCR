@@ -1375,6 +1375,22 @@ namespace HidWizards.UCR.Views.Controls
                 CompoundBindingsMenu_OnClick(sender, e);
         }
 
+        private void CompoundPrimaryBind_OnPreviewMouseRightButtonDown(object sender,
+            MouseButtonEventArgs e)
+        {
+            var group = (sender as FrameworkElement)?.DataContext as InputConditionViewModel;
+            if (group?.CoreInputs.Any(input => input.DeviceBinding.IsInBindMode) == true)
+            {
+                foreach (var input in group.CoreInputs.Where(input => input.DeviceBinding.IsInBindMode))
+                    input.DeviceBinding.CancelBindMode();
+            }
+            else
+            {
+                CompoundBindingsMenu_OnClick(sender, new RoutedEventArgs());
+            }
+            e.Handled = true;
+        }
+
         private void CompoundBindingsMenu_OnClick(object sender, RoutedEventArgs e)
         {
             var mapping = DataContext as MappingViewModel;
@@ -1589,7 +1605,7 @@ namespace HidWizards.UCR.Views.Controls
 
         private void RemoveCompoundOutput_OnClick(object sender, RoutedEventArgs e)
         {
-            (DataContext as MappingViewModel)?.RemoveAllOutputSlots();
+            (DataContext as MappingViewModel)?.RemoveOptionalCompoundOutput();
         }
 
         private void RemoveOutput_OnClick(object sender, RoutedEventArgs e)
