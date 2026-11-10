@@ -741,6 +741,7 @@ jobs:
               Invoke-UcrControl 'UiToolbarHelp'
               Invoke-UcrControl 'UiAbout'
               Find-UcrControl 'UiAboutSourceLink' | Out-Null
+              Start-Sleep -Milliseconds 350
               [UcrWindowCapture]::Capture(
                   $handle, (Join-Path $directory 'UCR-about-dialog.png')) | Out-Null
               $closeAbout = Find-UcrControl 'UiClose'
@@ -865,9 +866,10 @@ jobs:
               Start-Sleep -Milliseconds 650
               [UcrWindowCapture]::Capture(
                   $handle, (Join-Path $directory 'UCR-filter-name-saved.png')) | Out-Null
-              $savedProfile = Get-ChildItem -LiteralPath $profileFolder -Filter '*.json' |
-                  Select-String -Pattern '"filterName"\s*:\s*"Saved without leaving focus"' -List
-              if (-not $savedProfile) {
+              $snapshot = Get-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Raw | ConvertFrom-Json
+              $savedProfile = $snapshot.profiles | Where-Object { $_.title -eq 'Windows audit renamed profile' }
+              $savedName = $savedProfile.mappings.plugins.data.filterName
+              if ($savedName -ne 'Saved without leaving focus') {
                   throw 'Ctrl+S did not persist the edited filter name.'
               }
 
@@ -877,7 +879,7 @@ jobs:
                   Start-Sleep -Milliseconds 1250
                   if ($i -eq 0) {
                       [UcrWindowCapture]::Capture(
-                          $handle, (Join-Path $directory 'UCR-one-mapping.png')) | Out-Null
+                          $handle, (Join-Path $directory 'UCR-first-button-mapping.png')) | Out-Null
                   }
               }
               Start-Sleep -Seconds 2
