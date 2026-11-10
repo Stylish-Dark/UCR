@@ -491,7 +491,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility CompoundOutputRemoveVisibility =>
             ButtonsEnabled && IsTypedDirectionalMapping &&
-            Mapping.RequiredOutputBindingSlots > 1 && Plugins?.Count > 0
+            Plugins != null && Plugins.Count > Mapping.RequiredOutputBindingSlots
                 ? Visibility.Visible : Visibility.Collapsed;
         public string FourWayOutputDeviceLabel
         {
@@ -3450,23 +3450,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
-        public void RemoveAllOutputSlots()
+        public void RemoveOptionalCompoundOutput()
         {
+            // X removes only an independently added output, never the canonical
+            // channels required for the mapping's selected representation.
             if (!ButtonsEnabled || !IsTypedDirectionalMapping ||
-                Mapping.RequiredOutputBindingSlots <= 1) return;
-            foreach (var output in Plugins.ToList())
-            {
-                if (!Mapping.RemovePlugin(output.Plugin)) continue;
-                foreach (var binding in output.DeviceBindings)
-                    binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
-                output.Dispose();
-                Plugins.Remove(output);
-            }
-            RefreshHeaderState();
-            RefreshInputExpressionPresentation();
-            RefreshRepresentationSelections();
-            RefreshCollapsedSummary();
-            ProfileViewModel.RefreshFilterReferenceLabels();
+                Plugins.Count <= Mapping.RequiredOutputBindingSlots) return;
+            RemovePlugin(Plugins.Last());
+            OnPropertyChanged(nameof(CompoundOutputRemoveVisibility));
         }
 
         public void RemovePlugin(PluginViewModel pluginViewModel)

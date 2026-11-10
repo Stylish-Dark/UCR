@@ -939,6 +939,7 @@
                                              IsEnabled="{Binding CanChooseOutputAxis}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                                 <RadioButton Content="{Binding OutputButtonChoiceGlyph}" Tag="3" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
+                                              AutomationProperties.AutomationId="UiMappingOutputButtonType"
                                              ToolTip="Button output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsButton, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseOutputButton}"
@@ -999,6 +1000,29 @@
                                             </Button.ContentTemplate>
                                         </Button>
                                 </StackPanel>
+                        <!-- The 4-Way output hides physical plugin binding rows, not their axis settings. -->
+                         <ItemsControl ItemsSource="{Binding Plugins}" Margin="4 3 4 4"
+                                       Visibility="{Binding IsCompoundOutput, Converter={StaticResource CompoundVisibilityConverter}}">
+                             <ItemsControl.ItemTemplate>
+                                 <DataTemplate>
+                                     <Expander Header="{Binding InlineSettingsTitle}" Margin="0 3 0 0"
+                                               Expanded="OutputSettings_OnExpanded"
+                                               Visibility="{Binding InlineSettingsVisibility}" Foreground="#D0D0D0">
+                                         <ItemsControl ItemsSource="{Binding InlinePropertyGroups}" Margin="6 4">
+                                             <ItemsControl.ItemTemplate>
+                                                 <DataTemplate>
+                                                     <StackPanel Visibility="{Binding ShowPropertyList}">
+                                                         <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold"
+                                                                    Foreground="#DADADA" Margin="0 2 0 1"/>
+                                                         <plugin:PluginPropertyListControl DataContext="{Binding}"/>
+                                                     </StackPanel>
+                                                 </DataTemplate>
+                                             </ItemsControl.ItemTemplate>
+                                         </ItemsControl>
+                                     </Expander>
+                                 </DataTemplate>
+                             </ItemsControl.ItemTemplate>
+                         </ItemsControl>
                          <!-- Exactly four destination bindings: Up / Left / Right / Down
                              are positioned spatially, not in a vertical stack. -->
                         <Grid x:Name="OutputDirectionalCompassGrid"
