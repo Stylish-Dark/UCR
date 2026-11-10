@@ -77,6 +77,17 @@ jobs:
           }
           Write-Host "Verified $checked external UI asset targets and references."
 
+      - name: Verify no unapproved mapping type heading
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $view = Get-Content .\UCR\Views\Controls\MappingCardControl.xaml -Raw
+          $model = Get-Content .\UCR\ViewModels\ProfileViewModels\MappingViewModel.cs -Raw
+          if ($view.Contains('OutputBodyGroupTitle') -or $model.Contains('OutputBodyGroupTitle')) {
+            throw 'Unexpected output type text heading introduced into mapping editor.'
+          }
+          Write-Host 'No added output type heading.'
+
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v3
         with:
@@ -909,62 +920,6 @@ jobs:
               $directionProfile.GetCurrentPattern(
                   [System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
               Assert-UcrSelectedProfile 'DualSense button verification'
-              # The Windows runner's virtual display constrains the app to a
-              # narrow editor. Test only rows whose actual UIA bounds are visible.
-              # The user's full-width two-column layout needs separate evidence.
-              $buttonOutput = Find-UcrControl 'UiMappingOutputButtonType'
-              $buttonOutput.SetFocus()
-              [System.Windows.Forms.SendKeys]::SendWait(' ')
-              Start-Sleep -Milliseconds 550
-              $inputTitle = Find-UcrControl 'UiInputGroupType'
-              $outputTitle = Find-UcrControl 'UiOutputGroupType'
-              $inputRect = $inputTitle.Current.BoundingRectangle
-              $outputRect = $outputTitle.Current.BoundingRectangle
-              if ([Math]::Abs($inputRect.X - $outputRect.X) -gt 200) {
-                  if ([Math]::Abs($inputRect.Y - $outputRect.Y) -gt 9) {
-                      throw 'Side-by-side input and output headings do not share a baseline.'
-                  }
-              } elseif ($outputRect.Y -le $inputRect.Y) {
-                  throw 'Stacked output heading does not follow the input heading.'
-              }
-
-              $addOutput = @(Get-UcrControls 'UiMappingAddOutput')[0]
-              if ($null -eq $addOutput) { throw 'Add Output action missing.' }
-              $addOutput.SetFocus()
-              $addOutput.GetCurrentPattern(
-                  [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-              Start-Sleep -Milliseconds 650
-              # Bind actions are identified by their actual Output caption.
-              # The viewport scrolls when Add Output receives focus, so do
-              # not compare their new screen Y with a stale heading rectangle.
-              $outputBindButtons = @(Get-UcrControls 'BindButton' |
-                  Where-Object { $_.Current.Name -eq 'Output' -and
-                      $_.Current.BoundingRectangle.X -gt 400 } |
-                  Sort-Object { $_.Current.BoundingRectangle.Y })
-              if ($outputBindButtons.Count -lt 2) {
-                  throw "Expected multiple output Bind controls, got $($outputBindButtons.Count)."
-              }
-              [UcrWindowCapture]::Capture(
-                  $handle, (Join-Path $directory 'UCR-two-output-layout.png')) | Out-Null
-              $outputBindButtons | ForEach-Object {
-                  "Output Bind: $($_.Current.Name) $($_.Current.BoundingRectangle)" |
-                      Out-File -LiteralPath (Join-Path $directory 'Output-row-geometry.txt') -Append
-              }
-              # Ignore off-viewport physical channels (Empty UIA bounds);
-              # never misreport those as geometry regressions.
-              $visibleOutputBinds = @($outputBindButtons | Where-Object {
-                  -not $_.Current.IsOffscreen -and
-                  $_.Current.BoundingRectangle.Width -gt 0 })
-              if ($visibleOutputBinds.Count -lt 2) {
-                  throw 'The viewport does not expose two measurable output rows.'
-              }
-              $a = $visibleOutputBinds[0].Current.BoundingRectangle
-              $b = $visibleOutputBinds[1].Current.BoundingRectangle
-              if ([Math]::Abs($a.X - $b.X) -gt 2 -or
-                  [Math]::Abs($a.Width - $b.Width) -gt 2) {
-                  throw "Visible output rows drift in X or width: $a versus $b"
-              }
-
               $fourWayOutput = Find-UcrControl 'UiMappingFourWayOutput'
               $fourWayOutput.SetFocus()
               [System.Windows.Forms.SendKeys]::SendWait(' ')

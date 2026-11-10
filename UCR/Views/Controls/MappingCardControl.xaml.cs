@@ -1605,7 +1605,7 @@ namespace HidWizards.UCR.Views.Controls
 
         private void RemoveCompoundOutput_OnClick(object sender, RoutedEventArgs e)
         {
-            (DataContext as MappingViewModel)?.RemoveOptionalCompoundOutput();
+            (DataContext as MappingViewModel)?.RemoveAllOutputSlots();
         }
 
         private void RemoveOutput_OnClick(object sender, RoutedEventArgs e)

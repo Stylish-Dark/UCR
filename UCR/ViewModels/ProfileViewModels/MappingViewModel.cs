@@ -483,9 +483,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ? "4-Way" : Mapping.EffectiveInputRepresentation == 2 ? "Axis" : "Button";
         public string OutputDirectionalGroupTitle => Mapping.EffectiveOutputRepresentation == 1
             ? "4-Way" : Mapping.EffectiveOutputRepresentation == 2 ? "Axis" : "Button";
-        // Display one type heading per ordinary output group, not one per row.
-        // A filter destination must never be mislabelled as a Button.
-        public string OutputBodyGroupTitle => OutputIsFilter ? "Filter" : OutputDirectionalGroupTitle;
         public Visibility TypedDirectionalVisibility => IsTypedDirectionalMapping
             ? Visibility.Visible : Visibility.Collapsed;
         public Visibility LegacyOutputAddVisibility => Visibility.Visible;
@@ -494,7 +491,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility CompoundOutputRemoveVisibility =>
             ButtonsEnabled && IsTypedDirectionalMapping &&
-            Plugins != null && Plugins.Count > Mapping.RequiredOutputBindingSlots
+            Mapping.RequiredOutputBindingSlots > 1 && Plugins?.Count > 0
                 ? Visibility.Visible : Visibility.Collapsed;
         public string FourWayOutputDeviceLabel
         {
@@ -635,7 +632,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(OutputButtonChoiceGlyph));
             OnPropertyChanged(nameof(InputAxisChoiceGlyph));
             OnPropertyChanged(nameof(OutputAxisChoiceGlyph));
-            OnPropertyChanged(nameof(OutputBodyGroupTitle));
         }
 
         public bool SetInputRepresentation(int value)
@@ -729,7 +725,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(IsFullStickOutput));
             OnPropertyChanged(nameof(InputDirectionalGroupTitle));
             OnPropertyChanged(nameof(OutputDirectionalGroupTitle));
-            OnPropertyChanged(nameof(OutputBodyGroupTitle));
             RefreshDirectionalAvailability();
             OnPropertyChanged(nameof(TypedDirectionalVisibility));
             OnPropertyChanged(nameof(LegacyOutputAddVisibility));
@@ -3455,14 +3450,23 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
-        public void RemoveOptionalCompoundOutput()
+        public void RemoveAllOutputSlots()
         {
-            // X removes only an independently added output, never the canonical
-            // channels required for the mapping's selected representation.
             if (!ButtonsEnabled || !IsTypedDirectionalMapping ||
-                Plugins.Count <= Mapping.RequiredOutputBindingSlots) return;
-            RemovePlugin(Plugins.Last());
-            OnPropertyChanged(nameof(CompoundOutputRemoveVisibility));
+                Mapping.RequiredOutputBindingSlots <= 1) return;
+            foreach (var output in Plugins.ToList())
+            {
+                if (!Mapping.RemovePlugin(output.Plugin)) continue;
+                foreach (var binding in output.DeviceBindings)
+                    binding.PropertyChanged -= SummaryBindingOnPropertyChanged;
+                output.Dispose();
+                Plugins.Remove(output);
+            }
+            RefreshHeaderState();
+            RefreshInputExpressionPresentation();
+            RefreshRepresentationSelections();
+            RefreshCollapsedSummary();
+            ProfileViewModel.RefreshFilterReferenceLabels();
         }
 
         public void RemovePlugin(PluginViewModel pluginViewModel)
@@ -3521,7 +3525,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(MappingOutputTypeLabel));
             OnPropertyChanged(nameof(MappingInputTypeLabel));
             OnPropertyChanged(nameof(MappingOutputCategoryDisplay));
-            OnPropertyChanged(nameof(OutputBodyGroupTitle));
             OnPropertyChanged(nameof(HasAxisOutput));
             OnPropertyChanged(nameof(DirectionalPresetsVisibility));
             OnPropertyChanged(nameof(DefinedFilterName));

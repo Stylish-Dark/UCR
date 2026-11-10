@@ -147,15 +147,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<PluginPropertyGroupViewModel> PluginPropertyGroups { get; set; }
         public bool CanRemove =>
             !MappingViewModel.ProfileViewModel.Profile.IsActive() &&
-            // A single destination is mandatory; internal directional channels
-            // are not additional logical outputs.
-            MappingViewModel.Plugins.Count >
-                (MappingViewModel.IsTypedDirectionalMapping
-                    ? MappingViewModel.Mapping.RequiredOutputBindingSlots : 1) &&
+            // The final ordinary output is removable: Add output can rebuild it.
+            // Typed cardinal output channels are required by the routing engine.
+            // Removing one would disable the entire 4-Way mapping, so only
+            // extra independently added output slots are individually removable.
             (!MappingViewModel.IsTypedDirectionalMapping ||
+             MappingViewModel.Mapping.RequiredOutputBindingSlots == 1 ||
              MappingViewModel.Plugins.IndexOf(this) >=
                 MappingViewModel.Mapping.RequiredOutputBindingSlots);
-        
         public bool CanAddFilter => !MappingViewModel.ProfileViewModel.Profile.IsActive();
         public ObservableCollection<FilterViewModel> Filters { get; set; }
         private bool _editorInitialized;

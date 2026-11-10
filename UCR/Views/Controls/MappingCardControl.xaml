@@ -498,7 +498,6 @@
                                                        FontSize="12" Foreground="#C6C6C6"
                                                        FontWeight="SemiBold" Margin="0 0 9 0"/>
                                             <TextBlock Text="{Binding DirectionalModeLabel}"
-                                                       AutomationProperties.AutomationId="UiInputGroupType"
                                                        FontWeight="SemiBold" Foreground="#D0D0D0"
                                                        FontSize="12" VerticalAlignment="Center"/>
                                             <Border Visibility="{Binding GroupDevicePickerVisibility}"
@@ -940,7 +939,6 @@
                                              IsEnabled="{Binding CanChooseOutputAxis}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                                 <RadioButton Content="{Binding OutputButtonChoiceGlyph}" Tag="3" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
-                                              AutomationProperties.AutomationId="UiMappingOutputButtonType"
                                              ToolTip="Button output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsButton, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseOutputButton}"
@@ -964,26 +962,6 @@
                                 </Style>
                             </Border.Style>
                             <StackPanel>
-                                <!-- All ordinary output representations have the same
-                                     type heading and vertical rhythm as input groups. -->
-                                <TextBlock Text="{Binding OutputBodyGroupTitle}"
-                                           AutomationProperties.AutomationId="UiOutputGroupType"
-                                           FontSize="12" FontWeight="SemiBold"
-                                           Foreground="#D0D0D0" Margin="17 9 0 15">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsCompoundOutput}" Value="True">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding HasOutputDirectionalCompass}" Value="True">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
                                 <StackPanel Orientation="Horizontal" Margin="4 1 0 7"
                                             Visibility="{Binding FourWayOutputDeviceVisibility}">
                                     <TextBlock Text="{Binding OutputDirectionalGroupTitle}"
@@ -1021,29 +999,6 @@
                                             </Button.ContentTemplate>
                                         </Button>
                                 </StackPanel>
-                        <!-- The 4-Way output hides physical plugin binding rows, not their axis settings. -->
-                         <ItemsControl ItemsSource="{Binding Plugins}" Margin="4 3 4 4"
-                                       Visibility="{Binding IsCompoundOutput, Converter={StaticResource CompoundVisibilityConverter}}">
-                             <ItemsControl.ItemTemplate>
-                                 <DataTemplate>
-                                     <Expander Header="{Binding InlineSettingsTitle}" Margin="0 3 0 0"
-                                               Expanded="OutputSettings_OnExpanded"
-                                               Visibility="{Binding InlineSettingsVisibility}" Foreground="#D0D0D0">
-                                         <ItemsControl ItemsSource="{Binding InlinePropertyGroups}" Margin="6 4">
-                                             <ItemsControl.ItemTemplate>
-                                                 <DataTemplate>
-                                                     <StackPanel Visibility="{Binding ShowPropertyList}">
-                                                         <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold"
-                                                                    Foreground="#DADADA" Margin="0 2 0 1"/>
-                                                         <plugin:PluginPropertyListControl DataContext="{Binding}"/>
-                                                     </StackPanel>
-                                                 </DataTemplate>
-                                             </ItemsControl.ItemTemplate>
-                                         </ItemsControl>
-                                     </Expander>
-                                 </DataTemplate>
-                             </ItemsControl.ItemTemplate>
-                         </ItemsControl>
                          <!-- Exactly four destination bindings: Up / Left / Right / Down
                              are positioned spatially, not in a vertical stack. -->
                         <Grid x:Name="OutputDirectionalCompassGrid"
