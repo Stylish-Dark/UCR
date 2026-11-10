@@ -111,13 +111,21 @@
         </Grid>
 
         <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Vertical" Margin="8 0 0 0" VerticalAlignment="Center">
-            <StackPanel Orientation="Horizontal" Visibility="{Binding ShowBlock}" VerticalAlignment="Center" Margin="0 0 0 2">
-                <TextBlock Text="Block" VerticalAlignment="Center" Margin="0 0 7 0" FontSize="14" Foreground="#E2E2E2"/>
-                <ToggleButton IsChecked="{Binding Block, Mode=TwoWay}" IsEnabled="{Binding CanBlock}" ToolTip="{Binding BlockAvailability}" Style="{StaticResource CompactBlockSwitch}"/>
+            <StackPanel Style="{StaticResource UcrLabeledSwitchColumn}"
+                        Visibility="{Binding ShowBlock}" HorizontalAlignment="Center" Margin="0 0 0 2">
+                <TextBlock Text="Block" FontSize="14" Foreground="#E2E2E2"
+                           Style="{StaticResource UcrLabeledSwitchCaption}"/>
+                <ToggleButton IsChecked="{Binding Block, Mode=TwoWay}" IsEnabled="{Binding CanBlock}"
+                              ToolTip="{Binding BlockAvailability}" Style="{StaticResource CompactBlockSwitch}"
+                              HorizontalAlignment="Center"/>
             </StackPanel>
-            <StackPanel Orientation="Horizontal" Visibility="{Binding ShowInvertInput}" VerticalAlignment="Center">
-                <TextBlock Text="Reverse" VerticalAlignment="Center" Margin="0 0 7 0" FontSize="14" Foreground="#E2E2E2" ToolTip="Reverse this input axis direction"/>
-                <ToggleButton IsChecked="{Binding InvertInput, Mode=TwoWay}" Style="{StaticResource CompactBlockSwitch}"/>
+            <StackPanel Style="{StaticResource UcrLabeledSwitchColumn}"
+                        Visibility="{Binding ShowInvertInput}" HorizontalAlignment="Center">
+                <TextBlock Text="Reverse" FontSize="14" Foreground="#E2E2E2"
+                           Style="{StaticResource UcrLabeledSwitchCaption}"
+                           ToolTip="Reverse this input axis direction"/>
+                <ToggleButton IsChecked="{Binding InvertInput, Mode=TwoWay}"
+                              Style="{StaticResource CompactBlockSwitch}" HorizontalAlignment="Center"/>
             </StackPanel>
         </StackPanel>
 

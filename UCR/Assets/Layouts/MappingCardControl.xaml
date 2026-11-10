@@ -4,6 +4,5 @@
     <!-- Rules target existing x:Name elements in MappingCardControl. Properties can be changed without rebuilding. -->
     <Style x:Key="OutputBindingCardSurface" TargetType="{x:Type Border}">
         <Setter Property="Padding" Value="5 4"/>
-        <Setter Property="Margin" Value="0 0 0 3"/>
     </Style>
 </ResourceDictionary>
