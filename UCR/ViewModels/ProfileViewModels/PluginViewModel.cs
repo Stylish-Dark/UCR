@@ -74,6 +74,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         }
         public ObservableCollection<PluginPropertyGroupViewModel> InlinePropertyGroups { get; }
             = new ObservableCollection<PluginPropertyGroupViewModel>();
+        public string InlineSettingsTitle => OutputType == "Axis" ? "Axis settings" : "Settings";
         public Visibility InlineSettingsVisibility =>
             Plugin?.PluginPropertyGroups?.Any(group => group.PluginProperties?.Any(property =>
                 property.Name != "Invert") == true)

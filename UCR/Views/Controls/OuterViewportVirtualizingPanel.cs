@@ -145,8 +145,7 @@ namespace HidWizards.UCR.Views.Controls
 
             // These are only off-screen estimates. Visible rows are always measured
             // using their original, unmodified WPF templates, then cached precisely.
-            var alternativeRows = Math.Max(0, (mapping?.CollapsedInputRows?.Count ?? 1) - 1);
-            var header = (mapping?.HasCollapsedInputCompass == true ? 122.0 : 74.0) + alternativeRows * 46.0;
+            const double header = 92.0;
             if (mapping?.IsExpanded != true) return header;
             var inputSlots = mapping.DeviceBindings?.Count ?? 1;
             var outputs = mapping.Plugins?.Count ?? 1;

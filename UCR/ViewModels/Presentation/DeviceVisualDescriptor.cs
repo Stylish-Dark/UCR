@@ -86,6 +86,9 @@ namespace HidWizards.UCR.ViewModels.Presentation
         public string CompoundPresetName { get; set; }
         public string JoinSymbol { get; set; } = "+";
         public string DirectionalName { get; set; }
+        public string DirectionalArrow => DirectionalName == "Up" ? "↑" :
+            DirectionalName == "Down" ? "↓" : DirectionalName == "Left" ? "←" :
+            DirectionalName == "Right" ? "→" : string.Empty;
         public bool IsDirectionalSlot => !string.IsNullOrEmpty(DirectionalName);
         public int DirectionalRow { get; set; }
         public int DirectionalColumn { get; set; }

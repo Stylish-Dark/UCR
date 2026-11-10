@@ -757,16 +757,10 @@
                                                 </ListView.Style>
                                                 <ListView.ItemTemplate>
                                                     <DataTemplate>
-                                                        <!-- Ordinary routes share one header row. The compass gets a
-                                                             second row so the direction targets have room to bind. -->
                                                         <Border Margin="0 2" Padding="10 4" CornerRadius="4"
                                                                 Background="#252525" BorderBrush="#393939"
                                                                 BorderThickness="1" HorizontalAlignment="Stretch">
-                                                            <StackPanel><Grid MinHeight="72" HorizontalAlignment="Stretch">
-                                                                <!-- Keep collapsed mapping headers at a stable minimum
-                                                                     size across Button, Axis and 4-Way modes. The
-                                                                     previous conditional 49/86 layout shifted the
-                                                                     entire mapping list when binding type changed. -->
+                                                            <StackPanel><Grid Height="82" HorizontalAlignment="Stretch">
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="1.55*" MinWidth="162"/>
                                                                     <ColumnDefinition Width="1.05*" MinWidth="0"/>
@@ -775,10 +769,6 @@
                                                                     <ColumnDefinition Width="40"/>
                                                                     <ColumnDefinition Width="44"/>
                                                                 </Grid.ColumnDefinitions>
-                                                                <Grid.RowDefinitions>
-                                                                    <RowDefinition Height="*"/>
-                                                                    <RowDefinition Height="Auto"/>
-                                                                </Grid.RowDefinitions>
                                                                 <Grid x:Name="MappingTitleArea" Grid.Column="0" VerticalAlignment="Center" Margin="3 0 8 0">
                                                                     <Grid.ColumnDefinitions>
                                                                         <ColumnDefinition Width="Auto"/>
@@ -819,36 +809,21 @@
                                                                 <!-- Render the real AND/OR expression. The previous flat
                                                                      CollapsedInputVisuals list falsely showed OR terms
                                                                      as if they belonged to one AND group. -->
-                                                                <ItemsControl x:Name="MappingInputSummary" Grid.Column="1" ItemsSource="{Binding CollapsedInputRows}"
-                                                                              HorizontalAlignment="Stretch" VerticalAlignment="Center"
-                                                                              ClipToBounds="False">
+                                                                <Viewbox Grid.Column="1" MaxHeight="78" Stretch="Uniform"
+                                                                         StretchDirection="DownOnly" VerticalAlignment="Center">
+                                                                <ItemsControl ItemsSource="{Binding CollapsedInputRows}">
                                                                     <ItemsControl.ItemsPanel>
                                                                         <ItemsPanelTemplate>
-                                                                            <StackPanel Orientation="Vertical"/>
+                                                                            <StackPanel Orientation="Horizontal"/>
                                                                         </ItemsPanelTemplate>
                                                                     </ItemsControl.ItemsPanel>
                                                                     <ItemsControl.ItemTemplate>
                                                                         <DataTemplate>
-                                                                            <StackPanel HorizontalAlignment="Stretch" Margin="0 1">
-                                                                                <TextBlock Text="{Binding DividerLabel}" HorizontalAlignment="Center"
-                                                                                           Foreground="#AFAFAF" FontWeight="SemiBold"
-                                                                                           FontSize="11" Margin="0 3 0 3"
+                                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                                <TextBlock Text="{Binding DividerLabel}" VerticalAlignment="Center"
+                                                                                           Foreground="#C4C4C4" FontWeight="SemiBold"
+                                                                                           FontSize="11" Margin="4 0"
                                                                                            Visibility="{Binding DividerVisibility}"/>
-                                                                                <!-- Constrain each AND group to its available column width.
-                                                                                     At large UI scale, shrink the glyph group rather than
-                                                                                     clipping its first and last controls. -->
-                                                                                <Viewbox Stretch="Uniform" StretchDirection="DownOnly"
-                                                                                         Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
-                                                                                         HorizontalAlignment="Center">
-                                                                                <Viewbox.Style>
-                                                                                    <Style TargetType="Viewbox">
-                                                                                        <Style.Triggers>
-                                                                                            <DataTrigger Binding="{Binding IsDirectionalCompass}" Value="True">
-                                                                                                <Setter Property="MaxHeight" Value="84"/>
-                                                                                            </DataTrigger>
-                                                                                        </Style.Triggers>
-                                                                                    </Style>
-                                                                                </Viewbox.Style>
                                                                                 <ItemsControl ItemsSource="{Binding Visuals}"
                                                                                               HorizontalAlignment="Center"
                                                                                               AlternationCount="100">
@@ -869,12 +844,12 @@
                                                                                                                 <Grid>
                                                                                                                     <Grid.ColumnDefinitions>
                                                                                                                         <ColumnDefinition Width="Auto"/>
-                                                                                                                        <ColumnDefinition Width="Auto"/>
+                                                                                                                        <ColumnDefinition Width="Auto" MinWidth="12"/>
                                                                                                                         <ColumnDefinition Width="Auto"/>
                                                                                                                     </Grid.ColumnDefinitions>
                                                                                                                     <Grid.RowDefinitions>
                                                                                                                         <RowDefinition Height="Auto"/>
-                                                                                                                        <RowDefinition Height="Auto"/>
+                                                                                                                        <RowDefinition Height="Auto" MinHeight="6"/>
                                                                                                                         <RowDefinition Height="Auto"/>
                                                                                                                     </Grid.RowDefinitions>
                                                                                                                 </Grid>
@@ -911,37 +886,40 @@
                                                                                                         </Style>
                                                                                                     </TextBlock.Style>
                                                                                                 </TextBlock>
-                                                                                                <Button x:Name="UiWorkspaceBindInput" MinWidth="62" Margin="2 1" Padding="0" Background="Transparent"
-                                                                                                      BorderThickness="0" Cursor="Hand" Focusable="True"
+                                                                                                <Button x:Name="UiWorkspaceBindInput" Margin="2 1" Padding="0" Cursor="Hand" Focusable="True"
                                                                                                       AutomationProperties.Name="{Binding ToolTip}"
                                                                                                       ToolTip="{Binding ToolTip}" Click="QuickBindWorkspaceInput_OnClick"
                                                                                                       PreviewMouseLeftButtonDown="QuickBindWorkspaceInput_OnPreviewMouseLeftButtonDown"
                                                                                                       PreviewMouseRightButtonDown="QuickBindWorkspaceInput_OnPreviewMouseRightButtonDown">
                                                                                                     <Button.Style>
-                                                                                                        <Style TargetType="Button" BasedOn="{StaticResource UcrCollapsedInputBindingButton}">
+                                                                                                        <Style TargetType="Button" BasedOn="{StaticResource UcrBindingButton}">
+                                                                                                            <Setter Property="Width" Value="58"/>
+                                                                                                            <Setter Property="Height" Value="44"/>
                                                                                                             <Style.Triggers>
                                                                                                                 <DataTrigger Binding="{Binding IsDirectionalSlot}" Value="True">
                                                                                                                     <Setter Property="AutomationProperties.AutomationId" Value="UiWorkspaceDirectionBind"/>
+                                                                                                                    <Setter Property="Width" Value="42"/>
+                                                                                                                    <Setter Property="Height" Value="24"/>
                                                                                                                 </DataTrigger>
                                                                                                             </Style.Triggers>
                                                                                                         </Style>
                                                                                                     </Button.Style>
                                                                                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                                                    <TextBlock Text="{Binding DirectionalArrow}" Foreground="White"
+                                                                                                               FontSize="11" VerticalAlignment="Center"/>
                                                                                                     <Grid>
                                                                                                     <controls:ControlGlyphControl Kind="{Binding ControlKind}"
                                                                                                                                   AccentBrush="{Binding ControlBrush}"
-                                                                                                                                  Label="{Binding ControlLabel}"
-                                                                                                                                  >
+                                                                                                                                  Label="{Binding ControlLabel}">
                                                                                                         <controls:ControlGlyphControl.Style>
                                                                                                             <Style TargetType="{x:Type controls:ControlGlyphControl}">
-                                                                                                                 <Setter Property="Width" Value="58"/>
-                                                                                                                 <Setter Property="Height" Value="42"/>
-                                                                                                                 <Style.Triggers>
-                                                                                                                     <DataTrigger Binding="{Binding IsCompoundVisual}" Value="True">
-                                                                                                                         <Setter Property="Width" Value="74"/>
-                                                                                                                         <Setter Property="Height" Value="54"/>
-                                                                                                                     </DataTrigger>
-                                                                                                                 
+                                                                                                                <Setter Property="Width" Value="54"/>
+                                                                                                                <Setter Property="Height" Value="39"/>
+                                                                                                                <Style.Triggers>
+                                                                                                                    <DataTrigger Binding="{Binding IsDirectionalSlot}" Value="True">
+                                                                                                                        <Setter Property="Width" Value="28"/>
+                                                                                                                        <Setter Property="Height" Value="20"/>
+                                                                                                                    </DataTrigger>
                                                                                                                     <DataTrigger Binding="{Binding IsCapturing}" Value="True">
                                                                                                                         <Setter Property="Visibility" Value="Collapsed"/>
                                                                                                                     </DataTrigger>
@@ -949,20 +927,26 @@
                                                                                                             </Style>
                                                                                                         </controls:ControlGlyphControl.Style>
                                                                                                     </controls:ControlGlyphControl>
-                                                                                                    <Border Width="58" Height="42" CornerRadius="4"
+                                                                                                    <Border CornerRadius="4"
                                                                                                             BorderThickness="2" BorderBrush="#FFD08E"
                                                                                                             Background="#944916" IsHitTestVisible="False">
                                                                                                         <Border.Style>
                                                                                                             <Style TargetType="{x:Type Border}">
+                                                                                                                <Setter Property="Width" Value="54"/>
+                                                                                                                <Setter Property="Height" Value="39"/>
                                                                                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                                                                                                 <Style.Triggers>
+                                                                                                                    <DataTrigger Binding="{Binding IsDirectionalSlot}" Value="True">
+                                                                                                                        <Setter Property="Width" Value="30"/>
+                                                                                                                        <Setter Property="Height" Value="20"/>
+                                                                                                                    </DataTrigger>
                                                                                                                     <DataTrigger Binding="{Binding IsCapturing}" Value="True">
                                                                                                                         <Setter Property="Visibility" Value="Visible"/>
                                                                                                                     </DataTrigger>
                                                                                                                 </Style.Triggers>
                                                                                                             </Style>
                                                                                                         </Border.Style>
-                                                                                                        <TextBlock Text="PRESS" FontSize="11" FontWeight="Bold"
+                                                                                                        <TextBlock Text="PRESS" FontSize="8" FontWeight="Bold"
                                                                                                                    Foreground="#FFFFFF" HorizontalAlignment="Center"
                                                                                                                    VerticalAlignment="Center"/>
                                                                                                     </Border>
@@ -993,28 +977,27 @@
                                                                                         </DataTemplate>
                                                                                     </ItemsControl.ItemTemplate>
                                                                                 </ItemsControl>
-                                                                                </Viewbox>
                                                                             </StackPanel>
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
                                                                 </ItemsControl>
+                                                                </Viewbox>
                                                                 <TextBlock x:Name="MappingSummaryArrow" Grid.Column="2" Text="→" Foreground="#BBBBBB"
                                                                            FontSize="22" VerticalAlignment="Center"
                                                                            HorizontalAlignment="Center"/>
-                                                                <ItemsControl x:Name="MappingOutputSummary" Grid.Column="3" ItemsSource="{Binding CollapsedOutputVisuals}"
-                                                                              HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                                                                <Viewbox Grid.Column="3" MaxHeight="78" Stretch="Uniform"
+                                                                         StretchDirection="DownOnly" VerticalAlignment="Center">
+                                                                <ItemsControl ItemsSource="{Binding CollapsedOutputVisuals}">
                                                                     <ItemsControl.ItemsPanel>
                                                                         <ItemsPanelTemplate>
-                                                                            <WrapPanel Orientation="Horizontal"
-                                                                                       HorizontalAlignment="Center"/>
+                                                                            <StackPanel Orientation="Horizontal"/>
                                                                         </ItemsPanelTemplate>
                                                                     </ItemsControl.ItemsPanel>
                                                                     <ItemsControl.ItemTemplate>
                                                                         <DataTemplate>
-                                                                            <Button x:Name="UiWorkspaceBindOutput" Padding="2 0" BorderThickness="0" Background="Transparent" Cursor="Hand"
-                                                                                    Focusable="True" Margin="0 3 0 5"
-                                                                                    MaxWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
-                                                                                    Style="{StaticResource UcrCollapsedOutputBindingButton}"
+                                                                            <Button x:Name="UiWorkspaceBindOutput" Width="62" Height="46" Padding="2 0"
+                                                                                    Focusable="True" Margin="2 0"
+                                                                                    Style="{StaticResource UcrBindingButton}"
                                                                                     ClipToBounds="False" ToolTip="{Binding ToolTip}"
                                                                                     Click="QuickBindWorkspaceOutput_OnClick"
                                                                                     PreviewMouseRightButtonDown="QuickBindWorkspaceOutput_OnPreviewMouseRightButtonDown">
@@ -1040,6 +1023,7 @@
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
                                                                 </ItemsControl>
+                                                                </Viewbox>
                                                                 <Button x:Name="UiWorkspaceRemoveMapping" Grid.Column="4" Width="34" Height="34"
                                                                         HorizontalAlignment="Center" VerticalAlignment="Center"
                                                                         Style="{StaticResource UcrDeleteCrossButton}"
@@ -1083,17 +1067,6 @@
                                                                 </ContentControl>
                                                             </StackPanel>
                                                         </Border>
-                                                        <DataTemplate.Triggers>
-                                                            <DataTrigger Binding="{Binding HasCollapsedInputCompass}" Value="True">
-                                                                <Setter TargetName="MappingTitleArea" Property="Grid.ColumnSpan" Value="4"/>
-                                                                <Setter TargetName="MappingInputSummary" Property="Grid.Row" Value="1"/>
-                                                                <Setter TargetName="MappingInputSummary" Property="Grid.Column" Value="0"/>
-                                                                <Setter TargetName="MappingInputSummary" Property="Grid.ColumnSpan" Value="2"/>
-                                                                <Setter TargetName="MappingSummaryArrow" Property="Grid.Row" Value="1"/>
-                                                                <Setter TargetName="MappingOutputSummary" Property="Grid.Row" Value="1"/>
-                                                                <Setter TargetName="MappingOutputSummary" Property="Grid.ColumnSpan" Value="3"/>
-                                                            </DataTrigger>
-                                                        </DataTemplate.Triggers>
                                                     </DataTemplate>
                                                 </ListView.ItemTemplate>
                                             </ListView>

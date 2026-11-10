@@ -32,6 +32,8 @@ namespace HidWizards.UCR.Core.Managers
         private readonly Context _context;
 
         private readonly DeviceCacheStore _deviceCacheStore;
+        private readonly HashSet<string> _rememberedInputEndpoints =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         // Raw provider slots are runtime endpoints, not user-facing physical identity. Detection claims
         // let us distinguish a genuinely second identical Core_Interception device without leaking
         // ordinary slot churn such as #4/#6 into the UI.
@@ -111,6 +113,7 @@ namespace HidWizards.UCR.Core.Managers
             if (_context.IOController == null) return false;
 
             var inputs = GetProviderReportsResilient(DeviceIoType.Input);
+            GetRawAvailableDeviceList(DeviceIoType.Input, false, inputs);
             var outputs = GetProviderReportsResilient(DeviceIoType.Output);
             return requireBothDirections
                 ? inputs.Count > 0 && outputs.Count > 0
@@ -189,10 +192,11 @@ namespace HidWizards.UCR.Core.Managers
             return reports;
         }
 
-        private List<Device> GetRawAvailableDeviceList(DeviceIoType type, bool includeCache)
+        private List<Device> GetRawAvailableDeviceList(DeviceIoType type, bool includeCache,
+            SortedDictionary<string, ProviderReport> providerList = null)
         {
             var result = new List<Device>();
-            var providerList = GetProviderReportsResilient(type);
+            providerList = providerList ?? GetProviderReportsResilient(type);
 
             foreach (var providerReport in providerList)
             {
@@ -200,19 +204,86 @@ namespace HidWizards.UCR.Core.Managers
                 foreach (var ioWrapperDevice in devices)
                 {
                     if (ioWrapperDevice == null) continue;
-                    result.Add(new Device(ioWrapperDevice, providerReport.Value, BuildDeviceBindingMenu(ioWrapperDevice.Nodes, type)));
-                }
-
-                if (!includeCache) continue;
-                var cachedDevices = _deviceCacheStore.LoadProvider(providerReport.Value.ProviderDescriptor.ProviderName);
-                foreach (var cachedDevice in cachedDevices)
-                {
-                    if (result.Any(liveDevice => CacheRepresentsLiveEndpoint(cachedDevice, liveDevice))) continue;
-                    result.Add(cachedDevice);
+                    var menu = BuildDeviceBindingMenu(ioWrapperDevice.Nodes, type);
+                    var device = new Device(ioWrapperDevice, providerReport.Value, menu);
+                    result.Add(device);
+                    if (type == DeviceIoType.Input && menu != null)
+                        RememberInputDevice(device, menu);
                 }
             }
 
+            if (includeCache && type == DeviceIoType.Input)
+            {
+                foreach (var cached in _deviceCacheStore.LoadAllProviders())
+                {
+                    if (result.Any(device => SameRememberedInput(cached, device))) continue;
+                    result.Add(cached.CopyForProfile());
+                }
+            }
             return result;
+        }
+
+        private static bool SameRememberedInput(Device left, Device right)
+        {
+            if (DeviceIdentity.UsesLogicalSlotIdentity(left.ProviderName))
+                return DeviceIdentity.DescriptorEquals(left, right);
+            return DeviceIdentity.PersistedEquals(left, right);
+        }
+
+        private void RememberInputDevice(Device device, List<DeviceBindingNode> menu)
+        {
+            var key = BuildRuntimeEndpointKey(device);
+            lock (_rememberedInputEndpoints)
+            {
+                if (!_rememberedInputEndpoints.Add(key)) return;
+                try
+                {
+                    _deviceCacheStore.Save(device, menu);
+                }
+                catch (Exception exception)
+                {
+                    Logger.Warn(exception, "Unable to remember input device: " + device.LogName());
+                }
+            }
+        }
+
+        internal List<Device> GetProfileInputChoices()
+        {
+            var devices = GetVisibleDeviceList(DeviceIoType.Input, includeCache: true);
+            foreach (var profile in EnumerateProfiles(_context.Profiles))
+            {
+                foreach (var configuration in profile.InputDeviceConfigurations ?? new List<DeviceConfiguration>())
+                {
+                    var device = configuration?.Device;
+                    if (device == null || IsInputRemoved(device) || devices.Any(candidate =>
+                            SameRememberedInput(device, candidate) ||
+                            (DeviceIdentity.LogicalEquals(device, candidate) &&
+                             device.LogicalInstanceNumber == candidate.LogicalInstanceNumber))) continue;
+
+                    devices.Add(new Device(new DeviceCache
+                    {
+                        ProviderName = device.ProviderName,
+                        DeviceHandle = device.DeviceHandle,
+                        DeviceNumber = device.DeviceNumber,
+                        HidPath = device.HidPath,
+                        Title = device.Title
+                    }) { LogicalInstanceNumber = device.LogicalInstanceNumber });
+                }
+            }
+            ApplyAliases(devices);
+            return SortDevices(devices);
+        }
+
+        private static IEnumerable<Profile> EnumerateProfiles(IEnumerable<Profile> profiles)
+        {
+            if (profiles == null) yield break;
+            foreach (var profile in profiles)
+            {
+                if (profile == null) continue;
+                yield return profile;
+                foreach (var child in EnumerateProfiles(profile.ChildProfiles))
+                    yield return child;
+            }
         }
 
         public static string GetLogicalDeviceTitle(Device device)
@@ -1417,16 +1488,24 @@ namespace HidWizards.UCR.Core.Managers
         public List<DeviceBindingNode> GetDeviceBindingMenu(Device device, DeviceIoType type, bool includeCache = true)
         {
             var resolvedDevice = ResolveDevice(device, type);
-            if (resolvedDevice != null)
-            {
+            if (resolvedDevice?.HasBindingMenu == true)
                 return resolvedDevice.GetDeviceBindingMenu();
-            }
 
-            if (includeCache)
+            if (includeCache && type == DeviceIoType.Input && device != null)
             {
-                var cachedDevice = GetAvailableDeviceList(type, true)
-                    .FirstOrDefault(candidate => candidate.IsCache && DescriptorEquals(candidate, device));
+                var remembered = _deviceCacheStore.LoadProvider(device.ProviderName);
+                var cachedDevice = remembered.FirstOrDefault(candidate =>
+                    candidate.HasBindingMenu && SameRememberedInput(candidate, device));
                 if (cachedDevice != null) return cachedDevice.GetDeviceBindingMenu();
+
+                // Core Interception exposes the same key descriptors on every keyboard.
+                // This also recovers legacy profiles saved before their device was cached.
+                if (device.IsInterceptionKeyboard)
+                {
+                    var keyboard = remembered.FirstOrDefault(candidate =>
+                        candidate.HasBindingMenu && candidate.IsInterceptionKeyboard);
+                    if (keyboard != null) return keyboard.GetDeviceBindingMenu();
+                }
             }
 
             return new List<DeviceBindingNode>

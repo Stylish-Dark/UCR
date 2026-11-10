@@ -407,6 +407,7 @@ namespace HidWizards.UCR.Core.Models
             target.KeyType = source.KeyType;
             target.KeyValue = source.KeyValue;
             target.KeySubValue = source.KeySubValue;
+            target.AssignedControlName = source.AssignedControlName;
             target.Block = source.Block;
             target.InvertInput = source.InvertInput;
             target.OutputAxisDirection = source.OutputAxisDirection;

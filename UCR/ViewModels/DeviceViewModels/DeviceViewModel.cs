@@ -19,6 +19,7 @@ namespace HidWizards.UCR.ViewModels.DeviceViewModels
 
         public string Title { get; set; }
         public string ProviderName { get; set; }
+        public string PickerDeviceStatus => Device?.IsCache == true ? ProviderName + " · Disconnected" : ProviderName;
         public DeviceIoType DeviceIoType { get; }
         public DeviceVisualDescriptor Visual => DeviceVisualCatalog.Describe(Device, DeviceIoType, _devicesManager);
         private bool _checked;

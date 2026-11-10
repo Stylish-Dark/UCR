@@ -15,26 +15,22 @@
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Primary/MaterialDesignColor.Blue.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Accent/MaterialDesignColor.Blue.xaml" />
             </ResourceDictionary.MergedDictionaries>
-            <!-- Profile buttons retain compiled base styles when external files are missing. -->
-            <Style x:Key="UcrCollapsedInputBindingButton" TargetType="{x:Type Button}"
-                       BasedOn="{StaticResource MaterialDesignFlatButton}">
-                    <Setter Property="MinHeight" Value="44"/>
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsCompoundVisual}" Value="True">
-                            <Setter Property="MinHeight" Value="70"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                    </Style>
-
-            <Style x:Key="UcrCollapsedOutputBindingButton" TargetType="{x:Type Button}"
-                       BasedOn="{StaticResource MaterialDesignFlatButton}">
-                    <Setter Property="MinHeight" Value="48"/>
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsCompoundVisual}" Value="True">
-                            <Setter Property="MinHeight" Value="70"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                    </Style>
+            <Style x:Key="UcrBindingButton" TargetType="{x:Type Button}"
+                   BasedOn="{StaticResource MaterialDesignFlatButton}">
+                <Setter Property="Background" Value="{DynamicResource UcrAccentBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource PrimaryHueLightBrush}"/>
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.45"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
 
             <Style x:Key="UcrSidebarIconButton" TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
                     <Setter Property="Foreground" Value="#DADADA"/>

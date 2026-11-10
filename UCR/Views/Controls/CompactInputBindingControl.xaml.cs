@@ -221,13 +221,15 @@ namespace HidWizards.UCR.Views.Controls
                 var configuration = GetSelectedOutputConfiguration();
                 if (configuration?.Device == null)
                 {
-                    HidWizards.UCR.Utilities.DarkMessageBox.Show(
-                        "Choose an available output device before binding a control.",
-                        "Output device unavailable", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MappingCardControl.ShowOutputPickerStatus(BindButton,
+                        DeviceBinding.DeviceConfigurationGuid == Guid.Empty
+                            ? "Add an output device to this profile"
+                            : "Output device is unavailable.");
                     return;
                 }
 
-                if (DeviceVisualCatalog.Describe(configuration, DeviceBinding.Profile, DeviceIoType.Output).Kind ==
+                if (DeviceBinding.DeviceConfigurationGuid != Guid.Empty &&
+                    DeviceVisualCatalog.Describe(configuration, DeviceBinding.Profile, DeviceIoType.Output).Kind ==
                     DeviceVisualKind.Keyboard)
                 {
                     var mappingCard = FindAncestor<MappingCardControl>(this);
@@ -243,9 +245,7 @@ namespace HidWizards.UCR.Views.Controls
             catch (Exception exception)
             {
                 Logger.Error("Unable to open output binding picker", exception);
-                HidWizards.UCR.Utilities.DarkMessageBox.Show(
-                    "Could not open the output picker: " + exception.GetBaseException().Message,
-                    "Output picker unavailable", MessageBoxButton.OK, MessageBoxImage.Error);
+                MappingCardControl.ShowOutputPickerStatus(BindButton, "Output controls are unavailable.");
             }
         }
 
@@ -414,7 +414,7 @@ namespace HidWizards.UCR.Views.Controls
                         info.DeviceBindingCategory == DeviceBindingCategory.Range ? 3 : 0);
                     binding.SetDeviceConfigurationGuid(configurationGuid);
                     binding.DeviceBindingCategory = info.DeviceBindingCategory;
-                    binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                    binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue, node.Title);
                 };
                 return item;
             }
@@ -889,9 +889,7 @@ namespace HidWizards.UCR.Views.Controls
 
         private DeviceConfiguration GetSelectedOutputConfiguration()
         {
-            var configurationGuid = DeviceBinding.DeviceConfigurationGuid;
-            if (configurationGuid == Guid.Empty) return null;
-            return DeviceBinding.Profile?.GetDeviceConfiguration(DeviceIoType.Output, configurationGuid);
+            return (DataContext as DeviceBindingViewModel)?.ResolveOutputConfiguration();
         }
     }
 }

@@ -30,6 +30,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 _deviceBindingName = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(DirectionalGlyph));
+                OnPropertyChanged(nameof(AxisPolarityLabel));
             }
         }
         // Spatial binding buttons must carry their own visible direction.
@@ -51,6 +52,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 }
             }
         }
+        public string AxisPolarityLabel
+        {
+            get
+            {
+                var polarity = DeviceBinding.InputDirectionSlot == 1 ? "Negative (−)" : "Positive (+)";
+                return DeviceBindingName == "Left" || DeviceBindingName == "Right" ||
+                       DeviceBindingName == "Up" || DeviceBindingName == "Down"
+                    ? polarity + "  " + DirectionalGlyph
+                    : polarity;
+            }
+        }
+
         public string IoTypeName => DeviceBinding.DeviceIoType.Equals(DeviceIoType.Input) ? "Input" : "Output";
         public DeviceBindingCategory DeviceBindingCategory { get; set; }
         public Mapping ExpressionMapping { get; set; }
@@ -139,6 +152,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ? Visibility.Visible
             : Visibility.Collapsed;
         public bool CanBlock => BindingEnabled && DeviceBinding.IsBound && DeviceBinding.IsBlockable();
+        internal DeviceConfiguration ResolveOutputConfiguration()
+        {
+            var profile = DeviceBinding?.Profile;
+            if (profile == null) return null;
+            var guid = DeviceBinding.DeviceConfigurationGuid;
+            return guid == Guid.Empty
+                ? profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output)
+                : profile.GetDeviceConfiguration(DeviceIoType.Output, guid);
+        }
+
         public bool CanBindCurrentDevice
         {
             get
@@ -659,13 +682,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     var savedGuid = DeviceBinding.DeviceConfigurationGuid;
                     var saved = DeviceBinding.Profile.GetDeviceConfiguration(DeviceIoType.Input, savedGuid);
 
-                    if (saved == null ||
-                        (saved.Device != null &&
-                         !IsCompatibleInputDevice(saved, DeviceBindingCategory, DeviceBinding.Profile.Context)))
+                    if (saved == null)
                     {
-                        // A removed profile device or a category-incompatible control is
-                        // not a selectable input. Reset to unrestricted detection rather
-                        // than manufacturing a phantom "Unavailable device" choice.
+                        // Removing a device from the profile clears its selection.
+                        // A disconnected device can still own an existing assignment.
                         DeviceBinding.SetDeviceConfigurationGuid(Guid.Empty, false);
                         selectedDevice = Devices.FirstOrDefault(item => item.Value == Guid.Empty);
                     }
@@ -847,6 +867,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.IsBound), StringComparison.Ordinal)
                 || string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.IsInBindMode), StringComparison.Ordinal))
             {
+                _cachedBoundName = null;
                 BindModeProgress = 0;
                 OnPropertyChanged(nameof(BindButtonText));
                 OnPropertyChanged(nameof(CompactBindButtonText));

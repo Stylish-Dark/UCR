@@ -630,21 +630,20 @@ namespace HidWizards.UCR.Core.Models
         public List<Device> GetMissingDeviceList(DeviceIoType deviceIoType)
         {
             Context.DevicesManager.RefreshDeviceList();
-            var availableDeviceList = Context.DevicesManager.GetVisibleDeviceList(deviceIoType);
+            var availableDeviceList = deviceIoType == DeviceIoType.Input
+                ? Context.DevicesManager.GetProfileInputChoices()
+                : Context.DevicesManager.GetVisibleDeviceList(deviceIoType);
             var profileDeviceList = GetDeviceConfigurationList(deviceIoType);
 
             foreach (var deviceConfiguration in profileDeviceList)
             {
-                var resolvedDevice = Context.DevicesManager.ResolveDevice(deviceConfiguration.Device, deviceIoType);
-                if (resolvedDevice != null)
-                {
-                    availableDeviceList.RemoveAll(d => DevicesManager.DescriptorEquals(d, resolvedDevice)
-                                                       || DevicesManager.PersistedIdentityEquals(d, deviceConfiguration.Device));
-                }
-                else
-                {
-                    availableDeviceList.RemoveAll(d => DevicesManager.PersistedIdentityEquals(d, deviceConfiguration.Device));
-                }
+                var configuredDevice = deviceConfiguration.Device;
+                var resolvedDevice = Context.DevicesManager.ResolveDevice(configuredDevice, deviceIoType);
+                availableDeviceList.RemoveAll(device =>
+                    DeviceIdentity.PersistedEquals(device, configuredDevice) ||
+                    DeviceIdentity.PersistedEquals(device, resolvedDevice) ||
+                    (deviceIoType == DeviceIoType.Input && DeviceIdentity.LogicalEquals(device, configuredDevice) &&
+                     device.LogicalInstanceNumber == configuredDevice.LogicalInstanceNumber));
             }
 
             return availableDeviceList;

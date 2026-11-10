@@ -298,6 +298,7 @@ namespace HidWizards.UCR.Core.Managers
         {
             public DeviceBinding Binding { get; set; }
             public Guid DeviceConfigurationGuid { get; set; }
+            public string ControlName { get; set; }
             public int KeyType { get; set; }
             public int KeyValue { get; set; }
             public int KeySubValue { get; set; }
@@ -375,6 +376,7 @@ namespace HidWizards.UCR.Core.Managers
                 {
                     Binding = _deviceBinding,
                     DeviceConfigurationGuid = deviceConfiguration.Guid,
+                    ControlName = bindingReport.Title,
                     KeyType = (int)bindingReport.BindingDescriptor.Type,
                     KeyValue = bindingReport.BindingDescriptor.Index,
                     KeySubValue = bindingReport.BindingDescriptor.SubIndex,
@@ -434,7 +436,7 @@ namespace HidWizards.UCR.Core.Managers
                     pendingInput.Binding.DeviceBindingCategory = pendingInput.Category;
                 }
                 pendingInput.Binding.SetDeviceConfigurationGuid(pendingInput.DeviceConfigurationGuid);
-                pendingInput.Binding.SetKeyTypeValue(pendingInput.KeyType, pendingInput.KeyValue, pendingInput.KeySubValue);
+                pendingInput.Binding.SetKeyTypeValue(pendingInput.KeyType, pendingInput.KeyValue, pendingInput.KeySubValue, pendingInput.ControlName);
                 EndBindMode();
             }
             catch (Exception exception)

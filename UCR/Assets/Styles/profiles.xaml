@@ -1,24 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Style x:Key="UcrCollapsedInputBindingButton" TargetType="{x:Type Button}">
-            <Setter Property="MinHeight" Value="44"/>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsCompoundVisual}" Value="True">
-                    <Setter Property="MinHeight" Value="70"/>
-                </DataTrigger>
-            </Style.Triggers>
-            </Style>
-
-    <Style x:Key="UcrCollapsedOutputBindingButton" TargetType="{x:Type Button}">
-            <Setter Property="MinHeight" Value="48"/>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsCompoundVisual}" Value="True">
-                    <Setter Property="MinHeight" Value="70"/>
-                </DataTrigger>
-            </Style.Triggers>
-            </Style>
-
     <Style x:Key="UcrSidebarIconButton" TargetType="{x:Type Button}">
             <Setter Property="Foreground" Value="#DADADA"/>
             <Setter Property="Opacity" Value="0.9"/>

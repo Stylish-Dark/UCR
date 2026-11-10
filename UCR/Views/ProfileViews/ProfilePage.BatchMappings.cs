@@ -233,7 +233,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                         binding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
                         binding.SetDeviceConfigurationGuid(input.Guid);
                         binding.SetKeyTypeValue(node.DeviceBindingInfo.KeyType,
-                            node.DeviceBindingInfo.KeyValue, node.DeviceBindingInfo.KeySubValue);
+                            node.DeviceBindingInfo.KeyValue, node.DeviceBindingInfo.KeySubValue, node.Title);
                         mapping.RefreshCollapsedSummary();
                         _batchMappings.Add(mapping);
                         BatchStatus.Text = "Captured: " + detected.ControlTitle;
@@ -261,7 +261,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                         binding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
                         binding.SetDeviceConfigurationGuid(configuration.Guid);
                         binding.SetKeyTypeValue(node.DeviceBindingInfo.KeyType,
-                            node.DeviceBindingInfo.KeyValue, node.DeviceBindingInfo.KeySubValue);
+                            node.DeviceBindingInfo.KeyValue, node.DeviceBindingInfo.KeySubValue, node.Title);
                         output.RefreshDeviceList();
                         mapping.RefreshCollapsedSummary();
                         completed++;

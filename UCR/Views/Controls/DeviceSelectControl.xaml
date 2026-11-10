@@ -25,7 +25,7 @@
                                 <StackPanel Grid.Column="1" Margin="4 9 4 9">
                                     <TextBlock Text="{Binding Title}" Foreground="#FFFFFF"
                                                TextTrimming="CharacterEllipsis" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
-                                    <TextBlock Text="{Binding ProviderName}" Foreground="#D0D0D0"
+                                    <TextBlock Text="{Binding PickerDeviceStatus}" Foreground="#D0D0D0"
                                                TextTrimming="CharacterEllipsis" Style="{StaticResource MaterialDesignCaptionTextBlock}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="4 0 0 0">

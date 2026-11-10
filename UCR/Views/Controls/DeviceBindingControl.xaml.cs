@@ -63,7 +63,9 @@ namespace HidWizards.UCR.Views.Controls
         {
             BindMenu = new ObservableCollection<ContextMenuItem>();
             if (DeviceBinding == null) return;
-            var deviceConfiguration = GetSelectedDeviceConfiguration();
+            var deviceConfiguration = DeviceBinding.DeviceIoType == DeviceIoType.Output
+                ? (DataContext as DeviceBindingViewModel)?.ResolveOutputConfiguration()
+                : GetSelectedDeviceConfiguration();
             if (deviceConfiguration?.Device != null && DeviceBinding.Profile?.Context != null)
                 BindMenu = BuildMenu(
                     deviceConfiguration.Device.GetDeviceBindingMenu(DeviceBinding.Profile.Context, DeviceBinding.DeviceIoType),
@@ -104,7 +106,7 @@ namespace HidWizards.UCR.Views.Controls
                     cmd = new RelayCommand(c =>
                     {
                         DeviceBinding.SetDeviceConfigurationGuid(deviceConfigurationGuid);
-                        DeviceBinding.SetKeyTypeValue(deviceBindingNode.DeviceBindingInfo.KeyType, deviceBindingNode.DeviceBindingInfo.KeyValue, deviceBindingNode.DeviceBindingInfo.KeySubValue);
+                        DeviceBinding.SetKeyTypeValue(deviceBindingNode.DeviceBindingInfo.KeyType, deviceBindingNode.DeviceBindingInfo.KeyValue, deviceBindingNode.DeviceBindingInfo.KeySubValue, deviceBindingNode.Title);
                     });
                 }
 
@@ -381,6 +383,7 @@ namespace HidWizards.UCR.Views.Controls
         private void OpenContextMenu()
         {
             if (DeviceBinding.IsInBindMode) return;
+            LoadContextMenu();
             var contextMenu = BindButton.ContextMenu;
             contextMenu.PlacementTarget = BindButton;
             contextMenu.IsOpen = true;

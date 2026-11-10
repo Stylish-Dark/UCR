@@ -35,6 +35,10 @@ namespace HidWizards.UCR.Core.Models.Binding
         // Index in its device list
         [XmlAttribute]
         public Guid DeviceConfigurationGuid { get; set; }
+        [XmlAttribute]
+        [DefaultValue("")]
+        public string AssignedControlName { get; set; } = string.Empty;
+
         // Subscription key
         [XmlAttribute]
         public int KeyType { get; set; }
@@ -203,6 +207,9 @@ namespace HidWizards.UCR.Core.Models.Binding
         public void SetDeviceConfigurationGuid(Guid deviceConfigurationGuid, bool preserveBinding,
             int keyType, int keyValue, int keySubValue)
         {
+            if (!preserveBinding || DeviceConfigurationGuid != deviceConfigurationGuid ||
+                KeyType != keyType || KeyValue != keyValue || KeySubValue != keySubValue)
+                AssignedControlName = string.Empty;
             DeviceConfigurationGuid = deviceConfigurationGuid;
 
             if (!preserveBinding)
@@ -269,8 +276,16 @@ namespace HidWizards.UCR.Core.Models.Binding
 
         public void SetKeyTypeValue(int type, int value, int subValue)
         {
+            SetKeyTypeValue(type, value, subValue, null);
+        }
+
+        public void SetKeyTypeValue(int type, int value, int subValue, string controlName)
+        {
             var bindingChanged = KeyType != type || KeyValue != value || KeySubValue != subValue;
             var wasBound = IsBound;
+            var previousName = AssignedControlName;
+            if (controlName != null || bindingChanged)
+                AssignedControlName = controlName?.Trim() ?? string.Empty;
 
             KeyType = type;
             KeyValue = value;
@@ -288,12 +303,20 @@ namespace HidWizards.UCR.Core.Models.Binding
 
             // Rebinding an already-bound control leaves IsBound=true, so its setter emits no
             // notification. The UI uses that notification to rebuild the binding label/glyph.
-            if (wasBound && bindingChanged) OnPropertyChanged(nameof(IsBound));
+            if (wasBound && (bindingChanged || previousName != AssignedControlName)) OnPropertyChanged(nameof(IsBound));
         }
         
         public string BoundName()
         {
-            return Profile.GetDeviceConfiguration(DeviceIoType, DeviceConfigurationGuid)?.Device.GetBindingName(this) ?? "Device unavailable";
+            return Profile.GetDeviceConfiguration(DeviceIoType, DeviceConfigurationGuid)?.Device?.GetBindingName(this) ?? SavedControlName();
+        }
+
+        internal string SavedControlName()
+        {
+            if (!IsBound) return "Not bound";
+            return string.IsNullOrWhiteSpace(AssignedControlName)
+                ? $"Control {KeyType}:{KeyValue}:{KeySubValue}"
+                : AssignedControlName;
         }
 
         public bool IsBlockable()

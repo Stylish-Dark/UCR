@@ -76,6 +76,7 @@
                     ToolTip="Stop the active profile to edit this binding."
                     ToolTipService.ShowOnDisabled="True"
                     Name="BindButton"
+                    Style="{StaticResource UcrBindingButton}"
                     Margin="0"
                     Click="BindButton_OnClick"
                     PreviewMouseRightButtonUp="BindButton_OnMouseRightButtonUp"

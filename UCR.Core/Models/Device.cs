@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Xml.Serialization;
 using HidWizards.IOWrapper.DataTransferObjects;
 using HidWizards.UCR.Core.Managers;
@@ -668,6 +670,14 @@ namespace HidWizards.UCR.Core.Models
         public string DisplayTitle => string.IsNullOrWhiteSpace(Alias) ? Title : Alias;
         [XmlIgnore]
         private List<DeviceBindingNode> DeviceBindingMenu { get; set; }
+        internal bool HasBindingMenu => DeviceBindingMenu?.Count > 0;
+
+        internal Device CopyForProfile()
+        {
+            var copy = (Device)MemberwiseClone();
+            copy.Profile = null;
+            return copy;
+        }
         [XmlIgnore] public Profile Profile { get; set; }
         [XmlIgnore] public bool IsCache { get; set; }
         // UCR logical ordinal for otherwise-identical physical devices. Provider DeviceNumber remains
@@ -718,14 +728,41 @@ namespace HidWizards.UCR.Core.Models
         public string GetBindingName(DeviceBinding deviceBinding)
         {
             if (!deviceBinding.IsBound) return "Not bound";
-            return GetBindingName(deviceBinding, GetDeviceBindingMenu(deviceBinding.Profile.Context, deviceBinding.DeviceIoType)) ?? "Unknown input";
+            var context = deviceBinding.Profile?.Context;
+            var menu = context == null ? GetDeviceBindingMenu() : GetDeviceBindingMenu(context, deviceBinding.DeviceIoType);
+            var name = GetBindingName(deviceBinding, menu);
+            if (!string.IsNullOrWhiteSpace(name)) return name;
+            if (!string.IsNullOrWhiteSpace(deviceBinding.AssignedControlName)) return deviceBinding.AssignedControlName;
+
+            // Core Interception persists the PC scan code minus one. Older bindings
+            // have no saved title and may outlive their original device menu.
+            if (IsInterceptionKeyboard && deviceBinding.KeyType == (int)BindingType.Button &&
+                deviceBinding.KeySubValue == 0 && deviceBinding.KeyValue >= 0 &&
+                deviceBinding.KeyValue < 511)
+            {
+                var scanCode = deviceBinding.KeyValue + 1;
+                var keyName = new StringBuilder(64);
+                if (Environment.OSVersion.Platform == PlatformID.Win32NT &&
+                    GetKeyNameText(scanCode << 16, keyName, keyName.Capacity) > 0)
+                    return keyName.ToString();
+            }
+            return deviceBinding.SavedControlName();
         }
+
+        internal bool IsInterceptionKeyboard =>
+            string.Equals(ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase) &&
+            ((DeviceHandle?.StartsWith("Keyboard", StringComparison.OrdinalIgnoreCase) ?? false) ||
+             (Title?.StartsWith("K:", StringComparison.OrdinalIgnoreCase) ?? false));
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern int GetKeyNameText(int scanCodeFlags, StringBuilder text, int size);
 
         private static string GetBindingName(DeviceBinding deviceBinding, List<DeviceBindingNode> deviceBindingNodes)
         {
             if (deviceBindingNodes == null) return null;
             foreach (var deviceBindingNode in deviceBindingNodes)
             {
+                if (deviceBindingNode == null) continue;
                 if (deviceBindingMatchesNode(deviceBinding, deviceBindingNode))
                 {
                     return deviceBindingNode.Title;
@@ -741,7 +778,7 @@ namespace HidWizards.UCR.Core.Models
 
         private static bool deviceBindingMatchesNode(DeviceBinding deviceBinding, DeviceBindingNode deviceBindingNode)
         {
-            return deviceBindingNode.IsBinding && 
+            return deviceBindingNode.IsBinding &&
                    deviceBindingNode.DeviceBindingInfo.KeyType == deviceBinding.KeyType &&
                    deviceBindingNode.DeviceBindingInfo.KeySubValue == deviceBinding.KeySubValue &&
                    deviceBindingNode.DeviceBindingInfo.KeyValue == deviceBinding.KeyValue;

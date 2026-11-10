@@ -107,6 +107,17 @@ namespace HidWizards.UCR.ViewModels.Dashboard
                     item.PropertyChanged += DeviceOnPropertyChanged;
                     Devices.Devices.Add(item);
                 }
+                else if (item.Device.IsCache)
+                {
+                    var index = Devices.Devices.IndexOf(item);
+                    item.PropertyChanged -= DeviceOnPropertyChanged;
+                    item = new DeviceViewModel(logicalDevice, _deviceIoType, _devicesManager)
+                    {
+                        FirstElement = item.FirstElement
+                    };
+                    item.PropertyChanged += DeviceOnPropertyChanged;
+                    Devices.Devices[index] = item;
+                }
 
                 item.IsDetected = true;
                 item.Checked = true;
