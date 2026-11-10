@@ -909,9 +909,10 @@ jobs:
               $directionProfile.GetCurrentPattern(
                   [System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
               Assert-UcrSelectedProfile 'DualSense button verification'
-              # Verify the actual rendered ordinary two-output layout before
-              # testing the taller 4-Way input editor. Use the existing compact
-              # profile viewport; only compare heading Y in side-by-side mode.
+              # Audit geometry in the same wide, two-column editor users see,
+              # then return to the standard compact viewport for other tests.
+              [UcrWindowCapture]::MoveWindow($handle, 0, 0, 1600, 900, $true) | Out-Null
+              Start-Sleep -Milliseconds 550
               $buttonOutput = Find-UcrControl 'UiMappingOutputButtonType'
               $buttonOutput.SetFocus()
               [System.Windows.Forms.SendKeys]::SendWait(' ')
@@ -947,8 +948,6 @@ jobs:
               # Focus the last output to scroll its adjacent row into the
               # visible viewport; do not infer logical output count from the
               # physical directional cardinality of the chosen representation.
-              $outputBindButtons[-1].SetFocus()
-              Start-Sleep -Milliseconds 350
               $a = $outputBindButtons[-2].Current.BoundingRectangle
               $b = $outputBindButtons[-1].Current.BoundingRectangle
               [UcrWindowCapture]::Capture(
@@ -962,6 +961,8 @@ jobs:
                   [Math]::Abs($a.Width - $b.Width) -gt 2) {
                   throw "Output rows drift in X or width: $a versus $b"
               }
+              [UcrWindowCapture]::MoveWindow($handle, 0, 0, 1200, 740, $true) | Out-Null
+              Start-Sleep -Milliseconds 450
 
               $fourWayOutput = Find-UcrControl 'UiMappingFourWayOutput'
               $fourWayOutput.SetFocus()
