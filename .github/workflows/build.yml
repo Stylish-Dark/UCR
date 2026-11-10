@@ -747,7 +747,9 @@ jobs:
               $closeAbout.SetFocus()
               [System.Windows.Forms.SendKeys]::SendWait('^{ENTER}')
               Start-Sleep -Milliseconds 350
-              Invoke-UcrControl 'UiClose'
+              # The focused dialog button may close About itself.
+              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+              Start-Sleep -Milliseconds 350
               if ((Find-UcrControl 'UiToolbarStop').Current.IsEnabled) {
                   throw 'A profile activation shortcut ran through a modal dialog.'
               }
