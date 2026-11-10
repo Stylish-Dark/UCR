@@ -524,7 +524,18 @@ jobs:
                 shadowDevices = @()
               }
             )
-            outputDeviceConfigurations = @()
+            outputDeviceConfigurations = @(
+              @{
+                guid = [guid]::NewGuid().ToString('D')
+                device = @{
+                  title = 'Xbox 360 Controller'
+                  providerName = 'Core_ViGEm'
+                  deviceHandle = 'xb360'
+                  deviceNumber = 0
+                }
+                shadowDevices = @()
+              }
+            )
             autoActivateApplications = @()
           }
           @{ schemaVersion = 1; profileOrder = @($profileId) } |
@@ -566,7 +577,9 @@ jobs:
               public static int Capture(IntPtr hwnd, string filename) {
                   Rect r;
                   if (!GetWindowRect(hwnd, out r)) throw new Exception("GetWindowRect failed");
-                  int w = r.Right - r.Left, h = r.Bottom - r.Top;
+                  bool sidebar = filename.IndexOf("-sidebar", StringComparison.OrdinalIgnoreCase) >= 0;
+                  int captureLeft = sidebar ? Math.Max(0, r.Left) : r.Left;
+                  int w = r.Right - captureLeft, h = r.Bottom - r.Top;
                   if (w < 300 || h < 250 || w > 6000 || h > 4000)
                       throw new Exception("Implausible application window dimensions: " + w + "x" + h);
                   using (var bitmap = new Bitmap(w, h, PixelFormat.Format32bppArgb)) {
@@ -577,8 +590,8 @@ jobs:
                               filename.IndexOf("about-dialog", StringComparison.OrdinalIgnoreCase) >= 0 ||
                               filename.IndexOf("profile-rename", StringComparison.OrdinalIgnoreCase) >= 0 ||
                               filename.IndexOf("-menu", StringComparison.OrdinalIgnoreCase) >= 0;
-                          if (popup) {
-                              g.CopyFromScreen(r.Left, r.Top, 0, 0, new Size(w, h));
+                          if (popup || sidebar) {
+                              g.CopyFromScreen(captureLeft, r.Top, 0, 0, new Size(w, h));
                           } else {
                               IntPtr dc = g.GetHdc();
                               try {
@@ -710,6 +723,12 @@ jobs:
               Write-Host "Captured actual UCR window: $outFile ($uniqueColors distinct sampled colors)"
               Write-Host "UI automation elements: $($elements.Count); named: $($labels.Count)"
               Assert-UcrSelectedProfile 'DualSense button verification'
+              [UcrWindowCapture]::MoveWindow($handle, -390, 0, 1200, 740, $true) | Out-Null
+              Start-Sleep -Milliseconds 500
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-devices-sidebar.png')) | Out-Null
+              [UcrWindowCapture]::MoveWindow($handle, 0, 0, 1200, 740, $true) | Out-Null
+              Start-Sleep -Milliseconds 400
               if ((Find-UcrControl 'UiMappingTitle').Current.Name -ne 'Cross to A') {
                   throw 'The saved mapping title is missing from the workspace.'
               }
@@ -879,6 +898,33 @@ jobs:
                   $handle, (Join-Path $directory 'UCR-batch-assign.png')) | Out-Null
               Invoke-UcrControl 'UiFinishBatchMappings'
 
+              $directionProfile = Find-UcrProfileRow 'DualSense button verification'
+              $directionProfile.GetCurrentPattern(
+                  [System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+              Assert-UcrSelectedProfile 'DualSense button verification'
+              $fourWayOutput = Find-UcrControl 'UiMappingFourWayOutput'
+              $fourWayOutput.SetFocus()
+              [System.Windows.Forms.SendKeys]::SendWait(' ')
+              Start-Sleep -Milliseconds 550
+              $directions = @(Get-UcrControls 'UiMappingDirectionBind')
+              if ($directions.Count -ne 4) { throw 'Could not find the four expanded direction buttons.' }
+              $directions[0].SetFocus()
+              Start-Sleep -Milliseconds 400
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-four-way-expanded.png')) | Out-Null
+              Assert-UcrDirectionCross 'UiMappingDirectionBind'
+              $expand = @(Get-UcrControls 'UiExpandMapping')[0]
+              $expand.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 450
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-four-way-collapsed.png')) | Out-Null
+              Assert-UcrDirectionCross 'UiWorkspaceDirectionBind'
+
+              $editProfile = Find-UcrProfileRow 'Windows audit renamed profile'
+              $editProfile.GetCurrentPattern(
+                  [System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+              Assert-UcrSelectedProfile 'Windows audit renamed profile'
+
               Invoke-UcrControl 'UiInspectorAddFilter'
               $buttonFilter = Find-UcrElement $nameProperty 'Button filter'
               $buttonFilter.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
@@ -889,9 +935,8 @@ jobs:
               $settings.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
               $filterName = Find-UcrControl 'UiFilterName'
               $filterName.SetFocus()
-              [System.Windows.Forms.SendKeys]::SendWait('^a')
-              [System.Windows.Forms.SendKeys]::SendWait('Saved without leaving focus')
               $filterValue = $filterName.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
+              $filterValue.SetValue('Saved without leaving focus')
               if ($filterValue.Current.Value -ne 'Saved without leaving focus') {
                   throw "The filter name edit did not reach the textbox: $($filterValue.Current.Value)"
               }
@@ -932,28 +977,6 @@ jobs:
                   } catch {}
               }
               $mappingLabels | Set-Content -LiteralPath (Join-Path $directory 'Mapping-UI-elements.txt')
-              $directionProfile = Find-UcrProfileRow 'DualSense button verification'
-              $directionProfile.GetCurrentPattern(
-                  [System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
-              Assert-UcrSelectedProfile 'DualSense button verification'
-              $fourWayOutput = Find-UcrControl 'UiMappingFourWayOutput'
-              $fourWayOutput.SetFocus()
-              [System.Windows.Forms.SendKeys]::SendWait(' ')
-              Start-Sleep -Milliseconds 550
-              $directions = @(Get-UcrControls 'UiMappingDirectionBind')
-              if ($directions.Count -ne 4) { throw 'Could not find the four expanded direction buttons.' }
-              $directions[0].SetFocus()
-              Start-Sleep -Milliseconds 400
-              [UcrWindowCapture]::Capture(
-                  $handle, (Join-Path $directory 'UCR-four-way-expanded.png')) | Out-Null
-              Assert-UcrDirectionCross 'UiMappingDirectionBind'
-              $expand = @(Get-UcrControls 'UiExpandMapping')[0]
-              $expand.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-              Start-Sleep -Milliseconds 450
-              [UcrWindowCapture]::Capture(
-                  $handle, (Join-Path $directory 'UCR-four-way-collapsed.png')) | Out-Null
-              Assert-UcrDirectionCross 'UiWorkspaceDirectionBind'
-
               Write-Host "Captured populated mappings: $populated ($populatedColors colors)"
 
               Write-Host "Captured live profile editor: $profilePath ($profileColors colors, $($editorElements.Count) UIA elements)"
