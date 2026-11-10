@@ -589,7 +589,7 @@ namespace HidWizards.UCR.Core.Managers
             var category = DeviceBinding.MapCategory(bindingReport.Category);
             if (requiredCategory.HasValue)
             {
-                if (category != requiredCategory.Value || !IsDetectedControlValueValid(category, value)) return;
+                if (category != requiredCategory.Value) return;
             }
             else
             {
@@ -607,7 +607,8 @@ namespace HidWizards.UCR.Core.Managers
                     StringComparison.OrdinalIgnoreCase) &&
                 candidate.DeviceNumber == deviceDescriptor.DeviceInstance);
 
-            if (device == null) return;
+            if (device == null || (requiredCategory.HasValue &&
+                !IsDetectedControlValueValid(category, bindingReport, device, value))) return;
 
             // The mouse gesture that opened a detector can leak into Interception briefly. Suppress
             // only pointer presses during that arm window; keyboard/controller input must be accepted
@@ -636,7 +637,7 @@ namespace HidWizards.UCR.Core.Managers
                    handle.IndexOf("mouse", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        private static bool IsDetectedControlValueValid(DeviceBindingCategory category, short value)
+        private static bool IsDetectedControlValueValid(DeviceBindingCategory category, BindingReport report, Device device, short value)
         {
             switch (category)
             {
@@ -646,10 +647,7 @@ namespace HidWizards.UCR.Core.Managers
                 case DeviceBindingCategory.Momentary:
                     return value != 0;
                 case DeviceBindingCategory.Range:
-                    var wideValue = Functions.WideAbs(value);
-                    // Accept deliberate movement through the full travel range,
-                    // including a stick held against its physical stop.
-                    return wideValue > Constants.AxisMaxValue * 0.4;
+                    return BindingManager.IsDeliberateAxisInput(report, device, value);
                 default:
                     return false;
             }
@@ -1118,80 +1116,115 @@ namespace HidWizards.UCR.Core.Managers
             return true;
         }
 
+        internal sealed class DevicePresentationUpdate
+        {
+            public DevicePresentationUpdate(Device device, DeviceIoType type, string alias, bool hidden,
+                int sortOrder, DeviceOutlineColor outlineColor, bool? blockUnmappedInputs)
+            {
+                Device = device;
+                Type = type;
+                Alias = string.IsNullOrWhiteSpace(alias) ? null : alias.Trim();
+                Hidden = hidden;
+                SortOrder = sortOrder < 0 ? int.MaxValue : sortOrder;
+                OutlineColor = outlineColor;
+                BlockUnmappedInputs = blockUnmappedInputs;
+            }
+
+            public Device Device { get; }
+            public DeviceIoType Type { get; }
+            public string Alias { get; }
+            public bool Hidden { get; }
+            public int SortOrder { get; }
+            public DeviceOutlineColor OutlineColor { get; }
+            public bool? BlockUnmappedInputs { get; }
+        }
+
         public bool TrySetDevicePresentation(Device device, DeviceIoType type, string alias, bool hidden,
             int sortOrder, DeviceOutlineColor outlineColor, out string error,
             bool? blockUnmappedInputs = null)
         {
+            return TrySetDevicePresentations(new[] { new DevicePresentationUpdate(device, type, alias, hidden,
+                sortOrder, outlineColor, blockUnmappedInputs) }, out error);
+        }
+
+        internal bool TrySetDevicePresentations(IReadOnlyList<DevicePresentationUpdate> updates, out string error)
+        {
             error = null;
-            if (device == null)
+            var aliases = (_context.DeviceAliases ?? Enumerable.Empty<DeviceAlias>())
+                .Select(alias => alias?.Clone()).ToList();
+            var liveDevices = new Dictionary<DeviceIoType, List<Device>>();
+            var changed = false;
+
+            foreach (var update in updates)
             {
-                error = "No device is selected.";
-                return false;
-            }
-
-            if (_context.DeviceAliases == null) _context.DeviceAliases = new List<DeviceAlias>();
-
-            var identity = BuildAliasIdentity(device);
-            if (identity == null)
-            {
-                error = "This device does not expose enough identity information for persistent device settings.";
-                return false;
-            }
-
-            var existing = _context.DeviceAliases.FirstOrDefault(candidate => AliasIdentityEquals(candidate, identity));
-            var normalizedAlias = string.IsNullOrWhiteSpace(alias) ? null : alias.Trim();
-            var normalizedSortOrder = sortOrder < 0 ? int.MaxValue : sortOrder;
-            var blockUnmapped = blockUnmappedInputs ?? existing?.BlockUnmappedInputs ?? false;
-            // DefaultOutlineColor existed briefly in pre-0.9.9r builds. Keep the XML field readable for
-            // backwards compatibility, but never let it influence presentation or persistence again.
-            var wantsPersistentSettings = normalizedAlias != null || hidden || normalizedSortOrder != int.MaxValue ||
-                                          outlineColor != DeviceOutlineColor.Default || blockUnmapped;
-
-            // HID paths and intentional logical slots are stable. A handle-only physical device is safe
-            // only while that provider exposes exactly one matching live device; otherwise two identical
-            // units would share the same settings and UCR would be pretending to know which is which.
-            if (wantsPersistentSettings && !CanPersistDeviceAlias(device, type))
-            {
-                error = "UCR cannot safely persist individual settings for this device because the provider does not expose a unique identity for it while identical devices are present.";
-                return false;
-            }
-
-            if (!wantsPersistentSettings)
-            {
-                if (existing != null)
+                var device = update.Device;
+                if (device == null)
                 {
-                    _context.DeviceAliases.Remove(existing);
-                    _context.ContextChanged();
-                    _context.OnDeviceAliasesChangedEvent();
+                    error = "No device is selected.";
+                    return false;
                 }
-                device.Alias = null;
-                return true;
+
+                var identity = BuildAliasIdentity(device);
+                if (identity == null)
+                {
+                    error = "This device does not expose enough identity information for persistent device settings.";
+                    return false;
+                }
+
+                var existing = aliases.FirstOrDefault(candidate => AliasIdentityEquals(candidate, identity));
+                var blockUnmapped = update.BlockUnmappedInputs ?? existing?.BlockUnmappedInputs ?? false;
+                var wantsPersistentSettings = update.Alias != null || update.Hidden || update.SortOrder != int.MaxValue ||
+                                              update.OutlineColor != DeviceOutlineColor.Default || blockUnmapped;
+                if (!wantsPersistentSettings)
+                {
+                    if (existing != null) changed |= aliases.Remove(existing);
+                    continue;
+                }
+
+                // Validate all handle-only identities against the same live snapshot for each direction.
+                if (!liveDevices.TryGetValue(update.Type, out var available))
+                {
+                    available = GetAvailableDeviceList(update.Type, false);
+                    liveDevices.Add(update.Type, available);
+                }
+
+                if (!CanPersistDeviceAlias(device, available))
+                {
+                    error = "UCR cannot safely persist individual settings for this device because the provider does not expose a unique identity for it while identical devices are present.";
+                    return false;
+                }
+
+                if (existing == null)
+                {
+                    existing = identity;
+                    aliases.Add(existing);
+                }
+                else if (string.Equals(existing.Alias, update.Alias, StringComparison.Ordinal) &&
+                         existing.Hidden == update.Hidden && existing.SortOrder == update.SortOrder &&
+                         existing.OutlineColor == update.OutlineColor && existing.BlockUnmappedInputs == blockUnmapped &&
+                         string.IsNullOrWhiteSpace(existing.DefaultOutlineColor))
+                {
+                    continue;
+                }
+
+                existing.Alias = update.Alias;
+                existing.Hidden = update.Hidden;
+                existing.SortOrder = update.SortOrder;
+                existing.OutlineColor = update.OutlineColor;
+                existing.BlockUnmappedInputs = blockUnmapped;
+                // The obsolete generated-default field is read for compatibility only.
+                existing.DefaultOutlineColor = null;
+                changed = true;
             }
 
-            if (existing == null)
+            // Neither live aliases nor their observers see any change until the whole batch validates.
+            if (changed) _context.DeviceAliases = aliases;
+            foreach (var update in updates) update.Device.Alias = update.Alias;
+            if (changed)
             {
-                existing = identity;
-                _context.DeviceAliases.Add(existing);
+                _context.ContextChanged();
+                _context.OnDeviceAliasesChangedEvent();
             }
-            else if (string.Equals(existing.Alias, normalizedAlias, StringComparison.Ordinal) &&
-                     existing.Hidden == hidden && existing.SortOrder == normalizedSortOrder &&
-                     existing.OutlineColor == outlineColor && existing.BlockUnmappedInputs == blockUnmapped &&
-                     string.IsNullOrWhiteSpace(existing.DefaultOutlineColor))
-            {
-                device.Alias = normalizedAlias;
-                return true;
-            }
-
-            existing.Alias = normalizedAlias;
-            existing.Hidden = hidden;
-            existing.SortOrder = normalizedSortOrder;
-            existing.OutlineColor = outlineColor;
-            existing.BlockUnmappedInputs = blockUnmapped;
-            // Scrub the obsolete generated-default field the next time this device is saved.
-            existing.DefaultOutlineColor = null;
-            device.Alias = normalizedAlias;
-            _context.ContextChanged();
-            _context.OnDeviceAliasesChangedEvent();
             return true;
         }
 

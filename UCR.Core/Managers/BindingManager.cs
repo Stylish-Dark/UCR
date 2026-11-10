@@ -339,13 +339,13 @@ namespace HidWizards.UCR.Core.Managers
 
                 var category = DeviceBinding.MapCategory(bindingReport.Category);
                 if (!IsCompatibleCaptureCategory(_deviceBinding.DeviceBindingCategory,
-                        category, _autoDetectInputCategory) ||
-                    !IsInputValid(bindingReport.Category, value))
+                        category, _autoDetectInputCategory))
                     return null;
 
                 var deviceConfiguration = FindDeviceConfiguration(providerDescriptor, deviceDescriptor);
                 if (deviceConfiguration == null ||
-                    !IsEligibleBindDevice(_deviceBinding.DeviceConfigurationGuid, deviceConfiguration.Guid))
+                    !IsEligibleBindDevice(_deviceBinding.DeviceConfigurationGuid, deviceConfiguration.Guid) ||
+                    !IsInputValid(bindingReport, _bindModeRuntimeDevices[deviceConfiguration.Guid], value))
                     return null;
 
                 // The click that opened bind mode can only contaminate pointer bindings. Keyboard,
@@ -431,9 +431,9 @@ namespace HidWizards.UCR.Core.Managers
             }
         }
 
-        private bool IsInputValid(BindingCategory bindingCategory, short value)
+        private static bool IsInputValid(BindingReport report, Device device, short value)
         {
-            switch (DeviceBinding.MapCategory(bindingCategory))
+            switch (DeviceBinding.MapCategory(report.Category))
             {
                 case DeviceBindingCategory.Delta:
                 case DeviceBindingCategory.Event:
@@ -441,13 +441,40 @@ namespace HidWizards.UCR.Core.Managers
                 case DeviceBindingCategory.Momentary:
                     return value != 0;
                 case DeviceBindingCategory.Range:
-                    var wideVal = Functions.WideAbs(value);
-                    // A stick pushed fully to its stop is a valid capture too.
-                    // Ignore the near-centre noise without rejecting strong movement.
-                    return wideVal > Constants.AxisMaxValue * 0.4;
+                    return IsDeliberateAxisInput(report, device, value);
                 default:
                     return false;
             }
+        }
+
+        internal static bool IsDeliberateAxisInput(BindingReport report, Device device, short value)
+        {
+            // IOWrapper normalizes unsigned trigger travel to a signed short, with
+            // the released position at the minimum. Signed sticks are bidirectional.
+            if (report.Category == BindingCategory.Unsigned || IsDualSenseTrigger(report, device))
+                return value > Constants.AxisMaxValue * 0.4;
+
+            return Functions.WideAbs(value) > Constants.AxisMaxValue * 0.4;
+        }
+
+        private static bool IsDualSenseTrigger(BindingReport report, Device device)
+        {
+            // SharpDX exposes the two DualSense trigger axes as RotationX/RotationY
+            // (DIJOYSTATE byte offsets 12 and 16) and labels all of its axes Signed.
+            var descriptor = report.BindingDescriptor;
+            if (descriptor.Type != BindingType.Axis || (descriptor.Index != 12 && descriptor.Index != 16) ||
+                !string.Equals(device?.ProviderName, "SharpDX_DirectInput", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return IsDualSenseIdentity(device.HidPath) || IsDualSenseIdentity(device.DeviceHandle);
+        }
+
+        private static bool IsDualSenseIdentity(string identity)
+        {
+            return identity != null &&
+                identity.IndexOf("VID_054C", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                (identity.IndexOf("PID_0CE6", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 identity.IndexOf("PID_0DF2", StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
         private DeviceConfiguration FindDeviceConfiguration(ProviderDescriptor providerDescriptor, DeviceDescriptor deviceDescriptor)

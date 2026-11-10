@@ -560,21 +560,16 @@ namespace HidWizards.UCR.ViewModels.Dashboard
 
         public bool Apply(out string error)
         {
-            error = null;
+            var updates = new List<DevicesManager.DevicePresentationUpdate>();
             for (var index = 0; index < Devices.Count; index++)
             {
                 var item = Devices[index];
                 if (!item.CanPersist) continue;
-
-                var hidden = item.CanHide && item.Hidden;
-                if (_devicesManager.TrySetDevicePresentation(item.Device, item.ValidationType,
-                        item.Alias, hidden, index, item.TextColor, out error,
-                        item.CanBlockUnmapped ? (bool?)item.BlockUnmappedInputs : null)) continue;
-
-                return false;
+                updates.Add(new DevicesManager.DevicePresentationUpdate(item.Device, item.ValidationType,
+                    item.Alias, item.CanHide && item.Hidden, index, item.TextColor,
+                    item.CanBlockUnmapped ? (bool?)item.BlockUnmappedInputs : null));
             }
-
-            return true;
+            return _devicesManager.TrySetDevicePresentations(updates, out error);
         }
 
         public void Dispose()

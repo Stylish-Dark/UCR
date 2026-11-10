@@ -81,6 +81,25 @@ namespace HidWizards.UCR.Core.Models
         public List<DirectionalOutputBank> InactiveOutputRepresentations { get; set; } =
             new List<DirectionalOutputBank>();
 
+        // Device IDs belong to the persisted mapping, including routes that will only
+        // be used after the user switches a representation or restores a Filter output.
+        internal IEnumerable<DeviceBinding> GetPersistedInputBindings()
+        {
+            return (DeviceBindings ?? Enumerable.Empty<DeviceBinding>())
+                .Concat((InactiveInputRepresentations ?? Enumerable.Empty<DirectionalInputBank>())
+                    .Where(bank => bank?.Bindings != null).SelectMany(bank => bank.Bindings))
+                .Where(binding => binding != null).Distinct();
+        }
+
+        internal IEnumerable<DeviceBinding> GetPersistedOutputBindings()
+        {
+            return (Plugins ?? Enumerable.Empty<Plugin>())
+                .Concat((InactiveOutputRepresentations ?? Enumerable.Empty<DirectionalOutputBank>())
+                    .Where(bank => bank?.Plugins != null).SelectMany(bank => bank.Plugins))
+                .Where(plugin => plugin?.Outputs != null).SelectMany(plugin => plugin.Outputs)
+                .Where(binding => binding != null).Distinct();
+        }
+
         [XmlIgnore]
         public int EffectiveInputRepresentation => InputRepresentation != 0
             ? InputRepresentation : EffectiveDirectionalCapacity == 4 &&
@@ -156,27 +175,26 @@ namespace HidWizards.UCR.Core.Models
 
         internal bool IsShadowMapping { get; set; }
         internal int ShadowDeviceNumber { get; set; }
-        internal int PossibleShadowClones => CountPossibleShadowClones();
         internal FilterState FilterState { get; set; }
         internal Guid RuntimeScopeGuid { get; private set; }
 
-        private int CountPossibleShadowClones()
+        internal IEnumerable<int> GetPossibleShadowCloneNumbers(Profile profile)
         {
-            var usedDeviceConfigurations = new List<DeviceConfiguration>();
+            var inputs = DeviceBindings.Where(binding => binding.IsBound)
+                .Select(binding => profile.GetDeviceConfiguration(DeviceIoType.Input, binding.DeviceConfigurationGuid))
+                .ToList();
+            if (inputs.Count == 0) return Enumerable.Empty<int>();
 
-            foreach (var deviceBinding in DeviceBindings)
-            {
-                if (!deviceBinding.IsBound) continue;
+            var outputs = Plugins.SelectMany(plugin => plugin.Outputs)
+                .Where(binding => binding.IsBound)
+                .Select(binding => profile.GetDeviceConfiguration(DeviceIoType.Output, binding.DeviceConfigurationGuid));
+            var configurations = inputs.Concat(outputs).Distinct().ToList();
+            var commonCount = configurations.Min(configuration => configuration?.ShadowDevices?.Count ?? 0);
 
-                var deviceConfiguration = Profile.GetDeviceConfiguration(DeviceIoType.Input, deviceBinding.DeviceConfigurationGuid);
-                if (deviceConfiguration != null) usedDeviceConfigurations.Add(deviceConfiguration);
-            }
-
-            if (usedDeviceConfigurations.Count == 0) return 0;
-
-            return usedDeviceConfigurations
-                .Select(deviceConfiguration => deviceConfiguration.ShadowDevices)
-                .Max(shadowDevices => shadowDevices.Count);
+            // A clone uses the same shadow slot for every bound input and output.
+            // If that slot is incomplete, keep the primary mapping and any complete clones.
+            return Enumerable.Range(0, commonCount).Where(index =>
+                configurations.All(configuration => configuration.GetShadowDevice(index) != null));
         }
 
         [XmlIgnore]
@@ -253,7 +271,7 @@ namespace HidWizards.UCR.Core.Models
                 plugin.RuntimeMapping = this;
                 plugin.ResetFilterOutputTracking();
                 if (!plugin.HasStatefulOutput) continue;
-                _runtimeFilterKeys.UnionWith(plugin.GetRuntimeFilterKeys());
+                _runtimeFilterKeys.UnionWith(plugin.GetRuntimeFilterKeys().Where(key => filterState.TryGetValue(key, out _)));
                 if (plugin.IsFiltered()) _filteredOutputPlugins.Add(plugin);
             }
             lock (_routingGate) _routingStopped = false;
@@ -292,7 +310,7 @@ namespace HidWizards.UCR.Core.Models
             var parentProfile = Profile?.ParentProfile;
             while (parentProfile != null)
             {
-                foreach (var mapping in parentProfile.Mappings ?? Enumerable.Empty<Mapping>())
+                foreach (var mapping in parentProfile.GetRuntimeMappings())
                 {
                     if (mapping != null &&
                         string.Equals(Title, mapping.Title, StringComparison.CurrentCultureIgnoreCase))

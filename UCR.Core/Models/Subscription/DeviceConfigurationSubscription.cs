@@ -24,7 +24,7 @@ namespace HidWizards.UCR.Core.Models.Subscription
             DeviceSubscription = new DeviceSubscription(deviceConfiguration.Device);
 
             ShadowDeviceSubscriptions = new List<DeviceSubscription>();
-            deviceConfiguration.ShadowDevices.ForEach(shadowDevice => ShadowDeviceSubscriptions.Add(new DeviceSubscription(shadowDevice)));
+            deviceConfiguration.ShadowDevices?.ForEach(shadowDevice => ShadowDeviceSubscriptions.Add(new DeviceSubscription(shadowDevice)));
         }
     }
 }

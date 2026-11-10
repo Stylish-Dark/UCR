@@ -25,7 +25,7 @@ namespace HidWizards.UCR.ViewModels.Dialogs
     {
         public int Changed { get; set; }
         public int ClearedAsIncompatible { get; set; }
-        public int PreservedUnknown { get; set; }
+        public int ClearedAsUnverified { get; set; }
     }
 
     public sealed class BatchMappingGroupSelection : INotifyPropertyChanged

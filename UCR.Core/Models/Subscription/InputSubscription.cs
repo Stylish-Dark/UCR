@@ -26,10 +26,10 @@ namespace HidWizards.UCR.Core.Models.Subscription
             if (deviceConfiguration == null) return;
 
             var device = mapping.IsShadowMapping
-                ? deviceConfiguration.ShadowDevices[mapping.ShadowDeviceNumber]
+                ? deviceConfiguration.GetShadowDevice(mapping.ShadowDeviceNumber)
                 : deviceConfiguration.Device;
             
-            DeviceSubscription = new DeviceSubscription(device);
+            if (device != null) DeviceSubscription = new DeviceSubscription(device);
         }
 
         public InputSubscription(DeviceBinding deviceBinding, Profile profile, Guid subscriptionStateGuid, Device device)

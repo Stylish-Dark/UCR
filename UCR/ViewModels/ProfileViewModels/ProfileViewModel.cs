@@ -512,10 +512,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (binding?.DeviceBinding == null) continue;
                 if (binding.DeviceBinding.DeviceIoType != source.IoType || binding.DeviceBinding.DeviceConfigurationGuid != source.Guid) continue;
 
+                var wasBound = binding.DeviceBinding.IsBound;
                 var compatibility = binding.ChangeDeviceConfiguration(target.Guid);
+                if (binding.DeviceBinding.DeviceConfigurationGuid != target.Guid) continue;
                 result.Changed++;
+                if (!wasBound || binding.DeviceBinding.IsBound) continue;
                 if (compatibility == DeviceBindingTransferCompatibility.Incompatible) result.ClearedAsIncompatible++;
-                if (compatibility == DeviceBindingTransferCompatibility.Unknown) result.PreservedUnknown++;
+                if (compatibility == DeviceBindingTransferCompatibility.Unknown) result.ClearedAsUnverified++;
             }
 
             foreach (var mapping in MappingsList) mapping.RefreshCollapsedSummary();

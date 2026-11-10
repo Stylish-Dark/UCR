@@ -318,7 +318,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             EnsureEditorInitialized();
             var existingOnPlugin = Filters.Select(existingFilter => existingFilter.Name).ToList();
-            var availableNames = MappingViewModel.ProfileViewModel.Profile.GetFilters()
+            var profile = MappingViewModel.ProfileViewModel.Profile;
+            var availableNames = profile.GetEnabledFilters()
                 .Where(name => !existingOnPlugin.Any(existing =>
                     string.Equals(existing, name, System.StringComparison.CurrentCultureIgnoreCase)))
                 .OrderBy(name => name, System.StringComparer.CurrentCultureIgnoreCase)
@@ -327,7 +328,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (availableNames.Count == 0)
             {
                 HidWizards.UCR.Utilities.DarkMessageBox.Show(
-                    "This profile does not currently define any filters. Create one with a Button to Filter or Axis to Filter mapping first.",
+                    "This profile has no enabled filters available to add.",
                     "No filters available", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
                 return;
             }
@@ -336,7 +337,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var result = (HidWizards.UCR.ViewModels.Dialogs.FilterSelectDialogViewModel)await DialogHost.Show(
                 dialog, MappingViewModel.ProfileViewModel.ProfileDialogIdentifier);
             if (result == null || string.IsNullOrWhiteSpace(result.SelectedFilter)) return;
-            if (!availableNames.Any(name => string.Equals(name, result.SelectedFilter, System.StringComparison.CurrentCultureIgnoreCase))) return;
+            if (!availableNames.Any(name => string.Equals(name, result.SelectedFilter, System.StringComparison.CurrentCultureIgnoreCase)) ||
+                !profile.GetEnabledFilters().Contains(result.SelectedFilter.Trim())) return;
 
             var filter = Plugin.AddFilter(result.SelectedFilter.Trim());
             if (!Filters.Any(existing => string.Equals(existing.Name, filter.Name, System.StringComparison.CurrentCultureIgnoreCase)))

@@ -71,36 +71,19 @@ namespace HidWizards.UCR.Core.Models.Subscription
             MappingSubscriptions.AddRange(AddShadowMappings(profile, profileMappings, runtimeScopeGuid, profileOutputDevices));
         }
 
-        private List<MappingSubscription> AddShadowMappings(Profile profile,
+        private IEnumerable<MappingSubscription> AddShadowMappings(Profile profile,
             List<MappingSubscription> profileMappings, Guid runtimeScopeGuid,
             List<DeviceConfigurationSubscription> profileOutputDevices)
         {
-            var result = new List<MappingSubscription>();
-
             foreach (var mappingSubscription in profileMappings)
             {
-                var shadowClones = mappingSubscription.Mapping.PossibleShadowClones;
-                if (shadowClones == 0) continue;
-                result.AddRange(CloneMappingSubscription(profile, mappingSubscription, runtimeScopeGuid,
-                    profileOutputDevices, shadowClones));
+                var mapping = mappingSubscription.Mapping;
+                foreach (var index in mapping.GetPossibleShadowCloneNumbers(profile))
+                {
+                    yield return new MappingSubscription(profile, mapping.CreateShadowClone(index),
+                        StateGuid, runtimeScopeGuid, profileOutputDevices, mapping);
+                }
             }
-
-            return result;
-        }
-
-        private List<MappingSubscription> CloneMappingSubscription(Profile profile,
-            MappingSubscription mappingSubscription, Guid runtimeScopeGuid,
-            List<DeviceConfigurationSubscription> profileOutputDevices, int shadowClones)
-        {
-            var result = new List<MappingSubscription>();
-
-            for (var i = 0; i < shadowClones; i++)
-            {
-                result.Add(new MappingSubscription(profile, mappingSubscription.Mapping.CreateShadowClone(i),
-                    StateGuid, runtimeScopeGuid, profileOutputDevices));
-            }
-
-            return result;
         }
 
         private void OverrideEarlierMappingsInScope(IEnumerable<MappingSubscription> newMappings, Guid runtimeScopeGuid)
@@ -109,8 +92,9 @@ namespace HidWizards.UCR.Core.Models.Subscription
             {
                 foreach (var subscription in MappingSubscriptions)
                 {
-                    if (subscription.RuntimeScopeGuid != runtimeScopeGuid) continue;
-                    if (string.Equals(profileMappingSubscription.Mapping.Title, subscription.Mapping.Title,
+                    if (subscription.RuntimeScopeGuid != runtimeScopeGuid ||
+                        subscription.Profile.Guid == profileMappingSubscription.Profile.Guid) continue;
+                    if (string.Equals(profileMappingSubscription.SourceMapping.Title, subscription.SourceMapping.Title,
                         StringComparison.CurrentCultureIgnoreCase))
                     {
                         subscription.Overriden = true;

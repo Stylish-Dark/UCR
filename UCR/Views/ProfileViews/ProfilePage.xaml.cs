@@ -339,13 +339,19 @@ namespace HidWizards.UCR.Views.ProfileViews
             var change = ProfileViewModel.BatchChangeDevice(result.SelectedSource, result.SelectedTarget, selectedGroups);
             Logger.Info("Profile device replacement: " + result.SelectedSource.DisplayTitle + " -> " + result.SelectedTarget.DisplayTitle +
                         "; changed=" + change.Changed + "; incompatible-cleared=" + change.ClearedAsIncompatible +
-                        "; unknown-preserved=" + change.PreservedUnknown);
+                        "; unverified-cleared=" + change.ClearedAsUnverified);
 
             var message = change.Changed + " binding" + (change.Changed == 1 ? "" : "s") + " changed.";
             if (change.ClearedAsIncompatible > 0)
             {
                 message += " " + change.ClearedAsIncompatible + " incompatible binding" +
                            (change.ClearedAsIncompatible == 1 ? " was" : "s were") + " cleared safely.";
+            }
+            if (change.ClearedAsUnverified > 0)
+            {
+                message += " " + change.ClearedAsUnverified + " binding" +
+                           (change.ClearedAsUnverified == 1 ? " was" : "s were") +
+                           " cleared because UCR could not verify the control on the new device.";
             }
             HidWizards.UCR.Utilities.DarkMessageBox.Show(message, "Replace device", MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -499,7 +505,19 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void PasteMappingGroup_OnClick(object sender, RoutedEventArgs e)
         {
-            var section = ProfileViewModel.PasteMappingGroup();
+            MappingGroupViewModel section;
+            try
+            {
+                section = ProfileViewModel.PasteMappingGroup();
+            }
+            catch (InvalidOperationException exception)
+            {
+                Logger.Error("Could not paste mapping group", exception);
+                HidWizards.UCR.Utilities.DarkMessageBox.Show(
+                    "The mapping group could not be pasted. " + exception.GetBaseException().Message,
+                    "Paste mapping group", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
             if (section == null) return;
             Logger.Info("Mapping group pasted into profile " + Profile.Title + ": " + section.Title);
             Dispatcher.BeginInvoke((Action)(() => ScrollSectionIntoView(section)), DispatcherPriority.Background);

@@ -42,7 +42,7 @@ namespace HidWizards.UCR.Utilities
                         if (style == null)
                         {
                             var literal = entry.Value as string;
-                            if (string.IsNullOrEmpty(key) || key.LastIndexOf('.') <= 0 || literal == null)
+                            if (string.IsNullOrEmpty(key) || key.IndexOf('.') <= 0 || literal == null)
                                 throw new InvalidDataException("Layout entries must be named styles or Element.Property strings.");
                             properties.Add(key, literal);
                             continue;
@@ -169,17 +169,23 @@ namespace HidWizards.UCR.Utilities
             {
                 try
                 {
-                    var dot = pair.Key.LastIndexOf('.');
+                    var dot = pair.Key.IndexOf('.');
                     var elementName = pair.Key.Substring(0, dot);
                     var propertyName = pair.Key.Substring(dot + 1);
                     var target = view.FindName(elementName) as DependencyObject;
                     if (target == null)
                         throw new InvalidDataException("Named layout target does not exist: " + elementName);
 
-                    var field = target.GetType().GetField(propertyName + "Property",
-                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static
-                        | System.Reflection.BindingFlags.FlattenHierarchy);
-                    var property = field == null ? null : field.GetValue(null) as DependencyProperty;
+                    DependencyProperty property;
+                    if (string.Equals(propertyName, "Grid.Row", StringComparison.Ordinal))
+                        property = System.Windows.Controls.Grid.RowProperty;
+                    else
+                    {
+                        var field = target.GetType().GetField(propertyName + "Property",
+                            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static
+                            | System.Reflection.BindingFlags.FlattenHierarchy);
+                        property = field?.GetValue(null) as DependencyProperty;
+                    }
                     if (property == null)
                         throw new InvalidDataException("Unknown layout property: " + propertyName);
 

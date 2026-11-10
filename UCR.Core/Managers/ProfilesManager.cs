@@ -360,46 +360,57 @@ namespace HidWizards.UCR.Core.Managers
         {
             var clone = Clone(profile, pluginTypes);
 
-            // A child profile is only meaningful together with its ancestors. Flatten the effective
-            // device configuration set and effective mapping set into the exported root. Descendants
-            // remain nested under that root and therefore inherit the same effective state after import.
-            clone.InputDeviceConfigurations = profile.GetDeviceConfigurationList(DeviceIoType.Input)
-                .Select(configuration => Clone(configuration, pluginTypes))
-                .ToList();
-            clone.OutputDeviceConfigurations = profile.GetDeviceConfigurationList(DeviceIoType.Output)
-                .Select(configuration => Clone(configuration, pluginTypes))
-                .ToList();
-            clone.Mappings = GetEffectiveMappings(profile)
-                .Select(mapping => Clone(mapping, pluginTypes))
-                .ToList();
+            if (profile.ParentProfile != null)
+            {
+                // The standalone profile needs each inherited device and mapping group.
+                // Keep each ancestor's main mappings in their own group so the child's
+                // main switch cannot accidentally enable or disable them.
+                clone.InputDeviceConfigurations = profile.GetDeviceConfigurationList(DeviceIoType.Input)
+                    .Select(configuration => Clone(configuration, pluginTypes)).ToList();
+                clone.OutputDeviceConfigurations = profile.GetDeviceConfigurationList(DeviceIoType.Output)
+                    .Select(configuration => Clone(configuration, pluginTypes)).ToList();
+                clone.MappingGroups.InsertRange(0, CloneInheritedMappingGroups(profile, pluginTypes));
+            }
 
-            clone.PostLoad(_context);
+            clone.PostLoad(_context, markMigrationDirty: false, migrateLegacyChildren: false);
             return clone;
         }
 
-        private static List<Mapping> GetEffectiveMappings(Profile profile)
+        private static List<MappingGroup> CloneInheritedMappingGroups(Profile profile, List<Type> pluginTypes)
         {
-            var hierarchy = new List<Profile>();
-            var current = profile;
-            while (current != null)
+            var inheritedGroups = new List<MappingGroup>();
+            var overriddenTitles = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            for (var level = profile; level != null; level = level.ParentProfile)
             {
-                hierarchy.Add(current);
-                current = current.ParentProfile;
+                var groups = new List<MappingGroup>();
+                var mainMappings = level.Mappings ?? new List<Mapping>();
+                if (mainMappings.Count > 0)
+                {
+                    groups.Add(new MappingGroup
+                    {
+                        Title = level.Title + " / " + level.MainGroupTitle,
+                        Enabled = level.MainMappingsEnabled,
+                        BlockInputs = level.MainBlockInputs,
+                        Mappings = mainMappings
+                    });
+                }
+                groups.AddRange((level.MappingGroups ?? new List<MappingGroup>()).Where(group => group != null));
+
+                if (!ReferenceEquals(level, profile))
+                {
+                    var clones = groups.Select(group => Clone(group, pluginTypes)).ToList();
+                    foreach (var group in clones.Where(group => group.Enabled))
+                        group.Mappings?.RemoveAll(mapping => mapping != null && overriddenTitles.Contains(mapping.Title));
+                    inheritedGroups.InsertRange(0, clones);
+                }
+
+                // A later profile layer overrides earlier active mappings by title.
+                // Groups in the same layer are independent, and disabled rows do not override anything.
+                foreach (var group in groups.Where(group => group.Enabled))
+                    foreach (var mapping in group.Mappings ?? Enumerable.Empty<Mapping>())
+                        if (mapping != null) overriddenTitles.Add(mapping.Title);
             }
-            hierarchy.Reverse();
-
-            var effectiveMappings = new List<Mapping>();
-            foreach (var level in hierarchy)
-            {
-                var overriddenTitles = new HashSet<string>(
-                    level.Mappings.Select(mapping => mapping.Title ?? string.Empty),
-                    StringComparer.Ordinal);
-
-                effectiveMappings.RemoveAll(mapping => overriddenTitles.Contains(mapping.Title ?? string.Empty));
-                effectiveMappings.AddRange(level.Mappings);
-            }
-
-            return effectiveMappings;
+            return inheritedGroups;
         }
 
         private static T Clone<T>(T value, List<Type> pluginTypes)
@@ -686,19 +697,12 @@ namespace HidWizards.UCR.Core.Managers
                 if (!outputs.ContainsKey(configuration.Guid)) outputs.Add(configuration.Guid, configuration);
             }
 
-            foreach (var mapping in profile.GetAllMappings())
+            foreach (var mapping in profile.GetAllMappings().Where(mapping => mapping != null))
             {
-                foreach (var binding in mapping.DeviceBindings)
-                {
+                foreach (var binding in mapping.GetPersistedInputBindings())
                     CaptureBindingTarget(binding, inputs, bindingTargets, unresolvedBindingTargets, unresolvedGuidMap);
-                }
-                foreach (var plugin in mapping.Plugins)
-                {
-                    foreach (var binding in plugin.Outputs)
-                    {
-                        CaptureBindingTarget(binding, outputs, bindingTargets, unresolvedBindingTargets, unresolvedGuidMap);
-                    }
-                }
+                foreach (var binding in mapping.GetPersistedOutputBindings())
+                    CaptureBindingTarget(binding, outputs, bindingTargets, unresolvedBindingTargets, unresolvedGuidMap);
             }
 
             foreach (var child in profile.ChildProfiles)

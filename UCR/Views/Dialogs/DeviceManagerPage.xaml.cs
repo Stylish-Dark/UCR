@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -14,7 +16,9 @@ namespace HidWizards.UCR.Views.Dialogs
 {
     public partial class DeviceManagerPage : UserControl, IDisposable
     {
+        private const int DeviceRemovalTimeoutMilliseconds = 60000;
         private bool _disposed;
+        private bool _windowsRemovalInProgress;
 
         // Test-only construction path. Production always supplies DevicesManager below.
         public DeviceManagerPage()
@@ -280,8 +284,9 @@ namespace HidWizards.UCR.Views.Dialogs
             viewModel.RemoveFromUcr(item);
         }
 
-        private void RemoveFromWindows_OnClick(object sender, RoutedEventArgs e)
+        private async void RemoveFromWindows_OnClick(object sender, RoutedEventArgs e)
         {
+            if (_disposed || _windowsRemovalInProgress) return;
             var item = (sender as FrameworkElement)?.DataContext as DeviceManagerItemViewModel;
             var viewModel = DataContext as DeviceManagerViewModel;
             if (item?.Device == null || viewModel == null) return;
@@ -302,44 +307,61 @@ namespace HidWizards.UCR.Views.Dialogs
                 "Remove device from Windows", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (result != MessageBoxResult.Yes) return;
 
+            _windowsRemovalInProgress = true;
             try
             {
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = "pnputil.exe",
-                    Arguments = "/remove-device \"" + instanceId.Replace("\"", string.Empty) + "\"",
-                    UseShellExecute = true,
-                    Verb = "runas",
-                    WindowStyle = ProcessWindowStyle.Normal
-                };
+                var exitCode = await Task.Run(() => RunDeviceRemoval(instanceId));
+                if (_disposed || !ReferenceEquals(DataContext, viewModel)) return;
 
-                using (var process = Process.Start(startInfo))
+                if (!exitCode.HasValue)
                 {
-                    process?.WaitForExit();
-                    if (process != null && process.ExitCode != 0)
-                    {
-                        DarkMessageBox.Show(Window.GetWindow(this),
-                            "Windows did not remove the device. pnputil returned exit code " + process.ExitCode + ".",
-                            "Windows device removal", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        return;
-                    }
+                    DarkMessageBox.Show(Window.GetWindow(this),
+                        "Windows did not report a result within 60 seconds. Device removal may still be running.",
+                        "Windows device removal", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                if (exitCode.Value != 0)
+                {
+                    DarkMessageBox.Show(Window.GetWindow(this),
+                        "Windows did not remove the device. pnputil returned exit code " + exitCode.Value + ".",
+                        "Windows device removal", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
                 }
 
                 viewModel.Refresh();
             }
-            catch (System.ComponentModel.Win32Exception exception)
+            catch (System.ComponentModel.Win32Exception exception) when (exception.NativeErrorCode == 1223)
             {
-                // ERROR_CANCELLED (1223) is the ordinary UAC-cancel path. Keep it non-fatal.
-                if (exception.NativeErrorCode != 1223)
-                {
-                    Logger.Error("Unable to remove Windows device instance: " + instanceId, exception);
-                    DarkMessageBox.Show(Window.GetWindow(this), exception.Message, "Windows device removal", MessageBoxButton.OK, MessageBoxImage.Warning);
-                }
+                // Cancelling the UAC prompt is a normal exit.
             }
             catch (Exception exception)
             {
                 Logger.Error("Unable to remove Windows device instance: " + instanceId, exception);
-                DarkMessageBox.Show(Window.GetWindow(this), exception.Message, "Windows device removal", MessageBoxButton.OK, MessageBoxImage.Warning);
+                if (!_disposed && ReferenceEquals(DataContext, viewModel))
+                    DarkMessageBox.Show(Window.GetWindow(this), exception.Message, "Windows device removal",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            finally
+            {
+                _windowsRemovalInProgress = false;
+            }
+        }
+
+        private static int? RunDeviceRemoval(string instanceId)
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = Path.Combine(Environment.SystemDirectory, "pnputil.exe"),
+                Arguments = "/remove-device \"" + instanceId.Replace("\"", string.Empty) + "\"",
+                UseShellExecute = true,
+                Verb = "runas",
+                WindowStyle = ProcessWindowStyle.Normal
+            };
+
+            using (var process = Process.Start(startInfo))
+            {
+                if (process == null) throw new InvalidOperationException("Could not start the Windows device removal tool.");
+                return process.WaitForExit(DeviceRemovalTimeoutMilliseconds) ? (int?)process.ExitCode : null;
             }
         }
 

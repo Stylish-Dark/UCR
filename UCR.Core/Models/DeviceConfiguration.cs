@@ -48,6 +48,12 @@ namespace HidWizards.UCR.Core.Models
             ConfigurationName = name;
         }
 
+        internal Device GetShadowDevice(int index)
+        {
+            return ShadowDevices != null && index >= 0 && index < ShadowDevices.Count
+                ? ShadowDevices[index] : null;
+        }
+
         public void ChangeShadowDevices(List<Device> shadowDevices)
         {
             Device.Profile.Context.ContextChanged();

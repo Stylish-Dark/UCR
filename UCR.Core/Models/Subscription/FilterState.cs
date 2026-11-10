@@ -9,6 +9,9 @@ namespace HidWizards.UCR.Core.Models.Subscription
     {
         private readonly object _gate = new object();
         private readonly Dictionary<string, bool> _values = new Dictionary<string, bool>();
+        private readonly Dictionary<string, bool> _deliveredValues = new Dictionary<string, bool>();
+        [ThreadStatic]
+        private static FilterState _deliveringState;
         private readonly Queue<KeyValuePair<string, bool>> _pendingChanges = new Queue<KeyValuePair<string, bool>>();
         private bool _dispatching;
 
@@ -19,13 +22,26 @@ namespace HidWizards.UCR.Core.Models.Subscription
         {
             lock (_gate)
             {
-                if (!_values.ContainsKey(filterName)) _values.Add(filterName, false);
+                if (_values.ContainsKey(filterName)) return;
+                _values.Add(filterName, false);
+                _deliveredValues.Add(filterName, false);
             }
         }
 
         public bool TryGetValue(string filterName, out bool value)
         {
             lock (_gate) return _values.TryGetValue(filterName, out value);
+        }
+
+        internal bool TryGetRoutingValue(string filterName, out bool value)
+        {
+            // Replaying a transition uses the full filter state at that point in the
+            // queue. Direct input and UI reads still see the latest written state.
+            lock (_gate)
+            {
+                var values = ReferenceEquals(_deliveringState, this) ? _deliveredValues : _values;
+                return values.TryGetValue(filterName, out value);
+            }
         }
 
         public void SetFilterState(string filterName, bool value)
@@ -57,7 +73,11 @@ namespace HidWizards.UCR.Core.Models.Subscription
                 var value = requestedValue ?? !previousValue;
                 if (value == previousValue) return;
                 _values[filterName] = value;
-                if (FilterStateChangedEvent == null) return;
+                if (!_dispatching && FilterStateChangedEvent == null)
+                {
+                    _deliveredValues[filterName] = value;
+                    return;
+                }
                 _pendingChanges.Enqueue(new KeyValuePair<string, bool>(filterName, value));
                 if (_dispatching) return;
                 _dispatching = true;
@@ -81,20 +101,30 @@ namespace HidWizards.UCR.Core.Models.Subscription
                         return;
                     }
                     change = _pendingChanges.Dequeue();
+                    _deliveredValues[change.Key] = change.Value;
                 }
 
                 var observers = FilterStateChangedEvent?.GetInvocationList();
                 if (observers == null) continue;
-                foreach (FilterStateChanged observer in observers)
+                var previousState = _deliveringState;
+                _deliveringState = this;
+                try
                 {
-                    try
+                    foreach (FilterStateChanged observer in observers)
                     {
-                        observer(change.Key, change.Value);
+                        try
+                        {
+                            observer(change.Key, change.Value);
+                        }
+                        catch (Exception exception)
+                        {
+                            Logger.Error("A filter-state observer failed: " + change.Key, exception);
+                        }
                     }
-                    catch (Exception exception)
-                    {
-                        Logger.Error("A filter-state observer failed: " + change.Key, exception);
-                    }
+                }
+                finally
+                {
+                    _deliveringState = previousState;
                 }
             }
         }

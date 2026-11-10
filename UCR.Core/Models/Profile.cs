@@ -312,19 +312,10 @@ namespace HidWizards.UCR.Core.Models
 
             foreach (var mapping in group.Mappings.Where(mapping => mapping != null))
             {
-                foreach (var binding in mapping.DeviceBindings ?? new List<DeviceBinding>())
-                {
+                foreach (var binding in mapping.GetPersistedInputBindings())
                     RemapCopiedBinding(binding, DeviceIoType.Input, sourceProfile);
-                }
-
-                foreach (var plugin in mapping.Plugins ?? new List<Plugin>())
-                {
-                    if (plugin?.Outputs == null) continue;
-                    foreach (var binding in plugin.Outputs)
-                    {
-                        RemapCopiedBinding(binding, DeviceIoType.Output, sourceProfile);
-                    }
-                }
+                foreach (var binding in mapping.GetPersistedOutputBindings())
+                    RemapCopiedBinding(binding, DeviceIoType.Output, sourceProfile);
             }
         }
 
@@ -365,7 +356,8 @@ namespace HidWizards.UCR.Core.Models
 
         public IEnumerable<Mapping> GetRuntimeMappings()
         {
-            foreach (var mapping in Mappings ?? new List<Mapping>()) yield return mapping;
+            if (MainMappingsEnabled)
+                foreach (var mapping in Mappings ?? new List<Mapping>()) yield return mapping;
             foreach (var group in MappingGroups ?? new List<MappingGroup>())
             {
                 if (group == null || !group.Enabled || group.Mappings == null) continue;
@@ -497,6 +489,19 @@ namespace HidWizards.UCR.Core.Models
             };
             group.PostLoad(Context, this);
             MappingGroups.Add(group);
+
+            // Legacy child profiles become opt-in groups. Carry over their own
+            // groups too, otherwise removing the legacy tree would discard them.
+            foreach (var sourceGroup in descendant.MappingGroups ?? Enumerable.Empty<MappingGroup>())
+            {
+                if (sourceGroup == null) continue;
+                var copy = HidWizards.UCR.Core.Context.DeepXmlClone<MappingGroup>(sourceGroup);
+                copy.Guid = Guid.NewGuid();
+                copy.Title = GetUniqueMappingGroupTitle(relativeTitle + " / " + sourceGroup.Title);
+                copy.Enabled = false;
+                copy.PostLoad(Context, this);
+                MappingGroups.Add(copy);
+            }
 
             foreach (var child in descendant.ChildProfiles ?? new List<Profile>())
             {
@@ -706,16 +711,21 @@ namespace HidWizards.UCR.Core.Models
 
         #endregion
 
-        public HashSet<string> GetFilters()
+        public HashSet<string> GetFilters() => GetFilters(enabledOnly: false);
+
+        public HashSet<string> GetEnabledFilters() => GetFilters(enabledOnly: true);
+
+        private HashSet<string> GetFilters(bool enabledOnly)
         {
-            // Filter definitions are created by "... to Filter" plugins. A plugin's Filters list
-            // contains references to those definitions; it must never create definitions by itself.
+            // Include disabled definitions when maintaining existing references so a group
+            // can be disabled and re-enabled without losing its saved filter relationships.
             var result = ParentProfile != null
-                ? ParentProfile.GetFilters()
+                ? ParentProfile.GetFilters(enabledOnly)
                 : new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
 
-            foreach (var mapping in GetAllMappings())
+            foreach (var mapping in enabledOnly ? GetRuntimeMappings() : GetAllMappings())
             {
+                if (mapping?.Plugins == null) continue;
                 foreach (var plugin in mapping.Plugins)
                 {
                     var definedFilterName = plugin.GetDefinedFilterName();
@@ -852,7 +862,8 @@ namespace HidWizards.UCR.Core.Models
             OnPropertyChanged(nameof(BlockAllUnmappedInputs));
         }
 
-        internal void PostLoad(Context context, Profile parentProfile = null, bool markMigrationDirty = true)
+        internal void PostLoad(Context context, Profile parentProfile = null, bool markMigrationDirty = true,
+            bool migrateLegacyChildren = true)
         {
             ParentProfile = parentProfile;
             if (ChildProfiles == null) ChildProfiles = new List<Profile>();
@@ -901,7 +912,8 @@ namespace HidWizards.UCR.Core.Models
 
             // Top-level legacy trees are converted as part of attachment, before any dashboard or
             // runtime code can observe them. ParentProfile is retained only for old import paths.
-            if (parentProfile == null && MigrateLegacyChildProfilesToMappingGroups() && markMigrationDirty)
+            if (parentProfile == null && migrateLegacyChildren &&
+                MigrateLegacyChildProfilesToMappingGroups() && markMigrationDirty)
                 Context?.ContextChanged();
         }
 

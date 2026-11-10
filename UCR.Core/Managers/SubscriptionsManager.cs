@@ -342,10 +342,10 @@ namespace HidWizards.UCR.Core.Managers
 
             // Build and validate the candidate state before disturbing the currently running set.
             // This catches missing mappings/filter failures without dropping a working profile.
-            var candidate = BuildSubscriptionState(targetProfiles);
+            var candidate = BuildSubscriptionState(targetProfiles, out var validationError);
             if (candidate == null)
             {
-                LastActivationError = "Could not prepare the mappings, device bindings, or filters. Check that every required device is connected and its provider is available.";
+                LastActivationError = validationError ?? "Could not prepare the mappings, device bindings, or filters. Check that every required device is connected and its provider is available.";
                 Logger.Error("Unable to build candidate active profile state; existing profiles remain running.");
                 return false;
             }
@@ -409,8 +409,9 @@ namespace HidWizards.UCR.Core.Managers
                 .ToList();
         }
 
-        private SubscriptionState BuildSubscriptionState(IList<Profile> profiles)
+        private SubscriptionState BuildSubscriptionState(IList<Profile> profiles, out string validationError)
         {
+            validationError = null;
             var state = new SubscriptionState(profiles);
             foreach (var profile in profiles)
             {
@@ -423,6 +424,19 @@ namespace HidWizards.UCR.Core.Managers
                 }
             }
 
+            foreach (var mapping in state.MappingSubscriptions)
+            {
+                if (mapping.Overriden) continue;
+                var missingInput = mapping.DeviceBindingSubscriptions.FirstOrDefault(
+                    input => input.DeviceSubscription?.Device == null);
+                if (missingInput == null) continue;
+                validationError = $"Mapping '{mapping.Mapping.Title}' in profile '{mapping.Profile.Title}' " +
+                    "references a missing input device. Select an available input device or clear the binding.";
+                Logger.Error(validationError + " Missing configuration: " +
+                    missingInput.DeviceBinding.DeviceConfigurationGuid);
+                return null;
+            }
+
             Logger.Debug("Successfully populated composite subscription state");
             if (ConfigureFiltersForState(state)) return state;
 
@@ -433,7 +447,7 @@ namespace HidWizards.UCR.Core.Managers
         private async Task<bool> RestorePreviousProfilesAsync(IList<Profile> previousProfiles, Profile changedProfile,
             bool runHidHideInBackground)
         {
-            var rollback = BuildSubscriptionState(previousProfiles);
+            var rollback = BuildSubscriptionState(previousProfiles, out _);
             if (rollback == null) return false;
             if (!ActivateSubscriptionState(rollback))
             {
@@ -597,14 +611,7 @@ namespace HidWizards.UCR.Core.Managers
                     profileOutputDevices.Add(subscription);
             }
 
-            var scopedOutputs = profileOutputDevices.ToList();
-            if (profile.MainMappingsEnabled)
-                state.AddMappings(profile, profile.Mappings ?? new List<Mapping>(), runtimeScopeGuid, scopedOutputs);
-            foreach (var group in profile.MappingGroups ?? new List<MappingGroup>())
-            {
-                if (group == null || !group.Enabled) continue;
-                state.AddMappings(profile, group.Mappings ?? new List<Mapping>(), runtimeScopeGuid, scopedOutputs);
-            }
+            state.AddMappings(profile, profile.GetRuntimeMappings(), runtimeScopeGuid, profileOutputDevices.ToList());
 
             populatedLayers.Add(profile.Guid);
             return success;

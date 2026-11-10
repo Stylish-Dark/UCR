@@ -337,7 +337,11 @@ namespace HidWizards.UCR.Core.Models
                 return DeviceBindingTransferResult.For(DeviceBindingTransferCompatibility.Unknown, deviceBinding);
             }
 
-            if (object.ReferenceEquals(sourceDevice, targetDevice) || sourceDevice.Equals(targetDevice))
+            if (ReferenceEquals(sourceDevice, targetDevice) ||
+                (sourceDevice.Equals(targetDevice) &&
+                 sourceDevice.LogicalInstanceNumber == targetDevice.LogicalInstanceNumber &&
+                 string.Equals(sourceDevice.HidPath ?? string.Empty, targetDevice.HidPath ?? string.Empty,
+                     StringComparison.OrdinalIgnoreCase)))
             {
                 return DeviceBindingTransferResult.Compatible(
                     deviceBinding.KeyType, deviceBinding.KeyValue, deviceBinding.KeySubValue);
@@ -363,8 +367,8 @@ namespace HidWizards.UCR.Core.Models
                 return DeviceBindingTransferResult.For(DeviceBindingTransferCompatibility.Incompatible, deviceBinding);
             }
 
-            // A disconnected device without a usable cache cannot be classified safely. Preserve rather
-            // than destructively discarding the user's binding; it remains unresolved until available.
+            // A disconnected device without a usable cache cannot be classified safely.
+            // The caller may still select the destination, but must not reuse the old physical key.
             if (sourceBindings.Count == 0 || targetBindings.Count == 0)
             {
                 return DeviceBindingTransferResult.For(DeviceBindingTransferCompatibility.Unknown, deviceBinding);

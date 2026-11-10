@@ -729,6 +729,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var selectedDeviceConfiguration = DeviceBinding.Profile.GetDeviceConfiguration(
                 DeviceBinding.DeviceIoType, selectedDeviceConfigurationGuid);
             if (selectedDeviceConfiguration == null) return DeviceBindingTransferCompatibility.Unknown;
+            if (DeviceBinding.DeviceConfigurationGuid == selectedDeviceConfiguration.Guid)
+                return DeviceBinding.IsBound ? DeviceBindingTransferCompatibility.Compatible : DeviceBindingTransferCompatibility.Unknown;
 
             if (DeviceBinding.DeviceIoType == DeviceIoType.Input &&
                 !IsCompatibleInputDevice(selectedDeviceConfiguration, DeviceBindingCategory,
@@ -742,8 +744,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 DeviceBindingTransferCompatibility.Unknown,
                 DeviceBinding);
 
-            if (DeviceBinding.IsBound && previousDeviceConfiguration != null &&
-                previousDeviceConfiguration.Guid != selectedDeviceConfiguration.Guid)
+            if (DeviceBinding.IsBound && previousDeviceConfiguration != null)
             {
                 transfer = DeviceBindingCompatibility.EvaluateTransfer(
                     previousDeviceConfiguration.Device,
@@ -754,11 +755,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     DeviceBindingCategory);
             }
 
-            if (transfer.Compatibility == DeviceBindingTransferCompatibility.Incompatible)
-            {
-                DeviceBinding.SetDeviceConfigurationGuid(selectedDeviceConfiguration.Guid, false);
-            }
-            else if (transfer.Compatibility == DeviceBindingTransferCompatibility.Compatible)
+            if (transfer.Compatibility == DeviceBindingTransferCompatibility.Compatible)
             {
                 DeviceBinding.SetDeviceConfigurationGuid(
                     selectedDeviceConfiguration.Guid,
@@ -769,9 +766,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             else
             {
-                // Unknown remains deliberately non-destructive. Preserve the existing semantic key
-                // unless the compatibility layer can positively prove that it is incompatible.
-                DeviceBinding.SetDeviceConfigurationGuid(selectedDeviceConfiguration.Guid, true);
+                // Keep the user's new destination, but do not carry an unverified physical key to it.
+                DeviceBinding.SetDeviceConfigurationGuid(selectedDeviceConfiguration.Guid, false);
             }
 
             if (_deviceListLoaded)
@@ -780,7 +776,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(SelectedDevice));
             }
             OnPropertyChanged(nameof(BindButtonText));
-                OnPropertyChanged(nameof(CompactBindButtonText));
+            OnPropertyChanged(nameof(CompactBindButtonText));
             OnPropertyChanged(nameof(ShowBlock));
             OnPropertyChanged(nameof(CanBlock));
             OnPropertyChanged(nameof(Block));

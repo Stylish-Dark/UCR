@@ -545,8 +545,10 @@ namespace HidWizards.UCR.Core.Models
             {
                 var runtimeName = GetFilterName(filter.Name);
                 if (runtimeName == null) continue;
-                RuntimeMapping.FilterState.TryGetValue(runtimeName, out var filterValue);
-                if (!(filterValue ^ filter.Negative)) return true;
+                // A definition in a disabled group is absent from this runtime. Keep its
+                // saved reference dormant until the group is enabled again.
+                if (RuntimeMapping.FilterState.TryGetRoutingValue(runtimeName, out var filterValue) &&
+                    !(filterValue ^ filter.Negative)) return true;
             }
 
             return false;
