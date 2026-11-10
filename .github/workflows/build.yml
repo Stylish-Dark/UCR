@@ -852,19 +852,24 @@ jobs:
               $settings.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
               $filterName = Find-UcrControl 'UiFilterName'
               $filterName.SetFocus()
-              Set-UcrText 'UiFilterName' 'Saved without leaving focus'
+              [System.Windows.Forms.SendKeys]::SendWait('^a')
+              [System.Windows.Forms.SendKeys]::SendWait('Saved without leaving focus')
+              $filterValue = $filterName.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
+              if ($filterValue.Current.Value -ne 'Saved without leaving focus') {
+                  throw "The filter name edit did not reach the textbox: $($filterValue.Current.Value)"
+              }
               if (-not $filterName.Current.HasKeyboardFocus) {
                   throw 'The filter editor did not receive keyboard focus.'
               }
               [System.Windows.Forms.SendKeys]::SendWait('^s')
               Start-Sleep -Milliseconds 650
-              $savedProfile = Get-ChildItem -LiteralPath $profileFolder -Filter '*.json' |
-                  Select-String -Pattern '"filterName"\s*:\s*"Saved without leaving focus"' -List
-              if (-not $savedProfile -or -not $filterName.Current.HasKeyboardFocus) {
-                  throw 'Ctrl+S did not persist the edited filter name while the name editor kept focus.'
-              }
               [UcrWindowCapture]::Capture(
                   $handle, (Join-Path $directory 'UCR-filter-name-saved.png')) | Out-Null
+              $savedProfile = Get-ChildItem -LiteralPath $profileFolder -Filter '*.json' |
+                  Select-String -Pattern '"filterName"\s*:\s*"Saved without leaving focus"' -List
+              if (-not $savedProfile) {
+                  throw 'Ctrl+S did not persist the edited filter name.'
+              }
 
               # Exercise the actual mapping-creation control and capture populated UI.
               for ($i = 0; $i -lt 3; $i++) {

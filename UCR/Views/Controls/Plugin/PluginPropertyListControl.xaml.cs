@@ -16,11 +16,14 @@ namespace HidWizards.UCR.Views.Controls.Plugin
             if (e.Key != Key.S || Keyboard.Modifiers != ModifierKeys.Control ||
                 !(sender is TextBox editor) || editor.IsReadOnly) return;
 
-            // Commit once before the routed Save command checks whether the profile is dirty.
             var binding = editor.GetBindingExpression(TextBox.TextProperty);
-            if (binding?.IsDirty != true) return;
+            if (binding == null) return;
+
+            // Commit the edit before querying the same routed command used by the Save button.
+            e.Handled = true;
             binding.UpdateSource();
-            if (binding.HasError) e.Handled = true;
+            if (!binding.HasError && ApplicationCommands.Save.CanExecute(null, editor))
+                ApplicationCommands.Save.Execute(null, editor);
         }
 
         private void DecimalValidationTextBox(object sender, TextCompositionEventArgs e)
