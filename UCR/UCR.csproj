@@ -147,6 +147,8 @@
     <Compile Include="Views\Controls\DeviceSelectControl.xaml.cs">
       <DependentUpon>DeviceSelectControl.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Views\Controls\MappingCardControl.QuickBindings.cs" />
+    <Compile Include="Views\Controls\MappingCardControl.InputEvents.cs" />
     <Compile Include="Views\Controls\MappingCardControl.xaml.cs">
       <DependentUpon>MappingCardControl.xaml</DependentUpon>
     </Compile>
