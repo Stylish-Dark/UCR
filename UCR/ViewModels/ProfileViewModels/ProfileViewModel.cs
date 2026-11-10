@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Data;
 using HidWizards.UCR.Core.Annotations;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.ViewModels.Dashboard;
@@ -35,6 +36,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public string EditLockReason => IsProfileActive ? "Profile is running — stop it to edit mappings." : null;
         public ObservableCollection<MappingViewModel> MappingsList { get; set; }
         public ObservableCollection<MappingGroupViewModel> MappingSections { get; private set; }
+        private string _mappingSearchQuery;
+        public bool CanReorderMappings => CanEditProfile && string.IsNullOrEmpty(_mappingSearchQuery);
         private MappingGroupViewModel _selectedMappingSection;
         private MappingViewModel _selectedMapping;
         public MappingViewModel SelectedMapping
@@ -136,6 +139,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(CanActivateProfile));
             OnPropertyChanged(nameof(CanDeactivateProfile));
             OnPropertyChanged(nameof(CanEditProfile));
+            OnPropertyChanged(nameof(CanReorderMappings));
             OnPropertyChanged(nameof(IsProfileActive));
             OnPropertyChanged(nameof(EditLockReason));
             OnPropertyChanged(nameof(CanPasteMappingGroup));
@@ -177,6 +181,35 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             RebuildFlatMappingsList();
             RefreshMappingPositions();
             SelectedMapping = MappingsList.FirstOrDefault();
+        }
+
+        public void SetMappingSearch(string query)
+        {
+            query = query?.Trim();
+            if (string.Equals(_mappingSearchQuery, query, StringComparison.Ordinal)) return;
+            _mappingSearchQuery = query;
+            OnPropertyChanged(nameof(CanReorderMappings));
+
+            foreach (var section in MappingSections) ApplyMappingSearch(section);
+        }
+
+        private void ApplyMappingSearch(MappingGroupViewModel section)
+        {
+            var view = CollectionViewSource.GetDefaultView(section.Mappings);
+            var liveView = view as ICollectionViewLiveShaping;
+            if (string.IsNullOrEmpty(_mappingSearchQuery))
+            {
+                if (liveView?.CanChangeLiveFiltering == true) liveView.IsLiveFiltering = false;
+                view.Filter = null;
+                return;
+            }
+
+            view.Filter = item => (item as MappingViewModel)?.MappingTitle?.IndexOf(
+                _mappingSearchQuery, StringComparison.OrdinalIgnoreCase) >= 0;
+            if (liveView?.CanChangeLiveFiltering != true) return;
+            var titleProperty = nameof(MappingViewModel.MappingTitle);
+            if (!liveView.LiveFilteringProperties.Contains(titleProperty)) liveView.LiveFilteringProperties.Add(titleProperty);
+            liveView.IsLiveFiltering = true;
         }
 
         public MappingViewModel AddMapping(string title)
@@ -249,6 +282,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (Profile.IsActive()) return null;
             var model = Profile.AddMappingGroup(title);
             var section = new MappingGroupViewModel(this, model, false);
+            if (!string.IsNullOrEmpty(_mappingSearchQuery)) ApplyMappingSearch(section);
             MappingSections.Add(section);
             SelectedMappingSection = section;
             OnPropertyChanged(nameof(MappingSections));
@@ -309,6 +343,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (model == null) return null;
             var section = new MappingGroupViewModel(this, model, false);
+            if (!string.IsNullOrEmpty(_mappingSearchQuery)) ApplyMappingSearch(section);
             MappingSections.Add(section);
             foreach (var mapping in model.Mappings ?? new List<Mapping>()) AddMapping(mapping, section, false);
             RebuildFlatMappingsList();
@@ -400,7 +435,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public bool MoveMappingTo(MappingViewModel mappingViewModel, int targetIndex)
         {
-            if (mappingViewModel == null || Profile.IsActive()) return false;
+            if (mappingViewModel == null || !CanReorderMappings) return false;
             var section = FindSection(mappingViewModel);
             if (section == null) return false;
             var sourceIndex = section.Mappings.IndexOf(mappingViewModel);

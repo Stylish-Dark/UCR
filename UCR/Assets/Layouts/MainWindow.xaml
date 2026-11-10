@@ -7,7 +7,7 @@
         <Setter Property="Grid.Row" Value="1"/>
     </Style>
 
-    <Style x:Key="WorkspaceTabs" TargetType="{x:Type TabControl}">
+    <Style x:Key="WorkspaceTabs" TargetType="{x:Type Grid}">
         <Setter Property="Margin" Value="2 0 0 0"/>
     </Style>
 

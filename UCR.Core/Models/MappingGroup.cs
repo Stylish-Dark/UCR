@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 using HidWizards.UCR.Core.Utilities;
 
@@ -22,35 +23,39 @@ namespace HidWizards.UCR.Core.Models
         public bool Enabled
         {
             get => _enabled;
-            set
-            {
-                if (_enabled == value) return;
-                _enabled = value;
-                var context = Profile?.Context;
-                context?.ContextChanged();
-
-                // Mapping groups are runtime switches, not just editor metadata. If their profile is
-                // already running, rebuild the composite subscription state without refreshing devices
-                // so a dashboard toggle takes effect immediately and does not disturb unrelated devices.
-                if (Profile != null && context?.SubscriptionsManager != null &&
-                    context.SubscriptionsManager.IsProfileActive(Profile.Guid))
-                {
-                    RefreshActiveProfile(Profile);
-                }
-            }
+            set => _ = SetEnabledAsync(value);
         }
 
-        private static async void RefreshActiveProfile(Profile profile)
+        internal Task<bool> SetEnabledAsync(bool enabled)
         {
+            return ChangeEnabledAsync(Profile, enabled, () => _enabled, value => _enabled = value);
+        }
+
+        internal static async Task<bool> ChangeEnabledAsync(Profile profile, bool enabled, Func<bool> getEnabled,
+            Action<bool> setEnabled)
+        {
+            var context = profile?.Context;
+            var subscriptions = context?.SubscriptionsManager;
+            if (subscriptions == null ||
+                (!subscriptions.IsTransitionInProgress && !subscriptions.IsProfileLayerActive(profile.Guid)))
+            {
+                if (getEnabled() == enabled) return true;
+                setEnabled(enabled);
+                context?.ContextChanged();
+                return true;
+            }
+
             try
             {
-                if (!await profile.Context.SubscriptionsManager.RefreshActiveProfileAsync(profile))
-                    Logger.Warn("The active profile could not be refreshed after changing a mapping group.");
+                if (await subscriptions.ChangeMappingGroupEnabledAsync(profile, enabled, getEnabled, setEnabled))
+                    return true;
+                Logger.Warn("The mapping group change could not be applied: " + subscriptions.LastActivationError);
             }
             catch (Exception exception)
             {
                 Logger.Error("Refreshing the active profile after a mapping-group change failed.", exception);
             }
+            return false;
         }
 
         [XmlAttribute]

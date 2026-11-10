@@ -156,12 +156,11 @@
             </ComboBox.ItemTemplate>
         </ComboBox>
 
-        <!-- Bind and options form ONE compact, intrinsic-width action group.
-             A lone Bind command must not stretch into a 600px blue slab. -->
+        <!-- The binding label can shrink before the fixed-width menu button. -->
         <Grid x:Name="BindingActionGroup" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2"
-              HorizontalAlignment="Stretch" MinWidth="80" MinHeight="38">
+              HorizontalAlignment="Stretch" MinHeight="38">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" MinWidth="38"/>
+                <ColumnDefinition Width="*" MinWidth="0"/>
                 <ColumnDefinition Width="42"/>
             </Grid.ColumnDefinitions>
         <Grid x:Name="BindSurface" Grid.Column="0" Margin="0" ClipToBounds="True">
@@ -208,13 +207,16 @@
         </Grid>
 
         <Button Grid.Column="1" x:Name="MenuButton" Margin="0" Width="42" MinHeight="38" Padding="0"
+                AutomationProperties.Name="{Binding ToolTip, RelativeSource={RelativeSource Self}}"
                 IsEnabled="{Binding BindingEnabled}" Click="MenuButton_OnClick">
             <Button.Style>
                 <Style TargetType="{x:Type Button}" BasedOn="{StaticResource CompactBindOptionsButton}">
                     <Setter Property="ToolTip" Value="Input binding options"/>
+                    <Setter Property="AutomationProperties.AutomationId" Value="UiInputBindingOptions"/>
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding DeviceBinding.DeviceIoType}" Value="Output">
                             <Setter Property="ToolTip" Value="Output binding options"/>
+                            <Setter Property="AutomationProperties.AutomationId" Value="UiOutputBindingOptions"/>
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>

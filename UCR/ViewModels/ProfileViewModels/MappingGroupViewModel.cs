@@ -32,17 +32,28 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool Enabled
         {
             get => IsMain ? _profileViewModel.Profile.MainMappingsEnabled : (Model?.Enabled ?? false);
-            set
+            set => SetEnabled(value);
+        }
+
+        private async void SetEnabled(bool enabled)
+        {
+            if (Enabled == enabled) return;
+            bool changed;
+            if (IsMain)
             {
-                if (!CanEdit || Enabled == value) return;
-                if (IsMain)
-                {
-                    _profileViewModel.Profile.MainMappingsEnabled = value;
-                    _profileViewModel.Profile.Context?.ContextChanged();
-                }
-                else if (Model != null) Model.Enabled = value;
-                OnPropertyChanged();
+                var profile = _profileViewModel.Profile;
+                changed = await MappingGroup.ChangeEnabledAsync(profile, enabled,
+                    () => profile.MainMappingsEnabled, value => profile.MainMappingsEnabled = value);
             }
+            else
+            {
+                if (Model == null) return;
+                changed = await Model.SetEnabledAsync(enabled);
+            }
+
+            // A synchronous rejection must update the checkbox after WPF finishes writing its value.
+            if (!changed) await System.Threading.Tasks.Task.Yield();
+            OnPropertyChanged(nameof(Enabled));
         }
 
         public bool BlockInputs

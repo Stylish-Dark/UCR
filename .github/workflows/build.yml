@@ -576,7 +576,9 @@ jobs:
                       using (var g = Graphics.FromImage(bitmap)) {
                           g.Clear(Color.Black);
                           bool popup = filename.IndexOf("picker", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                              filename.IndexOf("add-device", StringComparison.OrdinalIgnoreCase) >= 0;
+                              filename.IndexOf("add-device", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              filename.IndexOf("profile-rename", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              filename.IndexOf("-menu", StringComparison.OrdinalIgnoreCase) >= 0;
                           if (popup) {
                               g.CopyFromScreen(r.Left, r.Top, 0, 0, new Size(w, h));
                           } else {
@@ -625,7 +627,52 @@ jobs:
               }
               Start-Sleep -Seconds 3
               Add-Type -AssemblyName UIAutomationClient
+              Add-Type -AssemblyName System.Windows.Forms
               $root = [System.Windows.Automation.AutomationElement]::FromHandle($handle)
+              $processCondition = [System.Windows.Automation.PropertyCondition]::new(
+                  [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $process.Id)
+              function Find-UcrElement($property, [string]$value) {
+                  $condition = [System.Windows.Automation.PropertyCondition]::new($property, $value)
+                  for ($attempt = 0; $attempt -lt 20; $attempt++) {
+                      $windows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
+                          [System.Windows.Automation.TreeScope]::Children, $processCondition)
+                      foreach ($window in $windows) {
+                          $matches = $window.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition)
+                          foreach ($element in $matches) {
+                              if (-not $element.Current.IsOffscreen) { return $element }
+                          }
+                      }
+                      Start-Sleep -Milliseconds 150
+                  }
+                  throw "Visible UI element missing: $value"
+              }
+              function Find-UcrControl([string]$id) {
+                  Find-UcrElement ([System.Windows.Automation.AutomationElement]::AutomationIdProperty) $id
+              }
+              function Invoke-UcrControl([string]$id) {
+                  $element = Find-UcrControl $id
+                  $element.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              }
+              function Set-UcrText([string]$id, [string]$text) {
+                  $element = Find-UcrControl $id
+                  $element.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($text)
+              }
+              function Assert-UcrSelectedProfile([string]$name) {
+                  $condition = [System.Windows.Automation.AndCondition]::new(
+                      [System.Windows.Automation.PropertyCondition]::new(
+                          [System.Windows.Automation.AutomationElement]::NameProperty, $name),
+                      [System.Windows.Automation.PropertyCondition]::new(
+                          [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+                          [System.Windows.Automation.ControlType]::TreeItem))
+                  $item = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
+                  if ($null -eq $item -or -not $item.GetCurrentPattern(
+                      [System.Windows.Automation.SelectionItemPattern]::Pattern).Current.IsSelected) {
+                      throw "Profile tree did not select '$name'."
+                  }
+              }
+              $nameProperty = [System.Windows.Automation.AutomationElement]::NameProperty
+              [UcrWindowCapture]::MoveWindow($handle, 0, 0, 1200, 740, $true) | Out-Null
+              Start-Sleep -Milliseconds 500
               $elements = $root.FindAll(
                   [System.Windows.Automation.TreeScope]::Subtree,
                   [System.Windows.Automation.Condition]::TrueCondition)
@@ -644,34 +691,47 @@ jobs:
               }
               Write-Host "Captured actual UCR window: $outFile ($uniqueColors distinct sampled colors)"
               Write-Host "UI automation elements: $($elements.Count); named: $($labels.Count)"
-              [UcrWindowCapture]::ClickAt($handle, 165, 157)
-              Start-Sleep -Seconds 2
+              Assert-UcrSelectedProfile 'DualSense button verification'
+              if ((Find-UcrControl 'UiMappingTitle').Current.Name -ne 'Cross to A') {
+                  throw 'The saved mapping title is missing from the workspace.'
+              }
               [UcrWindowCapture]::Capture(
                   $handle, (Join-Path $directory 'UCR-DualSense-bound-cross.png')) | Out-Null
-              [UcrWindowCapture]::ClickAt($handle, 730, 341)
+              Invoke-UcrControl 'UiExpandMapping'
               Start-Sleep -Milliseconds 850
+              Find-UcrControl 'UiInputBindingOptions' | Out-Null
               [UcrWindowCapture]::Capture(
                   $handle, (Join-Path $directory 'UCR-DualSense-expanded-cross.png')) | Out-Null
+              Invoke-UcrControl 'UiInputBindingOptions'
+              Find-UcrElement $nameProperty 'Clear binding' | Out-Null
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-input-binding-menu.png')) | Out-Null
+              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
 
-              # An empty runner has no profiles. Invoke the real Add Profile
-              # control so the actual embedded mapping editor and sidebar render.
-              $addProfile = $root.FindFirst(
-                  [System.Windows.Automation.TreeScope]::Descendants,
-                  (New-Object System.Windows.Automation.PropertyCondition(
-                      [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
-                      'UiProfilesAdd')))
-              if ($null -eq $addProfile) {
-                  throw 'Could not find the real Add Profile button by AutomationId.'
-              }
-              $invoke = $addProfile.GetCurrentPattern(
-                  [System.Windows.Automation.InvokePattern]::Pattern)
-              $invoke.Invoke()
+              Invoke-UcrControl 'UiToolbarHelp'
+              Find-UcrControl 'UiHelpContents' | Out-Null
+              Find-UcrControl 'UiAbout' | Out-Null
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-help-menu.png')) | Out-Null
+              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+
+              Set-UcrText 'WorkspaceMappingSearch' 'No such mapping'
+              Find-UcrElement $nameProperty 'No mappings match your search.' | Out-Null
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-mapping-search.png')) | Out-Null
+              Set-UcrText 'WorkspaceMappingSearch' ''
+
+              Invoke-UcrControl 'UiProfilesAdd'
               Start-Sleep -Seconds 4
               $process.Refresh()
               if ($process.HasExited) {
                   throw 'UCR crashed after creating the visual-audit profile.'
               }
               $profilePath = Join-Path $directory 'UCR-profile.png'
+              Assert-UcrSelectedProfile 'New profile'
+              if ((Find-UcrControl 'WorkspaceProfileTitle').Current.Name -ne 'New profile') {
+                  throw 'The workspace did not open the newly selected profile.'
+              }
               $profileColors = [UcrWindowCapture]::Capture($handle, $profilePath)
               $editorElements = $root.FindAll(
                   [System.Windows.Automation.TreeScope]::Subtree,
@@ -685,15 +745,36 @@ jobs:
               }
               $editorLabels | Set-Content -LiteralPath (Join-Path $directory 'Profile-UI-elements.txt')
 
+              Invoke-UcrControl 'UiToolbarProfileOptions'
+              Find-UcrControl 'UiProfileCopy' | Out-Null
+              Find-UcrControl 'UiProfileExport' | Out-Null
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-profile-options.png')) | Out-Null
+              Invoke-UcrControl 'UiProfileRename'
+              Set-UcrText 'UiProfileNameInput' '   '
+              Start-Sleep -Milliseconds 350
+              if ((Find-UcrControl 'UiProfileNameAccept').Current.IsEnabled) {
+                  throw 'Rename accepts a whitespace-only name.'
+              }
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-profile-rename.png')) | Out-Null
+              Set-UcrText 'UiProfileNameInput' 'Windows audit renamed profile'
+              Invoke-UcrControl 'UiProfileNameAccept'
+              Start-Sleep -Milliseconds 600
+              Assert-UcrSelectedProfile 'Windows audit renamed profile'
+              if ((Find-UcrControl 'WorkspaceProfileTitle').Current.Name -ne 'Windows audit renamed profile') {
+                  throw 'The selected profile and workspace disagree after rename.'
+              }
+              Invoke-UcrControl 'UiToolbarProfileOptions'
+
               # Open the actual output-device picker so the visual audit can
               # configure a controller before testing four-way destinations.
               [UcrWindowCapture]::MoveWindow($handle, -390, 0, 1200, 740, $true) | Out-Null
               Start-Sleep -Milliseconds 400
-              [UcrWindowCapture]::ClickAt($handle, 1106, 324)
+              Invoke-UcrControl 'UiProfileAddOutputDevice'
               Start-Sleep -Milliseconds 950
               [UcrWindowCapture]::Capture(
                   $handle, (Join-Path $directory 'UCR-output-device-picker.png')) | Out-Null
-              Add-Type -AssemblyName System.Windows.Forms
               [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
               Start-Sleep -Milliseconds 400
 
@@ -704,51 +785,33 @@ jobs:
               # DualSense HID fixture. Escape closes the modal before mapping tests.
               [UcrWindowCapture]::MoveWindow($handle, -390, 0, 1200, 740, $true) | Out-Null
               Start-Sleep -Milliseconds 400
-              [UcrWindowCapture]::ClickAt($handle, 1106, 290)
+              Invoke-UcrControl 'UiProfileAddInputDevice'
               Start-Sleep -Milliseconds 850
               [UcrWindowCapture]::Capture(
                   $handle, (Join-Path $directory 'UCR-DualSense-add-device.png')) | Out-Null
-              Add-Type -AssemblyName System.Windows.Forms
               [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
               Start-Sleep -Milliseconds 450
               [UcrWindowCapture]::MoveWindow($handle, 0, 0, 1200, 740, $true) | Out-Null
               Start-Sleep -Milliseconds 350
 
+              Invoke-UcrControl 'UiWorkspaceMore'
+              Find-UcrElement $nameProperty 'Batch capture inputs' | Out-Null
+              $batchAssign = Find-UcrElement $nameProperty 'Batch assign outputs'
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-batch-menu.png')) | Out-Null
+              $batchAssign.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Find-UcrElement $nameProperty 'No unassigned Button-to-Button mappings. Capture some inputs first.' | Out-Null
+              [UcrWindowCapture]::Capture(
+                  $handle, (Join-Path $directory 'UCR-batch-assign.png')) | Out-Null
+              Invoke-UcrControl 'UiFinishBatchMappings'
+
               # Exercise the actual mapping-creation control and capture populated UI.
-              # WPF mapping header controls are not exposed by UIA on this
-              # runner. Click the actual rendered '+' at its captured location.
-              # Relative to the captured 1200x740 UCR window, not the desktop.
               for ($i = 0; $i -lt 3; $i++) {
-                  [UcrWindowCapture]::ClickAt($handle, 704, 171)
+                  Invoke-UcrControl 'UiWorkspaceAddMapping'
                   Start-Sleep -Milliseconds 1250
                   if ($i -eq 0) {
                       [UcrWindowCapture]::Capture(
                           $handle, (Join-Path $directory 'UCR-one-mapping.png')) | Out-Null
-                      # The visible output representation selector is at (690,403)
-                      # in the captured 1200x740 window. Select an axis output.
-                      [UcrWindowCapture]::ClickAt($handle, 691, 403)
-                      Start-Sleep -Milliseconds 900
-                      [UcrWindowCapture]::Capture(
-                          $handle, (Join-Path $directory 'UCR-axis-output.png')) | Out-Null
-                      # Switch the input representation to an axis as well.
-                      [UcrWindowCapture]::ClickAt($handle, 505, 403)
-                      Start-Sleep -Milliseconds 900
-                      [UcrWindowCapture]::Capture(
-                          $handle, (Join-Path $directory 'UCR-axis-to-axis.png')) | Out-Null
-                      # Expand the real output settings panel.
-                      [UcrWindowCapture]::ClickAt($handle, 647, 525)
-                      Start-Sleep -Milliseconds 800
-                      [UcrWindowCapture]::Capture(
-                          $handle, (Join-Path $directory 'UCR-axis-settings.png')) | Out-Null
-                      # Exercise four-way input and output representations.
-                      [UcrWindowCapture]::ClickAt($handle, 469, 402)
-                      Start-Sleep -Milliseconds 850
-                      [UcrWindowCapture]::Capture(
-                          $handle, (Join-Path $directory 'UCR-fourway-input.png')) | Out-Null
-                      [UcrWindowCapture]::ClickAt($handle, 636, 397)
-                      Start-Sleep -Milliseconds 850
-                      [UcrWindowCapture]::Capture(
-                          $handle, (Join-Path $directory 'UCR-fourway-output.png')) | Out-Null
                   }
               }
               Start-Sleep -Seconds 2

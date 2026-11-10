@@ -16,7 +16,7 @@
             <RowDefinition />
         </Grid.RowDefinitions>
         <TextBlock Text="{Binding Title}" Style="{DynamicResource MaterialDesignSubheadingTextBlock}"/>
-        <TextBox x:Name="TextValue" wpf:HintAssist.Hint="{Binding Hint}" Style="{DynamicResource MaterialDesignFloatingHintTextBox}"                 
+        <TextBox x:Name="TextValue" AutomationProperties.AutomationId="UiProfileNameInput" wpf:HintAssist.Hint="{Binding Hint}" Style="{DynamicResource MaterialDesignFloatingHintTextBox}"
                  Margin="0 6 0 0"
                  FontSize="18" Grid.Row="1">
             <TextBox.Text>
@@ -29,7 +29,7 @@
         </TextBox>
         <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Grid.Row="2"
                     Margin="0 16 0 0">
-            <Button x:Name="UiAccept" IsDefault="True" 
+            <Button x:Name="UiAccept" AutomationProperties.AutomationId="UiProfileNameAccept" IsDefault="True"
                     Command="{x:Static wpf:DialogHost.CloseDialogCommand}" 
                     Content="ACCEPT">
                 <Button.CommandParameter>
@@ -38,7 +38,7 @@
                 <Button.Style>
                     <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding Source={x:Reference TextValue}, Path=Text}" Value="">
+                            <DataTrigger Binding="{Binding ElementName=TextValue, Path=(Validation.HasError)}" Value="True">
                                 <Setter Property="IsEnabled" Value="False" />
                             </DataTrigger>
                         </Style.Triggers>

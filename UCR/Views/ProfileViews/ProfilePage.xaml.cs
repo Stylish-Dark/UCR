@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -68,6 +67,7 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         public void SuspendEmbeddedVisuals()
         {
+            CancelProfileCapture();
             StopGuiTimer();
         }
 
@@ -133,6 +133,7 @@ namespace HidWizards.UCR.Views.ProfileViews
         {
             if (_disposed) return;
             _disposed = true;
+            CancelProfileCapture();
             if (_mappingDragActive) EndMappingDrag(false);
             StopGuiTimer();
             Context.ActiveProfileChangedEvent -= ContextOnActiveProfileChangedEvent;
@@ -707,7 +708,7 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private void MappingListView_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (Profile.IsActive()) return;
+            if (!ProfileViewModel.CanReorderMappings) return;
             var sourceVisual = e.OriginalSource as DependencyObject;
             var onGrip = false;
             while (sourceVisual != null)
@@ -774,7 +775,7 @@ namespace HidWizards.UCR.Views.ProfileViews
         {
             var source = _mappingDragSource;
             var list = _mappingDragListView;
-            if (source == null || list == null || source.IsExpanded || Profile.IsActive()) return false;
+            if (source == null || list == null || source.IsExpanded || !ProfileViewModel.CanReorderMappings) return false;
 
             // Dragging needs every row's exact slot position for its existing
             // live-reorder animation. Temporarily realize all rows only during drag.
@@ -1012,7 +1013,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                 return;
             }
 
-            if (e.Key != Key.F6) return;
+            if (e.Key != Key.F6 || Context.BindingManager.IsBindModeActive || IsBatchCapturing) return;
 
             if (BackButton.IsKeyboardFocusWithin)
                 FocusFirst(ProfileDevicesPanel);
@@ -1440,20 +1441,9 @@ namespace HidWizards.UCR.Views.ProfileViews
         private void WorkspaceSearch_OnTextChanged(object sender, TextChangedEventArgs e)
         {
             if (ProfileViewModel?.MappingSections == null) return;
-            var query = WorkspaceMappingSearch?.Text?.Trim();
-            foreach (var section in ProfileViewModel.MappingSections)
-            {
-                var view = CollectionViewSource.GetDefaultView(section.Mappings);
-                if (view == null) continue;
-                if (string.IsNullOrEmpty(query))
-                    view.Filter = null;
-                else
-                    view.Filter = item =>
-                    {
-                        var mapping = item as MappingViewModel;
-                        return mapping?.MappingTitle?.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
-                    };
-            }
+            if (_mappingDragActive) EndMappingDrag(false);
+            else if (_mappingDragSource != null) ResetPendingMappingDrag();
+            ProfileViewModel.SetMappingSearch(WorkspaceMappingSearch?.Text);
         }
 
         private void BlockSelectedInputs_OnClick(object sender, RoutedEventArgs e)

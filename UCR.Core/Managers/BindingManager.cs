@@ -201,6 +201,20 @@ namespace HidWizards.UCR.Core.Managers
             EndBindMode();
         }
 
+        public void CancelProfileBindMode(Profile profile)
+        {
+            if (!_dispatcher.CheckAccess())
+            {
+                _dispatcher.BeginInvoke(new Action(() => CancelProfileBindMode(profile)), DispatcherPriority.Input);
+                return;
+            }
+            lock (bindmodeLock)
+            {
+                if (!bindmodeActive || !ReferenceEquals(_deviceBinding?.Profile, profile)) return;
+            }
+            EndBindMode();
+        }
+
         private void EndBindMode()
         {
             if (!_dispatcher.CheckAccess())

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
@@ -18,6 +19,8 @@ namespace HidWizards.UCR.Views.ProfileViews
         private CancellationTokenSource _batchCancellation;
         private bool _batchRunning;
 
+        internal bool IsBatchCapturing => _batchRunning && _batchCancellation?.IsCancellationRequested == false;
+
         private async void BatchCapture_OnClick(object sender, RoutedEventArgs e)
         {
             if (_batchRunning || _disposed || Profile.IsActive()) return;
@@ -28,6 +31,8 @@ namespace HidWizards.UCR.Views.ProfileViews
         private async void BatchAssign_OnClick(object sender, RoutedEventArgs e)
         {
             if (_batchRunning || _disposed || Profile.IsActive()) return;
+            var currentMappings = new HashSet<MappingViewModel>(ProfileViewModel.MappingsList);
+            _batchMappings.RemoveAll(mapping => !currentMappings.Contains(mapping) || !HasUnassignedOutput(mapping));
 
             // When this page was reopened, use unassigned Button-to-Button mappings
             // in displayed order. Otherwise preserve the most recent capture sequence.
@@ -35,8 +40,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             {
                 foreach (var mapping in ProfileViewModel.MappingsList)
                 {
-                    var output = mapping.Plugins.FirstOrDefault()?.DeviceBindings.FirstOrDefault();
-                    if (output?.DeviceBinding != null && !output.DeviceBinding.IsBound &&
+                    if (HasUnassignedOutput(mapping) &&
                         string.Equals(mapping.MappingRoute, "Button to Button", StringComparison.OrdinalIgnoreCase))
                         _batchMappings.Add(mapping);
                 }
@@ -47,21 +51,51 @@ namespace HidWizards.UCR.Views.ProfileViews
                 BatchTitle.Text = "Batch assign";
                 BatchStatus.Text = "No unassigned Button-to-Button mappings. Capture some inputs first.";
                 BatchProgress.Text = string.Empty;
-                BatchOverlay.Visibility = Visibility.Visible;
+                ShowBatchOverlay();
                 return;
             }
             await RunBatchSessionAsync(true);
         }
 
+        private static bool HasUnassignedOutput(MappingViewModel mapping)
+        {
+            var binding = mapping.Plugins.FirstOrDefault()?.DeviceBindings.FirstOrDefault()?.DeviceBinding;
+            return binding != null && !binding.IsBound;
+        }
+
         private void BatchFinish_OnClick(object sender, RoutedEventArgs e)
         {
             _batchCancellation?.Cancel();
-            BatchOverlay.Visibility = Visibility.Collapsed;
+            CloseBatchOverlay();
         }
 
-        private void BatchMappings_OnUnloaded(object sender, RoutedEventArgs e)
+        private void ProfilePage_OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
+            if (!(bool)e.NewValue) CancelProfileCapture();
+        }
+
+        private void CancelProfileCapture()
+        {
+            Context.BindingManager.CancelProfileBindMode(Profile);
             _batchCancellation?.Cancel();
+            CloseBatchOverlay();
+        }
+
+        private void ShowBatchOverlay()
+        {
+            BatchOverlay.Visibility = Visibility.Visible;
+            Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+            {
+                if (BatchOverlay.IsVisible) BatchOverlay.Focus();
+            }));
+        }
+
+        private void CloseBatchOverlay()
+        {
+            if (BatchOverlay == null) return;
+            var restoreFocus = IsVisible && BatchOverlay.IsKeyboardFocusWithin;
+            BatchOverlay.Visibility = Visibility.Collapsed;
+            if (restoreFocus) UiWorkspaceMore.Focus();
         }
 
         private static IEnumerable<DeviceBindingNode> FlattenBatchMenu(IEnumerable<DeviceBindingNode> nodes)
@@ -131,12 +165,13 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private async Task RunBatchSessionAsync(bool assign)
         {
+            Context.BindingManager.CancelProfileBindMode(Profile);
             _batchRunning = true;
             var cancellation = new CancellationTokenSource();
             _batchCancellation = cancellation;
             var token = cancellation.Token;
             var completed = 0;
-            BatchOverlay.Visibility = Visibility.Visible;
+            ShowBatchOverlay();
             BatchTitle.Text = assign ? "Batch assign outputs" : "Batch capture inputs";
 
             try
@@ -250,7 +285,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                 {
                     _batchCancellation = null;
                     _batchRunning = false;
-                    BatchOverlay.Visibility = Visibility.Collapsed;
+                    CloseBatchOverlay();
                 }
                 cancellation.Dispose();
             }

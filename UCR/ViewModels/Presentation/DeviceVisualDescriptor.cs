@@ -37,7 +37,8 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
         VJoy,
         ArcadeStick,
-        DirectInput
+        DirectInput,
+        Midi
     }
 
     public enum ControlVisualKind
@@ -182,6 +183,10 @@ namespace HidWizards.UCR.ViewModels.Presentation
             var title = (device.DisplayTitle ?? device.Title ?? string.Empty).Trim();
             var hidPath = device.HidPath ?? string.Empty;
             var searchable = (provider + " " + handle + " " + title + " " + hidPath).ToLowerInvariant();
+
+            if (provider.Equals("Core_Midi", StringComparison.OrdinalIgnoreCase))
+                return WithConfiguredPresentation(Build(DeviceVisualKind.Midi, NeutralBrush, title,
+                    device.DeviceNumber + 1, true), device, devicesManager);
 
             if (provider.Equals("Core_ViGEm", StringComparison.OrdinalIgnoreCase))
             {
@@ -1014,6 +1019,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
         {
             if (kind == DeviceVisualKind.Keyboard) return "\uE001";
             if (kind == DeviceVisualKind.Mouse) return "\uE006";
+            if (kind == DeviceVisualKind.Midi) return "\uE007";
             if (IsXbox(kind)) return "\uE002";
             if (IsPlayStation(kind)) return "\uE003";
             if (kind == DeviceVisualKind.ArcadeStick) return "\uE005";
@@ -1040,6 +1046,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
             var prefix = "U";
             if (kind == DeviceVisualKind.Keyboard) prefix = "K";
             else if (kind == DeviceVisualKind.Mouse) prefix = "M";
+            else if (kind == DeviceVisualKind.Midi) prefix = "MIDI";
             else if (IsXbox(kind)) prefix = "X";
             else if (IsPlayStation(kind)) prefix = "P";
             else if (kind == DeviceVisualKind.VJoy) prefix = "V";

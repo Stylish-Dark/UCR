@@ -9,7 +9,7 @@ using System.Windows.Media;
 namespace HidWizards.UCR.Views.Controls
 {
     /// <summary>
-    /// Renders one glyph directly from the bundled DeviceSymbols-v7 font.
+    /// Renders one device symbol, using the bundled DeviceSymbols-v7 font for controller and keyboard glyphs.
     /// The font is embedded inside UCR.exe, copied to a private local cache, then loaded as a GlyphTypeface.
     /// This avoids WPF font-family fallback, missing sidecar files, and Windows blocking downloaded font files.
     /// </summary>
@@ -92,6 +92,25 @@ namespace HidWizards.UCR.Views.Controls
                 drawingContext.DrawLine(stroke,
                     new Point(x + size, y + 12 * size),
                     new Point(x + width - size, y + 12 * size));
+                return;
+            }
+
+            if (SymbolText == "\uE007")
+            {
+                // MIDI uses a pair of beamed eighth notes drawn independently of the symbol font.
+                var brush = Foreground ?? Brushes.White;
+                var scale = Math.Min(Math.Min(ActualWidth, ActualHeight), GlyphSize) / 24.0;
+                if (scale <= 0) return;
+                var x = (ActualWidth - 24 * scale) / 2;
+                var y = (ActualHeight - 24 * scale) / 2;
+                var stroke = new Pen(brush, 2.2 * scale);
+                var firstStemTop = new Point(x + 9 * scale, y + 6 * scale);
+                var secondStemTop = new Point(x + 20 * scale, y + 3 * scale);
+                drawingContext.DrawLine(stroke, firstStemTop, secondStemTop);
+                drawingContext.DrawLine(stroke, firstStemTop, new Point(x + 9 * scale, y + 19 * scale));
+                drawingContext.DrawLine(stroke, secondStemTop, new Point(x + 20 * scale, y + 16 * scale));
+                drawingContext.DrawEllipse(brush, null, new Point(x + 6 * scale, y + 19 * scale), 4 * scale, 2.8 * scale);
+                drawingContext.DrawEllipse(brush, null, new Point(x + 17 * scale, y + 16 * scale), 4 * scale, 2.8 * scale);
                 return;
             }
 

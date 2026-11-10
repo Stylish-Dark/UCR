@@ -47,6 +47,7 @@ namespace HidWizards.UCR.Views
         private Thickness _autoApplyOriginalMargin;
         private Profile _embeddedProfile;
         private bool _workspaceReady;
+        private bool _reloadingProfileTree;
         private readonly Dictionary<Guid, ProfilePage> _profileCache = new Dictionary<Guid, ProfilePage>();
         private readonly LinkedList<Guid> _profileRecency = new LinkedList<Guid>();
         private const int ProfileCacheLimit = 6;
@@ -91,15 +92,10 @@ namespace HidWizards.UCR.Views
             {
                 try
                 {
-                    if (ProfileTree.SelectedItem == null && ProfileTree.Items.Count > 0)
-                    {
-                        var first = ProfileTree.ItemContainerGenerator.ContainerFromIndex(0) as TreeViewItem;
-                        if (first != null) first.IsSelected = true;
-                    }
-                    var selected = ProfileTree.SelectedItem as ProfileItem ??
-                        _dashboardViewModel.ProfileList?.FirstOrDefault(item => item.Profile != null);
-                    if (selected != null && !ReferenceEquals(_dashboardViewModel.SelectedProfileItem, selected))
-                        _dashboardViewModel.SelectedProfileItem = selected;
+                    if (ProfileTree.SelectedItem == null)
+                        SelectProfileTreeItem(_dashboardViewModel.ProfileList.FirstOrDefault());
+
+                    _dashboardViewModel.SelectedProfileItem = ProfileTree.SelectedItem as ProfileItem;
                     OpenSelectedProfileEditor();
                 }
                 catch (Exception exception)
@@ -143,6 +139,10 @@ namespace HidWizards.UCR.Views
 
             if (e.Key == Key.F6)
             {
+                if (Context.BindingManager.IsBindModeActive ||
+                    _embeddedProfilePage?.IsBatchCapturing == true ||
+                    (NavigationHost.Content as ProfilePage)?.IsBatchCapturing == true) return;
+
                 if (_navigationPage != null)
                 {
                     FocusFirst(NavigationHost);
@@ -208,12 +208,51 @@ namespace HidWizards.UCR.Views
             return true;
         }
 
-        // TODO Deprecated, replace with property notifications
-        private void ReloadProfileTree()
+        private void ReloadProfileTree(Guid? selectedProfileId = null)
         {
+            var selectedId = selectedProfileId ?? (ProfileTree.SelectedItem as ProfileItem)?.Id;
             var profileTree = ProfileItem.GetProfileTree(Context.Profiles);
-            _dashboardViewModel.ReplaceProfileList(profileTree);
-            UpdateProfilePaneWidth();
+            _reloadingProfileTree = true;
+            try
+            {
+                _dashboardViewModel.ReplaceProfileList(profileTree);
+                UpdateProfilePaneWidth();
+                SelectProfileTreeItem(profileTree.FirstOrDefault(item => item.Id == selectedId)
+                    ?? profileTree.FirstOrDefault());
+            }
+            finally
+            {
+                _reloadingProfileTree = false;
+            }
+
+            _dashboardViewModel.SelectedProfileItem = ProfileTree.SelectedItem as ProfileItem;
+            if (_navigationPage == null) OpenSelectedProfileEditor();
+        }
+
+        private void SelectProfileTreeItem(ProfileItem item)
+        {
+            if (item == null) return;
+
+            ProfileTree.UpdateLayout();
+            var container = ProfileTree.ItemContainerGenerator.ContainerFromItem(item) as TreeViewItem
+                ?? FindProfileContainer(ProfileTree, item);
+            if (container == null) return;
+
+            container.IsSelected = true;
+            container.BringIntoView();
+        }
+
+        private static TreeViewItem FindProfileContainer(DependencyObject parent, ProfileItem item)
+        {
+            // Grouped rows can belong to a GroupItem's generator instead of the root generator.
+            if (parent is TreeViewItem row && ReferenceEquals(row.DataContext, item)) return row;
+
+            for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+            {
+                var result = FindProfileContainer(VisualTreeHelper.GetChild(parent, index), item);
+                if (result != null) return result;
+            }
+            return null;
         }
 
         private void UpdateProfilePaneWidth()
@@ -451,8 +490,7 @@ namespace HidWizards.UCR.Views
                 new List<DeviceConfiguration>(), new List<DeviceConfiguration>());
             Context.ProfilesManager.AddProfile(profile);
 
-            ReloadProfileTree();
-            OpenProfileWindow(profile);
+            ReloadProfileTree(profile.Guid);
         }
 
         private void EditProfile(object sender, RoutedEventArgs e)
@@ -470,26 +508,26 @@ namespace HidWizards.UCR.Views
 
         private void WorkspaceMappings_OnClick(object sender, RoutedEventArgs e)
         {
-            WorkspaceTabs.SelectedIndex = 0;
             _embeddedProfilePage?.ShowWorkspaceInspector();
         }
 
         private void WorkspaceDevices_OnClick(object sender, RoutedEventArgs e)
         {
-            WorkspaceTabs.SelectedIndex = 0;
             _embeddedProfilePage?.ShowWorkspaceToolbox("Devices");
         }
 
         private void WorkspaceFilters_OnClick(object sender, RoutedEventArgs e)
         {
-            WorkspaceTabs.SelectedIndex = 0;
             _embeddedProfilePage?.ShowWorkspaceToolbox("Filters");
         }
 
         private void WorkspaceOptions_OnClick(object sender, RoutedEventArgs e)
         {
-            WorkspaceTabs.SelectedIndex = 0;
-            _embeddedProfilePage?.ShowWorkspaceToolbox("Profile options");
+            if (_embeddedProfilePage == null) return;
+            if (_embeddedProfilePage.ProfileOptionsHost.Visibility == Visibility.Visible)
+                _embeddedProfilePage.ShowWorkspaceInspector();
+            else
+                _embeddedProfilePage.ShowWorkspaceToolbox("Profile options");
         }
 
         private void OpenProfileWindow(Profile profile)
@@ -518,14 +556,10 @@ namespace HidWizards.UCR.Views
             page.UseEmbeddedLayout();
             // Move the existing, fully functional settings panel into the right
             // details tab. It stays visible alongside the profiles/mapping list.
-            var optionsTab = WorkspaceTabs.Items.Count > 1
-                ? WorkspaceTabs.Items[1] as TabItem : null;
-            if (optionsTab != null && ReferenceEquals(optionsTab.Content, ProfileSummaryPanel))
-                optionsTab.Content = null;
+            ProfileOptionsStorage.Content = null;
             ProfileSummaryPanel.DataContext = _dashboardViewModel;
             page.AttachProfileOptions(ProfileSummaryPanel);
             DockAutoApplyPanel(page);
-            WorkspaceTabs.SelectedIndex = 0;
             _embeddedProfilePage = page;
             _embeddedProfile = profile;
             ProfileEditorHost.Content = page;
@@ -635,7 +669,7 @@ namespace HidWizards.UCR.Views
             if (!GetSelectedItem(out var profileItem)) return;
             var dialog = new StringDialog("Rename profile", "Profile name", profileItem.Profile.Title);
             var result = (bool?)await DialogHost.Show(dialog, "RootDialog");
-            if (result == null || !result.Value) return;
+            if (result != true || string.IsNullOrWhiteSpace(dialog.Value)) return;
 
             profileItem.Profile.Rename(dialog.Value);
             ReloadProfileTree();
@@ -646,7 +680,7 @@ namespace HidWizards.UCR.Views
             if (!GetSelectedItem(out var profileItem)) return;
             var dialog = new StringDialog("Copy profile", "Profile name", profileItem.Profile.Title + " Copy");
             var result = (bool?)await DialogHost.Show(dialog, "RootDialog");
-            if (result == null || !result.Value) return;
+            if (result != true || string.IsNullOrWhiteSpace(dialog.Value)) return;
 
             Context.ProfilesManager.CopyProfile(profileItem.Profile, dialog.Value);
             ReloadProfileTree();
@@ -1242,7 +1276,7 @@ namespace HidWizards.UCR.Views
         private void ProfileTree_OnSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
             // XAML can raise selection events before ProfileEditorHost is constructed.
-            if (!_workspaceReady) return;
+            if (!_workspaceReady || _reloadingProfileTree) return;
             try
             {
                 var treeView = sender as TreeView;

@@ -73,6 +73,15 @@ namespace HidWizards.UCR.Core.Managers
                    SubscriptionState.ActiveProfiles.Any(profile => profile.Guid == profileGuid);
         }
 
+        internal bool IsProfileLayerActive(Guid profileGuid)
+        {
+            if (SubscriptionState?.IsActive != true) return false;
+            foreach (var active in SubscriptionState.ActiveProfiles)
+                for (var layer = active; layer != null; layer = layer.ParentProfile)
+                    if (layer.Guid == profileGuid) return true;
+            return false;
+        }
+
         public string LastActivationError { get; private set; }
 
         public Task RecoverExclusiveModeAsync()
@@ -189,12 +198,37 @@ namespace HidWizards.UCR.Core.Managers
             return RunTransitionAsync(() => RefreshActiveProfileCoreAsync(profile, true));
         }
 
-        private Task<bool> RefreshActiveProfileCoreAsync(Profile profile, bool runHidHideInBackground)
+        private Task<bool> RefreshActiveProfileCoreAsync(Profile profile, bool runHidHideInBackground,
+            Action restoreConfiguration = null)
         {
-            if (profile == null || !IsProfileActive(profile.Guid)) return Task.FromResult(false);
+            if (profile == null || !IsProfileLayerActive(profile.Guid)) return Task.FromResult(false);
             Logger.Info("Refreshing active profile after runtime configuration change: {" +
                         profile.ProfileBreadCrumbs() + "}");
-            return RebuildActiveProfilesAsync(GetActiveProfiles().ToList(), false, profile, runHidHideInBackground);
+            return RebuildActiveProfilesAsync(GetActiveProfiles().ToList(), false, profile, runHidHideInBackground,
+                restoreConfiguration);
+        }
+
+        internal Task<bool> ChangeMappingGroupEnabledAsync(Profile profile, bool enabled, Func<bool> getEnabled,
+            Action<bool> setEnabled)
+        {
+            return RunTransitionAsync(async () =>
+            {
+                var previous = getEnabled();
+                if (previous == enabled) return true;
+                setEnabled(enabled);
+                var changed = false;
+                try
+                {
+                    changed = !IsProfileLayerActive(profile.Guid) ||
+                              await RefreshActiveProfileCoreAsync(profile, true, () => setEnabled(previous));
+                    if (changed) _context.ContextChanged();
+                    return changed;
+                }
+                finally
+                {
+                    if (!changed) setEnabled(previous);
+                }
+            });
         }
 
         public bool DeactivateProfile(Profile profile)
@@ -301,7 +335,7 @@ namespace HidWizards.UCR.Core.Managers
         }
 
         private async Task<bool> RebuildActiveProfilesAsync(IList<Profile> targetProfiles, bool refreshDevices,
-            Profile changedProfile, bool runHidHideInBackground)
+            Profile changedProfile, bool runHidHideInBackground, Action restoreConfiguration = null)
         {
             LastActivationError = null;
             targetProfiles = NormalizeProfiles(targetProfiles);
@@ -366,6 +400,7 @@ namespace HidWizards.UCR.Core.Managers
                 if (candidate.IsActive) DeactivateProfile(candidate);
                 SubscriptionState = null;
 
+                restoreConfiguration?.Invoke();
                 if (previousProfiles.Count > 0 && await RestorePreviousProfilesAsync(previousProfiles, changedProfile, runHidHideInBackground))
                 {
                     Logger.Warn("Previous active profile set restored after activation failure.");
@@ -386,6 +421,7 @@ namespace HidWizards.UCR.Core.Managers
                 Logger.Error("Unable to apply Exclusive Device Mode; restoring the previous profile.");
                 DeactivateProfile(candidate);
                 SubscriptionState = null;
+                restoreConfiguration?.Invoke();
                 if (previousProfiles.Count > 0)
                 {
                     if (await RestorePreviousProfilesAsync(previousProfiles, changedProfile, runHidHideInBackground)) return false;

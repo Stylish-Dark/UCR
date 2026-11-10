@@ -192,6 +192,7 @@ namespace HidWizards.UCR.Core.Models
         public bool Rename(string title)
         {
             Title = title;
+            OnPropertyChanged(nameof(Title));
             Context.ContextChanged();
             return true;
         }

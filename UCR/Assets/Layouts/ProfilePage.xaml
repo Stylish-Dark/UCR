@@ -18,6 +18,6 @@
     <sys:String x:Key="ProfileDevicesPanel.Grid.Row">1</sys:String>
     <sys:String x:Key="MappingFiltersPanel.Grid.Row">2</sys:String>
     <sys:String x:Key="CompoundPresetsPanel.Grid.Row">3</sys:String>
-    <sys:String x:Key="ProfileInspectorColumn.Width">410</sys:String>
-    <sys:String x:Key="ProfileInspectorColumn.MinWidth">390</sys:String>
+    <sys:String x:Key="ProfileInspectorColumn.Width">350</sys:String>
+    <sys:String x:Key="ProfileInspectorColumn.MinWidth">330</sys:String>
 </ResourceDictionary>

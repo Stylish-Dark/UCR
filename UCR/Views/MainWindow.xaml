@@ -187,6 +187,18 @@
                     <Button x:Name="UiToolbarLogs" Style="{StaticResource UcrToolbarActionButton}" ToolTip="Open diagnostic logs" Click="OpenLogs_OnClick">
                         <materialDesign:PackIcon Kind="FileDocumentOutline" Width="20" Height="20"/>
                     </Button>
+                    <Button x:Name="UiToolbarProfileOptions" Content="Profile options" Width="Auto" Padding="10 5"
+                            Style="{StaticResource UcrToolbarActionButton}" IsEnabled="{Binding CanActivateProfile}"
+                            ToolTip="Show or hide options for the selected profile" Click="WorkspaceOptions_OnClick"/>
+                    <Button x:Name="UiToolbarHelp" Content="Help" Width="Auto" Padding="10 5"
+                            Style="{StaticResource UcrToolbarActionButton}" Click="ContextMenuButton_OnClick">
+                        <Button.ContextMenu>
+                            <ContextMenu Style="{StaticResource MaterialDesignContextMenu}">
+                                <MenuItem x:Name="UiHelpContents" Header="Help contents" Click="Help_OnClick"/>
+                                <MenuItem x:Name="UiAbout" Header="About UCR" Click="About_OnClick"/>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
                 </ToolBar>
             </ToolBarTray>
             <Popup x:Name="AppearancePopup"
@@ -281,6 +293,7 @@
                                 <Style TargetType="{x:Type TreeViewItem}">
                                     <Setter Property="HorizontalAlignment" Value="Stretch"/>
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="AutomationProperties.Name" Value="{Binding Title}"/>
                                     <Setter Property="Padding" Value="0"/>
                                     <Setter Property="Template">
                                         <Setter.Value>
@@ -374,9 +387,9 @@
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Grid.Column="0" Text="{Binding Title}" FontSize="15.5" FontWeight="Medium"
-                                                               Foreground="#FFFFFF" HorizontalAlignment="Center" TextAlignment="Center"
+                                                               Foreground="#FFFFFF" TextAlignment="Center"
                                                                VerticalAlignment="Center" TextWrapping="NoWrap"
-                                                               TextTrimming="None" ToolTip="{Binding Title}"/>
+                                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}"/>
                                                     <Border Grid.Column="1" Margin="6 0 0 0" Padding="5 1" CornerRadius="7" Background="#26382B" BorderBrush="#4B8B58" BorderThickness="1"
                                                             VerticalAlignment="Center" ToolTip="This profile is currently running">
                                                         <Border.Style>
@@ -481,47 +494,10 @@
 
                 <Border Grid.Column="1" Background="#454545" IsHitTestVisible="False"/>
 
-                <TabControl x:Name="WorkspaceTabs" Grid.Column="2" Margin="2 0 0 0" SelectedIndex="0"
-                            BorderThickness="0" Background="Transparent" Padding="0">
-                    <TabControl.Template>
-                        <ControlTemplate TargetType="{x:Type TabControl}">
-                            <ContentPresenter ContentSource="SelectedContent"
-                                              HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
-                        </ControlTemplate>
-                    </TabControl.Template>
-                    <TabControl.Resources>
-                        <Style TargetType="{x:Type TabItem}">
-                            <Setter Property="Foreground" Value="#B4B4B4"/>
-                            <Setter Property="Background" Value="Transparent"/>
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="{x:Type TabItem}">
-                                        <Border x:Name="TabSurface" Background="{TemplateBinding Background}"
-                                                BorderBrush="Transparent" BorderThickness="0 0 0 2"
-                                                Margin="0 0 8 0" Padding="14 9 14 8" Cursor="Hand">
-                                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center"
-                                                              VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsSelected" Value="True">
-                                                <Setter Property="Foreground" Value="#FFFFFF"/>
-                                                <Setter TargetName="TabSurface" Property="Background" Value="#292929"/>
-                                                <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource PrimaryHueMidBrush}"/>
-                                            </Trigger>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="TabSurface" Property="Background" Value="#303030"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </TabControl.Resources>
-                    <TabItem Header="Mappings">
-                        <ContentControl x:Name="ProfileEditorHost"
-                                        HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
-                    </TabItem>
-                    <TabItem Header="Profile options">
+                <Grid x:Name="WorkspaceTabs" Grid.Column="2" Margin="2 0 0 0">
+                    <ContentControl x:Name="ProfileEditorHost"
+                                    HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+                    <ContentControl x:Name="ProfileOptionsStorage" Visibility="Collapsed">
                 <Grid x:Name="ProfileSummaryPanel" Visibility="Visible">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
@@ -542,47 +518,33 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <Border Grid.Row="0" Grid.ColumnSpan="2" Height="3" VerticalAlignment="Top" Background="{DynamicResource PrimaryHueMidBrush}"/>
-                            <StackPanel Grid.Column="0" Grid.Row="0" FlowDirection="LeftToRight" HorizontalAlignment="Left" Orientation="Horizontal" Margin="0 4 0 0">
-                                <TextBlock Margin="8 5 4 3" Text="{Binding SelectedProfileItem.Title}" Style="{StaticResource MaterialDesignTitleTextBlock}" Foreground="#FFFFFF"/>
-                                <Button ToolTip="Rename profile"
-                                        Style="{StaticResource MaterialDesignCardButton}"
-                                        Foreground="#BDBDBD"
-                                        Click="RenameProfile">
-                                    <materialDesign:PackIcon Kind="Edit" Width="20" Height="20"/>
-                                </Button>
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Grid.Row="0" HorizontalAlignment="Right" Orientation="Horizontal" Margin="4 4 8 0">
-                                <Button ToolTip="Activate profile"
-                                        IsEnabled="{Binding CanActivateProfile}"
-                                        Style="{StaticResource MaterialDesignCardButton}"
-                                        Foreground="#BDBDBD"
-                                        Click="ActivateProfile">
-                                    <materialDesign:PackIcon Kind="Play" Width="20" Height="20"/>
-                                </Button>
-                                <Button ToolTip="Edit profile"
-                                        Style="{StaticResource MaterialDesignCardButton}"
-                                        Foreground="#BDBDBD"
-                                        Click="EditProfile">
-                                    <materialDesign:PackIcon Kind="AccountEdit" Width="20" Height="20"/>
-                                </Button>
-                                <Button ToolTip="Copy profile"
-                                        Style="{StaticResource MaterialDesignCardButton}"
-                                        Foreground="#BDBDBD"
-                                        Click="CopyProfile">
-                                    <materialDesign:PackIcon Kind="AccountMultiplePlus" Width="20" Height="20"/>
-                                </Button>
-                                <Button ToolTip="Export profile"
-                                        Style="{StaticResource MaterialDesignCardButton}"
-                                        Foreground="#BDBDBD"
-                                        Click="ExportProfile">
-                                    <materialDesign:PackIcon Kind="FileExport" Width="20" Height="20"/>
-                                </Button>
-                                <Button ToolTip="Delete profile"
-                                        Style="{StaticResource MaterialDesignCardButton}"
-                                        Foreground="#BDBDBD"
-                                        Click="RemoveProfile">
-                                    <materialDesign:PackIcon Kind="Trash" Width="20" Height="20"/>
-                                </Button>
+                            <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="8 6 8 4">
+                                <TextBlock Text="{Binding SelectedProfileItem.Title}" TextTrimming="CharacterEllipsis"
+                                           ToolTip="{Binding SelectedProfileItem.Title}"
+                                           Style="{StaticResource MaterialDesignTitleTextBlock}" Foreground="#FFFFFF"/>
+                                <WrapPanel Margin="0 4 0 0">
+                                    <Button x:Name="UiProfileRename" Content="Rename" ToolTip="Rename profile"
+                                            Style="{StaticResource UcrProfileActionButton}" Margin="0 0 4 4" Padding="8 4"
+                                            Click="RenameProfile"/>
+                                    <Button x:Name="UiProfileCopy" Content="Copy" ToolTip="Copy profile"
+                                            Style="{StaticResource UcrProfileActionButton}" Margin="0 0 4 4" Padding="8 4"
+                                            Click="CopyProfile"/>
+                                    <Button x:Name="UiProfileExport" Content="Export" ToolTip="Export profile"
+                                            Style="{StaticResource UcrProfileActionButton}" Margin="0 0 4 4" Padding="8 4"
+                                            Click="ExportProfile"/>
+                                    <Button ToolTip="Activate profile" IsEnabled="{Binding CanActivateProfile}"
+                                            Style="{StaticResource MaterialDesignCardButton}" Foreground="#BDBDBD" Click="ActivateProfile">
+                                        <materialDesign:PackIcon Kind="Play" Width="20" Height="20"/>
+                                    </Button>
+                                    <Button ToolTip="Edit profile"
+                                            Style="{StaticResource MaterialDesignCardButton}" Foreground="#BDBDBD" Click="WorkspaceMappings_OnClick">
+                                        <materialDesign:PackIcon Kind="AccountEdit" Width="20" Height="20"/>
+                                    </Button>
+                                    <Button ToolTip="Delete profile"
+                                            Style="{StaticResource MaterialDesignCardButton}" Foreground="#BDBDBD" Click="RemoveProfile">
+                                        <materialDesign:PackIcon Kind="Trash" Width="20" Height="20"/>
+                                    </Button>
+                                </WrapPanel>
                             </StackPanel>
                             <Separator Grid.Row="1" Grid.ColumnSpan="2" Margin="8 0 8 4" Height="4"  Style="{StaticResource MaterialDesignDarkSeparator}" />
                             <Border x:Name="AutoApplyRulesPanel" Grid.Row="2" Grid.ColumnSpan="2" Margin="8 2 8 6" Padding="8 7" Background="#212121" CornerRadius="2">
@@ -683,8 +645,8 @@
                         </Grid>
                     </materialDesign:Card>
                 </Grid>
-                    </TabItem>
-                </TabControl>
+                    </ContentControl>
+                </Grid>
             </Grid>
         </materialDesign:DialogHost>
         <ContentControl x:Name="NavigationHost" Grid.Row="2" Visibility="Collapsed" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
