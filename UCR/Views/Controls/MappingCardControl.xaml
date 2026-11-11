@@ -478,13 +478,14 @@
                 <ItemsControl ItemsSource="{Binding InputConditions}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border CornerRadius="3" Padding="7" Margin="2 0 2 7"
+                            <Border CornerRadius="3" Margin="2 0 2 7"
                                     HorizontalAlignment="Stretch">
                                 <Border.Style>
                                     <Style TargetType="Border">
                                         <Setter Property="BorderBrush" Value="#454545"/>
                                         <Setter Property="BorderThickness" Value="1"/>
                                         <Setter Property="Background" Value="#292929"/>
+                                        <Setter Property="Padding" Value="7"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding DataContext.UsesCongruentMappingLayout, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="True">
                                                 <Setter Property="Padding" Value="0"/>
