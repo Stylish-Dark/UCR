@@ -223,6 +223,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ? _owner.InputDirectionalGroupTitle : IsFourWay ? "4-way joystick" : "Axis";
         public Visibility MatchingTypeCaptionVisibility =>
             _owner?.MatchingTypeCaptionVisibility ?? Visibility.Visible;
+        // A single Button mapping uses the actual binding row; no dummy header row.
+        public Visibility PrimaryDirectionalRowVisibility =>
+            IsCompound || CanRemoveCondition ? Visibility.Visible : Visibility.Collapsed;
         public Visibility LocalAddInputVisibility =>
             _owner?.SharedAddInputVisibility == Visibility.Visible
                 ? Visibility.Collapsed : Visibility.Visible;

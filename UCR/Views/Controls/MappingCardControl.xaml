@@ -486,6 +486,9 @@
                                         <Setter Property="BorderThickness" Value="1"/>
                                         <Setter Property="Background" Value="#292929"/>
                                         <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DataContext.UsesCongruentMappingLayout, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="True">
+                                                <Setter Property="Padding" Value="0"/>
+                                            </DataTrigger>
                                             <DataTrigger Binding="{Binding DataContext.InputConditions.Count, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="1">
                                                 <Setter Property="BorderThickness" Value="0"/>
                                                 <Setter Property="Background" Value="Transparent"/>
@@ -494,7 +497,8 @@
                                     </Style>
                                 </Border.Style>
                                 <StackPanel>
-                                    <Grid Style="{StaticResource UcrDirectionalBindingRow}">
+                                    <Grid Style="{StaticResource UcrDirectionalBindingRow}"
+                                          Visibility="{Binding PrimaryDirectionalRowVisibility}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*" MinWidth="0"/>
@@ -906,6 +910,9 @@
                                     <Setter Property="Background" Value="#292929"/>
                                     <Setter Property="CornerRadius" Value="3"/>
                                     <Style.Triggers>
+                                        <DataTrigger Binding="{Binding UsesCongruentMappingLayout}" Value="True">
+                                            <Setter Property="Padding" Value="5 4"/>
+                                        </DataTrigger>
                                         <DataTrigger Binding="{Binding HasMultipleInputConditions}" Value="True">
                                             <Setter Property="BorderThickness" Value="0"/>
                                             <Setter Property="Background" Value="Transparent"/>
@@ -1009,6 +1016,9 @@
                                     <Setter Property="Background" Value="#292929"/>
                                     <Setter Property="CornerRadius" Value="3"/>
                                     <Style.Triggers>
+                                        <DataTrigger Binding="{Binding UsesCongruentMappingLayout}" Value="True">
+                                            <Setter Property="Padding" Value="5 4"/>
+                                        </DataTrigger>
                                         <DataTrigger Binding="{Binding HasOutputDirectionalCompass}" Value="True">
                                             <Setter Property="BorderThickness" Value="0"/>
                                             <Setter Property="Background" Value="Transparent"/>
