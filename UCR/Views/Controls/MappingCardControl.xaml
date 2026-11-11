@@ -727,7 +727,9 @@
                                                         Margin="5 15 0 0" Padding="0"
                                                         Style="{StaticResource UcrDeleteItemButton}"
                                                         Click="RemoveExpressionInput_OnClick"
-                                                        ToolTip="Remove this AND input"/>
+                                                        IsEnabled="{Binding CanRemoveExpressionInput}"
+                                                        ToolTip="Remove this AND input"
+                                                        ToolTipService.ShowOnDisabled="True"/>
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
