@@ -78,6 +78,11 @@ namespace HidWizards.UCR.Views.Controls
             (DataContext as MappingViewModel)?.AddAndInput();
         }
 
+        private void AddAndInput_OnClick(object sender, RoutedEventArgs e)
+        {
+            (DataContext as MappingViewModel)?.AddAndInput();
+        }
+
         private void AddOrInput_OnClick(object sender, RoutedEventArgs e)
         {
             (DataContext as MappingViewModel)?.AddOrInput();
