@@ -221,6 +221,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public Visibility DownDirectionVisibility => DownDirection != null ? Visibility.Visible : Visibility.Collapsed;
         public string DirectionalModeLabel => IsTypedDirectional
             ? _owner.InputDirectionalGroupTitle : IsFourWay ? "4-way joystick" : "Axis";
+        public Visibility MatchingTypeCaptionVisibility =>
+            _owner?.MatchingTypeCaptionVisibility ?? Visibility.Visible;
+        public Visibility LocalAddInputVisibility =>
+            _owner?.SharedAddInputVisibility == Visibility.Visible
+                ? Visibility.Collapsed : Visibility.Visible;
 
         public bool CanRemoveCondition { get; }
 

@@ -49,6 +49,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ? "4-Way" : Mapping.EffectiveInputRepresentation == 2 ? "Axis" : "Button";
         public string OutputDirectionalGroupTitle => Mapping.EffectiveOutputRepresentation == 1
             ? "4-Way" : Mapping.EffectiveOutputRepresentation == 2 ? "Axis" : "Button";
+        // Shared positions apply only to equivalent 4-Way, Axis or Button pairs.
+        public bool UsesCongruentMappingLayout => IsTypedDirectionalMapping &&
+            !OutputIsFilter && (InputIsFullStick && OutputIsFullStick ||
+                InputIsAxis && OutputIsAxis || InputIsButton && OutputIsButton);
+        public Visibility MatchingTypeCaptionVisibility =>
+            UsesCongruentMappingLayout ? Visibility.Collapsed : Visibility.Visible;
+        public bool CanRemoveCompoundOutput =>
+            ButtonsEnabled && IsTypedDirectionalMapping &&
+            Plugins != null && Plugins.Count > Mapping.RequiredOutputBindingSlots;
+        public Visibility SharedAddInputVisibility =>
+            UsesCongruentMappingLayout && SupportsNativeInputExpression &&
+            InputConditions?.Count == 1 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility TypedDirectionalVisibility => IsTypedDirectionalMapping
             ? Visibility.Visible : Visibility.Collapsed;
         public Visibility LegacyOutputAddVisibility => Visibility.Visible;
@@ -56,9 +68,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             (IsCompoundOutput || HasOutputDirectionalCompass) && Plugins?.Count > 0
                 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility CompoundOutputRemoveVisibility =>
-            ButtonsEnabled && IsTypedDirectionalMapping &&
-            Plugins != null && Plugins.Count > Mapping.RequiredOutputBindingSlots
-                ? Visibility.Visible : Visibility.Collapsed;
+            CanRemoveCompoundOutput ? Visibility.Visible : Visibility.Collapsed;
         public string FourWayOutputDeviceLabel
         {
             get
@@ -291,6 +301,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(IsFullStickOutput));
             OnPropertyChanged(nameof(InputDirectionalGroupTitle));
             OnPropertyChanged(nameof(OutputDirectionalGroupTitle));
+            OnPropertyChanged(nameof(UsesCongruentMappingLayout));
+            OnPropertyChanged(nameof(MatchingTypeCaptionVisibility));
+            OnPropertyChanged(nameof(SharedAddInputVisibility));
+            OnPropertyChanged(nameof(CanRemoveCompoundOutput));
             RefreshDirectionalAvailability();
             OnPropertyChanged(nameof(TypedDirectionalVisibility));
             OnPropertyChanged(nameof(LegacyOutputAddVisibility));

@@ -782,6 +782,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(InputLogicSummary));
             OnPropertyChanged(nameof(InputConditions));
             OnPropertyChanged(nameof(HasMultipleInputConditions));
+            OnPropertyChanged(nameof(SharedAddInputVisibility));
             // Binding changes also affect the singular/plural header, even during initial load.
             _mappingRouteTokens = BuildMappingRouteTokens(MappingRouteDisplay);
             OnPropertyChanged(nameof(MappingInputTypeLabel));
