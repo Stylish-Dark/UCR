@@ -651,6 +651,45 @@
                                                 Visibility="{Binding DownDirectionVisibility}"/>
                                         </Grid>
                                     </StackPanel>
+                                    <!-- One settings disclosure per logical compound input.
+                                         Preserve visible Block control; reveal existing per-axis
+                                         reversal or per-direction NOT without duplicating bindings. -->
+                                    <Expander Header="Settings"
+                                              Visibility="{Binding CompoundVisibility}"
+                                              Margin="3 3 3 5" Foreground="#D0D0D0">
+                                        <ItemsControl ItemsSource="{Binding CoreInputs}" Margin="6 4">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0 2 0 4">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" MinWidth="0"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding DeviceBindingName}"
+                                                                   Foreground="#DADADA" FontSize="12"
+                                                                   VerticalAlignment="Center" Margin="0 0 9 0"
+                                                                   TextTrimming="CharacterEllipsis"/>
+                                                        <StackPanel Grid.Column="1"
+                                                                    Style="{StaticResource UcrLabeledSwitchColumn}"
+                                                                    Visibility="{Binding ShowInvertInput}">
+                                                            <TextBlock Text="Reverse" FontSize="11" Foreground="#D8D8D8"
+                                                                       Style="{StaticResource UcrLabeledSwitchCaption}"/>
+                                                            <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
+                                                                          HorizontalAlignment="Center"
+                                                                          IsChecked="{Binding InvertInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                          ToolTip="Reverse this input axis"/>
+                                                        </StackPanel>
+                                                        <ToggleButton Grid.Column="1" Content="NOT" Width="48" Height="29"
+                                                                      Visibility="{Binding DirectionalNegationVisibility}"
+                                                                      IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
+                                                                      Click="InputNegated_OnClick"
+                                                                      Style="{StaticResource MappingNotToggle}"
+                                                                      ToolTip="Negate this digital direction"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Expander>
                                     <!-- Existing Boolean AND/NOT operations remain real
                                          input conditions; they are not directional slots. -->
                                     <ItemsControl ItemsSource="{Binding AndInputs}" Margin="0 5 0 0">
