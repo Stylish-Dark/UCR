@@ -1017,9 +1017,13 @@
                                     <Setter Property="Background" Value="#292929"/>
                                     <Setter Property="CornerRadius" Value="3"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding UsesCongruentMappingLayout}" Value="True">
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding UsesCongruentMappingLayout}" Value="True"/>
+                                                <Condition Binding="{Binding IsCompoundOutput}" Value="True"/>
+                                            </MultiDataTrigger.Conditions>
                                             <Setter Property="Padding" Value="5 4"/>
-                                        </DataTrigger>
+                                        </MultiDataTrigger>
                                         <DataTrigger Binding="{Binding HasOutputDirectionalCompass}" Value="True">
                                             <Setter Property="BorderThickness" Value="0"/>
                                             <Setter Property="Background" Value="Transparent"/>
