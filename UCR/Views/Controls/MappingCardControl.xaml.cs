@@ -67,6 +67,15 @@ namespace HidWizards.UCR.Views.Controls
                 ?.EnsureSettingsInitialized();
         }
 
+        private void CompoundOutputSettings_OnExpanded(object sender, RoutedEventArgs e)
+        {
+            if (!ReferenceEquals(sender, e.OriginalSource)) return;
+            var mapping = (sender as FrameworkElement)?.DataContext as MappingViewModel;
+            if (mapping?.Plugins == null) return;
+            foreach (var plugin in mapping.Plugins)
+                plugin.EnsureSettingsInitialized();
+        }
+
         private void MappingCardControl_OnLoaded(object sender, RoutedEventArgs e)
         {
             ObserveMapping();

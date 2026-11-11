@@ -760,7 +760,7 @@
                                                         <Border Margin="0 2" Padding="10 4" CornerRadius="4"
                                                                 Background="#252525" BorderBrush="#393939"
                                                                 BorderThickness="1" HorizontalAlignment="Stretch">
-                                                            <StackPanel><Grid Height="72" HorizontalAlignment="Stretch">
+                                                            <StackPanel><Grid Height="82" HorizontalAlignment="Stretch">
                                                                 <Grid.ColumnDefinitions>
                                                                     <ColumnDefinition Width="1.55*" MinWidth="162"/>
                                                                     <ColumnDefinition Width="1.05*" MinWidth="0"/>
@@ -797,7 +797,7 @@
                                                                         </StackPanel>
                                                                     </Border>
                                                                     <TextBlock x:Name="UiMappingTitle" Grid.Column="1" Text="{Binding MappingTitle}"
-                                                                               Foreground="White" FontSize="18" FontWeight="SemiBold"
+                                                                               Foreground="White" FontSize="20" FontWeight="SemiBold"
                                                                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                                                                ToolTip="{Binding MappingTitle}"/>
                                                                     <Button Grid.Column="2" Width="28" Height="30" Margin="6 0 0 0" Padding="3"
@@ -809,7 +809,7 @@
                                                                 <!-- Render the real AND/OR expression. The previous flat
                                                                      CollapsedInputVisuals list falsely showed OR terms
                                                                      as if they belonged to one AND group. -->
-                                                                <Viewbox Grid.Column="1" MaxHeight="72" Stretch="Uniform"
+                                                                <Viewbox Grid.Column="1" MaxHeight="82" Stretch="Uniform"
                                                                          StretchDirection="DownOnly" VerticalAlignment="Center">
                                                                 <ItemsControl ItemsSource="{Binding CollapsedInputRows}">
                                                                     <ItemsControl.ItemsPanel>

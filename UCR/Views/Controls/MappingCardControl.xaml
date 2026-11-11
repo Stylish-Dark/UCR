@@ -19,8 +19,8 @@
              font-dependent repeated glyphs. Two axes stack vertically; four
              buttons form a balanced two-by-two grid. -->
         <DataTemplate x:Key="DirectionalChoiceGlyphTemplate">
-            <Grid Width="26" Height="23" SnapsToDevicePixels="True">
-                <TextBlock x:Name="SingleGlyph" Text="{Binding}" FontSize="17"
+            <Grid Width="28" Height="25" SnapsToDevicePixels="True">
+                <TextBlock x:Name="SingleGlyph" Text="{Binding}" FontSize="19"
                            FontWeight="SemiBold" TextAlignment="Center"
                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 <Canvas x:Name="StackedAxes" Width="25" Height="23"
@@ -180,7 +180,7 @@
                     <local:DeviceSymbolControl Grid.Row="0"
                                                SymbolText="{Binding Device.SymbolText}"
                                                Foreground="{Binding Device.BadgeTextBrush}"
-                                               GlyphSize="24" Width="38" Height="25" Margin="0 0 0 1"
+                                               GlyphSize="26" Width="40" Height="27" Margin="0 0 0 1"
                                                ToolTip="{Binding Device.ToolTip}">
                         <local:DeviceSymbolControl.Style>
                             <Style TargetType="{x:Type local:DeviceSymbolControl}">
@@ -205,18 +205,18 @@
                                                HorizontalAlignment="Center">
                         <local:ControlGlyphControl.Style>
                             <Style TargetType="{x:Type local:ControlGlyphControl}">
-                                <Setter Property="Width" Value="39"/>
-                                <Setter Property="Height" Value="39"/>
+                                <Setter Property="Width" Value="42"/>
+                                <Setter Property="Height" Value="42"/>
                                 <Style.Triggers>
                                     <!-- Four keyboard legends need readable keycaps; 39 px shrinks
                                          each to approximately 7 px and makes the letters illegible. -->
                                     <DataTrigger Binding="{Binding ControlKind}" Value="CompoundKeys">
-                                        <Setter Property="Width" Value="68"/>
-                                        <Setter Property="Height" Value="62"/>
+                                        <Setter Property="Width" Value="72"/>
+                                        <Setter Property="Height" Value="66"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding ControlKind}" Value="CompoundFaceButtons">
-                                        <Setter Property="Width" Value="68"/>
-                                        <Setter Property="Height" Value="62"/>
+                                        <Setter Property="Width" Value="72"/>
+                                        <Setter Property="Height" Value="66"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding IsFilterControl}" Value="True">
                                         <Setter Property="Width" Value="20"/>
@@ -602,7 +602,7 @@
                                         </ItemsControl>
                                         <!-- Two or four independent directions surround a preset.
                                              Slot identity and OR membership come from the model. -->
-                                        <Grid HorizontalAlignment="Stretch" MaxWidth="294" Margin="0 2 0 2"
+                                        <Grid HorizontalAlignment="Stretch" MaxWidth="480" Margin="0 2 0 2"
                                               Visibility="{Binding DirectionalButtonsVisibility}">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -999,29 +999,33 @@
                                             </Button.ContentTemplate>
                                         </Button>
                                 </StackPanel>
-                        <!-- The 4-Way output hides physical plugin binding rows, not their axis settings. -->
-                         <ItemsControl ItemsSource="{Binding Plugins}" Margin="4 3 4 4"
-                                       Visibility="{Binding IsCompoundOutput, Converter={StaticResource CompoundVisibilityConverter}}">
-                             <ItemsControl.ItemTemplate>
-                                 <DataTemplate>
-                                     <Expander Header="{Binding InlineSettingsTitle}" Margin="0 3 0 0"
-                                               Expanded="OutputSettings_OnExpanded"
-                                               Visibility="{Binding InlineSettingsVisibility}" Foreground="#D0D0D0">
-                                         <ItemsControl ItemsSource="{Binding InlinePropertyGroups}" Margin="6 4">
-                                             <ItemsControl.ItemTemplate>
-                                                 <DataTemplate>
-                                                     <StackPanel Visibility="{Binding ShowPropertyList}">
-                                                         <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold"
-                                                                    Foreground="#DADADA" Margin="0 2 0 1"/>
-                                                         <plugin:PluginPropertyListControl DataContext="{Binding}"/>
-                                                     </StackPanel>
-                                                 </DataTemplate>
-                                             </ItemsControl.ItemTemplate>
-                                         </ItemsControl>
-                                     </Expander>
-                                 </DataTemplate>
-                             </ItemsControl.ItemTemplate>
-                         </ItemsControl>
+                        <!-- One four-way destination owns one disclosure; both axis plugin settings remain. -->
+                         <Expander Header="Settings" Margin="4 3 4 4"
+                                   Expanded="CompoundOutputSettings_OnExpanded"
+                                   Visibility="{Binding IsCompoundOutput, Converter={StaticResource CompoundVisibilityConverter}}"
+                                   Foreground="#D0D0D0">
+                             <ItemsControl ItemsSource="{Binding Plugins}" Margin="6 4">
+                                 <ItemsControl.ItemTemplate>
+                                     <DataTemplate>
+                                         <StackPanel Visibility="{Binding InlineSettingsVisibility}" Margin="0 0 0 5">
+                                             <TextBlock Text="{Binding DirectionalSlotLabel}"
+                                                        FontWeight="SemiBold" Foreground="#DADADA" Margin="0 2 0 4"/>
+                                             <ItemsControl ItemsSource="{Binding InlinePropertyGroups}">
+                                                 <ItemsControl.ItemTemplate>
+                                                     <DataTemplate>
+                                                         <StackPanel Visibility="{Binding ShowPropertyList}">
+                                                             <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold"
+                                                                        Foreground="#D0D0D0" Margin="0 2 0 1"/>
+                                                             <plugin:PluginPropertyListControl DataContext="{Binding}"/>
+                                                         </StackPanel>
+                                                     </DataTemplate>
+                                                 </ItemsControl.ItemTemplate>
+                                             </ItemsControl>
+                                         </StackPanel>
+                                     </DataTemplate>
+                                 </ItemsControl.ItemTemplate>
+                             </ItemsControl>
+                         </Expander>
                          <!-- Exactly four destination bindings: Up / Left / Right / Down
                              are positioned spatially, not in a vertical stack. -->
                         <Grid x:Name="OutputDirectionalCompassGrid"
