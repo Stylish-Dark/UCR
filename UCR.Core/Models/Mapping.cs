@@ -122,16 +122,24 @@ namespace HidWizards.UCR.Core.Models
                 .Where(binding => binding != null).Distinct();
         }
 
+        private bool IsSingleAxisRoute => Plugins?.Count == 1 &&
+            Plugins[0].InputCategories.Count == 1 && Plugins[0].Outputs.Count == 1 &&
+            Plugins[0].InputCategories[0].Category == DeviceBindingCategory.Range;
+
         [XmlIgnore]
         public int EffectiveInputRepresentation => InputRepresentation != 0
-            ? InputRepresentation : EffectiveDirectionalCapacity == 4 &&
+            ? InputRepresentation
+            : IsSingleAxisRoute && DeviceBindings?.Count == 1 && DeviceBindings[0].IsKnownTriggerRange() ? 4
+            : EffectiveDirectionalCapacity == 4 &&
                 DeviceBindings?.Count == 2 &&
                 DeviceBindings.All(b => b.InputExpressionInputKind == 3) ? 1
             : DeviceBindings?.Any(b => !b.IsDirectionalAndCondition &&
                     b.InputExpressionInputKind == 3) == true ? 2 : 3;
         [XmlIgnore]
         public int EffectiveOutputRepresentation => OutputRepresentation != 0
-            ? OutputRepresentation : EffectiveDirectionalCapacity == 4 &&
+            ? OutputRepresentation
+            : IsSingleAxisRoute && Plugins[0].Outputs[0].IsKnownTriggerRange() ? 4
+            : EffectiveDirectionalCapacity == 4 &&
                 Plugins?.Count == 2 &&
                 Plugins.All(p => p.OutputCategories.All(c =>
                     c.Category == DeviceBindingCategory.Range)) ? 1

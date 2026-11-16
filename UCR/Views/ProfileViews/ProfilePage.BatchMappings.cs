@@ -64,9 +64,15 @@ namespace HidWizards.UCR.Views.ProfileViews
 
         private static bool HasUnassignedOutput(MappingViewModel mapping)
         {
-            var binding = mapping.Plugins.FirstOrDefault()?.DeviceBindings.FirstOrDefault()?.DeviceBinding;
-            return binding != null && !binding.IsBound &&
-                   string.Equals(mapping.MappingRoute, "Button to Button", StringComparison.OrdinalIgnoreCase);
+            return GetUnassignedButtonOutputs(mapping).Any();
+        }
+
+        private static IEnumerable<DeviceBinding> GetUnassignedButtonOutputs(MappingViewModel mapping)
+        {
+            return mapping.Plugins.Where(plugin =>
+                    string.Equals(plugin.Plugin.PluginName, "Button to Button", StringComparison.OrdinalIgnoreCase))
+                .SelectMany(plugin => plugin.Plugin.Outputs)
+                .Where(binding => !binding.IsBound);
         }
 
         private void BatchFinish_OnClick(object sender, RoutedEventArgs e)
@@ -145,12 +151,16 @@ namespace HidWizards.UCR.Views.ProfileViews
             {
                 // Let the workspace menu close before opening the first control picker.
                 await Dispatcher.Yield(DispatcherPriority.Background);
-                foreach (var mapping in _batchMappings)
+                var targets = _batchMappings.SelectMany(mapping => GetUnassignedButtonOutputs(mapping)
+                    .Select(binding => new { Mapping = mapping, Binding = binding })).ToArray();
+                foreach (var target in targets)
                 {
                     if (token.IsCancellationRequested || !CanEditBatchMappings || !IsVisible) break;
-                    if (!ProfileViewModel.MappingsList.Contains(mapping) || !HasUnassignedOutput(mapping)) continue;
+                    var mapping = target.Mapping;
+                    if (!ProfileViewModel.MappingsList.Contains(mapping) ||
+                        !GetUnassignedButtonOutputs(mapping).Contains(target.Binding)) continue;
 
-                    var binding = mapping.Plugins[0].DeviceBindings[0].DeviceBinding;
+                    var binding = target.Binding;
                     ProfileViewModel.SelectedMapping = mapping;
                     ScrollMappingIntoView(mapping);
                     var descriptor = new BindingVisualDescriptor
@@ -162,10 +172,16 @@ namespace HidWizards.UCR.Views.ProfileViews
                         DeviceBindingCategory.Momentary);
                     if (!menu.Items.OfType<MenuItem>().Any(item => item.IsEnabled))
                     {
-                        unavailable.Add(mapping.MappingTitle);
+                        if (!unavailable.Contains(mapping.MappingTitle)) unavailable.Add(mapping.MappingTitle);
                         continue;
                     }
-                    menu.Items.Insert(0, new MenuItem { Header = "Output for " + mapping.MappingTitle, IsEnabled = false });
+                    var outputs = mapping.Plugins.SelectMany(plugin => plugin.Plugin.Outputs).ToList();
+                    var slotLabel = outputs.Count > 1 ? "Output " + (outputs.IndexOf(binding) + 1) : "Output";
+                    menu.Items.Insert(0, new MenuItem
+                    {
+                        Header = slotLabel + " for " + mapping.MappingTitle,
+                        IsEnabled = false
+                    });
                     var closed = new TaskCompletionSource<bool>();
                     menu.Closed += (sender, args) => closed.TrySetResult(true);
                     _batchOutputMenu = menu;
@@ -173,7 +189,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                     if (menu.IsOpen) await closed.Task;
                     await Dispatcher.Yield(DispatcherPriority.Background);
                     // Esc or clicking outside ends the batch. Earlier selections are kept.
-                    if (HasUnassignedOutput(mapping)) break;
+                    if (!target.Binding.IsBound) break;
                 }
 
                 if (!token.IsCancellationRequested && IsVisible && CanEditBatchMappings && unavailable.Count != 0)

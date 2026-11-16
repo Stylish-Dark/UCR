@@ -189,15 +189,9 @@ namespace HidWizards.UCR.Core.Models
 
                     // Virtual controller triggers use signed range with a minimum of
                     // -32768 at rest, whereas centered axes and buttons rest at zero.
-                    var isTrigger = false;
-                    if (category == DeviceBindingCategory.Range)
-                    {
-                        var device = output.Profile?.GetDeviceConfiguration(DeviceIoType.Output,
-                            output.DeviceConfigurationGuid)?.Device;
-                        isTrigger = RuntimeMapping?.OutputRepresentation == 4 ||
-                            ((output.KeyValue == 4 || output.KeyValue == 5) &&
-                             string.Equals(device?.ProviderName, "Core_ViGEm", StringComparison.OrdinalIgnoreCase));
-                    }
+                    var isTrigger = category == DeviceBindingCategory.Range &&
+                        (HasTriggerOutput ||
+                         ((RuntimeMapping?.OutputRepresentation ?? 0) == 0 && output.IsKnownTriggerRange()));
                     // The cached value tracks attempted writes. Even if it is
                     // already zero, the backend may have rejected the last release.
                     output.WriteOutput(isTrigger ? short.MinValue : (short)0);
@@ -222,7 +216,7 @@ namespace HidWizards.UCR.Core.Models
             }
         }
 
-        private bool HasTriggerOutput => RuntimeMapping?.OutputRepresentation == 4;
+        private bool HasTriggerOutput => RuntimeMapping?.EffectiveOutputRepresentation == 4;
 
         protected short FromProviderRange(short value)
         {

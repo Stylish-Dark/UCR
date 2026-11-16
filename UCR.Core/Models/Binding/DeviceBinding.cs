@@ -431,6 +431,31 @@ namespace HidWizards.UCR.Core.Models.Binding
             }
         }
 
+        internal bool IsKnownTriggerRange()
+        {
+            if (!IsBound || DeviceBindingCategory != DeviceBindingCategory.Range) return false;
+            var name = AssignedControlName ?? string.Empty;
+            var leaf = name.Substring(name.LastIndexOf(',') + 1).Trim();
+            switch (leaf.ToUpperInvariant())
+            {
+                case "LT":
+                case "RT":
+                case "L2":
+                case "R2":
+                case "L2 (LT)":
+                case "R2 (RT)":
+                case "LEFT TRIGGER":
+                case "RIGHT TRIGGER":
+                    return true;
+            }
+
+            if (KeyType != (int)BindingType.Axis || KeySubValue != 0 ||
+                (KeyValue != 4 && KeyValue != 5)) return false;
+            var provider = Profile?.GetDeviceConfiguration(DeviceIoType, DeviceConfigurationGuid)?.Device?.ProviderName;
+            return string.Equals(provider, DeviceIoType == DeviceIoType.Output ? "Core_ViGEm" : "SharpDX_XInput",
+                StringComparison.OrdinalIgnoreCase);
+        }
+
         public void WriteOutput(short value)
         {
             if (DeviceIoType == DeviceIoType.Output && DeviceBindingCategory == DeviceBindingCategory.Range &&
