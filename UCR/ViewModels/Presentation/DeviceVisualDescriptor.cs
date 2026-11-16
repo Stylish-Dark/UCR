@@ -342,7 +342,12 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 ControlVisualKind.Trigger) return true;
             // Even an unrecognised device can expose an unambiguous physical
             // trigger name. Generic X/Y/Z axes are never inferred as triggers.
-            var leaf = ExtractLeaf(SafeBoundName(binding)).Trim().ToLowerInvariant();
+            return IsTriggerControlName(SafeBoundName(binding));
+        }
+
+        internal static bool IsTriggerControlName(string name)
+        {
+            var leaf = ExtractLeaf(name ?? string.Empty).Trim().ToLowerInvariant();
             return leaf.Contains("trigger") || leaf == "lt" || leaf == "rt" ||
                    leaf == "l2" || leaf == "r2";
         }
@@ -391,7 +396,8 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 DeviceConfigurationGuid = binding.DeviceConfigurationGuid,
                 BindingGuid = binding.Guid,
                 ShowDeviceBadge = false,
-                IsBlockedInput = binding.DeviceIoType == DeviceIoType.Input && binding.Block
+                IsBlockedInput = binding.IsBound && binding.Block &&
+                    binding.IsBlockable(configuration?.Device)
             };
 
             if (!binding.IsBound) return result;

@@ -222,6 +222,18 @@ namespace HidWizards.UCR.Core.Models
             }
         }
 
+        private bool HasTriggerOutput => RuntimeMapping?.OutputRepresentation == 4;
+
+        protected short FromProviderRange(short value)
+        {
+            return HasTriggerOutput ? Mapping.ToLogicalTriggerValue(value) : value;
+        }
+
+        protected short ToProviderRange(short value)
+        {
+            return HasTriggerOutput ? Mapping.ToPhysicalTriggerValue(value) : value;
+        }
+
         protected void WriteOutput(int number, short value)
         {
             var output = Outputs[number];
@@ -370,6 +382,8 @@ namespace HidWizards.UCR.Core.Models
             if (Outputs.Count > expectedCount)
             {
                 var persistedCount = Math.Min(expectedCount, Outputs.Count - expectedCount);
+                if (Outputs.Skip(expectedCount + persistedCount).Any(binding => binding?.IsBound == true))
+                    throw new InvalidOperationException("Refusing to truncate a populated output during profile loading.");
                 for (var index = 0; index < persistedCount; index++)
                 {
                     // On deserialization, a constructor-created default is followed by the
@@ -379,12 +393,7 @@ namespace HidWizards.UCR.Core.Models
                         CopyBindingState(Outputs[expectedCount + index], Outputs[index]);
                 }
 
-                for (var index = Outputs.Count - 1; index >= expectedCount; index--)
-                {
-                    if (Outputs[index].IsBound && !Outputs[index - expectedCount < expectedCount && index - expectedCount >= 0 ? index - expectedCount : 0].IsBound)
-                        throw new InvalidOperationException("Refusing to truncate a populated output during profile loading.");
-                    Outputs.RemoveAt(index);
-                }
+                Outputs.RemoveRange(expectedCount, Outputs.Count - expectedCount);
             }
 
             while (Outputs.Count < expectedCount)
@@ -408,6 +417,7 @@ namespace HidWizards.UCR.Core.Models
             target.KeyValue = source.KeyValue;
             target.KeySubValue = source.KeySubValue;
             target.AssignedControlName = source.AssignedControlName;
+            target.CompoundPresetName = source.CompoundPresetName;
             target.Block = source.Block;
             target.InvertInput = source.InvertInput;
             target.OutputAxisDirection = source.OutputAxisDirection;

@@ -4,12 +4,15 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Threading;
 using HidWizards.UCR.Core.Managers;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
 using HidWizards.UCR.Core.Utilities;
+using HidWizards.UCR.ViewModels.Presentation;
 using HidWizards.UCR.ViewModels.ProfileViewModels;
+using HidWizards.UCR.Views.Controls;
 
 namespace HidWizards.UCR.Views.ProfileViews
 {
@@ -18,6 +21,7 @@ namespace HidWizards.UCR.Views.ProfileViews
         private readonly List<MappingViewModel> _batchMappings = new List<MappingViewModel>();
         private CancellationTokenSource _batchCancellation;
         private bool _batchRunning;
+        private ContextMenu _batchOutputMenu;
 
         internal bool IsBatchCapturing => _batchRunning && _batchCancellation?.IsCancellationRequested == false;
         private bool CanEditBatchMappings => !_disposed && !Profile.IsActive() &&
@@ -27,7 +31,7 @@ namespace HidWizards.UCR.Views.ProfileViews
         {
             if (_batchRunning || !CanEditBatchMappings) return;
             _batchMappings.Clear();
-            await RunBatchSessionAsync(false);
+            await RunBatchCaptureAsync();
         }
 
         private async void BatchAssign_OnClick(object sender, RoutedEventArgs e)
@@ -55,7 +59,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                 ShowBatchOverlay();
                 return;
             }
-            await RunBatchSessionAsync(true);
+            await RunBatchOutputPickerAsync();
         }
 
         private static bool HasUnassignedOutput(MappingViewModel mapping)
@@ -79,7 +83,11 @@ namespace HidWizards.UCR.Views.ProfileViews
         private void CancelProfileCapture()
         {
             Context.BindingManager.CancelProfileBindMode(Profile);
+            if (ProfileViewModel?.MappingsList != null)
+                foreach (var mapping in ProfileViewModel.MappingsList)
+                    mapping.CancelQuickOutputCapture();
             _batchCancellation?.Cancel();
+            if (_batchOutputMenu != null) _batchOutputMenu.IsOpen = false;
             CloseBatchOverlay();
         }
 
@@ -126,37 +134,64 @@ namespace HidWizards.UCR.Views.ProfileViews
                     DevicesManager.PersistedIdentityEquals(item.Device, detected.Device));
         }
 
-        private DeviceConfiguration FindBatchOutput(DeviceBinding binding, DetectedInputControl detected,
-            out DeviceBindingNode bindingNode)
+        private async Task RunBatchOutputPickerAsync()
         {
-            bindingNode = null;
-            if (detected?.Device == null) return null;
-
-            // An explicitly selected destination remains the destination even
-            // when the physical button used to select the control comes from another device.
-            if (binding.DeviceConfigurationGuid != Guid.Empty)
+            _batchRunning = true;
+            var unavailable = new List<string>();
+            try
             {
-                var selected = Profile.GetDeviceConfiguration(DeviceIoType.Output, binding.DeviceConfigurationGuid);
-                bindingNode = FindBatchControl(selected?.Device, DeviceIoType.Output, detected);
-                return bindingNode == null ? null : selected;
-            }
+                // Let the workspace menu close before opening the first control picker.
+                await Dispatcher.Yield(DispatcherPriority.Background);
+                foreach (var mapping in _batchMappings)
+                {
+                    if (!CanEditBatchMappings || !IsVisible) break;
+                    if (!ProfileViewModel.MappingsList.Contains(mapping) || !HasUnassignedOutput(mapping)) continue;
 
-            // Prefer a configured output that represents the exact device being pressed.
-            foreach (var candidate in Profile.GetDeviceConfigurationList(DeviceIoType.Output))
+                    var binding = mapping.Plugins[0].DeviceBindings[0].DeviceBinding;
+                    ProfileViewModel.SelectedMapping = mapping;
+                    ScrollMappingIntoView(mapping);
+                    var descriptor = new BindingVisualDescriptor
+                    {
+                        BindingGuid = binding.Guid,
+                        DeviceConfigurationGuid = binding.DeviceConfigurationGuid
+                    };
+                    var menu = MappingCardControl.CreateQuickOutputMenu(mapping, descriptor, UiWorkspaceMore,
+                        DeviceBindingCategory.Momentary);
+                    if (!menu.Items.OfType<MenuItem>().Any(item => item.IsEnabled))
+                    {
+                        unavailable.Add(mapping.MappingTitle);
+                        continue;
+                    }
+                    menu.Items.Insert(0, new MenuItem { Header = "Output for " + mapping.MappingTitle, IsEnabled = false });
+                    var closed = new TaskCompletionSource<bool>();
+                    menu.Closed += (sender, args) => closed.TrySetResult(true);
+                    _batchOutputMenu = menu;
+                    menu.IsOpen = true;
+                    if (menu.IsOpen) await closed.Task;
+                    await Dispatcher.Yield(DispatcherPriority.Background);
+                    // Esc or clicking outside ends the batch. Earlier selections are kept.
+                    if (HasUnassignedOutput(mapping)) break;
+                }
+
+                if (IsVisible && CanEditBatchMappings && unavailable.Count != 0)
+                {
+                    var names = string.Join(", ", unavailable.Take(3));
+                    var suffix = unavailable.Count > 3 ? " and " + (unavailable.Count - 3) + " more" : "";
+                    MappingCardControl.ShowOutputPickerStatus(UiWorkspaceMore,
+                        "No compatible output controls for " + names + suffix + ".");
+                }
+            }
+            catch (Exception exception)
             {
-                if (candidate?.Device == null ||
-                    !DevicesManager.PersistedIdentityEquals(candidate.Device, detected.Device)) continue;
-                var node = FindBatchControl(candidate.Device, DeviceIoType.Output, detected);
-                if (node == null) continue;
-                bindingNode = node;
-                return candidate;
+                Logger.Error("Batch output selection failed", exception);
+                if (IsVisible)
+                    MappingCardControl.ShowOutputPickerStatus(UiWorkspaceMore, "Batch output selection stopped.");
             }
-
-            // Virtual outputs are not physical input endpoints. Resolve the equivalent
-            // control on the primary output when no destination was selected.
-            var primary = Profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output);
-            bindingNode = FindBatchControl(primary?.Device, DeviceIoType.Output, detected);
-            return bindingNode == null ? null : primary;
+            finally
+            {
+                _batchOutputMenu = null;
+                _batchRunning = false;
+            }
         }
 
         private string UniqueBatchMappingTitle(string title)
@@ -172,16 +207,16 @@ namespace HidWizards.UCR.Views.ProfileViews
             return candidate;
         }
 
-        private async Task RunBatchSessionAsync(bool assign)
+        private async Task RunBatchCaptureAsync()
         {
             Context.BindingManager.CancelProfileBindMode(Profile);
             _batchRunning = true;
             var cancellation = new CancellationTokenSource();
             _batchCancellation = cancellation;
             var token = cancellation.Token;
-            var completed = 0;
+            var capturedControls = new HashSet<Tuple<Guid, int, int, int>>();
             ShowBatchOverlay();
-            BatchTitle.Text = assign ? "Batch assign outputs" : "Batch capture inputs";
+            BatchTitle.Text = "Batch capture inputs";
 
             try
             {
@@ -190,91 +225,53 @@ namespace HidWizards.UCR.Views.ProfileViews
                     .FirstOrDefault(plugin => string.Equals(plugin.Name, "Button to Button",
                         StringComparison.OrdinalIgnoreCase));
 
-                if (!assign && buttonPlugin == null)
+                if (buttonPlugin == null)
                     throw new InvalidOperationException("The Button to Button plugin is unavailable.");
 
-                while (!token.IsCancellationRequested && CanEditBatchMappings &&
-                       (!assign || completed < _batchMappings.Count))
+                while (!token.IsCancellationRequested && CanEditBatchMappings)
                 {
-                    BatchStatus.Text = assign
-                        ? "Press the output for " + _batchMappings[completed].MappingTitle + "."
-                        : "Press a button on the input device. Each press creates a mapping.";
-                    BatchProgress.Text = assign
-                        ? (completed + 1) + " / " + _batchMappings.Count + " outputs"
-                        : _batchMappings.Count + " inputs captured";
+                    BatchStatus.Text = "Press a button on the input device. Each distinct button creates a mapping.";
+                    BatchProgress.Text = _batchMappings.Count + " inputs captured";
 
-                    // Expiration simply re-arms the listener; Finish explicitly ends the session.
                     var detected = await Context.DevicesManager.DetectInputControlAsync(
                         DeviceBindingCategory.Momentary, TimeSpan.FromSeconds(20), token);
                     if (token.IsCancellationRequested || !CanEditBatchMappings) break;
                     if (detected == null) continue;
 
-                    if (!assign)
+                    var input = FindBatchInput(detected);
+                    var node = FindBatchControl(input?.Device, DeviceIoType.Input, detected);
+                    if (input == null || node == null)
                     {
-                        var input = FindBatchInput(detected);
-                        var node = FindBatchControl(input?.Device, DeviceIoType.Input, detected);
-                        if (input == null || node == null)
-                        {
-                            BatchStatus.Text = "Add the detected device under profile INPUT devices first.";
-                            await Task.Delay(600, token);
-                            continue;
-                        }
-
-                        var mapping = ProfileViewModel.AddMappingToSelectedSection(
-                            UniqueBatchMappingTitle(detected.ControlTitle));
-                        if (mapping == null) break;
-                        mapping.AddPlugin(buttonPlugin.Plugin);
-                        var binding = mapping.DeviceBindings.FirstOrDefault()?.DeviceBinding;
-                        if (binding == null)
-                        {
-                            ProfileViewModel.RemoveMapping(mapping);
-                            throw new InvalidOperationException("Could not initialize the mapping input.");
-                        }
-                        binding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
-                        binding.SetDeviceConfigurationGuid(input.Guid);
-                        binding.SetKeyTypeValue(node.DeviceBindingInfo.KeyType,
-                            node.DeviceBindingInfo.KeyValue, node.DeviceBindingInfo.KeySubValue, node.Title);
-                        mapping.RefreshCollapsedSummary();
-                        _batchMappings.Add(mapping);
-                        BatchStatus.Text = "Captured: " + detected.ControlTitle;
+                        BatchStatus.Text = "Add the detected device under profile INPUT devices first.";
+                        await Task.Delay(600, token);
+                        continue;
                     }
-                    else
+
+                    var control = node.DeviceBindingInfo;
+                    if (!capturedControls.Add(Tuple.Create(input.Guid, control.KeyType, control.KeyValue, control.KeySubValue)))
                     {
-                        var mapping = _batchMappings[completed];
-                        var output = mapping.Plugins.FirstOrDefault()?.DeviceBindings.FirstOrDefault();
-                        if (output?.DeviceBinding == null)
-                        {
-                            BatchStatus.Text = "Mapping has no output binding: " + mapping.MappingTitle;
-                            break;
-                        }
-                        DeviceBindingNode node;
-                        var configuration = FindBatchOutput(output.DeviceBinding, detected, out node);
-                        if (configuration == null || node == null)
-                        {
-                            BatchStatus.Text = "The destination has no equivalent for " + detected.ControlTitle +
-                                               ". Press another control or finish to change the output device.";
-                            await Task.Delay(700, token);
-                            continue;
-                        }
-
-                        var binding = output.DeviceBinding;
-                        binding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
-                        binding.SetDeviceConfigurationGuid(configuration.Guid);
-                        binding.SetKeyTypeValue(node.DeviceBindingInfo.KeyType,
-                            node.DeviceBindingInfo.KeyValue, node.DeviceBindingInfo.KeySubValue, node.Title);
-                        output.RefreshDeviceList();
-                        mapping.RefreshCollapsedSummary();
-                        completed++;
-                        BatchStatus.Text = "Assigned: " + mapping.MappingTitle + " -> " + node.Title;
+                        BatchStatus.Text = "Already captured: " + node.Title;
+                        await Task.Delay(350, token);
+                        continue;
                     }
+
+                    var mapping = ProfileViewModel.AddMappingToSelectedSection(UniqueBatchMappingTitle(node.Title));
+                    if (mapping == null) break;
+                    mapping.AddPlugin(buttonPlugin.Plugin);
+                    var binding = mapping.DeviceBindings.FirstOrDefault()?.DeviceBinding;
+                    if (binding == null)
+                    {
+                        ProfileViewModel.RemoveMapping(mapping);
+                        throw new InvalidOperationException("Could not initialize the mapping input.");
+                    }
+
+                    binding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
+                    binding.SetDeviceConfigurationGuid(input.Guid);
+                    binding.SetKeyTypeValue(control.KeyType, control.KeyValue, control.KeySubValue, node.Title);
+                    mapping.RefreshCollapsedSummary();
+                    _batchMappings.Add(mapping);
+                    BatchStatus.Text = "Captured: " + node.Title;
                     await Task.Delay(110, token);
-                }
-
-                if (assign && completed == _batchMappings.Count && !token.IsCancellationRequested)
-                {
-                    BatchStatus.Text = "All " + completed + " outputs assigned.";
-                    BatchProgress.Text = "Complete";
-                    await Task.Delay(700, token);
                 }
             }
             catch (OperationCanceledException)

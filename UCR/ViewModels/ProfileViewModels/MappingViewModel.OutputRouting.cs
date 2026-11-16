@@ -173,6 +173,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             destination.KeyType = source.KeyType;
             destination.KeyValue = source.KeyValue;
             destination.KeySubValue = source.KeySubValue;
+            destination.AssignedControlName = source.AssignedControlName;
             destination.OutputAxisDirection = source.OutputAxisDirection;
             destination.IsBound = source.IsBound;
         }

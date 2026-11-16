@@ -342,7 +342,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                         .Select(binding => Math.Max(0, binding.InputExpressionGroup))
                         .Distinct().Count());
                     var hasSavedDigitalFourWay = Mapping.InactiveInputRepresentations?
-                        .Any(bank => bank.Representation == 1 &&
+                        .Any(bank => bank.GroupIndex < 0 && bank.Representation == 1 &&
                             bank.Bindings != null &&
                             bank.Bindings.Count == 4 * groupCount &&
                             bank.Bindings.GroupBy(binding =>
@@ -437,13 +437,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
 
             var required = perGroup * oldGroups.Count;
-            var bank = Mapping.InactiveInputRepresentations.FirstOrDefault(item =>
-                item.Representation == representation && item.Bindings != null &&
-                item.Bindings.Count == required &&
-                item.Bindings.Select(input => Math.Max(0, input.InputExpressionGroup))
-                    .Distinct().Count() == oldGroups.Count &&
+            var bank = Mapping.InactiveInputRepresentations.LastOrDefault(item =>
+                item.GroupIndex < 0 && item.Representation == representation && item.Bindings != null &&
                 item.Bindings.GroupBy(input => Math.Max(0, input.InputExpressionGroup))
-                    .All(group => group.Count() == perGroup));
+                    .Count() == oldGroups.Count &&
+                (representation == 1 && capacity == 4
+                    ? item.Bindings.GroupBy(input => Math.Max(0, input.InputExpressionGroup))
+                        .All(group => Mapping.IsFourWayGroupSlotCount(group.Count()))
+                    : item.Bindings.Count == required &&
+                      item.Bindings.GroupBy(input => Math.Max(0, input.InputExpressionGroup))
+                          .All(group => group.Count() == perGroup)));
 
             List<DeviceBinding> next;
             if (bank != null && !_preferCapturedDirectionalBinding)
@@ -538,7 +541,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
 
             Mapping.InactiveInputRepresentations.RemoveAll(item =>
-                item.Representation == priorType && item.Bindings != null &&
+                item.GroupIndex < 0 && item.Representation == priorType && item.Bindings != null &&
                 item.Bindings.Count == previous.Count);
             Mapping.InactiveInputRepresentations.Add(new DirectionalInputBank
             {
@@ -567,6 +570,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var priorType = Mapping.OutputRepresentation;
             var isButton = representation == 3 || (Mapping.CompoundDigitalOutput && representation == 1);
             var category = isButton ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
+            var sameRepresentation = Mapping.EffectiveOutputRepresentation == representation;
+            Plugin PreviousSlot(int index)
+            {
+                var previousIndex = isButton && required > 1 && previous.Count == 1
+                    ? (index == 1 ? 0 : -1) : index;
+                return previousIndex >= 0 && previousIndex < previous.Count ? previous[previousIndex] : null;
+            }
+
             var bank = Mapping.InactiveOutputRepresentations.FirstOrDefault(item =>
                 item.FilterRestoreKey == Guid.Empty && item.Representation == representation &&
                 item.Plugins?.Count == required && item.Plugins.All(plugin => HasPhysicalOutputCategory(plugin, category)));
@@ -579,7 +590,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             else if (bank != null)
             {
-                next = bank.Plugins;
+                next = bank.Plugins.ToList();
+                if (sameRepresentation)
+                {
+                    // A restored bank supplies missing channels. Live overlapping
+                    // channels may have been edited since that bank was saved.
+                    for (var index = 0; index < next.Count; index++)
+                    {
+                        var current = PreviousSlot(index);
+                        if (current?.GetType() == next[index].GetType())
+                            next[index] = current.Duplicate();
+                    }
+                }
                 Mapping.InactiveOutputRepresentations.Remove(bank);
             }
             else
@@ -592,19 +614,23 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 next = new List<Plugin>();
                 for (var index = 0; index < required; index++)
                 {
+                    var previousPlugin = PreviousSlot(index);
+                    if (Mapping.EffectiveDirectionalCapacity == 4 &&
+                        (representation == 4 || priorType == 4) && representation != priorType)
+                        previousPlugin = null;
+                    if (sameRepresentation && previousPlugin?.GetType() == template.GetType())
+                    {
+                        // Resizing a bank must retain every surviving channel's settings.
+                        next.Add(previousPlugin.Duplicate());
+                        continue;
+                    }
+
                     var plugin = profile.Context.PluginManager.GetNewPlugin(template);
                     plugin.SetProfile(profile);
                     for (var outputIndex = 0; outputIndex < Math.Min(plugin.Outputs.Count,
                         plugin.OutputCategories.Count); outputIndex++)
                         plugin.Outputs[outputIndex].DeviceBindingCategory =
                             plugin.OutputCategories[outputIndex].Category;
-                    var previousIndex = isButton && required > 1 && previous.Count == 1
-                        ? (index == 1 ? 0 : -1) : index;
-                    var previousPlugin = previousIndex >= 0 && previousIndex < previous.Count
-                        ? previous[previousIndex] : null;
-                    if (Mapping.EffectiveDirectionalCapacity == 4 &&
-                        (representation == 4 || priorType == 4) && representation != priorType)
-                        previousPlugin = null;
                     if (previousPlugin != null)
                     {
                         plugin.Filters = previousPlugin.Filters.ToList();

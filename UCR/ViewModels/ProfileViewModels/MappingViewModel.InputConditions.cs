@@ -22,13 +22,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 {
     public partial class MappingViewModel
     {
-        // Query only: menu availability must reflect the physical controls in
-        // configured devices rather than showing preset choices that cannot bind.
-        public bool CanApplyCompoundInputPreset(string name)
-        {
-            if (string.IsNullOrWhiteSpace(name)) return false;
-            var profile = ProfileViewModel.Profile;
-            var patterns = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        private static readonly Dictionary<string, string[]> BuiltInKeyboardPresets =
+            new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
             {
                 { "WASD", new[] { "A", "D", "W", "S" } },
                 { "Arrows", new[] { "Left", "Right", "Up", "Down" } },
@@ -36,11 +31,46 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 { "UHJK", new[] { "H", "K", "U", "J" } },
                 { "UJHK", new[] { "H", "K", "U", "J" } }
             };
-            string[] keys;
-            if (!patterns.TryGetValue(name, out keys))
-                keys = profile.CompoundBindingPresets?.FirstOrDefault(preset =>
-                    preset.Capacity == 4 && string.Equals(preset.Name, name,
-                        StringComparison.OrdinalIgnoreCase))?.Keys?.ToArray();
+
+        private IReadOnlyList<string> GetKeyboardPresetKeys(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return null;
+            if (BuiltInKeyboardPresets.TryGetValue(name, out var keys)) return keys;
+            return ProfileViewModel.Profile.CompoundBindingPresets?.FirstOrDefault(preset =>
+                preset?.Capacity == 4 && string.Equals(preset.Name, name,
+                    StringComparison.OrdinalIgnoreCase))?.Keys;
+        }
+
+        private static bool HasFourDistinctPresetKeys(IReadOnlyList<string> keys)
+        {
+            return keys?.Count == 4 && keys.All(key => !string.IsNullOrWhiteSpace(key)) &&
+                keys.Distinct(StringComparer.OrdinalIgnoreCase).Count() == 4;
+        }
+
+        private static DeviceBindingNode[] ResolveKeyboardPresetNodes(
+            IEnumerable<DeviceBindingNode> nodes, IReadOnlyList<string> keys)
+        {
+            if (!HasFourDistinctPresetKeys(keys)) return null;
+            var buttons = nodes.Where(node => node?.DeviceBindingInfo?.DeviceBindingCategory ==
+                DeviceBindingCategory.Momentary).ToList();
+            var matches = keys.Select(key => buttons.FirstOrDefault(node =>
+                PresetControlMatches(node.Title, key))).ToArray();
+            if (matches.Any(node => node == null)) return null;
+            return matches.Select(node => new
+            {
+                node.DeviceBindingInfo.KeyType,
+                node.DeviceBindingInfo.KeyValue,
+                node.DeviceBindingInfo.KeySubValue
+            }).Distinct().Count() == 4 ? matches : null;
+        }
+
+        // Query only: menu availability must reflect the physical controls in
+        // configured devices rather than showing preset choices that cannot bind.
+        public bool CanApplyCompoundInputPreset(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return false;
+            var profile = ProfileViewModel.Profile;
+            var keys = GetKeyboardPresetKeys(name);
             foreach (var device in profile.GetDeviceConfigurationList(DeviceIoType.Input))
             {
                 if (device?.Device == null) continue;
@@ -52,13 +82,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     .Where(node => node?.DeviceBindingInfo != null).ToList();
                 if (keys != null)
                 {
-                    if (keys.Length != 4 ||
-                        keys.Distinct(StringComparer.OrdinalIgnoreCase).Count() != 4 ||
-                        kind != DeviceVisualKind.Keyboard) continue;
-                    var buttons = nodes.Where(node => node.DeviceBindingInfo.DeviceBindingCategory ==
-                        DeviceBindingCategory.Momentary).ToList();
-                    if (keys.All(key => buttons.Any(node =>
-                        MatchesControlLeafName(node.Title, key)))) return true;
+                    if (kind == DeviceVisualKind.Keyboard &&
+                        ResolveKeyboardPresetNodes(nodes, keys) != null) return true;
                     continue;
                 }
                 if (name == "Left stick" || name == "Right stick")
@@ -146,15 +171,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 error = "No configured controller exposes this stick's two axes.";
                 return false;
             }
-            // A missing stick must not change the logical input representation.
-            var previousDigital = Mapping.CompoundDigitalInput;
-            Mapping.CompoundDigitalInput = false;
-            if (!SetInputRepresentation(1))
-            {
-                Mapping.CompoundDigitalInput = previousDigital;
-                error = "Unable to prepare a 4-Way analogue stick binding.";
-                return false;
-            }
+            if (!EnsureFourWayGroupSlots(groupIndex, false, out error)) return false;
             var group = DeviceBindings.Where(binding =>
                 binding.DeviceBinding.InputExpressionGroup == groupIndex &&
                 !binding.DeviceBinding.IsDirectionalAndCondition).ToList();
@@ -236,7 +253,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             // Do not replace any binding when the controller has no recognised
             // face-button layout.
-            if (!EnsureCompoundDigitalSlots(out error, fourWay: true)) return false;
+            if (!EnsureFourWayGroupSlots(groupIndex, true, out error)) return false;
             var group = DeviceBindings.Where(input =>
                 input.DeviceBinding.InputExpressionGroup == groupIndex &&
                 !input.DeviceBinding.IsDirectionalAndCondition)
@@ -300,7 +317,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
 
             // Never convert existing bindings until the requested D-pad exists.
-            if (!EnsureCompoundDigitalSlots(out error, fourWay: true)) return false;
+            if (!EnsureFourWayGroupSlots(groupIndex, true, out error)) return false;
             var inputs = DeviceBindings.Where(input =>
                 input.DeviceBinding.InputExpressionGroup == groupIndex &&
                 !input.DeviceBinding.IsDirectionalAndCondition)
@@ -328,7 +345,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return true;
         }
 
-        public bool UseAnalogueCompoundInput(out string error)
+        public bool UseAnalogueCompoundInput(out string error, int groupIndex = 0)
         {
             error = null;
             if (!ButtonsEnabled || !IsCompoundInput)
@@ -336,6 +353,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 error = "Choose 4-Way or Axis input first.";
                 return false;
             }
+            if (Mapping.UsesFourWayGroupShapes)
+                return EnsureFourWayGroupSlots(groupIndex, false, out error);
             if (!Mapping.CompoundDigitalInput) return true;
             Mapping.CompoundDigitalInput = false;
             if (!SwitchDirectionalInputs(Mapping.EffectiveInputRepresentation))
@@ -354,7 +373,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return true;
         }
 
-        private bool EnsureCompoundDigitalSlots(out string error, bool fourWay)
+        private bool EnsureFourWayGroupSlots(int groupIndex, bool digital, out string error)
         {
             error = null;
             if (!ButtonsEnabled)
@@ -362,47 +381,65 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 error = "Stop the running profile to change bindings.";
                 return false;
             }
-            var previousDigital = Mapping.CompoundDigitalInput;
-            Mapping.CompoundDigitalInput = true;
-            if (fourWay && (DirectionalCapacity != 4 ||
-                            Mapping.EffectiveInputRepresentation != 1))
+            if (!Mapping.DeviceBindings.Any(binding =>
+                binding.InputExpressionGroup == groupIndex && !binding.IsDirectionalAndCondition))
             {
-                if (!SetInputRepresentation(1))
-                {
-                    Mapping.CompoundDigitalInput = previousDigital;
-                    error = "Unable to change this mapping to 4-Way input.";
-                    return false;
-                }
-            }
-            else if (!IsCompoundInput && !SetInputRepresentation(2))
-            {
-                Mapping.CompoundDigitalInput = previousDigital;
-                error = "Unable to prepare an Axis input.";
+                error = "This input OR set no longer exists.";
                 return false;
             }
-            var required = DirectionalCapacity * Math.Max(1, Mapping.DeviceBindings
-                .Select(input => Math.Max(0, input.InputExpressionGroup))
-                .Distinct().Count());
-            if (!previousDigital && Mapping.DeviceBindings.Count(input =>
-                !input.IsDirectionalAndCondition) != required)
+            if ((!Mapping.UsesFourWayGroupShapes || Mapping.InputRepresentation != 1) &&
+                !SetInputRepresentation(1))
             {
-                if (!SwitchDirectionalInputs(Mapping.EffectiveInputRepresentation))
-                {
-                    Mapping.CompoundDigitalInput = previousDigital;
-                    error = "Unable to create compound directional slots.";
-                    return false;
-                }
-            }
-            if (Mapping.DeviceBindings.Count(input => !input.IsDirectionalAndCondition) != required)
-            {
-                error = "The compound binding's internal slots are incomplete.";
+                error = "Unable to prepare a 4-Way input.";
                 return false;
             }
-            OnPropertyChanged(nameof(InputDirectionalSlotCount));
-            OnPropertyChanged(nameof(IsDigitalCompoundInput));
-            OnPropertyChanged(nameof(CompoundBindingSummary));
-            OnPropertyChanged(nameof(CompoundBlockEnabled));
+
+            var inputs = Mapping.DeviceBindings.Where(binding =>
+                binding.InputExpressionGroup == groupIndex && !binding.IsDirectionalAndCondition).ToList();
+            var required = digital ? 4 : 2;
+            if (inputs.Count == required)
+            {
+                if (!Mapping.UseInputExpression)
+                {
+                    Mapping.UseInputExpression = true;
+                    ProfileViewModel.Profile.Context.ContextChanged();
+                    RebuildDirectionalEditors();
+                }
+                return true;
+            }
+            if (inputs.Count == 0)
+            {
+                error = "Unable to locate the 4-Way input.";
+                return false;
+            }
+
+            var banks = Mapping.InactiveInputRepresentations ??
+                (Mapping.InactiveInputRepresentations = new List<DirectionalInputBank>());
+            var saved = banks.LastOrDefault(bank => bank.GroupIndex == groupIndex &&
+                bank.Representation == 1 && bank.Bindings?.Count == required);
+            var replacement = saved?.Bindings ?? Enumerable.Range(0, required).Select(index =>
+                new DeviceBinding(Mapping.Update, ProfileViewModel.Profile, DeviceIoType.Input)
+                {
+                    DeviceBindingCategory = digital ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range,
+                    InputExpressionInputKind = digital ? 0 : 3,
+                    InputExpressionKindConfigured = true,
+                    InputExpressionGroup = groupIndex,
+                    InputDirectionSlot = digital ? index + 1 : 0
+                }).ToList();
+            var first = Mapping.DeviceBindings.IndexOf(inputs[0]);
+            var next = Mapping.DeviceBindings.Where(binding => !inputs.Contains(binding)).ToList();
+            next.InsertRange(first, replacement);
+            if (saved != null) banks.Remove(saved);
+            if (Mapping.IsFourWayGroupSlotCount(inputs.Count))
+            {
+                banks.RemoveAll(bank => bank.GroupIndex == groupIndex &&
+                    bank.Representation == 1 && bank.Bindings?.Count == inputs.Count);
+                banks.Add(new DirectionalInputBank { Representation = 1, GroupIndex = groupIndex, Bindings = inputs });
+            }
+            Mapping.DeviceBindings = next;
+            Mapping.UseInputExpression = true;
             ProfileViewModel.Profile.Context.ContextChanged();
+            RebuildDirectionalEditors();
             return true;
         }
 
@@ -419,30 +456,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 error = "This input OR set no longer exists.";
                 return false;
             }
-            var patterns = new Dictionary<string, string[]>
-            {
-                { "WASD", new[] { "A", "D", "W", "S" } },
-                { "Arrows", new[] { "Left", "Right", "Up", "Down" } },
-                { "Numpad", new[] { "Numpad4", "Numpad6", "Numpad8", "Numpad2" } },
-                { "UHJK", new[] { "H", "K", "U", "J" } },
-                { "UJHK", new[] { "H", "K", "U", "J" } }
-            };
             var profile = ProfileViewModel.Profile;
-            string[] keys;
-            if (!patterns.TryGetValue(preset, out keys))
+            var keys = GetKeyboardPresetKeys(preset);
+            if (keys == null)
             {
-                var custom = profile.CompoundBindingPresets?.FirstOrDefault(item =>
-                    item.Capacity == 4 &&
-                    string.Equals(item.Name, preset, StringComparison.OrdinalIgnoreCase));
-                keys = custom?.Keys?.ToArray();
-                if (keys == null)
-                {
-                    error = "Preset not found.";
-                    return false;
-                }
+                error = "Preset not found.";
+                return false;
             }
-            if (keys.Length != 4 ||
-                keys.Distinct(StringComparer.OrdinalIgnoreCase).Count() != 4)
+            if (!HasFourDistinctPresetKeys(keys))
             {
                 error = "A 4-Way preset must contain four distinct directional keys.";
                 return false;
@@ -459,22 +480,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 .Select(config =>
                 {
                     var available = FlattenBindingNodes(config.Device.GetDeviceBindingMenu(
-                        profile.Context, DeviceIoType.Input))
-                        .Where(node => node?.DeviceBindingInfo != null &&
-                            node.DeviceBindingInfo.DeviceBindingCategory ==
-                                DeviceBindingCategory.Momentary).ToList();
-                    var matched = keys.Select(name =>
-                    {
-                        var aliases = name.StartsWith("Numpad", StringComparison.OrdinalIgnoreCase)
-                            ? new[] { name, name.Replace("Numpad", "Num"),
-                                name.Replace("Numpad", "Keypad") }
-                            : new[] { name };
-                        return available.FirstOrDefault(node => aliases.Any(alias =>
-                            MatchesControlLeafName(node.Title, alias)));
-                    }).ToArray();
-                    return new { Configuration = config, Selections = matched };
+                        profile.Context, DeviceIoType.Input));
+                    return new { Configuration = config, Selections = ResolveKeyboardPresetNodes(available, keys) };
                 })
-                .Where(candidate => candidate.Selections.All(node => node != null))
+                .Where(candidate => candidate.Selections != null)
                 .ToList();
             var selected = compatible.FirstOrDefault(candidate =>
                     candidate.Configuration.Guid == currentGuid)
@@ -491,7 +500,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
             // Discovery must complete before any topology change. A missing
             // keyboard/key must leave the mapping and its bindings untouched.
-            if (!EnsureCompoundDigitalSlots(out error, fourWay: true)) return false;
+            if (!EnsureFourWayGroupSlots(groupIndex, true, out error)) return false;
             var inputs = DeviceBindings.Where(binding =>
                 binding.DeviceBinding.InputExpressionGroup == groupIndex &&
                 !binding.DeviceBinding.IsDirectionalAndCondition)
@@ -508,7 +517,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 input.InputExpressionInputKind = 0;
                 input.DeviceBindingCategory = DeviceBindingCategory.Momentary;
                 input.SetDeviceConfigurationGuid(keyboard.Guid, false);
-                input.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                input.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue, selections[i].Title);
                 input.CompoundPresetName = preset;
             }
             foreach (var input in inputs) input.RefreshDeviceList();
@@ -527,8 +536,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 error = "Enter a preset name.";
                 return false;
             }
-            if (new[] { "WASD", "Arrows", "Numpad", "UHJK", "UJHK" }.Any(value =>
-                string.Equals(value, name, StringComparison.OrdinalIgnoreCase)))
+            if (BuiltInKeyboardPresets.ContainsKey(name))
             {
                 error = "That name is reserved for a built-in preset.";
                 return false;
@@ -538,8 +546,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 !input.DeviceBinding.IsDirectionalAndCondition)
                 .OrderBy(input => input.DeviceBinding.InputDirectionSlot)
                 .Select(input => input.DeviceBinding).ToList();
-            if (!IsDigitalCompoundInput || inputs.Count != DirectionalCapacity ||
-                inputs.Any(input => !input.IsBound))
+            if (!Mapping.UsesFourWayGroupShapes ||
+                inputs.Count != 4 || inputs.Any(input => !input.IsBound))
             {
                 error = "Bind all compound directions before saving a preset.";
                 return false;
@@ -569,6 +577,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 }
                 names.Add(matching.Title);
             }
+            if (ResolveKeyboardPresetNodes(controls, names) == null)
+            {
+                error = "A 4-Way preset must contain four distinct directional keys.";
+                return false;
+            }
             if (profile.CompoundBindingPresets == null)
                 profile.CompoundBindingPresets = new List<CompoundBindingPreset>();
             var existing = profile.CompoundBindingPresets.FirstOrDefault(item =>
@@ -582,6 +595,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             existing.Keys = names;
             profile.Context.ContextChanged();
             ProfileViewModel.RefreshCompoundPresetItems();
+            RefreshInputExpressionPresentation();
+            RefreshCollapsedSummary();
             return true;
         }
 
@@ -675,10 +690,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var group = Mapping.DeviceBindings.Count == 0 ? 0 :
                     Mapping.DeviceBindings.Max(input => Math.Max(0, input.InputExpressionGroup)) + 1;
                 var count = Mapping.RequiredInputBindingSlotsPerGroup;
-                if (count < 1) return;
                 var capacity = DirectionalCapacity;
                 var isButton = Mapping.EffectiveInputRepresentation == 3 ||
                     Mapping.CompoundDigitalInput;
+                if (Mapping.UsesFourWayGroupShapes)
+                {
+                    var firstGroup = Mapping.DeviceBindings.Where(input => !input.IsDirectionalAndCondition)
+                        .GroupBy(input => input.InputExpressionGroup).OrderBy(set => set.Key).FirstOrDefault();
+                    var firstCount = firstGroup?.Count() ?? 0;
+                    if (Mapping.IsFourWayGroupSlotCount(firstCount)) count = firstCount;
+                    isButton = count == 4;
+                }
+                if (count < 1) return;
                 for (var index = 0; index < count; index++)
                 {
                     var binding = new DeviceBinding(Mapping.Update, ProfileViewModel.Profile,
@@ -765,7 +788,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 DeviceBindings[i].DeviceBindingName = IsTypedDirectionalMapping
                     ? (DeviceBindings[i].DeviceBinding.IsDirectionalAndCondition
-                        ? "AND" : GetDirectionalInputSlotLabel(directionalIndex++))
+                        ? "AND" : GetDirectionalInputSlotLabel(directionalIndex++, DeviceBindings[i].DeviceBinding))
                     : SupportsNativeInputExpression
                         ? "Input"
                         : (Mapping.Plugins.Count > 0 && i < Mapping.Plugins[0].InputCategories.Count

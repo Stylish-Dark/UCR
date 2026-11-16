@@ -167,6 +167,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompoundPrimaryLabel)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompoundPrimaryToolTip)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompoundDeviceLabel)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DirectionalBlockVisibility)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DirectionalBlockEnabled)));
         }
 
         public int GroupIndex { get; }
@@ -182,7 +184,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<DeviceBindingViewModel> DirectionalInputs => _directionalInputs;
         public ObservableCollection<DeviceBindingViewModel> OrdinaryInputs => _ordinaryInputs;
         public DeviceBindingViewModel DirectionalPrimary => DirectionalInputs.FirstOrDefault();
-        public bool DirectionalBlockEnabled => Inputs.Any(input => input.DeviceBinding.Block);
+        public Visibility DirectionalBlockVisibility => IsCompound && Inputs.Any(input => input.SupportsBlock)
+            ? Visibility.Visible : Visibility.Collapsed;
+        public bool DirectionalBlockEnabled => Inputs.Any(input => input.Block);
         public Visibility DirectionalVisibility => DirectionalPrimary == null ? Visibility.Collapsed : Visibility.Visible;
         public Visibility DirectionalPairVisibility =>
             DirectionalPrimary != null && !IsFourWay ? Visibility.Visible : Visibility.Collapsed;

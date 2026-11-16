@@ -203,10 +203,18 @@ namespace HidWizards.UCR.Views.Controls
 
         public static bool RequiresDeleteConfirmation(MappingViewModel mapping)
         {
-            if (mapping?.Mapping == null) return false;
-            return !string.IsNullOrWhiteSpace(mapping.Mapping.Title) ||
-                (mapping.Mapping.DeviceBindings != null &&
-                 mapping.Mapping.DeviceBindings.Any(binding => binding != null && binding.IsBound));
+            var model = mapping?.Mapping;
+            if (model == null) return false;
+            if (model.GetPersistedInputBindings().Any(binding => binding.IsBound) ||
+                model.GetPersistedOutputBindings().Any(binding => binding.IsBound))
+                return true;
+
+            const string defaultTitlePrefix = "Mapping ";
+            var title = model.Title;
+            if (string.IsNullOrWhiteSpace(title)) return false;
+            return !title.StartsWith(defaultTitlePrefix, StringComparison.Ordinal) ||
+                   !int.TryParse(title.Substring(defaultTitlePrefix.Length), out var number) ||
+                   number < 1 || title != defaultTitlePrefix + number;
         }
 
         // Every visible binding glyph is a Button in MappingBindingVisualTemplate.
@@ -405,10 +413,10 @@ namespace HidWizards.UCR.Views.Controls
         }
 
         internal bool ApplyOutputControlChoice(DeviceBindingViewModel binding, Guid deviceGuid,
-            Device outputDevice, DeviceBindingInfo selectedControl, int direction = 0)
+            Device outputDevice, DeviceBindingInfo selectedControl, int direction = 0, string controlName = null)
         {
             return (DataContext as MappingViewModel)?.ApplyOutputControlChoice(
-                binding, deviceGuid, outputDevice, selectedControl, direction) == true;
+                binding, deviceGuid, outputDevice, selectedControl, direction, controlName) == true;
         }
 
         internal bool SwitchOutputBindingToFilter(DeviceBindingViewModel binding)
@@ -808,7 +816,7 @@ namespace HidWizards.UCR.Views.Controls
             analogue.Click += (source, args) =>
             {
                 string error;
-                if (!mapping.UseAnalogueCompoundInput(out error))
+                if (!mapping.UseAnalogueCompoundInput(out error, groupIndex))
                     DarkMessageBox.Show(error ?? "Analogue bindings could not be restored.",
                         "Input representation unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
             };

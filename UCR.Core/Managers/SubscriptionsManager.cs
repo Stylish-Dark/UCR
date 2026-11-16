@@ -1173,9 +1173,11 @@ namespace HidWizards.UCR.Core.Managers
                 SubscriptionDescriptor = GetSubscriptionDescriptor(deviceBindingSubscription.DeviceBindingSubscriptionGuid, state.StateGuid),
                 BindingDescriptor = GetBindingDescriptor(deviceBindingSubscription.DeviceBinding),
                 Callback = deviceBindingSubscription.DeviceBinding.Callback,
-                Block = deviceBindingSubscription.DeviceBinding.Block ||
-                        (deviceBindingSubscription.GroupBlocksInputs &&
-                         deviceBindingSubscription.DeviceBinding.IsBlockable(device))
+                Block = deviceBindingSubscription.IsSafetySubscription
+                    ? deviceBindingSubscription.DeviceBinding.Block
+                    : (deviceBindingSubscription.DeviceBinding.Block ||
+                       deviceBindingSubscription.GroupBlocksInputs) &&
+                      deviceBindingSubscription.DeviceBinding.IsBlockable(device)
             };
         }
 

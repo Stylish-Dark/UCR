@@ -8,6 +8,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using HidWizards.UCR.Core.Utilities;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
@@ -140,7 +141,7 @@ namespace HidWizards.UCR.Views.Controls
                     return true;
                 }
 
-                ShowQuickOutputMenu(mappingViewModel, descriptor, placementTarget);
+                CreateQuickOutputMenu(mappingViewModel, descriptor, placementTarget).IsOpen = true;
                 return true;
             }
             catch (Exception exception)
@@ -158,19 +159,53 @@ namespace HidWizards.UCR.Views.Controls
             menu.IsOpen = true;
         }
 
-        private static void ShowQuickOutputMenu(MappingViewModel mappingViewModel,
-            BindingVisualDescriptor descriptor, FrameworkElement placementTarget)
+        internal static ContextMenu CreateQuickOutputMenu(MappingViewModel mappingViewModel,
+            BindingVisualDescriptor descriptor, FrameworkElement placementTarget,
+            DeviceBindingCategory? category = null)
         {
             var options = mappingViewModel.GetQuickOutputBindingOptions(descriptor);
+            if (category.HasValue)
+                options.RemoveAll(option => option.OutputControl.DeviceBindingCategory != category.Value);
             var menu = CreateDarkContextMenu(placementTarget);
+
+            var originalContext = placementTarget.DataContext;
+            var anchorInvalidated = false;
+            bool IsCurrentAnchor() => !anchorInvalidated && placementTarget.IsLoaded &&
+                ReferenceEquals(placementTarget.DataContext, originalContext) &&
+                mappingViewModel.ProfileViewModel.MappingsList?.Contains(mappingViewModel) == true;
+
+            void ShowAssignmentFailure(string message)
+            {
+                placementTarget.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+                {
+                    if (IsCurrentAnchor()) ShowOutputPickerStatus(placementTarget, message);
+                }));
+            }
+
+            void InvalidateAnchor()
+            {
+                anchorInvalidated = true;
+                menu.IsOpen = false;
+            }
+            RoutedEventHandler unloaded = (sender, args) => InvalidateAnchor();
+            DependencyPropertyChangedEventHandler contextChanged = (sender, args) => InvalidateAnchor();
+            menu.Opened += (sender, args) =>
+            {
+                placementTarget.Unloaded += unloaded;
+                placementTarget.DataContextChanged += contextChanged;
+            };
+            menu.Closed += (sender, args) =>
+            {
+                placementTarget.Unloaded -= unloaded;
+                placementTarget.DataContextChanged -= contextChanged;
+            };
 
             if (options.Count == 0)
             {
                 menu.Items.Add(new MenuItem
                 {
-                    Header = mappingViewModel.ProfileViewModel.Profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output) == null
-                        ? "Add an output device to this profile"
-                        : "No compatible output controls",
+                    Header = mappingViewModel.GetOutputPickerUnavailableReason(
+                        mappingViewModel.ResolveCollapsedBinding(descriptor, DeviceIoType.Output)),
                     IsEnabled = false,
                     Foreground = Brushes.Gray,
                     Background = Brushes.Transparent,
@@ -209,12 +244,24 @@ namespace HidWizards.UCR.Views.Controls
                         Padding = new Thickness(8, 4, 12, 4)
                     };
                     item.Click += (clickSender, clickArgs) =>
-                        mappingViewModel.ApplyQuickOutputBinding(descriptor, capturedOption);
+                    {
+                        if (!IsCurrentAnchor() || !mappingViewModel.CanApplyOutputBinding) return;
+                        try
+                        {
+                            if (!mappingViewModel.ApplyQuickOutputBinding(descriptor, capturedOption))
+                                ShowAssignmentFailure("That control could not be assigned to this output slot.");
+                        }
+                        catch (Exception exception)
+                        {
+                            Logger.Error("Failed to apply mapping output", exception);
+                            ShowAssignmentFailure("Could not assign that output.");
+                        }
+                    };
                     menu.Items.Add(item);
                 }
             }
 
-            menu.IsOpen = true;
+            return menu;
         }
 
         private static StackPanel CompoundChoiceHeader(string label,
@@ -275,6 +322,7 @@ namespace HidWizards.UCR.Views.Controls
             };
             foreach (var preset in deviceChoices)
             {
+                if (!mapping.CanApplyCompoundInputPreset(preset.Name)) continue;
                 var selected = preset;
                 var item = new MenuItem
                 {

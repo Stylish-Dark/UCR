@@ -36,7 +36,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             Mapping.EffectiveInputRepresentation != 3 &&
             Mapping.EffectiveInputRepresentation != 4;
         public bool CompoundBlockEnabled => IsCompoundInput &&
-            Mapping.DeviceBindings.Any(binding => binding.IsBound && binding.Block);
+            DeviceBindings.Any(binding => binding.Block);
         public bool CanBlockCompound => ButtonsEnabled && IsCompoundInput &&
             Mapping.DeviceBindings.Any(binding => binding.IsBound && binding.IsBlockable());
         public bool OutputIsFullStick => Mapping.EffectiveOutputRepresentation == 1 && !OutputIsFilter;
@@ -119,10 +119,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return null;
 
             var persisted = channels[0].DeviceBinding.CompoundPresetName;
-            if (!string.IsNullOrWhiteSpace(persisted) &&
-                channels.All(channel => string.Equals(channel.DeviceBinding.CompoundPresetName,
-                    persisted, StringComparison.Ordinal)))
-                return persisted;
+            if (!channels.All(channel => string.Equals(channel.DeviceBinding.CompoundPresetName,
+                persisted, StringComparison.Ordinal)))
+                persisted = null;
+
+            // Device presets carry semantic names, whereas a keyboard preset
+            // name must still describe a current catalog entry and these keys.
+            if (!string.IsNullOrWhiteSpace(persisted))
+            {
+                if (output) return persisted;
+                var profile = ProfileViewModel.Profile;
+                var configuration = profile.GetDeviceConfiguration(DeviceIoType.Input,
+                    channels[0].DeviceBinding.DeviceConfigurationGuid);
+                if ((persisted == "Left stick" || persisted == "Right stick" ||
+                     persisted == "Face buttons" || persisted == "D-pad") &&
+                    DeviceVisualCatalog.Describe(configuration, profile, DeviceIoType.Input).Kind !=
+                        DeviceVisualKind.Keyboard)
+                    return persisted;
+            }
 
             var labels = channels.Select(binding => binding.CompactBindButtonText).ToArray();
             if (channels.Any(binding =>
@@ -138,28 +152,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
 
             if (channels.Count != 4) return null;
-            // Explicitly named presets outrank built-in pattern aliases. A user
-            // who names their four keys "My Movement" must see that name, not WASD.
-            var templates = new List<Tuple<string, string[]>>();
-            foreach (var custom in ProfileViewModel.Profile.CompoundBindingPresets ??
-                new List<CompoundBindingPreset>())
-                if (custom.Capacity == 4 && custom.Keys?.Count == 4)
-                    templates.Add(Tuple.Create(custom.Name, custom.Keys.ToArray()));
-            templates.AddRange(new[]
-            {
-                Tuple.Create("WASD", new[] { "A", "D", "W", "S" }),
-                Tuple.Create("Arrows", new[] { "Left", "Right", "Up", "Down" }),
-                Tuple.Create("Numpad", new[] { "Numpad4", "Numpad6", "Numpad8", "Numpad2" }),
-                Tuple.Create("UHJK", new[] { "H", "K", "U", "J" })
-            });
-
-            foreach (var template in templates)
-            {
-                if (labels.Select((label, index) => PresetControlMatches(label,
-                    template.Item2[index])).All(match => match))
-                    return template.Item1;
-            }
-
             if (labels.Any(label => label.IndexOf("D-pad", StringComparison.OrdinalIgnoreCase) >= 0
                 || label.IndexOf("Dpad", StringComparison.OrdinalIgnoreCase) >= 0
                 || label.IndexOf("POV", StringComparison.OrdinalIgnoreCase) >= 0
@@ -172,12 +164,45 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var kind = config?.Device == null ? DeviceVisualKind.Unknown :
                 DeviceVisualCatalog.Describe(config, ProfileViewModel.Profile,
                     output ? DeviceIoType.Output : DeviceIoType.Input).Kind;
+            if (kind == DeviceVisualKind.Keyboard &&
+                channels.All(channel => channel.DeviceBinding.DeviceConfigurationGuid == config.Guid))
+                return ResolveKeyboardPresetLabel(labels, persisted,
+                    ProfileViewModel.Profile.CompoundBindingPresets);
             return kind == DeviceVisualKind.Keyboard || kind == DeviceVisualKind.Unknown
                 ? null : "Face buttons";
         }
 
+        internal static string ResolveKeyboardPresetLabel(string[] labels, string previousName,
+            IEnumerable<CompoundBindingPreset> presets)
+        {
+            if (labels?.Length != 4) return null;
+
+            bool Matches(IReadOnlyList<string> keys)
+            {
+                return HasFourDistinctPresetKeys(keys) &&
+                    labels.Select((label, index) => PresetControlMatches(label, keys[index])).All(match => match);
+            }
+
+            var matching = (presets ?? Enumerable.Empty<CompoundBindingPreset>())
+                .Where(preset => preset?.Capacity == 4 && !string.IsNullOrWhiteSpace(preset.Name) &&
+                    Matches(preset.Keys)).ToList();
+            var previous = matching.FirstOrDefault(preset =>
+                string.Equals(preset.Name, previousName, StringComparison.OrdinalIgnoreCase));
+            if (previous != null) return previous.Name;
+            if (!string.IsNullOrWhiteSpace(previousName) &&
+                BuiltInKeyboardPresets.TryGetValue(previousName, out var previousKeys) &&
+                Matches(previousKeys)) return previousName;
+
+            if (matching.Count != 0) return matching[0].Name;
+
+            foreach (var preset in BuiltInKeyboardPresets)
+                if (preset.Key != "UJHK" && Matches(preset.Value)) return preset.Key;
+            return null;
+        }
+
         private static bool PresetControlMatches(string label, string expected)
         {
+            if (string.IsNullOrWhiteSpace(expected)) return false;
             if (MatchesControlLeafName(label, expected)) return true;
             if (expected.StartsWith("Numpad", StringComparison.OrdinalIgnoreCase))
                 return MatchesControlLeafName(label, expected.Replace("Numpad", "Num"))
@@ -505,12 +530,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
             switch (property)
             {
+                case nameof(DeviceBindingViewModel.ShowBlock):
+                    foreach (var group in InputConditions)
+                        group.RefreshCompoundSummary();
+                    return;
                 case nameof(DeviceBindingViewModel.Devices):
                 case nameof(DeviceBindingViewModel.SelectedDevice):
                 case nameof(DeviceBindingViewModel.BindingEnabled):
                 case nameof(DeviceBindingViewModel.CanBindCurrentDevice):
                 case nameof(DeviceBindingViewModel.BlockAvailability):
-                case nameof(DeviceBindingViewModel.ShowBlock):
                 case nameof(DeviceBindingViewModel.CanBlock):
                 case nameof(DeviceBindingViewModel.ShowBindMode):
                 case nameof(DeviceBindingViewModel.ShowPreview):
@@ -540,12 +568,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     Mapping.DeviceBindings.Any(other =>
                         other != member && other.InputDirectionSlot > 0 &&
                         other.InputExpressionGroup == member.InputExpressionGroup &&
-                        other.Block) && member.IsBlockable())
+                        other.Block && other.IsBound && other.IsBlockable()) && member.IsBlockable())
                     member.SetBlock(true);
 
                 if (IsCompoundInput && !member.Block &&
                     Mapping.DeviceBindings.Any(other =>
-                        other != member && other.IsBound && other.Block) &&
+                        other != member && other.InputExpressionGroup == member.InputExpressionGroup &&
+                        other.IsBound && other.Block && other.IsBlockable()) &&
                     member.IsBlockable())
                     member.SetBlock(true);
             }
@@ -627,9 +656,19 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             RefreshCollapsedSummary();
         }
 
-        private string GetDirectionalInputSlotLabel(int index)
+        private string GetDirectionalInputSlotLabel(int index, DeviceBinding binding = null)
         {
             if (!IsTypedDirectionalMapping) return "Input " + (index + 1);
+            if (Mapping.UsesFourWayGroupShapes)
+            {
+                binding = binding ?? Mapping.DeviceBindings[index];
+                if (binding.IsDirectionalAndCondition) return "Input";
+                if (binding.InputDirectionSlot > 0)
+                    return new[] { "Left", "Right", "Up", "Down" }[Math.Min(3, binding.InputDirectionSlot - 1)];
+                var first = Mapping.DeviceBindings.FirstOrDefault(other =>
+                    other.InputExpressionGroup == binding.InputExpressionGroup && !other.IsDirectionalAndCondition);
+                return ReferenceEquals(first, binding) ? "X axis" : "Y axis";
+            }
             // Each OR group restarts its own directional slots.
             var perGroup = Math.Max(1, Mapping.RequiredInputBindingSlotsPerGroup);
             index %= perGroup;
@@ -1407,7 +1446,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             _disposed = true;
 
             StopQuickInputDetection();
-            _quickOutputDetectionCancellation?.Cancel();
+            CancelQuickOutputCapture();
             StopQuickOutputCountdown();
 
             foreach (var binding in DeviceBindings ?? new ObservableCollection<DeviceBindingViewModel>())

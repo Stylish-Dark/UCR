@@ -124,26 +124,48 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public List<QuickBindingOption> GetQuickOutputBindingOptions(BindingVisualDescriptor descriptor)
         {
+            var binding = ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
+            return GetOutputBindingOptions(binding, binding?.ResolveOutputConfiguration());
+        }
+
+        internal string GetOutputPickerUnavailableReason(DeviceBindingViewModel binding)
+        {
+            if (binding?.DeviceBinding == null) return "The output slot is unavailable.";
+            var destination = binding.ResolveOutputConfiguration();
+            if (destination?.Device == null)
+                return binding.DeviceBinding.DeviceConfigurationGuid == Guid.Empty
+                    ? "Add an output device to this profile"
+                    : "The assigned output device is unavailable.";
+            if (ProfileViewModel.Profile.Context.DevicesManager.ResolveDevice(destination.Device, DeviceIoType.Output) == null)
+                return "The assigned output device is disconnected.";
+            return "No compatible output controls";
+        }
+
+        internal List<QuickBindingOption> GetOutputBindingOptions(DeviceBindingViewModel bindingViewModel,
+            DeviceConfiguration configuration)
+        {
             var result = new List<QuickBindingOption>();
-            if (!ButtonsEnabled) return result;
-
-            var bindingViewModel = ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
-            if (bindingViewModel?.DeviceBinding == null || !bindingViewModel.BindingEnabled) return result;
-
-            var configuration = ResolveQuickOutputConfiguration(bindingViewModel);
-            if (configuration?.Device == null) return result;
+            if (!ButtonsEnabled || bindingViewModel?.BindingEnabled != true ||
+                bindingViewModel.DeviceBinding?.DeviceIoType != DeviceIoType.Output ||
+                configuration?.Device == null) return result;
 
             var menu = configuration.Device.GetDeviceBindingMenu(ProfileViewModel.Profile.Context, DeviceIoType.Output);
             var category = bindingViewModel.DeviceBindingCategory;
             var plugin = Plugins.FirstOrDefault(candidate => candidate.DeviceBindings.Contains(bindingViewModel));
-            var restrictCategory = bindingViewModel.DeviceBinding.DeviceConfigurationGuid != Guid.Empty ||
-                category == DeviceBindingCategory.Event || plugin?.DeviceBindings.Count > 1 || IsCompoundOutput;
+            var restrictCategory = category == DeviceBindingCategory.Event ||
+                plugin?.DeviceBindings.Count > 1 || IsCompoundOutput;
+            var slot = plugin == null ? -1 : Plugins.IndexOf(plugin);
             foreach (var node in FlattenBindingNodes(menu))
             {
                 var info = node?.DeviceBindingInfo;
-                if (info == null ||
-                    (info.DeviceBindingCategory != category &&
-                     (restrictCategory || info.DeviceBindingCategory == DeviceBindingCategory.Event))) continue;
+                if (info == null) continue;
+                if (info.DeviceBindingCategory != category &&
+                    (restrictCategory || (info.DeviceBindingCategory != DeviceBindingCategory.Momentary &&
+                                          info.DeviceBindingCategory != DeviceBindingCategory.Range))) continue;
+                var representation = GetOutputControlRepresentation(configuration, info, node.Title);
+                if (IsTypedDirectionalMapping && !restrictCategory && representation != 0 &&
+                    Mapping.EffectiveOutputRepresentation != representation &&
+                    !CanChangeOutputRepresentationAt(slot, representation)) continue;
                 var temporary = new DeviceBinding
                 {
                     Profile = ProfileViewModel.Profile,
@@ -153,7 +175,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     IsBound = true,
                     KeyType = info.KeyType,
                     KeyValue = info.KeyValue,
-                    KeySubValue = info.KeySubValue
+                    KeySubValue = info.KeySubValue,
+                    AssignedControlName = node.Title
                 };
 
                 result.Add(new QuickBindingOption
@@ -175,7 +198,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public bool ApplyQuickOutputBinding(BindingVisualDescriptor descriptor, QuickBindingOption option)
         {
-            if (!ButtonsEnabled || option == null) return false;
+            if (!CanApplyOutputBinding || option == null) return false;
             var bindingViewModel = ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
             if (bindingViewModel?.DeviceBinding == null || !bindingViewModel.BindingEnabled) return false;
 
@@ -184,22 +207,30 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 !ReferenceEquals(configuration.Device, option.OutputDevice)) return false;
 
             var binding = bindingViewModel.DeviceBinding;
-            if (binding.DeviceConfigurationGuid == Guid.Empty && option.OutputControl != null)
-                return ApplyOutputControlChoice(bindingViewModel, configuration.Guid,
-                    configuration.Device, option.OutputControl);
+            if (option.OutputControl != null)
+            {
+                var isRange = option.OutputControl.DeviceBindingCategory == DeviceBindingCategory.Range;
+                var isTrigger = GetOutputControlRepresentation(configuration, option.OutputControl, option.Title) == 4;
+                if (binding.DeviceConfigurationGuid == Guid.Empty ||
+                    option.OutputControl.DeviceBindingCategory != bindingViewModel.DeviceBindingCategory ||
+                    (isRange && !IsCompoundOutput && isTrigger != OutputIsTrigger))
+                    return ApplyOutputControlChoice(bindingViewModel, configuration.Guid,
+                        configuration.Device, option.OutputControl, controlName: option.Title);
+            }
 
             binding.DeviceBindingCategory = bindingViewModel.DeviceBindingCategory;
             binding.SetDeviceConfigurationGuid(option.DeviceConfigurationGuid);
-            binding.SetKeyTypeValue(option.KeyType, option.KeyValue, option.KeySubValue);
+            binding.SetKeyTypeValue(option.KeyType, option.KeyValue, option.KeySubValue, option.Title);
             bindingViewModel.RefreshDeviceList();
             RefreshCollapsedSummary();
             return true;
         }
 
         internal bool ApplyOutputControlChoice(DeviceBindingViewModel binding,
-            Guid deviceGuid, Device outputDevice, DeviceBindingInfo selectedControl, int direction = 0)
+            Guid deviceGuid, Device outputDevice, DeviceBindingInfo selectedControl, int direction = 0,
+            string controlName = null)
         {
-            if (!ButtonsEnabled || binding?.DeviceBinding == null || selectedControl == null)
+            if (!CanApplyOutputBinding || binding?.DeviceBinding == null || selectedControl == null)
                 return false;
 
             var original = Plugins.FirstOrDefault(plugin =>
@@ -215,13 +246,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var configuration = binding.ResolveOutputConfiguration();
             if (configuration?.Device == null || configuration.Guid != deviceGuid ||
                 !ReferenceEquals(configuration.Device, outputDevice)) return false;
-            var isTrigger = requested == DeviceBindingCategory.Range &&
-                DeviceVisualCatalog.IsKnownTriggerAxis(configuration,
-                    ProfileViewModel.Profile, DeviceIoType.Output, selectedControl.KeyValue);
-            var selectedRepresentation = requested == DeviceBindingCategory.Momentary ? 3 :
-                requested == DeviceBindingCategory.Range ? (isTrigger ? 4 : 2) : 0;
+            var selectedRepresentation = GetOutputControlRepresentation(configuration, selectedControl, controlName);
+            var isTrigger = selectedRepresentation == 4;
             if (selectedRepresentation == 0 && currentCategory != requested) return false;
-            if (IsTypedDirectionalMapping && !isPositionalMultiOutput && selectedRepresentation != 0)
+            if ((IsTypedDirectionalMapping || (isTrigger && Plugins.Count == 1)) &&
+                !isPositionalMultiOutput && selectedRepresentation != 0)
             {
                 if (OutputIsFullStick)
                 {
@@ -233,11 +262,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 {
                     // Trigger and Button share the selector but remain distinct
                     // physical signal types, so never turn a trigger into an Axis.
-                    var targetCapacity = Math.Max(
-                        Mapping.EffectiveInputRepresentation == 1 ? 4 :
-                        Mapping.EffectiveInputRepresentation == 2 ? 2 : 1,
-                        selectedRepresentation == 2 ? 2 : 1);
-                    if (index >= Mapping.RequiredBindingSlots(targetCapacity, selectedRepresentation) ||
+                    if (!CanChangeOutputRepresentationAt(index, selectedRepresentation) ||
                         !SetOutputRepresentation(selectedRepresentation)) return false;
                     original = Plugins[index];
                 }
@@ -262,14 +287,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var output = destination.DeviceBinding;
             output.DeviceBindingCategory = requested;
             output.SetDeviceConfigurationGuid(deviceGuid);
-            output.SetKeyTypeValue(selectedControl.KeyType, selectedControl.KeyValue, selectedControl.KeySubValue);
+            output.SetKeyTypeValue(selectedControl.KeyType, selectedControl.KeyValue,
+                selectedControl.KeySubValue, controlName);
             output.OutputAxisDirection = requested == DeviceBindingCategory.Range ? Math.Sign(direction) : 0;
 
             // A button maps to a signed analogue extreme for the chosen stick direction.
             // Neutral is restored when released; a full axis choice remains unrestricted.
             var pressed = destinationPlugin.Plugin.GetType().GetProperty("RangePressed");
             var released = destinationPlugin.Plugin.GetType().GetProperty("Range");
-            if (pressed != null && pressed.PropertyType == typeof(double))
+            if (direction != 0 && pressed != null && pressed.PropertyType == typeof(double))
             {
                 pressed.SetValue(destinationPlugin.Plugin, direction < 0 ? -100.0 : 100.0, null);
                 if (released != null && released.PropertyType == typeof(double))
@@ -288,18 +314,43 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return true;
         }
 
+        private int GetOutputControlRepresentation(DeviceConfiguration configuration,
+            DeviceBindingInfo control, string name)
+        {
+            if (control.DeviceBindingCategory == DeviceBindingCategory.Momentary) return 3;
+            if (control.DeviceBindingCategory != DeviceBindingCategory.Range) return 0;
+            return DeviceVisualCatalog.IsKnownTriggerAxis(configuration, ProfileViewModel.Profile,
+                       DeviceIoType.Output, control.KeyValue) ||
+                   DeviceVisualCatalog.IsTriggerControlName(name) ? 4 : 2;
+        }
+
+        private bool CanChangeOutputRepresentationAt(int slot, int representation)
+        {
+            var input = Mapping.EffectiveInputRepresentation;
+            var capacity = Math.Max(input == 1 ? 4 : input == 2 ? 2 : 1, representation == 2 ? 2 : 1);
+            return slot >= 0 && slot < Mapping.RequiredBindingSlots(capacity, representation);
+        }
+
         private DeviceConfiguration ResolveQuickOutputConfiguration(DeviceBindingViewModel bindingViewModel)
         {
             return bindingViewModel?.ResolveOutputConfiguration();
         }
 
+        internal void CancelQuickOutputCapture()
+        {
+            _quickOutputDetectionCancellation?.Cancel();
+        }
+
+        internal bool CanApplyOutputBinding => ButtonsEnabled &&
+            !ProfileViewModel.Profile.Context.SubscriptionsManager.IsTransitionInProgress;
+
         public async Task<bool> QuickBindOutputAsync(BindingVisualDescriptor descriptor)
         {
-            if (!ButtonsEnabled) return false;
+            if (!CanApplyOutputBinding) return false;
 
             if (IsQuickOutputDetecting)
             {
-                _quickOutputDetectionCancellation?.Cancel();
+                CancelQuickOutputCapture();
                 return false;
             }
 
@@ -338,7 +389,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
                 var currentBinding = ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
                 var currentConfiguration = ResolveQuickOutputConfiguration(currentBinding);
-                if (!ButtonsEnabled || !ReferenceEquals(currentBinding, bindingViewModel) ||
+                if (!CanApplyOutputBinding || !ReferenceEquals(currentBinding, bindingViewModel) ||
                     !bindingViewModel.BindingEnabled || bindingViewModel.DeviceBindingCategory != category ||
                     currentConfiguration?.Guid != configuration.Guid ||
                     !ReferenceEquals(currentConfiguration.Device, outputDevice))

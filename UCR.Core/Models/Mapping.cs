@@ -12,6 +12,11 @@ namespace HidWizards.UCR.Core.Models
     public class DirectionalInputBank
     {
         public int Representation { get; set; }
+
+        // -1 marks a whole-mapping representation bank from older profiles.
+        [XmlAttribute]
+        [DefaultValue(-1)]
+        public int GroupIndex { get; set; } = -1;
         public List<DeviceBinding> Bindings { get; set; } = new List<DeviceBinding>();
     }
 
@@ -59,10 +64,27 @@ namespace HidWizards.UCR.Core.Models
                 : RequiredBindingSlots(EffectiveDirectionalCapacity, EffectiveInputRepresentation);
 
         [XmlIgnore]
-        public int RequiredInputBindingSlots => RequiredInputBindingSlotsPerGroup *
-            Math.Max(1, DeviceBindings?.Select(binding =>
-                Math.Max(0, binding.InputExpressionGroup)).Distinct().Count() ?? 1) +
-            (DeviceBindings?.Count(binding => binding.IsDirectionalAndCondition) ?? 0);
+        public int RequiredInputBindingSlots
+        {
+            get
+            {
+                var perGroup = RequiredInputBindingSlotsPerGroup;
+                if (DeviceBindings == null || DeviceBindings.Count == 0) return perGroup;
+                var groups = DeviceBindings.GroupBy(binding => Math.Max(0, binding.InputExpressionGroup));
+                return groups.Sum(group =>
+                {
+                    var guards = group.Count(binding => binding.IsDirectionalAndCondition);
+                    var core = group.Count() - guards;
+                    return guards + (UsesFourWayGroupShapes && IsFourWayGroupSlotCount(core) ? core : perGroup);
+                });
+            }
+        }
+
+        [XmlIgnore]
+        internal bool UsesFourWayGroupShapes => EffectiveInputRepresentation == 1 &&
+            EffectiveDirectionalCapacity == 4;
+
+        internal static bool IsFourWayGroupSlotCount(int count) => count == 2 || count == 4;
 
         [XmlAttribute]
         [DefaultValue(0)]
@@ -462,7 +484,7 @@ namespace HidWizards.UCR.Core.Models
                 Plugins.Count < requiredOutput) return;
 
             var selected = ComputeDirectionalOrChannels(InputCache, DeviceBindings,
-                capacity, inputType, routedOutputType, RequiredInputBindingSlotsPerGroup);
+                capacity, inputType, routedOutputType, RequiredInputBindingSlotsPerGroup, UsesFourWayGroupShapes);
             for (var index = 0; index < Math.Min(Plugins.Count, selected.Count); index++)
             {
                 var plugin = Plugins[index];
@@ -479,7 +501,7 @@ namespace HidWizards.UCR.Core.Models
 
         internal static List<short> ComputeDirectionalOrChannels(
             IList<short> inputValues, IList<DeviceBinding> inputBindings,
-            int capacity, int inputType, int outputType, int slotsPerGroup)
+            int capacity, int inputType, int outputType, int slotsPerGroup, bool useFourWayGroupShapes = false)
         {
             var requiredOutput = RequiredBindingSlots(capacity, outputType);
             var zero = Enumerable.Repeat((short)0, requiredOutput).ToList();
@@ -494,7 +516,15 @@ namespace HidWizards.UCR.Core.Models
                 var positions = group.Where(index => !inputBindings[index].IsDirectionalAndCondition)
                     .OrderBy(index => inputBindings[index].InputDirectionSlot > 0
                         ? inputBindings[index].InputDirectionSlot : index + 1).ToList();
-                if (positions.Count < slotsPerGroup) continue;
+                var groupSlots = slotsPerGroup;
+                var groupInputType = inputType;
+                if (useFourWayGroupShapes)
+                {
+                    if (!IsFourWayGroupSlotCount(positions.Count)) continue;
+                    groupSlots = positions.Count;
+                    groupInputType = groupSlots == 4 ? 3 : 1;
+                }
+                if (positions.Count < groupSlots) continue;
 
                 // An OR branch is eligible only when ALL its independent AND
                 // conditions pass. A missing gate binding cannot accidentally
@@ -503,11 +533,11 @@ namespace HidWizards.UCR.Core.Models
                 if (guards.Any(index => !EvaluateOrdinaryCondition(
                     inputBindings[index], inputValues[index]))) continue;
 
-                var values = positions.Take(slotsPerGroup).Select(index => inputValues[index]).ToList();
-                var bindings = positions.Take(slotsPerGroup)
+                var values = positions.Take(groupSlots).Select(index => inputValues[index]).ToList();
+                var bindings = positions.Take(groupSlots)
                     .Select(index => inputBindings[index]).ToList();
                 var channels = ComputeDirectionalChannelValues(values, bindings,
-                    capacity, inputType, outputType);
+                    capacity, groupInputType, outputType);
 
                 // An inactive or neutral OR set must never suppress later sets.
                 if (channels.Any(channel => channel != 0)) return channels;
@@ -956,6 +986,7 @@ namespace HidWizards.UCR.Core.Models
             if (members.Count == 0 || members.Count == DeviceBindings.Count) return false;
 
             foreach (var member in members) DeviceBindings.Remove(member);
+            InactiveInputRepresentations?.RemoveAll(bank => bank.GroupIndex == Math.Max(0, group));
             NormalizeExpressionGroups();
             Profile?.Context?.ContextChanged();
             return true;
@@ -967,6 +998,13 @@ namespace HidWizards.UCR.Core.Models
                 .Distinct().OrderBy(group => group).ToList();
             var remap = groups.Select((group, index) => new { group, index })
                 .ToDictionary(item => item.group, item => item.index);
+            foreach (var bank in InactiveInputRepresentations ?? new List<DirectionalInputBank>())
+            {
+                if (bank.GroupIndex < 0) continue;
+                if (!remap.TryGetValue(bank.GroupIndex, out var group)) continue;
+                bank.GroupIndex = group;
+                foreach (var binding in bank.Bindings) binding.InputExpressionGroup = group;
+            }
             foreach (var item in DeviceBindings)
                 item.SetInputExpressionGroup(remap[Math.Max(0, item.InputExpressionGroup)]);
         }
@@ -1092,6 +1130,9 @@ namespace HidWizards.UCR.Core.Models
                 {
                     binding.Profile = profile;
                     binding.DeviceIoType = DeviceIoType.Input;
+                    if (bank.GroupIndex >= 0 || binding.InputExpressionKindConfigured)
+                        binding.DeviceBindingCategory = binding.InputExpressionInputKind == 0
+                            ? DeviceBindingCategory.Momentary : DeviceBindingCategory.Range;
                 }
             foreach (var bank in InactiveOutputRepresentations ?? new List<DirectionalOutputBank>())
                 foreach (var plugin in bank.Plugins ?? new List<Plugin>())

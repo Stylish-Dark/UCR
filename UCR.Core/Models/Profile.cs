@@ -825,6 +825,7 @@ namespace HidWizards.UCR.Core.Models
             ChildProfiles = snapshot.ChildProfiles ?? new List<Profile>();
             Mappings = snapshot.Mappings ?? new List<Mapping>();
             MappingGroups = snapshot.MappingGroups ?? new List<MappingGroup>();
+            CompoundBindingPresets = snapshot.CompoundBindingPresets ?? new List<CompoundBindingPreset>();
             MainMappingsEnabled = snapshot.MainMappingsEnabled;
             MainBlockInputs = snapshot.MainBlockInputs;
             MainGroupTitle = snapshot.MainGroupTitle;
@@ -852,6 +853,7 @@ namespace HidWizards.UCR.Core.Models
             OnPropertyChanged(nameof(Title));
             OnPropertyChanged(nameof(Mappings));
             OnPropertyChanged(nameof(MappingGroups));
+            OnPropertyChanged(nameof(CompoundBindingPresets));
             OnPropertyChanged(nameof(InputDeviceConfigurations));
             OnPropertyChanged(nameof(OutputDeviceConfigurations));
             OnPropertyChanged(nameof(AutoActivateApplications));
@@ -869,6 +871,7 @@ namespace HidWizards.UCR.Core.Models
             if (ChildProfiles == null) ChildProfiles = new List<Profile>();
             if (Mappings == null) Mappings = new List<Mapping>();
             if (MappingGroups == null) MappingGroups = new List<MappingGroup>();
+            if (CompoundBindingPresets == null) CompoundBindingPresets = new List<CompoundBindingPreset>();
             if (InputDeviceConfigurations == null) InputDeviceConfigurations = new List<DeviceConfiguration>();
             if (OutputDeviceConfigurations == null) OutputDeviceConfigurations = new List<DeviceConfiguration>();
             if (BlockUnmappedInputEnabledOverrides == null) BlockUnmappedInputEnabledOverrides = new List<Guid>();

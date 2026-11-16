@@ -413,19 +413,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public static bool MatchesControlLeafName(string controlTitle, string name)
         {
             var normalized = NormalizeAxisPresetKey(name);
-            if (NormalizeAxisPresetKey(controlTitle) == normalized) return true;
-            // Keyboard arrow keys have several complete names depending on
-            // the provider. Accept exact "Left Arrow" / "Arrow Left" tokens
-            // without weakening the strict A-vs-Caps matching below.
-            if (new[] { "UP", "DOWN", "LEFT", "RIGHT" }.Contains(normalized) &&
-                (NormalizeAxisPresetKey(controlTitle) == normalized + "ARROW" ||
-                 NormalizeAxisPresetKey(controlTitle) == "ARROW" + normalized))
-                return true;
-            // Providers may prefix controls with categories, e.g. "Buttons,A"
-            // or "Face buttons: Cross". Compare only complete trailing tokens,
-            // not arbitrary suffixes that would confuse A with another key.
-            var parts = Regex.Split(controlTitle ?? string.Empty, @"[,;:/\\|>]+");
-            return parts.Any(part => NormalizeAxisPresetKey(part) == normalized);
+            if (normalized.Length == 0) return false;
+            var arrow = normalized == "UP" || normalized == "DOWN" ||
+                        normalized == "LEFT" || normalized == "RIGHT";
+            bool Matches(string text)
+            {
+                var token = NormalizeAxisPresetKey(text);
+                return token == normalized || (arrow &&
+                    (token == normalized + "ARROW" || token == "ARROW" + normalized));
+            }
+            // Providers may prefix complete tokens, e.g. "Keys,Left Arrow".
+            return Matches(controlTitle) ||
+                Regex.Split(controlTitle ?? string.Empty, @"[,;:/\\|>]+").Any(Matches);
         }
 
         private static string NormalizeAxisPresetKey(string value)

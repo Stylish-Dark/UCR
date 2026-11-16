@@ -309,6 +309,8 @@
                                 <ListBox x:Name="CompoundPresetList" MaxHeight="150"
                                          ItemsSource="{Binding CompoundPresetItems}"
                                          Background="Transparent" BorderThickness="0"
+                                         HorizontalContentAlignment="Stretch"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                          ScrollViewer.CanContentScroll="False"
                                          ScrollViewer.VerticalScrollBarVisibility="Auto">
                                     <ListBox.ItemTemplate>
@@ -320,16 +322,11 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"/>
-                                                    <StackPanel Orientation="Horizontal" Opacity="0.7">
-                                                        <TextBlock Text="{Binding Keys[0]}" FontSize="10"/>
-                                                        <TextBlock Text=" · " FontSize="10"/>
-                                                        <TextBlock Text="{Binding Keys[1]}" FontSize="10"/>
-                                                        <TextBlock Text=" · " FontSize="10"/>
-                                                        <TextBlock Text="{Binding Keys[2]}" FontSize="10"/>
-                                                        <TextBlock Text=" · " FontSize="10"/>
-                                                        <TextBlock Text="{Binding Keys[3]}" FontSize="10"/>
-                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
+                                                               TextWrapping="Wrap" ToolTip="{Binding Name}"/>
+                                                    <TextBlock FontSize="10" Opacity="0.7" TextWrapping="Wrap">
+                                                        <Run Text="{Binding Keys[0], Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Keys[1], Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Keys[2], Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Keys[3], Mode=OneWay}"/>
+                                                    </TextBlock>
                                                 </StackPanel>
                                                 <Button Grid.Column="1" Content="Edit" Padding="5 2" Margin="3 0"
                                                         Height="27" Click="EditCompoundPreset_OnClick"

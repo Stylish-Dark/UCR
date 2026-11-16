@@ -98,13 +98,16 @@ namespace HidWizards.UCR.Views.Controls
         {
             // Keep input and output editors usable in the narrow middle workspace.
             // Two columns need room for device, Bind, NOT and Remove controls.
-            if (sender is UniformGrid editor)
-            {
-                var singleInspector = InspectorMode && !InlineWorkspaceMode;
-                var desired = singleInspector || e.NewSize.Width < 650 ? 1 : 2;
-                if (editor.Columns != desired)
-                    editor.Columns = desired;
-            }
+            if (!(sender is Grid editor) || editor.Children.Count != 2) return;
+            var stacked = (InspectorMode && !InlineWorkspaceMode) || e.NewSize.Width < 650;
+            var span = stacked ? 2 : 1;
+            if (Grid.GetColumnSpan(editor.Children[0]) == span) return;
+
+            Grid.SetIsSharedSizeScope(editor, !stacked);
+            Grid.SetColumnSpan(editor.Children[0], span);
+            Grid.SetColumnSpan(editor.Children[1], span);
+            Grid.SetColumn(editor.Children[1], stacked ? 0 : 1);
+            Grid.SetRow(editor.Children[1], stacked ? 1 : 0);
         }
 
         private void RemoveOrClearInput_OnClick(object sender, RoutedEventArgs e)
@@ -168,16 +171,19 @@ namespace HidWizards.UCR.Views.Controls
                 menu.Items.Insert(0, deviceMenu);
             }
             menu.Items.Add(new Separator());
-            var block = new MenuItem
+            if (input.SupportsBlock)
             {
-                Header = "Block original input",
-                IsCheckable = true,
-                IsChecked = input.Block,
-                IsEnabled = input.CanBlock,
-                ToolTip = input.BlockAvailability
-            };
-            block.Click += (s, args) => input.Block = block.IsChecked;
-            menu.Items.Add(block);
+                var block = new MenuItem
+                {
+                    Header = "Block original input",
+                    IsCheckable = true,
+                    IsChecked = input.Block,
+                    IsEnabled = input.CanBlock,
+                    ToolTip = input.BlockAvailability
+                };
+                block.Click += (s, args) => input.Block = block.IsChecked;
+                menu.Items.Add(block);
+            }
             var not = new MenuItem
             {
                 Header = "NOT (invert this button condition)",

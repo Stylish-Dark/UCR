@@ -148,10 +148,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public Visibility ShowPreview => DeviceBinding.IsInBindMode ? Visibility.Hidden : Visibility.Visible;
         public Visibility ShowBindMode => ShowPreview.Equals(Visibility.Visible) ? Visibility.Hidden : Visibility.Visible;
         public Visibility ShowPropertyList => PluginPropertyGroup == null ? Visibility.Collapsed : Visibility.Visible;
-        public Visibility ShowBlock => DeviceBinding.DeviceIoType == DeviceIoType.Input
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-        public bool CanBlock => BindingEnabled && DeviceBinding.IsBound && DeviceBinding.IsBlockable();
+        internal bool SupportsBlock => DeviceBinding.IsBound && DeviceBinding.IsBlockable();
+        public Visibility ShowBlock => SupportsBlock ? Visibility.Visible : Visibility.Collapsed;
+        public bool CanBlock => BindingEnabled && SupportsBlock;
         internal DeviceConfiguration ResolveOutputConfiguration()
         {
             var profile = DeviceBinding?.Profile;
@@ -234,8 +233,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             // An unbound input cannot block anything. Do not show a misleading
             // active toggle while the physical control has not been selected.
-            get => DeviceBinding.IsBound && DeviceBinding.Block;
-            set => DeviceBinding.SetBlock(value);
+            get => DeviceBinding.Block && SupportsBlock;
+            set
+            {
+                if (!value || CanBlock) DeviceBinding.SetBlock(value);
+            }
         }
 
         public bool InvertInput
@@ -454,24 +456,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 Guid.Empty);
             Devices.Clear();
             Devices.Add(placeholder);
-            var chosen = placeholder;
-            if (guid != Guid.Empty)
-            {
-                var selected = profile.GetDeviceConfiguration(type, guid);
-                if (selected?.Device != null)
-                {
-                    chosen = new ComboBoxItemViewModel(selected.GetFullTitleForProfile(profile),
-                        selected.Guid, DeviceVisualCatalog.Describe(selected, profile, type));
-                    Devices.Add(chosen);
-                }
-                else
-                {
-                    chosen = new ComboBoxItemViewModel(
-                        type == DeviceIoType.Output ? "Unavailable device" : "Disconnected input device",
-                        guid);
-                    Devices.Add(chosen);
-                }
-            }
+            var chosen = guid == Guid.Empty ? placeholder : CreateSavedDeviceChoice(guid);
+            if (!ReferenceEquals(chosen, placeholder)) Devices.Add(chosen);
             SelectedDevice = chosen;
             _deviceListDirty = false;
             OnPropertyChanged(nameof(SelectedDevice));
@@ -586,9 +572,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var devicesManager = DeviceBinding.Profile.Context.DevicesManager;
             var deviceConfigurationList = DeviceBinding.Profile.GetDeviceConfigurationList(DeviceBinding.DeviceIoType)
                 .Where(configuration => configuration?.Device != null &&
-                    (DeviceBinding.DeviceIoType == DeviceIoType.Output
-                        ? SupportsOutputCategory(configuration, DeviceBindingCategory, DeviceBinding.Profile.Context)
-                        : IsCompatibleInputDevice(configuration, DeviceBindingCategory, DeviceBinding.Profile.Context)))
+                    (DeviceBinding.DeviceIoType == DeviceIoType.Input ||
+                     SupportsOutputCategory(configuration, DeviceBindingCategory, DeviceBinding.Profile.Context) ||
+                     devicesManager.ResolveDevice(configuration.Device, DeviceIoType.Output) == null))
                 .Select((configuration, index) => new
                 {
                     Configuration = configuration,
@@ -654,81 +640,32 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+        private ComboBoxItemViewModel CreateSavedDeviceChoice(Guid savedGuid)
+        {
+            var profile = DeviceBinding.Profile;
+            var type = DeviceBinding.DeviceIoType;
+            var saved = profile.GetDeviceConfiguration(type, savedGuid);
+            if (saved?.Device == null)
+                return new ComboBoxItemViewModel(type == DeviceIoType.Output
+                    ? "Unavailable output device" : "Unavailable input device", savedGuid);
+
+            return new ComboBoxItemViewModel(saved.GetFullTitleForProfile(profile), savedGuid,
+                DeviceVisualCatalog.Describe(saved, profile, type));
+        }
+
         private void SetSelectDevice()
         {
             if (!_deviceListLoaded || Devices == null) return;
-            ComboBoxItemViewModel selectedDevice = null;
-
-            foreach (var comboBoxItem in Devices)
+            var guid = DeviceBinding.DeviceConfigurationGuid;
+            var selected = Devices.FirstOrDefault(choice => choice.Value == guid);
+            if (selected == null && guid != Guid.Empty)
             {
-                if (comboBoxItem.Value == DeviceBinding.DeviceConfigurationGuid)
-                {
-                    selectedDevice = comboBoxItem;
-                    break;
-                }
+                // Rebuilding the picker is a read of the assignment. Missing
+                // metadata must never clear a key stored in the profile.
+                selected = CreateSavedDeviceChoice(guid);
+                Devices.Add(selected);
             }
-
-            if (Devices.Count == 0)
-            {
-                Devices.Add(new ComboBoxItemViewModel(
-                    DeviceBinding.DeviceIoType == DeviceIoType.Output ? "No compatible output devices" :
-                        DeviceBindingCategory == DeviceBindingCategory.Range
-                            ? "No compatible axis devices" : "No compatible button devices",
-                    Guid.Empty));
-                selectedDevice = Devices[0];
-            }
-            else if (selectedDevice == null && DeviceBinding.DeviceConfigurationGuid != Guid.Empty)
-            {
-                if (DeviceBinding.DeviceIoType == DeviceIoType.Input)
-                {
-                    var savedGuid = DeviceBinding.DeviceConfigurationGuid;
-                    var saved = DeviceBinding.Profile.GetDeviceConfiguration(DeviceIoType.Input, savedGuid);
-
-                    if (saved == null)
-                    {
-                        // Removing a device from the profile clears its selection.
-                        // A disconnected device can still own an existing assignment.
-                        DeviceBinding.SetDeviceConfigurationGuid(Guid.Empty, false);
-                        selectedDevice = Devices.FirstOrDefault(item => item.Value == Guid.Empty);
-                    }
-                    else
-                    {
-                        // Preserve references to a configured but temporarily disconnected
-                        // device without inventing a generic unavailable-device entry.
-                        // This prevents losing saved mappings when hardware is unplugged.
-                        var title = saved.ConfigurationName ?? saved.Device?.DisplayTitle
-                            ?? saved.Device?.Title ?? "Disconnected input device";
-                        selectedDevice = new ComboBoxItemViewModel(title, savedGuid,
-                            saved.Device == null
-                                ? DeviceVisualCatalog.Describe(saved.Device, DeviceIoType.Input)
-                                : DeviceVisualCatalog.Describe(saved, DeviceBinding.Profile, DeviceIoType.Input));
-                        Devices.Add(selectedDevice);
-                    }
-                }
-                else
-                {
-                    // Output selections are explicit destinations: never silently
-                    // redirect their saved bindings to another output device.
-                    selectedDevice = new ComboBoxItemViewModel("Unavailable device", DeviceBinding.DeviceConfigurationGuid);
-                    Devices.Insert(0, selectedDevice);
-                }
-            }
-            else if (selectedDevice == null)
-            {
-                if (DeviceBinding.DeviceIoType == DeviceIoType.Input)
-                {
-                    // A blank selection is intentional: Bind listens to all profile
-                    // devices until an input is detected or a device is chosen.
-                    selectedDevice = Devices.FirstOrDefault(item => item.Value == Guid.Empty);
-                }
-                else
-                {
-                    // Empty output bindings must remain explicitly unselected.
-                    selectedDevice = Devices.FirstOrDefault(item => item.Value == Guid.Empty);
-                }
-            }
-
-            SelectedDevice = selectedDevice;
+            SelectedDevice = selected;
         }
 
         public DeviceBindingTransferCompatibility ChangeDeviceConfiguration(Guid selectedDeviceConfigurationGuid)

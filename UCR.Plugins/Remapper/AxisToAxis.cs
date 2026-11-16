@@ -50,10 +50,13 @@ namespace HidWizards.UCR.Plugins.Remapper
         {
             var value = values[0];
             if (Invert) value = Functions.Invert(value);
+            // Trigger travel is shaped from its released endpoint, while a
+            // stick's dead zone and sensitivity remain centred around zero.
+            value = FromProviderRange(value);
             if (DeadZone != 0) value = _deadZoneHelper.ApplyRangeDeadZone(value);
             if (AntiDeadZone != 0) value = _antiDeadZoneHelper.ApplyRangeAntiDeadZone(value);
             if (Sensitivity != 100) value = _sensitivityHelper.ApplyRangeSensitivity(value);
-            WriteOutput(0, value);
+            WriteOutput(0, ToProviderRange(value));
         }
 
         private void Initialize()

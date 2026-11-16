@@ -422,21 +422,17 @@ namespace HidWizards.UCR.Core.Managers
                 Logger.Debug($"Bind input accepted: provider={pendingInput.ProviderName}, handle={pendingInput.DeviceHandle}, instance={pendingInput.DeviceInstance}, type={pendingInput.KeyType}, index={pendingInput.KeyValue}, subIndex={pendingInput.KeySubValue}, value={pendingInput.Value}");
                 // Only an unselected input can detect across devices. Always bind to
                 // the exact device that supplied the accepted control.
-                if (_autoDetectInputCategory)
-                {
-                    // A digital direction captured from an analogue control
-                    // must retain the sign of the movement. Otherwise moving
-                    // either way activates BOTH opposing button slots.
-                    var detectedKind = pendingInput.Category == DeviceBindingCategory.Range
+                var detectedKind = _autoDetectInputCategory
+                    ? (int?)(pendingInput.Category == DeviceBindingCategory.Range
                         ? pendingInput.Binding.InputDirectionSlot > 0
                             ? (pendingInput.Value < 0 ? 2 : 1)
                             : 3
-                        : 0;
-                    pendingInput.Binding.SetInputExpressionInputKind(detectedKind);
-                    pendingInput.Binding.DeviceBindingCategory = pendingInput.Category;
-                }
-                pendingInput.Binding.SetDeviceConfigurationGuid(pendingInput.DeviceConfigurationGuid);
-                pendingInput.Binding.SetKeyTypeValue(pendingInput.KeyType, pendingInput.KeyValue, pendingInput.KeySubValue, pendingInput.ControlName);
+                        : 0)
+                    : null;
+                var category = _autoDetectInputCategory ? pendingInput.Category : pendingInput.Binding.DeviceBindingCategory;
+                pendingInput.Binding.AssignPhysicalControl(pendingInput.DeviceConfigurationGuid, category,
+                    pendingInput.KeyType, pendingInput.KeyValue, pendingInput.KeySubValue,
+                    pendingInput.ControlName, detectedKind);
                 EndBindMode();
             }
             catch (Exception exception)

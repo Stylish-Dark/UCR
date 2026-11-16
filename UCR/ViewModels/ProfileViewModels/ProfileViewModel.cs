@@ -79,6 +79,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             foreach (var item in Profile.CompoundBindingPresets ?? new List<CompoundBindingPreset>())
                 CompoundPresetItems.Add(item);
             OnPropertyChanged(nameof(CompoundPresetItems));
+            if (MappingsList == null) return;
+            foreach (var mapping in MappingsList.Where(item => item.InputIsFullStick))
+            {
+                foreach (var condition in mapping.InputConditions)
+                    condition.RefreshCompoundSummary();
+                mapping.RefreshCollapsedSummary();
+            }
         }
         public ObservableCollection<string> FilterNames { get; private set; }
         public ObservableCollection<FilterDefinitionItemViewModel> FilterDefinitions { get; private set; }

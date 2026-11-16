@@ -274,6 +274,47 @@ namespace HidWizards.UCR.Core.Models.Binding
             OnPropertyChanged(nameof(InputExpressionNegated));
         }
 
+        internal void AssignPhysicalControl(Guid deviceGuid, DeviceBindingCategory category,
+            int type, int value, int subValue, string controlName, int? inputKind = null)
+        {
+            var deviceChanged = DeviceConfigurationGuid != deviceGuid;
+            var controlChanged = deviceChanged || DeviceBindingCategory != category ||
+                KeyType != type || KeyValue != value || KeySubValue != subValue;
+            var kindChanged = inputKind.HasValue && InputExpressionInputKind != inputKind.Value;
+            var previousName = AssignedControlName;
+            if (controlName != null || controlChanged)
+                AssignedControlName = controlName?.Trim() ?? string.Empty;
+
+            DeviceConfigurationGuid = deviceGuid;
+            DeviceBindingCategory = category;
+            KeyType = type;
+            KeyValue = value;
+            KeySubValue = subValue;
+            if (inputKind.HasValue)
+            {
+                InputExpressionInputKind = inputKind.Value;
+                InputExpressionKindConfigured = true;
+            }
+            if (controlChanged)
+            {
+                CompoundPresetName = string.Empty;
+                OutputAxisDirection = 0;
+            }
+            var wasBound = _isBound;
+            _isBound = true;
+            var clearBlock = Block && !IsBlockable();
+            if (clearBlock) Block = false;
+            Profile?.Context?.ContextChanged();
+
+            // A view-model may rebuild the mapping synchronously in response
+            // to a notification. Expose only the complete new assignment.
+            if (kindChanged) OnPropertyChanged(nameof(InputExpressionInputKind));
+            if (deviceChanged) OnPropertyChanged(nameof(DeviceConfigurationGuid));
+            if (!wasBound || controlChanged || kindChanged || previousName != AssignedControlName)
+                OnPropertyChanged(nameof(IsBound));
+            if (clearBlock) OnPropertyChanged(nameof(Block));
+        }
+
         public void SetKeyTypeValue(int type, int value, int subValue)
         {
             SetKeyTypeValue(type, value, subValue, null);
@@ -326,7 +367,7 @@ namespace HidWizards.UCR.Core.Models.Binding
 
         internal bool IsBlockable(Device device)
         {
-            if (device == null) return false;
+            if (DeviceIoType != DeviceIoType.Input || device?.IsInterceptionKeyboard != true) return false;
 
             // Configured devices normally already carry their provider's binding menu.
             // Do not enumerate every live hardware provider just to display a Block toggle.

@@ -13,6 +13,7 @@ namespace HidWizards.UCR.Core.Models.Subscription
         public bool IsOverwritten { get; set; }
         public DeviceSubscription DeviceSubscription { get; }
         internal bool GroupBlocksInputs { get; }
+        internal bool IsSafetySubscription { get; }
         internal InputSubscriptionRequest SubscribedRequest { get; set; }
 
         public InputSubscription(Mapping mapping, DeviceBinding deviceBinding, Profile profile, Guid subscriptionStateGuid)
@@ -42,6 +43,7 @@ namespace HidWizards.UCR.Core.Models.Subscription
 
         public InputSubscription(DeviceBinding deviceBinding, Profile profile, Guid subscriptionStateGuid, Device device)
         {
+            IsSafetySubscription = true;
             DeviceBinding = deviceBinding;
             Profile = profile;
             SubscriptionStateGuid = subscriptionStateGuid;

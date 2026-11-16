@@ -83,7 +83,7 @@ namespace HidWizards.UCR.Views.Controls
             }
             // All binding representations obey the same geometry:
             // device on the left, Bind filling the remaining width.
-            var deviceColumnWidth = CompactDirectional ? 48 : 62;
+            var deviceColumnWidth = CompactDirectional ? 50 : 62;
             BindingGrid.ColumnDefinitions[0].Width = new GridLength(deviceColumnWidth);
             BindingGrid.ColumnDefinitions[2].Width = new GridLength(0);
             Grid.SetColumn(DeviceSelectionBox, 0);
@@ -102,6 +102,12 @@ namespace HidWizards.UCR.Views.Controls
         {
             InitializeComponent();
             Loaded += OnLoaded;
+            Unloaded += (sender, args) =>
+            {
+                _loaded = false;
+                CloseOutputPicker();
+            };
+            DataContextChanged += (sender, args) => CloseOutputPicker();
         }
 
         public DeviceBinding DeviceBinding
@@ -180,7 +186,7 @@ namespace HidWizards.UCR.Views.Controls
             {
                 viewModel.ChangeDeviceConfiguration(selected.Value);
             }
-            if (_outputPicker != null) _outputPicker.IsOpen = false;
+            CloseOutputPicker();
         }
 
         private async void BindButton_OnClick(object sender, RoutedEventArgs e)
@@ -412,11 +418,12 @@ namespace HidWizards.UCR.Views.Controls
                 item.ToolTip = "Assign " + node.Title;
                 item.Click += (sender, args) =>
                 {
-                    binding.SetInputExpressionInputKind(
+                    if (binding.Profile.Context.SubscriptionsManager.IsTransitionInProgress ||
+                        binding.Profile.IsActive() ||
+                        binding.Profile.GetDeviceConfiguration(DeviceIoType.Input, configurationGuid) == null) return;
+                    binding.AssignPhysicalControl(configurationGuid, info.DeviceBindingCategory,
+                        info.KeyType, info.KeyValue, info.KeySubValue, node.Title,
                         info.DeviceBindingCategory == DeviceBindingCategory.Range ? 3 : 0);
-                    binding.SetDeviceConfigurationGuid(configurationGuid);
-                    binding.DeviceBindingCategory = info.DeviceBindingCategory;
-                    binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue, node.Title);
                 };
                 return item;
             }
@@ -463,16 +470,6 @@ namespace HidWizards.UCR.Views.Controls
                 current = System.Windows.Media.VisualTreeHelper.GetParent(current);
             }
             return null;
-        }
-
-        private static IEnumerable<DeviceBindingNode> FlattenControls(IEnumerable<DeviceBindingNode> nodes)
-        {
-            foreach (var node in nodes ?? Enumerable.Empty<DeviceBindingNode>())
-            {
-                if (node == null) continue;
-                if (node.IsBinding && node.DeviceBindingInfo != null) yield return node;
-                foreach (var child in FlattenControls(node.ChildrenNodes)) yield return child;
-            }
         }
 
         // Classify by HID semantics: analogue triggers are full-range axes,
@@ -539,10 +536,15 @@ namespace HidWizards.UCR.Views.Controls
             }
         }
 
+        private void CloseOutputPicker()
+        {
+            if (_outputPicker != null) _outputPicker.IsOpen = false;
+        }
+
         // Output controls come directly from the selected device's provider descriptors.
         private void ShowOutputPicker(FrameworkElement target, DeviceConfiguration config)
         {
-            if (_outputPicker != null) _outputPicker.IsOpen = false;
+            CloseOutputPicker();
             if (config?.Device == null || DeviceBinding.Profile.Context == null) return;
 
             var popup = new Popup
@@ -552,8 +554,12 @@ namespace HidWizards.UCR.Views.Controls
                 AllowsTransparency = true,
                 StaysOpen = false
             };
-            _outputPicker = popup;
             popup.Child = BuildOutputPickerContent(config, popup);
+            popup.Closed += (sender, args) =>
+            {
+                if (ReferenceEquals(_outputPicker, popup)) _outputPicker = null;
+            };
+            _outputPicker = popup;
             popup.IsOpen = true;
         }
 
@@ -563,48 +569,29 @@ namespace HidWizards.UCR.Views.Controls
         {
             var mapping = FindAncestor<MappingCardControl>(this)?.DataContext
                 as MappingViewModel;
-            // Every output control remains selectable. Picking another category
-            // automatically updates the mapping's inferred representation.
+            var bindingViewModel = DataContext as DeviceBindingViewModel;
             var outputDevice = config.Device;
-            var nodes = outputDevice.GetDeviceBindingMenu(DeviceBinding.Profile.Context,
-                DeviceIoType.Output);
-            var currentCategory = DeviceBinding.DeviceBindingCategory;
-            var currentPlugin = mapping?.Plugins.FirstOrDefault(plugin => plugin.DeviceBindings.Any(binding =>
-                ReferenceEquals(binding.DeviceBinding, DeviceBinding)));
-            var restrictCategory = currentCategory == DeviceBindingCategory.Event ||
-                currentPlugin?.DeviceBindings.Count > 1;
+            var selectedBinding = DeviceBinding;
+            var currentCategory = selectedBinding.DeviceBindingCategory;
+            var options = mapping?.GetOutputBindingOptions(bindingViewModel, config)
+                ?? new List<QuickBindingOption>();
             var buttons = new WrapPanel { Width = 440 };
             var directionals = new WrapPanel { Width = 440 };
             var axes = new WrapPanel { Width = 440 };
             var events = new WrapPanel { Width = 440 };
             string selectedCategory = null;
 
-            foreach (var node in FlattenControls(nodes))
+            foreach (var option in options)
             {
-                var info = node.DeviceBindingInfo;
-                if (info == null || (restrictCategory && info.DeviceBindingCategory != currentCategory))
-                    continue;
-                if (info.DeviceBindingCategory == DeviceBindingCategory.Event && currentCategory != DeviceBindingCategory.Event)
-                    continue;
-                var temporary = new DeviceBinding
-                {
-                    Profile = DeviceBinding.Profile,
-                    DeviceIoType = DeviceIoType.Output,
-                    DeviceBindingCategory = info.DeviceBindingCategory,
-                    DeviceConfigurationGuid = config.Guid,
-                    IsBound = true,
-                    KeyType = info.KeyType,
-                    KeyValue = info.KeyValue,
-                    KeySubValue = info.KeySubValue
-                };
-                var visual = DeviceVisualCatalog.DescribeBinding(
-                    temporary, info.DeviceBindingCategory, DeviceBinding.Profile);
-                var title = node.Title ?? "";
+                var info = option.OutputControl;
+                var visual = option.Visual;
+                var title = option.Title ?? string.Empty;
                 var category = OutputPickerCategory(info.DeviceBindingCategory, visual.ControlKind, title);
                 if (category == null) continue;
                 var isSelectedControl = DeviceBinding.IsBound && DeviceBinding.KeyType == info.KeyType &&
                     DeviceBinding.KeyValue == info.KeyValue && DeviceBinding.KeySubValue == info.KeySubValue;
-                if (isSelectedControl) selectedCategory = category;
+                var isCurrentChoice = isSelectedControl && DeviceBinding.OutputAxisDirection == 0;
+                if (isCurrentChoice) selectedCategory = category;
 
                 var row = new StackPanel { Orientation = Orientation.Horizontal };
                 row.Children.Add(new ControlGlyphControl
@@ -634,7 +621,7 @@ namespace HidWizards.UCR.Views.Controls
                     Padding = new Thickness(8, 4, 5, 4),
                     Background = new SolidColorBrush(Color.FromRgb(43, 43, 43)),
                     Foreground = Brushes.White,
-                    BorderBrush = Brushes.DimGray,
+                    BorderBrush = isCurrentChoice ? Brushes.SteelBlue : Brushes.DimGray,
                     BorderThickness = new Thickness(1),
                     ToolTip = title
                 };
@@ -647,7 +634,7 @@ namespace HidWizards.UCR.Views.Controls
                     {
                         // Apply before closing. Replacing the output plug-in can
                         // invalidate the old binding view-model during a deferred callback.
-                        if (card.ApplyOutputControlChoice(bindingVm, config.Guid, outputDevice, selectedInfo))
+                        if (card.ApplyOutputControlChoice(bindingVm, config.Guid, outputDevice, selectedInfo, controlName: title))
                             popup.IsOpen = false;
                     }
                 };
@@ -708,7 +695,8 @@ namespace HidWizards.UCR.Views.Controls
                             Padding = new Thickness(8, 4, 5, 4),
                             Background = new SolidColorBrush(Color.FromRgb(43, 43, 43)),
                             Foreground = Brushes.White,
-                            BorderBrush = Brushes.DimGray,
+                            BorderBrush = isSelectedControl && DeviceBinding.OutputAxisDirection == selectedSign
+                                ? Brushes.SteelBlue : Brushes.DimGray,
                             BorderThickness = new Thickness(1),
                             ToolTip = label
                         };
@@ -757,40 +745,6 @@ namespace HidWizards.UCR.Views.Controls
                 directionals.Children.Insert(nextPosition++, item);
             }
 
-            // Place the analogue triggers beneath their respective shoulder buttons.
-            foreach (var side in new[] { "L", "R" })
-            {
-                var trigger = buttons.Children.OfType<Button>().FirstOrDefault(button =>
-                    button.ToolTip is string title &&
-                    (title.Equals(side == "L" ? "Left Trigger" : "Right Trigger", StringComparison.OrdinalIgnoreCase) ||
-                     title.Equals(side == "L" ? "LT" : "RT", StringComparison.OrdinalIgnoreCase) ||
-                     title.Equals(side == "L" ? "L2" : "R2", StringComparison.OrdinalIgnoreCase)));
-                if (trigger == null) continue;
-                var shoulder = buttons.Children.OfType<Button>().FirstOrDefault(button =>
-                    button.ToolTip is string title &&
-                    (title.Equals(side == "L" ? "Left Button" : "Right Button", StringComparison.OrdinalIgnoreCase) ||
-                     title.Equals(side == "L" ? "LB" : "RB", StringComparison.OrdinalIgnoreCase) ||
-                     title.Equals(side == "L" ? "L1" : "R1", StringComparison.OrdinalIgnoreCase) ||
-                     title.Equals(side == "L" ? "Left Bumper" : "Right Bumper", StringComparison.OrdinalIgnoreCase)));
-                if (shoulder == null) continue;
-                buttons.Children.Remove(trigger);
-                buttons.Children.Insert(buttons.Children.IndexOf(shoulder) + 1, trigger);
-            }
-
-            // WrapPanel arranges in row-major pairs. Keep the controller buttons
-            // together as LB/RB on one row and LT/RT on the next.
-            var orderedButtons = buttons.Children.OfType<Button>().ToList();
-            var lb = orderedButtons.FirstOrDefault(x => string.Equals(x.ToolTip as string, "LB", StringComparison.OrdinalIgnoreCase));
-            var rb = orderedButtons.FirstOrDefault(x => string.Equals(x.ToolTip as string, "RB", StringComparison.OrdinalIgnoreCase));
-            var lt = orderedButtons.FirstOrDefault(x => string.Equals(x.ToolTip as string, "LT", StringComparison.OrdinalIgnoreCase));
-            var rt = orderedButtons.FirstOrDefault(x => string.Equals(x.ToolTip as string, "RT", StringComparison.OrdinalIgnoreCase));
-            if (lb != null && rb != null && lt != null && rt != null)
-            {
-                var index = buttons.Children.IndexOf(lb);
-                foreach (var item in new[] { lb, rb, lt, rt }) buttons.Children.Remove(item);
-                foreach (var item in new[] { lb, rb, lt, rt }) buttons.Children.Insert(index++, item);
-            }
-
             var selectedTab = PreferredOutputPickerTab(currentCategory,
                 buttons.Children.Count, directionals.Children.Count, axes.Children.Count);
             var preferredCategory = selectedCategory ?? new[] { "Buttons", "Directions", "Axes" }[selectedTab];
@@ -807,7 +761,6 @@ namespace HidWizards.UCR.Views.Controls
                 if (count == 0) continue;
                 // Two 212-DIP tiles per row; size to actual content, with a
                 // scrollbar only when the selected category needs it.
-                var listHeight = Math.Min(340, Math.Max(58, Math.Ceiling(count / 2.0) * 54 + 8));
                 tabs.Items.Add(new TabItem
                 {
                     Header = category.Title,
@@ -815,7 +768,6 @@ namespace HidWizards.UCR.Views.Controls
                     Content = new ScrollViewer
                     {
                         Content = category.Items,
-                        Height = listHeight,
                         MaxHeight = 340,
                         HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
                         VerticalScrollBarVisibility = ScrollBarVisibility.Auto
@@ -856,7 +808,8 @@ namespace HidWizards.UCR.Views.Controls
             else
                 root.Children.Add(new TextBlock
                 {
-                    Text = "This device has no selectable output controls.",
+                    Text = mapping?.GetOutputPickerUnavailableReason(bindingViewModel)
+                        ?? "The output slot is unavailable.",
                     Foreground = Brushes.LightGray,
                     Margin = new Thickness(12, 10, 12, 10),
                     TextWrapping = TextWrapping.Wrap
@@ -874,7 +827,9 @@ namespace HidWizards.UCR.Views.Controls
             };
             clear.Click += (sender, args) =>
             {
-                DeviceBinding.ClearBinding();
+                if (ReferenceEquals(DeviceBinding, selectedBinding) && bindingViewModel?.BindingEnabled == true &&
+                    mapping?.CanApplyOutputBinding == true)
+                    selectedBinding.ClearBinding();
                 popup.IsOpen = false;
             };
             root.Children.Add(clear);
