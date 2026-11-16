@@ -1174,6 +1174,8 @@ namespace HidWizards.UCR.Views.ProfileViews
         private void ScrollMappingIntoView(MappingViewModel mapping)
         {
             if (mapping == null) return;
+            var section = ProfileViewModel.GetMappingSection(mapping);
+            if (section != null) section.IsExpanded = true;
             MappingSectionsItemsControl.UpdateLayout();
             var list = FindVisualChildren<ListView>(MappingSectionsItemsControl)
                 .FirstOrDefault(candidate => candidate.Items.Contains(mapping));

@@ -50,6 +50,8 @@ namespace HidWizards.UCR.Views.Controls
                 foreach (var mapping in _observedMappings)
                     mapping.PropertyChanged -= MappingOnPropertyChanged;
                 _observedMappings.Clear();
+                _heights.Clear();
+                _itemsDirty = true;
             };
         }
 
@@ -321,8 +323,7 @@ namespace HidWizards.UCR.Views.Controls
             // Re-plan once with true row heights. No animation or geometry is
             // substituted for a visible item; it always uses its actual template.
             if (changed && VirtualizingPanel.GetIsVirtualizing(owner) && items.Count >= 18)
-                Dispatcher.BeginInvoke((Action)InvalidateMeasure,
-                    System.Windows.Threading.DispatcherPriority.Loaded);
+                ScheduleRemeasure();
             return new Size(width, offsets[items.Count]);
         }
 
