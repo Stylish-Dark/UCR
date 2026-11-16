@@ -474,19 +474,7 @@ namespace HidWizards.UCR.Core.Managers
             // SharpDX exposes the two DualSense trigger axes as RotationX/RotationY
             // (DIJOYSTATE byte offsets 12 and 16) and labels all of its axes Signed.
             var descriptor = report.BindingDescriptor;
-            if (descriptor.Type != BindingType.Axis || (descriptor.Index != 12 && descriptor.Index != 16) ||
-                !string.Equals(device?.ProviderName, "SharpDX_DirectInput", StringComparison.OrdinalIgnoreCase))
-                return false;
-
-            return IsDualSenseIdentity(device.HidPath) || IsDualSenseIdentity(device.DeviceHandle);
-        }
-
-        private static bool IsDualSenseIdentity(string identity)
-        {
-            return identity != null &&
-                identity.IndexOf("VID_054C", StringComparison.OrdinalIgnoreCase) >= 0 &&
-                (identity.IndexOf("PID_0CE6", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                 identity.IndexOf("PID_0DF2", StringComparison.OrdinalIgnoreCase) >= 0);
+            return descriptor.Type == BindingType.Axis && device?.IsDualSenseTriggerAxis(descriptor.Index) == true;
         }
 
         private DeviceConfiguration FindDeviceConfiguration(ProviderDescriptor providerDescriptor, DeviceDescriptor deviceDescriptor)

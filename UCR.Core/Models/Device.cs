@@ -749,6 +749,21 @@ namespace HidWizards.UCR.Core.Models
             return deviceBinding.SavedControlName();
         }
 
+        internal bool IsDualSenseTriggerAxis(int index)
+        {
+            return (index == 12 || index == 16) &&
+                string.Equals(ProviderName, "SharpDX_DirectInput", StringComparison.OrdinalIgnoreCase) &&
+                (IsDualSenseIdentity(HidPath) || IsDualSenseIdentity(DeviceHandle));
+        }
+
+        private static bool IsDualSenseIdentity(string identity)
+        {
+            return identity != null &&
+                identity.IndexOf("VID_054C", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                (identity.IndexOf("PID_0CE6", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 identity.IndexOf("PID_0DF2", StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
         internal bool IsInterceptionKeyboard =>
             string.Equals(ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase) &&
             ((DeviceHandle?.StartsWith("Keyboard", StringComparison.OrdinalIgnoreCase) ?? false) ||

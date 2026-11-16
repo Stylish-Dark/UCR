@@ -449,11 +449,14 @@ namespace HidWizards.UCR.Core.Models.Binding
                     return true;
             }
 
-            if (KeyType != (int)BindingType.Axis || KeySubValue != 0 ||
-                (KeyValue != 4 && KeyValue != 5)) return false;
-            var provider = Profile?.GetDeviceConfiguration(DeviceIoType, DeviceConfigurationGuid)?.Device?.ProviderName;
-            return string.Equals(provider, DeviceIoType == DeviceIoType.Output ? "Core_ViGEm" : "SharpDX_XInput",
-                StringComparison.OrdinalIgnoreCase);
+            if (KeyType != (int)BindingType.Axis || KeySubValue != 0) return false;
+            var device = Profile?.GetDeviceConfiguration(DeviceIoType, DeviceConfigurationGuid)?.Device;
+            if (DeviceIoType == DeviceIoType.Input && device?.IsDualSenseTriggerAxis(KeyValue) == true)
+                return true;
+            return (KeyValue == 4 || KeyValue == 5) &&
+                string.Equals(device?.ProviderName,
+                    DeviceIoType == DeviceIoType.Output ? "Core_ViGEm" : "SharpDX_XInput",
+                    StringComparison.OrdinalIgnoreCase);
         }
 
         public void WriteOutput(short value)
