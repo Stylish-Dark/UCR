@@ -759,7 +759,7 @@
                                                                 BorderThickness="1" HorizontalAlignment="Stretch">
                                                             <StackPanel><Grid Height="82" HorizontalAlignment="Stretch">
                                                                 <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="1.55*" MinWidth="162"/>
+                                                                    <ColumnDefinition Width="1.55*" MinWidth="196"/>
                                                                     <ColumnDefinition Width="1.05*" MinWidth="0"/>
                                                                     <ColumnDefinition Width="44"/>
                                                                     <ColumnDefinition Width="1.05*" MinWidth="0"/>

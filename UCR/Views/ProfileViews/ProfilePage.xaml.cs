@@ -447,6 +447,8 @@ namespace HidWizards.UCR.Views.ProfileViews
                 if (mapping.IsExpanded != expanded)
                     mapping.IsExpanded = expanded;
             }
+            foreach (var section in ProfileViewModel.MappingSections)
+                section.IsExpanded = expanded;
             foreach (var panel in FindVisualChildren<OuterViewportVirtualizingPanel>(
                 MappingSectionsItemsControl))
                 panel.InvalidateMeasure();
