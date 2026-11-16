@@ -80,7 +80,7 @@ namespace HidWizards.UCR.Views.Controls
 
             if (lane == "Input")
             {
-                if (mapping.InputIsFullStick && mapping.DirectionalCapacity == 4)
+                if (descriptor.IsCompoundVisual && mapping.InputIsFullStick)
                 {
                     var logical = mapping.ResolveCollapsedBinding(descriptor, DeviceIoType.Input);
                     ShowQuickCompoundInputMenu(mapping, button,

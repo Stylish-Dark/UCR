@@ -137,6 +137,9 @@ namespace HidWizards.UCR.Views.ProfileViews
         private async Task RunBatchOutputPickerAsync()
         {
             _batchRunning = true;
+            var cancellation = new CancellationTokenSource();
+            _batchCancellation = cancellation;
+            var token = cancellation.Token;
             var unavailable = new List<string>();
             try
             {
@@ -144,7 +147,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                 await Dispatcher.Yield(DispatcherPriority.Background);
                 foreach (var mapping in _batchMappings)
                 {
-                    if (!CanEditBatchMappings || !IsVisible) break;
+                    if (token.IsCancellationRequested || !CanEditBatchMappings || !IsVisible) break;
                     if (!ProfileViewModel.MappingsList.Contains(mapping) || !HasUnassignedOutput(mapping)) continue;
 
                     var binding = mapping.Plugins[0].DeviceBindings[0].DeviceBinding;
@@ -173,7 +176,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                     if (HasUnassignedOutput(mapping)) break;
                 }
 
-                if (IsVisible && CanEditBatchMappings && unavailable.Count != 0)
+                if (!token.IsCancellationRequested && IsVisible && CanEditBatchMappings && unavailable.Count != 0)
                 {
                     var names = string.Join(", ", unavailable.Take(3));
                     var suffix = unavailable.Count > 3 ? " and " + (unavailable.Count - 3) + " more" : "";
@@ -184,13 +187,15 @@ namespace HidWizards.UCR.Views.ProfileViews
             catch (Exception exception)
             {
                 Logger.Error("Batch output selection failed", exception);
-                if (IsVisible)
+                if (!token.IsCancellationRequested && IsVisible)
                     MappingCardControl.ShowOutputPickerStatus(UiWorkspaceMore, "Batch output selection stopped.");
             }
             finally
             {
                 _batchOutputMenu = null;
+                _batchCancellation = null;
                 _batchRunning = false;
+                cancellation.Dispose();
             }
         }
 
@@ -265,9 +270,8 @@ namespace HidWizards.UCR.Views.ProfileViews
                         throw new InvalidOperationException("Could not initialize the mapping input.");
                     }
 
-                    binding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
-                    binding.SetDeviceConfigurationGuid(input.Guid);
-                    binding.SetKeyTypeValue(control.KeyType, control.KeyValue, control.KeySubValue, node.Title);
+                    binding.AssignPhysicalControl(input.Guid, DeviceBindingCategory.Momentary,
+                        control.KeyType, control.KeyValue, control.KeySubValue, node.Title);
                     mapping.RefreshCollapsedSummary();
                     _batchMappings.Add(mapping);
                     BatchStatus.Text = "Captured: " + node.Title;

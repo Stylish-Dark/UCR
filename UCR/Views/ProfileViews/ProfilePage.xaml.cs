@@ -25,7 +25,7 @@ namespace HidWizards.UCR.Views.ProfileViews
     {
         public Guid ProfileGuid => Profile.Guid;
         public ContentControl AutoApplyPanelHost => AutoApplyDockHost;
-        internal bool BlocksActivationShortcut => RootDialog.IsOpen || BatchOverlay.IsVisible;
+        internal bool BlocksActivationShortcut => RootDialog.IsOpen || BatchOverlay.IsVisible || IsBatchCapturing;
         private Context Context { get; }
         internal Profile Profile { get; }
         private ProfileViewModel ProfileViewModel { get; }
@@ -1417,7 +1417,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             var descriptor = button?.DataContext as BindingVisualDescriptor;
             var mapping = MappingForWorkspaceGlyph(button);
             if (mapping == null || descriptor == null || !mapping.ButtonsEnabled) return;
-            if (mapping.InputIsFullStick && mapping.DirectionalCapacity == 4)
+            if (descriptor.IsCompoundVisual && mapping.InputIsFullStick)
             {
                 var selectedBinding = mapping.ResolveCollapsedBinding(descriptor, DeviceIoType.Input);
                 MappingCardControl.ShowQuickCompoundInputMenu(mapping, button,

@@ -29,7 +29,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var index = MappingViewModel.Plugins.IndexOf(this);
                 var capacity = MappingViewModel.DirectionalCapacity;
                 var representation = MappingViewModel.Mapping.EffectiveOutputRepresentation;
-                if (capacity == 4 && representation == 3)
+                if (capacity == 4 && (representation == 3 || representation == 4))
                     return new[] { "Left", "Right", "Up", "Down" }
                         [Math.Min(3, Math.Max(0, index))];
                 if (capacity == 2 && representation == 3)
@@ -59,10 +59,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
         public Visibility QuickInvertVisibility =>
-            MappingViewModel.InputIsFullStick && MappingViewModel.OutputIsButton
+            MappingViewModel.InputIsFullStick && MappingViewModel.OutputIsButton &&
+            !MappingViewModel.OutputIsTrigger
                 ? Visibility.Collapsed
                 : InvertProperty?.PropertyType == typeof(bool) && InvertProperty.CanWrite
                     ? Visibility.Visible : Visibility.Collapsed;
+        public string QuickInvertToolTip => MappingViewModel.OutputIsTrigger
+            ? "Reverse trigger travel" : "Invert this output";
         public bool QuickInvert
         {
             get => QuickInvertVisibility == Visibility.Visible &&
@@ -77,7 +80,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         }
         public ObservableCollection<PluginPropertyGroupViewModel> InlinePropertyGroups { get; }
             = new ObservableCollection<PluginPropertyGroupViewModel>();
-        public string InlineSettingsTitle => OutputType == "Axis" ? "Axis settings" : "Settings";
+        public string InlineSettingsTitle => OutputType != "Axis" ? "Settings" :
+            MappingViewModel.OutputIsTrigger ? "Trigger settings" : "Axis settings";
         public Visibility InlineSettingsVisibility =>
             Plugin?.PluginPropertyGroups?.Any(group => group.PluginProperties?.Any(property =>
                 property.Name != "Invert") == true)
@@ -290,8 +294,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 // output group, which used to be silently omitted here.
                 PluginPropertyGroups.Add(new PluginPropertyGroupViewModel(pluginPropertyGroup));
                 var inlineGroup = new PluginPropertyGroupViewModel(pluginPropertyGroup);
-                // The only allowed Invert control is the dedicated switch.
-                // In 4-Way -> Button it is intentionally absent everywhere.
+                // Invert uses the dedicated switch wherever it is available.
                 inlineGroup.PluginProperties.RemoveAll(property => property.Name == "Invert");
                 if (inlineGroup.PluginProperties.Count > 0)
                     InlinePropertyGroups.Add(inlineGroup);

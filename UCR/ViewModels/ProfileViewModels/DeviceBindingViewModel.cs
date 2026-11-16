@@ -444,23 +444,21 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void LoadSelectedDevicePreview()
         {
+            if (_disposed || _deviceListLoaded || DeviceBinding?.Profile == null) return;
             IsRefreshingDeviceChoices = true;
             try
             {
-            if (_disposed || _deviceListLoaded || DeviceBinding?.Profile == null) return;
-            var profile = DeviceBinding.Profile;
-            var type = DeviceBinding.DeviceIoType;
-            var guid = DeviceBinding.DeviceConfigurationGuid;
-            var placeholder = new ComboBoxItemViewModel(
-                type == DeviceIoType.Input ? "Any input device" : "Choose output device",
-                Guid.Empty);
-            Devices.Clear();
-            Devices.Add(placeholder);
-            var chosen = guid == Guid.Empty ? placeholder : CreateSavedDeviceChoice(guid);
-            if (!ReferenceEquals(chosen, placeholder)) Devices.Add(chosen);
-            SelectedDevice = chosen;
-            _deviceListDirty = false;
-            OnPropertyChanged(nameof(SelectedDevice));
+                var guid = DeviceBinding.DeviceConfigurationGuid;
+                var placeholder = new ComboBoxItemViewModel(
+                    DeviceBinding.DeviceIoType == DeviceIoType.Input ? "Any input device" : "Choose output device",
+                    Guid.Empty);
+                var choices = new ObservableCollection<ComboBoxItemViewModel> { placeholder };
+                var chosen = guid == Guid.Empty ? placeholder : CreateSavedDeviceChoice(guid);
+                if (guid != Guid.Empty) choices.Add(chosen);
+                Devices = choices;
+                _deviceListDirty = false;
+                OnPropertyChanged(nameof(Devices));
+                SelectedDevice = chosen;
             }
             finally
             {
@@ -831,7 +829,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.DeviceConfigurationGuid), StringComparison.Ordinal))
             {
                 OnPropertyChanged(nameof(CanBindCurrentDevice));
-                if (_selectedPreviewLoaded && !_deviceListLoaded)
+                if (_deviceListLoaded)
+                    SetSelectDevice();
+                else if (_selectedPreviewLoaded)
                     LoadSelectedDevicePreview();
                 OnPropertyChanged(nameof(BindButtonText));
                 OnPropertyChanged(nameof(CompactBindButtonText));

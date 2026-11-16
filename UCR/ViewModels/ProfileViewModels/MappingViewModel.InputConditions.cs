@@ -54,7 +54,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var buttons = nodes.Where(node => node?.DeviceBindingInfo?.DeviceBindingCategory ==
                 DeviceBindingCategory.Momentary).ToList();
             var matches = keys.Select(key => buttons.FirstOrDefault(node =>
-                PresetControlMatches(node.Title, key))).ToArray();
+                string.Equals(node.Title?.Trim(), key.Trim(), StringComparison.OrdinalIgnoreCase))
+                ?? buttons.FirstOrDefault(node => PresetControlMatches(node.Title, key))).ToArray();
             if (matches.Any(node => node == null)) return null;
             return matches.Select(node => new
             {
@@ -184,10 +185,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 var binding = group[i].DeviceBinding;
                 var info = chosen.Item2[i];
-                binding.InputExpressionInputKind = 3;
-                binding.DeviceBindingCategory = DeviceBindingCategory.Range;
-                binding.SetDeviceConfigurationGuid(chosen.Item1.Guid, false);
-                binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                binding.AssignPhysicalControl(chosen.Item1.Guid, DeviceBindingCategory.Range,
+                    info.KeyType, info.KeyValue, info.KeySubValue, null, inputKind: 3);
                 binding.CompoundPresetName = axisIndex == 0 ? "Left stick" : "Right stick";
                 group[i].RefreshDeviceList();
             }
@@ -267,10 +266,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 var binding = group[i].DeviceBinding;
                 var info = chosen.Item2[i];
-                binding.InputExpressionInputKind = 0;
-                binding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
-                binding.SetDeviceConfigurationGuid(chosen.Item1.Guid, false);
-                binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                binding.AssignPhysicalControl(chosen.Item1.Guid, DeviceBindingCategory.Momentary,
+                    info.KeyType, info.KeyValue, info.KeySubValue, null, inputKind: 0);
                 binding.CompoundPresetName = "Face buttons";
                 group[i].RefreshDeviceList();
             }
@@ -334,14 +331,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 var binding = inputs[i].DeviceBinding;
                 var info = dpad[order[i]];
-                binding.InputExpressionInputKind = 0;
-                binding.DeviceBindingCategory = DeviceBindingCategory.Momentary;
-                binding.SetDeviceConfigurationGuid(device.Guid, false);
-                binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                binding.AssignPhysicalControl(device.Guid, DeviceBindingCategory.Momentary,
+                    info.KeyType, info.KeyValue, info.KeySubValue, null, inputKind: 0);
                 binding.CompoundPresetName = "D-pad";
             }
             foreach (var input in inputs) input.RefreshDeviceList();
+            RefreshInputExpressionPresentation();
             RefreshCollapsedSummary();
+            RefreshDirectionalAvailability();
             return true;
         }
 
@@ -514,10 +511,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 var input = inputs[i].DeviceBinding;
                 var info = selections[i].DeviceBindingInfo;
-                input.InputExpressionInputKind = 0;
-                input.DeviceBindingCategory = DeviceBindingCategory.Momentary;
-                input.SetDeviceConfigurationGuid(keyboard.Guid, false);
-                input.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue, selections[i].Title);
+                input.AssignPhysicalControl(keyboard.Guid, DeviceBindingCategory.Momentary,
+                    info.KeyType, info.KeyValue, info.KeySubValue, selections[i].Title, inputKind: 0);
                 input.CompoundPresetName = preset;
             }
             foreach (var input in inputs) input.RefreshDeviceList();

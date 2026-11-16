@@ -107,7 +107,12 @@ namespace HidWizards.UCR.Views.Controls
                 _loaded = false;
                 CloseOutputPicker();
             };
-            DataContextChanged += (sender, args) => CloseOutputPicker();
+            DataContextChanged += (sender, args) =>
+            {
+                CloseOutputPicker();
+                if (_loaded)
+                    (args.NewValue as DeviceBindingViewModel)?.EnsureSelectedDevicePreviewLoaded();
+            };
         }
 
         public DeviceBinding DeviceBinding
@@ -149,44 +154,53 @@ namespace HidWizards.UCR.Views.Controls
             if (!_loaded) return;
             var selected = DeviceSelectionBox.SelectedItem as ComboBoxItemViewModel;
             var viewModel = DataContext as DeviceBindingViewModel;
-            if (selected == null || viewModel == null || viewModel.IsRefreshingDeviceChoices) return;
+            var binding = viewModel?.DeviceBinding;
+            if (selected == null || binding == null || viewModel.IsRefreshingDeviceChoices ||
+                !viewModel.Devices.Contains(selected) || selected.Value == binding.DeviceConfigurationGuid) return;
+
             // Binding refresh/replacement can raise SelectionChanged while a
             // dropdown is merely being rebuilt. Never convert that placeholder
             // into an instruction to clear a real output destination.
-            if (viewModel.DeviceBinding?.DeviceIoType == DeviceIoType.Output &&
-                selected.Value == Guid.Empty) return;
-            if (viewModel.DeviceBinding != null &&
-                selected.Value == viewModel.DeviceBinding.DeviceConfigurationGuid) return;
+            if (binding.DeviceIoType == DeviceIoType.Output && selected.Value == Guid.Empty)
+            {
+                RestoreDeviceSelection();
+                return;
+            }
 
-            if (viewModel.DeviceBinding?.DeviceIoType == DeviceIoType.Output &&
+            if (binding.DeviceIoType == DeviceIoType.Output &&
                 selected.Value == DeviceBindingViewModel.FilterOutputChoiceGuid)
             {
                 var card = FindAncestor<MappingCardControl>(this);
-                if (card != null)
-                    Dispatcher.BeginInvoke((Action)(() => card.SwitchOutputBindingToFilter(viewModel)),
-                        System.Windows.Threading.DispatcherPriority.Background);
+                Dispatcher.BeginInvoke((Action)(() =>
+                {
+                    if (!_loaded || !ReferenceEquals(DataContext, viewModel) ||
+                        !ReferenceEquals(DeviceSelectionBox.SelectedItem, selected)) return;
+                    if (card?.SwitchOutputBindingToFilter(viewModel) != true) RestoreDeviceSelection();
+                }), System.Windows.Threading.DispatcherPriority.Background);
             }
-            else if (DeviceOnly && viewModel.DeviceBinding?.DeviceIoType == DeviceIoType.Input)
+            else if (DeviceOnly && binding.DeviceIoType == DeviceIoType.Input)
             {
                 var mapping = FindAncestor<MappingCardControl>(this)?.DataContext as MappingViewModel;
-                if (mapping != null)
-                    mapping.SetCompoundInputDevice(viewModel.DeviceBinding.InputExpressionGroup,
-                        selected.Value);
+                if (mapping?.SetCompoundInputDevice(binding.InputExpressionGroup, selected.Value) != true)
+                    RestoreDeviceSelection();
             }
-            else if (DeviceOnly && viewModel.DeviceBinding?.DeviceIoType == DeviceIoType.Output)
+            else if (DeviceOnly && binding.DeviceIoType == DeviceIoType.Output)
             {
                 var mapping = FindAncestor<MappingCardControl>(this)?.DataContext as MappingViewModel;
                 if (mapping?.SetFourWayButtonOutputDevice(selected.Value) != true)
-                {
-                    viewModel.RefreshDeviceList();
-                    DeviceSelectionBox.SelectedItem = viewModel.SelectedDevice;
-                }
+                    RestoreDeviceSelection();
             }
             else
             {
                 viewModel.ChangeDeviceConfiguration(selected.Value);
+                if (selected.Value != binding.DeviceConfigurationGuid) RestoreDeviceSelection();
             }
             CloseOutputPicker();
+        }
+
+        private void RestoreDeviceSelection()
+        {
+            DeviceSelectionBox.GetBindingExpression(Selector.SelectedItemProperty)?.UpdateTarget();
         }
 
         private async void BindButton_OnClick(object sender, RoutedEventArgs e)

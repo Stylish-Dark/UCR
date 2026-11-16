@@ -200,7 +200,7 @@ namespace HidWizards.UCR.Views
 
         private bool GetSelectedItem(out ProfileItem profileItem)
         {
-            var pi = ProfileTree.SelectedItem as ProfileItem;
+            var pi = _dashboardViewModel.SelectedProfileItem;
             if (pi == null)
             {
                 HidWizards.UCR.Utilities.DarkMessageBox.Show("Please select a Profile", "No Profile selected!",MessageBoxButton.OK, MessageBoxImage.Exclamation);
@@ -213,22 +213,30 @@ namespace HidWizards.UCR.Views
 
         private void ReloadProfileTree(Guid? selectedProfileId = null)
         {
-            var selectedId = selectedProfileId ?? (ProfileTree.SelectedItem as ProfileItem)?.Id;
+            var selectedId = selectedProfileId ?? _dashboardViewModel.SelectedProfileItem?.Id;
             var profileTree = ProfileItem.GetProfileTree(Context.Profiles);
+            var selectedItem = profileTree.FirstOrDefault(item => item.Id == selectedId)
+                ?? profileTree.FirstOrDefault();
             _reloadingProfileTree = true;
             try
             {
-                _dashboardViewModel.ReplaceProfileList(profileTree);
+                _dashboardViewModel.ReplaceProfileList(profileTree, selectedItem?.Id);
                 UpdateProfilePaneWidth();
-                SelectProfileTreeItem(profileTree.FirstOrDefault(item => item.Id == selectedId)
-                    ?? profileTree.FirstOrDefault());
+                SelectProfileTreeItem(selectedItem);
             }
             finally
             {
                 _reloadingProfileTree = false;
             }
 
-            _dashboardViewModel.SelectedProfileItem = ProfileTree.SelectedItem as ProfileItem;
+            if (selectedItem != null && !ReferenceEquals(ProfileTree.SelectedItem, selectedItem))
+            {
+                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+                {
+                    if (ReferenceEquals(_dashboardViewModel.SelectedProfileItem, selectedItem))
+                        SelectProfileTreeItem(selectedItem);
+                }));
+            }
             if (_navigationPage == null) OpenSelectedProfileEditor();
         }
 
@@ -297,20 +305,6 @@ namespace HidWizards.UCR.Views
             _profileDragStartPoint = e.GetPosition(ProfileTree);
             var container = GetTreeViewItem(e.OriginalSource as DependencyObject);
             _draggedProfileItem = container?.DataContext as ProfileItem;
-        }
-
-        private void ProfileTree_OnContextMenuOpening(object sender, ContextMenuEventArgs e)
-        {
-            var row = GetTreeViewItem(e.OriginalSource as DependencyObject);
-            var item = row?.DataContext as ProfileItem;
-            if (item == null && e.CursorLeft < 0) item = ProfileTree.SelectedItem as ProfileItem;
-            if (item?.Profile == null)
-            {
-                e.Handled = true;
-                return;
-            }
-
-            ProfileTree.ContextMenu.DataContext = item;
         }
 
         private void ProfileTree_OnPreviewMouseMove(object sender, MouseEventArgs e)
@@ -626,13 +620,14 @@ namespace HidWizards.UCR.Views
 
         private async void RenameProfile(object sender, RoutedEventArgs e)
         {
-            if (!GetSelectedItem(out var profileItem)) return;
-            var dialog = new StringDialog("Rename profile", "Profile name", profileItem.Profile.Title);
+            var profile = (sender as ProfilePage)?.Profile;
+            if (profile == null) return;
+            var dialog = new StringDialog("Rename profile", "Profile name", profile.Title);
             var result = (bool?)await DialogHost.Show(dialog, "RootDialog");
             if (result != true || string.IsNullOrWhiteSpace(dialog.Value)) return;
 
-            profileItem.Profile.Rename(dialog.Value);
-            ReloadProfileTree();
+            profile.Rename(dialog.Value);
+            ReloadProfileTree(ReferenceEquals(_embeddedProfile, profile) ? profile.Guid : (Guid?)null);
         }
 
         private async void CopyProfile(object sender, RoutedEventArgs e)
@@ -703,7 +698,7 @@ namespace HidWizards.UCR.Views
 
         private void ExportFromCombinedDialog()
         {
-            var selectedProfile = (ProfileTree.SelectedItem as ProfileItem)?.Profile;
+            var selectedProfile = _dashboardViewModel.SelectedProfileItem?.Profile;
             var dialog = new SaveFileDialog
             {
                 Title = "Export UCR",

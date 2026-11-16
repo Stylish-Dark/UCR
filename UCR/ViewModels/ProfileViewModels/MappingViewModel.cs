@@ -203,10 +203,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private static bool PresetControlMatches(string label, string expected)
         {
             if (string.IsNullOrWhiteSpace(expected)) return false;
+            if (string.Equals(label?.Trim(), expected.Trim(), StringComparison.OrdinalIgnoreCase))
+                return true;
             if (MatchesControlLeafName(label, expected)) return true;
             if (expected.StartsWith("Numpad", StringComparison.OrdinalIgnoreCase))
-                return MatchesControlLeafName(label, expected.Replace("Numpad", "Num"))
-                    || MatchesControlLeafName(label, expected.Replace("Numpad", "Keypad"));
+            {
+                var key = expected.Substring("Numpad".Length);
+                return MatchesControlLeafName(label, "Num" + key)
+                    || MatchesControlLeafName(label, "Keypad" + key);
+            }
             return false;
         }
 

@@ -97,9 +97,9 @@ namespace HidWizards.UCR.ViewModels.Dashboard
             context.ProfileDevicesChangedEvent += OnProfileDevicesChangedEvent;
         }
 
-        public void ReplaceProfileList(ObservableCollection<ProfileItem> profileList)
+        public void ReplaceProfileList(ObservableCollection<ProfileItem> profileList, Guid? preferredSelectionId = null)
         {
-            var selectedId = SelectedProfileItem?.Id ?? Guid.Empty;
+            var selectedId = preferredSelectionId ?? SelectedProfileItem?.Id ?? Guid.Empty;
             ProfileList = profileList ?? new ObservableCollection<ProfileItem>();
             RebuildProfileView();
             OnPropertyChanged(nameof(ProfileList));

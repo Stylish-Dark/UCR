@@ -798,7 +798,7 @@
                             <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
                                           HorizontalAlignment="Center"
                                           IsChecked="{Binding QuickInvert, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                          ToolTip="Invert this output"/>
+                                          ToolTip="{Binding QuickInvertToolTip}"/>
                         </StackPanel>
                     </Grid>
                     <ItemsControl ItemsSource="{Binding Filters}" Margin="0 4 0 0">
@@ -1083,6 +1083,16 @@
                                          <StackPanel Visibility="{Binding InlineSettingsVisibility}" Margin="0 0 0 5">
                                              <TextBlock Text="{Binding DirectionalSlotLabel}"
                                                         FontWeight="SemiBold" Foreground="#DADADA" Margin="0 2 0 4"/>
+                                             <StackPanel Style="{StaticResource UcrLabeledSwitchColumn}"
+                                                         HorizontalAlignment="Left" Margin="4 0 0 4"
+                                                         Visibility="{Binding QuickInvertVisibility}">
+                                                 <TextBlock Text="Invert" Foreground="#D8D8D8"
+                                                            Style="{StaticResource UcrLabeledSwitchCaption}"/>
+                                                 <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
+                                                               HorizontalAlignment="Center"
+                                                               IsChecked="{Binding QuickInvert, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                               ToolTip="{Binding QuickInvertToolTip}"/>
+                                             </StackPanel>
                                              <ItemsControl ItemsSource="{Binding InlinePropertyGroups}">
                                                  <ItemsControl.ItemTemplate>
                                                      <DataTemplate>
@@ -1207,7 +1217,7 @@
                                                         <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
                                                             HorizontalAlignment="Center"
                                                             IsChecked="{Binding QuickInvert, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                            ToolTip="Invert this output"/>
+                                                            ToolTip="{Binding QuickInvertToolTip}"/>
                                                     </StackPanel>
                                                     <!-- Canonical output reserves the same action column even
                                                          when it cannot be deleted. Otherwise the Invert
