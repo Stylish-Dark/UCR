@@ -215,9 +215,9 @@ namespace HidWizards.UCR.Views.ProfileViews
             if (overlay == _inspectorOverlay) return;
             _inspectorOverlay = overlay;
 
-            ProfileInspectorColumn.MinWidth = overlay ? 0 : 330;
-            ProfileInspectorColumn.Width = new GridLength(overlay ? 0 : inspectorWidth);
+            Grid.SetColumnSpan(MappingWorkspace, overlay ? 2 : 1);
             Grid.SetColumn(SidebarScrollViewer, overlay ? 0 : 1);
+            Grid.SetColumnSpan(SidebarScrollViewer, overlay ? 2 : 1);
             Panel.SetZIndex(SidebarScrollViewer, overlay ? 5 : 0);
             SidebarScrollViewer.Width = overlay ? inspectorWidth : double.NaN;
             SidebarScrollViewer.HorizontalAlignment = overlay ? HorizontalAlignment.Right : HorizontalAlignment.Stretch;
