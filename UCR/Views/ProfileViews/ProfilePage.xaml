@@ -701,7 +701,7 @@
                                                         <StackPanel Style="{StaticResource UcrLabeledSwitchColumn}">
                                                             <TextBlock Text="Block inputs" Style="{StaticResource UcrLabeledSwitchCaption}"
                                                                        FontSize="12" Foreground="#D0D0D0"/>
-                                                            <ToggleButton Style="{StaticResource CompactBlockSwitch}" HorizontalAlignment="Center"
+                                                            <ToggleButton Style="{StaticResource UcrGroupBlockSwitch}" HorizontalAlignment="Center"
                                                                           AutomationProperties.Name="Block inputs"
                                                                           IsChecked="{Binding BlockInputs, Mode=TwoWay}"
                                                                           IsEnabled="{Binding CanEdit}"
