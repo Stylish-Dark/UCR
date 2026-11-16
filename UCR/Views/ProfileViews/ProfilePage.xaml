@@ -795,7 +795,7 @@
                                                                     </Border>
                                                                     <TextBlock x:Name="UiMappingTitle" Grid.Column="1" Text="{Binding MappingTitle}"
                                                                                Foreground="White" FontSize="20" FontWeight="SemiBold"
-                                                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                                               VerticalAlignment="Center" TextWrapping="Wrap" MaxHeight="52" TextTrimming="CharacterEllipsis"
                                                                                ToolTip="{Binding MappingTitle}"/>
                                                                     <Button Grid.Column="2" Width="28" Height="30" Margin="6 0 0 0" Padding="3"
                                                                             Style="{StaticResource UcrToolbarActionButton}"
