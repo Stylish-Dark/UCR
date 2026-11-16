@@ -296,24 +296,23 @@ namespace HidWizards.UCR.Views.Controls
 
         private void DeviceNumberBox_OnSelected(object sender, RoutedEventArgs e)
         {
-            if (!HasLoaded || DeviceBinding == null) return;
+            if (!HasLoaded) return;
+            var binding = DeviceBinding;
             var viewModel = DataContext as DeviceBindingViewModel;
-            if (viewModel == null || viewModel.IsRefreshingDeviceChoices) return;
             var selected = DeviceSelectionBox.SelectedItem as ComboBoxItemViewModel;
-            if (selected == null || selected.Value == DeviceBinding.DeviceConfigurationGuid) return;
+            if (binding == null || viewModel == null || !ReferenceEquals(viewModel.DeviceBinding, binding) ||
+                selected == null || !viewModel.Devices.Contains(selected) || viewModel.IsRefreshingDeviceChoices ||
+                selected.Value == binding.DeviceConfigurationGuid) return;
 
-            if (selected.Value == Guid.Empty)
+            // Only inputs offer an explicit clear-device choice.
+            if (selected.Value != Guid.Empty || binding.DeviceIoType == DeviceIoType.Input)
+                viewModel.ChangeDeviceConfiguration(selected.Value);
+
+            if (selected.Value != binding.DeviceConfigurationGuid)
             {
-                // The input selector's explicit "Any input device" choice must work.
-                // Output destinations cannot be implicitly erased by the placeholder.
-                if (DeviceBinding.DeviceIoType != DeviceIoType.Input) return;
-            }
-            else if (GetSelectedDeviceConfiguration() == null)
-            {
+                DeviceSelectionBox.GetBindingExpression(ComboBox.SelectedItemProperty)?.UpdateTarget();
                 return;
             }
-
-            viewModel.ChangeDeviceConfiguration(selected.Value);
             LoadContextMenu();
         }
 

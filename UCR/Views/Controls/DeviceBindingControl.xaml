@@ -38,7 +38,7 @@
                   MinWidth="160"
                   x:Name="DeviceSelectionBox"
                   ItemsSource="{Binding Devices}"
-                  SelectedItem="{Binding SelectedDevice}"
+                  SelectedItem="{Binding SelectedDevice, Mode=OneWay}"
                   IsEnabled="{Binding BindingEnabled}"
                   SelectedValuePath="Value"
                   SelectionChanged="DeviceNumberBox_OnSelected">
