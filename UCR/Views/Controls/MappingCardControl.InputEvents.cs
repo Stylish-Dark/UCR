@@ -94,12 +94,14 @@ namespace HidWizards.UCR.Views.Controls
             (DataContext as MappingViewModel)?.AddCondition();
         }
 
+        internal const double MinimumTwoColumnEditorWidth = 650;
+
         private void MappingEditorColumns_OnSizeChanged(object sender, SizeChangedEventArgs e)
         {
             // Keep input and output editors usable in the narrow middle workspace.
             // Two columns need room for device, Bind, NOT and Remove controls.
             if (!(sender is Grid editor) || editor.Children.Count != 2) return;
-            var stacked = (InspectorMode && !InlineWorkspaceMode) || e.NewSize.Width < 650;
+            var stacked = (InspectorMode && !InlineWorkspaceMode) || e.NewSize.Width < MinimumTwoColumnEditorWidth;
             var span = stacked ? 2 : 1;
             if (Grid.GetColumnSpan(editor.Children[0]) == span) return;
 

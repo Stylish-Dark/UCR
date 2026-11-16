@@ -303,7 +303,7 @@
                             <StackPanel Margin="0 0 0 9">
                                 <TextBlock Text="OR" Visibility="{Binding OrLabelVisibility}"
                                     Foreground="#BBBBBB" FontWeight="SemiBold" Margin="4 2 0 6"/>
-                                <Border CornerRadius="3" Padding="7">
+                                <Border CornerRadius="3" Padding="5 4">
                                     <Border.Style>
                                         <Style TargetType="Border">
                                             <Setter Property="BorderBrush" Value="#515151"/>
@@ -878,7 +878,7 @@
                             <StackPanel Grid.Column="0" Orientation="Horizontal">
                             <materialDesign:PackIcon Kind="ArrowCollapseLeft" Width="16" Height="16"
                                 Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
-                            <TextBlock Text="INPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
+                            <TextBlock AutomationProperties.AutomationId="UiMappingInputHeading" Text="INPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
                                 FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
@@ -972,7 +972,7 @@
                             <StackPanel Grid.Column="0" Orientation="Horizontal">
                             <materialDesign:PackIcon Kind="ArrowCollapseRight" Width="16" Height="16"
                                 Foreground="{DynamicResource PrimaryHueMidBrush}" VerticalAlignment="Center"/>
-                            <TextBlock Text="OUTPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
+                            <TextBlock AutomationProperties.AutomationId="UiMappingOutputHeading" Text="OUTPUTS" Margin="7 0 0 0" Foreground="#D5D5D5"
                                 FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
@@ -1291,7 +1291,7 @@
                         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="2 7 0 2">
                             <Button x:Name="UiMappingAddOutput" Content="+ Output" Click="AddPlugin_OnClick"
                                 Visibility="{Binding LegacyOutputAddVisibility}"
-                                Margin="0 7 0 0" IsEnabled="{Binding ButtonsEnabled}"
+                                Margin="0 0 7 0" IsEnabled="{Binding ButtonsEnabled}"
                                 Style="{StaticResource UcrMappingSecondaryActionButton}"
                                 ToolTip="Add another output to this mapping"/>
                             <Button x:Name="UiMappingAddFilter" Content="+ Filter" Margin="0"

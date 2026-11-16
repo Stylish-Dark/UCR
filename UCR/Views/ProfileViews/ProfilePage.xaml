@@ -173,7 +173,7 @@
         </Grid>
 
         <materialDesign:DialogHost x:Name="RootDialog" Grid.Row="2" Identifier="{Binding ProfileDialogIdentifier}">
-            <Grid Margin="0">
+            <Grid x:Name="ProfileWorkspaceLayout" SizeChanged="ProfileWorkspaceLayout_OnSizeChanged">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -184,6 +184,13 @@
                 </Grid.ColumnDefinitions>
                 <Border Grid.Row="0" Grid.ColumnSpan="2" Padding="20 12 20 13"
                         Background="#202020" BorderBrush="#383838" BorderThickness="0 0 0 1">
+                    <DockPanel>
+                        <ToggleButton x:Name="UiWorkspaceInspector" DockPanel.Dock="Right"
+                                      Width="32" Height="28" Margin="8 0 0 0" Padding="3"
+                                      AutomationProperties.Name="Profile details" ToolTip="Devices, filters, presets and auto-apply"
+                                      Checked="WorkspaceInspector_OnClick" Unchecked="WorkspaceInspector_OnClick" Visibility="Collapsed">
+                            <materialDesign:PackIcon Kind="Cog" Width="16" Height="16"/>
+                        </ToggleButton>
                     <Grid HorizontalAlignment="Left">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -199,6 +206,7 @@
                             <materialDesign:PackIcon Kind="Pencil" Width="16" Height="16"/>
                         </Button>
                     </Grid>
+                    </DockPanel>
                 </Border>
 
                 <ScrollViewer x:Name="SidebarScrollViewer" Grid.Row="1" Grid.Column="1"
@@ -690,13 +698,15 @@
                                                         <CheckBox Content="Enabled" FontSize="12" Margin="0 0 16 0" VerticalAlignment="Center"
                                                                   IsChecked="{Binding Enabled, Mode=TwoWay}"
                                                                   ToolTip="Run mappings in this group when its profile is active"/>
-                                                        <TextBlock Text="Block inputs" VerticalAlignment="Center" FontSize="12"
-                                                                   Margin="0 0 7 0" Foreground="#D0D0D0"/>
-                                                        <ToggleButton Style="{StaticResource UcrGroupBlockSwitch}" VerticalAlignment="Center"
-                                                                      AutomationProperties.Name="Block inputs"
-                                                                      IsChecked="{Binding BlockInputs, Mode=TwoWay}"
-                                                                      IsEnabled="{Binding CanEdit}"
-                                                                      ToolTip="Block all supported inputs in this group while it runs. Individual Block settings are preserved."/>
+                                                        <StackPanel Style="{StaticResource UcrLabeledSwitchColumn}">
+                                                            <TextBlock Text="Block inputs" Style="{StaticResource UcrLabeledSwitchCaption}"
+                                                                       FontSize="12" Foreground="#D0D0D0"/>
+                                                            <ToggleButton Style="{StaticResource CompactBlockSwitch}" HorizontalAlignment="Center"
+                                                                          AutomationProperties.Name="Block inputs"
+                                                                          IsChecked="{Binding BlockInputs, Mode=TwoWay}"
+                                                                          IsEnabled="{Binding CanEdit}"
+                                                                          ToolTip="Block all supported inputs in this group while it runs. Individual Block settings are preserved."/>
+                                                        </StackPanel>
                                                     </StackPanel>
                                                 </Grid>
                                             </Border>

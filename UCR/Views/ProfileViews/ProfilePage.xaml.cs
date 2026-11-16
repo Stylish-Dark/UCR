@@ -202,6 +202,38 @@ namespace HidWizards.UCR.Views.ProfileViews
             ScrollViewerWithMouseWheel(sender as ScrollViewer, e);
         }
 
+        private bool _inspectorOverlay;
+
+        private void ProfileWorkspaceLayout_OnSizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (!e.WidthChanged || SidebarScrollViewer == null || UiWorkspaceInspector == null) return;
+            // Reserve the inspector column only when the mapping editor can still
+            // fit both sides, including the workspace, card and scrollbar insets.
+            const double inspectorWidth = 350;
+            const double workspaceInsets = 80;
+            var overlay = e.NewSize.Width < inspectorWidth + MappingCardControl.MinimumTwoColumnEditorWidth + workspaceInsets;
+            if (overlay == _inspectorOverlay) return;
+            _inspectorOverlay = overlay;
+
+            ProfileInspectorColumn.MinWidth = overlay ? 0 : 330;
+            ProfileInspectorColumn.Width = new GridLength(overlay ? 0 : inspectorWidth);
+            Grid.SetColumn(SidebarScrollViewer, overlay ? 0 : 1);
+            Panel.SetZIndex(SidebarScrollViewer, overlay ? 5 : 0);
+            SidebarScrollViewer.Width = overlay ? inspectorWidth : double.NaN;
+            SidebarScrollViewer.HorizontalAlignment = overlay ? HorizontalAlignment.Right : HorizontalAlignment.Stretch;
+            SidebarScrollViewer.Background = overlay ? (Brush)new SolidColorBrush(Color.FromRgb(32, 32, 32)) : null;
+            UiWorkspaceInspector.Visibility = overlay ? Visibility.Visible : Visibility.Collapsed;
+            UiWorkspaceInspector.IsChecked = false;
+            SidebarScrollViewer.Visibility = overlay ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        private void WorkspaceInspector_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (_inspectorOverlay)
+                SidebarScrollViewer.Visibility = UiWorkspaceInspector.IsChecked == true
+                    ? Visibility.Visible : Visibility.Collapsed;
+        }
+
         private void MappingSectionsScrollViewer_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
             ScrollViewerWithMouseWheel(sender as ScrollViewer, e);
