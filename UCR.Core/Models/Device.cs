@@ -728,6 +728,12 @@ namespace HidWizards.UCR.Core.Models
         public string GetBindingName(DeviceBinding deviceBinding)
         {
             if (!deviceBinding.IsBound) return "Not bound";
+            if (deviceBinding.DeviceBindingCategory == DeviceBindingCategory.Range &&
+                deviceBinding.KeyType == (int)BindingType.Axis && deviceBinding.KeySubValue == 0)
+            {
+                var triggerName = GetKnownTriggerAxisName(deviceBinding.DeviceIoType, deviceBinding.KeyValue);
+                if (triggerName != null) return triggerName;
+            }
             var context = deviceBinding.Profile?.Context;
             var menu = context == null ? GetDeviceBindingMenu() : GetDeviceBindingMenu(context, deviceBinding.DeviceIoType);
             var name = GetBindingName(deviceBinding, menu);
@@ -747,6 +753,20 @@ namespace HidWizards.UCR.Core.Models
                     return keyName.ToString();
             }
             return deviceBinding.SavedControlName();
+        }
+
+        internal string GetKnownTriggerAxisName(DeviceIoType type, int index)
+        {
+            if (type == DeviceIoType.Input && IsDualSenseTriggerAxis(index))
+                return index == 12 ? "L2" : "R2";
+            if (index != 4 && index != 5) return null;
+            if (type == DeviceIoType.Input)
+                return string.Equals(ProviderName, "SharpDX_XInput", StringComparison.OrdinalIgnoreCase)
+                    ? (index == 4 ? "LT" : "RT") : null;
+            if (!string.Equals(ProviderName, "Core_ViGEm", StringComparison.OrdinalIgnoreCase)) return null;
+            return string.Equals(DeviceHandle, "ds4", StringComparison.OrdinalIgnoreCase)
+                ? (index == 4 ? "L2" : "R2")
+                : (index == 4 ? "LT" : "RT");
         }
 
         internal bool IsDualSenseTriggerAxis(int index)

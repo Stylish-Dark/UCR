@@ -451,12 +451,7 @@ namespace HidWizards.UCR.Core.Models.Binding
 
             if (KeyType != (int)BindingType.Axis || KeySubValue != 0) return false;
             var device = Profile?.GetDeviceConfiguration(DeviceIoType, DeviceConfigurationGuid)?.Device;
-            if (DeviceIoType == DeviceIoType.Input && device?.IsDualSenseTriggerAxis(KeyValue) == true)
-                return true;
-            return (KeyValue == 4 || KeyValue == 5) &&
-                string.Equals(device?.ProviderName,
-                    DeviceIoType == DeviceIoType.Output ? "Core_ViGEm" : "SharpDX_XInput",
-                    StringComparison.OrdinalIgnoreCase);
+            return device?.GetKnownTriggerAxisName(DeviceIoType, KeyValue) != null;
         }
 
         public void WriteOutput(short value)
