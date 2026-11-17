@@ -1347,14 +1347,11 @@ jobs:
               Invoke-UcrControl 'UiToolbarSave'
               $saved = $null
               for ($attempt = 0; $attempt -lt 20 -and -not $saved; $attempt++) {
-                  foreach ($file in Get-ChildItem -LiteralPath $profileFolder -Filter '*.json') {
-                      $record = Get-Content -LiteralPath $file.FullName -Raw | ConvertFrom-Json
-                      if ($record.profile.title -eq 'Windows audit renamed profile') {
-                          $saved = $record.profile.compoundBindingPresets | Where-Object {
-                              $_.name -eq 'Windows audit directional preset with a long name' -and
-                              ($_.keys -join ',') -eq 'F,K,U,J'
-                          }
-                      }
+                  $snapshot = Get-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+                  $savedProfile = $snapshot.profiles | Where-Object { $_.title -eq 'Windows audit renamed profile' }
+                  $saved = $savedProfile.compoundBindingPresets | Where-Object {
+                      $_.name -eq 'Windows audit directional preset with a long name' -and
+                      ($_.keys -join ',') -eq 'F,K,U,J'
                   }
                   if (-not $saved) { Start-Sleep -Milliseconds 250 }
               }
