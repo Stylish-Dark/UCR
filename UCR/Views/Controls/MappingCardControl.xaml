@@ -349,7 +349,7 @@
                                                             </StackPanel>
                                                         </StackPanel>
                                                         <ToggleButton Grid.Column="1" Content="NOT" Width="54" Height="30"
-                                                            Margin="4 0 8 0" IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
+                                                            Margin="4 4 8 0" VerticalAlignment="Top" IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
                                                             Click="InputNegated_OnClick"
                                                             Style="{StaticResource MappingNotToggle}"
                                                             ToolTip="Negate this Boolean input condition"/>
@@ -357,7 +357,8 @@
                                                             IsEnabled="{Binding CanRemoveExpressionInput}"
                                                             ToolTip="Remove input"
                                                             ToolTipService.ShowOnDisabled="True"
-                                                            Width="32" Height="32" Padding="0" Margin="2 0 0 0"
+                                                            Width="38" Height="38" Padding="0" Margin="2 0 0 0" VerticalAlignment="Top"
+                                                            AutomationProperties.AutomationId="UiMappingRemoveInput"
                                                             Style="{StaticResource UcrDeleteItemButton}"/>
                                                     </Grid>
                                                 </DataTemplate>
@@ -366,7 +367,7 @@
                                         <StackPanel Orientation="Horizontal" Margin="2 3 0 0">
                                             <Button Content="+ Input"
                                                 Height="29" Padding="8 2" Margin="0 0 7 0"
-                                                Click="AddInputToCondition_OnClick"
+                                                Visibility="{Binding LocalAddInputVisibility}" Click="AddInputToCondition_OnClick"
                                                 IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
                                                 Foreground="#FFFFFF"
                                                 ToolTip="Add another AND input to this group">
@@ -1212,7 +1213,7 @@
                                                     <StackPanel Style="{StaticResource UcrLabeledSwitchColumn}"
                                                         Visibility="{Binding QuickInvertVisibility}"
                                                         Margin="0 0 9 0">
-                                                        <TextBlock Text="Invert" FontSize="11" Foreground="#D8D8D8"
+                                                        <TextBlock Text="Invert" FontSize="11" Foreground="#D8D8D8" Margin="0"
                                                             Style="{StaticResource UcrLabeledSwitchCaption}"/>
                                                         <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
                                                             HorizontalAlignment="Center"
@@ -1224,7 +1225,7 @@
                                                          switch and Bind control jump horizontally. -->
                                                     <Button x:Name="UiMappingRemoveOutput"
                                                         AutomationProperties.AutomationId="UiMappingRemoveOutput"
-                                                        Width="40" Height="40" Padding="0"
+                                                        Width="38" Height="38" Padding="0"
                                                         Click="RemoveOutput_OnClick"
                                                         IsEnabled="{Binding CanRemove}"
                                                         Style="{StaticResource UcrDeleteItemButton}"

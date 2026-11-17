@@ -59,8 +59,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ButtonsEnabled && IsTypedDirectionalMapping &&
             Plugins != null && Plugins.Count > Mapping.RequiredOutputBindingSlots;
         public Visibility SharedAddInputVisibility =>
-            UsesCongruentMappingLayout && SupportsNativeInputExpression &&
-            InputConditions?.Count == 1 ? Visibility.Visible : Visibility.Collapsed;
+            SupportsNativeInputExpression && InputConditions?.Count == 1 ? Visibility.Visible : Visibility.Collapsed;
         public Visibility TypedDirectionalVisibility => IsTypedDirectionalMapping
             ? Visibility.Visible : Visibility.Collapsed;
         public Visibility LegacyOutputAddVisibility => Visibility.Visible;
@@ -654,10 +653,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                                     invert.SetValue(plugin, true, null);
                             }
                         }
-                        SelectCompatibleOutputDevices(plugin,
-                            previousPlugin.Outputs.Select(output =>
-                                output.DeviceConfigurationGuid).ToList());
                     }
+                    SelectCompatibleOutputDevices(plugin, previousPlugin?.Outputs
+                        .Select(output => output.DeviceConfigurationGuid).ToList());
                     next.Add(plugin);
                 }
             }
