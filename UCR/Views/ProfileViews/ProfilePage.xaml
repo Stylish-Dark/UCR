@@ -703,7 +703,7 @@
                                                             <TextBlock Text="Block inputs" Style="{StaticResource UcrLabeledSwitchCaption}"
                                                                        FontSize="12" Foreground="#D0D0D0"/>
                                                             <ToggleButton Style="{StaticResource UcrGroupBlockSwitch}" HorizontalAlignment="Center"
-                                                                          AutomationProperties.Name="Block inputs"
+                                                                          AutomationProperties.Name="Block inputs" AutomationProperties.AutomationId="UiGroupBlock"
                                                                           IsChecked="{Binding BlockInputs, Mode=TwoWay}"
                                                                           IsEnabled="{Binding CanEdit}"
                                                                           ToolTip="Block supported keyboard inputs used by this group while it runs."/>

@@ -667,6 +667,7 @@
                                          Preserve visible Block control; reveal existing per-axis
                                          reversal or per-direction NOT without duplicating bindings. -->
                                     <Expander Header="Settings"
+                                              AutomationProperties.AutomationId="UiCompoundInputSettings"
                                               Visibility="{Binding CompoundSettingsVisibility}"
                                               Margin="3 3 3 5" Foreground="#D0D0D0">
                                         <ItemsControl ItemsSource="{Binding CoreInputs}" Margin="6 4">
