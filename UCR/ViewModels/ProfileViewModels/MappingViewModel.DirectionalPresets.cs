@@ -216,7 +216,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var previousDigital = Mapping.CompoundDigitalOutput;
             var required = choice.IsDPad ? 4 : 2;
             Mapping.CompoundDigitalOutput = choice.IsDPad;
-            if (Mapping.Plugins.Count != required && !SwitchDirectionalOutputs(1))
+            if ((previousDigital != choice.IsDPad || Mapping.Plugins.Count != required) &&
+                !SwitchDirectionalOutputs(1))
             {
                 Mapping.CompoundDigitalOutput = previousDigital;
                 return false;
@@ -243,6 +244,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(OutputDirectionalSlotCount));
             OnPropertyChanged(nameof(CompoundOutputSummary));
             OnPropertyChanged(nameof(FourWayOutputDeviceLabel));
+            OnPropertyChanged(nameof(ShowDirectionalAxisDeadZone));
+            RefreshCompoundOutputSettingsVisibility();
             RefreshDirectionalAvailability();
             RefreshCollapsedSummary();
             return true;
