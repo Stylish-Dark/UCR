@@ -640,14 +640,14 @@
                                                 Content="{Binding LeftDirection}"
                                                 ContentTemplate="{StaticResource SpatialDirectionalInputSlotTemplate}"
                                                 Visibility="{Binding LeftDirectionVisibility}"/>
-                                            <Button x:Name="UiMappingPreset" Grid.Row="1" Grid.Column="1" Content="{Binding CompoundPrimaryLabel}"
+                                            <Button x:Name="UiMappingPreset" Grid.Row="1" Grid.Column="1" Content="{Binding CompassPresetLabel}"
                                                     FontSize="11" FontWeight="SemiBold"
                                                     Height="40" Margin="1" Padding="4 2"
                                                     Foreground="#FFFFFF" Click="CompoundPreset_OnClick"
                                                     MinWidth="0" VerticalAlignment="Center"
                                                     Style="{StaticResource UcrBindingButton}"
                                                     IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
-                                                    ToolTip="{Binding CompoundPrimaryLabel}">
+                                                    ToolTip="{Binding CompassPresetLabel}">
                                                 <Button.ContentTemplate>
                                                     <DataTemplate>
                                                         <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>

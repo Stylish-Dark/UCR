@@ -110,10 +110,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             ? "Choose a complete 4-Way input"
             : CoreInputs.Count == 1 ? CoreInputs[0].BindingActionToolTip : "Choose an input channel";
 
+        public string CompassPresetLabel => CoreInputs.Any(input => input.DeviceBinding.IsBound)
+            ? (_owner?.ResolveCompoundPresetName(CoreInputs, false) ?? "Custom 4-Way") + " ▾"
+            : "Select ▾";
+
         public string CompoundPrimaryLabel => IsCompound && _owner.InputIsFullStick
-            ? (CoreInputs.Any(input => input.DeviceBinding.IsBound)
-                ? (_owner.ResolveCompoundPresetName(CoreInputs, false) ?? "Custom 4-Way") + " ▾"
-                : "Select ▾")
+            ? CompassPresetLabel
             : CoreInputs.Count > 1 ? CompoundSummary + " ▾" : CompoundSummary;
 
         private DirectionalCompassSlotViewModel CompassSlot(int digitalSlot, int analogueIndex, string arrow)
@@ -169,6 +171,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompoundSummary)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompoundSettingsVisibility)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompoundPrimaryLabel)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompassPresetLabel)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompoundPrimaryToolTip)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CompoundDeviceLabel)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DirectionalBlockVisibility)));
