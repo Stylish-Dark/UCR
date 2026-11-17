@@ -1135,6 +1135,10 @@ jobs:
                           if ($setting.TryGetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern, [ref]$pattern)) { $pattern.Expand() }
                       }
                       Start-Sleep -Milliseconds 350
+                      if ($outputType -eq 1) {
+                          $inversions = @(Get-UcrControls 'UiCompoundOutputInvert' | Where-Object { -not $_.Current.IsOffscreen })
+                          if (-not $inversions.Count -or $inversions[0].Current.BoundingRectangle.X -lt $outputHeading.X + 150) { throw 'Compound output inversion is not aligned to the settings right edge.' }
+                      }
                       [UcrWindowCapture]::Capture($handle, (Join-Path $directory "UCR-visual-settings-$inputType-$outputType.png")) | Out-Null
                       foreach ($setting in $settings) {
                           $pattern = $null
@@ -1142,11 +1146,65 @@ jobs:
                       }
                       Invoke-UcrControl 'UiMappingAddInput'
                       Invoke-UcrControl 'UiMappingAddOrCondition'
+                      Find-UcrControl 'UiDeviceSelectionPlaceholder' | Out-Null
+                      if (@(Get-UcrControls 'UiRemoveCompoundAnd' | Where-Object { -not $_.Current.IsOffscreen }).Count -ne 1) { throw 'Adding an OR set lost its existing AND guard.' }
+                      Invoke-UcrControl 'UiToolbarSave'
                       [UcrWindowCapture]::MoveWindow($handle, 0, 0, 1600, 1060, $true) | Out-Null
                       Start-Sleep -Milliseconds 450
                       [UcrWindowCapture]::Capture($handle, (Join-Path $directory "UCR-visual-expression-$inputType-$outputType.png")) | Out-Null
                   }
               }
+              $saved = $null
+              for ($attempt = 0; $attempt -lt 20; $attempt++) {
+                  $saved = Get-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+                  if (@($saved.profiles | Where-Object { $_.title -like 'Matrix *' }).Count -eq 9) { break }
+                  Start-Sleep -Milliseconds 250
+              }
+              $persistedCases = @()
+              foreach ($inputType in 1..3) {
+                  foreach ($outputType in 1..3) {
+                      $name = "Matrix $inputType to $outputType"
+                      $profile = @($saved.profiles | Where-Object { $_.title -eq $name })[0]
+                      $mapping = $profile.mappings[0]
+                      $capacity = if ($inputType -eq 1 -or $outputType -eq 1) { 4 } elseif ($inputType -eq 2 -or $outputType -eq 2) { 2 } else { 1 }
+                      $inCount = if ($inputType -eq 3) { $capacity } else { [Math]::Max(1, $capacity / 2) }
+                      $outCount = if ($outputType -eq 3) { $capacity } else { [Math]::Max(1, $capacity / 2) }
+                      $groups = @($mapping.deviceBindings | Group-Object inputExpressionGroup)
+                      $original = @($mapping.deviceBindings | Where-Object { $_.inputExpressionGroup -eq 0 -and -not $_.isDirectionalAndCondition })
+                      $alternative = @($mapping.deviceBindings | Where-Object { $_.inputExpressionGroup -ne 0 -and -not $_.isDirectionalAndCondition })
+                      $guards = @($mapping.deviceBindings | Where-Object { $_.isDirectionalAndCondition })
+                      if ($groups.Count -ne 2 -or $guards.Count -ne 1 -or $original.Count -ne $inCount -or
+                          $alternative.Count -ne $inCount -or @($original | Where-Object { $_.isBound }).Count -ne $inCount -or
+                          $mapping.plugins.Count -ne $outCount -or $mapping.inputRepresentation -ne $inputType -or
+                          $mapping.outputRepresentation -ne $outputType) { throw "AND/OR save changed the mapping topology in $name" }
+                      $persistedCases += @{ name = $name; groups = $groups.Count; guards = $guards.Count; inputsPerGroup = $inCount; outputs = $outCount }
+                  }
+              }
+              $persistedCases | ConvertTo-Json | Set-Content (Join-Path $directory 'persisted-expression-cases.json')
+              Stop-Process -Id $process.Id -Force
+              if (-not $process.WaitForExit(10000)) { throw 'The audit process did not exit for reload.' }
+              $process = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -PassThru
+              $handle = [IntPtr]::Zero
+              for ($attempt = 0; $attempt -lt 45; $attempt++) {
+                  Start-Sleep -Milliseconds 700
+                  $process.Refresh()
+                  if ($process.HasExited) { throw 'UCR exited during expression reload.' }
+                  if ($process.MainWindowHandle -ne [IntPtr]::Zero -and
+                      $process.MainWindowTitle -match '(Universal Control Remapper|UCR)' -and
+                      $process.MainWindowTitle -notmatch '(Splash|Starting)') { $handle = $process.MainWindowHandle; break }
+              }
+              if ($handle -eq [IntPtr]::Zero) { throw 'UCR did not reopen the matrix profiles.' }
+              $root = [System.Windows.Automation.AutomationElement]::FromHandle($handle)
+              $processCondition = [System.Windows.Automation.PropertyCondition]::new(
+                  [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $process.Id)
+              [UcrWindowCapture]::MoveWindow($handle, 0, 0, 1600, 1060, $true) | Out-Null
+              foreach ($case in $persistedCases) {
+                  $row = Find-UcrProfileRow $case.name
+                  $row.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+                  if (-not @(Get-UcrControls 'UiMappingInputHeading' | Where-Object { -not $_.Current.IsOffscreen }).Count) { Invoke-UcrControl 'UiExpandMapping' }
+                  Find-UcrControl 'UiRemoveCompoundAnd' | Out-Null
+              }
+              Write-Host 'Verified all nine AND/OR topologies preserve original bindings, output slots and guards on disk and reopen after a full process restart.'
               $results | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $directory 'matrix-geometry.json')
               Write-Host 'Verified all nine mapping combinations, semantic offline labels, Axis row alignment, paired-input gutters and added AND/OR groups.'
 

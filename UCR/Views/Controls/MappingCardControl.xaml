@@ -1169,18 +1169,25 @@
                                  <ItemsControl.ItemTemplate>
                                      <DataTemplate>
                                          <StackPanel Visibility="{Binding CompoundSettingsVisibility}" Margin="0 0 0 5">
-                                             <TextBlock Text="{Binding DirectionalSlotLabel}"
-                                                        FontWeight="SemiBold" Foreground="#DADADA" Margin="0 2 0 4"/>
-                                             <StackPanel Style="{StaticResource UcrLabeledSwitchColumn}"
-                                                         HorizontalAlignment="Left" Margin="4 0 0 4"
-                                                         Visibility="{Binding QuickInvertVisibility}">
-                                                 <TextBlock Text="Invert" Foreground="#D8D8D8"
-                                                            Style="{StaticResource UcrLabeledSwitchCaption}"/>
-                                                 <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
-                                                               HorizontalAlignment="Center"
-                                                               IsChecked="{Binding QuickInvert, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                               ToolTip="{Binding QuickInvertToolTip}"/>
-                                             </StackPanel>
+                                             <Grid Margin="0 2 0 4">
+                                                 <Grid.ColumnDefinitions>
+                                                     <ColumnDefinition Width="*" MinWidth="0"/>
+                                                     <ColumnDefinition Width="Auto"/>
+                                                 </Grid.ColumnDefinitions>
+                                                 <TextBlock Text="{Binding DirectionalSlotLabel}" FontSize="12"
+                                                            FontWeight="SemiBold" Foreground="#DADADA"
+                                                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                 <StackPanel Grid.Column="1" Style="{StaticResource UcrLabeledSwitchColumn}"
+                                                             Visibility="{Binding QuickInvertVisibility}">
+                                                     <TextBlock Text="Invert" FontSize="11" Foreground="#D8D8D8"
+                                                                Style="{StaticResource UcrLabeledSwitchCaption}"/>
+                                                     <ToggleButton Style="{StaticResource UcrOutputInvertSwitch}"
+                                                                   AutomationProperties.AutomationId="UiCompoundOutputInvert"
+                                                                   HorizontalAlignment="Center"
+                                                                   IsChecked="{Binding QuickInvert, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                   ToolTip="{Binding QuickInvertToolTip}"/>
+                                                 </StackPanel>
+                                             </Grid>
                                              <ItemsControl ItemsSource="{Binding InlinePropertyGroups}">
                                                  <ItemsControl.ItemTemplate>
                                                      <DataTemplate>

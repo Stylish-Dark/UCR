@@ -78,6 +78,23 @@
                                         </Style>
                                     </local:DeviceSymbolControl.Style>
                                 </local:DeviceSymbolControl>
+                                <TextBlock x:Name="ClosedDevicePlaceholder" Grid.Column="0" Text="?"
+                                           AutomationProperties.AutomationId="UiDeviceSelectionPlaceholder"
+                                           AutomationProperties.Name="Choose a device"
+                                           FontSize="18" FontWeight="SemiBold" Foreground="#FFFFFF"
+                                           IsHitTestVisible="False" HorizontalAlignment="Center"
+                                           VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedItem.Visual.HasSymbol, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                                 <materialDesign:PackIcon Grid.Column="1" Kind="ChevronDown"
                                     Width="13" Height="13" Foreground="#CACACA" IsHitTestVisible="False"
                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -291,3 +308,4 @@
 
     </Grid>
 </UserControl>
+
