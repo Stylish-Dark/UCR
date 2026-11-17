@@ -133,6 +133,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged();
             }
         }
+        public int DirectionalButtonThresholdPercent
+        {
+            get => (int)Math.Round(DeviceBinding.DirectionalButtonThreshold * 100.0 / short.MaxValue);
+            set
+            {
+                var percent = Math.Max(0, Math.Min(100, value));
+                DeviceBinding.SetDirectionalButtonThreshold((int)Math.Round(percent * (double)short.MaxValue / 100));
+                OnPropertyChanged();
+            }
+        }
+
         public ObservableCollection<ComboBoxItemViewModel> Devices { get; set; }
         private ComboBoxItemViewModel _selectedDevice;
         public ComboBoxItemViewModel SelectedDevice

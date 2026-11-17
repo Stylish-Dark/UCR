@@ -102,6 +102,20 @@ namespace HidWizards.UCR.Core.Models.Binding
         [DefaultValue(16384)]
         public int InputExpressionAxisThreshold { get; set; } = 16384;
 
+        public const int DefaultDirectionalButtonThreshold = 8192;
+
+        [XmlAttribute]
+        [DefaultValue(DefaultDirectionalButtonThreshold)]
+        public int DirectionalButtonThreshold { get; set; } = DefaultDirectionalButtonThreshold;
+
+        public void SetDirectionalButtonThreshold(int threshold)
+        {
+            threshold = Math.Max(1, Math.Min(short.MaxValue, threshold));
+            if (DirectionalButtonThreshold == threshold) return;
+            DirectionalButtonThreshold = threshold;
+            Profile?.Context?.ContextChanged();
+        }
+
         public void SetInputExpressionInputKind(int kind)
         {
             kind = Math.Max(0, Math.Min(3, kind));

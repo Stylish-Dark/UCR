@@ -84,6 +84,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool OutputIsTrigger => Mapping.EffectiveOutputRepresentation == 4 && !OutputIsFilter;
         public bool IsCompoundOutput => DirectionalCapacity == 4 &&
             Mapping.EffectiveOutputRepresentation == 1 && !OutputIsFilter;
+        public bool ShowDirectionalAxisDeadZone => IsCompoundInput && (InputIsAxis || InputIsFullStick) &&
+            DirectionalCapacity > 1 && (OutputIsButton || (IsCompoundOutput && Mapping.CompoundDigitalOutput));
         public Visibility CompoundOutputSettingsVisibility =>
             IsCompoundOutput && Plugins?.Any(plugin => plugin.CompoundSettingsVisibility == Visibility.Visible) == true
                 ? Visibility.Visible : Visibility.Collapsed;

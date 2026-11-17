@@ -677,6 +677,10 @@
                                                             <ColumnDefinition Width="*" MinWidth="0"/>
                                                             <ColumnDefinition Width="Auto"/>
                                                         </Grid.ColumnDefinitions>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto"/>
+                                                            <RowDefinition Height="Auto"/>
+                                                        </Grid.RowDefinitions>
                                                         <TextBlock Grid.Column="0" Text="{Binding DeviceBindingName}"
                                                                    Foreground="#DADADA" FontSize="12"
                                                                    VerticalAlignment="Center" Margin="0 0 9 0"
@@ -697,6 +701,31 @@
                                                                       Click="InputNegated_OnClick"
                                                                       Style="{StaticResource MappingNotToggle}"
                                                                       ToolTip="Negate this digital direction"/>
+                                                        <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0 4 0 0">
+                                                            <StackPanel.Style>
+                                                                <Style TargetType="StackPanel">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <MultiDataTrigger>
+                                                                            <MultiDataTrigger.Conditions>
+                                                                                <Condition Binding="{Binding ShowInvertInput}" Value="Visible"/>
+                                                                                <Condition Binding="{Binding DataContext.ShowDirectionalAxisDeadZone, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}" Value="True"/>
+                                                                            </MultiDataTrigger.Conditions>
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </MultiDataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </StackPanel.Style>
+                                                            <DockPanel LastChildFill="False">
+                                                                <TextBlock Text="Dead zone" FontSize="11" Foreground="#CFCFCF"/>
+                                                                <TextBlock DockPanel.Dock="Right" FontSize="11" Foreground="#CFCFCF"
+                                                                           Text="{Binding DirectionalButtonThresholdPercent, StringFormat={}{0}%}"/>
+                                                            </DockPanel>
+                                                            <Slider Minimum="0" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True"
+                                                                    AutomationProperties.Name="Axis dead zone"
+                                                                    Value="{Binding DirectionalButtonThresholdPercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                    ToolTip="Axis travel required before the mapped button is pressed"/>
+                                                        </StackPanel>
                                                     </Grid>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>

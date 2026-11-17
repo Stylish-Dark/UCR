@@ -203,6 +203,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(OutputIsTrigger));
             OnPropertyChanged(nameof(OutputIsButton));
             OnPropertyChanged(nameof(OutputIsFilter));
+            OnPropertyChanged(nameof(ShowDirectionalAxisDeadZone));
             OnPropertyChanged(nameof(InputButtonChoiceGlyph));
             OnPropertyChanged(nameof(OutputButtonChoiceGlyph));
             OnPropertyChanged(nameof(InputAxisChoiceGlyph));
@@ -281,6 +282,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(OutputIsButton));
             OnPropertyChanged(nameof(OutputIsTrigger));
             OnPropertyChanged(nameof(OutputIsFilter));
+            OnPropertyChanged(nameof(ShowDirectionalAxisDeadZone));
             OnPropertyChanged(nameof(InputButtonChoiceGlyph));
             OnPropertyChanged(nameof(OutputButtonChoiceGlyph));
             OnPropertyChanged(nameof(InputAxisChoiceGlyph));

@@ -592,7 +592,6 @@ namespace HidWizards.UCR.Core.Models
                 if (capacity == 4) y = ReadDirectionalSource(inputValues, inputBindings, 1, false);
             }
 
-            var threshold = short.MaxValue / 4;
             var channelValues = new List<short>();
             if (outputType == 4)
             {
@@ -608,13 +607,12 @@ namespace HidWizards.UCR.Core.Models
             }
             else if (outputType == 3 && capacity > 1)
             {
-                channelValues.Add(x < -threshold ? (short)1 : (short)0);
-                channelValues.Add(x > threshold ? (short)1 : (short)0);
+                var analogueAxis = inputType == 1 || inputType == 2;
+                AddDirectionalButtonPair(channelValues, x,
+                    analogueAxis ? inputBindings.ElementAtOrDefault(0) : null);
                 if (capacity == 4)
-                {
-                    channelValues.Add(y < -threshold ? (short)1 : (short)0);
-                    channelValues.Add(y > threshold ? (short)1 : (short)0);
-                }
+                    AddDirectionalButtonPair(channelValues, y,
+                        analogueAxis ? inputBindings.ElementAtOrDefault(1) : null);
             }
             else if (outputType == 3)
                 channelValues.Add(x != 0 ? (short)1 : (short)0);
@@ -624,6 +622,14 @@ namespace HidWizards.UCR.Core.Models
                 if (capacity == 4) channelValues.Add(y);
             }
             return channelValues;
+        }
+
+        private static void AddDirectionalButtonPair(List<short> channels, short value, DeviceBinding axis)
+        {
+            var threshold = Math.Max(1, axis?.DirectionalButtonThreshold ??
+                DeviceBinding.DefaultDirectionalButtonThreshold);
+            channels.Add(value <= -threshold ? (short)1 : (short)0);
+            channels.Add(value >= threshold ? (short)1 : (short)0);
         }
 
         private static short ClampDirectional(int value)
