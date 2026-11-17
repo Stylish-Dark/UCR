@@ -1155,9 +1155,14 @@ jobs:
                   }
               }
               $saved = $null
-              for ($attempt = 0; $attempt -lt 20; $attempt++) {
+              for ($attempt = 0; $attempt -lt 40; $attempt++) {
                   $saved = Get-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-                  if (@($saved.profiles | Where-Object { $_.title -like 'Matrix *' }).Count -eq 9) { break }
+                  $completeCases = @($saved.profiles | Where-Object {
+                      $_.title -like 'Matrix *' -and
+                      @($_.mappings[0].deviceBindings | Group-Object inputExpressionGroup).Count -eq 2 -and
+                      @($_.mappings[0].deviceBindings | Where-Object { $_.isDirectionalAndCondition }).Count -eq 1
+                  })
+                  if ($completeCases.Count -eq 9) { break }
                   Start-Sleep -Milliseconds 250
               }
               $persistedCases = @()
