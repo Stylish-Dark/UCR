@@ -32,6 +32,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool CanActivateProfile => Profile != null;
         public bool CanDeactivateProfile => Profile.IsActive();
         public bool CanEditProfile => !Profile.IsActive();
+        public Visibility GroupBlockVisibility => Profile.GetDeviceConfigurationList(DeviceIoType.Input)
+            .Any(configuration => configuration?.Device?.IsInterceptionKeyboard == true)
+            ? Visibility.Visible : Visibility.Collapsed;
         public bool IsFilterNameReadOnly =>
             Profile?.Context?.SubscriptionsManager?.IsProfileLayerActive(Profile.Guid) == true;
         public bool IsProfileActive => Profile.IsActive();
@@ -135,6 +138,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 foreach (var mapping in MappingsList) mapping.RefreshCollapsedSummary();
             }
+            OnPropertyChanged(nameof(GroupBlockVisibility));
             OnPropertyChanged(nameof(InputDeviceControlViewModel));
             OnPropertyChanged(nameof(OutputDeviceControlViewModel));
         }
