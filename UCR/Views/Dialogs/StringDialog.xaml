@@ -9,16 +9,18 @@
              xmlns:wpf="http://materialdesigninxaml.net/winfx/xaml/themes"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
-    <Grid Margin="16">
+    <Grid Margin="16" MinWidth="320">
         <Grid.RowDefinitions>
-            <RowDefinition />
-            <RowDefinition />
-            <RowDefinition />
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <TextBlock Text="{Binding Title}" Style="{DynamicResource MaterialDesignSubheadingTextBlock}"/>
-        <TextBox x:Name="TextValue" AutomationProperties.AutomationId="UiProfileNameInput" wpf:HintAssist.Hint="{Binding Hint}" Style="{DynamicResource MaterialDesignFloatingHintTextBox}"
-                 Margin="0 6 0 0"
-                 FontSize="18" Grid.Row="1">
+        <StackPanel Grid.Row="1" Margin="0 12 0 0">
+            <TextBlock Text="{Binding Hint}" Foreground="#C6C6C6" Margin="0 0 0 4"/>
+            <TextBox x:Name="TextValue" AutomationProperties.AutomationId="UiProfileNameInput"
+                     Foreground="#FFFFFF" CaretBrush="#FFFFFF" Background="Transparent"
+                     Padding="4 6" FontSize="18" Validation.ErrorTemplate="{x:Null}">
             <TextBox.Text>
                 <Binding Path="Value" UpdateSourceTrigger="PropertyChanged">
                     <Binding.ValidationRules>
@@ -26,7 +28,21 @@
                     </Binding.ValidationRules>
                 </Binding>
             </TextBox.Text>
-        </TextBox>
+            </TextBox>
+            <TextBlock AutomationProperties.AutomationId="UiProfileNameValidation"
+                       Text="Enter a name." Foreground="#FF9D9D" Margin="0 5 0 0">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ElementName=TextValue, Path=(Validation.HasError)}" Value="True">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </StackPanel>
         <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Grid.Row="2"
                     Margin="0 16 0 0">
             <Button x:Name="UiAccept" AutomationProperties.AutomationId="UiProfileNameAccept" IsDefault="True"
@@ -36,7 +52,7 @@
                     <system:Boolean>True</system:Boolean>
                 </Button.CommandParameter>
                 <Button.Style>
-                    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource MaterialDesignFlatButton}">
+                    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource UcrDialogFlatButton}">
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding ElementName=TextValue, Path=(Validation.HasError)}" Value="True">
                                 <Setter Property="IsEnabled" Value="False" />
