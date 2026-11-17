@@ -1078,6 +1078,7 @@
                                 <!-- One four-way destination owns one disclosure; both axis plugin settings remain. -->
                          <Expander Header="Settings" Margin="4 3 4 4"
                                    Expanded="CompoundOutputSettings_OnExpanded"
+                                   AutomationProperties.AutomationId="UiCompoundOutputSettings"
                                    Visibility="{Binding CompoundOutputSettingsVisibility}"
                                    Foreground="#D0D0D0">
                              <ItemsControl ItemsSource="{Binding Plugins}" Margin="6 4">
