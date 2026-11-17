@@ -877,6 +877,32 @@ jobs:
               private static extern bool SetCursorPos(int x, int y);
               [DllImport("user32.dll")]
               private static extern void mouse_event(uint flags, uint x, uint y, uint data, UIntPtr extra);
+
+              [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+              private struct DisplayMode {
+                  [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string DeviceName;
+                  public ushort SpecVersion, DriverVersion, Size, DriverExtra;
+                  public uint Fields;
+                  public int PositionX, PositionY;
+                  public uint Orientation, FixedOutput;
+                  public short Color, Duplex, YResolution, TTOption, Collate;
+                  [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string FormName;
+                  public ushort LogPixels;
+                  public uint BitsPerPel, Width, Height, Flags, Frequency;
+                  public uint IcmMethod, IcmIntent, MediaType, DitherType, Reserved1, Reserved2, PanningWidth, PanningHeight;
+              }
+              [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+              private static extern bool EnumDisplaySettings(string deviceName, int mode, ref DisplayMode display);
+              [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+              private static extern int ChangeDisplaySettings(ref DisplayMode display, uint flags);
+              public static void PrepareDesktop() {
+                  var mode = new DisplayMode();
+                  mode.Size = (ushort)Marshal.SizeOf(typeof(DisplayMode));
+                  if (!EnumDisplaySettings(null, -1, ref mode)) throw new Exception("Cannot inspect runner display");
+                  mode.Width = 1920; mode.Height = 1080; mode.Fields = 0x180000;
+                  int result = ChangeDisplaySettings(ref mode, 0);
+                  if (result != 0) throw new Exception("Cannot resize audit desktop: " + result);
+              }
               public static void MovePointerAway() { SetCursorPos(5, 5); }
               public static void RightClick(int x, int y) {
                   if (!SetCursorPos(x, y)) throw new Exception("Could not move to the profile row");
@@ -922,6 +948,7 @@ jobs:
           }
           '@
 
+          [UcrWindowCapture]::PrepareDesktop()
           $process = $null
           try {
               $process = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -PassThru
@@ -1523,17 +1550,22 @@ jobs:
               Set-UcrText 'WorkspaceMappingSearch' ''
               Write-Host 'Verified named mapping type selectors and keyboard dismissal of the expanded output picker.'
               Select-UcrProfile 'DualSense button verification'
+              Invoke-UcrControl 'UiExpandMapping'
+              Find-UcrControl 'UiMappingInputHeading' | Out-Null
               [UcrWindowCapture]::MoveWindow($handle, 0, 0, 1200, 900, $true) | Out-Null
               [UcrWindowCapture]::MovePointerAway()
               Start-Sleep -Milliseconds 700
               [UcrWindowCapture]::Capture($handle, (Join-Path $directory 'UCR-visual-compass-1200.png')) | Out-Null
               $directionButtons = @(Get-UcrControls 'UiMappingDirectionBind' | Where-Object { -not $_.Current.IsOffscreen })
+              if ($directionButtons.Count -lt 4) { throw 'The final compass capture does not contain four visible direction buttons.' }
               foreach ($button in $directionButtons) {
                   $labels = $button.FindAll([System.Windows.Automation.TreeScope]::Descendants,
                       [System.Windows.Automation.PropertyCondition]::new($nameProperty, 'Bind'))
                   if ($labels.Count) { throw 'An unassigned compass slot still displays Bind.' }
               }
               Select-UcrProfile 'Axis dead zone audit'
+              Invoke-UcrControl 'UiExpandMapping'
+              Find-UcrControl 'UiMappingInputHeading' | Out-Null
               [UcrWindowCapture]::MoveWindow($handle, 0, 0, 1200, 900, $true) | Out-Null
               Start-Sleep -Milliseconds 650
               [UcrWindowCapture]::Capture($handle, (Join-Path $directory 'UCR-visual-axis-1200.png')) | Out-Null
