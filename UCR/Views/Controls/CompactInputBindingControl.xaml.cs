@@ -603,10 +603,15 @@ namespace HidWizards.UCR.Views.Controls
             var currentCategory = selectedBinding.DeviceBindingCategory;
             var options = mapping?.GetOutputBindingOptions(bindingViewModel, config)
                 ?? new List<QuickBindingOption>();
-            var buttons = new WrapPanel { Width = 440 };
-            var directionals = new WrapPanel { Width = 440 };
-            var axes = new WrapPanel { Width = 440 };
-            var events = new WrapPanel { Width = 440 };
+            var workArea = SystemParameters.WorkArea;
+            var popupWidth = Math.Min(470, Math.Max(240, workArea.Width - 24));
+            var contentWidth = popupWidth - 30;
+            var tileWidth = contentWidth >= 430 ? 212 : contentWidth - 8;
+            var availableHeight = Math.Max(100, Math.Min(340, workArea.Height - 150));
+            var buttons = new WrapPanel { Width = contentWidth };
+            var directionals = new WrapPanel { Width = contentWidth };
+            var axes = new WrapPanel { Width = contentWidth };
+            var events = new WrapPanel { Width = contentWidth };
             string selectedCategory = null;
 
             foreach (var option in options)
@@ -637,12 +642,12 @@ namespace HidWizards.UCR.Views.Controls
                     Foreground = Brushes.White,
                     VerticalAlignment = VerticalAlignment.Center,
                     TextWrapping = TextWrapping.Wrap,
-                    MaxWidth = 158
+                    MaxWidth = Math.Max(80, tileWidth - 65)
                 });
                 var choice = new Button
                 {
                     Content = row,
-                    Width = 212,
+                    Width = tileWidth,
                     MinHeight = 46,
                     HorizontalContentAlignment = HorizontalAlignment.Left,
                     Margin = new Thickness(3),
@@ -717,7 +722,7 @@ namespace HidWizards.UCR.Views.Controls
                         var directional = new Button
                         {
                             Content = directionalContent,
-                            Width = 212,
+                            Width = tileWidth,
                             MinHeight = 46,
                             HorizontalContentAlignment = HorizontalAlignment.Left,
                             Margin = new Thickness(3),
@@ -798,7 +803,7 @@ namespace HidWizards.UCR.Views.Controls
                     Content = new ScrollViewer
                     {
                         Content = category.Items,
-                        MaxHeight = 340,
+                        MaxHeight = availableHeight,
                         HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
                         VerticalScrollBarVisibility = ScrollBarVisibility.Auto
                     }
@@ -872,7 +877,7 @@ namespace HidWizards.UCR.Views.Controls
                 BorderBrush = Brushes.DimGray,
                 BorderThickness = new Thickness(1),
                 Padding = new Thickness(5),
-                Width = 470
+                Width = popupWidth
             };
         }
 
