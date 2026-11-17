@@ -668,6 +668,12 @@ namespace HidWizards.UCR.Views.Controls
             var group = button?.DataContext as InputConditionViewModel;
             var mapping = DataContext as MappingViewModel;
             if (mapping?.ButtonsEnabled != true || group == null) return;
+            if (mapping.InputIsFullStick)
+            {
+                ShowQuickCompoundInputMenu(mapping, button, group.GroupIndex);
+                return;
+            }
+
             // Axis and Trigger really have one physical bind button. Capturing
             // from the large centre control must not bury detection in a menu.
             if (group.CoreInputs.Count == 1)
@@ -692,10 +698,7 @@ namespace HidWizards.UCR.Views.Controls
                 }
                 return;
             }
-            if (mapping.InputIsFullStick)
-                ShowQuickCompoundInputMenu(mapping, button, group.GroupIndex);
-            else
-                CompoundBindingsMenu_OnClick(sender, e);
+            CompoundBindingsMenu_OnClick(sender, e);
         }
 
         private void CompoundPrimaryBind_OnPreviewMouseRightButtonDown(object sender,
