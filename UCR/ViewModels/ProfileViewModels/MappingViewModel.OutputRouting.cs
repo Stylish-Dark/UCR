@@ -200,13 +200,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         // Preserve the previous device when it supports the new output type. Otherwise
         // choose a genuinely compatible output device instead of the first device in the list.
-        private void SelectCompatibleOutputDevices(Plugin plugin, IList<Guid> preferredDevices)
+        private void SelectCompatibleOutputDevices(Plugin plugin, IList<Guid> preferredDevices,
+            bool fillBlankOnly = false)
         {
             if (plugin?.Outputs == null) return;
             var profile = ProfileViewModel.Profile;
             var candidates = profile.GetDeviceConfigurationList(DeviceIoType.Output);
             for (var index = 0; index < plugin.Outputs.Count && index < plugin.OutputCategories.Count; index++)
             {
+                var output = plugin.Outputs[index];
+                if (output.IsBound || (fillBlankOnly && output.DeviceConfigurationGuid != Guid.Empty)) continue;
                 var category = plugin.OutputCategories[index].Category;
                 var compatible = candidates.Where(device => DeviceBindingViewModel.SupportsOutputCategory(
                     device, category, profile.Context)).ToList();
@@ -216,8 +219,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var selected = compatible.FirstOrDefault(device => device.Guid == preference)
                     ?? compatible.FirstOrDefault(device => device.Guid == primary?.Guid)
                     ?? compatible.FirstOrDefault();
-                if (selected != null && !plugin.Outputs[index].IsBound)
-                    plugin.Outputs[index].DeviceConfigurationGuid = selected.Guid;
+                if (selected != null)
+                    output.DeviceConfigurationGuid = selected.Guid;
             }
         }
 

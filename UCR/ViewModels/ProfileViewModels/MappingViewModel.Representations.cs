@@ -657,10 +657,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                             }
                         }
                     }
-                    SelectCompatibleOutputDevices(plugin, previousPlugin?.Outputs
-                        .Select(output => output.DeviceConfigurationGuid).ToList());
                     next.Add(plugin);
                 }
+            }
+
+            for (var index = 0; index < next.Count; index++)
+            {
+                // A newly split side inherits the original destination device even
+                // when only the opposite side can inherit its control assignment.
+                var preference = PreviousSlot(index) ?? (previous.Count == 1 ? previous[0] : null);
+                var preferredDevices = preference?.Outputs.Select(output => output.DeviceConfigurationGuid).ToList();
+                SelectCompatibleOutputDevices(next[index], preferredDevices, fillBlankOnly: true);
             }
 
             if (previous.Any(plugin => !IsFilterOutput(plugin)))
