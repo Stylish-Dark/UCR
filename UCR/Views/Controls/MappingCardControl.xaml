@@ -640,14 +640,20 @@
                                                 Content="{Binding LeftDirection}"
                                                 ContentTemplate="{StaticResource SpatialDirectionalInputSlotTemplate}"
                                                 Visibility="{Binding LeftDirectionVisibility}"/>
-                                            <Button x:Name="UiMappingPreset" Grid.Row="1" Grid.Column="1" Content="Select ▾"
+                                            <Button x:Name="UiMappingPreset" Grid.Row="1" Grid.Column="1" Content="{Binding CompoundPrimaryLabel}"
                                                     FontSize="11" FontWeight="SemiBold"
                                                     Height="40" Margin="1" Padding="4 2"
                                                     Foreground="#FFFFFF" Click="CompoundPreset_OnClick"
                                                     MinWidth="0" VerticalAlignment="Center"
                                                     Style="{StaticResource UcrBindingButton}"
                                                     IsEnabled="{Binding DataContext.ButtonsEnabled, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"
-                                                    ToolTip="Choose WASD, arrows, D-pad, joystick or face-button compound control"/>
+                                                    ToolTip="{Binding CompoundPrimaryLabel}">
+                                                <Button.ContentTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
+                                                    </DataTemplate>
+                                                </Button.ContentTemplate>
+                                            </Button>
                                             <ContentControl Grid.Row="1" Grid.Column="2" Tag="→"
                                                 HorizontalContentAlignment="Stretch"
                                                 Content="{Binding RightDirection}"

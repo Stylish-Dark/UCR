@@ -579,6 +579,42 @@ jobs:
                   return report;
               }
           }
+          [Export(typeof(IProvider))]
+          public sealed class UcrAuditKeyboard : IInputProvider
+          {
+              public string ProviderName { get { return "UcrAuditKeyboard"; } }
+              public bool IsLive { get { return true; } }
+              public void RefreshLiveState() { }
+              public void RefreshDevices() { }
+              public void Dispose() { }
+              public bool SubscribeInput(InputSubscriptionRequest request) { return true; }
+              public bool UnsubscribeInput(InputSubscriptionRequest request) { return true; }
+              public DeviceReport GetInputDeviceReport(DeviceDescriptor descriptor)
+              {
+                  var device = new DeviceReport {
+                      DeviceName = "Audit keyboard",
+                      DeviceDescriptor = new DeviceDescriptor { DeviceHandle = "keys", DeviceInstance = 0 }
+                  };
+                  var node = new DeviceReportNode { Title = "Keys" };
+                  var keys = new[] { "F", "K", "U", "J" };
+                  for (var i = 0; i < keys.Length; i++)
+                      node.Bindings.Add(new BindingReport {
+                          Title = keys[i], Category = BindingCategory.Momentary,
+                          BindingDescriptor = new BindingDescriptor { Type = BindingType.Button, Index = i }
+                      });
+                  device.Nodes.Add(node);
+                  return device;
+              }
+              public ProviderReport GetInputList()
+              {
+                  var report = new ProviderReport {
+                      Title = ProviderName, API = "Audit",
+                      ProviderDescriptor = new ProviderDescriptor { ProviderName = ProviderName }
+                  };
+                  report.Devices.Add(GetInputDeviceReport(default(DeviceDescriptor)));
+                  return report;
+              }
+          }
           '@ | Set-Content -LiteralPath $mockSource -Encoding UTF8
           $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
           $dto = (Resolve-Path '.\dependencies\IOWrapper\IOWrapper.DTOs.dll').Path
@@ -788,7 +824,29 @@ jobs:
           @{ schemaVersion = 1; profile = $axisProfile } |
             ConvertTo-Json -Depth 25 |
             Set-Content -LiteralPath (Join-Path $profileFolder ($axisProfileId + '.json')) -Encoding UTF8
-          @{ schemaVersion = 1; profileOrder = @($profileId, $largeProfileId, $triggerProfileId, $batchProfileId, $dpadProfileId, $axisProfileId) } |
+          $presetProfileId = [guid]::NewGuid().ToString('D')
+          $presetKeyboardId = [guid]::NewGuid().ToString('D')
+          $presetProfile = $dpadProfile.Clone()
+          $presetProfile.guid = $presetProfileId
+          $presetProfile.title = 'Keyboard preset application audit'
+          $presetProfile.inputDeviceConfigurations = @(@{
+              guid = $presetKeyboardId
+              device = @{ title = 'Audit keyboard'; providerName = 'UcrAuditKeyboard'; deviceHandle = 'keys'; deviceNumber = 0 }
+              shadowDevices = @()
+          })
+          $presetProfile.primaryInputDeviceConfigurationGuid = $presetKeyboardId
+          $presetProfile.compoundBindingPresets = @(@{ name = 'Audit custom cluster'; capacity = 4; keys = @('F','K','U','J') })
+          $presetRow = $dpadProfile.mappings[0].Clone()
+          $presetRow.title = 'Keyboard cluster to four outputs'
+          $presetRow.deviceBindings = @(1..4 | ForEach-Object {
+              @{ guid = [guid]::NewGuid().ToString('D'); isBound = $false; inputDirectionSlot = $_
+                 deviceConfigurationGuid = $presetKeyboardId }
+          })
+          $presetProfile.mappings = @($presetRow)
+          @{ schemaVersion = 1; profile = $presetProfile } |
+            ConvertTo-Json -Depth 25 |
+            Set-Content -LiteralPath (Join-Path $profileFolder ($presetProfileId + '.json')) -Encoding UTF8
+          @{ schemaVersion = 1; profileOrder = @($profileId, $largeProfileId, $triggerProfileId, $batchProfileId, $dpadProfileId, $axisProfileId, $presetProfileId) } |
             ConvertTo-Json -Depth 20 |
             Set-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Encoding UTF8
           @{ schemaVersion = 1; deviceAliases = @() } |
@@ -1267,29 +1325,6 @@ jobs:
               Find-UcrElement $nameProperty 'No unassigned Button-to-Button mappings. Capture some inputs first.' | Out-Null
               Invoke-UcrControl 'UiFinishBatchMappings'
               Write-Host 'Verified Windows populated batch skips the bound first slot, assigns the second, cancels and resumes at the third, and completes.'
-              Set-UcrText 'WorkspaceMappingSearch' 'Another pending mapping'
-              Start-Sleep -Milliseconds 300
-              $editor = Find-UcrControl 'UiExpandMapping'
-              $editor.SetFocus()
-              [System.Windows.Forms.SendKeys]::SendWait(' ')
-              Find-UcrElement $nameProperty '4-Way input' | Out-Null
-              Find-UcrElement $nameProperty 'Axis input' | Out-Null
-              Find-UcrElement $nameProperty 'Button input' | Out-Null
-              Find-UcrElement $nameProperty '4-Way output' | Out-Null
-              Find-UcrElement $nameProperty 'Axis output' | Out-Null
-              Find-UcrElement $nameProperty 'Button output' | Out-Null
-              $outputButton = Get-UcrControls 'BindButton' | Where-Object { -not $_.Current.IsOffscreen } |
-                  Sort-Object -Property { $_.Current.BoundingRectangle.X } -Descending | Select-Object -First 1
-              if (-not $outputButton) { throw 'Expanded output picker has no visible binding button.' }
-              $outputButton.SetFocus()
-              [System.Windows.Forms.SendKeys]::SendWait(' ')
-              Find-UcrElement $nameProperty 'Audit D' | Out-Null
-              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
-              Start-Sleep -Milliseconds 350
-              if (-not $outputButton.Current.HasKeyboardFocus) { throw 'Escape did not return focus to the output binding.' }
-              Set-UcrText 'WorkspaceMappingSearch' ''
-              Write-Host 'Verified named mapping type selectors and keyboard dismissal of the expanded output picker.'
-
               Select-UcrProfile 'DualSense button verification'
               [UcrWindowCapture]::MoveWindow($handle, -205, 0, 1200, 740, $true) | Out-Null
               Invoke-UcrControl 'UiExpandMapping'
@@ -1422,6 +1457,52 @@ jobs:
               if ($field.Current.Value -ne 'F') { throw 'Reloaded preset lost its edited key.' }
               [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
               Write-Host 'Verified the four-way preset survives relaunch and the wrapped name fits beside Edit.'
+              Select-UcrProfile 'Keyboard preset application audit'
+              Invoke-UcrControl 'UiExpandMapping'
+              $chooser = Get-UcrControls 'UiMappingPreset' | Where-Object { -not $_.Current.IsOffscreen } | Select-Object -First 1
+              if (-not $chooser) { $chooser = Find-UcrControl 'UiMappingCompoundBind' }
+              $chooser.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Invoke-UcrBatchOption 'Audit custom cluster'
+              Start-Sleep -Milliseconds 350
+              $chooser = Find-UcrControl $chooser.Current.AutomationId
+              if ($chooser.Current.Name -notmatch 'Audit custom cluster') {
+                  throw "Selected compass preset label was '$($chooser.Current.Name)'."
+              }
+              Invoke-UcrControl 'UiToolbarSave'
+              $snapshot = Get-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+              $stored = $snapshot.profiles | Where-Object { $_.title -eq 'Keyboard preset application audit' }
+              $channels = @($stored.mappings[0].deviceBindings | Where-Object { $_.isBound } | Sort-Object inputDirectionSlot)
+              if ($channels.Count -ne 4 -or (($channels | ForEach-Object { [int]$_.keyValue }) -join ',') -ne '0,1,2,3' -or
+                  @($channels | Where-Object { $_.deviceConfigurationGuid -ne $presetKeyboardId }).Count) {
+                  throw 'The applied keyboard preset did not persist all four directions on the configured device.'
+              }
+              Write-Host 'Verified the custom preset binds four ordered keys on a Windows test keyboard and survives profile save.'
+              Select-UcrProfile 'Populated batch audit'
+              Set-UcrText 'WorkspaceMappingSearch' 'Another pending mapping'
+              Start-Sleep -Milliseconds 300
+              $editor = Find-UcrControl 'UiExpandMapping'
+              $editor.SetFocus()
+              [System.Windows.Forms.SendKeys]::SendWait(' ')
+              Find-UcrElement $nameProperty '4-Way input' | Out-Null
+              Find-UcrElement $nameProperty 'Axis input' | Out-Null
+              Find-UcrElement $nameProperty 'Button input' | Out-Null
+              Find-UcrElement $nameProperty '4-Way output' | Out-Null
+              Find-UcrElement $nameProperty 'Axis output' | Out-Null
+              Find-UcrElement $nameProperty 'Button output' | Out-Null
+              $outputButton = Get-UcrControls 'BindButton' | Where-Object { -not $_.Current.IsOffscreen } |
+                  Sort-Object -Property { $_.Current.BoundingRectangle.X } -Descending | Select-Object -First 1
+              if (-not $outputButton) { throw 'Expanded output picker has no visible binding button.' }
+              $outputButton.SetFocus()
+              [System.Windows.Forms.SendKeys]::SendWait(' ')
+              Find-UcrElement $nameProperty 'Audit D' | Out-Null
+              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+              Start-Sleep -Milliseconds 350
+              if (-not $outputButton.Current.HasKeyboardFocus) { throw 'Escape did not return focus to the output binding.' }
+              Set-UcrText 'WorkspaceMappingSearch' ''
+              Write-Host 'Verified named mapping type selectors and keyboard dismissal of the expanded output picker.'
+
+
+
 
 
 
