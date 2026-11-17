@@ -753,13 +753,13 @@
                                                     <local:CompactInputBindingControl Grid.Row="1"
                                                         DeviceBinding="{Binding DeviceBinding}"
                                                         HorizontalAlignment="Stretch"/>
-                                                    <ToggleButton Grid.Row="1" Grid.Column="1" Content="NOT" Width="48" Height="32"
+                                                    <ToggleButton AutomationProperties.AutomationId="UiNegateCompoundAnd" Grid.Row="1" Grid.Column="1" Content="NOT" Width="48" Height="32"
                                                         Margin="5 3 0 0" VerticalAlignment="Top" Padding="2 0"
                                                         IsChecked="{Binding InputExpressionNegated, Mode=OneWay}"
                                                         Click="InputNegated_OnClick"
                                                         Style="{StaticResource MappingNotToggle}"
                                                         ToolTip="Negate this AND condition"/>
-                                                    <Button Grid.Row="1" Grid.Column="2" Width="30" Height="30"
+                                                    <Button AutomationProperties.AutomationId="UiRemoveCompoundAnd" Grid.Row="1" Grid.Column="2" Width="30" Height="30"
                                                         Margin="5 4 0 0" VerticalAlignment="Top" Padding="0"
                                                         Style="{StaticResource UcrDeleteItemButton}"
                                                         Click="RemoveExpressionInput_OnClick"

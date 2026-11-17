@@ -643,6 +643,8 @@ namespace HidWizards.UCR.Views.ProfileViews
                     Foreground = Brushes.White,
                     BorderBrush = new SolidColorBrush(Color.FromRgb(100, 100, 100))
                 };
+                System.Windows.Automation.AutomationProperties.SetName(edit, label);
+                System.Windows.Automation.AutomationProperties.SetAutomationId(edit, "UiPresetField" + fields.Count);
                 fields.Add(edit);
                 root.Children.Add(edit);
             };

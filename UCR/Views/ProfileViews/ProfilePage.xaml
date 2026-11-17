@@ -292,7 +292,8 @@
 
                     <Border x:Name="CompoundPresetsPanel" Grid.Row="3" Margin="0 8 0 0"
                             Background="#202020" BorderBrush="#383838" BorderThickness="1" CornerRadius="4">
-                        <Expander IsExpanded="False" HorizontalContentAlignment="Stretch"
+                        <Expander x:Name="UiCompoundPresetSection" AutomationProperties.Name="4-Way presets"
+                                  IsExpanded="False" HorizontalContentAlignment="Stretch"
                                   Background="#202020">
                             <Expander.Header>
                                 <Border Background="#242424"
@@ -314,14 +315,8 @@
                                         IsEnabled="{Binding CanEditProfile}"
                                         Click="AddCompoundPreset_OnClick"
                                         Style="{StaticResource UcrProfileActionButton}"/>
-                                <ListBox x:Name="CompoundPresetList" MaxHeight="150"
-                                         ItemsSource="{Binding CompoundPresetItems}"
-                                         Background="Transparent" BorderThickness="0"
-                                         HorizontalContentAlignment="Stretch"
-                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                         ScrollViewer.CanContentScroll="False"
-                                         ScrollViewer.VerticalScrollBarVisibility="Auto">
-                                    <ListBox.ItemTemplate>
+                                <ItemsControl x:Name="CompoundPresetList" ItemsSource="{Binding CompoundPresetItems}">
+                                    <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Grid Margin="0 2 0 3">
                                                 <Grid.ColumnDefinitions>
@@ -330,13 +325,22 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
+                                                    <TextBlock AutomationProperties.AutomationId="UiCompoundPresetName"
+                                                               Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
                                                                TextWrapping="Wrap" ToolTip="{Binding Name}"/>
-                                                    <TextBlock FontSize="10" Opacity="0.7" TextWrapping="Wrap">
+                                                    <TextBlock FontSize="11" Opacity="0.8" TextWrapping="Wrap">
+                                                        <TextBlock.ToolTip>
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding Keys[0], StringFormat='Left · {0}'}"/>
+                                                                <TextBlock Text="{Binding Keys[1], StringFormat='Right · {0}'}"/>
+                                                                <TextBlock Text="{Binding Keys[2], StringFormat='Up · {0}'}"/>
+                                                                <TextBlock Text="{Binding Keys[3], StringFormat='Down · {0}'}"/>
+                                                            </StackPanel>
+                                                        </TextBlock.ToolTip>
                                                         <Run Text="{Binding Keys[0], Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Keys[1], Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Keys[2], Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Keys[3], Mode=OneWay}"/>
                                                     </TextBlock>
                                                 </StackPanel>
-                                                <Button Grid.Column="1" Content="Edit" Padding="5 2" Margin="3 0"
+                                                <Button Grid.Column="1" Content="Edit" AutomationProperties.AutomationId="UiEditCompoundPreset" Padding="5 2" Margin="3 0"
                                                         Height="27" Click="EditCompoundPreset_OnClick"
                                                         IsEnabled="{Binding DataContext.CanEditProfile, ElementName=ProfilePageName}"
                                                         Style="{StaticResource UcrProfileActionButton}"
@@ -348,8 +352,8 @@
                                                         Style="{StaticResource UcrDeleteItemButton}"/>
                                             </Grid>
                                         </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </StackPanel>
                         </Expander>
                     </Border>
