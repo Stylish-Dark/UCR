@@ -87,6 +87,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private readonly MappingViewModel _owner;
         public bool IsTypedDirectional => _owner?.IsTypedDirectionalMapping == true;
         public bool IsCompound => IsTypedDirectional && _owner.IsCompoundInput;
+        public bool UsesSingleAxisRow => IsCompound && _owner.InputIsAxis &&
+            _owner.UsesCongruentMappingLayout && CoreInputs.Count == 1;
         public bool IsButtonPair => IsTypedDirectional && !IsCompound;
         public ObservableCollection<DeviceBindingViewModel> AndInputs { get; }
         public ObservableCollection<DeviceBindingViewModel> CoreInputs { get; }
@@ -297,3 +299,4 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             StartsAlternative || ContinuesWithGuard ? Visibility.Visible : Visibility.Collapsed;
     }
 }
+

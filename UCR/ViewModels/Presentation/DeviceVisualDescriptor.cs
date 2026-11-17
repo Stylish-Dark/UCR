@@ -421,7 +421,8 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
             var leaf = ExtractLeaf(boundName);
             PopulateControl(result, binding, category, leaf, configuration?.Device);
-            if (IsDirectInput(configuration?.Device) && IsRawControlId(binding, boundName) &&
+            if ((IsDirectInput(configuration?.Device) || IsXbox(deviceDescriptor.Kind) ||
+                 IsPlayStation(deviceDescriptor.Kind)) && IsRawControlId(binding, boundName) &&
                 !string.IsNullOrWhiteSpace(result.ControlLabel))
                 result.ToolTip = deviceDescriptor.ToolTip + " — " + result.ControlLabel;
             return result;
@@ -653,6 +654,22 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 name.Equals("Device not connected", StringComparison.OrdinalIgnoreCase) ||
                 name.Equals("Unknown input", StringComparison.OrdinalIgnoreCase) ||
                 name.Equals("Bound control", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // An offline known controller still has a stable physical control identity.
+        // Reuse the same catalogue as its header glyph instead of exposing raw IDs
+        // in the expanded editor. Preserve real provider/custom control names.
+        public static string GetBindingDisplayLabel(DeviceBinding binding, string boundName)
+        {
+            var directInput = GetDirectInputBindingLabel(binding, boundName);
+            if (directInput != null) return directInput;
+            if (binding?.IsBound != true ||
+                !(IsRawControlId(binding, boundName) || IsMissingBindingName(boundName)))
+                return null;
+            var visual = DescribeBinding(binding, binding.DeviceBindingCategory, binding.Profile);
+            return IsXbox(visual.Device?.Kind ?? DeviceVisualKind.Unknown) ||
+                   IsPlayStation(visual.Device?.Kind ?? DeviceVisualKind.Unknown)
+                ? visual.ControlLabel : null;
         }
 
         public static string GetDirectInputBindingLabel(DeviceBinding binding, string boundName)
@@ -1097,3 +1114,4 @@ namespace HidWizards.UCR.ViewModels.Presentation
         }
     }
 }
+

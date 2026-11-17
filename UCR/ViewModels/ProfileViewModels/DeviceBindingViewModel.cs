@@ -391,7 +391,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Input)
                     return "Bind";
                 if (string.IsNullOrWhiteSpace(label)) return label;
-                var directInputLabel = DeviceVisualCatalog.GetDirectInputBindingLabel(DeviceBinding, label);
+                var directInputLabel = DeviceVisualCatalog.GetBindingDisplayLabel(DeviceBinding, label);
                 if (directInputLabel != null) return directInputLabel;
                 // The device picker already identifies the device and the binding
                 // menu owns category names. In a compact slot, show the control:
@@ -931,3 +931,4 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         }
     }
 }
+

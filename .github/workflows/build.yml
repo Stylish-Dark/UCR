@@ -867,9 +867,9 @@ jobs:
                           @{ guid = [guid]::NewGuid().ToString('D'); isBound = $true
                              deviceConfigurationGuid = $deviceId
                              keyType = $(if ($inputType -eq 3) { 1 } else { 0 })
-                             keyValue = $(if ($inputType -eq 3) { 49 + $_ } else { $_ })
+                             keyValue = $(if ($inputType -eq 3) { 49 + $_ } else { $_ * 4 })
                              keySubValue = 0
-                             inputExpressionInputKind = $(if ($inputType -eq 3) { 1 } else { 3 })
+                             inputExpressionInputKind = $(if ($inputType -eq 3) { 0 } else { 3 })
                              inputExpressionKindConfigured = $true
                              inputDirectionSlot = $(if ($inputType -eq 3 -and $capacity -gt 1) { $_ + 1 } else { 0 }) }
                       })
@@ -1100,15 +1100,55 @@ jobs:
                           $outputHeading = (Find-UcrControl 'UiMappingOutputHeading').Current.BoundingRectangle
                           $inputAction = (Find-UcrControl 'UiMappingAddOrCondition').Current.BoundingRectangle
                           $outputAction = (Find-UcrControl 'UiMappingAddOutput').Current.BoundingRectangle
+                          if ([Math]::Abs($inputHeading.Y - $outputHeading.Y) -gt 2 -or
+                              [Math]::Abs($inputAction.Y - $outputAction.Y) -gt 2) { throw "Misaligned mapping $inputType to $outputType at $width" }
+                          $rawNames = @($root.FindAll([System.Windows.Automation.TreeScope]::Descendants,
+                              [System.Windows.Automation.Condition]::TrueCondition) | Where-Object {
+                                  -not $_.Current.IsOffscreen -and $_.Current.Name -match '^Control \d+:\d+:\d+$'
+                              })
+                          if ($rawNames.Count) { throw "Known controller binding still exposes raw IDs in $name" }
+                          if ($inputType -eq 2 -and $outputType -eq 2) {
+                              $selectors = @(Get-UcrControls 'DeviceSelectionBox' | Where-Object { -not $_.Current.IsOffscreen } | Sort-Object { $_.Current.BoundingRectangle.X })
+                              $left = $selectors[0].Current.BoundingRectangle; $right = $selectors[-1].Current.BoundingRectangle
+                              $insetDelta = [Math]::Abs(($left.X - $inputHeading.X) - ($right.X - $outputHeading.X))
+                              if ($insetDelta -gt 2) { throw "Axis selector insets differ by $insetDelta pixels." }
+                              $inputBind = (Find-UcrControl 'UiMappingCompoundBind').Current.BoundingRectangle
+                              $outputBind = @(Get-UcrControls 'BindButton' | Where-Object { -not $_.Current.IsOffscreen })[-1].Current.BoundingRectangle
+                              if ([Math]::Abs($inputBind.Y - $outputBind.Y) -gt 2) { throw 'Axis binding rows have different baselines.' }
+                          }
+                          if ($inputType -eq 3 -and $outputType -eq 2) {
+                              $selectors = @(Get-UcrControls 'DeviceSelectionBox' | Where-Object { -not $_.Current.IsOffscreen } | Sort-Object { $_.Current.BoundingRectangle.X })
+                              $binds = @(Get-UcrControls 'BindButton' | Where-Object { -not $_.Current.IsOffscreen } | Sort-Object { $_.Current.BoundingRectangle.X })
+                              if ($selectors[1].Current.BoundingRectangle.Left - $binds[0].Current.BoundingRectangle.Right -lt 6) { throw 'Paired input controls still touch.' }
+                          }
                           $results += @{ input = $inputType; output = $outputType; width = $width
                               headingDelta = [Math]::Abs($inputHeading.Y - $outputHeading.Y)
                               actionDelta = [Math]::Abs($inputAction.Y - $outputAction.Y) }
                           [UcrWindowCapture]::Capture($handle, (Join-Path $directory "UCR-visual-matrix-$inputType-$outputType-$width.png")) | Out-Null
                       }
+                      $settings = @($root.FindAll([System.Windows.Automation.TreeScope]::Descendants,
+                          [System.Windows.Automation.Condition]::TrueCondition) | Where-Object {
+                              -not $_.Current.IsOffscreen -and $_.Current.Name -match '^(Settings|Axis settings|Trigger settings)$'
+                          })
+                      foreach ($setting in $settings) {
+                          $pattern = $null
+                          if ($setting.TryGetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern, [ref]$pattern)) { $pattern.Expand() }
+                      }
+                      Start-Sleep -Milliseconds 350
+                      [UcrWindowCapture]::Capture($handle, (Join-Path $directory "UCR-visual-settings-$inputType-$outputType.png")) | Out-Null
+                      foreach ($setting in $settings) {
+                          $pattern = $null
+                          if ($setting.TryGetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern, [ref]$pattern)) { $pattern.Collapse() }
+                      }
+                      Invoke-UcrControl 'UiMappingAddInput'
+                      Invoke-UcrControl 'UiMappingAddOrCondition'
+                      [UcrWindowCapture]::MoveWindow($handle, 0, 0, 1600, 1060, $true) | Out-Null
+                      Start-Sleep -Milliseconds 450
+                      [UcrWindowCapture]::Capture($handle, (Join-Path $directory "UCR-visual-expression-$inputType-$outputType.png")) | Out-Null
                   }
               }
               $results | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $directory 'matrix-geometry.json')
-              Write-Host 'Captured all nine mapping combinations at 1200 and 1600 pixels.'
+              Write-Host 'Verified all nine mapping combinations, semantic offline labels, Axis row alignment, paired-input gutters and added AND/OR groups.'
 
           }
           catch {

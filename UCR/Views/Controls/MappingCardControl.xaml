@@ -515,8 +515,17 @@
                                     </Style>
                                 </Border.Style>
                                 <StackPanel>
-                                    <Grid Style="{StaticResource UcrDirectionalBindingRow}"
-                                          Visibility="{Binding PrimaryDirectionalRowVisibility}">
+                                    <Grid Visibility="{Binding PrimaryDirectionalRowVisibility}">
+                                        <Grid.Style>
+                                            <Style TargetType="Grid" BasedOn="{StaticResource UcrDirectionalBindingRow}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding UsesSingleAxisRow}" Value="True">
+                                                        <Setter Property="Margin" Value="3 4 0 7"/>
+                                                        <Setter Property="MinHeight" Value="38"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Grid.Style>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*" MinWidth="0"/>
@@ -531,7 +540,17 @@
                                                        FontWeight="SemiBold" Foreground="#D0D0D0"
                                                        FontSize="12" VerticalAlignment="Center"/>
                                             <Border Visibility="{Binding GroupDevicePickerVisibility}"
-                                                    Margin="10 0 0 0" ToolTip="Input device for this OR set">
+                                                    ToolTip="Input device for this OR set">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Margin" Value="10 0 0 0"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding UsesSingleAxisRow}" Value="True">
+                                                                <Setter Property="Margin" Value="0"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
                                                 <local:CompactInputBindingControl
                                                     DataContext="{Binding CoreInputs[0]}"
                                                     DeviceBinding="{Binding DeviceBinding}"
@@ -546,10 +565,19 @@
                                                 ToolTip="{Binding CompoundPrimaryToolTip}"
                                                 HorizontalContentAlignment="Stretch"
                                                 HorizontalAlignment="Stretch"
-                                                MinWidth="0" Height="38" Margin="7 0 8 0"
+                                                MinWidth="0" Height="38"
                                                 Foreground="#FFFFFF"
-                                                Style="{StaticResource UcrBindingButton}"
                                                 FontWeight="SemiBold" Padding="8 3">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource UcrBindingButton}">
+                                                    <Setter Property="Margin" Value="7 0 8 0"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding UsesSingleAxisRow}" Value="True">
+                                                            <Setter Property="Margin" Value="0 0 8 0"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
                                             <Button.ContentTemplate>
                                                 <DataTemplate>
                                                     <TextBlock Text="{Binding}" TextAlignment="Center"
@@ -622,7 +650,7 @@
                                              </ItemsControl.ItemsPanel>
                                              <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <StackPanel Margin="0 0 0 7">
+                                                    <StackPanel Margin="3 0 3 7">
                                                         <TextBlock Text="{Binding AxisPolarityLabel}"
                                                                    FontSize="12" Foreground="#D5D5D5"
                                                                    Margin="2 0 0 3"/>
@@ -967,6 +995,9 @@
                                         <DataTrigger Binding="{Binding UsesCongruentMappingLayout}" Value="True">
                                             <Setter Property="Padding" Value="5 4"/>
                                         </DataTrigger>
+                                        <DataTrigger Binding="{Binding InputIsAxis}" Value="True">
+                                            <Setter Property="Padding" Value="0"/>
+                                        </DataTrigger>
                                         <DataTrigger Binding="{Binding HasMultipleInputConditions}" Value="True">
                                             <Setter Property="BorderThickness" Value="0"/>
                                             <Setter Property="Background" Value="Transparent"/>
@@ -1105,7 +1136,7 @@
                                             DeviceBinding="{Binding DeviceBinding}"
                                             ToolTip="{Binding DataContext.FourWayOutputDeviceLabel, RelativeSource={RelativeSource AncestorType={x:Type local:MappingCardControl}}}"/>
                                     </StackPanel>
-                                    <Button Grid.Column="1" Height="38" MinWidth="0"
+                                    <Button x:Name="UiMappingCompoundOutputBind" Grid.Column="1" Height="38" MinWidth="0"
                                             Visibility="{Binding IsCompoundOutput, Converter={StaticResource CompoundVisibilityConverter}}"
                                             Content="{Binding CompoundOutputSummary}" Click="CompoundOutput_OnClick"
                                             HorizontalContentAlignment="Stretch" HorizontalAlignment="Stretch"
@@ -1417,3 +1448,4 @@
         </StackPanel>
     </Border>
 </UserControl>
+
