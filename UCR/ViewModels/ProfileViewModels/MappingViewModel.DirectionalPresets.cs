@@ -85,43 +85,31 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 // Keyboard presets and four face buttons are also complete
                 // four-way destinations. All four must resolve before being offered.
                 var kind = DeviceVisualCatalog.Describe(device, profile, DeviceIoType.Output).Kind;
-                var momentary = nodes.Where(node => node.DeviceBindingInfo.DeviceBindingCategory ==
-                    DeviceBindingCategory.Momentary).ToList();
-                Action<string, string[]> addDigital = (name, keys) =>
+                void AddDigital(string name, IReadOnlyList<string> keys)
                 {
-                    if (keys == null || keys.Length != 4) return;
-                    var controls = new DeviceBindingInfo[4];
-                    // FourWayOutputChoice stores Up, Down, Left, Right.
-                    var indexOrder = new[] { 2, 3, 0, 1 };
-                    for (var index = 0; index < 4; index++)
-                    {
-                        var key = keys[indexOrder[index]];
-                        var aliases = key.StartsWith("Numpad", StringComparison.OrdinalIgnoreCase)
-                            ? new[] { key, key.Replace("Numpad", "Num"),
-                                key.Replace("Numpad", "Keypad") }
-                            : new[] { key };
-                        var option = momentary.FirstOrDefault(node => aliases.Any(alias =>
-                            MatchesControlLeafName(node.Title, alias)));
-                        if (option == null) return;
-                        controls[index] = option.DeviceBindingInfo;
-                    }
+                    var matches = ResolveKeyboardPresetNodes(nodes, keys);
+                    if (matches == null) return;
                     result.Add(new FourWayOutputChoice
                     {
                         DeviceConfigurationGuid = device.Guid,
                         DeviceTitle = device.GetFullTitleForProfile(profile),
-                        Destination = name, IsDPad = true, Controls = controls,
+                        Destination = name,
+                        IsDPad = true,
+                        // Presets store left/right/up/down; output slots use up/down/left/right.
+                        Controls = new[] { 2, 3, 0, 1 }.Select(index => matches[index].DeviceBindingInfo).ToArray(),
                         VisualKeys = string.Join("|", keys)
                     });
-                };
+                }
                 if (kind == DeviceVisualKind.Keyboard)
                 {
-                    addDigital("WASD", new[] { "A", "D", "W", "S" });
-                    addDigital("Arrows", new[] { "Left", "Right", "Up", "Down" });
-                    addDigital("Numpad", new[] { "Numpad4", "Numpad6", "Numpad8", "Numpad2" });
-                    foreach (var preset in profile.CompoundBindingPresets ??
-                        new List<CompoundBindingPreset>())
-                        if (preset.Capacity == 4)
-                            addDigital(preset.Name, preset.Keys?.ToArray());
+                    foreach (var preset in BuiltInKeyboardPresets.Where(item => item.Key != "UJHK"))
+                        AddDigital(preset.Key, preset.Value);
+                    foreach (var preset in profile.CompoundBindingPresets ?? new List<CompoundBindingPreset>())
+                    {
+                        if (preset?.Capacity == 4 && !string.IsNullOrWhiteSpace(preset.Name) &&
+                            !BuiltInKeyboardPresets.ContainsKey(preset.Name))
+                            AddDigital(preset.Name, preset.Keys);
+                    }
                 }
                 else
                 {
@@ -136,7 +124,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     else if (kind == DeviceVisualKind.SwitchPro || kind == DeviceVisualKind.SwitchJoyCon ||
                         kind == DeviceVisualKind.GameCube || kind == DeviceVisualKind.WiiClassic)
                         face = new[] { "Y", "A", "X", "B" };
-                    if (face != null) addDigital("Face buttons", face);
+                    if (face != null) AddDigital("Face buttons", face);
                 }
             }
             return result;
