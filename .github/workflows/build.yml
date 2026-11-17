@@ -1317,10 +1317,12 @@ jobs:
 
               [UcrWindowCapture]::MoveWindow($handle, 0, 0, 1320, 900, $true) | Out-Null
               Select-UcrProfile 'Windows audit renamed profile'
-              $inspector = Find-UcrControl 'UiWorkspaceInspector'
-              $inspectorToggle = $inspector.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
-              if ($inspectorToggle.Current.ToggleState -eq [System.Windows.Automation.ToggleState]::Off) {
-                  $inspectorToggle.Toggle()
+              $inspector = Get-UcrControls 'UiWorkspaceInspector' | Where-Object { -not $_.Current.IsOffscreen } | Select-Object -First 1
+              if ($inspector) {
+                  $inspectorToggle = $inspector.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
+                  if ($inspectorToggle.Current.ToggleState -eq [System.Windows.Automation.ToggleState]::Off) {
+                      $inspectorToggle.Toggle()
+                  }
               }
               $section = Find-UcrControl 'UiCompoundPresetSection'
               $section.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
@@ -1342,6 +1344,7 @@ jobs:
               Find-UcrElement $nameProperty 'Windows audit directional preset with a long name' | Out-Null
               Start-Sleep -Milliseconds 600
               [UcrWindowCapture]::Capture($handle, (Join-Path $directory 'UCR-four-way-presets.png')) | Out-Null
+              Invoke-UcrControl 'UiToolbarSave'
               $saved = $null
               for ($attempt = 0; $attempt -lt 20 -and -not $saved; $attempt++) {
                   foreach ($file in Get-ChildItem -LiteralPath $profileFolder -Filter '*.json') {
