@@ -290,6 +290,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(IsDigitalCompoundInput));
             OnPropertyChanged(nameof(OutputDirectionalSlotCount));
             OnPropertyChanged(nameof(IsCompoundOutput));
+            OnPropertyChanged(nameof(CompoundOutputSettingsVisibility));
             OnPropertyChanged(nameof(CompoundOutputSummary));
             OnPropertyChanged(nameof(FourWayOutputDeviceVisibility));
             OnPropertyChanged(nameof(CompoundOutputRemoveVisibility));

@@ -87,6 +87,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 property.Name != "Invert") == true)
                 == true ? Visibility.Visible : Visibility.Collapsed;
 
+        public Visibility CompoundSettingsVisibility =>
+            QuickInvertVisibility == Visibility.Visible || InlineSettingsVisibility == Visibility.Visible
+                ? Visibility.Visible : Visibility.Collapsed;
+
         public bool IsAxisButtonMapping =>
             string.Equals(Plugin.PluginName, "Button to Axis", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(Plugin.PluginName, "Buttons to Axis", StringComparison.OrdinalIgnoreCase) ||

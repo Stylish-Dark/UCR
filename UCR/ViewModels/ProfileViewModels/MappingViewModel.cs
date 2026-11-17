@@ -84,6 +84,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public bool OutputIsTrigger => Mapping.EffectiveOutputRepresentation == 4 && !OutputIsFilter;
         public bool IsCompoundOutput => DirectionalCapacity == 4 &&
             Mapping.EffectiveOutputRepresentation == 1 && !OutputIsFilter;
+        public Visibility CompoundOutputSettingsVisibility =>
+            IsCompoundOutput && Plugins?.Any(plugin => plugin.CompoundSettingsVisibility == Visibility.Visible) == true
+                ? Visibility.Visible : Visibility.Collapsed;
         // Four Button output destinations have spatial identities. Their
         // editor must use a D-pad, not a vertical list of four arbitrary rows.
         public bool HasOutputDirectionalCompass => IsTypedDirectionalMapping &&
@@ -1196,6 +1199,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private void RefreshHeaderState()
         {
+            OnPropertyChanged(nameof(CompoundOutputSettingsVisibility));
             OnPropertyChanged(nameof(HasOutputDirectionalCompass));
             OnPropertyChanged(nameof(OutputDirectionalCompassVisibility));
             OnPropertyChanged(nameof(CompassOutputLeft));

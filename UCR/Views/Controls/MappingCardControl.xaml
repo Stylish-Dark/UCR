@@ -1078,12 +1078,12 @@
                                 <!-- One four-way destination owns one disclosure; both axis plugin settings remain. -->
                          <Expander Header="Settings" Margin="4 3 4 4"
                                    Expanded="CompoundOutputSettings_OnExpanded"
-                                   Visibility="{Binding IsCompoundOutput, Converter={StaticResource CompoundVisibilityConverter}}"
+                                   Visibility="{Binding CompoundOutputSettingsVisibility}"
                                    Foreground="#D0D0D0">
                              <ItemsControl ItemsSource="{Binding Plugins}" Margin="6 4">
                                  <ItemsControl.ItemTemplate>
                                      <DataTemplate>
-                                         <StackPanel Visibility="{Binding InlineSettingsVisibility}" Margin="0 0 0 5">
+                                         <StackPanel Visibility="{Binding CompoundSettingsVisibility}" Margin="0 0 0 5">
                                              <TextBlock Text="{Binding DirectionalSlotLabel}"
                                                         FontWeight="SemiBold" Foreground="#DADADA" Margin="0 2 0 4"/>
                                              <StackPanel Style="{StaticResource UcrLabeledSwitchColumn}"
