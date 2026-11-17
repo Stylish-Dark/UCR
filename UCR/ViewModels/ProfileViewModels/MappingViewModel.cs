@@ -158,10 +158,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
 
             if (channels.Count != 4) return null;
-            if (labels.Any(label => label.IndexOf("D-pad", StringComparison.OrdinalIgnoreCase) >= 0
-                || label.IndexOf("Dpad", StringComparison.OrdinalIgnoreCase) >= 0
-                || label.IndexOf("POV", StringComparison.OrdinalIgnoreCase) >= 0
-                || label.IndexOf("Hat", StringComparison.OrdinalIgnoreCase) >= 0))
+            var firstDevice = channels[0].DeviceBinding.DeviceConfigurationGuid;
+            if (channels.All(channel => channel.DeviceBinding.DeviceConfigurationGuid == firstDevice &&
+                                        channel.IsPhysicalDPadDirection))
                 return "D-pad";
             var first = channels.FirstOrDefault();
             var config = ProfileViewModel.Profile.GetDeviceConfiguration(

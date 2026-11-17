@@ -104,7 +104,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             InputExpressionInputKind == 0 && (InputExpressionNegated || !IsPhysicalDPadDirection)
                 ? Visibility.Visible : Visibility.Collapsed;
 
-        private bool IsPhysicalDPadDirection => DeviceBinding.IsBound &&
+        internal bool IsPhysicalDPadDirection => DeviceBinding.IsBound &&
             DeviceVisualCatalog.DescribeBinding(DeviceBinding, DeviceBindingCategory.Momentary,
                 DeviceBinding.Profile).ControlKind == ControlVisualKind.DPad;
 
