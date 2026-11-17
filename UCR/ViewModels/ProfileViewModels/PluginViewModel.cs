@@ -59,8 +59,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
         public Visibility QuickInvertVisibility =>
-            MappingViewModel.InputIsFullStick && MappingViewModel.OutputIsButton &&
-            !MappingViewModel.OutputIsTrigger
+            MappingViewModel.IsDigitalCompoundOutput ||
+            (MappingViewModel.InputIsFullStick && MappingViewModel.OutputIsButton &&
+             !MappingViewModel.OutputIsTrigger)
                 ? Visibility.Collapsed
                 : InvertProperty?.PropertyType == typeof(bool) && InvertProperty.CanWrite
                     ? Visibility.Visible : Visibility.Collapsed;
