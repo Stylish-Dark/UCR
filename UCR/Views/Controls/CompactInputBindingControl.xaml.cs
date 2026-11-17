@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Input;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
@@ -568,7 +570,19 @@ namespace HidWizards.UCR.Views.Controls
                 AllowsTransparency = true,
                 StaysOpen = false
             };
-            popup.Child = BuildOutputPickerContent(config, popup);
+            var content = BuildOutputPickerContent(config, popup);
+            content.PreviewKeyDown += (sender, args) =>
+            {
+                if (args.Key != Key.Escape) return;
+                args.Handled = true;
+                popup.IsOpen = false;
+                if (target.IsVisible && target.IsEnabled) target.Focus();
+            };
+            popup.Child = content;
+            popup.Opened += (sender, args) =>
+            {
+                content.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+            };
             popup.Closed += (sender, args) =>
             {
                 if (ReferenceEquals(_outputPicker, popup)) _outputPicker = null;
@@ -639,6 +653,7 @@ namespace HidWizards.UCR.Views.Controls
                     BorderThickness = new Thickness(1),
                     ToolTip = title
                 };
+                AutomationProperties.SetName(choice, OutputPickerDisplayName(title, visual.ControlKind));
                 var selectedInfo = info;
                 choice.Click += (sender, args) =>
                 {
@@ -714,6 +729,7 @@ namespace HidWizards.UCR.Views.Controls
                             BorderThickness = new Thickness(1),
                             ToolTip = label
                         };
+                        AutomationProperties.SetName(directional, label);
                         directional.Click += (sender, args) =>
                         {
                             var card = FindAncestor<MappingCardControl>(this);
@@ -795,6 +811,8 @@ namespace HidWizards.UCR.Views.Controls
                 tabs.SelectedIndex = matchingTab >= 0 ? matchingTab : 0;
             // Preserve the category chosen for this binding; never force Buttons.
             var root = new StackPanel();
+            KeyboardNavigation.SetTabNavigation(root, KeyboardNavigationMode.Cycle);
+            AutomationProperties.SetAutomationId(root, "UiOutputPicker");
             var deviceTitle = config.GetFullTitleForProfile(DeviceBinding.Profile);
             var header = new DockPanel { Margin = new Thickness(8, 7, 8, 8),
                 LastChildFill = true };

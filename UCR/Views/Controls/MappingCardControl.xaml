@@ -25,11 +25,8 @@
                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 <Canvas x:Name="StackedAxes" Width="25" Height="23"
                         Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <!-- Crossed X and Y axes instead of two repeated horizontal arrows. -->
-                    <Path Data="M 2,11.5 L 23,11.5 M 2,11.5 L 6,7.5 M 2,11.5 L 6,15.5 M 23,11.5 L 19,7.5 M 23,11.5 L 19,15.5"
-                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"
-                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
-                    <Path Data="M 12.5,1 L 12.5,22 M 12.5,1 L 8.5,5 M 12.5,1 L 16.5,5 M 12.5,22 L 8.5,18 M 12.5,22 L 16.5,18"
+                    <Path Data="M 3,7 L 22,7 M 7,3 L 3,7 L 7,11 M 18,3 L 22,7 L 18,11
+                                M 3,16 L 22,16 M 7,12 L 3,16 L 7,20 M 18,12 L 22,16 L 18,20"
                           Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"
                           StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
                 </Canvas>
@@ -46,13 +43,13 @@
                     <Ellipse Grid.Row="1" Grid.Column="1" Width="6" Height="6" HorizontalAlignment="Center" VerticalAlignment="Center"
                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"/>
                 </Grid>
-                <Canvas x:Name="FourWayDPad" Width="26" Height="23"
-                        Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Path Data="M 9,2 L 17,2 L 17,8 L 23,8 L 23,15 L 17,15 L 17,21 L 9,21 L 9,15 L 3,15 L 3,8 L 9,8 Z"
-                          Fill="Transparent"
-                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"
-                          StrokeThickness="1.8" StrokeLineJoin="Round"/>
-                </Canvas>
+                <Grid x:Name="FourWayStick" Width="22" Height="22" Visibility="Collapsed"
+                      HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Ellipse Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type RadioButton}}}"
+                             StrokeThickness="1.8"/>
+                    <TextBlock Text="L/R" FontSize="9" FontWeight="Bold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Grid>
                 <!-- Unidirectional half-axis, full axis and single Button are
                      vector-drawn at the same 26 by 23 design size. -->
                 <Canvas x:Name="HalfAxis" Width="26" Height="23" Visibility="Collapsed"
@@ -88,7 +85,7 @@
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding}" Value="✣">
                     <Setter TargetName="SingleGlyph" Property="Visibility" Value="Collapsed"/>
-                    <Setter TargetName="FourWayDPad" Property="Visibility" Value="Visible"/>
+                    <Setter TargetName="FourWayStick" Property="Visibility" Value="Visible"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding}" Value="↔↔">
                     <Setter TargetName="SingleGlyph" Property="Visibility" Value="Collapsed"/>
@@ -918,17 +915,17 @@
                             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
                                         Margin="6 0 0 0">
                                 <RadioButton Content="✣" Tag="1" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
-                                             ToolTip="4-Way input" Click="InputRepresentation_OnClick"
+                                             AutomationProperties.Name="4-Way input" ToolTip="4-Way input" Click="InputRepresentation_OnClick"
                                              IsChecked="{Binding InputIsFullStick, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseInputFourWay}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
-                                <RadioButton Content="{Binding InputAxisChoiceGlyph}" Tag="2" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
-                                             ToolTip="Axis input" Click="InputRepresentation_OnClick"
+                                <RadioButton Content="↔↔" Tag="2" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
+                                             AutomationProperties.Name="Axis input" ToolTip="Axis input" Click="InputRepresentation_OnClick"
                                              IsChecked="{Binding InputIsAxis, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseInputAxis}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                                 <RadioButton Content="{Binding InputButtonChoiceGlyph}" Tag="3" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
-                                             ToolTip="Button input" Click="InputRepresentation_OnClick"
+                                             AutomationProperties.Name="Button input" ToolTip="Button input" Click="InputRepresentation_OnClick"
                                              IsChecked="{Binding InputIsButton, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseInputButton}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
@@ -1026,14 +1023,14 @@
                                              IsChecked="{Binding OutputIsFullStick, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseOutputFourWay}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
-                                <RadioButton Content="{Binding OutputAxisChoiceGlyph}" Tag="2" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
-                                             ToolTip="Axis output" Click="OutputRepresentation_OnClick"
+                                <RadioButton Content="↔↔" Tag="2" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
+                                             AutomationProperties.Name="Axis output" ToolTip="Axis output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsAxis, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseOutputAxis}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                                 <RadioButton Content="{Binding OutputButtonChoiceGlyph}" Tag="3" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
                                               AutomationProperties.AutomationId="UiMappingOutputButtonType"
-                                             ToolTip="Button output" Click="OutputRepresentation_OnClick"
+                                             AutomationProperties.Name="Button output" ToolTip="Button output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsButton, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseOutputButton}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
