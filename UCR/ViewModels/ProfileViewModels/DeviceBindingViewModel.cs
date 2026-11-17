@@ -89,7 +89,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(BindingActionToolTip));
                 OnPropertyChanged(nameof(ShowInvertInput));
                 OnPropertyChanged(nameof(CanBindCurrentDevice));
-                OnPropertyChanged(nameof(DirectionalNegationVisibility));
+                RefreshDirectionalSettingsVisibility();
                 OnPropertyChanged(nameof(InputTypeDetailsVisibility));
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(BindButtonText));
@@ -101,7 +101,22 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         // Logical NOT applies to digital directional channels, not continuous axes.
         // Hiding this for analogue channels avoids offering a switch the runtime ignores.
         public Visibility DirectionalNegationVisibility =>
-            InputExpressionInputKind == 0 ? Visibility.Visible : Visibility.Collapsed;
+            InputExpressionInputKind == 0 && (InputExpressionNegated || !IsPhysicalDPadDirection)
+                ? Visibility.Visible : Visibility.Collapsed;
+
+        private bool IsPhysicalDPadDirection => DeviceBinding.IsBound &&
+            DeviceVisualCatalog.DescribeBinding(DeviceBinding, DeviceBindingCategory.Momentary,
+                DeviceBinding.Profile).ControlKind == ControlVisualKind.DPad;
+
+        public Visibility DirectionalSettingsRowVisibility =>
+            ShowInvertInput == Visibility.Visible || DirectionalNegationVisibility == Visibility.Visible
+                ? Visibility.Visible : Visibility.Collapsed;
+
+        private void RefreshDirectionalSettingsVisibility()
+        {
+            OnPropertyChanged(nameof(DirectionalNegationVisibility));
+            OnPropertyChanged(nameof(DirectionalSettingsRowVisibility));
+        }
 
         // Default button inputs need no extra row; advanced axis controls appear only
         // when that individual input uses analogue data.
@@ -836,6 +851,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(Block));
                 OnPropertyChanged(nameof(ShowInvertInput));
                 OnPropertyChanged(nameof(InvertInput));
+                RefreshDirectionalSettingsVisibility();
             }
             if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.DeviceConfigurationGuid), StringComparison.Ordinal))
             {
@@ -851,6 +867,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(Block));
                 OnPropertyChanged(nameof(ShowInvertInput));
                 OnPropertyChanged(nameof(InvertInput));
+                RefreshDirectionalSettingsVisibility();
             }
             if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.Block), StringComparison.Ordinal))
             {
@@ -863,6 +880,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.InputExpressionNegated), StringComparison.Ordinal))
             {
                 OnPropertyChanged(nameof(InputExpressionNegated));
+                RefreshDirectionalSettingsVisibility();
             }
             if (string.Equals(propertyChangedEventArgs.PropertyName, nameof(DeviceBinding.InputExpressionGroup), StringComparison.Ordinal))
             {

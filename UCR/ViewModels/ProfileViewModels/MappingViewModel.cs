@@ -567,6 +567,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 case nameof(DeviceBindingViewModel.AxisThresholdPercent):
                 case nameof(DeviceBindingViewModel.InputExpressionAxisThreshold):
                 case nameof(DeviceBindingViewModel.DirectionalBindLabel):
+                case nameof(DeviceBindingViewModel.DirectionalNegationVisibility):
+                case nameof(DeviceBindingViewModel.DirectionalSettingsRowVisibility):
+                case nameof(DeviceBindingViewModel.DirectionalButtonThresholdPercent):
                     return;
             }
 
@@ -1200,9 +1203,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(MappingOutputTypeLabel));
         }
 
-        private void RefreshHeaderState()
+        internal void RefreshCompoundOutputSettingsVisibility()
         {
             OnPropertyChanged(nameof(CompoundOutputSettingsVisibility));
+        }
+
+        private void RefreshHeaderState()
+        {
+            RefreshCompoundOutputSettingsVisibility();
             OnPropertyChanged(nameof(HasOutputDirectionalCompass));
             OnPropertyChanged(nameof(OutputDirectionalCompassVisibility));
             OnPropertyChanged(nameof(CompassOutputLeft));

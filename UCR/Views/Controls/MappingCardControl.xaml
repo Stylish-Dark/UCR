@@ -667,12 +667,13 @@
                                          Preserve visible Block control; reveal existing per-axis
                                          reversal or per-direction NOT without duplicating bindings. -->
                                     <Expander Header="Settings"
-                                              Visibility="{Binding CompoundVisibility}"
+                                              Visibility="{Binding CompoundSettingsVisibility}"
                                               Margin="3 3 3 5" Foreground="#D0D0D0">
                                         <ItemsControl ItemsSource="{Binding CoreInputs}" Margin="6 4">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Grid Margin="0 2 0 4">
+                                                    <Grid Margin="0 2 0 4"
+                                                          Visibility="{Binding DirectionalSettingsRowVisibility}">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="*" MinWidth="0"/>
                                                             <ColumnDefinition Width="Auto"/>

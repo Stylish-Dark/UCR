@@ -58,13 +58,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return _invertProperty;
             }
         }
-        public Visibility QuickInvertVisibility =>
-            MappingViewModel.IsDigitalCompoundOutput ||
-            (MappingViewModel.InputIsFullStick && MappingViewModel.OutputIsButton &&
-             !MappingViewModel.OutputIsTrigger)
-                ? Visibility.Collapsed
-                : InvertProperty?.PropertyType == typeof(bool) && InvertProperty.CanWrite
-                    ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility QuickInvertVisibility
+        {
+            get
+            {
+                if (InvertProperty?.PropertyType != typeof(bool) || !InvertProperty.CanWrite)
+                    return Visibility.Collapsed;
+                if (MappingViewModel.IsDigitalCompoundOutput)
+                    return (bool)InvertProperty.GetValue(Plugin, null) ? Visibility.Visible : Visibility.Collapsed;
+                return MappingViewModel.InputIsFullStick && MappingViewModel.OutputIsButton &&
+                       !MappingViewModel.OutputIsTrigger ? Visibility.Collapsed : Visibility.Visible;
+            }
+        }
         public string QuickInvertToolTip => MappingViewModel.OutputIsTrigger
             ? "Reverse trigger travel" : "Invert this output";
         public bool QuickInvert
@@ -77,6 +82,12 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 InvertProperty.SetValue(Plugin, value, null);
                 MappingViewModel.ProfileViewModel.Profile.Context.ContextChanged();
                 OnPropertyChanged();
+                if (MappingViewModel.IsDigitalCompoundOutput)
+                {
+                    OnPropertyChanged(nameof(QuickInvertVisibility));
+                    OnPropertyChanged(nameof(CompoundSettingsVisibility));
+                    MappingViewModel.RefreshCompoundOutputSettingsVisibility();
+                }
             }
         }
         public ObservableCollection<PluginPropertyGroupViewModel> InlinePropertyGroups { get; }
