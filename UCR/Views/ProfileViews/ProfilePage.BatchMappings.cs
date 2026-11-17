@@ -30,28 +30,24 @@ namespace HidWizards.UCR.Views.ProfileViews
         private async void BatchCapture_OnClick(object sender, RoutedEventArgs e)
         {
             if (_batchRunning || !CanEditBatchMappings) return;
-            _batchMappings.Clear();
+            RemoveFinishedBatchMappings();
             await RunBatchCaptureAsync();
         }
 
         private async void BatchAssign_OnClick(object sender, RoutedEventArgs e)
         {
             if (_batchRunning || !CanEditBatchMappings) return;
-            var currentMappings = new HashSet<MappingViewModel>(ProfileViewModel.MappingsList);
-            _batchMappings.RemoveAll(mapping => !currentMappings.Contains(mapping) || !HasUnassignedOutput(mapping));
-
-            // When this page was reopened, use unassigned Button-to-Button mappings
-            // in displayed order. Otherwise preserve the most recent capture sequence.
-            if (_batchMappings.Count == 0)
+            RemoveFinishedBatchMappings();
+            // Captures stay in capture order. Include other pending mappings in displayed order.
+            var pendingMappings = new List<MappingViewModel>(_batchMappings);
+            var queuedMappings = new HashSet<MappingViewModel>(pendingMappings);
+            foreach (var mapping in ProfileViewModel.MappingsList)
             {
-                foreach (var mapping in ProfileViewModel.MappingsList)
-                {
-                    if (HasUnassignedOutput(mapping))
-                        _batchMappings.Add(mapping);
-                }
+                if (HasUnassignedOutput(mapping) && queuedMappings.Add(mapping))
+                    pendingMappings.Add(mapping);
             }
 
-            if (_batchMappings.Count == 0)
+            if (pendingMappings.Count == 0)
             {
                 BatchTitle.Text = "Batch assign";
                 BatchStatus.Text = "No unassigned Button-to-Button mappings. Capture some inputs first.";
@@ -59,7 +55,13 @@ namespace HidWizards.UCR.Views.ProfileViews
                 ShowBatchOverlay();
                 return;
             }
-            await RunBatchOutputPickerAsync();
+            await RunBatchOutputPickerAsync(pendingMappings);
+        }
+
+        private void RemoveFinishedBatchMappings()
+        {
+            var currentMappings = new HashSet<MappingViewModel>(ProfileViewModel.MappingsList);
+            _batchMappings.RemoveAll(mapping => !currentMappings.Contains(mapping) || !HasUnassignedOutput(mapping));
         }
 
         private static bool HasUnassignedOutput(MappingViewModel mapping)
@@ -140,7 +142,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                     DevicesManager.PersistedIdentityEquals(item.Device, detected.Device));
         }
 
-        private async Task RunBatchOutputPickerAsync()
+        private async Task RunBatchOutputPickerAsync(IEnumerable<MappingViewModel> pendingMappings)
         {
             _batchRunning = true;
             var cancellation = new CancellationTokenSource();
@@ -151,7 +153,7 @@ namespace HidWizards.UCR.Views.ProfileViews
             {
                 // Let the workspace menu close before opening the first control picker.
                 await Dispatcher.Yield(DispatcherPriority.Background);
-                var targets = _batchMappings.SelectMany(mapping => GetUnassignedButtonOutputs(mapping)
+                var targets = pendingMappings.SelectMany(mapping => GetUnassignedButtonOutputs(mapping)
                     .Select(binding => new { Mapping = mapping, Binding = binding })).ToArray();
                 foreach (var target in targets)
                 {
@@ -235,7 +237,13 @@ namespace HidWizards.UCR.Views.ProfileViews
             var cancellation = new CancellationTokenSource();
             _batchCancellation = cancellation;
             var token = cancellation.Token;
-            var capturedControls = new HashSet<Tuple<Guid, int, int, int>>();
+            var capturedControls = new HashSet<Tuple<Guid, int, int, int>>(_batchMappings
+                .SelectMany(mapping => mapping.DeviceBindings)
+                .Select(input => input.DeviceBinding)
+                .Where(binding => binding.IsBound && binding.DeviceBindingCategory == DeviceBindingCategory.Momentary)
+                .Select(binding => Tuple.Create(binding.DeviceConfigurationGuid, binding.KeyType,
+                    binding.KeyValue, binding.KeySubValue)));
+            var capturedCount = 0;
             ShowBatchOverlay();
             BatchTitle.Text = "Batch capture inputs";
 
@@ -252,7 +260,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                 while (!token.IsCancellationRequested && CanEditBatchMappings)
                 {
                     BatchStatus.Text = "Press a button on the input device. Each distinct button creates a mapping.";
-                    BatchProgress.Text = _batchMappings.Count + " inputs captured";
+                    BatchProgress.Text = capturedCount + " inputs captured";
 
                     var detected = await Context.DevicesManager.DetectInputControlAsync(
                         DeviceBindingCategory.Momentary, TimeSpan.FromSeconds(20), token);
@@ -290,6 +298,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                         control.KeyType, control.KeyValue, control.KeySubValue, node.Title);
                     mapping.RefreshCollapsedSummary();
                     _batchMappings.Add(mapping);
+                    capturedCount++;
                     BatchStatus.Text = "Captured: " + node.Title;
                     await Task.Delay(110, token);
                 }
