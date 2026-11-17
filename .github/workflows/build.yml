@@ -1174,8 +1174,8 @@ jobs:
                       $inCount = if ($inputType -eq 3) { $capacity } else { [Math]::Max(1, $capacity / 2) }
                       $outCount = if ($outputType -eq 3) { $capacity } else { [Math]::Max(1, $capacity / 2) }
                       $groups = @($mapping.deviceBindings | Group-Object inputExpressionGroup)
-                      $original = @($mapping.deviceBindings | Where-Object { $_.inputExpressionGroup -eq 0 -and -not $_.isDirectionalAndCondition })
-                      $alternative = @($mapping.deviceBindings | Where-Object { $_.inputExpressionGroup -ne 0 -and -not $_.isDirectionalAndCondition })
+                      $original = @($mapping.deviceBindings | Where-Object { [int]$_.inputExpressionGroup -eq 0 -and -not $_.isDirectionalAndCondition })
+                      $alternative = @($mapping.deviceBindings | Where-Object { [int]$_.inputExpressionGroup -ne 0 -and -not $_.isDirectionalAndCondition })
                       $guards = @($mapping.deviceBindings | Where-Object { $_.isDirectionalAndCondition })
                       if ($groups.Count -ne 2 -or $guards.Count -ne 1 -or $original.Count -ne $inCount -or
                           $alternative.Count -ne $inCount -or @($original | Where-Object { $_.isBound }).Count -ne $inCount -or
@@ -1205,6 +1205,7 @@ jobs:
               foreach ($case in $persistedCases) {
                   $row = Find-UcrProfileRow $case.name
                   $row.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+                  for ($ready = 0; $ready -lt 20 -and (Find-UcrControl 'WorkspaceProfileTitle').Current.Name -ne $case.name; $ready++) { Start-Sleep -Milliseconds 100 }
                   if (-not @(Get-UcrControls 'UiMappingInputHeading' | Where-Object { -not $_.Current.IsOffscreen }).Count) { Invoke-UcrControl 'UiExpandMapping' }
                   Find-UcrControl 'UiRemoveCompoundAnd' | Out-Null
               }
