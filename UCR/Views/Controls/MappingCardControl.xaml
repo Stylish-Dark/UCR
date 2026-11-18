@@ -12,6 +12,15 @@
              d:DesignHeight="320" d:DesignWidth="800">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="CompoundVisibilityConverter"/>
+        <Style x:Key="InlinePropertyGroupHeading" TargetType="{x:Type TextBlock}">
+            <Style.Triggers>
+                <!-- The expander already names Settings. Retain meaningful
+                     subgroup names such as Axis and Sensitivity. -->
+                <DataTrigger Binding="{Binding GroupName}" Value="Settings">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
 
 
 
@@ -951,7 +960,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Visibility="{Binding ShowPropertyList}">
-                                        <TextBlock Text="{Binding GroupName}"
+                                        <TextBlock Text="{Binding GroupName}" Style="{StaticResource InlinePropertyGroupHeading}"
                                                    Foreground="#DADADA" FontWeight="SemiBold"/>
                                         <plugin:PluginPropertyListControl DataContext="{Binding}"/>
                                     </StackPanel>
@@ -1233,7 +1242,7 @@
                                                  <ItemsControl.ItemTemplate>
                                                      <DataTemplate>
                                                          <StackPanel Visibility="{Binding ShowPropertyList}">
-                                                             <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold"
+                                                             <TextBlock Text="{Binding GroupName}" Style="{StaticResource InlinePropertyGroupHeading}" FontWeight="SemiBold"
                                                                         Foreground="#D0D0D0" Margin="0 2 0 1"/>
                                                              <plugin:PluginPropertyListControl DataContext="{Binding}"/>
                                                          </StackPanel>
@@ -1409,7 +1418,7 @@
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
                                                             <StackPanel Visibility="{Binding ShowPropertyList}">
-                                                                <TextBlock Text="{Binding GroupName}" FontWeight="SemiBold"
+                                                                <TextBlock Text="{Binding GroupName}" Style="{StaticResource InlinePropertyGroupHeading}" FontWeight="SemiBold"
                                                                     Foreground="#DADADA" Margin="0 2 0 1"/>
                                                                 <plugin:PluginPropertyListControl DataContext="{Binding}"/>
                                                             </StackPanel>
