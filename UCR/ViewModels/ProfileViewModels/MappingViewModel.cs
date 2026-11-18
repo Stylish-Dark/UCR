@@ -25,6 +25,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         // Independent presentation choices. The legacy runtime remains unchanged
         // until a structurally compatible directional route is available.
         public int DirectionalCapacity => Mapping.EffectiveDirectionalCapacity;
+        public bool IsLegacyFourWayInput => !IsTypedDirectionalMapping && Plugins?.Count == 1 &&
+            Plugins[0].IsFourButtonAxis && DeviceBindings?.Count == 4;
+        private int ButtonChoiceCapacity => IsLegacyFourWayInput ? 4 :
+            !IsTypedDirectionalMapping && IsLegacySingleButtonAxis ? 1 : DirectionalCapacity;
+        private string ButtonChoiceGlyph => ButtonChoiceCapacity == 4 ? "⠛" :
+            ButtonChoiceCapacity == 2 ? "••" : "●";
+        public string ButtonChoiceDirectionCountLabel => ButtonChoiceCapacity == 1
+            ? "1 direction" : ButtonChoiceCapacity + " directions";
         public int InputRepresentation => Mapping.InputRepresentation;
         public int OutputRepresentation => Mapping.OutputRepresentation;
         public bool InputIsFullStick => Mapping.EffectiveInputRepresentation == 1;
@@ -74,11 +82,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         // Only a bound, one-sided analogue trigger changes it to half-axis.
         public string InputButtonChoiceGlyph => InputIsTrigger &&
             DeviceBindings?.Any(binding => binding.DeviceBinding?.IsBound == true) == true
-                ? "↦" : OutputIsFullStick ? "⠛" : OutputIsAxis ? "••" : "●";
+                ? "↦" : ButtonChoiceGlyph;
         public string OutputButtonChoiceGlyph => OutputIsTrigger &&
             Plugins?.Any(plugin => plugin.DeviceBindings.Any(binding =>
                 binding.DeviceBinding?.IsBound == true)) == true
-                ? "↦" : InputIsFullStick ? "⠛" : InputIsAxis ? "••" : "●";
+                ? "↦" : ButtonChoiceGlyph;
         public string InputAxisChoiceGlyph => OutputIsFullStick ? "↔↔" : "↔";
         public string OutputAxisChoiceGlyph => InputIsFullStick ? "↔↔" : "↔";
         public bool OutputIsTrigger => Mapping.EffectiveOutputRepresentation == 4 && !OutputIsFilter;
@@ -482,6 +490,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         public void RefreshCollapsedSummary()
         {
+            OnPropertyChanged(nameof(IsLegacyFourWayInput));
+            OnPropertyChanged(nameof(InputButtonChoiceGlyph));
+            OnPropertyChanged(nameof(OutputButtonChoiceGlyph));
+            OnPropertyChanged(nameof(ButtonChoiceDirectionCountLabel));
             _collapsedSummary = BuildCollapsedSummary();
             _collapsedInputVisuals = BuildCollapsedInputVisuals();
             _collapsedInputRows = BuildCollapsedInputRows();
@@ -1499,3 +1511,4 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         }
     }
 }
+

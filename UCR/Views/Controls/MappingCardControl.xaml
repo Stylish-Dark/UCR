@@ -442,6 +442,43 @@
             </Button>
         </DataTemplate>
 
+        <!-- Legacy plugins keep their positional runtime and settings. Their
+             four physical inputs reuse the normal compact binding control. -->
+        <DataTemplate x:Key="LegacyDirectionalInputSlotTemplate">
+            <StackPanel Margin="3">
+                <TextBlock Text="{Binding DirectionalGlyph}" FontSize="17"
+                           Foreground="#D8D8D8" FontWeight="SemiBold" TextAlignment="Center" Margin="0 0 0 3"/>
+                <local:CompactInputBindingControl DeviceBinding="{Binding DeviceBinding}"
+                                                  CompactDirectional="True" HorizontalAlignment="Stretch"/>
+            </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="LegacyFourWayInputsTemplate">
+            <StackPanel>
+                <Button Style="{StaticResource UcrDeleteItemButton}" Width="34" Height="34" Margin="3"
+                        HorizontalAlignment="Right" IsEnabled="False" ToolTipService.ShowOnDisabled="True"
+                        ToolTip="These four directions form one mapping"/>
+                <Grid HorizontalAlignment="Stretch" MaxWidth="480" Margin="0 0 0 5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <ContentControl Grid.Row="0" Grid.Column="1" Content="{Binding DeviceBindings[0]}"
+                                    HorizontalContentAlignment="Stretch" ContentTemplate="{StaticResource LegacyDirectionalInputSlotTemplate}"/>
+                    <ContentControl Grid.Row="1" Grid.Column="0" Content="{Binding DeviceBindings[2]}"
+                                    HorizontalContentAlignment="Stretch" ContentTemplate="{StaticResource LegacyDirectionalInputSlotTemplate}"/>
+                    <local:ControlGlyphControl Grid.Row="1" Grid.Column="1" Kind="DPad"
+                                             AccentBrush="{DynamicResource PrimaryHueLightBrush}" Width="32" Height="32"
+                                             HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip="Directional bindings"/>
+                    <ContentControl Grid.Row="1" Grid.Column="2" Content="{Binding DeviceBindings[3]}"
+                                    HorizontalContentAlignment="Stretch" ContentTemplate="{StaticResource LegacyDirectionalInputSlotTemplate}"/>
+                    <ContentControl Grid.Row="2" Grid.Column="1" Content="{Binding DeviceBindings[1]}"
+                                    HorizontalContentAlignment="Stretch" ContentTemplate="{StaticResource LegacyDirectionalInputSlotTemplate}"/>
+                </Grid>
+            </StackPanel>
+        </DataTemplate>
+
         <!-- Four compass faces share the actual physical axis when the
              source is an analogue stick; digital D-pads have four bindings. -->
         <DataTemplate x:Key="CompoundCompassInputSlotTemplate">
@@ -978,7 +1015,7 @@
                                              IsEnabled="{Binding CanChooseInputAxis}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                                 <RadioButton Content="{Binding InputButtonChoiceGlyph}" Tag="3" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
-                                             AutomationProperties.Name="Button input" ToolTip="Button input" Click="InputRepresentation_OnClick"
+                                             AutomationProperties.Name="Button input" AutomationProperties.ItemStatus="{Binding ButtonChoiceDirectionCountLabel}" ToolTip="Button input" Click="InputRepresentation_OnClick"
                                              IsChecked="{Binding InputIsButton, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseInputButton}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
@@ -1016,6 +1053,9 @@
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding IsTypedDirectionalMapping}" Value="True">
                                                 <Setter Property="ContentTemplate" Value="{StaticResource TypedDirectionalInputsTemplate}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsLegacyFourWayInput}" Value="True">
+                                                <Setter Property="ContentTemplate" Value="{StaticResource LegacyFourWayInputsTemplate}"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -1064,7 +1104,8 @@
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right"
                                         Margin="6 0 0 0">
-                                <RadioButton Tag="5"
+                                <RadioButton x:Name="UiMappingFilterOutput" Tag="5"
+                                             AutomationProperties.Name="Filter output"
                                              ToolTip="Filter output" Click="FilterOutput_OnClick"
                                              IsChecked="{Binding OutputIsFilter, Mode=OneWay}"
                                              IsEnabled="{Binding ButtonsEnabled}"
@@ -1086,7 +1127,7 @@
                                              Style="{StaticResource DirectionalTypeChoice}"/>
                                 <RadioButton Content="{Binding OutputButtonChoiceGlyph}" Tag="3" ContentTemplate="{StaticResource DirectionalChoiceGlyphTemplate}"
                                               AutomationProperties.AutomationId="UiMappingOutputButtonType"
-                                             AutomationProperties.Name="Button output" ToolTip="Button output" Click="OutputRepresentation_OnClick"
+                                             AutomationProperties.Name="Button output" AutomationProperties.ItemStatus="{Binding ButtonChoiceDirectionCountLabel}" ToolTip="Button output" Click="OutputRepresentation_OnClick"
                                              IsChecked="{Binding OutputIsButton, Mode=OneWay}"
                                              IsEnabled="{Binding CanChooseOutputButton}"
                                              Style="{StaticResource DirectionalTypeChoice}"/>
@@ -1455,4 +1496,5 @@
         </StackPanel>
     </Border>
 </UserControl>
+
 

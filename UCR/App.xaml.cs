@@ -117,10 +117,26 @@ namespace HidWizards.UCR
                     Logger.Info($"UCR startup completed in {_startupStopwatch.ElapsedMilliseconds} ms");
                     CloseSplash();
                 }
-                catch
+                catch (Exception exception)
                 {
                     CloseSplash();
-                    throw;
+                    Logger.Error("UCR could not complete startup.", exception);
+                    var dataFailure = exception as InvalidDataException;
+                    var message = dataFailure != null
+                        ? "UCR could not load its saved profiles or settings.\n\n" + dataFailure.Message +
+                          "\n\nUCR has stopped without replacing your saved profiles. Restore a valid backup or correct the file, then start UCR again."
+                        : "UCR could not finish starting.\n\n" + exception.GetBaseException().Message +
+                          "\n\nSee the UCR log for details.";
+                    try
+                    {
+                        DarkMessageBox.Show(message, "UCR could not start", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                    catch (Exception reportingException)
+                    {
+                        Logger.Error("Unable to display the styled startup error.", reportingException);
+                        MessageBox.Show(message, "UCR could not start", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                    Shutdown(1);
                 }
             }
             else
@@ -749,3 +765,4 @@ namespace HidWizards.UCR
         }
     }
 }
+

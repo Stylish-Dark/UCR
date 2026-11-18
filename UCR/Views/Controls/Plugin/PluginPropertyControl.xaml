@@ -15,7 +15,11 @@
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
-        <TextBlock x:Name="UiPropertyName" Grid.Row="0" Text="{Binding Name}" Margin="0 6" Style="{StaticResource MaterialDesignBody2TextBlock}"/>
-        <ContentPresenter x:Name="UiPropertyValue" Content="{Binding PropertyContent, ElementName=PluginPropertyControlName}" Grid.Row="0" Grid.Column="1"/>
+        <TextBlock x:Name="UiPropertyName" Grid.Row="0" Text="{Binding Name}" Margin="0 6 8 6"
+                   TextWrapping="Wrap" VerticalAlignment="Center"
+                   Style="{StaticResource MaterialDesignBody2TextBlock}"/>
+        <ContentPresenter x:Name="UiPropertyValue" Content="{Binding PropertyContent, ElementName=PluginPropertyControlName}"
+                          Grid.Row="0" Grid.Column="1" VerticalAlignment="Center"/>
     </Grid>
 </UserControl>
+

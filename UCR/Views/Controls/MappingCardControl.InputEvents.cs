@@ -24,6 +24,7 @@ namespace HidWizards.UCR.Views.Controls
         {
             var mapping = DataContext as MappingViewModel;
             if (mapping?.ButtonsEnabled != true) return;
+            if (mapping.OutputIsFilter) return;
             var analogue = mapping.Mapping.DeviceBindings.Any(input =>
                 input.InputExpressionInputKind == 3);
             var choices = mapping.GetCompatiblePluginOptions().Where(option =>
@@ -41,10 +42,11 @@ namespace HidWizards.UCR.Views.Controls
             int value;
             if (vm == null || !int.TryParse((sender as FrameworkElement)?.Tag as string, out value))
                 return;
-            // Trigger is the analogue form of the *selected* Button family.
-            // Clicking an already-selected Button must not discard that
-            // trigger's physical assignment by forcing representation 3.
-            if (value == 3 && vm.InputIsTrigger) return;
+            // Clicking the selected family is not a request to reconstruct a
+            // saved route. Legacy multi-axis plugins may carry settings that
+            // cannot be represented by a new single-axis route.
+            if (value == 1 && vm.InputIsFullStick || value == 2 && vm.InputIsAxis ||
+                value == 3 && vm.InputIsButton) return;
             if (!vm.SetInputRepresentation(value))
             {
                 DarkMessageBox.Show("The input representation could not be prepared. Check the available remapper plugins.",
@@ -60,7 +62,8 @@ namespace HidWizards.UCR.Views.Controls
             int value;
             if (vm == null || !int.TryParse((sender as FrameworkElement)?.Tag as string, out value))
                 return;
-            if (value == 3 && vm.OutputIsTrigger) return;
+            if (!vm.OutputIsFilter && (value == 1 && vm.OutputIsFullStick ||
+                value == 2 && vm.OutputIsAxis || value == 3 && vm.OutputIsButton)) return;
             // Filter's selected type supersedes the persisted physical route.
             // Returning to a type reconstructs or restores the correct output bank,
             // including the case where its representation number did not change.
@@ -322,3 +325,4 @@ namespace HidWizards.UCR.Views.Controls
         }
     }
 }
+
