@@ -1163,6 +1163,21 @@ jobs:
                   [UcrWindowCapture]::Capture($handle,(Join-Path $directory "UCR-visual-$slug-settings.png")) | Out-Null
               }
               $blockResults | ConvertTo-Json | Set-Content (Join-Path $directory 'block-controls.json')
+
+              $row = Find-UcrProfileRow 'Legacy AxesToAxes audit'
+              $row.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+              $beforeControls = @(Get-UcrControls 'BindButton' | Where-Object { -not $_.Current.IsOffscreen }).Count
+              $selected = Find-UcrElement $nameProperty 'Axis input'
+              $selected.SetFocus()
+              [System.Windows.Forms.SendKeys]::SendWait(' ')
+              Start-Sleep -Milliseconds 500
+              $afterControls = @(Get-UcrControls 'BindButton' | Where-Object { -not $_.Current.IsOffscreen }).Count
+              @{ before = $beforeControls; after = $afterControls } | ConvertTo-Json |
+                  Set-Content (Join-Path $directory 'selected-type-controls.json')
+              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-visual-selected-type.png')) | Out-Null
+              if ($beforeControls -ne $afterControls) { throw 'Clicking the already-selected Axis input changed the legacy mapping bindings.' }
+              Write-Host 'Verified an already-selected type does not reconstruct a legacy mapping.'
+
               Write-Host 'Captured keyboard Block states, Filter mappings and four legacy formats.'
 
           }
