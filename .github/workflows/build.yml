@@ -891,29 +891,31 @@ jobs:
                   plugins = @(@{ pluginType = "HidWizards.UCR.Plugins.Filter.$($type)ToFilter"
                       data = @{ filters = @(); outputs = @(); filterName = 'Audit scope filter'; rangeLowerBound = -35; rangeUpperBound = 65 } })
               })
+              if ($type -eq 'Button') { $p.mappings[0].plugins[0].data.Remove('rangeLowerBound'); $p.mappings[0].plugins[0].data.Remove('rangeUpperBound') }
               $auditProfiles += $p
           }
-          foreach ($type in @('ButtonToAxis','ButtonsToAxis','ButtonsToAxes','AxisToButtons')) {
+          foreach ($type in @('ButtonToAxis','ButtonsToAxis','ButtonsToAxes','AxesToAxes')) {
               $p = $testProfile.Clone(); $p.guid = [guid]::NewGuid().ToString('D'); $matrixProfileIds += $p.guid
               $p.title = "Legacy $type audit"
-              $inputCount = if ($type -eq 'ButtonsToAxis') { 2 } elseif ($type -eq 'ButtonsToAxes') { 4 } else { 1 }
-              $outputCount = if ($type -eq 'ButtonsToAxes' -or $type -eq 'AxisToButtons') { 2 } else { 1 }
+              $inputCount = if ($type -eq 'ButtonsToAxis' -or $type -eq 'AxesToAxes') { 2 } elseif ($type -eq 'ButtonsToAxes') { 4 } else { 1 }
+              $outputCount = if ($type -eq 'ButtonsToAxes' -or $type -eq 'AxesToAxes') { 2 } else { 1 }
               $p.mappings = @(@{
                   title = "Legacy $type mapping"
                   deviceBindings = @(0..($inputCount - 1) | ForEach-Object {
                       @{ guid = [guid]::NewGuid().ToString('D'); isBound = $true; deviceConfigurationGuid = $deviceId
-                         keyType = $(if ($type -eq 'AxisToButtons') { 0 } else { 1 })
-                         keyValue = $(if ($type -eq 'AxisToButtons') { 0 } else { 49 + $_ }); keySubValue = 0 }
+                         keyType = $(if ($type -eq 'AxesToAxes') { 0 } else { 1 })
+                         keyValue = $(if ($type -eq 'AxesToAxes') { $_ * 4 } else { 49 + $_ }); keySubValue = 0 }
                   })
                   plugins = @(@{ pluginType = "HidWizards.UCR.Plugins.Remapper.$type"
                       data = @{ filters = @(); range = -35; rangePressed = 65; initialize = $true
                           outputs = @(0..($outputCount - 1) | ForEach-Object {
                               @{ guid = [guid]::NewGuid().ToString('D'); isBound = $true
                                  deviceConfigurationGuid = $p.outputDeviceConfigurations[0].guid
-                                 keyType = $(if ($type -eq 'AxisToButtons') { 1 } else { 0 }); keyValue = $_; keySubValue = 0 }
+                                 keyType = 0; keyValue = $_; keySubValue = 0 }
                           }) }
                   })
               })
+              if ($type -ne 'ButtonToAxis') { $p.mappings[0].plugins[0].data.Remove('range'); $p.mappings[0].plugins[0].data.Remove('rangePressed'); $p.mappings[0].plugins[0].data.Remove('initialize') }
               $auditProfiles += $p
           }
           foreach ($p in $auditProfiles) {
