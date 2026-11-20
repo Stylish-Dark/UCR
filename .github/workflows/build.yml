@@ -991,7 +991,7 @@ jobs:
 
           # Capture the real compiled WPF window, not a generated mockup
           # or a screenshot from the user's computer.
-          Add-Type -ReferencedAssemblies @('System.Drawing') -TypeDefinition @'
+          Add-Type -ReferencedAssemblies @('System.Drawing','System.Windows.Forms') -TypeDefinition @'
           using System;
           using System.Collections.Generic;
           using System.Drawing;
