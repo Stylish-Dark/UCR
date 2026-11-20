@@ -1028,18 +1028,20 @@ jobs:
               private static extern bool EnumDisplaySettings(string deviceName, int mode, ref DisplayMode display);
               [DllImport("user32.dll", CharSet = CharSet.Unicode)]
               private static extern int ChangeDisplaySettings(ref DisplayMode display, uint flags);
-              public static void PrepareDesktop() {
+              public static void PrepareDesktop() { SetDesktop(1920,1080); }
+              public static void SetDesktop(uint width, uint height) {
                   var mode = new DisplayMode();
                   mode.Size = (ushort)Marshal.SizeOf(typeof(DisplayMode));
                   if (!EnumDisplaySettings(null, -1, ref mode)) throw new Exception("Cannot inspect runner display");
-                  mode.Width = 1920; mode.Height = 1080; mode.Fields = 0x180000;
+                  mode.Width = width; mode.Height = height; mode.Fields = 0x180000;
                   int result = ChangeDisplaySettings(ref mode, 0);
                   if (result != 0) throw new Exception("Cannot resize audit desktop: " + result);
               }
               public static void CaptureDesktop(string filename) {
-                  using (var bitmap = new Bitmap(1920, 1080)) {
+                  var bounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
+                  using (var bitmap = new Bitmap(bounds.Width, bounds.Height)) {
                       using (var graphics = Graphics.FromImage(bitmap))
-                          graphics.CopyFromScreen(0, 0, 0, 0, new Size(1920, 1080));
+                          graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size);
                       bitmap.Save(filename, ImageFormat.Png);
                   }
               }
@@ -1287,6 +1289,21 @@ jobs:
               }
               $identityCases | ConvertTo-Json | Set-Content (Join-Path $directory 'unchanged-selected-types.json')
               Write-Host 'Verified selected-type clicks preserve the complete saved mapping in all sixteen keyboard, Filter, D-pad and legacy fixtures.'
+              $viewportResults = @()
+              foreach ($size in @(@(1280,720),@(1024,768),@(800,600))) {
+                  [UcrWindowCapture]::SetDesktop($size[0],$size[1])
+                  Start-Sleep -Milliseconds 1000
+                  $area = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+                  $bounds = $root.Current.BoundingRectangle
+                  $viewportResults += @{ width = $size[0]; height = $size[1]; workArea = $area.ToString(); window = $bounds.ToString() }
+                  $viewportResults | ConvertTo-Json | Set-Content (Join-Path $directory 'viewport-bounds.json')
+                  [UcrWindowCapture]::CaptureDesktop((Join-Path $directory "UCR-visual-desktop-$($size[0])x$($size[1]).png"))
+                  if ($bounds.Left -lt $area.Left -or $bounds.Top -lt $area.Top -or $bounds.Right -gt $area.Right + 1 -or $bounds.Bottom -gt $area.Bottom + 1) {
+                      throw "UCR is outside the display work area at $($size[0])x$($size[1]): $bounds versus $area"
+                  }
+              }
+              [UcrWindowCapture]::PrepareDesktop()
+              Write-Host 'Verified the main window remains inside all three reduced desktop work areas.'
               Stop-Process -Id $process.Id -Force
               if (-not $process.WaitForExit(10000)) { throw 'The audit process did not exit.' }
               Copy-Item -LiteralPath $dataRoot -Destination (Join-Path $directory 'valid-data-before-startup-error') -Recurse
