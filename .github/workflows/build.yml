@@ -569,6 +569,13 @@ jobs:
                           BindingDescriptor = new BindingDescriptor { Type = BindingType.Button, Index = i }
                       });
                   device.Nodes.Add(node);
+                  var dpad = new DeviceReportNode { Title = "DPad" };
+                  for (var i = 0; i < 4; i++)
+                      dpad.Bindings.Add(new BindingReport {
+                          Title = new[] { "Up", "Right", "Down", "Left" }[i], Category = BindingCategory.Momentary,
+                          BindingDescriptor = new BindingDescriptor { Type = BindingType.POV, Index = i, SubIndex = 0 }
+                      });
+                  device.Nodes.Add(dpad);
                   return device;
               }
               public ProviderReport GetOutputList()
@@ -954,7 +961,7 @@ jobs:
                       @{ guid = [guid]::NewGuid().ToString('D'); isBound = $true; deviceConfigurationGuid = $deviceId
                           keyType = $(if ($axisInput) { 0 } elseif ($buttonInput) { 1 } else { 2 })
                           keyValue = $(if ($axisInput) { $_ * 4 } elseif ($buttonInput) { 49 + $_ } else { 0 })
-                          keySubValue = $(if (-not $axisInput -and -not $buttonInput) { $_ + 1 } else { 0 })
+                          keySubValue = $(if (-not $axisInput -and -not $buttonInput) { @(3,1,0,2)[$_] } else { 0 })
                           inputExpressionKindConfigured = $true; inputDirectionSlot = $_ + 1 }
                   })
                   plugins = @(0..($outputCount - 1) | ForEach-Object {
@@ -962,18 +969,21 @@ jobs:
                           data = @{ filters = @(); outputs = @(@{ guid = [guid]::NewGuid().ToString('D'); isBound = $true
                               deviceConfigurationGuid = $p.outputDeviceConfigurations[0].guid
                               keyType = $(if ($axisOutput) { 0 } elseif ($buttonOutput) { 1 } else { 2 })
-                              keyValue = $(if ($axisOutput -or $buttonOutput) { $_ } else { 0 })
-                              keySubValue = $(if (-not $axisOutput -and -not $buttonOutput) { $_ + 1 } else { 0 }) }) } }
+                              keyValue = $(if ($axisOutput -or $buttonOutput) { $_ } else { @(3,1,0,2)[$_] })
+                              keySubValue = 0 }) } }
                   })
               })
               $auditProfiles += $p
           }
           $p = $auditProfiles[9] | ConvertTo-Json -Depth 40 | ConvertFrom-Json
           $p.guid = [guid]::NewGuid().ToString('D'); $matrixProfileIds += $p.guid; $p.title = 'Legacy keyboard D-pad audit'
+          $p.outputDeviceConfigurations[0].device.providerName = 'UcrAuditOutput'
+          $p.outputDeviceConfigurations[0].device.deviceHandle = 'audit'
+
           $p.mappings[0].title = 'Legacy keyboard to D-pad'
           $p.mappings[0].plugins[0].pluginType = 'HidWizards.UCR.Plugins.Remapper.ButtonsToDPad'
           $p.mappings[0].plugins[0].data.outputs = @(0..3 | ForEach-Object { @{ guid = [guid]::NewGuid().ToString('D'); isBound = $true
-              deviceConfigurationGuid = $p.outputDeviceConfigurations[0].guid; keyType = 2; keyValue = 0; keySubValue = $_ + 1 } })
+              deviceConfigurationGuid = $p.outputDeviceConfigurations[0].guid; keyType = 2; keyValue = @(0,2,3,1)[$_]; keySubValue = 0 } })
           $auditProfiles += $p
           foreach ($p in $auditProfiles) {
               @{ schemaVersion = 1; profile = $p } | ConvertTo-Json -Depth 25 |
@@ -1028,6 +1038,14 @@ jobs:
               private static extern bool EnumDisplaySettings(string deviceName, int mode, ref DisplayMode display);
               [DllImport("user32.dll", CharSet = CharSet.Unicode)]
               private static extern int ChangeDisplaySettings(ref DisplayMode display, uint flags);
+              [DllImport("dwmapi.dll")]
+              private static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out Rect bounds, int size);
+              public static Rectangle VisibleWindowBounds(IntPtr hwnd) {
+                  Rect bounds;
+                  if (DwmGetWindowAttribute(hwnd,9,out bounds,Marshal.SizeOf(typeof(Rect))) != 0)
+                      GetWindowRect(hwnd,out bounds);
+                  return Rectangle.FromLTRB(bounds.Left,bounds.Top,bounds.Right,bounds.Bottom);
+              }
               public static void PrepareDesktop() { SetDesktop(1920,1080); }
               public static void SetDesktop(uint width, uint height) {
                   var mode = new DisplayMode();
@@ -1250,10 +1268,35 @@ jobs:
                           if ($b[0].Y -ge $b[1].Y -or [Math]::Abs($b[1].Y - $b[2].Y) -gt 2 -or $b[2].Y -ge $b[3].Y -or [Math]::Abs($b[0].X - $b[3].X) -gt 2) { throw 'Legacy four-way bindings are not a directional cross.' }
                           if ((Find-UcrElement $nameProperty 'Button input').Current.ItemStatus -ne '4 directions') { throw 'Legacy four-way selector reports the wrong direction count.' }
                       }
+                      if ($p.title -like 'D-pad to *') {
+                          if ((Find-UcrControl 'UiMappingCompoundBind').Current.Name -notlike 'D-pad*') { throw 'A physical POV input is still labelled as face buttons.' }
+                      }
+                      if ($p.title -in @('D-pad to D-pad audit','Two axes to D-pad audit','Four buttons to D-pad audit')) {
+                          if ((Find-UcrControl 'UiMappingCompoundOutputBind').Current.Name -notlike 'D-pad*') { throw 'An offline POV output is still labelled as face buttons.' }
+                      }
+                      if ($p.title -eq 'Legacy keyboard D-pad audit') {
+                          if (-not (Find-UcrElement $nameProperty '4-Way output').GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Current.IsSelected) { throw 'The legacy D-pad is still classified as Button output.' }
+                          Find-UcrControl 'UiLegacyDPadDestination' | Out-Null
+                          foreach ($id in @('UiLegacyDPadInvertX','UiLegacyDPadInvertY')) {
+                              $t = Find-UcrControl $id
+                              $t.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle()
+                          }
+                      }
                       [UcrWindowCapture]::Capture($handle,(Join-Path $directory "UCR-visual-$slug-settings-$width.png")) | Out-Null
                   }
               }
               $blockResults | ConvertTo-Json | Set-Content (Join-Path $directory 'block-controls.json')
+              foreach ($id in @('UiLegacyDPadInvertX','UiLegacyDPadInvertY')) {
+                  $t = Find-UcrControl $id
+                  if ($t.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Current.ToggleState -ne [System.Windows.Automation.ToggleState]::On) {
+                      $t.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle()
+                  }
+              }
+              Invoke-UcrControl 'UiLegacyDPadDestination'
+              $choice = Find-UcrElement $nameProperty 'D-pad'
+              $choice.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 250
+
               function Save-UcrIfNeeded {
                   if ((Find-UcrControl 'UiToolbarSave').Current.IsEnabled) { Invoke-UcrControl 'UiToolbarSave'; Start-Sleep -Milliseconds 400 }
               }
@@ -1288,14 +1331,24 @@ jobs:
                   $identityCases += $p.title
               }
               $identityCases | ConvertTo-Json | Set-Content (Join-Path $directory 'unchanged-selected-types.json')
+              $saved = Get-Content (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+              $legacy = @($saved.profiles | Where-Object { $_.title -eq 'Legacy keyboard D-pad audit' })[0].mappings[0]
+              if ($legacy.plugins.Count -ne 1 -or $legacy.plugins[0].pluginType -ne 'HidWizards.UCR.Plugins.Remapper.ButtonsToDPad' -or
+                  $legacy.deviceBindings.Count -ne 4 -or $legacy.plugins[0].data.outputs.Count -ne 4 -or
+                  -not $legacy.plugins[0].data.invertX -or -not $legacy.plugins[0].data.invertY -or
+                  (@($legacy.plugins[0].data.outputs | ForEach-Object { $_.keyValue }) -join ',') -ne '0,2,3,1') {
+                  throw 'The complete D-pad picker or inversion settings changed/lost the legacy plugin or directional channels.'
+              }
+              Write-Host 'Verified the complete D-pad picker and both saved inversion settings retain the original legacy plugin and four directional channels.'
+
               Write-Host 'Verified selected-type clicks preserve the complete saved mapping in all sixteen keyboard, Filter, D-pad and legacy fixtures.'
               $viewportResults = @()
               foreach ($size in @(@(1280,720),@(1024,768),@(800,600))) {
                   [UcrWindowCapture]::SetDesktop($size[0],$size[1])
                   Start-Sleep -Milliseconds 1000
                   $area = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
-                  $bounds = $root.Current.BoundingRectangle
-                  $viewportResults += @{ width = $size[0]; height = $size[1]; workArea = $area.ToString(); window = $bounds.ToString() }
+                  $bounds = [UcrWindowCapture]::VisibleWindowBounds($handle)
+                  $viewportResults += @{ width = $size[0]; height = $size[1]; workArea = $area.ToString(); window = $bounds.ToString(); state = $root.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Current.WindowVisualState.ToString() }
                   $viewportResults | ConvertTo-Json | Set-Content (Join-Path $directory 'viewport-bounds.json')
                   [UcrWindowCapture]::CaptureDesktop((Join-Path $directory "UCR-visual-desktop-$($size[0])x$($size[1]).png"))
                   if ($bounds.Left -lt $area.Left -or $bounds.Top -lt $area.Top -or $bounds.Right -gt $area.Right + 1 -or $bounds.Bottom -gt $area.Bottom + 1) {
@@ -1303,7 +1356,20 @@ jobs:
                   }
               }
               [UcrWindowCapture]::PrepareDesktop()
-              Write-Host 'Verified the main window remains inside all three reduced desktop work areas.'
+              foreach ($state in @([System.Windows.Automation.WindowVisualState]::Normal,[System.Windows.Automation.WindowVisualState]::Maximized)) {
+                  $root.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).SetWindowVisualState($state)
+                  Start-Sleep -Milliseconds 400
+                  [UcrWindowCapture]::SetDesktop(1024,768)
+                  Start-Sleep -Milliseconds 800
+                  $area = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+                  $bounds = [UcrWindowCapture]::VisibleWindowBounds($handle)
+                  [UcrWindowCapture]::CaptureDesktop((Join-Path $directory "UCR-visual-desktop-$state.png"))
+                  if ($bounds.Left -lt $area.Left -or $bounds.Top -lt $area.Top -or $bounds.Right -gt $area.Right + 1 -or $bounds.Bottom -gt $area.Bottom + 1) {
+                      throw "The $state window extends outside the work area: $bounds versus $area"
+                  }
+                  [UcrWindowCapture]::PrepareDesktop()
+              }
+              Write-Host 'Verified the main window remains inside all three reduced desktop work areas and in normal and maximized states.' 
               Stop-Process -Id $process.Id -Force
               if (-not $process.WaitForExit(10000)) { throw 'The audit process did not exit.' }
               Copy-Item -LiteralPath $dataRoot -Destination (Join-Path $directory 'valid-data-before-startup-error') -Recurse

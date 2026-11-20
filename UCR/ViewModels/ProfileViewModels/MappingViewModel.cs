@@ -90,7 +90,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public string InputAxisChoiceGlyph => OutputIsFullStick ? "↔↔" : "↔";
         public string OutputAxisChoiceGlyph => InputIsFullStick ? "↔↔" : "↔";
         public bool OutputIsTrigger => Mapping.EffectiveOutputRepresentation == 4 && !OutputIsFilter;
-        public bool IsCompoundOutput => DirectionalCapacity == 4 &&
+        public bool IsCompoundOutput => IsTypedDirectionalMapping && DirectionalCapacity == 4 &&
             Mapping.EffectiveOutputRepresentation == 1 && !OutputIsFilter;
         internal bool IsDigitalCompoundOutput => IsCompoundOutput && Mapping.CompoundDigitalOutput;
         public bool ShowDirectionalAxisDeadZone => IsCompoundInput && (InputIsAxis || InputIsFullStick) &&

@@ -484,11 +484,14 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 return;
             }
 
-            if (lower.Contains("dpad") || lower.Contains("d-pad") || lower.Contains("pov") ||
+            if (binding.KeyType == 2 || lower.Contains("dpad") || lower.Contains("d-pad") || lower.Contains("pov") ||
                 lower == "up" || lower == "down" || lower == "left" || lower == "right")
             {
                 result.ControlKind = ControlVisualKind.DPad;
-                result.ControlLabel = DirectionLabel(leaf, binding.KeyValue);
+                // POV Index identifies the hat; SubIndex identifies its direction.
+                result.ControlLabel = binding.KeyType == 2
+                    ? PovDirectionLabel(device, binding, leaf)
+                    : DirectionLabel(leaf, binding.KeyValue);
                 result.ControlBrush = result.Device?.AccentBrush ?? NeutralBrush;
                 return;
             }
@@ -517,10 +520,13 @@ namespace HidWizards.UCR.ViewModels.Presentation
         {
             var lower = (leaf ?? string.Empty).ToLowerInvariant();
             var directInput = IsDirectInput(device);
-            if (lower.Contains("dpad") || lower.Contains("d-pad") || lower.Contains("pov") || lower == "up" || lower == "right" || lower == "down" || lower == "left")
+            if (binding.KeyType == 2 || lower.Contains("dpad") || lower.Contains("d-pad") || lower.Contains("pov") || lower == "up" || lower == "right" || lower == "down" || lower == "left")
             {
                 result.ControlKind = ControlVisualKind.DPad;
-                result.ControlLabel = DirectionLabel(leaf, binding.KeyValue);
+                // POV Index identifies the hat; SubIndex identifies its direction.
+                result.ControlLabel = binding.KeyType == 2
+                    ? PovDirectionLabel(device, binding, leaf)
+                    : DirectionLabel(leaf, binding.KeyValue);
                 result.ControlBrush = result.Device.AccentBrush;
                 return;
             }
@@ -681,6 +687,8 @@ namespace HidWizards.UCR.ViewModels.Presentation
             if (!IsDirectInput(device)) return null;
             var leaf = IsRawControlId(binding, boundName) ? string.Empty : ExtractLeaf(boundName);
             var kind = Describe(device, DeviceIoType.Input).Kind;
+            if (binding.KeyType == 2)
+                return DirectionLabel(string.Empty, binding.KeySubValue);
             if (binding.DeviceBindingCategory == DeviceBindingCategory.Range && binding.KeyType == 0)
             {
                 return KnownAxisLabelFromName(leaf.ToLowerInvariant(), kind) ??
@@ -820,6 +828,18 @@ namespace HidWizards.UCR.ViewModels.Presentation
                 case "△": return Freeze(Color.FromRgb(50, 205, 135));
                 default: return PlayStationBrush;
             }
+        }
+
+        private static string PovDirectionLabel(Device device, DeviceBinding binding, string leaf)
+        {
+            // DirectInput stores hat number in Index and direction in SubIndex.
+            // ViGEm/XInput store the direction in Index instead. Prefer real names
+            // for other providers, whose encoding cannot be inferred safely.
+            var direction = IsDirectInput(device) ? binding.KeySubValue :
+                string.Equals(device?.ProviderName, "Core_ViGEm", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(device?.ProviderName, "SharpDX_XInput", StringComparison.OrdinalIgnoreCase)
+                    ? binding.KeyValue : -1;
+            return DirectionLabel(leaf, direction);
         }
 
         private static string DirectionLabel(string leaf, int keyValue)

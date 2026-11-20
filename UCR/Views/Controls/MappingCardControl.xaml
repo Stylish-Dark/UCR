@@ -1333,6 +1333,15 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 <ItemsControl Grid.Column="0" ItemsSource="{Binding DeviceBindings}">
+                                                    <ItemsControl.Style>
+                                                        <Style TargetType="ItemsControl">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsDPadOutput}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </ItemsControl.Style>
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
                                                             <local:CompactInputBindingControl
@@ -1342,6 +1351,13 @@
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
+                                                <Button Grid.Column="0" Height="38" MinWidth="0" Margin="0 3 0 0"
+                                                        AutomationProperties.AutomationId="UiLegacyDPadDestination"
+                                                        Content="{Binding FourWayOutputLabel}"
+                                                        Visibility="{Binding IsDPadOutput, Converter={StaticResource CompoundVisibilityConverter}}"
+                                                        Click="FourWayOutput_OnClick" Style="{StaticResource UcrBindingButton}"
+                                                        IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"
+                                                        ToolTip="Choose a complete D-pad output destination"/>
                                                 <!-- Replaces the physical-device selector when this output is a filter.
                                                      It occupies the same destination slot; no extra selection tier. -->
                                                 <Button x:Name="UiMappingDestination" Grid.Column="0" Content="F   Filter ▼"
@@ -1409,11 +1425,39 @@
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
                                             </StackPanel>
+                                            <Expander Header="Settings" Margin="0 6 0 0"
+                                                      Visibility="{Binding IsDPadOutput, Converter={StaticResource CompoundVisibilityConverter}}">
+                                                <UniformGrid Columns="2" Margin="6 5">
+                                                    <StackPanel Style="{StaticResource UcrLabeledSwitchColumn}">
+                                                        <TextBlock Text="Invert X" Style="{StaticResource UcrLabeledSwitchCaption}"/>
+                                                        <ToggleButton AutomationProperties.AutomationId="UiLegacyDPadInvertX"
+                                                                      IsChecked="{Binding Plugin.InvertX, Mode=OneWay}"
+                                                                      Click="AxisInvertX_OnClick" Style="{StaticResource UcrOutputInvertSwitch}"
+                                                                      IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"/>
+                                                    </StackPanel>
+                                                    <StackPanel Style="{StaticResource UcrLabeledSwitchColumn}">
+                                                        <TextBlock Text="Invert Y" Style="{StaticResource UcrLabeledSwitchCaption}"/>
+                                                        <ToggleButton AutomationProperties.AutomationId="UiLegacyDPadInvertY"
+                                                                      IsChecked="{Binding Plugin.InvertY, Mode=OneWay}"
+                                                                      Click="AxisInvertY_OnClick" Style="{StaticResource UcrOutputInvertSwitch}"
+                                                                      IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"/>
+                                                    </StackPanel>
+                                                </UniformGrid>
+                                            </Expander>
                                             <Expander Header="{Binding InlineSettingsTitle}" Margin="0 6 0 0"
                                                 AutomationProperties.AutomationId="UiMappingOutputSettings"
                                                 Expanded="OutputSettings_OnExpanded"
-                                                Visibility="{Binding InlineSettingsVisibility}"
                                                 Foreground="#D0D0D0">
+                                                <Expander.Style>
+                                                    <Style TargetType="Expander" BasedOn="{StaticResource {x:Type Expander}}">
+                                                        <Setter Property="Visibility" Value="{Binding InlineSettingsVisibility}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsDPadOutput}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Expander.Style>
                                                 <ItemsControl ItemsSource="{Binding InlinePropertyGroups}" Margin="6 4">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>

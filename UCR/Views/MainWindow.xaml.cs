@@ -68,6 +68,7 @@ namespace HidWizards.UCR.Views
             InitializeTrayIcon();
             _autoProfileMonitor = new AutoProfileMonitor(context);
             Loaded += MainWindow_OnWorkspaceLoaded;
+            StateChanged += (sender, args) => ConstrainToCurrentWorkArea();
         }
 
         private void SubscriptionsManager_OnPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -84,6 +85,7 @@ namespace HidWizards.UCR.Views
         {
             if (_workspaceReady) return;
             _workspaceReady = true;
+            ConstrainToCurrentWorkArea();
             UpdateProfilePaneWidth();
             // Selecting a profile while InitializeComponent builds the TreeView can happen before
             // ProfileEditorHost exists. Wait until the whole visual tree has loaded.
@@ -1152,8 +1154,62 @@ namespace HidWizards.UCR.Views
             e.CanExecute = Context.IsNotSaved;
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        private struct WindowPoint { public int X, Y; }
+        [StructLayout(LayoutKind.Sequential)]
+        private struct WindowMinMaxInfo
+        {
+            public WindowPoint Reserved, MaxSize, MaxPosition, MinTrackSize, MaxTrackSize;
+        }
+
+        // A preferred geometry must still fit a smaller monitor or work area.
+        private void ConstrainToCurrentWorkArea()
+        {
+            if (WindowState == WindowState.Minimized) return;
+            var handle = new WindowInteropHelper(this).Handle;
+            var source = PresentationSource.FromVisual(this);
+            if (handle == IntPtr.Zero || source?.CompositionTarget == null) return;
+            var pixels = Forms.Screen.FromHandle(handle).WorkingArea;
+            var area = source.CompositionTarget.TransformFromDevice.TransformBounds(
+                new Rect(pixels.Left, pixels.Top, pixels.Width, pixels.Height));
+            if (area.Width <= 0 || area.Height <= 0) return;
+
+            var minimumWidth = TryFindResource("UcrLayoutWindowMinWidth") as double? ?? 1200;
+            var minimumHeight = TryFindResource("UcrLayoutWindowMinHeight") as double? ?? 500;
+            SetCurrentValue(MinWidthProperty, Math.Min(minimumWidth, area.Width));
+            SetCurrentValue(MinHeightProperty, Math.Min(minimumHeight, area.Height));
+            if (WindowState != WindowState.Normal) return;
+
+            var width = Math.Min(area.Width, Math.Max(MinWidth, double.IsNaN(Width) ? ActualWidth : Width));
+            var height = Math.Min(area.Height, Math.Max(MinHeight, double.IsNaN(Height) ? ActualHeight : Height));
+            SetCurrentValue(WidthProperty, width);
+            SetCurrentValue(HeightProperty, height);
+            SetCurrentValue(LeftProperty, Math.Max(area.Left, Math.Min(
+                double.IsNaN(Left) ? area.Left : Left, area.Right - width)));
+            SetCurrentValue(TopProperty, Math.Max(area.Top, Math.Min(
+                double.IsNaN(Top) ? area.Top : Top, area.Bottom - height)));
+        }
+
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
+            if (msg == 0x0024 && lParam != IntPtr.Zero) // WM_GETMINMAXINFO
+            {
+                var screen = Forms.Screen.FromHandle(hwnd);
+                var work = screen.WorkingArea;
+                var limits = (WindowMinMaxInfo)Marshal.PtrToStructure(lParam, typeof(WindowMinMaxInfo));
+                limits.MaxPosition.X = work.Left - screen.Bounds.Left;
+                limits.MaxPosition.Y = work.Top - screen.Bounds.Top;
+                limits.MaxSize.X = work.Width;
+                limits.MaxSize.Y = work.Height;
+                limits.MinTrackSize.X = Math.Min(limits.MinTrackSize.X, work.Width);
+                limits.MinTrackSize.Y = Math.Min(limits.MinTrackSize.Y, work.Height);
+                Marshal.StructureToPtr(limits, lParam, false);
+                handled = true;
+                return IntPtr.Zero;
+            }
+            // Resolution, DPI, taskbar/work-area and completed monitor moves.
+            if (msg == 0x007E || msg == 0x02E0 || msg == 0x001A || msg == 0x0232)
+                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(ConstrainToCurrentWorkArea));
             if (msg != NativeMethods.WM_COPYDATA) return IntPtr.Zero;
             
             var data = (NativeMethods.COPYDATASTRUCT)Marshal.PtrToStructure(lParam, typeof(NativeMethods.COPYDATASTRUCT));

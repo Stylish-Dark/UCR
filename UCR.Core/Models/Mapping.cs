@@ -135,9 +135,13 @@ namespace HidWizards.UCR.Core.Models
                 DeviceBindings.All(b => b.InputExpressionInputKind == 3) ? 1
             : DeviceBindings?.Any(b => !b.IsDirectionalAndCondition &&
                     b.InputExpressionInputKind == 3) == true ? 2 : 3;
+        private bool IsLegacyDPadRoute => Plugins?.Count == 1 &&
+            string.Equals(Plugins[0].PluginName, "Buttons to DPad", StringComparison.OrdinalIgnoreCase);
+
         [XmlIgnore]
         public int EffectiveOutputRepresentation => OutputRepresentation != 0
             ? OutputRepresentation
+            : IsLegacyDPadRoute ? 1
             : IsSingleAxisRoute && Plugins[0].Outputs[0].IsKnownTriggerRange() ? 4
             : EffectiveDirectionalCapacity == 4 &&
                 Plugins?.Count == 2 &&
@@ -153,6 +157,7 @@ namespace HidWizards.UCR.Core.Models
             {
                 if (DirectionalCapacity == 1 || DirectionalCapacity == 2 ||
                     DirectionalCapacity == 4) return DirectionalCapacity;
+                if (IsLegacyDPadRoute) return 4;
                 var directions = DeviceBindings?.Count(binding => binding.InputDirectionSlot > 0) ?? 0;
                 if (directions >= 4) return 4;
                 if (directions >= 2) return 2;
