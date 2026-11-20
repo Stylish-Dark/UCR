@@ -1170,8 +1170,8 @@ namespace HidWizards.UCR.Views
             var source = PresentationSource.FromVisual(this);
             if (handle == IntPtr.Zero || source?.CompositionTarget == null) return;
             var pixels = Forms.Screen.FromHandle(handle).WorkingArea;
-            var area = source.CompositionTarget.TransformFromDevice.TransformBounds(
-                new Rect(pixels.Left, pixels.Top, pixels.Width, pixels.Height));
+            var area = new Rect(pixels.Left, pixels.Top, pixels.Width, pixels.Height);
+            area.Transform(source.CompositionTarget.TransformFromDevice);
             if (area.Width <= 0 || area.Height <= 0) return;
 
             var minimumWidth = TryFindResource("UcrLayoutWindowMinWidth") as double? ?? 1200;

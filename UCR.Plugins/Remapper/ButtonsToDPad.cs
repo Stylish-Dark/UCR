@@ -17,9 +17,9 @@ namespace HidWizards.UCR.Plugins.Remapper
     [PluginOutput(DeviceBindingCategory.Momentary, "Right")]
     public class ButtonsToDPad : Plugin
     {
-        [PluginGui("Invert X", Group = "X axis")]
+        [PluginGui("Invert X")]
         public bool InvertX { get; set; }
-        [PluginGui("Invert Y", Group = "Y axis")]
+        [PluginGui("Invert Y")]
         public bool InvertY { get; set; }
 
         public override void Update(params short[] values)

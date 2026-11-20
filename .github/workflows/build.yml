@@ -1,4 +1,4 @@
-﻿name: Build UCR Stylish
+name: Build UCR Stylish
 
 on:
   push:
@@ -525,3 +525,911 @@ jobs:
           name: UCR-Windows
           path: UCR/bin/Release/
           if-no-files-found: error
+
+      - name: Capture UCR UI on Windows runner
+        id: visual_audit
+        continue-on-error: false
+        shell: powershell
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $directory = Join-Path $env:RUNNER_TEMP 'UCR-Visual-Audit'
+          New-Item -ItemType Directory -Path $directory -Force | Out-Null
+          $exe = (Resolve-Path '.\UCR\bin\Release\UCR.exe').Path
+          $mockPath = Join-Path (Split-Path $exe) 'Providers\UcrAuditOutput'
+          New-Item -ItemType Directory -Path $mockPath -Force | Out-Null
+          $originalKeyboardProvider = Join-Path (Split-Path $exe) 'Providers\Core_Interception'
+          if (Test-Path -LiteralPath $originalKeyboardProvider) { Remove-Item -LiteralPath $originalKeyboardProvider -Recurse -Force }
+          $mockSource = Join-Path $env:RUNNER_TEMP 'UcrAuditOutput.cs'
+          @'
+          using System.ComponentModel.Composition;
+          using HidWizards.IOWrapper.DataTransferObjects;
+          using HidWizards.IOWrapper.ProviderInterface.Interfaces;
+          [Export(typeof(IProvider))]
+          public sealed class UcrAuditOutput : IOutputProvider
+          {
+              public string ProviderName { get { return "UcrAuditOutput"; } }
+              public bool IsLive { get { return true; } }
+              public void RefreshLiveState() { }
+              public void RefreshDevices() { }
+              public void Dispose() { }
+              public bool SubscribeOutputDevice(OutputSubscriptionRequest request) { return true; }
+              public bool UnSubscribeOutputDevice(OutputSubscriptionRequest request) { return true; }
+              public bool SetOutputState(OutputSubscriptionRequest request, BindingDescriptor binding, int state) { return true; }
+              public DeviceReport GetOutputDeviceReport(DeviceDescriptor descriptor)
+              {
+                  var device = new DeviceReport {
+                      DeviceName = "Audit virtual controller",
+                      DeviceDescriptor = new DeviceDescriptor { DeviceHandle = "audit", DeviceInstance = 0 }
+                  };
+                  var node = new DeviceReportNode { Title = "Buttons" };
+                  for (var i = 0; i < 4; i++)
+                      node.Bindings.Add(new BindingReport {
+                          Title = "Audit " + (char)('A' + i), Category = BindingCategory.Momentary,
+                          BindingDescriptor = new BindingDescriptor { Type = BindingType.Button, Index = i }
+                      });
+                  device.Nodes.Add(node);
+                  var dpad = new DeviceReportNode { Title = "DPad" };
+                  for (var i = 0; i < 4; i++)
+                      dpad.Bindings.Add(new BindingReport {
+                          Title = new[] { "Up", "Right", "Down", "Left" }[i], Category = BindingCategory.Momentary,
+                          BindingDescriptor = new BindingDescriptor { Type = BindingType.POV, Index = i, SubIndex = 0 }
+                      });
+                  device.Nodes.Add(dpad);
+                  return device;
+              }
+              public ProviderReport GetOutputList()
+              {
+                  var report = new ProviderReport {
+                      Title = ProviderName, API = "Audit",
+                      ProviderDescriptor = new ProviderDescriptor { ProviderName = ProviderName }
+                  };
+                  report.Devices.Add(GetOutputDeviceReport(default(DeviceDescriptor)));
+                  return report;
+              }
+          }
+          [Export(typeof(IProvider))]
+          public sealed class UcrAuditKeyboard : IInputProvider
+          {
+              public string ProviderName { get { return "Core_Interception"; } }
+              public bool IsLive { get { return true; } }
+              public void RefreshLiveState() { }
+              public void RefreshDevices() { }
+              public void Dispose() { }
+              public bool SubscribeInput(InputSubscriptionRequest request) { return true; }
+              public bool UnsubscribeInput(InputSubscriptionRequest request) { return true; }
+              public DeviceReport GetInputDeviceReport(DeviceDescriptor descriptor)
+              {
+                  var device = new DeviceReport {
+                      DeviceName = "K: Audit keyboard",
+                      DeviceDescriptor = new DeviceDescriptor { DeviceHandle = "Keyboard_Audit", DeviceInstance = 0 }
+                  };
+                  var node = new DeviceReportNode { Title = "Keys" };
+                  var keys = new[] { "F", "K", "U", "J" };
+                  for (var i = 0; i < keys.Length; i++)
+                      node.Bindings.Add(new BindingReport {
+                          Title = keys[i], Category = BindingCategory.Momentary, Blockable = true,
+                          BindingDescriptor = new BindingDescriptor { Type = BindingType.Button, Index = i }
+                      });
+                  device.Nodes.Add(node);
+                  return device;
+              }
+              public ProviderReport GetInputList()
+              {
+                  var report = new ProviderReport {
+                      Title = ProviderName, API = "Audit",
+                      ProviderDescriptor = new ProviderDescriptor { ProviderName = ProviderName }
+                  };
+                  report.Devices.Add(GetInputDeviceReport(default(DeviceDescriptor)));
+                  return report;
+              }
+          }
+          '@ | Set-Content -LiteralPath $mockSource -Encoding UTF8
+          $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          $dto = (Resolve-Path '.\dependencies\IOWrapper\IOWrapper.DTOs.dll').Path
+          $provider = (Resolve-Path '.\dependencies\IOWrapper\IOWrapper.IProvider.dll').Path
+          & $csc /nologo /target:library /r:System.ComponentModel.Composition.dll "/r:$dto" "/r:$provider" "/out:$mockPath\UcrAuditOutput.dll" $mockSource
+          if ($LASTEXITCODE -ne 0) { throw 'Could not compile the Windows audit output fixture.' }
+
+
+          # Runner-only saved DualSense binding fixture. No simulated hardware
+          # signal is claimed; this exercises the actual app's persisted glyph.
+          $dataRoot = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'UCR'
+          $profileFolder = Join-Path $dataRoot 'Profiles'
+          New-Item -ItemType Directory -Path $profileFolder -Force | Out-Null
+          $profileId = [guid]::NewGuid().ToString('D')
+          $deviceId = [guid]::NewGuid().ToString('D')
+          $testProfile = @{
+            guid = $profileId
+            title = 'DualSense button verification'
+            childProfiles = @()
+            mappings = @(
+              @{
+                title = 'Cross to A'
+                deviceBindings = @(
+                  @{
+                    isBound = $true
+                    deviceConfigurationGuid = $deviceId
+                    keyType = 1
+                    keyValue = 49
+                    keySubValue = 0
+                  }
+                )
+                plugins = @(
+                  @{
+                    pluginType = 'HidWizards.UCR.Plugins.Remapper.ButtonToButton'
+                    data = @{
+                      outputs = @()
+                      filters = @()
+                    }
+                  }
+                )
+              }
+            )
+            mappingGroups = @()
+            inputDeviceConfigurations = @(
+              @{
+                guid = $deviceId
+                device = @{
+                  title = 'DualSense Wireless Controller'
+                  providerName = 'SharpDX_DirectInput'
+                  deviceHandle = 'UCR_DUALSENSE_VISUAL_AUDIT'
+                  deviceNumber = 0
+                  hidPath = 'HID\VID_054C&PID_0CE6'
+                }
+                shadowDevices = @()
+              }
+            )
+            outputDeviceConfigurations = @(
+              @{
+                guid = [guid]::NewGuid().ToString('D')
+                device = @{
+                  title = 'Xbox 360 Controller'
+                  providerName = 'Core_ViGEm'
+                  deviceHandle = 'xb360'
+                  deviceNumber = 0
+                }
+                shadowDevices = @()
+              }
+            )
+            autoActivateApplications = @()
+          }
+          $largeProfileId = [guid]::NewGuid().ToString('D')
+          $largeProfile = $testProfile.Clone()
+          $largeProfile.guid = $largeProfileId
+          $largeProfile.title = 'Large-profile audit'
+          $largeProfile.mappings = @(1..144 | ForEach-Object {
+              $row = $testProfile.mappings[0].Clone()
+              $row.title = 'Audit row ' + $_
+              $row
+          })
+          @{ schemaVersion = 1; profile = $largeProfile } |
+            ConvertTo-Json -Depth 25 |
+            Set-Content -LiteralPath (Join-Path $profileFolder ($largeProfileId + '.json')) -Encoding UTF8
+          $triggerProfileId = [guid]::NewGuid().ToString('D')
+          $triggerProfile = $testProfile.Clone()
+          $triggerProfile.guid = $triggerProfileId
+          $triggerProfile.title = 'Legacy trigger audit'
+          $outputId = $triggerProfile.outputDeviceConfigurations[0].guid
+          $triggerProfile.mappings = @(
+              @{
+                  title = 'LT to RT'
+                  deviceBindings = @(@{
+                      isBound = $true
+                      deviceConfigurationGuid = $deviceId
+                      keyType = 0
+                      keyValue = 12
+                      keySubValue = 0
+                      inputExpressionInputKind = 3
+                  })
+                  plugins = @(@{
+                      pluginType = 'HidWizards.UCR.Plugins.Remapper.AxisToAxis'
+                      data = @{
+                          outputs = @(@{
+                              isBound = $true
+                              deviceConfigurationGuid = $outputId
+                              keyType = 0
+                              keyValue = 5
+                              keySubValue = 0
+                          })
+                          filters = @()
+                          sensitivity = 71
+                          deadZone = 13
+                      }
+                  })
+              }
+          )
+          @{ schemaVersion = 1; profile = $triggerProfile } |
+            ConvertTo-Json -Depth 25 |
+            Set-Content -LiteralPath (Join-Path $profileFolder ($triggerProfileId + '.json')) -Encoding UTF8
+          $batchProfileId = [guid]::NewGuid().ToString('D')
+          $batchOutputId = [guid]::NewGuid().ToString('D')
+          $batchProfile = $testProfile.Clone()
+          $batchProfile.guid = $batchProfileId
+          $batchProfile.title = 'Populated batch audit'
+          $batchProfile.primaryOutputDeviceConfigurationGuid = $batchOutputId
+          $batchProfile.outputDeviceConfigurations = @(@{
+              guid = $batchOutputId
+              device = @{ title = 'Audit virtual controller'; providerName = 'UcrAuditOutput'; deviceHandle = 'audit'; deviceNumber = 0 }
+              shadowDevices = @()
+          })
+          $batchRow = $testProfile.mappings[0].Clone()
+          $batchRow.title = 'Three outputs'
+          $batchRow.plugins = @(0..2 | ForEach-Object {
+              @{
+                  pluginType = 'HidWizards.UCR.Plugins.Remapper.ButtonToButton'
+                  data = @{
+                      filters = @()
+                      outputs = @(@{
+                          guid = [guid]::NewGuid().ToString('D')
+                          isBound = ($_ -eq 0)
+                          deviceConfigurationGuid = $batchOutputId
+                          keyType = 1
+                          keyValue = 0
+                          keySubValue = 0
+                      })
+                  }
+              }
+          })
+          $lastBatchRow = $batchRow.Clone()
+          $lastBatchRow.title = 'Another pending mapping'
+          $lastBatchRow.plugins = @(@{
+              pluginType = 'HidWizards.UCR.Plugins.Remapper.ButtonToButton'
+              data = @{ filters = @(); outputs = @(@{
+                  guid = [guid]::NewGuid().ToString('D'); isBound = $false
+                  deviceConfigurationGuid = $batchOutputId; keyType = 1; keyValue = 0; keySubValue = 0
+              }) }
+          })
+          $batchProfile.mappings = @($batchRow, $lastBatchRow)
+          @{ schemaVersion = 1; profile = $batchProfile } |
+            ConvertTo-Json -Depth 25 |
+            Set-Content -LiteralPath (Join-Path $profileFolder ($batchProfileId + '.json')) -Encoding UTF8
+          $dpadProfileId = [guid]::NewGuid().ToString('D')
+          $dpadProfile = $testProfile.Clone()
+          $dpadProfile.guid = $dpadProfileId
+          $dpadProfile.title = 'Compound D-pad audit'
+          $dpadProfile.mappings = @(@{
+              title = 'D-pad to D-pad'
+              inputRepresentation = 1
+              compoundDigitalInput = $true
+              outputRepresentation = 1
+              directionalCapacity = 4
+              compoundDigitalOutput = $true
+              deviceBindings = @(1..4 | ForEach-Object {
+                  @{ guid = [guid]::NewGuid().ToString('D'); isBound = $true
+                     deviceConfigurationGuid = $deviceId; keyType = 2; keyValue = 0; keySubValue = $_
+                     assignedControlName = @('D-pad Left', 'D-pad Right', 'D-pad Up', 'D-pad Down')[$_ - 1]
+                     inputDirectionSlot = $_ }
+              })
+              plugins = @(1..4 | ForEach-Object {
+                  @{
+                      pluginType = 'HidWizards.UCR.Plugins.Remapper.ButtonToButton'
+                      data = @{ filters = @(); outputs = @() }
+                  }
+              })
+          })
+          @{ schemaVersion = 1; profile = $dpadProfile } |
+            ConvertTo-Json -Depth 25 |
+            Set-Content -LiteralPath (Join-Path $profileFolder ($dpadProfileId + '.json')) -Encoding UTF8
+          $axisProfileId = [guid]::NewGuid().ToString('D')
+          $axisProfile = $testProfile.Clone()
+          $axisProfile.guid = $axisProfileId
+          $axisProfile.title = 'Axis dead zone audit'
+          $axisProfile.mappings = @(@{
+              title = 'Axis to two buttons'
+              inputRepresentation = 2; outputRepresentation = 3; directionalCapacity = 2
+              useInputExpression = $true
+              deviceBindings = @(@{
+                  guid = [guid]::NewGuid().ToString('D'); isBound = $true
+                  deviceConfigurationGuid = $deviceId; keyType = 0; keyValue = 1; keySubValue = 0
+                  inputExpressionInputKind = 3; inputExpressionKindConfigured = $true
+                  directionalButtonThreshold = 16384
+              })
+              plugins = @(1..2 | ForEach-Object {
+                  @{ pluginType = 'HidWizards.UCR.Plugins.Remapper.ButtonToButton'
+                     data = @{ filters = @(); outputs = @() } }
+              })
+          })
+          @{ schemaVersion = 1; profile = $axisProfile } |
+            ConvertTo-Json -Depth 25 |
+            Set-Content -LiteralPath (Join-Path $profileFolder ($axisProfileId + '.json')) -Encoding UTF8
+          $presetProfileId = [guid]::NewGuid().ToString('D')
+          $presetKeyboardId = [guid]::NewGuid().ToString('D')
+          $presetProfile = $dpadProfile.Clone()
+          $presetProfile.guid = $presetProfileId
+          $presetProfile.title = 'Keyboard preset application audit'
+          $presetProfile.inputDeviceConfigurations = @(@{
+              guid = $presetKeyboardId
+              device = @{ title = 'Audit keyboard'; providerName = 'UcrAuditKeyboard'; deviceHandle = 'keys'; deviceNumber = 0 }
+              shadowDevices = @()
+          })
+          $presetProfile.primaryInputDeviceConfigurationGuid = $presetKeyboardId
+          $presetProfile.compoundBindingPresets = @(@{ name = 'Audit custom cluster'; capacity = 4; keys = @('F','K','U','J') })
+          $presetRow = $dpadProfile.mappings[0].Clone()
+          $presetRow.title = 'Keyboard cluster to four outputs'
+          $presetRow.deviceBindings = @(1..4 | ForEach-Object {
+              @{ guid = [guid]::NewGuid().ToString('D'); isBound = $false; inputDirectionSlot = $_
+                 deviceConfigurationGuid = $presetKeyboardId }
+          })
+          $presetProfile.mappings = @($presetRow)
+          @{ schemaVersion = 1; profile = $presetProfile } |
+            ConvertTo-Json -Depth 25 |
+            Set-Content -LiteralPath (Join-Path $profileFolder ($presetProfileId + '.json')) -Encoding UTF8
+          $matrixProfileIds = @()
+          $auditProfiles = @()
+          $keyboardConfig = [guid]::NewGuid().ToString('D')
+          foreach ($shape in @('single', 'paired', 'compound')) {
+              $p = $testProfile.Clone()
+              $p.guid = [guid]::NewGuid().ToString('D'); $matrixProfileIds += $p.guid
+              $p.title = "Block $shape audit"
+              $p.inputDeviceConfigurations = @(@{
+                  guid = $keyboardConfig
+                  device = @{ title = 'K: Audit keyboard'; providerName = 'Core_Interception'; deviceHandle = 'Keyboard_Audit'; deviceNumber = 0 }
+                  shadowDevices = @()
+              })
+              $p.primaryInputDeviceConfigurationGuid = $keyboardConfig
+              $capacity = if ($shape -eq 'single') { 1 } elseif ($shape -eq 'paired') { 2 } else { 4 }
+              $p.mappings = @(@{
+                  title = "Keyboard $shape mapping"; inputRepresentation = $(if ($capacity -eq 4) { 1 } else { 3 })
+                  outputRepresentation = $(if ($capacity -eq 1) { 3 } elseif ($capacity -eq 2) { 2 } else { 1 })
+                  directionalCapacity = $capacity; compoundDigitalInput = ($capacity -eq 4); useInputExpression = $true
+                  deviceBindings = @(0..($capacity - 1) | ForEach-Object {
+                      @{ guid = [guid]::NewGuid().ToString('D'); isBound = $true; deviceConfigurationGuid = $keyboardConfig
+                         keyType = 1; keyValue = $_; keySubValue = 0; assignedControlName = @('F','K','U','J')[$_]
+                         inputExpressionKindConfigured = $true; inputDirectionSlot = $(if ($capacity -gt 1) { $_ + 1 } else { 0 }) }
+                  })
+                  plugins = @(0..([Math]::Max(1, $capacity / 2) - 1) | ForEach-Object {
+                      @{ pluginType = $(if ($capacity -eq 1) { 'HidWizards.UCR.Plugins.Remapper.ButtonToButton' } else { 'HidWizards.UCR.Plugins.Remapper.AxisToAxis' })
+                         data = @{ filters = @(); outputs = @(@{ guid = [guid]::NewGuid().ToString('D'); isBound = $true
+                             deviceConfigurationGuid = $p.outputDeviceConfigurations[0].guid
+                             keyType = $(if ($capacity -eq 1) { 1 } else { 0 }); keyValue = $_; keySubValue = 0 }) } }
+                  })
+              })
+              $auditProfiles += $p
+          }
+          foreach ($type in @('Button','Axis')) {
+              $p = $testProfile.Clone(); $p.guid = [guid]::NewGuid().ToString('D'); $matrixProfileIds += $p.guid
+              $p.title = "$type Filter audit"
+              $p.mappings = @(@{
+                  title = "$type to named Filter"
+                  deviceBindings = @(@{ guid = [guid]::NewGuid().ToString('D'); isBound = $true
+                      deviceConfigurationGuid = $deviceId; keyType = $(if ($type -eq 'Axis') { 0 } else { 1 })
+                      keyValue = $(if ($type -eq 'Axis') { 0 } else { 49 }); keySubValue = 0 })
+                  plugins = @(@{ pluginType = "HidWizards.UCR.Plugins.Filter.$($type)ToFilter"
+                      data = @{ filters = @(); outputs = @(); filterName = 'Audit scope filter'; rangeLowerBound = -35; rangeUpperBound = 65 } })
+              })
+              if ($type -eq 'Button') { $p.mappings[0].plugins[0].data.Remove('rangeLowerBound'); $p.mappings[0].plugins[0].data.Remove('rangeUpperBound') }
+              $auditProfiles += $p
+          }
+          foreach ($type in @('ButtonToAxis','ButtonsToAxis','ButtonsToAxes','AxesToAxes')) {
+              $p = $testProfile.Clone(); $p.guid = [guid]::NewGuid().ToString('D'); $matrixProfileIds += $p.guid
+              $p.title = "Legacy $type audit"
+              $inputCount = if ($type -eq 'ButtonsToAxis' -or $type -eq 'AxesToAxes') { 2 } elseif ($type -eq 'ButtonsToAxes') { 4 } else { 1 }
+              $outputCount = if ($type -eq 'ButtonsToAxes' -or $type -eq 'AxesToAxes') { 2 } else { 1 }
+              $p.mappings = @(@{
+                  title = "Legacy $type mapping"
+                  deviceBindings = @(0..($inputCount - 1) | ForEach-Object {
+                      @{ guid = [guid]::NewGuid().ToString('D'); isBound = $true; deviceConfigurationGuid = $deviceId
+                         keyType = $(if ($type -eq 'AxesToAxes') { 0 } else { 1 })
+                         keyValue = $(if ($type -eq 'AxesToAxes') { $_ * 4 } else { 49 + $_ }); keySubValue = 0 }
+                  })
+                  plugins = @(@{ pluginType = "HidWizards.UCR.Plugins.Remapper.$type"
+                      data = @{ filters = @(); range = -35; rangePressed = 65; initialize = $true
+                          outputs = @(0..($outputCount - 1) | ForEach-Object {
+                              @{ guid = [guid]::NewGuid().ToString('D'); isBound = $true
+                                 deviceConfigurationGuid = $p.outputDeviceConfigurations[0].guid
+                                 keyType = 0; keyValue = $_; keySubValue = 0 }
+                          }) }
+                  })
+              })
+              if ($type -ne 'ButtonToAxis') { $p.mappings[0].plugins[0].data.Remove('range'); $p.mappings[0].plugins[0].data.Remove('rangePressed'); $p.mappings[0].plugins[0].data.Remove('initialize') }
+              if ($type -eq 'AxesToAxes') {
+                  $p.mappings[0].plugins[0].data.sensitivity = 73
+                  $p.mappings[0].plugins[0].data.deadZone = 17
+                  $p.mappings[0].plugins[0].data.circularDz = $true
+                  $p.mappings[0].plugins[0].data.invertX = $true
+              }
+              $auditProfiles += $p
+          }
+          $p = $testProfile.Clone(); $p.guid = [guid]::NewGuid().ToString('D'); $matrixProfileIds += $p.guid
+          $p.title = 'Legacy keyboard four-way audit'
+          $p.inputDeviceConfigurations = @(@{ guid = $keyboardConfig
+              device = @{ title = 'K: Audit keyboard'; providerName = 'Core_Interception'; deviceHandle = 'Keyboard_Audit'; deviceNumber = 0 }; shadowDevices = @() })
+          $p.primaryInputDeviceConfigurationGuid = $keyboardConfig
+          $p.mappings = @(@{ title = 'Legacy keyboard four-way'
+              deviceBindings = @(0..3 | ForEach-Object { @{ guid = [guid]::NewGuid().ToString('D'); isBound = $true; deviceConfigurationGuid = $keyboardConfig
+                  keyType = 1; keyValue = $_; keySubValue = 0; assignedControlName = @('F','K','U','J')[$_] } })
+              plugins = @(@{ pluginType = 'HidWizards.UCR.Plugins.Remapper.ButtonsToAxes'
+                  data = @{ filters = @(); outputs = @(0..1 | ForEach-Object { @{ guid = [guid]::NewGuid().ToString('D'); isBound = $true
+                      deviceConfigurationGuid = $p.outputDeviceConfigurations[0].guid; keyType = 0; keyValue = $_; keySubValue = 0 } }) } }) })
+          $auditProfiles += $p
+          foreach ($route in @('D-pad to D-pad','D-pad to two axes','D-pad to four buttons','Two axes to D-pad','Four buttons to D-pad')) {
+              $p = $testProfile.Clone(); $p.guid = [guid]::NewGuid().ToString('D'); $matrixProfileIds += $p.guid
+              $p.title = $route + ' audit'
+              $axisInput = $route -eq 'Two axes to D-pad'
+              $buttonInput = $route -eq 'Four buttons to D-pad'
+              $axisOutput = $route -eq 'D-pad to two axes'
+              $buttonOutput = $route -eq 'D-pad to four buttons'
+              $inputCount = if ($axisInput) { 2 } else { 4 }
+              $outputCount = if ($axisOutput) { 2 } else { 4 }
+              $p.mappings = @(@{ title = $route
+                  inputRepresentation = $(if ($axisInput) { 2 } elseif ($buttonInput) { 3 } else { 1 })
+                  outputRepresentation = $(if ($axisOutput) { 2 } elseif ($buttonOutput) { 3 } else { 1 })
+                  directionalCapacity = 4; compoundDigitalInput = (-not $axisInput -and -not $buttonInput)
+                  compoundDigitalOutput = (-not $axisOutput -and -not $buttonOutput); useInputExpression = $true
+                  deviceBindings = @(0..($inputCount - 1) | ForEach-Object {
+                      @{ guid = [guid]::NewGuid().ToString('D'); isBound = $true; deviceConfigurationGuid = $deviceId
+                          keyType = $(if ($axisInput) { 0 } elseif ($buttonInput) { 1 } else { 2 })
+                          keyValue = $(if ($axisInput) { $_ * 4 } elseif ($buttonInput) { 49 + $_ } else { 0 })
+                          keySubValue = $(if (-not $axisInput -and -not $buttonInput) { @(3,1,0,2)[$_] } else { 0 })
+                          inputExpressionKindConfigured = $true; inputDirectionSlot = $_ + 1 }
+                  })
+                  plugins = @(0..($outputCount - 1) | ForEach-Object {
+                      @{ pluginType = $(if ($axisOutput) { 'HidWizards.UCR.Plugins.Remapper.AxisToAxis' } elseif ($axisInput) { 'HidWizards.UCR.Plugins.Remapper.AxisToButton' } else { 'HidWizards.UCR.Plugins.Remapper.ButtonToButton' })
+                          data = @{ filters = @(); outputs = @(@{ guid = [guid]::NewGuid().ToString('D'); isBound = $true
+                              deviceConfigurationGuid = $p.outputDeviceConfigurations[0].guid
+                              keyType = $(if ($axisOutput) { 0 } elseif ($buttonOutput) { 1 } else { 2 })
+                              keyValue = $(if ($axisOutput -or $buttonOutput) { $_ } else { @(3,1,0,2)[$_] })
+                              keySubValue = 0 }) } }
+                  })
+              })
+              $auditProfiles += $p
+          }
+          $p = $auditProfiles[9] | ConvertTo-Json -Depth 40 | ConvertFrom-Json
+          $p.guid = [guid]::NewGuid().ToString('D'); $matrixProfileIds += $p.guid; $p.title = 'Legacy keyboard D-pad audit'
+          $p.outputDeviceConfigurations[0].device.providerName = 'UcrAuditOutput'
+          $p.outputDeviceConfigurations[0].device.deviceHandle = 'audit'
+
+          $p.mappings[0].title = 'Legacy keyboard to D-pad'
+          $p.mappings[0].plugins[0].pluginType = 'HidWizards.UCR.Plugins.Remapper.ButtonsToDPad'
+          $p.mappings[0].plugins[0].data.outputs = @(0..3 | ForEach-Object { @{ guid = [guid]::NewGuid().ToString('D'); isBound = ($_ -ne 3)
+              deviceConfigurationGuid = $p.outputDeviceConfigurations[0].guid; keyType = 2; keyValue = @(0,2,3,1)[$_]; keySubValue = 0 } })
+          $auditProfiles += $p
+          foreach ($p in $auditProfiles) {
+              @{ schemaVersion = 1; profile = $p } | ConvertTo-Json -Depth 25 |
+                  Set-Content -LiteralPath (Join-Path $profileFolder ($p.guid + '.json')) -Encoding UTF8
+          }
+          @{ schemaVersion = 1; profileOrder = @($matrixProfileIds) + @($profileId, $largeProfileId, $triggerProfileId, $batchProfileId, $dpadProfileId, $axisProfileId, $presetProfileId) } |
+            ConvertTo-Json -Depth 20 |
+            Set-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Encoding UTF8
+          @{ schemaVersion = 1; deviceAliases = @() } |
+            ConvertTo-Json -Depth 20 |
+            Set-Content -LiteralPath (Join-Path $dataRoot 'devices.json') -Encoding UTF8
+          @{ schemaVersion = 1; profile = $testProfile } |
+            ConvertTo-Json -Depth 25 |
+            Set-Content -LiteralPath (Join-Path $profileFolder ($profileId + '.json')) -Encoding UTF8
+
+          # Capture the real compiled WPF window, not a generated mockup
+          # or a screenshot from the user's computer.
+          Add-Type -ReferencedAssemblies @('System.Drawing','System.Windows.Forms') -TypeDefinition @'
+          using System;
+          using System.Collections.Generic;
+          using System.Drawing;
+          using System.Drawing.Imaging;
+          using System.Runtime.InteropServices;
+          public static class UcrWindowCapture {
+              [StructLayout(LayoutKind.Sequential)]
+              public struct Rect { public int Left, Top, Right, Bottom; }
+              [DllImport("user32.dll")]
+              private static extern bool GetWindowRect(IntPtr hwnd, out Rect rectangle);
+              [DllImport("user32.dll")]
+              private static extern bool PrintWindow(IntPtr hwnd, IntPtr dc, uint flags);
+              [DllImport("user32.dll")]
+              public static extern bool MoveWindow(IntPtr hwnd, int x, int y, int width, int height, bool repaint);
+              [DllImport("user32.dll")]
+              private static extern bool SetCursorPos(int x, int y);
+              [DllImport("user32.dll")]
+              private static extern void mouse_event(uint flags, uint x, uint y, uint data, UIntPtr extra);
+
+              [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+              private struct DisplayMode {
+                  [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string DeviceName;
+                  public ushort SpecVersion, DriverVersion, Size, DriverExtra;
+                  public uint Fields;
+                  public int PositionX, PositionY;
+                  public uint Orientation, FixedOutput;
+                  public short Color, Duplex, YResolution, TTOption, Collate;
+                  [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string FormName;
+                  public ushort LogPixels;
+                  public uint BitsPerPel, Width, Height, Flags, Frequency;
+                  public uint IcmMethod, IcmIntent, MediaType, DitherType, Reserved1, Reserved2, PanningWidth, PanningHeight;
+              }
+              [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+              private static extern bool EnumDisplaySettings(string deviceName, int mode, ref DisplayMode display);
+              [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+              private static extern int ChangeDisplaySettings(ref DisplayMode display, uint flags);
+              [DllImport("dwmapi.dll")]
+              private static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out Rect bounds, int size);
+              public static Rectangle VisibleWindowBounds(IntPtr hwnd) {
+                  Rect bounds;
+                  if (DwmGetWindowAttribute(hwnd,9,out bounds,Marshal.SizeOf(typeof(Rect))) != 0)
+                      GetWindowRect(hwnd,out bounds);
+                  return Rectangle.FromLTRB(bounds.Left,bounds.Top,bounds.Right,bounds.Bottom);
+              }
+              public static void PrepareDesktop() { SetDesktop(1920,1080); }
+              public static void SetDesktop(uint width, uint height) {
+                  var mode = new DisplayMode();
+                  mode.Size = (ushort)Marshal.SizeOf(typeof(DisplayMode));
+                  if (!EnumDisplaySettings(null, -1, ref mode)) throw new Exception("Cannot inspect runner display");
+                  mode.Width = width; mode.Height = height; mode.Fields = 0x180000;
+                  int result = ChangeDisplaySettings(ref mode, 0);
+                  if (result != 0) throw new Exception("Cannot resize audit desktop: " + result);
+              }
+              public static void CaptureDesktop(string filename) {
+                  var bounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
+                  using (var bitmap = new Bitmap(bounds.Width, bounds.Height)) {
+                      using (var graphics = Graphics.FromImage(bitmap))
+                          graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size);
+                      bitmap.Save(filename, ImageFormat.Png);
+                  }
+              }
+              public static void MovePointerAway() { SetCursorPos(5, 5); }
+              public static void RightClick(int x, int y) {
+                  if (!SetCursorPos(x, y)) throw new Exception("Could not move to the profile row");
+                  mouse_event(8, 0, 0, 0, UIntPtr.Zero);
+                  mouse_event(16, 0, 0, 0, UIntPtr.Zero);
+              }
+              public static int Capture(IntPtr hwnd, string filename) {
+                  Rect r;
+                  if (!GetWindowRect(hwnd, out r)) throw new Exception("GetWindowRect failed");
+                  bool sidebar = filename.IndexOf("-sidebar", StringComparison.OrdinalIgnoreCase) >= 0;
+                  int captureLeft = sidebar ? Math.Max(0, r.Left) : r.Left;
+                  int w = r.Right - captureLeft, h = r.Bottom - r.Top;
+                  if (w < 300 || h < 250 || w > 6000 || h > 4000)
+                      throw new Exception("Implausible application window dimensions: " + w + "x" + h);
+                  using (var bitmap = new Bitmap(w, h, PixelFormat.Format32bppArgb)) {
+                      using (var g = Graphics.FromImage(bitmap)) {
+                          g.Clear(Color.Black);
+                          bool popup = filename.IndexOf("visual-", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              filename.IndexOf("picker", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              filename.IndexOf("add-device", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              filename.IndexOf("about-dialog", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              filename.IndexOf("profile-rename", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              filename.IndexOf("-menu", StringComparison.OrdinalIgnoreCase) >= 0;
+                          if (popup || sidebar) {
+                              g.CopyFromScreen(captureLeft, r.Top, 0, 0, new Size(w, h));
+                          } else {
+                              IntPtr dc = g.GetHdc();
+                              try {
+                                  if (!PrintWindow(hwnd, dc, 2) && !PrintWindow(hwnd, dc, 0))
+                                      throw new Exception("PrintWindow could not render UCR");
+                              } finally { g.ReleaseHdc(dc); }
+                          }
+                      }
+                      var colors = new HashSet<int>();
+                      for (int y = 8; y < h - 8; y += Math.Max(1, h / 35))
+                          for (int x = 8; x < w - 8; x += Math.Max(1, w / 35))
+                              colors.Add(bitmap.GetPixel(x,y).ToArgb());
+                      if (colors.Count < 12)
+                          throw new Exception("Screenshot blank or unrendered (" + colors.Count + " sampled colors)");
+                      bitmap.Save(filename, ImageFormat.Png);
+                      return colors.Count;
+                  }
+              }
+          }
+          '@
+
+          [UcrWindowCapture]::PrepareDesktop()
+          $process = $null
+          try {
+              $process = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -PassThru
+              $handle = [IntPtr]::Zero
+              $title = ''
+              $deadline = (Get-Date).AddSeconds(65)
+              do {
+                  Start-Sleep -Milliseconds 900
+                  $process.Refresh()
+                  if ($process.HasExited) {
+                      Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = (Get-Date).AddMinutes(-3) } -ErrorAction SilentlyContinue |
+                          Where-Object { $_.ProviderName -eq '.NET Runtime' -and $_.Message -match 'UCR.exe' } |
+                          Select-Object -First 2 -ExpandProperty Message | Write-Host
+                      throw "UCR exited during visual audit with code $($process.ExitCode)"
+                  }
+                  $title = $process.MainWindowTitle
+                  if ($process.MainWindowHandle -ne [IntPtr]::Zero -and
+                      $title -match '(Universal Control Remapper|UCR)' -and
+                      $title -notmatch '(Splash|Starting)') {
+                      $handle = $process.MainWindowHandle
+                      break
+                  }
+              } while ((Get-Date) -lt $deadline)
+              if ($handle -eq [IntPtr]::Zero) {
+                  throw "UCR did not expose its main window within 65 seconds (last title: '$title')."
+              }
+              Start-Sleep -Seconds 3
+              Add-Type -AssemblyName UIAutomationClient
+              Add-Type -AssemblyName System.Windows.Forms
+              $root = [System.Windows.Automation.AutomationElement]::FromHandle($handle)
+              $processCondition = [System.Windows.Automation.PropertyCondition]::new(
+                  [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $process.Id)
+              function Find-UcrElement($property, [string]$value) {
+                  $condition = [System.Windows.Automation.PropertyCondition]::new($property, $value)
+                  for ($attempt = 0; $attempt -lt 20; $attempt++) {
+                      $windows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
+                          [System.Windows.Automation.TreeScope]::Children, $processCondition)
+                      foreach ($window in $windows) {
+                          $matches = $window.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition)
+                          foreach ($element in $matches) {
+                              if (-not $element.Current.IsOffscreen) { return $element }
+                          }
+                      }
+                      Start-Sleep -Milliseconds 150
+                  }
+                  throw "Visible UI element missing: $value"
+              }
+              function Find-UcrControl([string]$id) {
+                  Find-UcrElement ([System.Windows.Automation.AutomationElement]::AutomationIdProperty) $id
+              }
+              function Invoke-UcrControl([string]$id) {
+                  $element = Find-UcrControl $id
+                  $element.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              }
+              function Set-UcrText([string]$id, [string]$text) {
+                  $element = Find-UcrControl $id
+                  $element.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($text)
+              }
+              function Get-UcrControls([string]$id) {
+                  $condition = [System.Windows.Automation.PropertyCondition]::new(
+                      [System.Windows.Automation.AutomationElement]::AutomationIdProperty, $id)
+                  return $root.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition)
+              }
+              function Assert-UcrDirectionCross([string]$id) {
+                  $bounds = @(Get-UcrControls $id | Where-Object { -not $_.Current.IsOffscreen } |
+                      ForEach-Object { $_.Current.BoundingRectangle } |
+                      Sort-Object Y, X)
+                  if ($bounds.Count -ne 4 -or
+                      $bounds[0].Y -ge $bounds[1].Y -or $bounds[2].Y -ge $bounds[3].Y -or
+                      [Math]::Abs($bounds[1].Y - $bounds[2].Y) -gt 2 -or
+                      [Math]::Abs($bounds[0].X - $bounds[3].X) -gt 2 -or
+                      $bounds[1].X -ge $bounds[0].X -or $bounds[2].X -le $bounds[0].X) {
+                      throw "Expected four direction buttons arranged in a cross ($id)."
+                  }
+              }
+              function Find-UcrProfileRow([string]$name) {
+                  $condition = [System.Windows.Automation.AndCondition]::new(
+                      [System.Windows.Automation.PropertyCondition]::new(
+                          [System.Windows.Automation.AutomationElement]::NameProperty, $name),
+                      [System.Windows.Automation.PropertyCondition]::new(
+                          [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+                          [System.Windows.Automation.ControlType]::TreeItem))
+                  return $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
+              }
+              function Assert-UcrSelectedProfile([string]$name) {
+                  $item = Find-UcrProfileRow $name
+                  if ($null -eq $item -or -not $item.GetCurrentPattern(
+                      [System.Windows.Automation.SelectionItemPattern]::Pattern).Current.IsSelected) {
+                      throw "Profile tree did not select '$name'."
+                  }
+              }
+              $nameProperty = [System.Windows.Automation.AutomationElement]::NameProperty
+              $blockResults = @()
+              foreach ($p in $auditProfiles) {
+                  $row = Find-UcrProfileRow $p.title
+                  if ($null -eq $row) { throw "Missing profile $($p.title)" }
+                  $row.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+                  Find-UcrControl 'UiExpandMapping' | Out-Null
+                  Invoke-UcrControl 'UiExpandMapping'
+                  Find-UcrControl 'UiMappingInputHeading' | Out-Null
+                  $slug = $p.title.Replace(' ','-')
+                  foreach ($width in @(1200,1600)) {
+                      [UcrWindowCapture]::MoveWindow($handle,0,0,$width,1000,$true) | Out-Null
+                      [UcrWindowCapture]::MovePointerAway()
+                      Start-Sleep -Milliseconds 500
+                      [UcrWindowCapture]::Capture($handle,(Join-Path $directory "UCR-visual-$slug-$width.png")) | Out-Null
+                  }
+                  if ($p.title -like 'Block *' -or $p.title -like 'Legacy keyboard *') {
+                      $blockToggles = @($root.FindAll([System.Windows.Automation.TreeScope]::Descendants,
+                          [System.Windows.Automation.Condition]::TrueCondition) | Where-Object {
+                              -not $_.Current.IsOffscreen -and ($_.Current.HelpText -match '^Block' -or $_.Current.Name -match '^Block')
+                          } | Where-Object {
+                              $pattern = $null
+                              $_.TryGetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern,[ref]$pattern)
+                          })
+                      $expected = if ($p.title -like 'Legacy keyboard *') { 5 } elseif ($p.title -like '*paired*') { 3 } else { 2 }
+                      if ($blockToggles.Count -ne $expected) { throw "Missing Block controls in $($p.title): expected $expected, got $($blockToggles.Count)." }
+                      $blockResults += @{ profile = $p.title; toggleCount = $blockToggles.Count }
+                      foreach ($desired in @([System.Windows.Automation.ToggleState]::On,[System.Windows.Automation.ToggleState]::Off)) {
+                          foreach ($toggle in $blockToggles) {
+                              $pattern = $toggle.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
+                              if ($pattern.Current.ToggleState -ne $desired) { $pattern.Toggle() }
+                          }
+                          Start-Sleep -Milliseconds 350
+                          foreach ($toggle in $blockToggles) {
+                              if ($toggle.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Current.ToggleState -ne $desired) { throw 'Block state did not propagate through the keyboard group.' }
+                          }
+                          [UcrWindowCapture]::Capture($handle,(Join-Path $directory "UCR-visual-$slug-$desired.png")) | Out-Null
+                      }
+                  }
+                  $settings = @($root.FindAll([System.Windows.Automation.TreeScope]::Descendants,
+                      [System.Windows.Automation.Condition]::TrueCondition) | Where-Object {
+                          -not $_.Current.IsOffscreen -and $_.Current.Name -match '^(Settings|Axis settings|Trigger settings)$'
+                      })
+                  foreach ($setting in $settings) {
+                      $pattern = $null
+                      if ($setting.TryGetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern,[ref]$pattern)) { $pattern.Expand() }
+                  }
+                  foreach ($width in @(1200,1600)) {
+                      [UcrWindowCapture]::MoveWindow($handle,0,0,$width,1000,$true) | Out-Null
+                      [UcrWindowCapture]::MovePointerAway()
+                      Start-Sleep -Milliseconds 350
+                      if ($p.title -like '* Filter audit') {
+                          $labelName = if ($p.title -like 'Button *') { 'Button down filter state' } else { 'Filter state entering range' }
+                          $label = (Find-UcrElement $nameProperty $labelName).Current.BoundingRectangle
+                          $enums = @(Get-UcrControls 'EnumComboBox' | Where-Object { -not $_.Current.IsOffscreen } | Sort-Object { $_.Current.BoundingRectangle.Y })
+                          if (-not $enums.Count -or $label.Height -lt 24 -or $enums[0].Current.BoundingRectangle.Left - $label.Right -lt 4) {
+                              throw "Filter setting label still overlaps its value in $($p.title) at $width"
+                          }
+                      }
+                      if ($p.title -eq 'Legacy ButtonsToAxes audit') {
+                          $outputHeading = (Find-UcrControl 'UiMappingOutputHeading').Current.BoundingRectangle
+                          $directions = @(Get-UcrControls 'BindButton' | Where-Object { -not $_.Current.IsOffscreen -and $_.Current.BoundingRectangle.Left -lt $outputHeading.Left } | Sort-Object { $_.Current.BoundingRectangle.Y }, { $_.Current.BoundingRectangle.X })
+                          if ($directions.Count -ne 4) { throw 'Legacy four-way editor lost a direction.' }
+                          $b = @($directions | ForEach-Object { $_.Current.BoundingRectangle })
+                          if ($b[0].Y -ge $b[1].Y -or [Math]::Abs($b[1].Y - $b[2].Y) -gt 2 -or $b[2].Y -ge $b[3].Y -or [Math]::Abs($b[0].X - $b[3].X) -gt 2) { throw 'Legacy four-way bindings are not a directional cross.' }
+                          if ((Find-UcrElement $nameProperty 'Button input').Current.ItemStatus -ne '4 directions') { throw 'Legacy four-way selector reports the wrong direction count.' }
+                      }
+                      if ($p.title -like 'D-pad to *') {
+                          if ((Find-UcrControl 'UiMappingCompoundBind').Current.Name -notlike 'D-pad*') { throw 'A physical POV input is still labelled as face buttons.' }
+                      }
+                      if ($p.title -in @('D-pad to D-pad audit','Two axes to D-pad audit','Four buttons to D-pad audit')) {
+                          if ((Find-UcrControl 'UiMappingCompoundOutputBind').Current.Name -notlike 'D-pad*') { throw 'An offline POV output is still labelled as face buttons.' }
+                      }
+                      if ($p.title -eq 'Legacy keyboard D-pad audit') {
+                          if (-not (Find-UcrElement $nameProperty '4-Way output').GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Current.IsSelected) { throw 'The legacy D-pad is still classified as Button output.' }
+                          Find-UcrControl 'UiLegacyDPadDestination' | Out-Null
+                          foreach ($id in @('UiLegacyDPadInvertX','UiLegacyDPadInvertY')) {
+                              $t = Find-UcrControl $id
+                              $t.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle()
+                          }
+                      }
+                      [UcrWindowCapture]::Capture($handle,(Join-Path $directory "UCR-visual-$slug-settings-$width.png")) | Out-Null
+                  }
+              }
+              $blockResults | ConvertTo-Json | Set-Content (Join-Path $directory 'block-controls.json')
+              foreach ($id in @('UiLegacyDPadInvertX','UiLegacyDPadInvertY')) {
+                  $t = Find-UcrControl $id
+                  if ($t.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Current.ToggleState -ne [System.Windows.Automation.ToggleState]::On) {
+                      $t.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle()
+                  }
+              }
+              Invoke-UcrControl 'UiLegacyDPadDestination'
+              $choiceCondition = [System.Windows.Automation.AndCondition]::new(
+                  [System.Windows.Automation.PropertyCondition]::new($nameProperty,'D-pad'),
+                  [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty,[System.Windows.Automation.ControlType]::MenuItem))
+              $choice = @([System.Windows.Automation.AutomationElement]::RootElement.FindAll(
+                  [System.Windows.Automation.TreeScope]::Children,$processCondition) | ForEach-Object {
+                      $_.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$choiceCondition)
+                  } | Where-Object { $null -ne $_ })[0]
+              if ($null -eq $choice) { throw 'The complete D-pad menu choice was unavailable.' }
+              $choice.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 250
+
+              function Save-UcrIfNeeded {
+                  if ((Find-UcrControl 'UiToolbarSave').Current.IsEnabled) { Invoke-UcrControl 'UiToolbarSave'; Start-Sleep -Milliseconds 400 }
+              }
+              function Read-MappingSnapshot([string]$title) {
+                  $state = Get-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+                  $profile = @($state.profiles | Where-Object { $_.title -eq $title })[0]
+                  return $profile.mappings[0] | ConvertTo-Json -Depth 50 -Compress
+              }
+              Save-UcrIfNeeded
+              $identityCases = @()
+              foreach ($p in $auditProfiles) {
+                  $row = Find-UcrProfileRow $p.title
+                  $row.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+                  Find-UcrControl 'UiExpandMapping' | Out-Null
+                  if (-not @(Get-UcrControls 'UiMappingInputHeading' | Where-Object { -not $_.Current.IsOffscreen }).Count) { Invoke-UcrControl 'UiExpandMapping' }
+                  Find-UcrControl 'UiMappingInputHeading' | Out-Null
+                  Save-UcrIfNeeded
+                  $before = Read-MappingSnapshot $p.title
+                  foreach ($side in @('input','output')) {
+                      $selected = @($root.FindAll([System.Windows.Automation.TreeScope]::Descendants,
+                          [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty,[System.Windows.Automation.ControlType]::RadioButton)) | Where-Object {
+                              -not $_.Current.IsOffscreen -and $_.Current.Name -like "* $side" -and
+                              $_.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Current.IsSelected
+                          })[0]
+                      if ($null -eq $selected) { throw "No selected $side family in $($p.title)" }
+                      $selected.SetFocus(); [System.Windows.Forms.SendKeys]::SendWait(' ')
+                      Start-Sleep -Milliseconds 150
+                  }
+                  Save-UcrIfNeeded
+                  $after = Read-MappingSnapshot $p.title
+                  if ($before -ne $after) { throw "Clicking a selected family changed saved data in $($p.title)" }
+                  $identityCases += $p.title
+              }
+              $identityCases | ConvertTo-Json | Set-Content (Join-Path $directory 'unchanged-selected-types.json')
+              $saved = Get-Content (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+              $legacy = @($saved.profiles | Where-Object { $_.title -eq 'Legacy keyboard D-pad audit' })[0].mappings[0]
+              if ($legacy.plugins.Count -ne 1 -or $legacy.plugins[0].pluginType -ne 'HidWizards.UCR.Plugins.Remapper.ButtonsToDPad' -or
+                  $legacy.deviceBindings.Count -ne 4 -or $legacy.plugins[0].data.outputs.Count -ne 4 -or
+                  @($legacy.plugins[0].data.outputs | Where-Object { -not $_.isBound }).Count -gt 0 -or
+                  -not $legacy.plugins[0].data.invertX -or -not $legacy.plugins[0].data.invertY -or
+                  (@($legacy.plugins[0].data.outputs | ForEach-Object { $_.keyValue }) -join ',') -ne '0,2,3,1') {
+                  throw 'The complete D-pad picker or inversion settings changed/lost the legacy plugin or directional channels.'
+              }
+              Write-Host 'Verified the complete D-pad picker and both saved inversion settings retain the original legacy plugin and four directional channels.'
+
+              Write-Host 'Verified selected-type clicks preserve the complete saved mapping in all sixteen keyboard, Filter, D-pad and legacy fixtures.'
+              $viewportResults = @()
+              foreach ($size in @(@(1280,720),@(1024,768),@(800,600))) {
+                  [UcrWindowCapture]::SetDesktop($size[0],$size[1])
+                  Start-Sleep -Milliseconds 1000
+                  $area = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+                  $bounds = [UcrWindowCapture]::VisibleWindowBounds($handle)
+                  $viewportResults += @{ width = $size[0]; height = $size[1]; workArea = $area.ToString(); window = $bounds.ToString(); state = $root.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Current.WindowVisualState.ToString() }
+                  $viewportResults | ConvertTo-Json | Set-Content (Join-Path $directory 'viewport-bounds.json')
+                  [UcrWindowCapture]::CaptureDesktop((Join-Path $directory "UCR-visual-desktop-$($size[0])x$($size[1]).png"))
+                  if ($bounds.Left -lt $area.Left -or $bounds.Top -lt $area.Top -or $bounds.Right -gt $area.Right + 1 -or $bounds.Bottom -gt $area.Bottom + 1) {
+                      throw "UCR is outside the display work area at $($size[0])x$($size[1]): $bounds versus $area"
+                  }
+              }
+              [UcrWindowCapture]::PrepareDesktop()
+              foreach ($state in @([System.Windows.Automation.WindowVisualState]::Normal,[System.Windows.Automation.WindowVisualState]::Maximized)) {
+                  $root.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).SetWindowVisualState($state)
+                  Start-Sleep -Milliseconds 400
+                  [UcrWindowCapture]::SetDesktop(1024,768)
+                  Start-Sleep -Milliseconds 800
+                  $area = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+                  $bounds = [UcrWindowCapture]::VisibleWindowBounds($handle)
+                  [UcrWindowCapture]::CaptureDesktop((Join-Path $directory "UCR-visual-desktop-$state.png"))
+                  if ($bounds.Left -lt $area.Left -or $bounds.Top -lt $area.Top -or $bounds.Right -gt $area.Right + 1 -or $bounds.Bottom -gt $area.Bottom + 1) {
+                      throw "The $state window extends outside the work area: $bounds versus $area"
+                  }
+                  [UcrWindowCapture]::PrepareDesktop()
+              }
+              Write-Host 'Verified the main window remains inside all three reduced desktop work areas and in normal and maximized states.' 
+              Stop-Process -Id $process.Id -Force
+              if (-not $process.WaitForExit(10000)) { throw 'The audit process did not exit.' }
+              Copy-Item -LiteralPath $dataRoot -Destination (Join-Path $directory 'valid-data-before-startup-error') -Recurse
+              Remove-Item -LiteralPath $dataRoot -Recurse -Force
+              New-Item -ItemType Directory -Path $dataRoot -Force | Out-Null
+              $badState = Join-Path $dataRoot 'state.json'
+              '{invalid-json' | Set-Content -LiteralPath $badState -Encoding UTF8 -NoNewline
+              $originalHash = (Get-FileHash -LiteralPath $badState -Algorithm SHA256).Hash
+              $process = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -PassThru
+              $errorCondition = [System.Windows.Automation.AndCondition]::new(
+                  [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ProcessIdProperty,$process.Id),
+                  [System.Windows.Automation.PropertyCondition]::new($nameProperty,'UCR could not start'))
+              $errorWindow = $null
+              for ($attempt = 0; $attempt -lt 45 -and $null -eq $errorWindow; $attempt++) {
+                  Start-Sleep -Milliseconds 500
+                  $process.Refresh()
+                  if ($process.HasExited) { throw 'Invalid saved data still terminated UCR before an actionable error appeared.' }
+                  $errorWindow = [System.Windows.Automation.AutomationElement]::RootElement.FindFirst([System.Windows.Automation.TreeScope]::Children,$errorCondition)
+              }
+              if ($null -eq $errorWindow) { throw 'No startup data error dialog appeared.' }
+              $messages = @($errorWindow.FindAll([System.Windows.Automation.TreeScope]::Descendants,[System.Windows.Automation.Condition]::TrueCondition) | ForEach-Object { $_.Current.Name }) -join ' '
+              if ($messages -notlike '*state.json*' -or $messages -notlike '*without replacing your saved profiles*') { throw 'The startup error omitted the failing file or recovery guidance.' }
+              [UcrWindowCapture]::CaptureDesktop((Join-Path $directory 'UCR-visual-startup-data-error.png'))
+              $okCondition = [System.Windows.Automation.PropertyCondition]::new($nameProperty,'OK')
+              $ok = $errorWindow.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$okCondition)
+              $ok.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              if (-not $process.WaitForExit(10000) -or $process.ExitCode -ne 1) { throw 'Startup failure did not exit cleanly with code 1.' }
+              if ((Get-FileHash -LiteralPath $badState -Algorithm SHA256).Hash -ne $originalHash) { throw 'Startup failure rewrote the invalid data file.' }
+              Write-Host 'Verified invalid saved data shows the file path and recovery guidance, remains unchanged and exits cleanly.'
+
+              Write-Host 'Captured five keyboard Block layouts, five native D-pad routes and the legacy D-pad editor.'
+
+          }
+          catch {
+              $_ | Out-String | Set-Content -LiteralPath (Join-Path $directory 'capture-error.txt')
+              try { [UcrWindowCapture]::Capture($handle, (Join-Path $directory 'UCR-visual-audit-failure.png')) | Out-Null } catch {}
+              Write-Error $_
+              throw
+          }
+          finally {
+              if ($null -ne $process) {
+                  try { if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force } } catch {}
+              }
+          }
+
+      - name: Upload UCR visual audit
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: UCR-Visual-Audit
+          path: ${{ runner.temp }}/UCR-Visual-Audit/
+          if-no-files-found: warn
+
+
+
