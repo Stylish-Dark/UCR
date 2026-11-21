@@ -225,6 +225,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!ButtonsEnabled || value < 1 || value > 4) return false;
             var capacity = Mapping.DirectionalCapacity;
             var compoundInput = Mapping.CompoundDigitalInput;
+            var compoundOutput = Mapping.CompoundDigitalOutput;
             var inputRepresentation = Mapping.InputRepresentation;
             var outputRepresentation = Mapping.OutputRepresentation;
             var inputExpression = Mapping.UseInputExpression;
@@ -254,6 +255,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 {
                     Mapping.DirectionalCapacity = capacity;
                     Mapping.CompoundDigitalInput = compoundInput;
+                    Mapping.CompoundDigitalOutput = compoundOutput;
                     Mapping.InputRepresentation = inputRepresentation;
                     Mapping.OutputRepresentation = outputRepresentation;
                     Mapping.UseInputExpression = inputExpression;
@@ -319,6 +321,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             var legacyAxisPair = IsLegacyButtonAxisPair;
             var legacySingleAxis = IsLegacySingleButtonAxis;
+            var legacyDPad = Mapping.OutputRepresentation == 0 && Plugins.Count == 1 &&
+                Plugins[0].IsDPadOutput ? Plugins[0].Plugin : null;
             var currentInput = Mapping.EffectiveInputRepresentation;
             var currentOutput = Mapping.EffectiveOutputRepresentation;
             var wantedInput = inputSide ? value : currentInput;
@@ -362,7 +366,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     if (Mapping.DeviceBindings.Count == Mapping.RequiredInputBindingSlots)
                         return true;
                 }
-                if (!SwitchDirectionalInputs(value, false, legacyAxisPair, legacySingleAxis)) return false;
+                if (!SwitchDirectionalInputs(value, false, legacyAxisPair, legacySingleAxis,
+                    legacyDPad != null)) return false;
+                if (legacyDPad != null)
+                {
+                    Mapping.CompoundDigitalOutput = true;
+                    return SwitchDirectionalOutputs(currentOutput, false, legacyDPad);
+                }
                 if (capacityChanged || Mapping.Plugins.Count !=
                     Mapping.RequiredOutputBindingSlots)
                 {
@@ -391,7 +401,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         }
 
         private bool SwitchDirectionalInputs(int representation, bool rebuildEditors = true,
-            bool legacyAxisPair = false, bool legacySingleAxis = false)
+            bool legacyAxisPair = false, bool legacySingleAxis = false, bool legacyDPad = false)
         {
             var profile = ProfileViewModel.Profile;
             var capacity = Mapping.EffectiveDirectionalCapacity;
@@ -406,6 +416,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var previous = Mapping.DeviceBindings.Where(input =>
                 !input.IsDirectionalAndCondition).ToList();
             var priorType = Mapping.InputRepresentation;
+            if (legacyDPad && previous.Count == 4 && priorType == 0)
+            {
+                // Legacy plugins read Up, Down, Left, Right. Preserve all four
+                // assignments in the typed Button bank's Left, Right, Up, Down order.
+                previous = new[] { 2, 3, 0, 1 }.Select(index =>
+                    HidWizards.UCR.Core.Context.DeepXmlClone(previous[index])).ToList();
+                for (var index = 0; index < previous.Count; index++)
+                {
+                    var input = previous[index];
+                    input.Profile = profile;
+                    input.DeviceIoType = DeviceIoType.Input;
+                    input.DeviceBindingCategory = DeviceBindingCategory.Momentary;
+                    input.InputExpressionInputKind = 0;
+                    input.InputExpressionKindConfigured = true;
+                    input.InputDirectionSlot = index + 1;
+                }
+                priorType = 3;
+            }
             var oldGroups = previous.GroupBy(input => Math.Max(0, input.InputExpressionGroup))
                 .OrderBy(group => group.Key).Select(group => group.ToList()).ToList();
             if (oldGroups.Count == 0) oldGroups.Add(new List<DeviceBinding>());
@@ -559,7 +587,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return true;
         }
 
-        private bool SwitchDirectionalOutputs(int representation, bool rebuildEditors = true)
+        private bool SwitchDirectionalOutputs(int representation, bool rebuildEditors = true,
+            Plugin legacyDPad = null)
         {
             var profile = ProfileViewModel.Profile;
             var required = Mapping.CompoundDigitalOutput && representation == 1 &&
@@ -586,7 +615,28 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var restored = previous.Count == required
                 ? RestoreLegacyPhysicalOutputs(previous, category, representation) : null;
             List<Plugin> next;
-            if (restored != null)
+            if (legacyDPad != null)
+            {
+                var template = profile.Context.GetPlugins().FirstOrDefault(plugin =>
+                    string.Equals(plugin.PluginName, "Button to Button", StringComparison.OrdinalIgnoreCase));
+                if (template == null || legacyDPad.Outputs.Count != 4) return false;
+                var type = legacyDPad.GetType();
+                var invertX = type.GetProperty("InvertX")?.GetValue(legacyDPad) is true;
+                var invertY = type.GetProperty("InvertY")?.GetValue(legacyDPad) is true;
+                var order = new[] { invertX ? 3 : 2, invertX ? 2 : 3,
+                    invertY ? 1 : 0, invertY ? 0 : 1 };
+                next = new List<Plugin>();
+                foreach (var index in order)
+                {
+                    var plugin = profile.Context.PluginManager.GetNewPlugin(template);
+                    plugin.SetProfile(profile);
+                    plugin.Filters = legacyDPad.Filters.ToList();
+                    plugin.Outputs[0].DeviceBindingCategory = DeviceBindingCategory.Momentary;
+                    CopyPhysicalOutput(legacyDPad.Outputs[index], plugin.Outputs[0]);
+                    next.Add(plugin);
+                }
+            }
+            else if (restored != null)
             {
                 next = restored;
             }

@@ -1340,11 +1340,17 @@ jobs:
               $identityCases | ConvertTo-Json | Set-Content (Join-Path $directory 'unchanged-selected-types.json')
               $saved = Get-Content (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
               $legacy = @($saved.profiles | Where-Object { $_.title -eq 'Legacy keyboard D-pad audit' })[0].mappings[0]
+              $legacy | ConvertTo-Json -Depth 50 | Set-Content (Join-Path $directory 'assigned-legacy-dpad.json')
+              Write-Host ("Legacy picker snapshot: plugin={0}; inputs={1}; keys={2}; bound={3}; inversion={4},{5}" -f
+                  $legacy.plugins[0].pluginType, $legacy.deviceBindings.Count,
+                  (($legacy.plugins[0].data.outputs | ForEach-Object { $_.keyValue }) -join ','),
+                  (($legacy.plugins[0].data.outputs | ForEach-Object { [bool]$_.isBound }) -join ','),
+                  $legacy.plugins[0].data.invertX, $legacy.plugins[0].data.invertY)
               if ($legacy.plugins.Count -ne 1 -or $legacy.plugins[0].pluginType -ne 'HidWizards.UCR.Plugins.Remapper.ButtonsToDPad' -or
                   $legacy.deviceBindings.Count -ne 4 -or $legacy.plugins[0].data.outputs.Count -ne 4 -or
                   @($legacy.plugins[0].data.outputs | Where-Object { -not $_.isBound }).Count -gt 0 -or
                   -not $legacy.plugins[0].data.invertX -or -not $legacy.plugins[0].data.invertY -or
-                  (@($legacy.plugins[0].data.outputs | ForEach-Object { $_.keyValue }) -join ',') -ne '0,2,3,1') {
+                  (@($legacy.plugins[0].data.outputs | ForEach-Object { [int]$_.keyValue }) -join ',') -ne '0,2,3,1') {
                   throw 'The complete D-pad picker or inversion settings changed/lost the legacy plugin or directional channels.'
               }
               Write-Host 'Verified the complete D-pad picker and both saved inversion settings retain the original legacy plugin and four directional channels.'
@@ -1358,11 +1364,13 @@ jobs:
               if ($converted.inputRepresentation -ne 2 -or $converted.outputRepresentation -ne 1 -or
                   $converted.directionalCapacity -ne 4 -or -not $converted.compoundDigitalOutput -or
                   $converted.deviceBindings.Count -ne 2 -or $converted.plugins.Count -ne 4 -or $outputs.Count -ne 4 -or
+                  @($outputs | Where-Object { -not $_.isBound }).Count -gt 0 -or
                   (@($outputs | ForEach-Object { $_.keyType }) -join ',') -ne '2,2,2,2' -or
-                  (@($outputs | ForEach-Object { $_.keyValue }) -join ',') -ne '1,3,2,0') {
+                  (@($outputs | ForEach-Object { [int]$_.keyValue }) -join ',') -ne '1,3,2,0') {
                   [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-visual-legacy-dpad-conversion.png')) | Out-Null
                   throw 'Changing legacy D-pad input to Axis lost its complete output destination or inversion semantics.'
               }
+              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-visual-legacy-dpad-axis.png')) | Out-Null
               $buttons = Find-UcrElement $nameProperty 'Button input'; $buttons.SetFocus(); [System.Windows.Forms.SendKeys]::SendWait(' ')
               Start-Sleep -Milliseconds 300
               Save-UcrIfNeeded
@@ -1372,6 +1380,7 @@ jobs:
                   (@($returned.deviceBindings | ForEach-Object { $_.assignedControlName }) -join ',') -ne 'U,J,F,K') {
                   throw 'Returning to Button input lost or reordered the legacy keyboard assignments.'
               }
+              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-visual-legacy-dpad-restored.png')) | Out-Null
               Write-Host 'Verified legacy D-pad Axis conversion preserves four destinations and inversion, and returning to Button restores all original keyboard assignments.'
 
 
