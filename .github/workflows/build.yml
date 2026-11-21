@@ -962,10 +962,11 @@ jobs:
                           keyType = $(if ($axisInput) { 0 } elseif ($buttonInput) { 1 } else { 2 })
                           keyValue = $(if ($axisInput) { $_ * 4 } elseif ($buttonInput) { 49 + $_ } else { 0 })
                           keySubValue = $(if (-not $axisInput -and -not $buttonInput) { @(3,1,0,2)[$_] } else { 0 })
-                          inputExpressionKindConfigured = $true; inputDirectionSlot = $_ + 1 }
+                          inputExpressionInputKind = $(if ($axisInput) { 3 } else { 0 })
+                          inputExpressionKindConfigured = $true; inputDirectionSlot = $(if ($axisInput) { 0 } else { $_ + 1 }) }
                   })
                   plugins = @(0..($outputCount - 1) | ForEach-Object {
-                      @{ pluginType = $(if ($axisOutput) { 'HidWizards.UCR.Plugins.Remapper.AxisToAxis' } elseif ($axisInput) { 'HidWizards.UCR.Plugins.Remapper.AxisToButton' } else { 'HidWizards.UCR.Plugins.Remapper.ButtonToButton' })
+                      @{ pluginType = $(if ($axisOutput) { 'HidWizards.UCR.Plugins.Remapper.AxisToAxis' } else { 'HidWizards.UCR.Plugins.Remapper.ButtonToButton' })
                           data = @{ filters = @(); outputs = @(@{ guid = [guid]::NewGuid().ToString('D'); isBound = $true
                               deviceConfigurationGuid = $p.outputDeviceConfigurations[0].guid
                               keyType = $(if ($axisOutput) { 0 } elseif ($buttonOutput) { 1 } else { 2 })
@@ -1203,7 +1204,7 @@ jobs:
               }
               $nameProperty = [System.Windows.Automation.AutomationElement]::NameProperty
               $blockResults = @()
-              foreach ($p in @($auditProfiles | Where-Object { $_.title -eq 'Legacy keyboard D-pad audit' })) {
+              foreach ($p in $auditProfiles) {
                   $row = Find-UcrProfileRow $p.title
                   if ($null -eq $row) { throw "Missing profile $($p.title)" }
                   $row.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
@@ -1314,7 +1315,7 @@ jobs:
               }
               Save-UcrIfNeeded
               $identityCases = @()
-              foreach ($p in @($auditProfiles | Where-Object { $_.title -eq 'Legacy keyboard D-pad audit' })) {
+              foreach ($p in $auditProfiles) {
                   $row = Find-UcrProfileRow $p.title
                   $row.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
                   Find-UcrControl 'UiExpandMapping' | Out-Null
@@ -1384,7 +1385,7 @@ jobs:
               Write-Host 'Verified legacy D-pad Axis conversion preserves four destinations and inversion, and returning to Button restores all original keyboard assignments.'
 
 
-              Write-Host 'Verified selected-type clicks preserve the complete saved mapping in the legacy D-pad fixture.'
+              Write-Host 'Verified selected-type clicks preserve the complete saved mapping in all audited fixtures.'
               Stop-Process -Id $process.Id -Force
               if (-not $process.WaitForExit(10000)) { throw 'The audit process did not exit.' }
               Copy-Item -LiteralPath $dataRoot -Destination (Join-Path $directory 'valid-data-before-startup-error') -Recurse

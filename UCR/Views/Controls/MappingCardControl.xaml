@@ -1431,15 +1431,15 @@
                                                     <StackPanel Style="{StaticResource UcrLabeledSwitchColumn}">
                                                         <TextBlock Text="Invert X" Style="{StaticResource UcrLabeledSwitchCaption}"/>
                                                         <ToggleButton AutomationProperties.AutomationId="UiLegacyDPadInvertX"
-                                                                      IsChecked="{Binding Plugin.InvertX, Mode=OneWay}"
-                                                                      Click="AxisInvertX_OnClick" Style="{StaticResource UcrOutputInvertSwitch}"
+                                                                      IsChecked="{Binding FourWayInvertX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                      Style="{StaticResource UcrOutputInvertSwitch}"
                                                                       IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"/>
                                                     </StackPanel>
                                                     <StackPanel Style="{StaticResource UcrLabeledSwitchColumn}">
                                                         <TextBlock Text="Invert Y" Style="{StaticResource UcrLabeledSwitchCaption}"/>
                                                         <ToggleButton AutomationProperties.AutomationId="UiLegacyDPadInvertY"
-                                                                      IsChecked="{Binding Plugin.InvertY, Mode=OneWay}"
-                                                                      Click="AxisInvertY_OnClick" Style="{StaticResource UcrOutputInvertSwitch}"
+                                                                      IsChecked="{Binding FourWayInvertY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                      Style="{StaticResource UcrOutputInvertSwitch}"
                                                                       IsEnabled="{Binding MappingViewModel.ButtonsEnabled}"/>
                                                     </StackPanel>
                                                 </UniformGrid>

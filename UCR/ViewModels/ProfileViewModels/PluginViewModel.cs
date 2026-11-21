@@ -90,6 +90,27 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 }
             }
         }
+        public bool FourWayInvertX
+        {
+            get => Plugin.GetType().GetProperty("InvertX")?.GetValue(Plugin) is true;
+            set => SetFourWayInversion("InvertX", value);
+        }
+        public bool FourWayInvertY
+        {
+            get => Plugin.GetType().GetProperty("InvertY")?.GetValue(Plugin) is true;
+            set => SetFourWayInversion("InvertY", value);
+        }
+
+        private void SetFourWayInversion(string name, bool value)
+        {
+            if (!IsFourButtonAxis || !MappingViewModel.ButtonsEnabled) return;
+            var property = Plugin.GetType().GetProperty(name);
+            if (property?.PropertyType != typeof(bool) || !property.CanWrite ||
+                (bool)property.GetValue(Plugin) == value) return;
+            property.SetValue(Plugin, value);
+            Plugin.ContextChanged();
+        }
+
         public ObservableCollection<PluginPropertyGroupViewModel> InlinePropertyGroups { get; }
             = new ObservableCollection<PluginPropertyGroupViewModel>();
         public string InlineSettingsTitle => OutputType != "Axis" ? "Settings" :

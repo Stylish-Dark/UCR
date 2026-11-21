@@ -511,20 +511,6 @@ namespace HidWizards.UCR.Views.Controls
                 DarkMessageBox.Show(error, "Controller preset unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private void AxisInvertX_OnClick(object sender, RoutedEventArgs e) => SetFourWayInversion(sender, "InvertX");
-        private void AxisInvertY_OnClick(object sender, RoutedEventArgs e) => SetFourWayInversion(sender, "InvertY");
-
-        private static void SetFourWayInversion(object sender, string propertyName)
-        {
-            var toggle = sender as ToggleButton;
-            var axis = toggle?.DataContext as PluginViewModel;
-            if (axis?.IsFourButtonAxis != true || axis.MappingViewModel?.ButtonsEnabled != true) return;
-            var property = axis.Plugin.GetType().GetProperty(propertyName);
-            if (property == null || property.PropertyType != typeof(bool) || !property.CanWrite) return;
-            property.SetValue(axis.Plugin, toggle.IsChecked == true, null);
-            axis.Plugin.ContextChanged();
-        }
-
         private void FourWayOutput_OnClick(object sender, RoutedEventArgs e)
         {
             var button = sender as Button;
