@@ -1063,6 +1063,13 @@ jobs:
               }
               [DllImport("user32.dll")]
               private static extern bool SystemParametersInfo(uint action, uint parameter, out Rect area, uint flags);
+              [DllImport("user32.dll")]
+              private static extern int GetSystemMetrics(int index);
+              public static Rectangle ResizeFrame(Rectangle area) {
+                  area.Inflate(GetSystemMetrics(32) + GetSystemMetrics(92),
+                      GetSystemMetrics(33) + GetSystemMetrics(92));
+                  return area;
+              }
               public static Rectangle DesktopWorkArea() {
                   Rect area;
                   if (!SystemParametersInfo(0x0030,0,out area,0)) throw new Exception("Cannot read desktop work area");
@@ -1078,7 +1085,10 @@ jobs:
                   if (result != 0) throw new Exception("Cannot resize audit desktop: " + result);
               }
               public static void CaptureDesktop(string filename) {
-                  var bounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
+                  var mode = new DisplayMode();
+                  mode.Size = (ushort)Marshal.SizeOf(typeof(DisplayMode));
+                  if (!EnumDisplaySettings(null,-1,ref mode)) throw new Exception("Cannot read desktop dimensions");
+                  var bounds = new Rectangle(0,0,(int)mode.Width,(int)mode.Height);
                   using (var bitmap = new Bitmap(bounds.Width, bounds.Height)) {
                       using (var graphics = Graphics.FromImage(bitmap))
                           graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size);
@@ -1245,10 +1255,15 @@ jobs:
                       $area = [UcrWindowCapture]::DesktopWorkArea()
                       $bounds = [UcrWindowCapture]::ClientBounds($handle)
                       $frame = [UcrWindowCapture]::VisibleWindowBounds($handle)
-                      $fits = $bounds.Left -ge $area.Left -and $bounds.Top -ge $area.Top -and
-                          $bounds.Right -le $area.Right + 1 -and $bounds.Bottom -le $area.Bottom + 1
+                      # Windows maximizes resizable windows with a resize frame beyond the work area.
+                      # Every tested app control must still fit inside the usable screen.
+                      $allowed = if ($state -eq [System.Windows.Automation.WindowVisualState]::Maximized) {
+                          [UcrWindowCapture]::ResizeFrame($area)
+                      } else { $area }
+                      $fits = $bounds.Left -ge $allowed.Left -and $bounds.Top -ge $allowed.Top -and
+                          $bounds.Right -le $allowed.Right + 1 -and $bounds.Bottom -le $allowed.Bottom + 1
                       $controlBounds = @{}
-                      foreach ($id in @('UiExpandMapping','UiMappingInputHeading','UiMappingOutputHeading','UiWorkspaceInspector')) {
+                      foreach ($id in @('UiExpandMapping','UiWorkspaceInspector','UiMappingInputHeading','UiMappingOutputHeading')) {
                           $control = @(Get-UcrControls $id | Where-Object { -not $_.Current.IsOffscreen })[0]
                           if ($null -eq $control) {
                               $fits = $false
@@ -1256,6 +1271,14 @@ jobs:
                               continue
                           }
                           $rect = $control.Current.BoundingRectangle
+                          if ($id -eq 'UiMappingOutputHeading' -and $rect.Bottom -gt $area.Bottom) {
+                              [UcrWindowCapture]::CaptureDesktop((Join-Path $directory "UCR-visual-desktop-$state-$($size[0])x$($size[1])-input.png"))
+                              $viewer = Find-UcrControl 'MappingSectionsScrollViewer'
+                              $scroll = $viewer.GetCurrentPattern([System.Windows.Automation.ScrollPattern]::Pattern)
+                              $scroll.SetScrollPercent(-1,100)
+                              Start-Sleep -Milliseconds 400
+                              $rect = $control.Current.BoundingRectangle
+                          }
                           $controlBounds[$id] = $rect.ToString()
                           if ($rect.Left -lt $area.Left -or $rect.Top -lt $area.Top -or
                               $rect.Right -gt $area.Right + 1 -or $rect.Bottom -gt $area.Bottom + 1) { $fits = $false }
@@ -1265,6 +1288,7 @@ jobs:
                           state = $window.Current.WindowVisualState.ToString(); fits = $fits; controls = $controlBounds }
                       $results | ConvertTo-Json | Set-Content (Join-Path $directory 'viewport-bounds.json')
                       [UcrWindowCapture]::CaptureDesktop((Join-Path $directory "UCR-visual-desktop-$state-$($size[0])x$($size[1]).png"))
+                      if ($null -ne $scroll) { $scroll.SetScrollPercent(-1,0); $scroll = $null }
                   }
               }
               [UcrWindowCapture]::PrepareDesktop()
@@ -1292,6 +1316,3 @@ jobs:
           name: UCR-Visual-Audit
           path: ${{ runner.temp }}/UCR-Visual-Audit/
           if-no-files-found: warn
-
-
-
