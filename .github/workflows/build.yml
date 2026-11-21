@@ -1047,6 +1047,13 @@ jobs:
                       GetWindowRect(hwnd,out bounds);
                   return Rectangle.FromLTRB(bounds.Left,bounds.Top,bounds.Right,bounds.Bottom);
               }
+              [DllImport("user32.dll")]
+              private static extern bool SystemParametersInfo(uint action, uint parameter, out Rect area, uint flags);
+              public static Rectangle DesktopWorkArea() {
+                  Rect area;
+                  if (!SystemParametersInfo(0x0030,0,out area,0)) throw new Exception("Cannot read desktop work area");
+                  return Rectangle.FromLTRB(area.Left,area.Top,area.Right,area.Bottom);
+              }
               public static void PrepareDesktop() { SetDesktop(1920,1080); }
               public static void SetDesktop(uint width, uint height) {
                   var mode = new DisplayMode();
@@ -1202,221 +1209,38 @@ jobs:
                       throw "Profile tree did not select '$name'."
                   }
               }
-              $nameProperty = [System.Windows.Automation.AutomationElement]::NameProperty
-              $blockResults = @()
-              foreach ($p in $auditProfiles) {
-                  $row = Find-UcrProfileRow $p.title
-                  if ($null -eq $row) { throw "Missing profile $($p.title)" }
-                  $row.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
-                  Find-UcrControl 'UiExpandMapping' | Out-Null
-                  Invoke-UcrControl 'UiExpandMapping'
-                  Find-UcrControl 'UiMappingInputHeading' | Out-Null
-                  $slug = $p.title.Replace(' ','-')
-                  foreach ($width in @(1200,1600)) {
-                      [UcrWindowCapture]::MoveWindow($handle,0,0,$width,1000,$true) | Out-Null
-                      [UcrWindowCapture]::MovePointerAway()
-                      Start-Sleep -Milliseconds 500
-                      [UcrWindowCapture]::Capture($handle,(Join-Path $directory "UCR-visual-$slug-$width.png")) | Out-Null
-                  }
-                  if ($p.title -like 'Block *' -or $p.title -like 'Legacy keyboard *') {
-                      $blockToggles = @($root.FindAll([System.Windows.Automation.TreeScope]::Descendants,
-                          [System.Windows.Automation.Condition]::TrueCondition) | Where-Object {
-                              -not $_.Current.IsOffscreen -and ($_.Current.HelpText -match '^Block' -or $_.Current.Name -match '^Block')
-                          } | Where-Object {
-                              $pattern = $null
-                              $_.TryGetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern,[ref]$pattern)
-                          })
-                      $expected = if ($p.title -like 'Legacy keyboard *') { 5 } elseif ($p.title -like '*paired*') { 3 } else { 2 }
-                      if ($blockToggles.Count -ne $expected) { throw "Missing Block controls in $($p.title): expected $expected, got $($blockToggles.Count)." }
-                      $blockResults += @{ profile = $p.title; toggleCount = $blockToggles.Count }
-                      foreach ($desired in @([System.Windows.Automation.ToggleState]::On,[System.Windows.Automation.ToggleState]::Off)) {
-                          foreach ($toggle in $blockToggles) {
-                              $pattern = $toggle.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
-                              if ($pattern.Current.ToggleState -ne $desired) { $pattern.Toggle() }
-                          }
-                          Start-Sleep -Milliseconds 350
-                          foreach ($toggle in $blockToggles) {
-                              if ($toggle.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Current.ToggleState -ne $desired) { throw 'Block state did not propagate through the keyboard group.' }
-                          }
-                          [UcrWindowCapture]::Capture($handle,(Join-Path $directory "UCR-visual-$slug-$desired.png")) | Out-Null
+              $window = $root.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
+              $results = @()
+              foreach ($state in @([System.Windows.Automation.WindowVisualState]::Normal,[System.Windows.Automation.WindowVisualState]::Maximized)) {
+                  foreach ($size in @(@(1280,720),@(1024,768),@(800,600))) {
+                      [UcrWindowCapture]::PrepareDesktop()
+                      Start-Sleep -Milliseconds 800
+                      if ($window.Current.WindowVisualState -ne [System.Windows.Automation.WindowVisualState]::Normal) {
+                          $window.SetWindowVisualState([System.Windows.Automation.WindowVisualState]::Normal)
+                          Start-Sleep -Milliseconds 450
                       }
-                  }
-                  $settings = @($root.FindAll([System.Windows.Automation.TreeScope]::Descendants,
-                      [System.Windows.Automation.Condition]::TrueCondition) | Where-Object {
-                          -not $_.Current.IsOffscreen -and $_.Current.Name -match '^(Settings|Axis settings|Trigger settings)$'
-                      })
-                  foreach ($setting in $settings) {
-                      $pattern = $null
-                      if ($setting.TryGetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern,[ref]$pattern)) { $pattern.Expand() }
-                  }
-                  foreach ($width in @(1200,1600)) {
-                      [UcrWindowCapture]::MoveWindow($handle,0,0,$width,1000,$true) | Out-Null
-                      [UcrWindowCapture]::MovePointerAway()
-                      Start-Sleep -Milliseconds 350
-                      if ($p.title -like '* Filter audit') {
-                          $labelName = if ($p.title -like 'Button *') { 'Button down filter state' } else { 'Filter state entering range' }
-                          $label = (Find-UcrElement $nameProperty $labelName).Current.BoundingRectangle
-                          $enums = @(Get-UcrControls 'EnumComboBox' | Where-Object { -not $_.Current.IsOffscreen } | Sort-Object { $_.Current.BoundingRectangle.Y })
-                          if (-not $enums.Count -or $label.Height -lt 24 -or $enums[0].Current.BoundingRectangle.Left - $label.Right -lt 4) {
-                              throw "Filter setting label still overlaps its value in $($p.title) at $width"
-                          }
+                      [UcrWindowCapture]::MoveWindow($handle,180,120,1600,900,$true) | Out-Null
+                      if ($state -eq [System.Windows.Automation.WindowVisualState]::Maximized) {
+                          $window.SetWindowVisualState($state)
+                          Start-Sleep -Milliseconds 450
                       }
-                      if ($p.title -eq 'Legacy ButtonsToAxes audit') {
-                          $outputHeading = (Find-UcrControl 'UiMappingOutputHeading').Current.BoundingRectangle
-                          $directions = @(Get-UcrControls 'BindButton' | Where-Object { -not $_.Current.IsOffscreen -and $_.Current.BoundingRectangle.Left -lt $outputHeading.Left } | Sort-Object { $_.Current.BoundingRectangle.Y }, { $_.Current.BoundingRectangle.X })
-                          if ($directions.Count -ne 4) { throw 'Legacy four-way editor lost a direction.' }
-                          $b = @($directions | ForEach-Object { $_.Current.BoundingRectangle })
-                          if ($b[0].Y -ge $b[1].Y -or [Math]::Abs($b[1].Y - $b[2].Y) -gt 2 -or $b[2].Y -ge $b[3].Y -or [Math]::Abs($b[0].X - $b[3].X) -gt 2) { throw 'Legacy four-way bindings are not a directional cross.' }
-                          if ((Find-UcrElement $nameProperty 'Button input').Current.ItemStatus -ne '4 directions') { throw 'Legacy four-way selector reports the wrong direction count.' }
-                      }
-                      if ($p.title -like 'D-pad to *') {
-                          if ((Find-UcrControl 'UiMappingCompoundBind').Current.Name -notlike 'D-pad*') { throw 'A physical POV input is still labelled as face buttons.' }
-                      }
-                      if ($p.title -in @('D-pad to D-pad audit','Two axes to D-pad audit','Four buttons to D-pad audit')) {
-                          if ((Find-UcrControl 'UiMappingCompoundOutputBind').Current.Name -notlike 'D-pad*') { throw 'An offline POV output is still labelled as face buttons.' }
-                      }
-                      if ($p.title -eq 'Legacy keyboard D-pad audit') {
-                          if (-not (Find-UcrElement $nameProperty '4-Way output').GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Current.IsSelected) { throw 'The legacy D-pad is still classified as Button output.' }
-                          Find-UcrControl 'UiLegacyDPadDestination' | Out-Null
-                          foreach ($id in @('UiLegacyDPadInvertX','UiLegacyDPadInvertY')) {
-                              $t = Find-UcrControl $id
-                              $t.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle()
-                          }
-                      }
-                      [UcrWindowCapture]::Capture($handle,(Join-Path $directory "UCR-visual-$slug-settings-$width.png")) | Out-Null
+                      [UcrWindowCapture]::SetDesktop($size[0],$size[1])
+                      Start-Sleep -Milliseconds 1400
+                      $area = [UcrWindowCapture]::DesktopWorkArea()
+                      $bounds = [UcrWindowCapture]::VisibleWindowBounds($handle)
+                      $fits = $bounds.Left -ge $area.Left -and $bounds.Top -ge $area.Top -and
+                          $bounds.Right -le $area.Right + 1 -and $bounds.Bottom -le $area.Bottom + 1
+                      $results += @{ width = $size[0]; height = $size[1]; workArea = $area.ToString()
+                          window = $bounds.ToString(); requestedState = $state.ToString()
+                          state = $window.Current.WindowVisualState.ToString(); fits = $fits }
+                      $results | ConvertTo-Json | Set-Content (Join-Path $directory 'viewport-bounds.json')
+                      [UcrWindowCapture]::CaptureDesktop((Join-Path $directory "UCR-visual-desktop-$state-$($size[0])x$($size[1]).png"))
                   }
               }
-              $blockResults | ConvertTo-Json | Set-Content (Join-Path $directory 'block-controls.json')
-              foreach ($id in @('UiLegacyDPadInvertX','UiLegacyDPadInvertY')) {
-                  $t = Find-UcrControl $id
-                  if ($t.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Current.ToggleState -ne [System.Windows.Automation.ToggleState]::On) {
-                      $t.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle()
-                  }
-              }
-              Invoke-UcrControl 'UiLegacyDPadDestination'
-              $choiceCondition = [System.Windows.Automation.AndCondition]::new(
-                  [System.Windows.Automation.PropertyCondition]::new($nameProperty,'D-pad'),
-                  [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty,[System.Windows.Automation.ControlType]::MenuItem))
-              $choice = @([System.Windows.Automation.AutomationElement]::RootElement.FindAll(
-                  [System.Windows.Automation.TreeScope]::Children,$processCondition) | ForEach-Object {
-                      $_.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$choiceCondition)
-                  } | Where-Object { $null -ne $_ })[0]
-              if ($null -eq $choice) { throw 'The complete D-pad menu choice was unavailable.' }
-              $choice.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-              Start-Sleep -Milliseconds 250
-
-              function Save-UcrIfNeeded {
-                  if ((Find-UcrControl 'UiToolbarSave').Current.IsEnabled) { Invoke-UcrControl 'UiToolbarSave'; Start-Sleep -Milliseconds 400 }
-              }
-              function Read-MappingSnapshot([string]$title) {
-                  $state = Get-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-                  $profile = @($state.profiles | Where-Object { $_.title -eq $title })[0]
-                  return $profile.mappings[0] | ConvertTo-Json -Depth 50 -Compress
-              }
-              Save-UcrIfNeeded
-              $identityCases = @()
-              foreach ($p in $auditProfiles) {
-                  $row = Find-UcrProfileRow $p.title
-                  $row.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
-                  Find-UcrControl 'UiExpandMapping' | Out-Null
-                  if (-not @(Get-UcrControls 'UiMappingInputHeading' | Where-Object { -not $_.Current.IsOffscreen }).Count) { Invoke-UcrControl 'UiExpandMapping' }
-                  Find-UcrControl 'UiMappingInputHeading' | Out-Null
-                  Save-UcrIfNeeded
-                  $before = Read-MappingSnapshot $p.title
-                  foreach ($side in @('input','output')) {
-                      $selected = @($root.FindAll([System.Windows.Automation.TreeScope]::Descendants,
-                          [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty,[System.Windows.Automation.ControlType]::RadioButton)) | Where-Object {
-                              -not $_.Current.IsOffscreen -and $_.Current.Name -like "* $side" -and
-                              $_.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Current.IsSelected
-                          })[0]
-                      if ($null -eq $selected) { throw "No selected $side family in $($p.title)" }
-                      $selected.SetFocus(); [System.Windows.Forms.SendKeys]::SendWait(' ')
-                      Start-Sleep -Milliseconds 150
-                  }
-                  Save-UcrIfNeeded
-                  $after = Read-MappingSnapshot $p.title
-                  if ($before -ne $after) { throw "Clicking a selected family changed saved data in $($p.title)" }
-                  $identityCases += $p.title
-              }
-              $identityCases | ConvertTo-Json | Set-Content (Join-Path $directory 'unchanged-selected-types.json')
-              $saved = Get-Content (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-              $legacy = @($saved.profiles | Where-Object { $_.title -eq 'Legacy keyboard D-pad audit' })[0].mappings[0]
-              $legacy | ConvertTo-Json -Depth 50 | Set-Content (Join-Path $directory 'assigned-legacy-dpad.json')
-              Write-Host ("Legacy picker snapshot: plugin={0}; inputs={1}; keys={2}; bound={3}; inversion={4},{5}" -f
-                  $legacy.plugins[0].pluginType, $legacy.deviceBindings.Count,
-                  (($legacy.plugins[0].data.outputs | ForEach-Object { $_.keyValue }) -join ','),
-                  (($legacy.plugins[0].data.outputs | ForEach-Object { [bool]$_.isBound }) -join ','),
-                  $legacy.plugins[0].data.invertX, $legacy.plugins[0].data.invertY)
-              if ($legacy.plugins.Count -ne 1 -or $legacy.plugins[0].pluginType -ne 'HidWizards.UCR.Plugins.Remapper.ButtonsToDPad' -or
-                  $legacy.deviceBindings.Count -ne 4 -or $legacy.plugins[0].data.outputs.Count -ne 4 -or
-                  @($legacy.plugins[0].data.outputs | Where-Object { -not $_.isBound }).Count -gt 0 -or
-                  -not $legacy.plugins[0].data.invertX -or -not $legacy.plugins[0].data.invertY -or
-                  (@($legacy.plugins[0].data.outputs | ForEach-Object { [int]$_.keyValue }) -join ',') -ne '0,2,3,1') {
-                  throw 'The complete D-pad picker or inversion settings changed/lost the legacy plugin or directional channels.'
-              }
-              Write-Host 'Verified the complete D-pad picker and both saved inversion settings retain the original legacy plugin and four directional channels.'
-              $originalInputIds = @($legacy.deviceBindings | ForEach-Object { $_.guid })
-              $axis = Find-UcrElement $nameProperty 'Axis input'; $axis.SetFocus(); [System.Windows.Forms.SendKeys]::SendWait(' ')
-              Start-Sleep -Milliseconds 300
-              Save-UcrIfNeeded
-              $converted = Read-MappingSnapshot 'Legacy keyboard D-pad audit' | ConvertFrom-Json
-              $converted | ConvertTo-Json -Depth 50 | Set-Content (Join-Path $directory 'converted-legacy-dpad.json')
-              $outputs = @($converted.plugins | ForEach-Object { $_.data.outputs })
-              if ($converted.inputRepresentation -ne 2 -or $converted.outputRepresentation -ne 1 -or
-                  $converted.directionalCapacity -ne 4 -or -not $converted.compoundDigitalOutput -or
-                  $converted.deviceBindings.Count -ne 2 -or $converted.plugins.Count -ne 4 -or $outputs.Count -ne 4 -or
-                  @($outputs | Where-Object { -not $_.isBound }).Count -gt 0 -or
-                  (@($outputs | ForEach-Object { $_.keyType }) -join ',') -ne '2,2,2,2' -or
-                  (@($outputs | ForEach-Object { [int]$_.keyValue }) -join ',') -ne '1,3,2,0') {
-                  [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-visual-legacy-dpad-conversion.png')) | Out-Null
-                  throw 'Changing legacy D-pad input to Axis lost its complete output destination or inversion semantics.'
-              }
-              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-visual-legacy-dpad-axis.png')) | Out-Null
-              $buttons = Find-UcrElement $nameProperty 'Button input'; $buttons.SetFocus(); [System.Windows.Forms.SendKeys]::SendWait(' ')
-              Start-Sleep -Milliseconds 300
-              Save-UcrIfNeeded
-              $returned = Read-MappingSnapshot 'Legacy keyboard D-pad audit' | ConvertFrom-Json
-              if ($returned.deviceBindings.Count -ne 4 -or
-                  (@($returned.deviceBindings | ForEach-Object { $_.guid }) -join ',') -ne (@(2,3,0,1 | ForEach-Object { $originalInputIds[$_] }) -join ',') -or
-                  (@($returned.deviceBindings | ForEach-Object { $_.assignedControlName }) -join ',') -ne 'U,J,F,K') {
-                  throw 'Returning to Button input lost or reordered the legacy keyboard assignments.'
-              }
-              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-visual-legacy-dpad-restored.png')) | Out-Null
-              Write-Host 'Verified legacy D-pad Axis conversion preserves four destinations and inversion, and returning to Button restores all original keyboard assignments.'
-
-
-              Write-Host 'Verified selected-type clicks preserve the complete saved mapping in all audited fixtures.'
-              Stop-Process -Id $process.Id -Force
-              if (-not $process.WaitForExit(10000)) { throw 'The audit process did not exit.' }
-              Copy-Item -LiteralPath $dataRoot -Destination (Join-Path $directory 'valid-data-before-startup-error') -Recurse
-              Remove-Item -LiteralPath $dataRoot -Recurse -Force
-              New-Item -ItemType Directory -Path $dataRoot -Force | Out-Null
-              $badState = Join-Path $dataRoot 'state.json'
-              '{invalid-json' | Set-Content -LiteralPath $badState -Encoding UTF8 -NoNewline
-              $originalHash = (Get-FileHash -LiteralPath $badState -Algorithm SHA256).Hash
-              $process = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -PassThru
-              $errorCondition = [System.Windows.Automation.AndCondition]::new(
-                  [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ProcessIdProperty,$process.Id),
-                  [System.Windows.Automation.PropertyCondition]::new($nameProperty,'UCR could not start'))
-              $errorWindow = $null
-              for ($attempt = 0; $attempt -lt 45 -and $null -eq $errorWindow; $attempt++) {
-                  Start-Sleep -Milliseconds 500
-                  $process.Refresh()
-                  if ($process.HasExited) { throw 'Invalid saved data still terminated UCR before an actionable error appeared.' }
-                  $errorWindow = [System.Windows.Automation.AutomationElement]::RootElement.FindFirst([System.Windows.Automation.TreeScope]::Children,$errorCondition)
-              }
-              if ($null -eq $errorWindow) { throw 'No startup data error dialog appeared.' }
-              $messages = @($errorWindow.FindAll([System.Windows.Automation.TreeScope]::Descendants,[System.Windows.Automation.Condition]::TrueCondition) | ForEach-Object { $_.Current.Name }) -join ' '
-              if ($messages -notlike '*state.json*' -or $messages -notlike '*without replacing your saved profiles*') { throw 'The startup error omitted the failing file or recovery guidance.' }
-              [UcrWindowCapture]::CaptureDesktop((Join-Path $directory 'UCR-visual-startup-data-error.png'))
-              $okCondition = [System.Windows.Automation.PropertyCondition]::new($nameProperty,'OK')
-              $ok = $errorWindow.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$okCondition)
-              $ok.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-              if (-not $process.WaitForExit(10000) -or $process.ExitCode -ne 1) { throw 'Startup failure did not exit cleanly with code 1.' }
-              if ((Get-FileHash -LiteralPath $badState -Algorithm SHA256).Hash -ne $originalHash) { throw 'Startup failure rewrote the invalid data file.' }
-              Write-Host 'Verified invalid saved data shows the file path and recovery guidance, remains unchanged and exits cleanly.'
-
-              Write-Host 'Captured five keyboard Block layouts, five native D-pad routes and the legacy D-pad editor.'
+              [UcrWindowCapture]::PrepareDesktop()
+              $failed = @($results | Where-Object { -not $_.fits -or $_.state -ne $_.requestedState })
+              if ($failed.Count) { throw "Window exceeded the display work area or lost its state in $($failed.Count) viewport checks." }
+              Write-Host 'Verified normal and maximized UCR windows fit 1280x720, 1024x768 and 800x600 desktops.'
 
           }
           catch {
