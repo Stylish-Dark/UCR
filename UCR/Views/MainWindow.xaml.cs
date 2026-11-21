@@ -46,6 +46,8 @@ namespace HidWizards.UCR.Views
         private ProfilePage _embeddedProfilePage;
         private Profile _embeddedProfile;
         private bool _workspaceReady;
+        private double _profilePaneMinimum;
+        private double _profilePanePreferredWidth;
         private bool _reloadingProfileTree;
         private readonly Dictionary<Guid, ProfilePage> _profileCache = new Dictionary<Guid, ProfilePage>();
         private readonly LinkedList<Guid> _profileRecency = new LinkedList<Guid>();
@@ -69,6 +71,10 @@ namespace HidWizards.UCR.Views
             _autoProfileMonitor = new AutoProfileMonitor(context);
             Loaded += MainWindow_OnWorkspaceLoaded;
             StateChanged += (sender, args) => ConstrainToCurrentWorkArea();
+            SizeChanged += (sender, args) =>
+            {
+                if (_workspaceReady && args.WidthChanged) ApplyProfilePaneWidth();
+            };
         }
 
         private void SubscriptionsManager_OnPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -85,6 +91,7 @@ namespace HidWizards.UCR.Views
         {
             if (_workspaceReady) return;
             _workspaceReady = true;
+            _profilePaneMinimum = ProfilesColumn.MinWidth;
             ConstrainToCurrentWorkArea();
             UpdateProfilePaneWidth();
             // Selecting a profile while InitializeComponent builds the TreeView can happen before
@@ -277,9 +284,19 @@ namespace HidWizards.UCR.Views
             foreach (var item in _dashboardViewModel.ProfileList)
                 MeasureProfileTitles(item, ref longest);
             // Respect externally adjustable profile-column bounds.
-            var minimum = Math.Max(0, ProfilesColumn.MinWidth + 15);
+            var minimum = Math.Max(0, _profilePaneMinimum + 15);
             var maximum = Math.Max(minimum, ProfilesColumn.MaxWidth);
-            var width = Math.Max(minimum, Math.Min(maximum, Math.Ceiling(longest + 184)));
+            _profilePanePreferredWidth = Math.Max(minimum, Math.Min(maximum, Math.Ceiling(longest + 184)));
+            ApplyProfilePaneWidth();
+        }
+
+        private void ApplyProfilePaneWidth()
+        {
+            if (_profilePanePreferredWidth <= 0) return;
+            // Leave room for the stacked mapping editor on narrow displays.
+            var limit = ActualWidth < 1200 ? Math.Max(240, ActualWidth - 600) : _profilePanePreferredWidth;
+            var width = Math.Min(_profilePanePreferredWidth, limit);
+            ProfilesColumn.MinWidth = Math.Min(_profilePaneMinimum, width);
             ProfilesColumn.Width = new GridLength(width, GridUnitType.Pixel);
         }
 

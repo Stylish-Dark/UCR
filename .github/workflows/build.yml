@@ -287,7 +287,8 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          msbuild .\submodules\IOWrapper\IOWrapper.sln /m /t:Rebuild /p:Configuration=Release /v:minimal
+          # The pinned providers copy into a shared Artifacts tree in post-build events.
+          msbuild .\submodules\IOWrapper\IOWrapper.sln /m:1 /t:Rebuild /p:Configuration=Release /v:minimal
           if ($LASTEXITCODE -ne 0) {
             throw "IOWrapper Release build failed with exit code $LASTEXITCODE."
           }
@@ -1048,6 +1049,19 @@ jobs:
                   return Rectangle.FromLTRB(bounds.Left,bounds.Top,bounds.Right,bounds.Bottom);
               }
               [DllImport("user32.dll")]
+              private static extern bool GetClientRect(IntPtr hwnd, out Rect bounds);
+              [StructLayout(LayoutKind.Sequential)]
+              private struct Point { public int X, Y; }
+              [DllImport("user32.dll")]
+              private static extern bool ClientToScreen(IntPtr hwnd, ref Point point);
+              public static Rectangle ClientBounds(IntPtr hwnd) {
+                  Rect bounds;
+                  var origin = new Point();
+                  if (!GetClientRect(hwnd,out bounds) || !ClientToScreen(hwnd,ref origin))
+                      throw new Exception("Cannot read UCR client bounds");
+                  return new Rectangle(origin.X,origin.Y,bounds.Right,bounds.Bottom);
+              }
+              [DllImport("user32.dll")]
               private static extern bool SystemParametersInfo(uint action, uint parameter, out Rect area, uint flags);
               public static Rectangle DesktopWorkArea() {
                   Rect area;
@@ -1209,6 +1223,8 @@ jobs:
                       throw "Profile tree did not select '$name'."
                   }
               }
+              Invoke-UcrControl 'UiExpandMapping'
+              Find-UcrControl 'UiMappingOutputHeading' | Out-Null
               $window = $root.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
               $results = @()
               foreach ($state in @([System.Windows.Automation.WindowVisualState]::Normal,[System.Windows.Automation.WindowVisualState]::Maximized)) {
@@ -1227,12 +1243,26 @@ jobs:
                       [UcrWindowCapture]::SetDesktop($size[0],$size[1])
                       Start-Sleep -Milliseconds 1400
                       $area = [UcrWindowCapture]::DesktopWorkArea()
-                      $bounds = [UcrWindowCapture]::VisibleWindowBounds($handle)
+                      $bounds = [UcrWindowCapture]::ClientBounds($handle)
+                      $frame = [UcrWindowCapture]::VisibleWindowBounds($handle)
                       $fits = $bounds.Left -ge $area.Left -and $bounds.Top -ge $area.Top -and
                           $bounds.Right -le $area.Right + 1 -and $bounds.Bottom -le $area.Bottom + 1
+                      $controlBounds = @{}
+                      foreach ($id in @('UiExpandMapping','UiMappingInputHeading','UiMappingOutputHeading','UiWorkspaceInspector')) {
+                          $control = @(Get-UcrControls $id | Where-Object { -not $_.Current.IsOffscreen })[0]
+                          if ($null -eq $control) {
+                              $fits = $false
+                              $controlBounds[$id] = 'missing'
+                              continue
+                          }
+                          $rect = $control.Current.BoundingRectangle
+                          $controlBounds[$id] = $rect.ToString()
+                          if ($rect.Left -lt $area.Left -or $rect.Top -lt $area.Top -or
+                              $rect.Right -gt $area.Right + 1 -or $rect.Bottom -gt $area.Bottom + 1) { $fits = $false }
+                      }
                       $results += @{ width = $size[0]; height = $size[1]; workArea = $area.ToString()
-                          window = $bounds.ToString(); requestedState = $state.ToString()
-                          state = $window.Current.WindowVisualState.ToString(); fits = $fits }
+                          client = $bounds.ToString(); frame = $frame.ToString(); requestedState = $state.ToString()
+                          state = $window.Current.WindowVisualState.ToString(); fits = $fits; controls = $controlBounds }
                       $results | ConvertTo-Json | Set-Content (Join-Path $directory 'viewport-bounds.json')
                       [UcrWindowCapture]::CaptureDesktop((Join-Path $directory "UCR-visual-desktop-$state-$($size[0])x$($size[1]).png"))
                   }

@@ -203,15 +203,28 @@ namespace HidWizards.UCR.Views.ProfileViews
         }
 
         private bool _inspectorOverlay;
+        private GridLength _dockedInspectorWidth;
+        private double _dockedInspectorMinimum;
 
         private void ProfileWorkspaceLayout_OnSizeChanged(object sender, SizeChangedEventArgs e)
         {
             if (!e.WidthChanged || SidebarScrollViewer == null || UiWorkspaceInspector == null) return;
             // Reserve the inspector column only when the mapping editor can still
             // fit both sides, including the workspace, card and scrollbar insets.
-            const double inspectorWidth = 350;
+            if (!_inspectorOverlay || ProfileInspectorColumn.Width.Value > 0)
+            {
+                _dockedInspectorWidth = ProfileInspectorColumn.Width;
+                _dockedInspectorMinimum = ProfileInspectorColumn.MinWidth;
+            }
+
             const double workspaceInsets = 80;
+            var inspectorWidth = Math.Max(_dockedInspectorWidth.Value, _dockedInspectorMinimum);
             var overlay = e.NewSize.Width < inspectorWidth + MappingCardControl.MinimumTwoColumnEditorWidth + workspaceInsets;
+            SidebarScrollViewer.Width = overlay ? Math.Min(inspectorWidth, Math.Max(0,
+                e.NewSize.Width - SidebarScrollViewer.Margin.Left - SidebarScrollViewer.Margin.Right)) : double.NaN;
+
+            ProfileInspectorColumn.MinWidth = overlay ? 0 : _dockedInspectorMinimum;
+            ProfileInspectorColumn.Width = overlay ? new GridLength(0) : _dockedInspectorWidth;
             if (overlay == _inspectorOverlay) return;
             _inspectorOverlay = overlay;
 
@@ -219,7 +232,6 @@ namespace HidWizards.UCR.Views.ProfileViews
             Grid.SetColumn(SidebarScrollViewer, overlay ? 0 : 1);
             Grid.SetColumnSpan(SidebarScrollViewer, overlay ? 2 : 1);
             Panel.SetZIndex(SidebarScrollViewer, overlay ? 5 : 0);
-            SidebarScrollViewer.Width = overlay ? inspectorWidth : double.NaN;
             SidebarScrollViewer.HorizontalAlignment = overlay ? HorizontalAlignment.Right : HorizontalAlignment.Stretch;
             SidebarScrollViewer.Background = overlay ? (Brush)new SolidColorBrush(Color.FromRgb(32, 32, 32)) : null;
             UiWorkspaceInspector.Visibility = overlay ? Visibility.Visible : Visibility.Collapsed;
