@@ -1326,6 +1326,34 @@ jobs:
                   -not $trigger.plugins[0].data.outputs[0].isBound) {
                   throw 'Selecting LT from Axes did not persist a one-sided Trigger output.'
               }
+              [UcrWindowCapture]::SetDesktop(800,600)
+              Start-Sleep -Milliseconds 700
+              $viewer = Find-UcrControl 'MappingSectionsScrollViewer'
+              $scroll = $viewer.GetCurrentPattern([System.Windows.Automation.ScrollPattern]::Pattern)
+              if ($scroll.Current.VerticallyScrollable) {
+                  $scroll.SetScrollPercent(-1,100)
+                  Start-Sleep -Milliseconds 300
+              }
+              $compactOutputButton = @(Get-UcrControls 'BindButton' | Where-Object { -not $_.Current.IsOffscreen } |
+                  Sort-Object -Property { $_.Current.BoundingRectangle.Y }, { $_.Current.BoundingRectangle.X })[-1]
+              $compactOutputButton.SetFocus()
+              [System.Windows.Forms.SendKeys]::SendWait(' ')
+              $compactPicker = Find-UcrControl 'UiOutputPicker'
+              $compactRect = $compactPicker.Current.BoundingRectangle
+              $compactWindow = [UcrWindowCapture]::VisibleWindowBounds($handle)
+              if ($compactRect.Left -lt $compactWindow.Left -or $compactRect.Right -gt $compactWindow.Right -or
+                  $compactRect.Top -lt 0 -or $compactRect.Bottom -gt 600) {
+                  throw "Compact picker extends past the window or desktop: $compactRect, window $compactWindow."
+              }
+              (Find-UcrElement $nameProperty 'Left trigger').SetFocus()
+              [UcrWindowCapture]::MovePointerAway()
+              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-visual-compact-output-picker.png')) | Out-Null
+              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+              [UcrWindowCapture]::PrepareDesktop()
+              if ($scroll.Current.VerticallyScrollable) { $scroll.SetScrollPercent(-1,0) }
+              [UcrWindowCapture]::MoveWindow($handle,30,30,1200,680,$true) | Out-Null
+              Start-Sleep -Milliseconds 650
+              Write-Host 'Verified the output picker fits on the 800 by 600 Windows desktop.'
               $mode = Join-Path $env:RUNNER_TEMP 'ucr-output-fixture-state.txt'
               $original = @($trigger.plugins[0].data.outputs)[0]
               [System.IO.File]::WriteAllText($mode, 'disconnected')
