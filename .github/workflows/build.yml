@@ -1326,3 +1326,88 @@ jobs:
           name: UCR-Visual-Audit
           path: ${{ runner.temp }}/UCR-Visual-Audit/
           if-no-files-found: warn
+
+      - name: Verify legacy and typed trigger output values
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $app = (Resolve-Path '.\UCR\bin\Release').Path
+          $scratch = Join-Path $env:RUNNER_TEMP 'ucr-trigger-audit'
+          New-Item -ItemType Directory -Path $scratch -Force | Out-Null
+          Copy-Item (Join-Path $app 'lib\*.dll') -Destination $scratch
+          Copy-Item (Join-Path $app 'Plugins\UCR.Plugins\UCR.Plugins.dll') -Destination $scratch
+          $src = Join-Path $scratch 'TriggerAudit.cs'
+          @'
+          using System;
+          using System.Reflection;
+          using HidWizards.UCR.Core.Models;
+          using HidWizards.UCR.Core.Models.Binding;
+          using HidWizards.UCR.Core.Models.Subscription;
+          using HidWizards.UCR.Plugins.Remapper;
+
+          internal static class TriggerAudit
+          {
+              private const BindingFlags Internal = BindingFlags.Instance | BindingFlags.NonPublic;
+
+              public static void Main()
+              {
+                  Test("legacy positional B7 to LT via AxisToAxis", new AxisToAxis(), false, false, false);
+                  Test("legacy expression B7 to LT via AxisToAxis", new AxisToAxis(), false, true, false);
+                  Test("legacy positional B7 to LT via ButtonToAxis", new ButtonToAxis(), false, false, false);
+                  Test("legacy expression B7 to LT via ButtonToAxis", new ButtonToAxis(), false, true, false);
+                  Test("typed B7 to LT", new AxisToAxis(), true, true, false);
+                  Test("legacy analogue LT to LT", new AxisToAxis(), false, false, true);
+              }
+
+              private static void Test(string name, Plugin plugin, bool typed, bool expression, bool analogue)
+              {
+                  var mapping = new Mapping {
+                      InputRepresentation = typed ? 3 : 0,
+                      OutputRepresentation = typed ? 4 : 0,
+                      DirectionalCapacity = typed ? 1 : 0,
+                      UseInputExpression = expression
+                  };
+                  var input = new DeviceBinding {
+                      IsBound = true, KeyType = analogue ? 0 : 1, KeyValue = analogue ? 4 : 54,
+                      AssignedControlName = analogue ? "LT" : "B7",
+                      DeviceBindingCategory = analogue ? DeviceBindingCategory.Range : DeviceBindingCategory.Momentary,
+                      InputExpressionInputKind = analogue ? 3 : 0,
+                      InputExpressionKindConfigured = true
+                  };
+                  mapping.DeviceBindings.Add(input);
+                  mapping.Plugins.Add(plugin);
+                  var output = plugin.Outputs[0];
+                  output.IsBound = true;
+                  output.AssignedControlName = "LT";
+                  output.KeyValue = 4;
+                  if (mapping.EffectiveOutputRepresentation != 4)
+                      throw new Exception(name + " did not resolve as a trigger");
+                  typeof(Mapping).GetMethod("PrepareMapping", Internal).Invoke(mapping, new object[] { new FilterState(), Guid.Empty });
+                  plugin.InitializeCacheValues();
+                  short released = analogue ? short.MinValue : (short)0;
+                  short pressed = analogue ? short.MaxValue : (short)1;
+                  mapping.Update(released);
+                  Assert(name + " initial rest", output.CurrentValue, short.MinValue);
+                  input.Callback(pressed);
+                  Assert(name + " press", output.CurrentValue, short.MaxValue);
+                  if (analogue) {
+                      input.Callback(0);
+                      if (Math.Abs(output.CurrentValue) > 1) throw new Exception(name + " lost midpoint travel");
+                  }
+                  input.Callback(released);
+                  Assert(name + " release", output.CurrentValue, short.MinValue);
+                  Console.WriteLine("Verified " + name);
+              }
+
+              private static void Assert(string name, long actual, long expected)
+              {
+                  if (actual != expected) throw new Exception(name + ": expected " + expected + ", got " + actual);
+              }
+          }
+          '@ | Set-Content -LiteralPath $src -Encoding UTF8
+          $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          $exe = Join-Path $scratch 'TriggerAudit.exe'
+          & $csc /nologo "/out:$exe" "/r:$scratch\UCR.Core.dll" "/r:$scratch\UCR.Plugins.dll" $src
+          if ($LASTEXITCODE -ne 0) { throw 'Could not compile trigger regression check.' }
+          & $exe
+          if ($LASTEXITCODE -ne 0) { throw 'Trigger regression check failed.' }

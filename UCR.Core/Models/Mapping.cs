@@ -576,8 +576,12 @@ namespace HidWizards.UCR.Core.Models
         {
             short x = 0, y = 0;
             if (capacity == 1)
+            {
                 x = ReadDirectionalSource(inputValues, inputBindings, 0,
                     inputType == 3, inputType == 4);
+                if (inputType == 3 && outputType != 3 && x != 0)
+                    x = short.MaxValue;
+            }
             else if (inputType == 4)
             {
                 // Four independent one-sided triggers form opposed X/Y pairs.
