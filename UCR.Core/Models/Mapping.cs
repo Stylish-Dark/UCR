@@ -510,8 +510,20 @@ namespace HidWizards.UCR.Core.Models
 
             var selected = ComputeDirectionalOrChannels(InputCache, DeviceBindings,
                 capacity, inputType, routedOutputType, RequiredInputBindingSlotsPerGroup, UsesFourWayGroupShapes);
-            for (var index = 0; index < Math.Min(Plugins.Count, selected.Count); index++)
+            var outputCount = Math.Min(Plugins.Count, selected.Count);
+            var digitalCompound = CompoundDigitalOutput && outputType == 1;
+            if (digitalCompound)
             {
+                // When crossing directly between opposing directions (for
+                // example, a stick driving a D-pad), release inactive channels
+                // before pressing new ones so the provider never sees both held.
+                for (var index = 0; index < outputCount; index++)
+                    if (selected[index] == 0)
+                        DispatchPlugin(Plugins[index], new short[] { 0 }, changedFilter);
+            }
+            for (var index = 0; index < outputCount; index++)
+            {
+                if (digitalCompound && selected[index] == 0) continue;
                 var plugin = Plugins[index];
                 // A logical trigger is 0..+32767; output providers expect
                 // the complete signed Range with -32768 as released.
