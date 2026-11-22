@@ -554,6 +554,22 @@ namespace HidWizards.UCR.Views.Controls
                 AllowsTransparency = true,
                 StaysOpen = false
             };
+            var owner = Window.GetWindow(target);
+            if (owner != null)
+            {
+                popup.Placement = PlacementMode.Custom;
+                popup.CustomPopupPlacementCallback = (popupSize, targetSize, offset) =>
+                {
+                    var anchorLeft = target.TranslatePoint(new Point(0, 0), owner).X;
+                    var left = Math.Max(8 - anchorLeft,
+                        Math.Min(0, owner.ActualWidth - anchorLeft - popupSize.Width - 8));
+                    return new[]
+                    {
+                        new CustomPopupPlacement(new Point(left, targetSize.Height), PopupPrimaryAxis.Vertical),
+                        new CustomPopupPlacement(new Point(left, -popupSize.Height), PopupPrimaryAxis.Vertical)
+                    };
+                };
+            }
             var content = BuildOutputPickerContent(config, popup);
             content.PreviewKeyDown += (sender, args) =>
             {
