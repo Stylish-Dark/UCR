@@ -1029,6 +1029,11 @@ namespace HidWizards.UCR.Core.Managers
 
             if (providerCandidates.Count == 0) return null;
 
+            // These providers expose numbered API slots. Even a single
+            // remaining endpoint must match the configured slot exactly.
+            if (UsesLogicalSlotIdentity(configuredDevice.ProviderName))
+                return providerCandidates.FirstOrDefault(d => DescriptorEquals(d, configuredDevice));
+
             if (!string.IsNullOrEmpty(configuredDevice.HidPath))
             {
                 var hidMatches = providerCandidates
@@ -1085,12 +1090,6 @@ namespace HidWizards.UCR.Core.Managers
                     return logicalMatches.FirstOrDefault(device => DescriptorEquals(device, configuredDevice))
                            ?? logicalMatches[0];
                 }
-            }
-
-            // Numbered virtual/API slots are the identity those providers intentionally expose.
-            if (UsesLogicalSlotIdentity(configuredDevice.ProviderName))
-            {
-                return handleMatches.FirstOrDefault(d => DescriptorEquals(d, configuredDevice));
             }
 
             return null;

@@ -526,6 +526,54 @@ jobs:
           path: UCR/bin/Release/
           if-no-files-found: error
 
+      - name: Verify numbered controller slot identity
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $app = (Resolve-Path '.\UCR\bin\Release').Path
+          $scratch = Join-Path $env:RUNNER_TEMP 'ucr-slot-audit'
+          New-Item -ItemType Directory -Path $scratch -Force | Out-Null
+          Copy-Item (Join-Path $app 'lib\*.dll') -Destination $scratch
+          $source = Join-Path $scratch 'SlotAudit.cs'
+          @'
+          using System;
+          using HidWizards.UCR.Core.Managers;
+          using HidWizards.UCR.Core.Models;
+          internal static class SlotAudit
+          {
+              public static void Main()
+              {
+                  CheckSlots("Core_ViGEm", "xb360");
+                  CheckSlots("Core_ViGEm", "ds4");
+                  CheckSlots("SharpDX_XInput", "xinput");
+                  var saved = new Device("Controller", "SharpDX_DirectInput", "same-hardware", 3);
+                  var live = new Device("Controller", saved.ProviderName, saved.DeviceHandle, 0);
+                  if (DevicesManager.ResolveDevice(saved, new[] { live }) != live)
+                      throw new Exception("Unambiguous physical DirectInput reconnect stopped resolving.");
+                  Console.WriteLine("Verified a physical DirectInput device can still re-resolve after an instance-number change.");
+              }
+
+              private static void CheckSlots(string provider, string handle)
+              {
+                  var saved = new Device("Controller", provider, handle, 1);
+                  var differentSlot = new Device("Controller", provider, handle, 0);
+                  var correctSlot = new Device("Controller", provider, handle, 1);
+                  if (DevicesManager.ResolveDevice(saved, new[] { differentSlot }) != null)
+                      throw new Exception(provider + " " + handle + " resolved disconnected slot 1 to slot 0.");
+                  if (DevicesManager.ResolveDevice(saved, new[] { differentSlot, correctSlot }) != correctSlot ||
+                      DevicesManager.ResolveDevice(saved, new[] { correctSlot }) != correctSlot)
+                      throw new Exception(provider + " " + handle + " failed to resolve slot 1.");
+                  Console.WriteLine("Verified missing and present slot identity for " + provider + " " + handle);
+              }
+          }
+          '@ | Set-Content -LiteralPath $source -Encoding UTF8
+          $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          $exe = Join-Path $scratch 'SlotAudit.exe'
+          & $csc /nologo "/out:$exe" "/r:$scratch\UCR.Core.dll" $source
+          if ($LASTEXITCODE -ne 0) { throw 'Could not compile the numbered-slot regression check.' }
+          & $exe
+          if ($LASTEXITCODE -ne 0) { throw 'The numbered-slot regression check failed.' }
+
       - name: Capture UCR UI on Windows runner
         id: visual_audit
         continue-on-error: false
