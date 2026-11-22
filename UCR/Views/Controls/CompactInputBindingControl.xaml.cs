@@ -6,6 +6,7 @@ using System.Windows.Automation;
 using System.Windows.Input;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Interop;
 using System.Windows.Media;
 using HidWizards.UCR.ViewModels.Presentation;
 using HidWizards.UCR.Core.Models;
@@ -603,8 +604,11 @@ namespace HidWizards.UCR.Views.Controls
             var currentCategory = selectedBinding.DeviceBindingCategory;
             var options = mapping?.GetOutputBindingOptions(bindingViewModel, config)
                 ?? new List<QuickBindingOption>();
-            var workArea = SystemParameters.WorkArea;
-            var popupWidth = Math.Min(470, Math.Max(240, workArea.Width - 24));
+            var target = popup.PlacementTarget as FrameworkElement;
+            var owner = target == null ? null : Window.GetWindow(target);
+            var workArea = GetPickerWorkArea(target);
+            var ownerWidth = owner?.ActualWidth ?? workArea.Width;
+            var popupWidth = Math.Min(470, Math.Min(workArea.Width - 24, ownerWidth - 16));
             var contentWidth = popupWidth - 30;
             var tileWidth = contentWidth >= 430 ? 212 : contentWidth - 8;
             var availableHeight = Math.Max(100, Math.Min(340, workArea.Height - 150));
@@ -879,6 +883,18 @@ namespace HidWizards.UCR.Views.Controls
                 Padding = new Thickness(5),
                 Width = popupWidth
             };
+        }
+
+        private static Rect GetPickerWorkArea(Visual target)
+        {
+            var source = target == null ? null : PresentationSource.FromVisual(target) as HwndSource;
+            if (source?.CompositionTarget == null)
+                return SystemParameters.WorkArea;
+
+            var screen = System.Windows.Forms.Screen.FromHandle(source.Handle).WorkingArea;
+            var area = new Rect(screen.Left, screen.Top, screen.Width, screen.Height);
+            area.Transform(source.CompositionTarget.TransformFromDevice);
+            return area;
         }
 
         private DeviceConfiguration GetSelectedOutputConfiguration()

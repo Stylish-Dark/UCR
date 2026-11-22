@@ -834,7 +834,7 @@ namespace HidWizards.UCR.Core.Models
 
         public List<DeviceBindingNode> GetDeviceBindingMenu(Context context, DeviceIoType type)
         {
-            if (DeviceBindingMenu != null && DeviceBindingMenu.Count != 0) return DeviceBindingMenu;
+            if (type == DeviceIoType.Input && HasBindingMenu) return DeviceBindingMenu;
 
             return context.DevicesManager.GetDeviceBindingMenu(this, type);
         }

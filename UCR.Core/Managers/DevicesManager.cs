@@ -1512,12 +1512,18 @@ namespace HidWizards.UCR.Core.Managers
             // enumeration and activation still require a live provider endpoint.
             if (includeCache && type == DeviceIoType.Output && device != null && !IsInputRemoved(device))
             {
+                if (resolvedDevice == null)
+                {
+                    lock (_rememberedOutputEndpoints)
+                        _rememberedOutputEndpoints.Remove(BuildRuntimeEndpointKey(device));
+                }
                 var cachedOutput = _outputBindingCache.LoadProvider(device.ProviderName)
                     .FirstOrDefault(candidate => candidate.HasBindingMenu &&
                         DeviceIdentity.DescriptorEquals(candidate, device) &&
                         string.Equals(candidate.HidPath ?? string.Empty, device.HidPath ?? string.Empty,
                             StringComparison.OrdinalIgnoreCase));
                 if (cachedOutput != null) return cachedOutput.GetDeviceBindingMenu();
+                if (device.HasBindingMenu) return device.GetDeviceBindingMenu();
             }
 
             if (includeCache && type == DeviceIoType.Input && device != null)
