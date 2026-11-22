@@ -75,7 +75,7 @@
                     Margin="0"
                     Click="BindButton_OnClick"
                     PreviewMouseRightButtonUp="BindButton_OnMouseRightButtonUp"
-                    PreviewKeyDown="BindButton_OnPreviewKeyDown"
+                    ContextMenuOpening="BindButton_OnContextMenuOpening"
                     MinWidth="110"
                     materialDesign:TransitionAssist.DisableTransitions="True"
                     materialDesign:ShadowAssist.ShadowEdges="Left, Top, Bottom">

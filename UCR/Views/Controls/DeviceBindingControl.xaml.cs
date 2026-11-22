@@ -362,36 +362,26 @@ namespace HidWizards.UCR.Views.Controls
 
         private void BindButton_OnMouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (DeviceBinding == null) return;
-            if (DeviceBinding.IsInBindMode)
+            if (DeviceBinding?.IsInBindMode != true) return;
+            DeviceBinding.CancelBindMode();
+            e.Handled = true;
+        }
+
+        private void BindButton_OnContextMenuOpening(object sender, ContextMenuEventArgs e)
+        {
+            if (!BindButton.IsEnabled || DeviceBinding == null || DeviceBinding.IsInBindMode)
             {
-                DeviceBinding.CancelBindMode();
                 e.Handled = true;
                 return;
             }
-            if (!BindButton.IsEnabled) return;
-            e.Handled = true;
-            OpenContextMenu();
-        }
-
-        internal static bool IsBindingMenuKey(KeyEventArgs e) =>
-            e.Key == Key.Apps || (e.Key == Key.F10 && Keyboard.Modifiers == ModifierKeys.Shift);
-
-        private void BindButton_OnPreviewKeyDown(object sender, KeyEventArgs e)
-        {
-            if (!IsBindingMenuKey(e) || !BindButton.IsEnabled ||
-                DeviceBinding?.IsInBindMode == true) return;
-            OpenContextMenu();
-            e.Handled = true;
+            LoadContextMenu();
         }
 
         private void OpenContextMenu()
         {
-            if (DeviceBinding.IsInBindMode) return;
             LoadContextMenu();
-            var contextMenu = BindButton.ContextMenu;
-            contextMenu.PlacementTarget = BindButton;
-            contextMenu.IsOpen = true;
+            Ddl.PlacementTarget = BindButton;
+            Ddl.IsOpen = true;
         }
 
         private static T FindAncestor<T>(DependencyObject start) where T : DependencyObject

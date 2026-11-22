@@ -93,7 +93,6 @@ namespace HidWizards.UCR.Views.Controls
 
         private bool _loaded;
         private Popup _outputPicker;
-        private ContextMenu _bindingOptions;
 
         public CompactInputBindingControl()
         {
@@ -272,42 +271,32 @@ namespace HidWizards.UCR.Views.Controls
         private void BindButton_OnPreviewMouseRightButtonDown(object sender,
             System.Windows.Input.MouseButtonEventArgs e)
         {
-            if (DeviceBinding?.IsInBindMode == true)
-                DeviceBinding.CancelBindMode();
-            else if ((DataContext as DeviceBindingViewModel)?.BindingEnabled == true)
-                OpenBindingOptions(BindButton);
+            if (DeviceBinding?.IsInBindMode != true) return;
+            DeviceBinding.CancelBindMode();
             e.Handled = true;
         }
 
-        private void BindButton_OnPreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        private void BindButton_OnContextMenuOpening(object sender, ContextMenuEventArgs e)
         {
-            if (!DeviceBindingControl.IsBindingMenuKey(e) ||
-                (DataContext as DeviceBindingViewModel)?.BindingEnabled != true ||
-                DeviceBinding?.IsInBindMode == true) return;
-            OpenBindingOptions(BindButton);
-            e.Handled = true;
-        }
+            if (DeviceBinding == null || DeviceBinding.IsInBindMode ||
+                (DataContext as DeviceBindingViewModel)?.BindingEnabled != true)
+            {
+                e.Handled = true;
+                return;
+            }
 
-        private void OpenBindingOptions(FrameworkElement anchor)
-        {
-            // Reveal the whole binding row before opening its options. Otherwise a
-            // partly scrolled-off row leaves Block/NOT underneath the fixed footer.
             BringIntoView();
-            _bindingOptions = _bindingOptions ?? CreateInputOptionsMenu(null, anchor);
-            if (DeviceBinding?.DeviceIoType == DeviceIoType.Output)
+            BindingOptions.PlacementTarget = BindButton;
+            BindingOptions.Placement = PlacementMode.Top;
+            if (DeviceBinding.DeviceIoType == DeviceIoType.Output)
                 PopulateOutputOptions();
             else
-                BuildContextMenu();
-            _bindingOptions.PlacementTarget = anchor;
-            // The inspector has a docked footer and a constrained scroll viewport.
-            // Open the binding menu upwards so it cannot cover the footer or clipped rows.
-            _bindingOptions.Placement = PlacementMode.Top;
-            _bindingOptions.IsOpen = true;
+                PopulateInputMenu(BindingOptions, DeviceBinding, DataContext as DeviceBindingViewModel);
         }
 
         private void PopulateOutputOptions()
         {
-            _bindingOptions.Items.Clear();
+            BindingOptions.Items.Clear();
             var binding = DeviceBinding;
             var choose = new MenuItem
             {
@@ -317,7 +306,7 @@ namespace HidWizards.UCR.Views.Controls
             };
             choose.Click += (sender, args) => Dispatcher.BeginInvoke(
                 new Action(() => BindButton_OnClick(sender, args)), System.Windows.Threading.DispatcherPriority.Background);
-            _bindingOptions.Items.Add(choose);
+            BindingOptions.Items.Add(choose);
 
             var clear = new MenuItem
             {
@@ -326,12 +315,7 @@ namespace HidWizards.UCR.Views.Controls
                 IsEnabled = binding.IsBound
             };
             clear.Click += (sender, args) => binding.ClearBinding();
-            _bindingOptions.Items.Add(clear);
-        }
-
-        private void BuildContextMenu()
-        {
-            PopulateInputMenu(_bindingOptions, DeviceBinding, DataContext as DeviceBindingViewModel);
+            BindingOptions.Items.Add(clear);
         }
 
         // The collapsed mapping glyph and the editor binding button use exactly the

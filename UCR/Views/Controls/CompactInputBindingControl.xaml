@@ -181,10 +181,14 @@
                     Click="BindButton_OnClick"
                     PreviewMouseLeftButtonDown="BindButton_OnPreviewMouseLeftButtonDown"
                     PreviewMouseRightButtonDown="BindButton_OnPreviewMouseRightButtonDown"
-                    PreviewKeyDown="BindButton_OnPreviewKeyDown"
+                    ContextMenuOpening="BindButton_OnContextMenuOpening"
                     Foreground="#FFFFFF"
                     HorizontalContentAlignment="Stretch"
                     materialDesign:TransitionAssist.DisableTransitions="True">
+                <Button.ContextMenu>
+                    <ContextMenu x:Name="BindingOptions" Style="{StaticResource MaterialDesignContextMenu}"
+                                 Foreground="#FFFFFF" Background="#242424"/>
+                </Button.ContextMenu>
                 <Button.Style>
                     <Style TargetType="{x:Type Button}" BasedOn="{StaticResource CompactBindSurfaceButton}">
                         <Setter Property="Padding" Value="10 2"/>
