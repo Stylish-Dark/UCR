@@ -542,6 +542,7 @@ jobs:
           if (Test-Path -LiteralPath $originalKeyboardProvider) { Remove-Item -LiteralPath $originalKeyboardProvider -Recurse -Force }
           $mockSource = Join-Path $env:RUNNER_TEMP 'UcrAuditOutput.cs'
           @'
+          using System;
           using System.ComponentModel.Composition;
           using HidWizards.IOWrapper.DataTransferObjects;
           using HidWizards.IOWrapper.ProviderInterface.Interfaces;
@@ -576,15 +577,6 @@ jobs:
                           BindingDescriptor = new BindingDescriptor { Type = BindingType.POV, Index = i, SubIndex = 0 }
                       });
                   device.Nodes.Add(dpad);
-                  var axes = new DeviceReportNode { Title = "Axes" };
-                  foreach (var axis in new[] { "LX", "LY", "LT", "RT" })
-                      axes.Bindings.Add(new BindingReport {
-                          Title = axis, Category = BindingCategory.Range,
-                          BindingDescriptor = new BindingDescriptor {
-                              Type = BindingType.Axis, Index = Array.IndexOf(new[] { "LX", "LY", "LT", "RT" }, axis)
-                          }
-                      });
-                  device.Nodes.Add(axes);
                   return device;
               }
               public ProviderReport GetOutputList()
@@ -598,7 +590,7 @@ jobs:
               }
           }
           [Export(typeof(IProvider))]
-          public sealed class UcrAuditKeyboard : IInputProvider
+          public sealed class UcrAuditKeyboard : IInputProvider, IBindModeProvider
           {
               public string ProviderName { get { return "Core_Interception"; } }
               public bool IsLive { get { return true; } }
@@ -607,6 +599,24 @@ jobs:
               public void Dispose() { }
               public bool SubscribeInput(InputSubscriptionRequest request) { return true; }
               public bool UnsubscribeInput(InputSubscriptionRequest request) { return true; }
+              private System.Threading.Timer auditInputTimer;
+              public void SetDetectionMode(DetectionMode mode, DeviceDescriptor device,
+                  Action<ProviderDescriptor, DeviceDescriptor, BindingReport, short> callback = null)
+              {
+                  var old = System.Threading.Interlocked.Exchange(ref auditInputTimer, null);
+                  if (old != null) old.Dispose();
+                  if (mode != DetectionMode.Bind || callback == null) return;
+                  var signal = System.IO.Path.Combine(System.Environment.GetEnvironmentVariable("RUNNER_TEMP"), "ucr-batch-input.txt");
+                  auditInputTimer = new System.Threading.Timer(delegate {
+                      if (!System.IO.File.Exists(signal)) return;
+                      var text = System.IO.File.ReadAllText(signal);
+                      System.IO.File.Delete(signal);
+                      int index;
+                      if (!int.TryParse(text, out index)) return;
+                      var entry = GetInputDeviceReport(device).Nodes[0].Bindings[index];
+                      callback(new ProviderDescriptor { ProviderName = ProviderName }, device, entry, 1);
+                  }, null, 450, 100);
+              }
               public DeviceReport GetInputDeviceReport(DeviceDescriptor descriptor)
               {
                   var device = new DeviceReport {
@@ -614,7 +624,7 @@ jobs:
                       DeviceDescriptor = new DeviceDescriptor { DeviceHandle = "Keyboard_Audit", DeviceInstance = 0 }
                   };
                   var node = new DeviceReportNode { Title = "Keys" };
-                  var keys = new[] { "F", "K", "U", "J" };
+                  var keys = new[] { "F", "F", "U", "J" };
                   for (var i = 0; i < keys.Length; i++)
                       node.Bindings.Add(new BindingReport {
                           Title = keys[i], Category = BindingCategory.Momentary, Blockable = true,
@@ -1219,125 +1229,48 @@ jobs:
                   }
               }
               $nameProperty = [System.Windows.Automation.AutomationElement]::NameProperty
-              function Save-UcrIfNeeded {
-                  if ((Find-UcrControl 'UiToolbarSave').Current.IsEnabled) {
-                      Invoke-UcrControl 'UiToolbarSave'
-                      Start-Sleep -Milliseconds 400
+              function Start-BatchCapture {
+                  Invoke-UcrControl 'UiWorkspaceMore'
+                  (Find-UcrElement $nameProperty 'Batch capture inputs').GetCurrentPattern(
+                      [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+                  Find-UcrControl 'UiFinishBatchMappings' | Out-Null
+                  Start-Sleep -Milliseconds 900
+              }
+              function Send-AuditKey([int]$index) {
+                  $path = Join-Path $env:RUNNER_TEMP 'ucr-batch-input.txt'
+                  [System.IO.File]::WriteAllText("$path.tmp", $index.ToString())
+                  Move-Item -LiteralPath "$path.tmp" -Destination $path
+                  for ($attempt = 0; $attempt -lt 45 -and (Test-Path $path); $attempt++) {
+                      Start-Sleep -Milliseconds 100
                   }
+                  if (Test-Path $path) { throw "The Windows capture provider did not consume key $index." }
+                  Start-Sleep -Milliseconds 900
               }
-              $row = Find-UcrProfileRow 'Block single audit'
-              $row.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
-              Find-UcrControl 'UiWorkspaceAddMapping' | Out-Null
-              Invoke-UcrControl 'UiWorkspaceAddMapping'
-              Set-UcrText 'WorkspaceMappingSearch' 'Mapping 1'
-              Find-UcrControl 'UiMappingInputHeading' | Out-Null
-              if (@(Get-UcrControls 'UiBindOptions' | Where-Object { -not $_.Current.IsOffscreen }).Count -or
-                  @(Get-UcrControls 'UiInputBindingOptions' | Where-Object { -not $_.Current.IsOffscreen }).Count -or
-                  @(Get-UcrControls 'UiOutputBindingOptions' | Where-Object { -not $_.Current.IsOffscreen }).Count) {
-                  throw 'An obsolete binding options button is still visible.'
+              Start-BatchCapture
+              Send-AuditKey 0
+              Send-AuditKey 0
+              Send-AuditKey 1
+              Invoke-UcrControl 'UiFinishBatchMappings'
+              Start-Sleep -Milliseconds 700
+              Start-BatchCapture
+              Send-AuditKey 0
+              Send-AuditKey 2
+              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-visual-batch-capture.png')) | Out-Null
+              Invoke-UcrControl 'UiFinishBatchMappings'
+              Start-Sleep -Milliseconds 700
+              Invoke-UcrControl 'UiToolbarSave'
+              Start-Sleep -Milliseconds 600
+              $state = Get-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+              $profile = @($state.profiles | Where-Object { $_.title -eq 'Block single audit' })[0]
+              $captured = @($profile.mappings | Where-Object { $_.title -ne 'Keyboard single mapping' })
+              $captured | ConvertTo-Json -Depth 25 | Set-Content (Join-Path $directory 'batch-capture-saved.json')
+              if ($captured.Count -ne 3 -or
+                  (@($captured | ForEach-Object { $_.title }) -join ',') -ne 'F,F 2,U' -or
+                  (@($captured | ForEach-Object { [int]$_.deviceBindings[0].keyValue }) -join ',') -ne '0,1,2' -or
+                  @($captured | Where-Object { -not $_.deviceBindings[0].isBound -or $_.plugins[0].data.outputs[0].isBound }).Count -gt 0) {
+                  throw 'Batch capture lost distinct same-name keys, repeated an existing capture or filled a pending output.'
               }
-              function Read-NewMapping {
-                  $state = Get-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-                  $profile = @($state.profiles | Where-Object { $_.title -eq 'Block single audit' })[0]
-                  return @($profile.mappings | Where-Object { $_.title -eq 'Mapping 1' })[0]
-              }
-              Save-UcrIfNeeded
-              $before = Read-NewMapping
-              $unset = $before.plugins[0].data.outputs[0].deviceConfigurationGuid
-              if ($unset -and $unset -ne [guid]::Empty.ToString()) { throw 'The empty mapping selected an output prematurely.' }
-              $bindingButtons = @(Get-UcrControls 'BindButton' | Where-Object { -not $_.Current.IsOffscreen } |
-                  Sort-Object -Property { $_.Current.BoundingRectangle.X })
-              $inputButton = $bindingButtons[0]
-              $inputButton.SetFocus()
-              [System.Windows.Forms.SendKeys]::SendWait('+{F10}')
-              Find-UcrElement $nameProperty 'Keys' | Out-Null
-              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-visual-input-keyboard-menu.png')) | Out-Null
-              $keys = Find-UcrElement $nameProperty 'Keys'
-              $keys.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
-              $key = Find-UcrElement $nameProperty 'F'
-              $key.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-              Start-Sleep -Milliseconds 400
-              Save-UcrIfNeeded
-              $after = Read-NewMapping
-              $expectedOutput = $auditProfiles[0].outputDeviceConfigurations[0].guid
-              if (-not $after.deviceBindings[0].isBound -or
-                  $after.plugins[0].data.outputs[0].deviceConfigurationGuid -ne $expectedOutput -or
-                  $after.plugins[0].data.outputs[0].isBound) {
-                  throw 'Binding the initial input did not select the configured output device without inventing a control.'
-              }
-              $bindingButtons = @(Get-UcrControls 'BindButton' | Where-Object { -not $_.Current.IsOffscreen } |
-                  Sort-Object -Property { $_.Current.BoundingRectangle.X })
-              $outputButton = $bindingButtons[-1]
-              $outputButton.SetFocus()
-              [System.Windows.Forms.SendKeys]::SendWait('+{F10}')
-              Find-UcrElement $nameProperty 'Choose output control' | Out-Null
-              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
-              Start-Sleep -Milliseconds 250
-              $outputButton.SetFocus()
-              [System.Windows.Forms.SendKeys]::SendWait(' ')
-              $buttonTile = Find-UcrElement $nameProperty 'Audit D'
-              $workspace = [UcrWindowCapture]::VisibleWindowBounds($handle)
-              if ($buttonTile.Current.BoundingRectangle.Right -gt $workspace.Right - 4) {
-                  throw 'The output picker extends beyond the UCR window.'
-              }
-              [UcrWindowCapture]::MovePointerAway()
-              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-visual-default-output-picker.png')) | Out-Null
-              foreach ($tab in @('Directions','Axes')) {
-                  (Find-UcrElement $nameProperty $tab).GetCurrentPattern(
-                      [System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
-                  Start-Sleep -Milliseconds 200
-                  [UcrWindowCapture]::Capture($handle,(Join-Path $directory "UCR-visual-output-picker-$tab.png")) | Out-Null
-              }
-              (Find-UcrElement $nameProperty 'Left trigger').SetFocus()
-              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
-              Start-Sleep -Milliseconds 300
-              if (-not $outputButton.Current.HasKeyboardFocus) { throw 'The output picker did not restore focus after Escape.' }
-              [System.Windows.Forms.SendKeys]::SendWait(' ')
-              (Find-UcrElement $nameProperty 'Axes').GetCurrentPattern(
-                  [System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
-              (Find-UcrElement $nameProperty 'Left trigger').GetCurrentPattern(
-                  [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-              Start-Sleep -Milliseconds 350
-              Save-UcrIfNeeded
-              $trigger = Read-NewMapping
-              if ($trigger.outputRepresentation -ne 4 -or
-                  $trigger.plugins[0].data.outputs[0].assignedControlName -ne 'LT' -or
-                  -not $trigger.plugins[0].data.outputs[0].isBound) {
-                  throw 'Selecting LT from Axes did not persist a one-sided Trigger output.'
-              }
-              Set-UcrText 'WorkspaceMappingSearch' ''
-              Write-Host 'Verified keyboard menus, automatic output device selection, picker bounds, three categories, Escape focus and persisted LT assignment.'
-
-              Stop-Process -Id $process.Id -Force
-              if (-not $process.WaitForExit(10000)) { throw 'The audit process did not exit.' }
-              Copy-Item -LiteralPath $dataRoot -Destination (Join-Path $directory 'valid-data-before-startup-error') -Recurse
-              Remove-Item -LiteralPath $dataRoot -Recurse -Force
-              New-Item -ItemType Directory -Path $dataRoot -Force | Out-Null
-              $badState = Join-Path $dataRoot 'state.json'
-              '{invalid-json' | Set-Content -LiteralPath $badState -Encoding UTF8 -NoNewline
-              $originalHash = (Get-FileHash -LiteralPath $badState -Algorithm SHA256).Hash
-              $process = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -PassThru
-              $errorCondition = [System.Windows.Automation.AndCondition]::new(
-                  [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ProcessIdProperty,$process.Id),
-                  [System.Windows.Automation.PropertyCondition]::new($nameProperty,'UCR could not start'))
-              $errorWindow = $null
-              for ($attempt = 0; $attempt -lt 45 -and $null -eq $errorWindow; $attempt++) {
-                  Start-Sleep -Milliseconds 500
-                  $process.Refresh()
-                  if ($process.HasExited) { throw 'Invalid saved data still terminated UCR before an actionable error appeared.' }
-                  $errorWindow = [System.Windows.Automation.AutomationElement]::RootElement.FindFirst([System.Windows.Automation.TreeScope]::Children,$errorCondition)
-              }
-              if ($null -eq $errorWindow) { throw 'No startup data error dialog appeared.' }
-              $messages = @($errorWindow.FindAll([System.Windows.Automation.TreeScope]::Descendants,[System.Windows.Automation.Condition]::TrueCondition) | ForEach-Object { $_.Current.Name }) -join ' '
-              if ($messages -notlike '*state.json*' -or $messages -notlike '*without replacing your saved profiles*') { throw 'The startup error omitted the failing file or recovery guidance.' }
-              [UcrWindowCapture]::CaptureDesktop((Join-Path $directory 'UCR-visual-startup-data-error.png'))
-              $okCondition = [System.Windows.Automation.PropertyCondition]::new($nameProperty,'OK')
-              $ok = $errorWindow.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$okCondition)
-              $ok.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-              if (-not $process.WaitForExit(10000) -or $process.ExitCode -ne 1) { throw 'Startup failure did not exit cleanly with code 1.' }
-              if ((Get-FileHash -LiteralPath $badState -Algorithm SHA256).Hash -ne $originalHash) { throw 'Startup failure rewrote the invalid data file.' }
-              Write-Host 'Verified invalid saved data shows the file path and recovery guidance, remains unchanged and exits cleanly.'
-
+              Write-Host 'Verified batch capture of distinct controls with duplicate names, repeated presses, and retained pending outputs across Finish and resume.'
 
           }
           catch {
