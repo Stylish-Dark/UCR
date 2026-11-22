@@ -1,4 +1,4 @@
-﻿name: Build UCR Stylish
+name: Build UCR Stylish
 
 on:
   push:
@@ -526,3 +526,301 @@ jobs:
           name: UCR-Windows
           path: UCR/bin/Release/
           if-no-files-found: error
+
+      - name: Install verified ViGEm driver on audit runner
+        shell: pwsh
+        timeout-minutes: 6
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer = Join-Path $env:RUNNER_TEMP 'ViGEmBus_1.22.0.exe'
+          Invoke-WebRequest 'https://github.com/nefarius/ViGEmBus/releases/download/v1.22.0/ViGEmBus_1.22.0_x64_x86_arm64.exe' -OutFile $installer
+          $expected = '89220A7865076B342892F98865F3499FB7C4CFD673159E89D352C360FD014C6A'
+          if ((Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash -ne $expected) {
+            throw 'ViGEmBus installer did not match the published SHA-256.'
+          }
+          $signature = Get-AuthenticodeSignature -LiteralPath $installer
+          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Nefarius') {
+            throw "Unexpected ViGEmBus signature: $($signature.Status) $($signature.SignerCertificate.Subject)"
+          }
+          $install = Start-Process $installer -ArgumentList '/exenoui','/qn','/norestart' -PassThru -Wait
+          if ($install.ExitCode -notin @(0,3010)) { throw "ViGEmBus installer returned $($install.ExitCode)." }
+          Get-PnpDevice -PresentOnly | Where-Object FriendlyName -match 'ViGEm|Gamepad Emulation' | Format-List Status, FriendlyName, InstanceId
+
+      - name: Verify UCR to ViGEm to Windows XInput
+        shell: powershell
+        timeout-minutes: 4
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $release = (Resolve-Path '.\UCR\bin\Release').Path
+          $scratch = Join-Path $env:RUNNER_TEMP 'UcrNativeXinputAudit'
+          New-Item -ItemType Directory -Path $scratch -Force | Out-Null
+          Copy-Item -Path "$release\*" -Destination $scratch -Recurse -Force
+          $source = Join-Path $scratch 'NativeXinputAudit.cs'
+          @'
+          using System;
+          using System.Collections.Generic;
+          using System.IO;
+          using System.Linq;
+          using System.Reflection;
+          using System.Runtime.InteropServices;
+          using System.Threading;
+          using HidWizards.IOWrapper.DataTransferObjects;
+          using HidWizards.IOWrapper.ProviderInterface.Interfaces;
+          using HidWizards.UCR.Core;
+          using HidWizards.UCR.Core.Models;
+          using HidWizards.UCR.Plugins.Remapper;
+
+          internal sealed class AuditInput : IInputProvider
+          {
+              private readonly List<InputSubscriptionRequest> subscriptions = new List<InputSubscriptionRequest>();
+              public string ProviderName { get { return "UcrAuditInput"; } }
+              public bool IsLive { get { return true; } }
+              public void RefreshLiveState() { }
+              public void RefreshDevices() { }
+              public void Dispose() { subscriptions.Clear(); }
+
+              public bool SubscribeInput(InputSubscriptionRequest request) {
+                  subscriptions.Add(request);
+                  return true;
+              }
+
+              public bool UnsubscribeInput(InputSubscriptionRequest request) {
+                  subscriptions.RemoveAll(item => item.SubscriptionDescriptor.SubscriberGuid == request.SubscriptionDescriptor.SubscriberGuid);
+                  return true;
+              }
+
+              public void Emit(BindingType type, int index, short value) {
+                  var targets = subscriptions.Where(item => item.BindingDescriptor.Type == type && item.BindingDescriptor.Index == index).ToArray();
+                  if (targets.Length == 0) throw new InvalidOperationException("No UCR input subscription for " + type + " " + index);
+                  foreach (var target in targets) target.Callback(value);
+              }
+
+              public DeviceReport GetInputDeviceReport(DeviceDescriptor descriptor) {
+                  var device = new DeviceReport {
+                      DeviceName = "Xbox audit input",
+                      DeviceDescriptor = new DeviceDescriptor { DeviceHandle = "audit-pad", DeviceInstance = 0 }
+                  };
+                  var node = new DeviceReportNode { Title = "Audit controls" };
+                  node.Bindings.Add(new BindingReport {
+                      Title = "LT", Category = BindingCategory.Unsigned,
+                      BindingDescriptor = new BindingDescriptor { Type = BindingType.Axis, Index = 4 }
+                  });
+                  foreach (var item in new[] { "A", "B7", "Right" }.Select((title,index) => new { Title=title, Index = index })) {
+                      node.Bindings.Add(new BindingReport {
+                          Title = item.Title, Category = BindingCategory.Momentary,
+                          BindingDescriptor = new BindingDescriptor { Type = BindingType.Button, Index = item.Index }
+                      });
+                  }
+                  device.Nodes.Add(node);
+                  return device;
+              }
+
+              public ProviderReport GetInputList() {
+                  var report = new ProviderReport {
+                      Title = ProviderName, API = "Audit",
+                      ProviderDescriptor = new ProviderDescriptor { ProviderName = ProviderName }
+                  };
+                  report.Devices.Add(GetInputDeviceReport(default(DeviceDescriptor)));
+                  return report;
+              }
+          }
+
+          internal static class NativeXinputAudit
+          {
+              [StructLayout(LayoutKind.Sequential)]
+              private struct XInputState {
+                  public uint Packet;
+                  public ushort Buttons;
+                  public byte Lt, Rt;
+                  public short Lx, Ly, Rx, Ry;
+
+                  public override string ToString() { return "LT=" + Lt + " RT=" + Rt + " buttons=0x" + Buttons.ToString("X4"); }
+              }
+
+              [DllImport("xinput1_4.dll")]
+              private static extern uint XInputGetState(uint slot, out XInputState state);
+
+              public static int Main() {
+                  AppDomain.CurrentDomain.AssemblyResolve += delegate(object sender, ResolveEventArgs args) {
+                      var file = new AssemblyName(args.Name).Name + ".dll";
+                      foreach (var path in new[] { Path.Combine("lib", file), Path.Combine("Plugins", "UCR.Plugins", file) }) {
+                          if (File.Exists(path)) return Assembly.LoadFrom(Path.GetFullPath(path));
+                      }
+                      return null;
+                  };
+                  try { return Run(); }
+                  catch (Exception error) { Console.Error.WriteLine(error); return 1; }
+              }
+
+              private static int Run() {
+                  var failures = new List<string>();
+                  WaitForDisconnected();
+                  using (var context = new Context()) {
+                      var input = new AuditInput();
+                      const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
+                      var controller = typeof(Context).GetProperty("IOController", Private).GetValue(context, null);
+                      var providers = (IDictionary<string,IProvider>)controller.GetType().GetField("_providers", Private).GetValue(controller);
+                      providers.Add(input.ProviderName, input);
+                      var device = context.DevicesManager.GetAvailableDeviceList(DeviceIoType.Output, false)
+                          .SingleOrDefault(item => item.ProviderName == "Core_ViGEm" && item.DeviceHandle == "xb360" && item.DeviceNumber == 0);
+                      if (device == null)
+                          throw new InvalidOperationException("The packaged Core_ViGEm provider did not expose Xbox slot 0.");
+
+                      var first = BuildProfile(context, device, "Analogue and button");
+                      AddRoute(first, "Analogue LT to LT", new AxisToAxis(), BindingType.Axis, 4, "LT", BindingType.Axis, 4, "LT", 4, 4);
+                      AddRoute(first, "Hold A", new ButtonToButton(), BindingType.Button, 0, "A", BindingType.Button, 0, "A", 3, 3);
+                      Activate(context, first);
+                      var slot = FindConnected();
+                      Check("initial trigger rest", slot, 0, 0, 0, failures);
+                      input.Emit(BindingType.Axis, 4, -32767);
+                      Check("first analogue bucket", slot, 0, 0, 0, failures);
+                      input.Emit(BindingType.Axis, 4, -16384);
+                      Check("analogue quarter", slot, 64, 0, 0, failures);
+                      input.Emit(BindingType.Axis, 4, -1);
+                      Check("analogue sample below midpoint", slot, 127, 0, 0, failures);
+                      input.Emit(BindingType.Axis, 4, 0);
+                      Check("analogue midpoint", slot, 128, 0, 0, failures);
+                      input.Emit(BindingType.Axis, 4, short.MaxValue);
+                      input.Emit(BindingType.Button, 0, 1);
+                      Check("analogue full and A down", slot, 255, 0, 0x1000, failures);
+                      Deactivate(context, first);
+
+                      var second = BuildProfile(context, device, "Digital trigger and direction");
+                      AddRoute(second, "B7 to RT", new AxisToAxis(), BindingType.Button, 1, "B7", BindingType.Axis, 5, "RT", 3, 4);
+                      AddRoute(second, "Button to Right", new ButtonToButton(), BindingType.Button, 2, "Right", BindingType.POV, 1, "Right", 3, 3);
+                      Activate(context, second);
+                      slot = FindConnected();
+                      Check("new profile starts neutral after previous A and LT held", slot, 0, 0, 0, failures);
+                      input.Emit(BindingType.Button, 1, 1);
+                      Check("digital RT press", slot, 0, 255, 0, failures);
+                      input.Emit(BindingType.Button, 2, 1);
+                      Check("D-pad Right while RT held", slot, 0, 255, 0x0008, failures);
+                      input.Emit(BindingType.Button, 1, 0);
+                      Check("digital RT release with D-pad held", slot, 0, 0, 0x0008, failures);
+                      input.Emit(BindingType.Button, 2, 0);
+                      Check("D-pad Right released", slot, 0, 0, 0, failures);
+                      Deactivate(context, second);
+
+                      var legacy = BuildProfile(context, device, "Legacy recorded route");
+                      AddRoute(legacy, "B7 to LT", new ButtonToAxis(), BindingType.Button, 1, "B7", BindingType.Axis, 4, "LT", 0, 0);
+                      Activate(context, legacy);
+                      slot = FindConnected();
+                      input.Emit(BindingType.Button, 1, 1);
+                      Check("legacy B7 to LT full press", slot, 255, 0, 0, failures);
+                      input.Emit(BindingType.Button, 1, 0);
+                      Check("legacy B7 to LT neutral release", slot, 0, 0, 0, failures);
+                      Deactivate(context, legacy);
+                  }
+                  foreach (var failure in failures) Console.Error.WriteLine(failure);
+                  return failures.Count == 0 ? 0 : 1;
+              }
+
+              private static Profile BuildProfile(Context context, Device output, string name) {
+                  var profile = context.ProfilesManager.CreateProfile(name, null, null);
+                  profile.AddDeviceConfigurations(new List<DeviceConfiguration> {
+                      new DeviceConfiguration(new Device("Xbox audit input", "UcrAuditInput", "audit-pad", 0))
+                  }, DeviceIoType.Input);
+                  profile.AddDeviceConfigurations(new List<DeviceConfiguration> {
+                      new DeviceConfiguration(new Device(output.Title, output.ProviderName, output.DeviceHandle, output.DeviceNumber))
+                  }, DeviceIoType.Output);
+                  context.ProfilesManager.AddProfile(profile);
+                  return profile;
+              }
+
+              private static void AddRoute(Profile profile, string name, Plugin plugin,
+                  BindingType inputType, int inputIndex, string inputName, BindingType outputType, int outputIndex, string outputName,
+                  int inputRepresentation, int outputRepresentation) {
+                  var mapping = profile.AddMapping(name);
+                  if (!mapping.AddPlugin(plugin)) throw new InvalidOperationException("Could not build " + name);
+                  mapping.InputRepresentation = inputRepresentation;
+                  mapping.OutputRepresentation = outputRepresentation;
+                  mapping.UseInputExpression = inputRepresentation != 0;
+                  mapping.DirectionalCapacity = inputRepresentation != 0 ? 1 : 0;
+                  var input = mapping.DeviceBindings[0];
+                  input.DeviceConfigurationGuid = profile.InputDeviceConfigurations[0].Guid;
+                  input.KeyType = (int)inputType;
+                  input.KeyValue = inputIndex;
+                  input.AssignedControlName = inputName;
+                  input.IsBound = true;
+                  if (inputType == BindingType.Button) {
+                      input.DeviceBindingCategory = HidWizards.UCR.Core.Models.Binding.DeviceBindingCategory.Momentary;
+                      input.InputExpressionInputKind = 0;
+                  }
+                  var output = plugin.Outputs[0];
+                  output.DeviceConfigurationGuid = profile.OutputDeviceConfigurations[0].Guid;
+                  output.KeyType = (int)outputType;
+                  output.KeyValue = outputIndex;
+                  output.AssignedControlName = outputName;
+                  output.IsBound = true;
+              }
+
+              private static void Activate(Context context, Profile profile) {
+                  if (!context.SubscriptionsManager.ActivateProfile(profile))
+                      throw new InvalidOperationException("Could not activate " + profile.Title + ": " + context.SubscriptionsManager.LastActivationError);
+              }
+
+              private static void Deactivate(Context context, Profile profile) {
+                  if (!context.SubscriptionsManager.DeactivateProfile(profile))
+                      throw new InvalidOperationException("Could not deactivate " + profile.Title);
+                  WaitForDisconnected();
+              }
+
+              private static uint? Connected() {
+                  XInputState state;
+                  uint? slot = null;
+                  for (uint i = 0; i < 4; i++) {
+                      if (XInputGetState(i, out state) != 0) continue;
+                      if (slot.HasValue) throw new InvalidOperationException("Unexpected additional XInput controller.");
+                      slot = i;
+                  }
+                  return slot;
+              }
+
+              private static uint FindConnected() {
+                  var until = DateTime.UtcNow.AddSeconds(8);
+                  do {
+                      var slot = Connected();
+                      if (slot.HasValue) return slot.Value;
+                      Thread.Sleep(30);
+                  } while (DateTime.UtcNow < until);
+                  throw new InvalidOperationException("No Xbox controller became visible to XInput.");
+              }
+
+              private static void WaitForDisconnected() {
+                  var until = DateTime.UtcNow.AddSeconds(5);
+                  do {
+                      if (!Connected().HasValue) return;
+                      Thread.Sleep(30);
+                  } while (DateTime.UtcNow < until);
+                  throw new InvalidOperationException("An XInput target remained connected.");
+              }
+
+              private static void Check(string name, uint slot, byte lt, byte rt, ushort buttons, List<string> failures) {
+                  var until = DateTime.UtcNow.AddMilliseconds(350);
+                  XInputState state;
+                  do {
+                      if (XInputGetState(slot, out state) == 0 && state.Lt == lt && state.Rt == rt && state.Buttons == buttons) {
+                          Console.WriteLine("Verified via XInput: " + name + " " + state);
+                          return;
+                      }
+                      Thread.Sleep(10);
+                  } while (DateTime.UtcNow < until);
+                  failures.Add(name + " expected LT=" + lt + " RT=" + rt + " buttons=0x" + buttons.ToString("X4") + " but received " + state);
+              }
+          }
+          '@ | Set-Content -LiteralPath $source -Encoding UTF8
+          $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          $references = @(
+              "$scratch\lib\UCR.Core.dll",
+              "$scratch\lib\IOWrapper.DTOs.dll",
+              "$scratch\lib\IOWrapper.IProvider.dll",
+              "$scratch\Plugins\UCR.Plugins\UCR.Plugins.dll"
+          ) | ForEach-Object { "/r:$_" }
+          $audit = Join-Path $scratch 'NativeXinputAudit.exe'
+          & $csc /nologo "/out:$audit" @references $source
+          if ($LASTEXITCODE -ne 0) { throw 'The native XInput test could not compile.' }
+          Push-Location $scratch
+          try {
+              & $audit
+              if ($LASTEXITCODE -ne 0) { throw 'Windows XInput did not receive the expected virtual controller state.' }
+          } finally { Pop-Location }
