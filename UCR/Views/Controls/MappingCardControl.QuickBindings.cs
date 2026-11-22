@@ -265,7 +265,7 @@ namespace HidWizards.UCR.Views.Controls
         }
 
         private static StackPanel CompoundChoiceHeader(string label,
-            ControlVisualKind kind, string controls)
+            ControlVisualKind kind, string controls, double maxLabelWidth = double.PositiveInfinity)
         {
             var row = new StackPanel { Orientation = Orientation.Horizontal };
             row.Children.Add(new ControlGlyphControl
@@ -276,6 +276,7 @@ namespace HidWizards.UCR.Views.Controls
             row.Children.Add(new TextBlock
             {
                 Text = label, VerticalAlignment = VerticalAlignment.Center,
+                MaxWidth = maxLabelWidth, TextTrimming = TextTrimming.CharacterEllipsis,
                 Foreground = Brushes.White, FontWeight = FontWeights.SemiBold
             });
             return row;
@@ -405,8 +406,7 @@ namespace HidWizards.UCR.Views.Controls
             FrameworkElement anchor)
         {
             if (mapping?.ButtonsEnabled != true || anchor == null) return;
-            var menu = CreateDarkContextMenu(anchor);
-            menu.Placement = PlacementMode.Bottom;
+            var menu = CreateFourWayOutputMenu(anchor);
             var profile = mapping.ProfileViewModel.Profile;
             var choices = mapping.GetFourWayOutputChoices();
             var multipleDevices = choices.Select(choice => choice.DeviceConfigurationGuid)
@@ -430,7 +430,11 @@ namespace HidWizards.UCR.Views.Controls
                     (selected.Destination == "Right stick" ? "R" : "L");
                 var label = multipleDevices ? selected.Destination + " (" + selected.DeviceTitle + ")" :
                     selected.Destination;
-                var item = new MenuItem { Header = CompoundChoiceHeader(label, kind, controls) };
+                var item = new MenuItem
+                {
+                    Header = CompoundChoiceHeader(label, kind, controls, Math.Max(0, menu.MaxWidth - 100)),
+                    ToolTip = label
+                };
                 System.Windows.Automation.AutomationProperties.SetName(item, label);
                 item.Click += (sender, args) =>
                 {
@@ -448,6 +452,34 @@ namespace HidWizards.UCR.Views.Controls
                     IsEnabled = false
                 });
             menu.IsOpen = true;
+        }
+
+        private static ContextMenu CreateFourWayOutputMenu(FrameworkElement anchor)
+        {
+            const double margin = 8;
+            var menu = CreateDarkContextMenu(anchor);
+            menu.Placement = PlacementMode.Bottom;
+            var owner = Window.GetWindow(anchor);
+            if (owner == null || owner.ActualWidth <= 2 * margin || owner.ActualHeight <= 2 * margin)
+                return menu;
+
+            menu.MaxWidth = owner.ActualWidth - 2 * margin;
+            menu.MaxHeight = owner.ActualHeight - 2 * margin;
+            menu.Placement = PlacementMode.Custom;
+            menu.CustomPopupPlacementCallback = (popupSize, targetSize, offset) =>
+            {
+                var origin = anchor.TranslatePoint(new Point(), owner);
+                var left = Math.Max(margin, Math.Min(origin.X, owner.ActualWidth - popupSize.Width - margin));
+                var bottom = owner.ActualHeight - popupSize.Height - margin;
+                var belowAnchor = origin.Y + targetSize.Height;
+                var top = belowAnchor <= bottom ? belowAnchor : origin.Y - popupSize.Height;
+                top = Math.Max(margin, Math.Min(top, bottom));
+                return new[]
+                {
+                    new CustomPopupPlacement(new Point(left - origin.X, top - origin.Y), PopupPrimaryAxis.None)
+                };
+            };
+            return menu;
         }
 
         private static ContextMenu CreateDarkContextMenu(FrameworkElement placementTarget)

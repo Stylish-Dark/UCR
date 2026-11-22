@@ -520,8 +520,7 @@ namespace HidWizards.UCR.Views.Controls
             // The output device and whole D-pad/stick destination are one choice.
             // Do not require a second device dropdown or another submenu click.
             var options = axis.MappingViewModel.GetFourWayOutputChoices();
-            var menu = CreateDarkContextMenu(button);
-            menu.Placement = PlacementMode.Bottom;
+            var menu = CreateFourWayOutputMenu(button);
             var hasMultipleDevices = options.Select(option => option.DeviceConfigurationGuid)
                 .Distinct().Count() > 1;
             foreach (var option in options)
