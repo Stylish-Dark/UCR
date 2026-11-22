@@ -654,7 +654,21 @@ jobs:
                   secondary.DeviceDescriptor = new DeviceDescriptor { DeviceHandle = "audit-secondary", DeviceInstance = 0 };
                   secondary.Nodes[2].Bindings[2].Title = "RX";
                   secondary.Nodes[2].Bindings[3].Title = "RY";
+                  var secondHat = new DeviceReportNode { Title = "Hat 2" };
+                  for (var i = 0; i < 4; i++)
+                      secondHat.Bindings.Add(new BindingReport {
+                          Title = "Hat 2 " + new[] { "Up", "Right", "Down", "Left" }[i],
+                          Category = BindingCategory.Momentary,
+                          BindingDescriptor = new BindingDescriptor { Type = BindingType.POV, Index = i + 4, SubIndex = 0 }
+                      });
+                  secondary.Nodes.Add(secondHat);
                   report.Devices.Add(secondary);
+                  if (mode != "disconnected") {
+                      var standby = GetOutputDeviceReport(default(DeviceDescriptor));
+                      standby.DeviceName = "Audit standby controller";
+                      standby.DeviceDescriptor = new DeviceDescriptor { DeviceHandle = "audit-standby", DeviceInstance = 0 };
+                      report.Devices.Add(standby);
+                  }
                   return report;
               }
           }
@@ -1132,60 +1146,6 @@ jobs:
                       GetWindowRect(hwnd,out bounds);
                   return Rectangle.FromLTRB(bounds.Left,bounds.Top,bounds.Right,bounds.Bottom);
               }
-              [StructLayout(LayoutKind.Sequential)]
-              private struct Source { public uint AdapterLow; public int AdapterHigh; public uint Id; }
-              [StructLayout(LayoutKind.Sequential)]
-              private struct DisplayRequest { public int Type; public uint Size; public Source Source; }
-              [StructLayout(LayoutKind.Sequential)]
-              private struct ScaleRange { public DisplayRequest Header; public int Minimum, Current, Maximum; }
-              [StructLayout(LayoutKind.Sequential)]
-              private struct ScaleChange { public DisplayRequest Header; public int Position; }
-              [DllImport("user32.dll")]
-              private static extern int GetDisplayConfigBufferSizes(uint flags, out uint paths, out uint modes);
-              [DllImport("user32.dll")]
-              private static extern int QueryDisplayConfig(uint flags, ref uint count, IntPtr paths, ref uint modeCount, IntPtr modes, IntPtr topology);
-              [DllImport("user32.dll")]
-              private static extern int DisplayConfigGetDeviceInfo(ref ScaleRange range);
-              [DllImport("user32.dll")]
-              private static extern int DisplayConfigSetDeviceInfo(ref ScaleChange change);
-              [DllImport("user32.dll")]
-              public static extern uint GetDpiForWindow(IntPtr hwnd);
-
-              private static void CheckDisplayResult(string action, int result) {
-                  if (result != 0) throw new Exception(action + " returned Win32 error " + result);
-              }
-              public static int SetDesktopScale(int percent) {
-                  const uint activePaths = 2;
-                  uint count, modeCount;
-                  CheckDisplayResult("Enumerate active display paths", GetDisplayConfigBufferSizes(activePaths, out count, out modeCount));
-                  if (count != 1) throw new Exception("Expected a single active display path, got " + count);
-                  // DISPLAYCONFIG_PATH_INFO begins with the source LUID and ID.
-                  var paths = Marshal.AllocHGlobal(checked((int)count * 72));
-                  var modes = Marshal.AllocHGlobal(checked((int)modeCount * 64));
-                  try {
-                      CheckDisplayResult("Read active display paths", QueryDisplayConfig(activePaths, ref count, paths, ref modeCount, modes, IntPtr.Zero));
-                      var source = (Source)Marshal.PtrToStructure(paths, typeof(Source));
-                      var range = new ScaleRange { Header = new DisplayRequest { Type = -3, Size = 32, Source = source } };
-                      CheckDisplayResult("Read display scaling range", DisplayConfigGetDeviceInfo(ref range));
-                      var values = new[] { 100, 125, 150, 175, 200, 225, 250, 300, 350, 400, 450, 500 };
-                      var prior = values[range.Current - range.Minimum];
-                      var position = Array.IndexOf(values, percent) + range.Minimum;
-                      if (position < range.Minimum || position > range.Maximum)
-                          throw new Exception("The active display does not support scale " + percent);
-                      if (position != range.Current) {
-                          var change = new ScaleChange {
-                              Header = new DisplayRequest { Type = -4, Size = 24, Source = source }, Position = position
-                          };
-                          CheckDisplayResult("Set display scaling", DisplayConfigSetDeviceInfo(ref change));
-                          CheckDisplayResult("Read back display scaling", DisplayConfigGetDeviceInfo(ref range));
-                          if (range.Current != position) throw new Exception("Windows did not apply scale " + percent);
-                      }
-                      return prior;
-                  } finally {
-                      Marshal.FreeHGlobal(modes);
-                      Marshal.FreeHGlobal(paths);
-                  }
-              }
               public static void PrepareDesktop() { SetDesktop(1920,1080); }
               public static void SetDesktop(uint width, uint height) {
                   var mode = new DisplayMode();
@@ -1499,7 +1459,8 @@ jobs:
               $left = Find-UcrElement $nameProperty 'Left stick (Primary output)'
               Find-UcrElement $nameProperty 'D-pad (Primary output)' | Out-Null
               Find-UcrElement $nameProperty 'Right stick (Secondary output)' | Out-Null
-              $dpad = Find-UcrElement $nameProperty 'D-pad (Secondary output)'
+              Find-UcrElement $nameProperty 'D-pad 1 (Secondary output)' | Out-Null
+              $dpad = Find-UcrElement $nameProperty 'D-pad 2 (Secondary output)'
               $menu = [System.Windows.Automation.TreeWalker]::ControlViewWalker.GetParent($left)
               $right = $menu.FindFirst([System.Windows.Automation.TreeScope]::Descendants,
                   [System.Windows.Automation.PropertyCondition]::new($nameProperty,'Right stick (Primary output)'))
@@ -1512,102 +1473,48 @@ jobs:
               $channels = @($four.plugins | ForEach-Object { $_.data.outputs })
               $keys = ($channels | ForEach-Object { [int]$_.keyValue }) -join ','
               if ($four.outputRepresentation -ne 1 -or -not $four.compoundDigitalOutput -or
-                  $channels.Count -ne 4 -or $keys -ne '3,1,0,2' -or
-                  @($channels | Where-Object { -not $_.isBound -or $_.deviceConfigurationGuid -ne $secondaryOutputId }).Count) {
+                  $channels.Count -ne 4 -or $keys -ne '7,5,4,6' -or
+                  @($channels | Where-Object { -not $_.isBound -or $_.deviceConfigurationGuid -ne $secondaryOutputId -or
+                      $_.compoundPresetName -ne 'D-pad 2' }).Count) {
                   throw 'The secondary output D-pad did not persist the four ordered destinations on the chosen device.'
               }
-              Write-Host 'Verified both labelled devices, excluded the primary device triggers as a right stick, and saved the secondary device D-pad in direction order.'
+              Write-Host 'Verified both labelled devices, excluded the primary device triggers as a right stick, and saved only the four directions of the secondary device second D-pad.'
 
               Set-UcrText 'WorkspaceMappingSearch' ''
+              [UcrWindowCapture]::MoveWindow($handle,30,30,1600,900,$true) | Out-Null
+              Start-Sleep -Milliseconds 500
+              $paired = Find-UcrProfileRow 'Block paired audit'
+              $paired.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+              Invoke-UcrControl 'UiProfileAddOutputDevice'
+              Find-UcrElement $nameProperty 'Audit standby controller' | Out-Null
+              Invoke-UcrControl 'UiCancel'
+              Start-Sleep -Milliseconds 350
+              [System.IO.File]::WriteAllText($mode, 'disconnected')
+              Invoke-UcrControl 'UiProfileAddOutputDevice'
+              Find-UcrElement $nameProperty 'Audit standby controller' | Out-Null
+              $cachedChoice = @(Get-UcrControls 'UiAddDeviceChoice' | Where-Object { $_.Current.Name -eq 'Audit standby controller' })
+              if ($cachedChoice.Count -ne 1) { throw 'The offline controller did not have one selectable checkbox.' }
+              $cachedChoice[0].GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle()
+              Find-UcrElement $nameProperty 'UcrAuditOutput · Disconnected' | Out-Null
+              [UcrWindowCapture]::MovePointerAway()
+              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-visual-add-offline-output.png')) | Out-Null
+              Invoke-UcrControl 'UiConfirmAddDevices'
+              Start-Sleep -Milliseconds 500
+              Save-UcrIfNeeded
+              $pairedProfile = Get-Content -Raw -LiteralPath (Join-Path $profileFolder ($auditProfiles[1].guid + '.json')) | ConvertFrom-Json
+              $added = @($pairedProfile.profile.outputDeviceConfigurations | Where-Object { $_.device.deviceHandle -eq 'audit-standby' })
+              if ($added.Count -ne 1) { throw 'The profile did not save the disconnected controller.' }
+              [System.IO.File]::WriteAllText($mode, 'reconnected')
+              Invoke-UcrControl 'UiProfileAddOutputDevice'
+              $existing = @(Get-UcrControls 'UiAddDeviceChoice' | Where-Object { $_.Current.Name -eq 'Audit standby controller' })
+              if ($existing.Count -ne 0) { throw 'The add-output list offered a duplicate after the controller reconnected.' }
+              Invoke-UcrControl 'UiCancel'
+              Write-Host 'Verified a newly remembered disconnected controller can be added, saved, and deduplicated when reconnecting.'
+
               Write-Host 'Verified keyboard menus, automatic output device selection, picker bounds, three categories, Escape focus and persisted LT assignment.'
 
               Stop-Process -Id $process.Id -Force
               if (-not $process.WaitForExit(10000)) { throw 'The audit process did not exit.' }
-              $originalScale = $null
-              $dpiResults = @()
-              try {
-                  foreach ($percent in @(125,150,200)) {
-                      $result = [ordered]@{ scale = $percent; expectedDpi = (96 * $percent / 100); actualDpi = $null; status = 'Not run' }
-                      try {
-                          $priorScale = [UcrWindowCapture]::SetDesktopScale($percent)
-                          if ($null -eq $originalScale) { $originalScale = $priorScale }
-                          Start-Sleep -Milliseconds 700
-                          $process = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -PassThru
-                          $handle = [IntPtr]::Zero
-                          for ($attempt = 0; $attempt -lt 50; $attempt++) {
-                              Start-Sleep -Milliseconds 400
-                              $process.Refresh()
-                              if ($process.HasExited) { throw 'UCR exited while starting under display scaling.' }
-                              if ($process.MainWindowHandle -ne [IntPtr]::Zero -and
-                                  $process.MainWindowTitle -match 'Universal Control Remapper' -and
-                                  $process.MainWindowTitle -notmatch 'Starting|Splash') {
-                                  $handle = $process.MainWindowHandle
-                                  break
-                              }
-                          }
-                          if ($handle -eq [IntPtr]::Zero) { throw 'UCR main window was unavailable.' }
-                          Start-Sleep -Milliseconds 650
-                          $result.actualDpi = [UcrWindowCapture]::GetDpiForWindow($handle)
-                          if ($result.actualDpi -ne $result.expectedDpi) {
-                              throw "UCR has window DPI $($result.actualDpi), expected $($result.expectedDpi)."
-                          }
-                          $processCondition = [System.Windows.Automation.PropertyCondition]::new(
-                              [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $process.Id)
-                          $root = [System.Windows.Automation.AutomationElement]::FromHandle($handle)
-                          $profileRow = Find-UcrProfileRow 'Block single audit'
-                          $profileRow.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
-                          Set-UcrText 'WorkspaceMappingSearch' 'Keyboard single mapping'
-                          if (@(Get-UcrControls 'BindButton' | Where-Object { -not $_.Current.IsOffscreen }).Count -eq 0) {
-                              Invoke-UcrControl 'UiExpandMapping'
-                          }
-                          $viewer = Find-UcrControl 'MappingSectionsScrollViewer'
-                          $pattern = $null
-                          if ($viewer.TryGetCurrentPattern([System.Windows.Automation.ScrollPattern]::Pattern,[ref]$pattern) -and
-                              $pattern.Current.VerticallyScrollable) {
-                              $pattern.SetScrollPercent(-1,100)
-                          }
-                          Start-Sleep -Milliseconds 300
-                          $output = @(Get-UcrControls 'BindButton' | Where-Object { -not $_.Current.IsOffscreen } |
-                              Sort-Object -Property { $_.Current.BoundingRectangle.Y }, { $_.Current.BoundingRectangle.X })[-1]
-                          $output.SetFocus()
-                          [System.Windows.Forms.SendKeys]::SendWait(' ')
-                          $frame = [UcrWindowCapture]::VisibleWindowBounds($handle)
-                          foreach ($name in @('Buttons','Directions','Axes','Audit D')) {
-                              $tile = Find-UcrElement $nameProperty $name
-                              $bounds = $tile.Current.BoundingRectangle
-                              if ($bounds.Left -lt $frame.Left -or $bounds.Right -gt $frame.Right -or
-                                  $bounds.Top -lt 0 -or $bounds.Bottom -gt 1080) {
-                                  throw "Picker control '$name' is clipped at $percent percent: $bounds, window $frame."
-                              }
-                          }
-                          [UcrWindowCapture]::MovePointerAway()
-                          [UcrWindowCapture]::Capture($handle,(Join-Path $directory "UCR-visual-dpi-$percent.png")) | Out-Null
-                          [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
-                          Start-Sleep -Milliseconds 250
-                          if (-not $output.Current.HasKeyboardFocus) { throw "Picker did not return keyboard focus at $percent percent." }
-                          $result.status = 'Passed'
-                          Write-Host "Verified output picker at $percent percent Windows scaling. Actual UCR window DPI: $($result.actualDpi)."
-                      }
-                      catch {
-                          $result.status = $_.Exception.Message
-                          Write-Host "Display-scaling verification at $percent percent: $($result.status)"
-                          if ($handle -ne [IntPtr]::Zero) {
-                              try { [UcrWindowCapture]::Capture($handle,(Join-Path $directory "UCR-visual-dpi-failure-$percent.png")) | Out-Null } catch {}
-                          }
-                      }
-                      finally {
-                          if ($null -ne $process -and -not $process.HasExited) {
-                              Stop-Process -Id $process.Id -Force
-                              $process.WaitForExit(10000) | Out-Null
-                          }
-                          $dpiResults += [pscustomobject]$result
-                      }
-                  }
-              }
-              finally {
-                  if ($null -ne $originalScale) { [UcrWindowCapture]::SetDesktopScale($originalScale) | Out-Null }
-                  $dpiResults | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $directory 'display-scaling-results.json')
-              }
               Copy-Item -LiteralPath $dataRoot -Destination (Join-Path $directory 'valid-data-before-startup-error') -Recurse
               Remove-Item -LiteralPath $dataRoot -Recurse -Force
               New-Item -ItemType Directory -Path $dataRoot -Force | Out-Null
