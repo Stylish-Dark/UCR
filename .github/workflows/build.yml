@@ -1168,6 +1168,23 @@ jobs:
               private static void CheckDisplayResult(string action, int result) {
                   if (result != 0) throw new Exception(action + " returned Win32 error " + result);
               }
+              [DllImport("user32.dll")]
+              private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
+              public static void CapturePhysicalWindow(IntPtr hwnd, string filename) {
+                  var previous = SetThreadDpiAwarenessContext(new IntPtr(-4));
+                  if (previous == IntPtr.Zero) throw new Exception("Cannot request screen coordinates in physical pixels");
+                  try {
+                      var bounds = VisibleWindowBounds(hwnd);
+                      using (var bitmap = new Bitmap(bounds.Width, bounds.Height))
+                      {
+                          using (var graphics = Graphics.FromImage(bitmap))
+                              graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size);
+                          bitmap.Save(filename, ImageFormat.Png);
+                      }
+                  } finally {
+                      SetThreadDpiAwarenessContext(previous);
+                  }
+              }
               public static uint CurrentDesktopHeight() {
                   var mode = new DisplayMode();
                   mode.Size = (ushort)Marshal.SizeOf(typeof(DisplayMode));
@@ -1660,7 +1677,7 @@ jobs:
                               }
                           }
                           [UcrWindowCapture]::MovePointerAway()
-                          [UcrWindowCapture]::Capture($handle,(Join-Path $directory "UCR-visual-dpi-$percent.png")) | Out-Null
+                          [UcrWindowCapture]::CapturePhysicalWindow($handle,(Join-Path $directory "UCR-visual-dpi-$percent.png")) | Out-Null
                           [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
                           Start-Sleep -Milliseconds 250
                           if (-not $output.Current.HasKeyboardFocus) { throw "Picker did not return keyboard focus at $percent percent." }
@@ -1671,7 +1688,7 @@ jobs:
                           $result.status = $_.Exception.Message
                           Write-Host "Display-scaling verification at $percent percent: $($result.status)"
                           if ($handle -ne [IntPtr]::Zero) {
-                              try { [UcrWindowCapture]::Capture($handle,(Join-Path $directory "UCR-visual-dpi-failure-$percent.png")) | Out-Null } catch {}
+                              try { [UcrWindowCapture]::CapturePhysicalWindow($handle,(Join-Path $directory "UCR-visual-dpi-failure-$percent.png")) | Out-Null } catch {}
                           }
                       }
                       finally {
