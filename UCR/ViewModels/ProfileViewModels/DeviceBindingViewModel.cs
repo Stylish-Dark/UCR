@@ -197,9 +197,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
-        public string BlockAvailability => CanBlock
-            ? "Prevent the original device input from reaching the application"
-            : "This input provider or control does not support blocking";
+        public string BlockAvailability => !SupportsBlock
+            ? "This input cannot be blocked."
+            : BindingEnabled
+                ? "Block this keyboard key from reaching other apps while the mapping runs."
+                : "Stop the active profile to change blocking for this keyboard key.";
         public Visibility ShowInvertInput => DeviceBinding.DeviceIoType == DeviceIoType.Input &&
                                              DeviceBindingCategory == DeviceBindingCategory.Range
             ? Visibility.Visible
@@ -307,10 +309,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public string BindingActionToolTip => IsCapturing
             ? "Waiting for input. Click again or right-click to cancel."
             : DeviceBinding?.DeviceIoType == DeviceIoType.Output
-                ? "Choose an output control from this device."
+                ? "Choose an output control. Right-click or press Shift+F10 for options."
                 : DeviceBindingCategory == DeviceBindingCategory.Range
-                    ? "Click to bind an input axis."
-                    : "Click to bind an input control.";
+                    ? "Click to bind an input axis. Right-click or press Shift+F10 for options."
+                    : "Click to bind an input control. Right-click or press Shift+F10 for options.";
 
         public bool MenuOnLeft => DeviceBinding?.InputDirectionSlot == 1 ||
             DeviceBinding?.InputDirectionSlot == 3;

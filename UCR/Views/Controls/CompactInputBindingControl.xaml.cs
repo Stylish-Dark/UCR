@@ -65,12 +65,10 @@ namespace HidWizards.UCR.Views.Controls
 
         private void UpdateMenuPosition()
         {
-            if (BindingGrid == null || MenuButton == null || DeviceSelectionBox == null)
+            if (BindingGrid == null || BindingActionGroup == null || DeviceSelectionBox == null)
                 return;
             BindingActionGroup.Visibility = DeviceOnly ? Visibility.Collapsed : Visibility.Visible;
             BindSurface.Visibility = DeviceOnly ? Visibility.Collapsed : Visibility.Visible;
-            // Options live on Bind right-click rather than an adjacent button.
-            MenuButton.Visibility = Visibility.Collapsed;
             BindingGrid.ColumnDefinitions[1].Width = DeviceOnly ?
                 new GridLength(0) : new GridLength(1, GridUnitType.Star);
             BindingGrid.ColumnDefinitions[3].Width = DeviceOnly ?
@@ -91,14 +89,11 @@ namespace HidWizards.UCR.Views.Controls
             Grid.SetColumn(DeviceSelectionBox, 0);
             Grid.SetColumn(BindingActionGroup, 1);
             Grid.SetColumnSpan(BindingActionGroup, 2);
-            BindingActionGroup.ColumnDefinitions[0].Width = new GridLength(1, GridUnitType.Star);
-            BindingActionGroup.ColumnDefinitions[1].Width = new GridLength(0);
-            Grid.SetColumn(BindSurface, 0);
-            Grid.SetColumn(MenuButton, 1);
         }
 
         private bool _loaded;
         private Popup _outputPicker;
+        private ContextMenu _bindingOptions;
 
         public CompactInputBindingControl()
         {
@@ -129,7 +124,7 @@ namespace HidWizards.UCR.Views.Controls
             // Apply the loose XAML geometry to these exact named controls after the
             // view's internal layout has been configured.
             HidWizards.UCR.Utilities.LayoutOverrideManager.ApplyToView(this,
-                BindingGrid, DeviceSelectionBox, BindingActionGroup, BindSurface, BindButton, MenuButton);
+                BindingGrid, DeviceSelectionBox, BindingActionGroup, BindSurface, BindButton);
             var viewModel = DataContext as DeviceBindingViewModel;
             viewModel?.EnsureSelectedDevicePreviewLoaded();
             _loaded = true;
@@ -284,9 +279,13 @@ namespace HidWizards.UCR.Views.Controls
             e.Handled = true;
         }
 
-        private void MenuButton_OnClick(object sender, RoutedEventArgs e)
+        private void BindButton_OnPreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
+            if (!DeviceBindingControl.IsBindingMenuKey(e) ||
+                (DataContext as DeviceBindingViewModel)?.BindingEnabled != true ||
+                DeviceBinding?.IsInBindMode == true) return;
             OpenBindingOptions(BindButton);
+            e.Handled = true;
         }
 
         private void OpenBindingOptions(FrameworkElement anchor)
@@ -294,20 +293,21 @@ namespace HidWizards.UCR.Views.Controls
             // Reveal the whole binding row before opening its options. Otherwise a
             // partly scrolled-off row leaves Block/NOT underneath the fixed footer.
             BringIntoView();
+            _bindingOptions = _bindingOptions ?? CreateInputOptionsMenu(null, anchor);
             if (DeviceBinding?.DeviceIoType == DeviceIoType.Output)
                 PopulateOutputOptions();
             else
                 BuildContextMenu();
-            Ddl.PlacementTarget = anchor;
+            _bindingOptions.PlacementTarget = anchor;
             // The inspector has a docked footer and a constrained scroll viewport.
             // Open the binding menu upwards so it cannot cover the footer or clipped rows.
-            Ddl.Placement = PlacementMode.Top;
-            Ddl.IsOpen = true;
+            _bindingOptions.Placement = PlacementMode.Top;
+            _bindingOptions.IsOpen = true;
         }
 
         private void PopulateOutputOptions()
         {
-            Ddl.Items.Clear();
+            _bindingOptions.Items.Clear();
             var binding = DeviceBinding;
             var choose = new MenuItem
             {
@@ -317,7 +317,7 @@ namespace HidWizards.UCR.Views.Controls
             };
             choose.Click += (sender, args) => Dispatcher.BeginInvoke(
                 new Action(() => BindButton_OnClick(sender, args)), System.Windows.Threading.DispatcherPriority.Background);
-            Ddl.Items.Add(choose);
+            _bindingOptions.Items.Add(choose);
 
             var clear = new MenuItem
             {
@@ -326,15 +326,15 @@ namespace HidWizards.UCR.Views.Controls
                 IsEnabled = binding.IsBound
             };
             clear.Click += (sender, args) => binding.ClearBinding();
-            Ddl.Items.Add(clear);
+            _bindingOptions.Items.Add(clear);
         }
 
         private void BuildContextMenu()
         {
-            PopulateInputMenu(Ddl, DeviceBinding, DataContext as DeviceBindingViewModel);
+            PopulateInputMenu(_bindingOptions, DeviceBinding, DataContext as DeviceBindingViewModel);
         }
 
-        // The collapsed mapping glyph and the editor ellipsis use exactly the
+        // The collapsed mapping glyph and the editor binding button use exactly the
         // same menu implementation. No second set of input-kind choices.
         internal static ContextMenu CreateInputOptionsMenu(DeviceBindingViewModel viewModel,
             FrameworkElement target)

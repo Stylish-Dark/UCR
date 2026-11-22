@@ -224,6 +224,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
+        private void AssignDefaultOutputDevices()
+        {
+            if (!ButtonsEnabled) return;
+            foreach (var plugin in Plugins)
+            {
+                var unassigned = plugin.DeviceBindings.Where(viewModel =>
+                    viewModel.DeviceBinding.DeviceIoType == DeviceIoType.Output &&
+                    !viewModel.DeviceBinding.IsBound &&
+                    viewModel.DeviceBinding.DeviceConfigurationGuid == Guid.Empty).ToList();
+                if (unassigned.Count == 0) continue;
+
+                SelectCompatibleOutputDevices(plugin.Plugin, null, fillBlankOnly: true);
+                foreach (var output in unassigned.Where(viewModel =>
+                    viewModel.DeviceBinding.DeviceConfigurationGuid != Guid.Empty))
+                    output.RefreshDeviceList();
+            }
+        }
+
         public void RemoveOptionalCompoundOutput()
         {
             // X removes only an independently added output, never the canonical

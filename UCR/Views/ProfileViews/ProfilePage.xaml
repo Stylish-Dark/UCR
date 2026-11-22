@@ -577,8 +577,8 @@
                                                   IsEnabled="{Binding PlacementTarget.DataContext.CanEditProfile, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                         <Separator/>
                                         <MenuItem Header="Input blocking (selected mappings)">
-                                            <MenuItem Header="Block selected inputs" Click="BlockSelectedInputs_OnClick"/>
-                                            <MenuItem Header="Unblock selected inputs" Click="UnblockSelectedInputs_OnClick"/>
+                                            <MenuItem Header="Block keys in selected mappings" Click="BlockSelectedInputs_OnClick"/>
+                                            <MenuItem Header="Unblock keys in selected mappings" Click="UnblockSelectedInputs_OnClick"/>
                                         </MenuItem>
                                         <Separator/>
                                         <MenuItem Header="Collapse groups" Click="CollapseAllMappings_OnClick"/>
@@ -710,7 +710,7 @@
                                                                           AutomationProperties.Name="Block inputs" AutomationProperties.AutomationId="UiGroupBlock"
                                                                           IsChecked="{Binding BlockInputs, Mode=TwoWay}"
                                                                           IsEnabled="{Binding CanEdit}"
-                                                                          ToolTip="Block supported keyboard inputs used by this group while it runs."/>
+                                                                          ToolTip="Block all supported keyboard keys assigned to mappings in this group while it runs."/>
                                                         </StackPanel>
                                                     </StackPanel>
                                                 </Grid>

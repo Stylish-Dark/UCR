@@ -64,11 +64,6 @@
         </ComboBox>
 
         <Grid Grid.Row="0" Grid.Column="2" MinWidth="120">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="40"/>
-            </Grid.ColumnDefinitions>
-            <Grid Grid.Column="0">
             <Button 
                     HorizontalAlignment="Stretch"
                     Content="{Binding BindButtonText}"
@@ -80,6 +75,7 @@
                     Margin="0"
                     Click="BindButton_OnClick"
                     PreviewMouseRightButtonUp="BindButton_OnMouseRightButtonUp"
+                    PreviewKeyDown="BindButton_OnPreviewKeyDown"
                     MinWidth="110"
                     materialDesign:TransitionAssist.DisableTransitions="True"
                     materialDesign:ShadowAssist.ShadowEdges="Left, Top, Bottom">
@@ -99,15 +95,6 @@
                              Minimum="0" Maximum="100" Value="{Binding PreviewValue, Mode=OneWay}"
                              Visibility="{Binding ShowButtonPreview, Converter={StaticResource BoolToVisibilityConverter}}"
                              Style="{StaticResource UcrBindingProgressBar}"/>
-            </Grid>
-            <Button x:Name="UiBindOptions" Grid.Column="1" IsEnabled="{Binding BindingEnabled}" Margin="0"
-                    ToolTip="Stop the active profile to edit this binding." ToolTipService.ShowOnDisabled="True"
-                    Click="BindMenuButton_OnClick"
-                    Width="40" Padding="0"
-                    Style="{StaticResource MaterialDesignRaisedButton}"
-                    materialDesign:ShadowAssist.ShadowEdges="Top, Right, Bottom">
-                <materialDesign:PackIcon Kind="DotsVertical" Width="20" Height="20"/>
-            </Button>
         </Grid>
 
         <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Vertical" Margin="8 0 0 0" VerticalAlignment="Center">

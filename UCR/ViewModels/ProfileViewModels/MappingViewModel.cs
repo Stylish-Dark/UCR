@@ -609,8 +609,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             // and restructure its OR set, keeping the actual new assignment.
             if (boundLabelChanged && changed?.DeviceBinding?.IsBound == true &&
                 changed.DeviceBinding.DeviceIoType == DeviceIoType.Input &&
-                InferInputTypeFromAssignment(changed.DeviceBinding))
-                return;
+                !changed.DeviceBinding.IsDirectionalAndCondition)
+            {
+                if (InferInputTypeFromAssignment(changed.DeviceBinding)) return;
+                AssignDefaultOutputDevices();
+            }
 
             if (boundLabelChanged && changed?.DeviceBinding?.DeviceIoType == DeviceIoType.Output &&
                 IsTypedDirectionalMapping && Mapping.EffectiveInputRepresentation == 3)

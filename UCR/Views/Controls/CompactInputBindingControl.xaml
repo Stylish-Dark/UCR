@@ -173,19 +173,15 @@
             </ComboBox.ItemTemplate>
         </ComboBox>
 
-        <!-- The binding label can shrink before the fixed-width menu button. -->
         <Grid x:Name="BindingActionGroup" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2"
               HorizontalAlignment="Stretch" MinHeight="38">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" MinWidth="0"/>
-                <ColumnDefinition Width="42"/>
-            </Grid.ColumnDefinitions>
-        <Grid x:Name="BindSurface" Grid.Column="0" Margin="0" ClipToBounds="True">
+        <Grid x:Name="BindSurface" Margin="0" ClipToBounds="True">
             <Button x:Name="BindButton" MinHeight="38" MinWidth="0"
                     IsEnabled="{Binding CanBindCurrentDevice}"
                     Click="BindButton_OnClick"
                     PreviewMouseLeftButtonDown="BindButton_OnPreviewMouseLeftButtonDown"
                     PreviewMouseRightButtonDown="BindButton_OnPreviewMouseRightButtonDown"
+                    PreviewKeyDown="BindButton_OnPreviewKeyDown"
                     Foreground="#FFFFFF"
                     HorizontalContentAlignment="Stretch"
                     materialDesign:TransitionAssist.DisableTransitions="True">
@@ -227,27 +223,6 @@
             </ProgressBar>
         </Grid>
 
-        <Button Grid.Column="1" x:Name="MenuButton" Visibility="Collapsed" Margin="0" Width="42" MinHeight="38" Padding="0"
-                AutomationProperties.Name="{Binding ToolTip, RelativeSource={RelativeSource Self}}"
-                IsEnabled="{Binding BindingEnabled}" Click="MenuButton_OnClick">
-            <Button.Style>
-                <Style TargetType="{x:Type Button}" BasedOn="{StaticResource CompactBindOptionsButton}">
-                    <Setter Property="ToolTip" Value="Input binding options"/>
-                    <Setter Property="AutomationProperties.AutomationId" Value="UiInputBindingOptions"/>
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding DeviceBinding.DeviceIoType}" Value="Output">
-                            <Setter Property="ToolTip" Value="Output binding options"/>
-                            <Setter Property="AutomationProperties.AutomationId" Value="UiOutputBindingOptions"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Button.Style>
-            <materialDesign:PackIcon Kind="DotsVertical" Width="20" Height="20"/>
-            <Button.ContextMenu>
-                <ContextMenu x:Name="Ddl" Style="{StaticResource MaterialDesignContextMenu}"
-                             Foreground="#FFFFFF" Background="#242424"/>
-            </Button.ContextMenu>
-        </Button>
         </Grid>
 
         <StackPanel Grid.Row="0" Grid.Column="3"
@@ -291,7 +266,7 @@
         <ToggleButton HorizontalAlignment="Center" VerticalAlignment="Center"
                       IsChecked="{Binding Block, Mode=TwoWay}"
                       IsEnabled="{Binding CanBlock}"
-                      ToolTip="Block original physical input from reaching the game (supported input providers only)"
+                      ToolTip="{Binding BlockAvailability}"
                       ToolTipService.ShowOnDisabled="True">
             <ToggleButton.Style>
                 <Style TargetType="{x:Type ToggleButton}" BasedOn="{StaticResource CompactBlockSwitch}">

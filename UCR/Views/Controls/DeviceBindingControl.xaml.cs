@@ -369,14 +369,20 @@ namespace HidWizards.UCR.Views.Controls
                 e.Handled = true;
                 return;
             }
-            if (DeviceBinding.DeviceIoType != DeviceIoType.Output) return;
+            if (!BindButton.IsEnabled) return;
             e.Handled = true;
             OpenContextMenu();
         }
 
-        private void BindMenuButton_OnClick(object sender, RoutedEventArgs e)
+        internal static bool IsBindingMenuKey(KeyEventArgs e) =>
+            e.Key == Key.Apps || (e.Key == Key.F10 && Keyboard.Modifiers == ModifierKeys.Shift);
+
+        private void BindButton_OnPreviewKeyDown(object sender, KeyEventArgs e)
         {
+            if (!IsBindingMenuKey(e) || !BindButton.IsEnabled ||
+                DeviceBinding?.IsInBindMode == true) return;
             OpenContextMenu();
+            e.Handled = true;
         }
 
         private void OpenContextMenu()
