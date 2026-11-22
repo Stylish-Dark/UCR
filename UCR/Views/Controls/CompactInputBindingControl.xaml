@@ -255,7 +255,8 @@
                     </Style.Triggers>
                 </Style>
             </StackPanel.Style>
-        <TextBlock Foreground="#E2E2E2" FontSize="11">
+        <TextBlock x:Name="BlockCaption" AutomationProperties.AutomationId="UiBindingBlockCaption"
+                   Foreground="#E2E2E2" FontSize="11">
             <TextBlock.Style>
                 <Style TargetType="{x:Type TextBlock}" BasedOn="{StaticResource UcrLabeledSwitchCaption}">
                     <Setter Property="Text" Value="Block"/>
@@ -267,7 +268,9 @@
                 </Style>
             </TextBlock.Style>
         </TextBlock>
-        <ToggleButton HorizontalAlignment="Center" VerticalAlignment="Center"
+        <ToggleButton AutomationProperties.AutomationId="UiBindingBlockSwitch"
+                      AutomationProperties.LabeledBy="{Binding ElementName=BlockCaption}"
+                      HorizontalAlignment="Center" VerticalAlignment="Center"
                       IsChecked="{Binding Block, Mode=TwoWay}"
                       IsEnabled="{Binding CanBlock}"
                       ToolTip="{Binding BlockAvailability}"
