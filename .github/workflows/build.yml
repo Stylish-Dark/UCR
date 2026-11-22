@@ -1338,6 +1338,30 @@ jobs:
               (Find-UcrElement $nameProperty 'Reconnected A').SetFocus()
               [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
               Write-Host 'Verified cached controls and save while disconnected, followed by live menu precedence after reconnect.'
+              $fourWay = Find-UcrElement $nameProperty '4-Way output'
+              $fourWay.SetFocus()
+              [System.Windows.Forms.SendKeys]::SendWait(' ')
+              Invoke-UcrControl 'UiMappingCompoundOutputBind'
+              $left = Find-UcrElement $nameProperty 'Left stick'
+              $dpad = Find-UcrElement $nameProperty 'D-pad'
+              $menu = [System.Windows.Automation.TreeWalker]::ControlViewWalker.GetParent($left)
+              $right = $menu.FindFirst([System.Windows.Automation.TreeScope]::Descendants,
+                  [System.Windows.Automation.PropertyCondition]::new($nameProperty,'Right stick'))
+              if ($null -ne $right) { throw 'The two trigger axes were offered as a right stick.' }
+              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-visual-compound-output-picker.png')) | Out-Null
+              $dpad.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 350
+              Save-UcrIfNeeded
+              $four = Read-NewMapping
+              $channels = @($four.plugins | ForEach-Object { $_.data.outputs })
+              $keys = ($channels | ForEach-Object { [int]$_.keyValue }) -join ','
+              if ($four.outputRepresentation -ne 1 -or -not $four.compoundDigitalOutput -or
+                  $channels.Count -ne 4 -or $keys -ne '3,1,0,2' -or
+                  @($channels | Where-Object { -not $_.isBound -or $_.deviceConfigurationGuid -ne $original.deviceConfigurationGuid }).Count) {
+                  throw 'The D-pad choice did not persist the four ordered destinations.'
+              }
+              Write-Host 'Verified a complete left stick and D-pad are offered, trigger axes cannot masquerade as a right stick, and D-pad destinations save in order.'
+
               Set-UcrText 'WorkspaceMappingSearch' ''
               Write-Host 'Verified keyboard menus, automatic output device selection, picker bounds, three categories, Escape focus and persisted LT assignment.'
 

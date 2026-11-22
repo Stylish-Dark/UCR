@@ -409,13 +409,8 @@ namespace HidWizards.UCR.Views.Controls
             menu.Placement = PlacementMode.Bottom;
             var profile = mapping.ProfileViewModel.Profile;
             var choices = mapping.GetFourWayOutputChoices();
-            if (!mapping.Plugins.SelectMany(plugin => plugin.DeviceBindings).Any(binding =>
-                binding.DeviceBinding.DeviceIoType == DeviceIoType.Output &&
-                binding.DeviceBinding.DeviceConfigurationGuid != Guid.Empty))
-            {
-                var defaultOutput = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output);
-                choices = choices.Where(choice => choice.DeviceConfigurationGuid == defaultOutput?.Guid).ToList();
-            }
+            var multipleDevices = choices.Select(choice => choice.DeviceConfigurationGuid)
+                .Distinct().Skip(1).Any();
 
             foreach (var choice in choices)
             {
@@ -433,11 +428,10 @@ namespace HidWizards.UCR.Views.Controls
                         : ControlVisualKind.CompoundStick;
                 var controls = selected.VisualKeys ??
                     (selected.Destination == "Right stick" ? "R" : "L");
-                var item = new MenuItem
-                {
-                    Header = CompoundChoiceHeader(
-                        selected.Destination, kind, controls)
-                };
+                var label = multipleDevices ? selected.Destination + " (" + selected.DeviceTitle + ")" :
+                    selected.Destination;
+                var item = new MenuItem { Header = CompoundChoiceHeader(label, kind, controls) };
+                System.Windows.Automation.AutomationProperties.SetName(item, label);
                 item.Click += (sender, args) =>
                 {
                     if (!mapping.ApplyTypedFourWayOutput(selected))
