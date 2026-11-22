@@ -142,7 +142,8 @@ namespace HidWizards.UCR.Core.Models
         public int EffectiveOutputRepresentation => OutputRepresentation != 0
             ? OutputRepresentation
             : IsLegacyDPadRoute ? 1
-            : IsSingleAxisRoute && Plugins[0].Outputs[0].IsKnownTriggerRange() ? 4
+            : Plugins?.Count == 1 && Plugins[0].Outputs.Count == 1 &&
+                Plugins[0].Outputs[0].IsKnownTriggerRange() ? 4
             : EffectiveDirectionalCapacity == 4 &&
                 Plugins?.Count == 2 &&
                 Plugins.All(p => p.OutputCategories.All(c =>
@@ -441,6 +442,8 @@ namespace HidWizards.UCR.Core.Models
                 UpdateDirectionalRouting(changedFilter);
                 return;
             }
+            var digitalTriggerOutput = EffectiveOutputRepresentation == 4 &&
+                EffectiveInputRepresentation == 3;
             if (!UseInputExpression)
             {
                 foreach (var plugin in Plugins)
@@ -449,8 +452,15 @@ namespace HidWizards.UCR.Core.Models
                     // Preserve positional inputs for multi-channel legacy plugins, while
                     // allowing each physical slot to bind a different signal category.
                     for (var i = 0; i < values.Length && i < plugin.InputCategories.Count; i++)
-                        values[i] = AdaptPositionalInput(values[i], DeviceBindings[i],
-                            plugin.InputCategories[i].Category);
+                    {
+                        var category = plugin.InputCategories[i].Category;
+                        // A digital source feeding a legacy range remapper needs
+                        // the trigger's released endpoint, not a stick's center.
+                        values[i] = digitalTriggerOutput && category == DeviceBindingCategory.Range
+                            ? (AdaptPositionalInput(values[i], DeviceBindings[i], DeviceBindingCategory.Momentary) == 0
+                                ? short.MinValue : short.MaxValue)
+                            : AdaptPositionalInput(values[i], DeviceBindings[i], category);
+                    }
                     DispatchPlugin(plugin, values, changedFilter);
                 }
                 return;
@@ -476,6 +486,8 @@ namespace HidWizards.UCR.Core.Models
                     outputValue = EvaluateDirectionalAxis(InputCache, rangeIndex++ == 0 ? 0 : 1);
                 else if (isRange)
                     rangeIndex++;
+                if (isRange && digitalTriggerOutput)
+                    outputValue = digital == 0 ? short.MinValue : short.MaxValue;
                 DispatchPlugin(plugin, new[] { isRange ? outputValue : digital }, changedFilter,
                     isRange || digitalChanged);
             }
