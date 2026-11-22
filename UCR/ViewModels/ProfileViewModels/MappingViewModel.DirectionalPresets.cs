@@ -65,14 +65,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                         Controls = axes
                     });
                 }
-                var dpad = FindDPadControls(device, DeviceIoType.Output);
-                if (dpad != null)
+                var pads = EnumerateDPadControls(device, DeviceIoType.Output, nodes).ToList();
+                for (var index = 0; index < pads.Count; index++)
                     result.Add(new FourWayOutputChoice
                     {
                         DeviceConfigurationGuid = device.Guid,
                         DeviceTitle = device.GetFullTitleForProfile(profile),
-                        Destination = "D-pad", IsDPad = true,
-                        Controls = dpad
+                        Destination = pads.Count == 1 ? "D-pad" : "D-pad " + (index + 1),
+                        IsDPad = true,
+                        Controls = pads[index]
                     });
 
                 // Keyboard presets and four face buttons are also complete
@@ -161,16 +162,24 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return new[] { x, y };
         }
 
-        // Stored order matches the four input directions: Up, Down, Left, Right.
         private DeviceBindingInfo[] FindDPadControls(DeviceConfiguration device, DeviceIoType ioType)
         {
+            return EnumerateDPadControls(device, ioType).FirstOrDefault();
+        }
+
+        // Stored order matches the four input directions: Up, Down, Left, Right.
+        private IEnumerable<DeviceBindingInfo[]> EnumerateDPadControls(DeviceConfiguration device,
+            DeviceIoType ioType, IEnumerable<DeviceBindingNode> bindingNodes = null)
+        {
             var profile = ProfileViewModel.Profile;
-            if (device?.Device == null) return null;
-            var nodes = FlattenBindingNodes(device.Device.GetDeviceBindingMenu(profile.Context, ioType)).Where(node => node?.DeviceBindingInfo != null &&
-                    node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Momentary).ToList();
+            if (device?.Device == null) yield break;
             var kind = DeviceVisualCatalog.Describe(device, profile, ioType).Kind;
-            if (kind == DeviceVisualKind.Keyboard || kind == DeviceVisualKind.Mouse) return null;
-            var dpad = nodes.Where(node =>
+            if (kind == DeviceVisualKind.Keyboard || kind == DeviceVisualKind.Mouse) yield break;
+
+            var nodes = bindingNodes ??
+                FlattenBindingNodes(device.Device.GetDeviceBindingMenu(profile.Context, ioType));
+            var dpad = nodes.Where(node => node?.DeviceBindingInfo?.DeviceBindingCategory ==
+                DeviceBindingCategory.Momentary).Where(node =>
             {
                 // The device's binding-menu title is authoritative for controls
                 // explicitly named as a D-pad/POV/hat direction. Rendering metadata
@@ -217,36 +226,42 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     Prefix = item.Prefix.ToUpperInvariant(),
                     Hat = directInput ? item.Node.DeviceBindingInfo.KeyValue : 0
                 });
+            var namedHats = new HashSet<int>();
+            var hasNamedPad = false;
+            var aliases = new[]
+            {
+                new[] { "up", "north" }, new[] { "down", "south" },
+                new[] { "left", "west" }, new[] { "right", "east" }
+            };
             foreach (var hat in named)
             {
-                var aliases = new[]
-                {
-                    new[] { "up", "north" }, new[] { "down", "south" },
-                    new[] { "left", "west" }, new[] { "right", "east" }
-                };
                 var four = aliases.Select(names => hat.FirstOrDefault(item =>
                     names.Contains(item.Direction))?.Node?.DeviceBindingInfo).ToArray();
-                if (four.All(info => info != null)) return four;
+                if (four.Any(info => info == null) || (directInput && !namedHats.Add(hat.Key.Hat)))
+                    continue;
+                hasNamedPad = true;
+                yield return four;
             }
 
             if (directInput)
             {
-                foreach (var hat in dpad.GroupBy(node => node.DeviceBindingInfo.KeyValue))
+                foreach (var hat in dpad.GroupBy(node => node.DeviceBindingInfo.KeyValue)
+                    .Where(group => !namedHats.Contains(group.Key)))
                 {
                     var directions = new[] { 0, 2, 3, 1 }.Select(index =>
                         hat.FirstOrDefault(node => node.DeviceBindingInfo.KeySubValue == index)
                             ?.DeviceBindingInfo).ToArray();
-                    if (directions.All(direction => direction != null)) return directions;
+                    if (directions.All(direction => direction != null)) yield return directions;
                 }
-                return null;
+                yield break;
             }
 
             // The original controller convention encodes Up, Right, Down, Left
             // as key values 0..3. Retain it for providers with generic labels.
-            if (!Enumerable.Range(0, 4).All(index =>
+            if (hasNamedPad || !Enumerable.Range(0, 4).All(index =>
                 dpad.Any(node => node.DeviceBindingInfo.KeyValue == index)))
-                return null;
-            return new[] { 0, 2, 3, 1 }
+                yield break;
+            yield return new[] { 0, 2, 3, 1 }
                 .Select(index => dpad.First(node =>
                     node.DeviceBindingInfo.KeyValue == index).DeviceBindingInfo)
                 .ToArray();
@@ -333,6 +348,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 binding.DeviceBindingCategory = plugin.OutputCategories[i].Category;
                 binding.SetDeviceConfigurationGuid(destination.Guid, false);
                 binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
+                binding.CompoundPresetName = choice.Destination;
             }
             if (replace)
             {

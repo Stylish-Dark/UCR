@@ -286,6 +286,25 @@ namespace HidWizards.UCR.Core.Managers
             return SortDevices(devices);
         }
 
+        internal List<Device> GetProfileOutputChoices()
+        {
+            var live = GetAvailableDeviceList(DeviceIoType.Output, includeCache: false);
+            var choices = live.Where(device => !IsInputRemoved(device) && !IsDeviceHidden(device, live))
+                .ToList();
+            foreach (var device in choices.Where(device => device.HasBindingMenu))
+                RememberDeviceMenu(_outputBindingCache, _rememberedOutputEndpoints, device,
+                    device.GetDeviceBindingMenu());
+
+            var offline = _outputBindingCache.LoadAllProviders()
+                .Where(device => device.HasBindingMenu && ResolveDevice(device, live) == null)
+                .ToList();
+            var population = live.Concat(offline).ToList();
+            choices.AddRange(offline.Where(device => !IsInputRemoved(device) &&
+                !IsDeviceHidden(device, population)).Select(device => device.CopyForProfile()));
+            ApplyAliases(choices);
+            return SortDevices(choices);
+        }
+
         private static IEnumerable<Profile> EnumerateProfiles(IEnumerable<Profile> profiles)
         {
             if (profiles == null) yield break;

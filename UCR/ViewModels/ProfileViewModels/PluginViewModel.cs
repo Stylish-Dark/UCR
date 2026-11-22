@@ -138,6 +138,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             {
                 if (!IsFourButtonAxis || Plugin.Outputs.Count == 0 ||
                     Plugin.Outputs.Any(binding => !binding.IsBound)) return "Choose output";
+                var preset = Plugin.Outputs[0].CompoundPresetName;
+                if (!string.IsNullOrWhiteSpace(preset) &&
+                    Plugin.Outputs.All(binding => binding.CompoundPresetName == preset)) return preset;
                 if (IsDPadOutput) return "D-pad";
                 return Plugin.Outputs[0].KeyValue == 2 ? "Right stick" : "Left stick";
             }

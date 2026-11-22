@@ -632,7 +632,7 @@ namespace HidWizards.UCR.Core.Models
             Context.DevicesManager.RefreshDeviceList();
             var availableDeviceList = deviceIoType == DeviceIoType.Input
                 ? Context.DevicesManager.GetProfileInputChoices()
-                : Context.DevicesManager.GetVisibleDeviceList(deviceIoType);
+                : Context.DevicesManager.GetProfileOutputChoices();
             var profileDeviceList = GetDeviceConfigurationList(deviceIoType);
 
             foreach (var deviceConfiguration in profileDeviceList)
