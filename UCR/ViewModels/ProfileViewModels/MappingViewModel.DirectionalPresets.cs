@@ -53,24 +53,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 if (device?.Device == null) continue;
                 var nodes = FlattenBindingNodes(device.Device.GetDeviceBindingMenu(profile.Context, DeviceIoType.Output))
                     .Where(node => node?.DeviceBindingInfo != null).ToList();
-                var axes = nodes.Where(node => node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Range &&
-                    node.DeviceBindingInfo.KeyValue >= 0 && node.DeviceBindingInfo.KeyValue <= 3)
-                    .GroupBy(node => node.DeviceBindingInfo.KeyType)
-                    .FirstOrDefault(group => Enumerable.Range(0, 4).All(index =>
-                        group.Any(node => node.DeviceBindingInfo.KeyValue == index)))?.ToList();
-                if (axes != null)
+                foreach (var side in new[] { 0, 2 })
                 {
-                    foreach (var side in new[] { 0, 2 })
+                    var axes = FindStickControls(device.Device, nodes, side);
+                    if (axes == null) continue;
+                    result.Add(new FourWayOutputChoice
                     {
-                        result.Add(new FourWayOutputChoice
-                        {
-                            DeviceConfigurationGuid = device.Guid,
-                            DeviceTitle = device.GetFullTitleForProfile(profile),
-                            Destination = side == 0 ? "Left stick" : "Right stick",
-                            Controls = new[] { axes.First(node => node.DeviceBindingInfo.KeyValue == side).DeviceBindingInfo,
-                                axes.First(node => node.DeviceBindingInfo.KeyValue == side + 1).DeviceBindingInfo }
-                        });
-                    }
+                        DeviceConfigurationGuid = device.Guid,
+                        DeviceTitle = device.GetFullTitleForProfile(profile),
+                        Destination = side == 0 ? "Left stick" : "Right stick",
+                        Controls = axes
+                    });
                 }
                 var dpad = FindDPadControls(device, DeviceIoType.Output);
                 if (dpad != null)
@@ -130,6 +123,44 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             return result;
         }
 
+        private static DeviceBindingInfo[] FindStickControls(Device device,
+            IEnumerable<DeviceBindingNode> nodes, int axisIndex)
+        {
+            var directInput = string.Equals(device.ProviderName, "SharpDX_DirectInput",
+                StringComparison.OrdinalIgnoreCase);
+            var left = axisIndex == 0;
+            var axes = nodes.Where(node =>
+                node?.DeviceBindingInfo?.DeviceBindingCategory == DeviceBindingCategory.Range &&
+                !DeviceVisualCatalog.IsTriggerControlName(node.Title)).ToList();
+
+            DeviceBindingInfo FindNamedAxis(string name, string suffix)
+            {
+                var fullName = (left ? "left stick " : "right stick ") + suffix;
+                return axes.FirstOrDefault(node =>
+                    MatchesControlLeafName(node.Title, fullName) ||
+                    MatchesControlLeafName(node.Title, fullName + " axis") ||
+                    ((!directInput || left) && MatchesControlLeafName(node.Title, name)))
+                    ?.DeviceBindingInfo;
+            }
+
+            var x = FindNamedAxis(left ? "LX" : "RX", "X");
+            var y = FindNamedAxis(left ? "LY" : "RY", "Y");
+            if (x == null || y == null)
+            {
+                // DirectInput reports DIJOYSTATE byte offsets for X and Y. Its
+                // right stick varies by hardware, so require semantic names.
+                if (directInput && !left) return null;
+                var yIndex = directInput ? 4 : axisIndex + 1;
+                var pair = axes.GroupBy(node => node.DeviceBindingInfo.KeyType)
+                    .FirstOrDefault(group => group.Any(node => node.DeviceBindingInfo.KeyValue == axisIndex) &&
+                                             group.Any(node => node.DeviceBindingInfo.KeyValue == yIndex));
+                if (pair == null) return null;
+                x = pair.First(node => node.DeviceBindingInfo.KeyValue == axisIndex).DeviceBindingInfo;
+                y = pair.First(node => node.DeviceBindingInfo.KeyValue == yIndex).DeviceBindingInfo;
+            }
+            return new[] { x, y };
+        }
+
         // Stored order matches the four input directions: Up, Down, Left, Right.
         private DeviceBindingInfo[] FindDPadControls(DeviceConfiguration device, DeviceIoType ioType)
         {
@@ -164,6 +195,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             // Some DirectInput/POV providers use arbitrary key values. Prefer
             // complete named four-direction sets from the same hat/D-pad instead
             // of assuming every provider numbers directions 0..3.
+            var directInput = string.Equals(device.Device.ProviderName, "SharpDX_DirectInput",
+                StringComparison.OrdinalIgnoreCase);
             var named = dpad.Select(node => new
             {
                 Node = node,
@@ -179,7 +212,11 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     item.Node,
                     item.Prefix,
                     Direction = item.Direction.Groups[1].Value.ToLowerInvariant()
-                }).GroupBy(item => item.Prefix, StringComparer.OrdinalIgnoreCase);
+                }).GroupBy(item => new
+                {
+                    Prefix = item.Prefix.ToUpperInvariant(),
+                    Hat = directInput ? item.Node.DeviceBindingInfo.KeyValue : 0
+                });
             foreach (var hat in named)
             {
                 var aliases = new[]
@@ -190,6 +227,18 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var four = aliases.Select(names => hat.FirstOrDefault(item =>
                     names.Contains(item.Direction))?.Node?.DeviceBindingInfo).ToArray();
                 if (four.All(info => info != null)) return four;
+            }
+
+            if (directInput)
+            {
+                foreach (var hat in dpad.GroupBy(node => node.DeviceBindingInfo.KeyValue))
+                {
+                    var directions = new[] { 0, 2, 3, 1 }.Select(index =>
+                        hat.FirstOrDefault(node => node.DeviceBindingInfo.KeySubValue == index)
+                            ?.DeviceBindingInfo).ToArray();
+                    if (directions.All(direction => direction != null)) return directions;
+                }
+                return null;
             }
 
             // The original controller convention encodes Up, Right, Down, Left

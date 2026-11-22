@@ -92,11 +92,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     if (kind == DeviceVisualKind.Keyboard || kind == DeviceVisualKind.Mouse ||
                         kind == DeviceVisualKind.Unknown || kind == DeviceVisualKind.Unavailable) continue;
                     var index = name == "Left stick" ? 0 : 2;
-                    if (nodes.Where(node => node.DeviceBindingInfo.DeviceBindingCategory ==
-                            DeviceBindingCategory.Range)
-                        .GroupBy(node => node.DeviceBindingInfo.KeyType)
-                        .Any(group => group.Any(node => node.DeviceBindingInfo.KeyValue == index)
-                                   && group.Any(node => node.DeviceBindingInfo.KeyValue == index + 1)))
+                    if (FindStickControls(device.Device, nodes, index) != null)
                         return true;
                 }
                 else if (name == "Face buttons")
@@ -150,19 +146,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var kind = DeviceVisualCatalog.Describe(device, profile, DeviceIoType.Input).Kind;
                 if (kind == DeviceVisualKind.Keyboard || kind == DeviceVisualKind.Mouse ||
                     kind == DeviceVisualKind.Unavailable || kind == DeviceVisualKind.Unknown) continue;
-                var axes = FlattenBindingNodes(device.Device.GetDeviceBindingMenu(profile.Context,
-                    DeviceIoType.Input)).Where(node =>
-                        node?.DeviceBindingInfo?.DeviceBindingCategory == DeviceBindingCategory.Range).ToList();
-                var matching = axes.GroupBy(node => node.DeviceBindingInfo.KeyType)
-                    .FirstOrDefault(nodes => nodes.Any(node =>
-                        node.DeviceBindingInfo.KeyValue == axisIndex) &&
-                        nodes.Any(node => node.DeviceBindingInfo.KeyValue == axisIndex + 1));
-                if (matching == null) continue;
-                candidates.Add(Tuple.Create(device, new[]
-                {
-                    matching.First(node => node.DeviceBindingInfo.KeyValue == axisIndex).DeviceBindingInfo,
-                    matching.First(node => node.DeviceBindingInfo.KeyValue == axisIndex + 1).DeviceBindingInfo
-                }));
+                var axes = FindStickControls(device.Device, FlattenBindingNodes(
+                    device.Device.GetDeviceBindingMenu(profile.Context, DeviceIoType.Input)), axisIndex);
+                if (axes != null) candidates.Add(Tuple.Create(device, axes));
             }
             var chosen = candidates.FirstOrDefault(item => item.Item1.Guid == preferred)
                 ?? candidates.FirstOrDefault(item => item.Item1.Guid == primary)

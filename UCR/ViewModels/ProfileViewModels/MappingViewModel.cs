@@ -965,16 +965,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var kind = DeviceVisualCatalog.Describe(device, profile, DeviceIoType.Input).Kind;
                 if (kind == DeviceVisualKind.Keyboard || kind == DeviceVisualKind.Mouse ||
                     kind == DeviceVisualKind.Unavailable || kind == DeviceVisualKind.Unknown) continue;
-                var axes = FlattenBindingNodes(device.Device.GetDeviceBindingMenu(profile.Context, DeviceIoType.Input)).Where(node => node?.DeviceBindingInfo != null &&
-                    node.DeviceBindingInfo.DeviceBindingCategory == DeviceBindingCategory.Range).ToList();
-                var pair = axes.GroupBy(node => node.DeviceBindingInfo.KeyType).FirstOrDefault(group =>
-                    group.Any(node => node.DeviceBindingInfo.KeyValue == axisIndex) &&
-                    group.Any(node => node.DeviceBindingInfo.KeyValue == axisIndex + 1));
-                if (pair != null) options.Add(Tuple.Create(device, new[]
-                {
-                    pair.First(node => node.DeviceBindingInfo.KeyValue == axisIndex).DeviceBindingInfo,
-                    pair.First(node => node.DeviceBindingInfo.KeyValue == axisIndex + 1).DeviceBindingInfo
-                }));
+                var axes = FindStickControls(device.Device, FlattenBindingNodes(
+                    device.Device.GetDeviceBindingMenu(profile.Context, DeviceIoType.Input)), axisIndex);
+                if (axes != null) options.Add(Tuple.Create(device, axes));
             }
             var selected = options.FirstOrDefault(option => option.Item1.Guid == preferred)
                 ?? options.FirstOrDefault(option => option.Item1.Guid == primary)

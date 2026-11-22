@@ -32,6 +32,9 @@ namespace HidWizards.UCR.Core.Managers
         private readonly Context _context;
 
         private readonly DeviceCacheStore _deviceCacheStore;
+        private readonly DeviceCacheStore _outputBindingCache;
+        private readonly HashSet<string> _rememberedOutputEndpoints =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _rememberedInputEndpoints =
             new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         // Raw provider slots are runtime endpoints, not user-facing physical identity. Detection claims
@@ -59,6 +62,8 @@ namespace HidWizards.UCR.Core.Managers
         {
             _context = context;
             _deviceCacheStore = new DeviceCacheStore(_context.Store.CacheRoot);
+            _outputBindingCache = new DeviceCacheStore(System.IO.Path.Combine(
+                _context.Store.RootPath, "OutputBindingCache"));
         }
 
         /// <summary>
@@ -232,17 +237,24 @@ namespace HidWizards.UCR.Core.Managers
 
         private void RememberInputDevice(Device device, List<DeviceBindingNode> menu)
         {
+            RememberDeviceMenu(_deviceCacheStore, _rememberedInputEndpoints, device, menu);
+        }
+
+        private static void RememberDeviceMenu(DeviceCacheStore cache, HashSet<string> remembered,
+            Device device, List<DeviceBindingNode> menu)
+        {
             var key = BuildRuntimeEndpointKey(device);
-            lock (_rememberedInputEndpoints)
+            lock (remembered)
             {
-                if (!_rememberedInputEndpoints.Add(key)) return;
+                if (!remembered.Add(key)) return;
                 try
                 {
-                    _deviceCacheStore.Save(device, menu);
+                    cache.Save(device, menu);
                 }
                 catch (Exception exception)
                 {
-                    Logger.Warn(exception, "Unable to remember input device: " + device.LogName());
+                    remembered.Remove(key);
+                    Logger.Warn(exception, "Unable to remember device controls: " + device.LogName());
                 }
             }
         }
@@ -1489,7 +1501,24 @@ namespace HidWizards.UCR.Core.Managers
         {
             var resolvedDevice = ResolveDevice(device, type);
             if (resolvedDevice?.HasBindingMenu == true)
-                return resolvedDevice.GetDeviceBindingMenu();
+            {
+                var menu = resolvedDevice.GetDeviceBindingMenu();
+                if (includeCache && type == DeviceIoType.Output)
+                    RememberDeviceMenu(_outputBindingCache, _rememberedOutputEndpoints, resolvedDevice, menu);
+                return menu;
+            }
+
+            // A remembered output menu is for configuration only. Device
+            // enumeration and activation still require a live provider endpoint.
+            if (includeCache && type == DeviceIoType.Output && device != null && !IsInputRemoved(device))
+            {
+                var cachedOutput = _outputBindingCache.LoadProvider(device.ProviderName)
+                    .FirstOrDefault(candidate => candidate.HasBindingMenu &&
+                        DeviceIdentity.DescriptorEquals(candidate, device) &&
+                        string.Equals(candidate.HidPath ?? string.Empty, device.HidPath ?? string.Empty,
+                            StringComparison.OrdinalIgnoreCase));
+                if (cachedOutput != null) return cachedOutput.GetDeviceBindingMenu();
+            }
 
             if (includeCache && type == DeviceIoType.Input && device != null)
             {
