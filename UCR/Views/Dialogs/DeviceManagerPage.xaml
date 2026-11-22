@@ -172,7 +172,7 @@
                             <CheckBox Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center"
                                       IsChecked="{Binding BlockUnmappedInputs, Mode=TwoWay}"
                                       IsEnabled="{Binding CanPersist}"
-                                      ToolTip="Block every unmapped keyboard key on this device while it is used by an active profile."
+                                      ToolTip="Block unmapped input on this device while it is used by an active profile."
                                       >
                                 <materialDesign:PackIcon Kind="ShieldOutline" Width="23" Height="23"
                                                          Foreground="#E4E4E4"/>

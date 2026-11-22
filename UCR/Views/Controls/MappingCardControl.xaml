@@ -643,7 +643,7 @@
                                                               HorizontalAlignment="Center"
                                                               IsChecked="{Binding DirectionalBlockEnabled, Mode=OneWay}"
                                                               Click="DirectionalBlock_OnClick"
-                                                              ToolTip="Block the assigned controls in this OR set"/>
+                                                              ToolTip="Block the supported keyboard keys in this input set while the mapping runs."/>
                                             </StackPanel>
                                             <Button Width="34" Height="34" Padding="0"
                                                     Style="{StaticResource UcrDeleteItemButton}"
@@ -1088,7 +1088,18 @@
                     <Grid Grid.Column="1" Margin="3 0 3 5" VerticalAlignment="Top">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" SharedSizeGroup="UcrHeaderRow"/>
-                            <RowDefinition Height="Auto" SharedSizeGroup="UcrBodyRow"/>
+                            <RowDefinition Height="Auto">
+                                <RowDefinition.Style>
+                                    <Style TargetType="{x:Type RowDefinition}">
+                                        <Setter Property="SharedSizeGroup" Value="UcrBodyRow"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasMultipleInputConditions}" Value="True">
+                                                <Setter Property="SharedSizeGroup" Value="{x:Null}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </RowDefinition.Style>
+                            </RowDefinition>
                             <RowDefinition Height="Auto" SharedSizeGroup="UcrActionsRow"/>
                         </Grid.RowDefinitions>
                         <Grid.Style>

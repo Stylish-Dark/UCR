@@ -232,7 +232,7 @@
         <StackPanel Grid.Row="0" Grid.Column="3"
                     Margin="4 0 0 2"
                     HorizontalAlignment="Center"
-                    ToolTip="Block this binding">
+                    ToolTip="{Binding BlockAvailability}">
             <StackPanel.Style>
                 <Style TargetType="{x:Type StackPanel}" BasedOn="{StaticResource UcrLabeledSwitchColumn}">
                     <Setter Property="Width" Value="62"/>
