@@ -166,7 +166,7 @@ namespace HidWizards.UCR.Views.Controls
             var options = mappingViewModel.GetQuickOutputBindingOptions(descriptor);
             if (category.HasValue)
                 options.RemoveAll(option => option.OutputControl.DeviceBindingCategory != category.Value);
-            var menu = CreateDarkContextMenu(placementTarget);
+            var menu = CreateBoundedOutputMenu(placementTarget);
 
             var originalContext = placementTarget.DataContext;
             var anchorInvalidated = false;
@@ -231,6 +231,8 @@ namespace HidWizards.UCR.Views.Controls
                     header.Children.Add(new TextBlock
                     {
                         Text = capturedOption.Title,
+                        MaxWidth = Math.Max(0, menu.MaxWidth - 100),
+                        TextTrimming = TextTrimming.CharacterEllipsis,
                         VerticalAlignment = VerticalAlignment.Center,
                         Foreground = Brushes.White
                     });
@@ -243,6 +245,7 @@ namespace HidWizards.UCR.Views.Controls
                         Background = Brushes.Transparent,
                         Padding = new Thickness(8, 4, 12, 4)
                     };
+                    System.Windows.Automation.AutomationProperties.SetName(item, capturedOption.Title);
                     item.Click += (clickSender, clickArgs) =>
                     {
                         if (!IsCurrentAnchor() || !mappingViewModel.CanApplyOutputBinding) return;
@@ -406,7 +409,7 @@ namespace HidWizards.UCR.Views.Controls
             FrameworkElement anchor)
         {
             if (mapping?.ButtonsEnabled != true || anchor == null) return;
-            var menu = CreateFourWayOutputMenu(anchor);
+            var menu = CreateBoundedOutputMenu(anchor);
             var profile = mapping.ProfileViewModel.Profile;
             var choices = mapping.GetFourWayOutputChoices();
             var multipleDevices = choices.Select(choice => choice.DeviceConfigurationGuid)
@@ -454,7 +457,7 @@ namespace HidWizards.UCR.Views.Controls
             menu.IsOpen = true;
         }
 
-        private static ContextMenu CreateFourWayOutputMenu(FrameworkElement anchor)
+        private static ContextMenu CreateBoundedOutputMenu(FrameworkElement anchor)
         {
             var menu = CreateDarkContextMenu(anchor);
             menu.Placement = PlacementMode.Bottom;

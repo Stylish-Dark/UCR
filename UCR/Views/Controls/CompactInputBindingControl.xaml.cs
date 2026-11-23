@@ -587,12 +587,27 @@ namespace HidWizards.UCR.Views.Controls
                 if (target.IsVisible && target.IsEnabled) target.Focus();
             };
             popup.Child = content;
+            RoutedEventHandler anchorUnloaded = (sender, args) => popup.IsOpen = false;
+            EventHandler ownerMoved = (sender, args) => popup.IsOpen = false;
+            SizeChangedEventHandler ownerResized = (sender, args) => popup.IsOpen = false;
             popup.Opened += (sender, args) =>
             {
+                target.Unloaded += anchorUnloaded;
+                if (owner != null)
+                {
+                    owner.LocationChanged += ownerMoved;
+                    owner.SizeChanged += ownerResized;
+                }
                 content.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
             };
             popup.Closed += (sender, args) =>
             {
+                target.Unloaded -= anchorUnloaded;
+                if (owner != null)
+                {
+                    owner.LocationChanged -= ownerMoved;
+                    owner.SizeChanged -= ownerResized;
+                }
                 if (ReferenceEquals(_outputPicker, popup)) _outputPicker = null;
             };
             _outputPicker = popup;

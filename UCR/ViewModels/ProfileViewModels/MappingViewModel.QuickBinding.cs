@@ -213,6 +213,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var isTrigger = GetOutputControlRepresentation(configuration, option.OutputControl, option.Title) == 4;
                 if (binding.DeviceConfigurationGuid == Guid.Empty ||
                     option.OutputControl.DeviceBindingCategory != bindingViewModel.DeviceBindingCategory ||
+                    binding.OutputAxisDirection != 0 ||
                     (isRange && !IsCompoundOutput && isTrigger != OutputIsTrigger))
                     return ApplyOutputControlChoice(bindingViewModel, configuration.Guid,
                         configuration.Device, option.OutputControl, controlName: option.Title);
@@ -236,11 +237,13 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var original = Plugins.FirstOrDefault(plugin =>
                 plugin.DeviceBindings.Any(item => ReferenceEquals(item.DeviceBinding, binding.DeviceBinding)));
             if (original == null) return false;
+            var previousPlugin = original.Plugin;
             var index = Plugins.IndexOf(original);
             var outputIndex = original.Plugin.Outputs.IndexOf(binding.DeviceBinding);
             if (outputIndex < 0 || outputIndex >= original.Plugin.OutputCategories.Count) return false;
             var requested = selectedControl.DeviceBindingCategory;
             var currentCategory = original.Plugin.OutputCategories[outputIndex].Category;
+            var previousDirection = binding.DeviceBinding.OutputAxisDirection;
             var isPositionalMultiOutput = original.Plugin.Outputs.Count > 1;
             if (isPositionalMultiOutput && currentCategory != requested) return false;
             var configuration = binding.ResolveOutputConfiguration();
@@ -300,6 +303,16 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 pressed.SetValue(destinationPlugin.Plugin, direction < 0 ? -100.0 : 100.0, null);
                 if (released != null && released.PropertyType == typeof(double))
                     released.SetValue(destinationPlugin.Plugin, 0.0, null);
+            }
+            else if (requested == DeviceBindingCategory.Range && previousDirection < 0 &&
+                     ReferenceEquals(previousPlugin, destinationPlugin.Plugin) &&
+                     pressed?.PropertyType == typeof(double) && released?.PropertyType == typeof(double) &&
+                     Equals(pressed.GetValue(destinationPlugin.Plugin, null), -100.0) &&
+                     Equals(released.GetValue(destinationPlugin.Plugin, null), 0.0))
+            {
+                // Restore the ordinary positive press value only for the defaults
+                // installed when the negative stick direction was selected.
+                pressed.SetValue(destinationPlugin.Plugin, 100.0, null);
             }
             destination.RefreshDeviceList();
             RefreshCollapsedSummary();
