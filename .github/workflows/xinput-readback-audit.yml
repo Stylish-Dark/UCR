@@ -268,6 +268,7 @@ jobs:
               private static object xboxHandler;
               private static bool inventoried;
               private static bool missingXInput;
+              private static bool observedXInput14;
 
               private static void RecordWindowsDevices() {
                   if (inventoried) return;
@@ -306,7 +307,11 @@ jobs:
               }
 
               private static bool ReadXInput(uint slot, out XInputState state) {
-                  return XInputGetState(slot, out state) == 0 || XInputGetLegacyState(slot, out state) == 0;
+                  if (XInputGetState(slot, out state) == 0) {
+                      observedXInput14 = true;
+                      return true;
+                  }
+                  return XInputGetLegacyState(slot, out state) == 0;
               }
 
 
@@ -383,9 +388,54 @@ jobs:
                       input.Emit(BindingType.Button, 1, 0);
                       Check("legacy B7 to LT neutral release", slot, 0, 0, 0, failures);
                       Deactivate(context, legacy);
+                      if (!missingXInput) VerifySlots(context, input, device, failures);
+                      if (observedXInput14) Console.WriteLine("XInput 1.4 readback verified.");
                   }
                   foreach (var failure in failures) Console.Error.WriteLine(failure);
                   return failures.Count == 0 ? (missingXInput ? 2 : 0) : 1;
+              }
+
+              private static void VerifySlots(Context context, AuditInput input, Device output, List<string> failures) {
+                  var profile = BuildProfile(context, output, "Two virtual Xbox outputs");
+                  profile.AddDeviceConfigurations(new List<DeviceConfiguration> {
+                      new DeviceConfiguration(new Device("Second Xbox output",output.ProviderName,output.DeviceHandle,1))
+                  }, DeviceIoType.Output);
+                  AddRoute(profile, "A to first LT", new AxisToAxis(), BindingType.Button, 0, "A", BindingType.Axis, 4, "LT", 3, 4);
+                  AddRoute(profile, "B7 to second RT", new AxisToAxis(), BindingType.Button, 1, "B7", BindingType.Axis, 5, "RT", 3, 4, 1);
+                  Activate(context, profile);
+
+                  var slots = new List<uint>();
+                  var until = DateTime.UtcNow.AddSeconds(8);
+                  do {
+                      slots.Clear();
+                      XInputState state;
+                      for (uint slot = 0; slot < 4; slot++) if (ReadXInput(slot,out state)) slots.Add(slot);
+                      if (slots.Count >= 2) break;
+                      Thread.Sleep(30);
+                  } while (DateTime.UtcNow < until);
+                  if (slots.Count != 2) throw new InvalidOperationException("Expected exactly two visible Xbox outputs.");
+                  input.Emit(BindingType.Button, 0, 1);
+                  var first = slots[0];
+                  until = DateTime.UtcNow.AddMilliseconds(350);
+                  do {
+                      foreach (var slot in slots) {
+                          XInputState state;
+                          if (ReadXInput(slot,out state) && state.Lt == 255) first = slot;
+                      }
+                      Thread.Sleep(10);
+                  } while (DateTime.UtcNow < until);
+                  var second = slots.Single(slot => slot != first);
+                  Check("first target receives LT",first,255,0,0,failures);
+                  Check("second target stays neutral during first LT",second,0,0,0,failures);
+                  input.Emit(BindingType.Button, 1, 1);
+                  Check("first target stays at LT only when second RT is pressed",first,255,0,0,failures);
+                  Check("second target receives RT only",second,0,255,0,failures);
+                  input.Emit(BindingType.Button, 0, 0);
+                  Check("first target releases LT independently",first,0,0,0,failures);
+                  Check("second target holds RT during first release",second,0,255,0,failures);
+                  input.Emit(BindingType.Button, 1, 0);
+                  Check("second target releases RT",second,0,0,0,failures);
+                  Deactivate(context, profile);
               }
 
               private static Profile BuildProfile(Context context, Device output, string name) {
@@ -402,7 +452,7 @@ jobs:
 
               private static void AddRoute(Profile profile, string name, Plugin plugin,
                   BindingType inputType, int inputIndex, string inputName, BindingType outputType, int outputIndex, string outputName,
-                  int inputRepresentation, int outputRepresentation) {
+                  int inputRepresentation, int outputRepresentation, int outputNumber = 0) {
                   var mapping = profile.AddMapping(name);
                   if (!mapping.AddPlugin(plugin)) throw new InvalidOperationException("Could not build " + name);
                   mapping.InputRepresentation = inputRepresentation;
@@ -420,7 +470,7 @@ jobs:
                       input.InputExpressionInputKind = 0;
                   }
                   var output = plugin.Outputs[0];
-                  output.DeviceConfigurationGuid = profile.OutputDeviceConfigurations[0].Guid;
+                  output.DeviceConfigurationGuid = profile.OutputDeviceConfigurations[outputNumber].Guid;
                   output.KeyType = (int)outputType;
                   output.KeyValue = outputIndex;
                   output.AssignedControlName = outputName;
