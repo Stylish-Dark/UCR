@@ -738,6 +738,7 @@ jobs:
               }
               $profile = @{
                   guid = $id; title = $case; childProfiles = @(); mappings = @($mapping); mappingGroups = @()
+                  autoActivateApplications = @()
                   inputDeviceConfigurations = @(@{
                       guid = $keyboard; shadowDevices = @()
                       device = @{ title = 'K: Audit keyboard'; providerName = 'Core_Interception'; deviceHandle = 'Keyboard_Audit'; deviceNumber = 0 }
@@ -971,6 +972,8 @@ jobs:
                   }
               } while ((Get-Date) -lt $deadline)
               if ($handle -eq [IntPtr]::Zero) {
+                  Get-ChildItem -LiteralPath (Join-Path (Split-Path $exe) 'logs') -Filter '*.log' -ErrorAction SilentlyContinue |
+                      ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 25 | Write-Host }
                   throw "UCR did not expose its main window within 65 seconds (last title: '$title')."
               }
               Start-Sleep -Seconds 3
