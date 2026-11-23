@@ -76,7 +76,7 @@ namespace HidWizards.UCR.ViewModels.Presentation
         public bool HasSymbol => !string.IsNullOrEmpty(SymbolText);
     }
 
-    public sealed class BindingVisualDescriptor
+    public sealed class BindingVisualDescriptor : System.ComponentModel.INotifyPropertyChanged
     {
         public DeviceVisualDescriptor Device { get; set; }
         public ControlVisualKind ControlKind { get; set; }
@@ -92,9 +92,26 @@ namespace HidWizards.UCR.ViewModels.Presentation
         public bool IsDirectionalSlot => !string.IsNullOrEmpty(DirectionalName);
         public int DirectionalRow { get; set; }
         public int DirectionalColumn { get; set; }
-        public string ToolTip { get; set; }
+        private string _toolTip;
+        public string ToolTip
+        {
+            get => IsCapturing ? "LISTENING — click again or right-click to cancel" : _toolTip;
+            set { _toolTip = value; PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(ToolTip))); }
+        }
         public bool IsBound { get; set; }
-        public bool IsCapturing { get; set; }
+        private bool _isCapturing;
+        public bool IsCapturing
+        {
+            get => _isCapturing;
+            set
+            {
+                if (_isCapturing == value) return;
+                _isCapturing = value;
+                PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(IsCapturing)));
+                PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(ToolTip)));
+            }
+        }
+        public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
         public Guid DeviceConfigurationGuid { get; set; }
         public Guid BindingGuid { get; set; }
         public bool ShowDeviceBadge { get; set; }

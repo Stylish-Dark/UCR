@@ -234,6 +234,7 @@ namespace HidWizards.UCR.Views.Controls
                 // Provider trees may list axes between POV groups. Keep all vJoy hats
                 // together, with each hat's directions in provider index order.
                 var ordered = options.OrderBy(option => CompactInputBindingControl.IsVJoyHat(option) ? option.KeyValue : -1);
+                var signedDirections = new MenuItem { Header = "Stick directions", ToolTip = "Choose a signed stick direction" };
                 foreach (var option in ordered)
                 {
                     var capturedOption = option;
@@ -296,16 +297,21 @@ namespace HidWizards.UCR.Views.Controls
                             ShowAssignmentFailure("Could not assign that output.");
                         }
                     };
-                    menu.Items.Add(item);
+                    if (option.OutputAxisDirection == 0) menu.Items.Add(item);
+                    else signedDirections.Items.Add(item);
                     if (isCurrent)
-                        menu.Opened += (sender, args) => menu.Dispatcher.BeginInvoke(DispatcherPriority.Loaded,
-                            new Action(() =>
+                        menu.Opened += (sender, args) =>
+                        {
+                            if (capturedOption.OutputAxisDirection != 0) signedDirections.IsSubmenuOpen = true;
+                            menu.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
                             {
                                 if (!menu.IsOpen) return;
                                 item.Focus();
                                 item.BringIntoView();
                             }));
+                        };
                 }
+                if (signedDirections.Items.Count > 0) menu.Items.Add(signedDirections);
             }
 
             // The collapsed picker can clear the same slot as the expanded picker.

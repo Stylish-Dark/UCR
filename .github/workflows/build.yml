@@ -1178,6 +1178,8 @@ jobs:
               Invoke-UcrControl 'UiExpandMapping'
               (Find-UcrControl 'UiWorkspaceBindOutput').SetFocus()
               [System.Windows.Forms.SendKeys]::SendWait(' ')
+              (Find-UcrElement $nameProperty 'Stick directions').GetCurrentPattern(
+                  [System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
               (Find-UcrElement $nameProperty 'Left Stick Up').GetCurrentPattern(
                   [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
               Start-Sleep -Milliseconds 350
@@ -1470,6 +1472,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Verify quick output capture and saved device replacements
+        if: ${{ !cancelled() && steps.visual_audit.outcome != 'skipped' }}
         shell: powershell
         timeout-minutes: 4
         run: |
@@ -1482,6 +1485,9 @@ jobs:
           using System.Linq;
           using System.Reflection;
           using System.Windows;
+          using System.Windows.Threading;
+          using System.Threading;
+          using System.Threading.Tasks;
           using HidWizards.IOWrapper.DataTransferObjects;
           using HidWizards.UCR.Core;
           using HidWizards.UCR.Core.Managers;
@@ -1555,9 +1561,23 @@ jobs:
                   binding.SetDeviceConfigurationGuid(device.Guid);
                   binding.SetKeyTypeValue((int)type, index, 0, name);
               }
+              private static void Pump(Task task)
+              {
+                  DispatcherFrame frame = new DispatcherFrame();
+                  DateTime deadline = DateTime.UtcNow.AddSeconds(8);
+                  DispatcherTimer timer = new DispatcherTimer();
+                  timer.Interval = TimeSpan.FromMilliseconds(20);
+                  timer.Tick += delegate {
+                      if (task.IsCompleted || DateTime.UtcNow > deadline) frame.Continue = false;
+                  };
+                  timer.Start(); Dispatcher.PushFrame(frame); timer.Stop();
+                  if (!task.IsCompleted) throw new TimeoutException("Capture did not complete after cancellation");
+                  task.GetAwaiter().GetResult();
+              }
               private static int Run()
               {
                   new Application();
+                  SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
                   using (Context context = new Context())
                   {
                       List<DeviceBindingNode> padMenu = new List<DeviceBindingNode> {
@@ -1594,6 +1614,19 @@ jobs:
                       {
                           MappingViewModel mapping = vm.MappingsList[0];
                           Check(mapping.UsesPressCaptureForQuickOutput(Descriptor(mapping)), "An unset keyboard output uses press capture on its compatible primary");
+                          BindingVisualDescriptor originalVisual = mapping.CollapsedOutputVisuals.Single();
+                          Task<bool> captureTask = mapping.QuickBindOutputAsync(Descriptor(mapping));
+                          DeviceBindingViewModel captureVm = mapping.Plugins[0].DeviceBindings[0];
+                          Check(!captureTask.IsCompleted && mapping.IsQuickOutputDetecting && captureVm.IsCapturing &&
+                              captureVm.BindButtonText.Contains("PRESS INPUT") && captureVm.PreviewValue > 0,
+                              "Keyboard output capture exposes a listening label and countdown on the binding");
+                          Check(object.ReferenceEquals(originalVisual, mapping.CollapsedOutputVisuals.Single()) &&
+                              originalVisual.IsCapturing && originalVisual.ToolTip.StartsWith("LISTENING"),
+                              "Output capture updates the existing collapsed glyph without destroying its focus target");
+                          mapping.QuickBindOutputAsync(Descriptor(mapping)).GetAwaiter().GetResult();
+                          Pump(captureTask);
+                          Check(!mapping.IsQuickOutputDetecting && !captureVm.IsCapturing && !originalVisual.IsCapturing,
+                              "Cancelling output capture restores the ordinary binding and collapsed glyph");
                           DeviceConfiguration output = keyProfile.OutputDeviceConfigurations[0];
                           DetectedInputControl exact = new DetectedInputControl { Device = keyboard, ControlTitle = "Shared",
                               BindingDescriptor = new BindingDescriptor { Type = BindingType.Button, Index = 2, SubIndex = 0 } };
@@ -1670,6 +1703,16 @@ jobs:
                       inputBinding.SetDeviceConfigurationGuid(liveInput.Guid);
                       DeviceBindingViewModel inputVm = new DeviceBindingViewModel(inputBinding) { DeviceBindingCategory = DeviceBindingCategory.Momentary };
                       inputBinding.EnterBindMode();
+                      inputBinding.SetDeviceConfigurationGuid(Guid.Empty, false);
+                      Check(!context.BindingManager.IsBindModeActive && !inputBinding.IsInBindMode && inputBinding.DeviceConfigurationGuid == Guid.Empty,
+                          "Manually changing the input device cancels the previous detector");
+                      inputBinding.SetDeviceConfigurationGuid(liveInput.Guid);
+                      inputBinding.EnterBindMode();
+                      inputBinding.ClearBinding();
+                      Check(!context.BindingManager.IsBindModeActive && !inputBinding.IsInBindMode && !inputBinding.IsBound,
+                          "Clearing a waiting input ends capture instead of allowing a late press to refill it");
+                      inputBinding.SetDeviceConfigurationGuid(liveInput.Guid);
+                      inputBinding.EnterBindMode();
                       Check(context.BindingManager.IsBindModeActive && inputBinding.IsInBindMode, "The provider capture is active before removing its editor slot");
                       inputVm.Dispose();
                       Check(!context.BindingManager.IsBindModeActive && !inputBinding.IsInBindMode && !inputVm.BindingEnabled,
@@ -1687,8 +1730,8 @@ jobs:
                     '.\release\lib\IOWrapper.DTOs.dll', '.\release\lib\IOWrapper.IProvider.dll',
                     (Join-Path $wpf 'PresentationFramework.dll'), (Join-Path $wpf 'PresentationCore.dll'),
                     (Join-Path $wpf 'WindowsBase.dll'), 'System.Xaml.dll', 'System.Core.dll', 'Microsoft.CSharp.dll')
-          $args = @('/nologo', '/target:exe', '/out:.\release\UCR.Tests.exe') + @($refs | ForEach-Object { '/r:' + $_ }) + @($source)
-          & $csc @args
+          $compileArguments = @('/nologo', '/target:exe', '/out:.\release\UCR.Tests.exe') + @($refs | ForEach-Object { '/r:' + $_ }) + @($source)
+          & $csc @compileArguments
           if ($LASTEXITCODE -ne 0) { throw 'Could not compile the functional batch verifier.' }
           Copy-Item '.\release\UCR.exe.config' '.\release\UCR.Tests.exe.config'
           Push-Location '.\release'

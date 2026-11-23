@@ -539,6 +539,15 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (_rebuildingDirectionalEditors || e == null) return;
             var property = e.PropertyName;
             var changed = sender as DeviceBindingViewModel;
+            if (changed?.IsUpdatingOutputCaptureState == true)
+            {
+                // Keep the clicked control alive and focused during capture.
+                // Replacing its ItemsSource here would destroy its keyboard focus.
+                if (property == nameof(DeviceBindingViewModel.IsCapturing))
+                    foreach (var visual in _collapsedOutputVisuals.Where(item => item.BindingGuid == changed.DeviceBinding.Guid))
+                        visual.IsCapturing = changed.IsCapturing;
+                return;
+            }
 
             // Dropdown population, preview updates and editor cosmetics do not change
             // the logical route. Previously each notification could rebuild input

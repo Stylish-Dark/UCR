@@ -296,8 +296,6 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             descriptor.IsNegatedInput = viewModel.DeviceBinding?.DeviceIoType == DeviceIoType.Input &&
                 viewModel.InputExpressionNegated;
             descriptor.IsCapturing = viewModel.IsCapturing;
-            if (descriptor.IsCapturing)
-                descriptor.ToolTip = "LISTENING — click again or right-click to cancel";
             var binding = viewModel.DeviceBinding;
             if (binding == null || !descriptor.IsBound || descriptor.Device == null) return descriptor;
 

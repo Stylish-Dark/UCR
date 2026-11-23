@@ -353,18 +353,25 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private bool _isOutputCapturing;
         public bool IsCapturing => _isOutputCapturing || DeviceBinding?.IsInBindMode == true;
 
+        internal bool IsUpdatingOutputCaptureState { get; private set; }
+
         internal void SetOutputCaptureState(bool capturing)
         {
             if (_isOutputCapturing == capturing) return;
             _isOutputCapturing = capturing;
-            OnPropertyChanged(nameof(IsCapturing));
-            OnPropertyChanged(nameof(BindButtonText));
-            OnPropertyChanged(nameof(CompactBindButtonText));
-            OnPropertyChanged(nameof(BindingActionToolTip));
-            OnPropertyChanged(nameof(ShowPreview));
-            OnPropertyChanged(nameof(ShowBindMode));
-            OnPropertyChanged(nameof(ShowButtonPreview));
-            OnPropertyChanged(nameof(PreviewValue));
+            IsUpdatingOutputCaptureState = true;
+            try
+            {
+                OnPropertyChanged(nameof(IsCapturing));
+                OnPropertyChanged(nameof(BindButtonText));
+                OnPropertyChanged(nameof(CompactBindButtonText));
+                OnPropertyChanged(nameof(BindingActionToolTip));
+                OnPropertyChanged(nameof(ShowPreview));
+                OnPropertyChanged(nameof(ShowBindMode));
+                OnPropertyChanged(nameof(ShowButtonPreview));
+                OnPropertyChanged(nameof(PreviewValue));
+            }
+            finally { IsUpdatingOutputCaptureState = false; }
         }
 
         private string _cachedBoundName;

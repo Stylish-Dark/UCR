@@ -224,7 +224,12 @@ namespace HidWizards.UCR.Core.Models.Binding
         {
             if (!preserveBinding || DeviceConfigurationGuid != deviceConfigurationGuid ||
                 KeyType != keyType || KeyValue != keyValue || KeySubValue != keySubValue)
+            {
+                // A manual device/control change supersedes the outstanding
+                // detector. Its queued press must not restore the old assignment.
+                CancelBindMode();
                 AssignedControlName = string.Empty;
+            }
             if (!preserveBinding) ResetOutputAxisDirection();
             DeviceConfigurationGuid = deviceConfigurationGuid;
 
@@ -338,6 +343,7 @@ namespace HidWizards.UCR.Core.Models.Binding
         public void SetKeyTypeValue(int type, int value, int subValue, string controlName)
         {
             var bindingChanged = KeyType != type || KeyValue != value || KeySubValue != subValue;
+            if (bindingChanged) CancelBindMode();
             var wasBound = IsBound;
             var previousName = AssignedControlName;
             if (controlName != null || bindingChanged)
