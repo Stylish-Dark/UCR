@@ -25,7 +25,9 @@ namespace HidWizards.UCR.Views.ProfileViews
     {
         public Guid ProfileGuid => Profile.Guid;
         public ContentControl AutoApplyPanelHost => AutoApplyDockHost;
-        internal bool BlocksActivationShortcut => RootDialog.IsOpen || BatchOverlay.IsVisible || IsBatchCapturing;
+        internal bool IsOutputCapturing => ProfileViewModel.MappingsList?.Any(mapping => mapping.IsQuickOutputDetecting) == true;
+        internal bool BlocksActivationShortcut => RootDialog.IsOpen || BatchOverlay.IsVisible || IsBatchCapturing ||
+            IsOutputCapturing || ProfileViewModel.InputDeviceControlViewModel?.IsDetecting == true;
         private Context Context { get; }
         internal Profile Profile { get; }
         private ProfileViewModel ProfileViewModel { get; }
@@ -1054,7 +1056,7 @@ namespace HidWizards.UCR.Views.ProfileViews
                 return;
             }
 
-            if (e.Key != Key.F6 || Context.BindingManager.IsBindModeActive || IsBatchCapturing) return;
+            if (e.Key != Key.F6 || Context.BindingManager.IsBindModeActive || IsBatchCapturing || IsOutputCapturing) return;
 
             if (BackButton.IsKeyboardFocusWithin)
                 FocusFirst(ProfileDevicesPanel);
@@ -1532,6 +1534,12 @@ namespace HidWizards.UCR.Views.ProfileViews
             var descriptor = button?.DataContext as BindingVisualDescriptor;
             var mapping = MappingForWorkspaceGlyph(button);
             if (mapping?.ButtonsEnabled != true || descriptor == null) return;
+            if (mapping.IsQuickOutputDetecting)
+            {
+                mapping.CancelQuickOutputCapture();
+                e.Handled = true;
+                return;
+            }
             var binding = mapping.ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
             var output = mapping.Plugins.FirstOrDefault(plugin => plugin.DeviceBindings
                 .Any(item => ReferenceEquals(item.DeviceBinding, binding?.DeviceBinding)));

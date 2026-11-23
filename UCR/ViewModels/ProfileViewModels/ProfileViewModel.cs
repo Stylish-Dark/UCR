@@ -547,7 +547,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             IEnumerable<MappingGroupViewModel> selectedSections)
         {
             var result = new HidWizards.UCR.ViewModels.Dialogs.BatchDeviceChangeResult();
-            if (source == null || target == null || source.IoType != target.IoType || source.Guid == target.Guid) return result;
+            if (_disposed || Profile.IsActive() || Profile.Context.SubscriptionsManager.IsTransitionInProgress ||
+                source == null || target == null || source.IoType != target.IoType || source.Guid == target.Guid ||
+                Profile.GetDeviceConfiguration(target.IoType, target.Guid)?.Device == null) return result;
             var targetMappings = new HashSet<MappingViewModel>(
                 (selectedSections ?? Enumerable.Empty<MappingGroupViewModel>())
                     .Where(section => section != null && MappingSections.Contains(section))
@@ -555,19 +557,32 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (targetMappings.Count == 0) return result;
 
             foreach (var mapping in targetMappings)
-            foreach (var binding in mapping.DeviceBindings.Concat(
-                mapping.Plugins.SelectMany(plugin => plugin.DeviceBindings)))
             {
-                if (binding?.DeviceBinding == null) continue;
-                if (binding.DeviceBinding.DeviceIoType != source.IoType || binding.DeviceBinding.DeviceConfigurationGuid != source.Guid) continue;
-
-                var wasBound = binding.DeviceBinding.IsBound;
-                var compatibility = binding.ChangeDeviceConfiguration(target.Guid);
-                if (binding.DeviceBinding.DeviceConfigurationGuid != target.Guid) continue;
-                result.Changed++;
-                if (!wasBound || binding.DeviceBinding.IsBound) continue;
-                if (compatibility == DeviceBindingTransferCompatibility.Incompatible) result.ClearedAsIncompatible++;
-                if (compatibility == DeviceBindingTransferCompatibility.Unknown) result.ClearedAsUnverified++;
+                var visible = mapping.DeviceBindings.Concat(mapping.Plugins.SelectMany(plugin => plugin.DeviceBindings))
+                    .Where(binding => binding?.DeviceBinding != null)
+                    .GroupBy(binding => binding.DeviceBinding).ToDictionary(group => group.Key, group => group.First());
+                var savedBindings = source.IoType == DeviceIoType.Input
+                    ? mapping.Mapping.GetPersistedInputBindings() : mapping.Mapping.GetPersistedOutputBindings();
+                foreach (var saved in savedBindings.Where(binding => binding.DeviceConfigurationGuid == source.Guid).ToList())
+                {
+                    var temporary = !visible.TryGetValue(saved, out var binding);
+                    if (temporary)
+                        binding = new DeviceBindingViewModel(saved) { DeviceBindingCategory = saved.DeviceBindingCategory };
+                    try
+                    {
+                        var wasBound = saved.IsBound;
+                        var compatibility = binding.ChangeDeviceConfiguration(target.Guid);
+                        if (saved.DeviceConfigurationGuid != target.Guid) continue;
+                        result.Changed++;
+                        if (!wasBound || saved.IsBound) continue;
+                        if (compatibility == DeviceBindingTransferCompatibility.Incompatible) result.ClearedAsIncompatible++;
+                        if (compatibility == DeviceBindingTransferCompatibility.Unknown) result.ClearedAsUnverified++;
+                    }
+                    finally
+                    {
+                        if (temporary) binding.Dispose();
+                    }
+                }
             }
 
             foreach (var mapping in MappingsList) mapping.RefreshCollapsedSummary();

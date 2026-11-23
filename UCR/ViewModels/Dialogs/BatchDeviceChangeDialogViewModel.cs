@@ -125,12 +125,12 @@ namespace HidWizards.UCR.ViewModels.Dialogs
 
         private IEnumerable<BatchDeviceOption> BuildUsedDeviceOptions()
         {
-            var used = _profileViewModel.GetAllBindingViewModels()
-                .Where(binding => binding?.DeviceBinding != null)
+            var used = _profileViewModel.Profile.GetAllMappings()
+                .SelectMany(mapping => mapping.GetPersistedInputBindings().Concat(mapping.GetPersistedOutputBindings()))
                 .GroupBy(binding => new
                 {
-                    binding.DeviceBinding.DeviceIoType,
-                    binding.DeviceBinding.DeviceConfigurationGuid
+                    binding.DeviceIoType,
+                    binding.DeviceConfigurationGuid
                 })
                 .ToList();
 
@@ -180,7 +180,8 @@ namespace HidWizards.UCR.ViewModels.Dialogs
             if (SelectedSource == null) return;
 
             foreach (var option in _allDevices
-                .Where(option => option.IoType == SelectedSource.IoType && option.Guid != SelectedSource.Guid && option.IsAvailable)
+                .Where(option => option.IoType == SelectedSource.IoType && option.Guid != SelectedSource.Guid &&
+                    _profileViewModel.Profile.GetDeviceConfiguration(option.IoType, option.Guid)?.Device != null)
                 .OrderBy(option => option.Title, StringComparer.CurrentCultureIgnoreCase))
             {
                 TargetDevices.Add(option);

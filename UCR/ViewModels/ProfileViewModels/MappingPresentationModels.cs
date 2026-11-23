@@ -65,6 +65,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public int KeyValue { get; set; }
         public int KeySubValue { get; set; }
         public BindingVisualDescriptor Visual { get; set; }
+        public int OutputAxisDirection { get; set; }
+        public string DisplayName { get; set; }
     }
 
     // One visual direction in the compass. Analogue sticks deliberately

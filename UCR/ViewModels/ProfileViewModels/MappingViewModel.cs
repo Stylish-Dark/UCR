@@ -252,7 +252,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public ObservableCollection<DeviceBindingViewModel> DeviceBindings { get; set; }
         public ObservableCollection<InputConditionViewModel> InputConditions { get; private set; }
         public bool HasMultipleInputConditions => InputConditions?.Count > 1;
-        public bool ButtonsEnabled => !ProfileViewModel.Profile.IsActive();
+        public bool ButtonsEnabled => !_disposed && !ProfileViewModel.Profile.IsActive();
         // Axis runtime/plugins remain supported for existing profiles, but their
         // experimental editor is intentionally absent until it is redesigned.
         public bool IsLegacyAxisMapping => Mapping?.Plugins?.Any(plugin =>
@@ -467,6 +467,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (_disposed) return;
 
+            if (!ButtonsEnabled) CancelQuickOutputCapture();
             OnPropertyChanged(nameof(ButtonsEnabled));
             OnPropertyChanged(nameof(CanBlockCompound));
             OnPropertyChanged(nameof(CompoundBlockEnabled));

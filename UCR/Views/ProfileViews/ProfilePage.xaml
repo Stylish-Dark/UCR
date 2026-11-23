@@ -1009,10 +1009,20 @@
                                                                         <DataTemplate>
                                                                             <Button x:Name="UiWorkspaceBindOutput" Width="62" Height="46" Padding="2 0"
                                                                                     Focusable="True" Margin="2 0"
-                                                                                    Style="{StaticResource UcrMappingGlyphButton}"
                                                                                     ClipToBounds="False" ToolTip="{Binding ToolTip}"
                                                                                     Click="QuickBindWorkspaceOutput_OnClick"
                                                                                     PreviewMouseRightButtonDown="QuickBindWorkspaceOutput_OnPreviewMouseRightButtonDown">
+                                                                                <Button.Style>
+                                                                                    <Style TargetType="Button" BasedOn="{StaticResource UcrMappingGlyphButton}">
+                                                                                        <Style.Triggers>
+                                                                                            <DataTrigger Binding="{Binding IsCapturing}" Value="True">
+                                                                                                <Setter Property="Background" Value="#944916"/>
+                                                                                                <Setter Property="BorderBrush" Value="#FFD08E"/>
+                                                                                                <Setter Property="BorderThickness" Value="2"/>
+                                                                                            </DataTrigger>
+                                                                                        </Style.Triggers>
+                                                                                    </Style>
+                                                                                </Button.Style>
                                                                                 <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
                                                                                     <controls:ControlGlyphControl Kind="{Binding ControlKind}"
                                                                                                                   AccentBrush="{Binding ControlBrush}"

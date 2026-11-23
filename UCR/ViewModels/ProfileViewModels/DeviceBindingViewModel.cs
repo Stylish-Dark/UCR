@@ -171,7 +171,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(SelectedDevice));
             }
         }
-        public Visibility ShowPreview => DeviceBinding.IsInBindMode ? Visibility.Hidden : Visibility.Visible;
+        public Visibility ShowPreview => IsCapturing ? Visibility.Hidden : Visibility.Visible;
         public Visibility ShowBindMode => ShowPreview.Equals(Visibility.Visible) ? Visibility.Hidden : Visibility.Visible;
         public Visibility ShowPropertyList => PluginPropertyGroup == null ? Visibility.Collapsed : Visibility.Visible;
         internal bool SupportsBlock => DeviceBinding.IsBound && DeviceBinding.IsBlockable();
@@ -226,7 +226,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             : Visibility.Collapsed;
         public PluginPropertyGroupViewModel PluginPropertyGroup { get; set; }
         public double PreviewValue => GetPreviewValue();
-        public bool ShowButtonPreview => DeviceBinding.IsInBindMode || DeviceBinding.Profile.IsActive();
+        public bool ShowButtonPreview => IsCapturing || DeviceBinding.Profile.IsActive();
 
         private bool GuiInvalidated { get; set; }
         internal event Action<DeviceBindingViewModel> UiValueInvalidated;
@@ -238,7 +238,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
 
         private double GetPreviewValue()
         {
-            if (DeviceBinding.IsInBindMode)
+            if (IsCapturing)
             {
                 return BindModeProgress;
             } else if (DeviceBinding.Profile.IsActive())
@@ -262,7 +262,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         private bool _bindingEnabled;
         public bool BindingEnabled
         {
-            get => _bindingEnabled;
+            get => !_disposed && _bindingEnabled;
             set
             {
                 if (_bindingEnabled == value) return;
@@ -350,7 +350,22 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             }
         }
 
-        public bool IsCapturing => DeviceBinding?.IsInBindMode == true;
+        private bool _isOutputCapturing;
+        public bool IsCapturing => _isOutputCapturing || DeviceBinding?.IsInBindMode == true;
+
+        internal void SetOutputCaptureState(bool capturing)
+        {
+            if (_isOutputCapturing == capturing) return;
+            _isOutputCapturing = capturing;
+            OnPropertyChanged(nameof(IsCapturing));
+            OnPropertyChanged(nameof(BindButtonText));
+            OnPropertyChanged(nameof(CompactBindButtonText));
+            OnPropertyChanged(nameof(BindingActionToolTip));
+            OnPropertyChanged(nameof(ShowPreview));
+            OnPropertyChanged(nameof(ShowBindMode));
+            OnPropertyChanged(nameof(ShowButtonPreview));
+            OnPropertyChanged(nameof(PreviewValue));
+        }
 
         private string _cachedBoundName;
         private Guid _cachedBoundDevice;
@@ -376,7 +391,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             get
             {
-                if (DeviceBinding.IsInBindMode)
+                if (IsCapturing)
                     return "●  PRESS INPUT";
                 if (DeviceBinding.IsBound)
                 {
@@ -402,7 +417,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             get
             {
                 var label = BindButtonText;
-                if (DeviceBinding.IsInBindMode)
+                if (IsCapturing)
                     return "●  PRESS INPUT";
                 if (!DeviceBinding.IsBound && DeviceBinding.DeviceIoType == DeviceIoType.Output)
                     return "Output";
@@ -933,6 +948,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var binding = _deviceBinding;
             if (binding != null)
             {
+                // Removing or rebuilding a slot must end its provider capture;
+                // a queued press must never populate a detached binding.
+                binding.CancelBindMode();
                 binding.PropertyChanged -= DeviceBindingOnPropertyChanged;
                 var context = binding.Profile?.Context;
                 if (context != null)

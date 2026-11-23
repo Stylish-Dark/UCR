@@ -53,6 +53,12 @@ namespace HidWizards.UCR.Views.Controls
                 if ((items?.Tag as string) == "Input") break;
             }
             if (!outputLane || !mapping.ButtonsEnabled) return;
+            if (mapping.IsQuickOutputDetecting)
+            {
+                mapping.CancelQuickOutputCapture();
+                e.Handled = true;
+                return;
+            }
             var binding = mapping.ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
             ShowOutputCategoryMenuForBinding(binding, button);
             e.Handled = true;
@@ -137,7 +143,17 @@ namespace HidWizards.UCR.Views.Controls
                 // be interpreted as a controller/mouse output selection.
                 if (mappingViewModel.UsesPressCaptureForQuickOutput(descriptor))
                 {
-                    await mappingViewModel.QuickBindOutputAsync(descriptor);
+                    if (mappingViewModel.IsQuickOutputDetecting)
+                    {
+                        mappingViewModel.CancelQuickOutputCapture();
+                        return true;
+                    }
+                    var applied = await mappingViewModel.QuickBindOutputAsync(descriptor);
+                    if (!applied && placementTarget.IsVisible && mappingViewModel.ButtonsEnabled &&
+                        mappingViewModel.ProfileViewModel.Profile.Context.BindingManager.IsBindModeActive != true &&
+                        !string.IsNullOrWhiteSpace(mappingViewModel.QuickOutputDetectionStatus) &&
+                        mappingViewModel.QuickOutputDetectionStatus != "Input capture cancelled.")
+                        ShowOutputPickerStatus(placementTarget, mappingViewModel.QuickOutputDetectionStatus);
                     return true;
                 }
 
@@ -223,10 +239,21 @@ namespace HidWizards.UCR.Views.Controls
                     var capturedOption = option;
                     var caption = CompactInputBindingControl.OutputPickerDisplayName(capturedOption);
                     var isCurrent = CompactInputBindingControl.MatchesOutputChoice(selectedBinding, option) &&
-                        selectedBinding.OutputAxisDirection == 0;
+                        selectedBinding.OutputAxisDirection == option.OutputAxisDirection;
                     var header = new StackPanel { Orientation = Orientation.Horizontal };
                     var visual = capturedOption.Visual;
-                    header.Children.Add(new ControlGlyphControl
+                    if (capturedOption.OutputAxisDirection != 0)
+                    {
+                        var horizontal = visual?.ControlLabel?.EndsWith("X", StringComparison.Ordinal) == true;
+                        header.Children.Add(new TextBlock
+                        {
+                            Text = horizontal ? (capturedOption.OutputAxisDirection < 0 ? "←" : "→")
+                                : (capturedOption.OutputAxisDirection < 0 ? "↑" : "↓"),
+                            Width = 46, FontSize = 23, TextAlignment = TextAlignment.Center,
+                            Margin = new Thickness(0, 0, 8, 0), Foreground = Brushes.White
+                        });
+                    }
+                    else header.Children.Add(new ControlGlyphControl
                     {
                         Width = 46,
                         Height = 27,
@@ -270,9 +297,30 @@ namespace HidWizards.UCR.Views.Controls
                         }
                     };
                     menu.Items.Add(item);
+                    if (isCurrent)
+                        menu.Opened += (sender, args) => menu.Dispatcher.BeginInvoke(DispatcherPriority.Loaded,
+                            new Action(() =>
+                            {
+                                if (!menu.IsOpen) return;
+                                item.Focus();
+                                item.BringIntoView();
+                            }));
                 }
             }
 
+            // The collapsed picker can clear the same slot as the expanded picker.
+            if (selectedBinding != null)
+            {
+                menu.Items.Add(new Separator());
+                var clear = new MenuItem { Header = "Clear binding", IsEnabled = selectedBinding.IsBound };
+                clear.Click += (sender, args) =>
+                {
+                    if (IsCurrentAnchor() && mappingViewModel.CanApplyOutputBinding &&
+                        ReferenceEquals(mappingViewModel.ResolveCollapsedBinding(descriptor, DeviceIoType.Output)?.DeviceBinding,
+                            selectedBinding)) selectedBinding.ClearBinding();
+                };
+                menu.Items.Add(clear);
+            }
             return menu;
         }
 

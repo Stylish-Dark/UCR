@@ -142,7 +142,9 @@ namespace HidWizards.UCR.Views
             {
                 if (Context.BindingManager.IsBindModeActive ||
                     _embeddedProfilePage?.IsBatchCapturing == true ||
-                    (NavigationHost.Content as ProfilePage)?.IsBatchCapturing == true) return;
+                    _embeddedProfilePage?.IsOutputCapturing == true ||
+                    (NavigationHost.Content as ProfilePage)?.IsBatchCapturing == true ||
+                    (NavigationHost.Content as ProfilePage)?.IsOutputCapturing == true) return;
 
                 if (_navigationPage != null)
                 {

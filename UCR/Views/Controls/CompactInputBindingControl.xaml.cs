@@ -241,8 +241,7 @@ namespace HidWizards.UCR.Views.Controls
                     return;
                 }
 
-                if (DeviceBinding.DeviceConfigurationGuid != Guid.Empty &&
-                    DeviceVisualCatalog.Describe(configuration, DeviceBinding.Profile, DeviceIoType.Output).Kind ==
+                if (DeviceVisualCatalog.Describe(configuration, DeviceBinding.Profile, DeviceIoType.Output).Kind ==
                     DeviceVisualKind.Keyboard)
                 {
                     var mappingCard = FindAncestor<MappingCardControl>(this);
@@ -273,6 +272,13 @@ namespace HidWizards.UCR.Views.Controls
         private void BindButton_OnPreviewMouseRightButtonDown(object sender,
             System.Windows.Input.MouseButtonEventArgs e)
         {
+            if (DeviceBinding?.DeviceIoType == DeviceIoType.Output &&
+                (DataContext as DeviceBindingViewModel)?.IsCapturing == true)
+            {
+                (FindAncestor<MappingCardControl>(this)?.DataContext as MappingViewModel)?.CancelQuickOutputCapture();
+                e.Handled = true;
+                return;
+            }
             if (DeviceBinding?.IsInBindMode != true) return;
             DeviceBinding.CancelBindMode();
             e.Handled = true;
@@ -549,6 +555,7 @@ namespace HidWizards.UCR.Views.Controls
 
         internal static string OutputPickerDisplayName(QuickBindingOption option)
         {
+            if (!string.IsNullOrEmpty(option.DisplayName)) return option.DisplayName;
             var control = option.OutputControl;
             var caption = OutputPickerDisplayName(option.Title,
                 option.Visual?.ControlKind ?? ControlVisualKind.Unknown, control.DeviceBindingCategory);
@@ -752,15 +759,11 @@ namespace HidWizards.UCR.Views.Controls
                 {
                     if (isSelectedControl && DeviceBinding.OutputAxisDirection != 0)
                         selectedCategory = "Directions";
-                    var stick = axis.StartsWith("L", StringComparison.Ordinal) ? "Left Stick" : "Right Stick";
                     var horizontal = axis.EndsWith("X", StringComparison.Ordinal);
-                    foreach (var direction in new[] {
-                        new { Name = horizontal ? "Left" : "Up", Sign = -1 },
-                        new { Name = horizontal ? "Right" : "Down", Sign = 1 }
-                    })
+                    foreach (var direction in MappingViewModel.GetSignedOutputChoices(option))
                     {
-                        var selectedSign = direction.Sign;
-                        var label = stick + " " + direction.Name;
+                        var selectedSign = direction.OutputAxisDirection;
+                        var label = direction.DisplayName;
                         // Signed stick directions are virtual half-axis choices.
                         // Give them a directional icon so they cannot be mistaken
                         // for a second full axis or an ordinary face button.

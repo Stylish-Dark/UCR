@@ -115,8 +115,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             if (!ButtonsEnabled) return false;
             var bindingViewModel = ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
             var configuration = ResolveQuickOutputConfiguration(bindingViewModel);
-            if (configuration?.Device == null || bindingViewModel.DeviceBinding.DeviceConfigurationGuid == Guid.Empty)
-                return false;
+            if (configuration?.Device == null) return false;
 
             return DeviceVisualCatalog.Describe(configuration, ProfileViewModel.Profile, DeviceIoType.Output).Kind ==
                    DeviceVisualKind.Keyboard;
@@ -125,7 +124,30 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         public List<QuickBindingOption> GetQuickOutputBindingOptions(BindingVisualDescriptor descriptor)
         {
             var binding = ResolveCollapsedBinding(descriptor, DeviceIoType.Output);
-            return GetOutputBindingOptions(binding, binding?.ResolveOutputConfiguration());
+            var options = GetOutputBindingOptions(binding, binding?.ResolveOutputConfiguration());
+            return options.SelectMany(option => new[] { option }.Concat(GetSignedOutputChoices(option))).ToList();
+        }
+
+        internal static IEnumerable<QuickBindingOption> GetSignedOutputChoices(QuickBindingOption option)
+        {
+            var axis = option.Visual?.ControlLabel;
+            if (option.OutputControl?.DeviceBindingCategory != DeviceBindingCategory.Range ||
+                (axis != "LX" && axis != "LY" && axis != "RX" && axis != "RY")) yield break;
+            var stick = axis.StartsWith("L", StringComparison.Ordinal) ? "Left Stick" : "Right Stick";
+            var horizontal = axis.EndsWith("X", StringComparison.Ordinal);
+            foreach (var sign in new[] { -1, 1 })
+                yield return new QuickBindingOption
+                {
+                    Title = option.Title,
+                    DisplayName = stick + " " + (horizontal
+                        ? (sign < 0 ? "Left" : "Right") : (sign < 0 ? "Up" : "Down")),
+                    OutputAxisDirection = sign,
+                    DeviceConfigurationGuid = option.DeviceConfigurationGuid,
+                    OutputDevice = option.OutputDevice,
+                    OutputControl = option.OutputControl,
+                    KeyType = option.KeyType, KeyValue = option.KeyValue, KeySubValue = option.KeySubValue,
+                    Visual = option.Visual
+                };
         }
 
         internal string GetOutputPickerUnavailableReason(DeviceBindingViewModel binding)
@@ -213,10 +235,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 var isTrigger = GetOutputControlRepresentation(configuration, option.OutputControl, option.Title) == 4;
                 if (binding.DeviceConfigurationGuid == Guid.Empty ||
                     option.OutputControl.DeviceBindingCategory != bindingViewModel.DeviceBindingCategory ||
-                    binding.OutputAxisDirection != 0 ||
+                    binding.OutputAxisDirection != 0 || option.OutputAxisDirection != 0 ||
                     (isRange && !IsCompoundOutput && isTrigger != OutputIsTrigger))
                     return ApplyOutputControlChoice(bindingViewModel, configuration.Guid,
-                        configuration.Device, option.OutputControl, controlName: option.Title);
+                        configuration.Device, option.OutputControl, option.OutputAxisDirection, option.Title);
             }
 
             binding.DeviceBindingCategory = bindingViewModel.DeviceBindingCategory;
@@ -382,6 +404,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var timeout = TimeSpan.FromSeconds(5);
             var cancellation = new CancellationTokenSource();
             _quickOutputDetectionCancellation = cancellation;
+            _quickOutputCaptureBinding = bindingViewModel;
+            bindingViewModel.SetOutputCaptureState(true);
             StartQuickOutputCountdown(timeout);
 
             try
@@ -442,10 +466,9 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             // A press on an input device is only a selector. Resolve the same named control on the
             // already-selected output device, then bind that output control. The input device itself
             // is deliberately ignored here and can never replace the output-device configuration.
-            var outputNode = FlattenBindingNodes(outputConfiguration.Device.GetDeviceBindingMenu(ProfileViewModel.Profile.Context, DeviceIoType.Output))
-                .FirstOrDefault(node => node?.DeviceBindingInfo != null &&
-                                        node.DeviceBindingInfo.DeviceBindingCategory == bindingViewModel.DeviceBindingCategory &&
-                                        string.Equals(node.Title, detected.ControlTitle, StringComparison.CurrentCultureIgnoreCase));
+            var controls = FlattenBindingNodes(outputConfiguration.Device.GetDeviceBindingMenu(
+                ProfileViewModel.Profile.Context, DeviceIoType.Output));
+            var outputNode = detected.FindEquivalentControl(outputConfiguration.Device, controls);
 
             if (outputNode?.DeviceBindingInfo == null)
             {
@@ -455,16 +478,17 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 return false;
             }
 
-            var info = outputNode.DeviceBindingInfo;
-            var binding = bindingViewModel.DeviceBinding;
-            binding.DeviceBindingCategory = bindingViewModel.DeviceBindingCategory;
-            binding.SetDeviceConfigurationGuid(outputConfiguration.Guid);
-            binding.SetKeyTypeValue(info.KeyType, info.KeyValue, info.KeySubValue);
-            bindingViewModel.RefreshDeviceList();
-            RefreshCollapsedSummary();
+            if (!ApplyOutputControlChoice(bindingViewModel, outputConfiguration.Guid,
+                outputConfiguration.Device, outputNode.DeviceBindingInfo, controlName: outputNode.Title))
+            {
+                QuickOutputDetectionStatus = "That output control could not be assigned.";
+                return false;
+            }
             QuickOutputDetectionStatus = "Bound output: " + outputNode.Title;
             return true;
         }
+
+        private DeviceBindingViewModel _quickOutputCaptureBinding;
 
         private void StartQuickOutputCountdown(TimeSpan timeout)
         {
@@ -491,6 +515,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var remaining = Math.Max(0, (_quickOutputDetectionDeadlineUtc - DateTime.UtcNow).TotalSeconds);
             QuickOutputDetectionStatus = "Press an input — " + remaining.ToString("0.0") + "s";
             QuickOutputDetectionProgress = Math.Max(0, Math.Min(100, remaining / 5.0 * 100.0));
+            if (_quickOutputCaptureBinding != null)
+                _quickOutputCaptureBinding.BindModeProgress = QuickOutputDetectionProgress;
         }
 
         private void StopQuickOutputCountdown()
@@ -501,6 +527,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 _quickOutputDetectionTimer.Tick -= QuickOutputDetectionTimerOnTick;
                 _quickOutputDetectionTimer = null;
             }
+            _quickOutputCaptureBinding?.SetOutputCaptureState(false);
+            _quickOutputCaptureBinding = null;
             IsQuickOutputDetecting = false;
             QuickOutputDetectionProgress = 0;
         }
