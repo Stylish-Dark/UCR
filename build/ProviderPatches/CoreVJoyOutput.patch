@@ -1,7 +1,16 @@
 diff --git a/Source/Core Providers/Core_vJoyInterfaceWrap/Core_vJoyInterfaceWrap.cs b/Source/Core Providers/Core_vJoyInterfaceWrap/Core_vJoyInterfaceWrap.cs
-index 7c4e0e1..0323a19 100644
+index 7c4e0e1..6031d89 100644
 --- a/Source/Core Providers/Core_vJoyInterfaceWrap/Core_vJoyInterfaceWrap.cs	
 +++ b/Source/Core Providers/Core_vJoyInterfaceWrap/Core_vJoyInterfaceWrap.cs	
+@@ -19,7 +19,7 @@ public class Core_vJoyInterfaceWrap : IOutputProvider
+         private readonly bool _isLive = false;
+ 
+         bool disposed;
+-        public static vJoyInterfaceWrap.vJoy vJ = new vJoyInterfaceWrap.vJoy();
++        public static readonly vJoyInterfaceWrap.vJoy vJ = new vJoyInterfaceWrap.vJoy();
+         private VjoyDevice[] _vJoyDevices = new VjoyDevice[16];
+         private readonly Dictionary<Guid, uint> _subscriptionToDevice = new Dictionary<Guid, uint>();
+         private static readonly Dictionary<int, string> AxisNames = new Dictionary<int, string> { { 0, "X" }, { 1,"Y" }, { 2, "Z" }, { 3, "Rx" }, { 4, "Ry" }, { 5, "Rz" }, { 6, "Sl0" }, { 7, "Sl1" } };
 @@ -58,11 +58,6 @@ public Core_vJoyInterfaceWrap()
              QueryDevices();
          }
@@ -14,7 +23,7 @@ index 7c4e0e1..0323a19 100644
          public void Dispose()
          {
              Dispose(true);
-@@ -76,7 +71,7 @@ protected virtual void Dispose(bool disposing)
+@@ -76,10 +71,9 @@ protected virtual void Dispose(bool disposing)
              {
                  for (uint devId = 0; devId < 16; devId++)
                  {
@@ -22,8 +31,11 @@ index 7c4e0e1..0323a19 100644
 +                    _vJoyDevices[devId]?.Dispose();
                  }
                  _vJoyDevices = null;
-                 vJ = null;
-@@ -132,7 +127,7 @@ public bool UnsubscribeInput(InputSubscriptionRequest subReq)
+-                vJ = null;
+             }
+             disposed = true;
+             Log("Provider {0} was Disposed", ProviderName);
+@@ -132,7 +126,7 @@ public bool UnsubscribeInput(InputSubscriptionRequest subReq)
          public bool SubscribeOutputDevice(OutputSubscriptionRequest subReq)
          {
              var devId = DevIdFromHandle(subReq.DeviceDescriptor.DeviceHandle);
@@ -32,7 +44,7 @@ index 7c4e0e1..0323a19 100644
              _subscriptionToDevice.Add(subReq.SubscriptionDescriptor.SubscriberGuid, devId);
              return true;
          }
-@@ -164,8 +159,7 @@ public bool SetOutputState(OutputSubscriptionRequest subReq, BindingDescriptor b
+@@ -164,8 +158,7 @@ public bool SetOutputState(OutputSubscriptionRequest subReq, BindingDescriptor b
                      int pov = (int)(Math.Floor((decimal)(bindingDescriptor.Index / 4)));
                      int dir = bindingDescriptor.Index % 4;
                      //Log("vJoy POV output requested - POV {0}, Dir {1}, State {2}", pov, dir, state);
@@ -42,7 +54,7 @@ index 7c4e0e1..0323a19 100644
  
                  default:
                      break;
-@@ -310,13 +304,11 @@ public VjoyDevice(uint id)
+@@ -310,13 +303,11 @@ public VjoyDevice(uint id)
                  }
              }
  
@@ -59,7 +71,7 @@ index 7c4e0e1..0323a19 100644
              }
  
              public void Remove(OutputSubscriptionRequest subReq)
-@@ -328,9 +320,9 @@ public void Remove(OutputSubscriptionRequest subReq)
+@@ -328,9 +319,9 @@ public void Remove(OutputSubscriptionRequest subReq)
                  }
              }
  
@@ -71,7 +83,7 @@ index 7c4e0e1..0323a19 100644
              }
  
              public void Dispose()
-@@ -338,14 +330,13 @@ public void Dispose()
+@@ -338,14 +329,13 @@ public void Dispose()
                  Relinquish();
              }
  
@@ -92,7 +104,7 @@ index 7c4e0e1..0323a19 100644
              }
  
              private void Relinquish()
-@@ -370,13 +361,19 @@ public POVHandler(uint device, uint pov)
+@@ -370,13 +360,19 @@ public POVHandler(uint device, uint pov)
                      _povId = pov;
                  }
  
@@ -117,7 +129,7 @@ index 7c4e0e1..0323a19 100644
                  }
  
                  private int DirToCoordinate(int dir)
-@@ -386,11 +383,10 @@ private int DirToCoordinate(int dir)
+@@ -386,11 +382,10 @@ private int DirToCoordinate(int dir)
                      return -1;
                  }
  
