@@ -566,7 +566,8 @@ jobs:
           }
 
           $cacheRoot = Join-Path $env:RUNNER_TEMP ('ucr-device-cache-' + [guid]::NewGuid())
-          $store = [Activator]::CreateInstance($cacheType, [object[]]@($cacheRoot))
+          $cacheConstructor = $cacheType.GetConstructor([type[]]@([string]))
+          $store = $cacheConstructor.Invoke([object[]]@($cacheRoot))
           $save = $cacheType.GetMethod('Save')
           $load = $cacheType.GetMethod('LoadProvider')
           $before = [DateTime]::UtcNow.AddDays(-2)
@@ -575,8 +576,8 @@ jobs:
             Get-ChildItem (Join-Path $cacheRoot $provider) | ForEach-Object { $_.LastWriteTimeUtc = $before }
             [void]$save.Invoke($store, [object[]]@($current, $null))
             [void]$save.Invoke($store, [object[]]@($replacement, $null))
-            $reopened = [Activator]::CreateInstance($cacheType, [object[]]@($cacheRoot))
-            $records = @($load.Invoke($reopened, [object[]]@($provider)))
+            $reopened = $cacheConstructor.Invoke([object[]]@($cacheRoot))
+            $records = $load.Invoke($reopened, [object[]]@($provider))
             if ($records.Count -ne 2 -or @($records | Where-Object Title -eq 'Current menu').Count -ne 1 -or
                 @($records | Where-Object Title -eq 'Other controller').Count -ne 1) {
               throw 'Reopening the cache did not keep just the newest record per distinct hardware path.'
@@ -585,7 +586,7 @@ jobs:
             foreach ($item in @($one, $two, $oneReopened)) {
               [void]$save.Invoke($store, [object[]]@($item, $null))
             }
-            $slots = @($load.Invoke($store, [object[]]@('Core_ViGEm')))
+            $slots = $load.Invoke($store, [object[]]@('Core_ViGEm'))
             if ($slots.Count -ne 2 -or (@($slots.DeviceNumber | Sort-Object) -join ',') -ne '0,1') {
               throw 'Reopening the cache did not preserve both numbered slots.'
             }
