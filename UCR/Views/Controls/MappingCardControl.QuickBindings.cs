@@ -222,12 +222,8 @@ namespace HidWizards.UCR.Views.Controls
                 {
                     var capturedOption = option;
                     var caption = CompactInputBindingControl.OutputPickerDisplayName(capturedOption);
-                    var isCurrent = selectedBinding?.IsBound == true &&
-                        selectedBinding.OutputAxisDirection == 0 &&
-                        selectedBinding.DeviceConfigurationGuid == option.DeviceConfigurationGuid &&
-                        selectedBinding.DeviceBindingCategory == option.OutputControl.DeviceBindingCategory &&
-                        selectedBinding.KeyType == option.KeyType && selectedBinding.KeyValue == option.KeyValue &&
-                        selectedBinding.KeySubValue == option.KeySubValue;
+                    var isCurrent = CompactInputBindingControl.MatchesOutputChoice(selectedBinding, option) &&
+                        selectedBinding.OutputAxisDirection == 0;
                     var header = new StackPanel { Orientation = Orientation.Horizontal };
                     var visual = capturedOption.Visual;
                     header.Children.Add(new ControlGlyphControl

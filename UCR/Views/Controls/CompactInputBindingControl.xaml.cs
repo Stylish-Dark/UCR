@@ -561,6 +561,13 @@ namespace HidWizards.UCR.Views.Controls
             option.KeyType == 2 && option.KeyValue >= 0 &&
             string.Equals(option.OutputDevice?.ProviderName, "Core_vJoyInterfaceWrap", StringComparison.OrdinalIgnoreCase);
 
+        internal static bool MatchesOutputChoice(DeviceBinding binding, QuickBindingOption option) =>
+            binding?.IsBound == true &&
+            binding.DeviceConfigurationGuid == option.DeviceConfigurationGuid &&
+            binding.DeviceBindingCategory == option.OutputControl.DeviceBindingCategory &&
+            binding.KeyType == option.KeyType && binding.KeyValue == option.KeyValue &&
+            binding.KeySubValue == option.KeySubValue;
+
         private void CloseOutputPicker()
         {
             if (_outputPicker != null) _outputPicker.IsOpen = false;
@@ -652,6 +659,7 @@ namespace HidWizards.UCR.Views.Controls
             var availableHeight = Math.Max(0, Math.Min(340, workArea.Height - 120));
             var buttons = new WrapPanel { MaxWidth = Math.Max(0, contentWidth) };
             var directionals = new WrapPanel { MaxWidth = Math.Max(0, contentWidth) };
+            var vjoyDirections = new List<KeyValuePair<int, Button>>();
             var axes = new WrapPanel { MaxWidth = Math.Max(0, contentWidth) };
             var events = new WrapPanel { MaxWidth = Math.Max(0, contentWidth) };
             string selectedCategory = null;
@@ -664,8 +672,7 @@ namespace HidWizards.UCR.Views.Controls
                 var category = OutputPickerCategory(info.DeviceBindingCategory, visual.ControlKind, title);
                 if (category == null) continue;
                 var caption = OutputPickerDisplayName(option);
-                var isSelectedControl = DeviceBinding.IsBound && DeviceBinding.KeyType == info.KeyType &&
-                    DeviceBinding.KeyValue == info.KeyValue && DeviceBinding.KeySubValue == info.KeySubValue;
+                var isSelectedControl = MatchesOutputChoice(selectedBinding, option);
                 var isCurrentChoice = isSelectedControl && DeviceBinding.OutputAxisDirection == 0;
                 if (isCurrentChoice) selectedCategory = category;
 
@@ -702,6 +709,7 @@ namespace HidWizards.UCR.Views.Controls
                     ToolTip = caption
                 };
                 AutomationProperties.SetName(choice, caption);
+                if (isCurrentChoice) AutomationProperties.SetItemStatus(choice, "Current binding");
                 var selectedInfo = info;
                 choice.Click += (sender, args) =>
                 {
@@ -716,7 +724,11 @@ namespace HidWizards.UCR.Views.Controls
                     }
                 };
                 if (category == "Axes") axes.Children.Add(choice);
-                else if (category == "Directions") directionals.Children.Add(choice);
+                else if (category == "Directions")
+                {
+                    if (IsVJoyHat(option)) vjoyDirections.Add(new KeyValuePair<int, Button>(option.KeyValue, choice));
+                    else directionals.Children.Add(choice);
+                }
                 else if (category == "Buttons") buttons.Children.Add(choice);
                 else if (category == "Events") events.Children.Add(choice);
 
@@ -780,6 +792,8 @@ namespace HidWizards.UCR.Views.Controls
                             ToolTip = label
                         };
                         AutomationProperties.SetName(directional, label);
+                        if (isSelectedControl && selectedBinding.OutputAxisDirection == selectedSign)
+                            AutomationProperties.SetItemStatus(directional, "Current binding");
                         directional.Click += (sender, args) =>
                         {
                             var card = FindAncestor<MappingCardControl>(this);
@@ -811,6 +825,10 @@ namespace HidWizards.UCR.Views.Controls
                 directionals.Children.Remove(item);
                 directionals.Children.Insert(nextPosition++, item);
             }
+
+            var vjoyPosition = 0;
+            foreach (var direction in vjoyDirections.OrderBy(entry => entry.Key))
+                directionals.Children.Insert(vjoyPosition++, direction.Value);
 
             // A D-pad follows the same two-column direction pairing: Up/Down,
             // then Left/Right. The device provider may enumerate clockwise
