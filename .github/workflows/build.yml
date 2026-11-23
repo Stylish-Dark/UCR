@@ -1135,7 +1135,7 @@ jobs:
                   $data = $profile.mappings[0].plugins[0].data
                   $output = $data.outputs[0]
                   if ($output.deviceConfigurationGuid -ne $controller -or $output.assignedControlName -ne 'LY' -or
-                      $output.outputAxisDirection -ne 0 -or $data.rangePressed -ne 100 -or -not $output.isBound) {
+                      [int]$output.outputAxisDirection -ne 0 -or $data.rangePressed -ne 100 -or -not $output.isBound) {
                       throw "$pathLabel did not clear the previous negative direction and restore the press range: $($data | ConvertTo-Json -Depth 10 -Compress)"
                   }
                   Write-Host "PASS $pathLabel restores the full axis and its ordinary press range"
