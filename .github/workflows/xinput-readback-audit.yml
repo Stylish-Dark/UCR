@@ -59,8 +59,8 @@ jobs:
                   New-Item -ItemType Directory -Path $driverDir -Force | Out-Null
                   $cab = Join-Path $driverDir 'xusb21.cab'
                   Invoke-WebRequest -UseBasicParsing 'https://catalog.s.download.windowsupdate.com/msdownload/update/driver/drvs/2013/01/20289581_7385d6be1b053a35955a910f11436729a1d4cb56.cab' -OutFile $cab
-                  if ((Get-FileHash -LiteralPath $cab -Algorithm SHA256).Hash -ne '49BD427E53F5C63A1A03B791CF6DEEFE3A2AC5700DC4DB5E39FAD98F3070FA6') {
-                      throw 'The Microsoft catalog package did not match the downloaded update.'
+                  if ((Get-FileHash -LiteralPath $cab -Algorithm SHA256).Hash -ne '49BD427E53F5C63A1A03B791CF6DEEEFE3A2AC5700DC4DB5E39FAD98F3070FA6') {
+                      throw "Unexpected catalog SHA-256 $((Get-FileHash -LiteralPath $cab -Algorithm SHA256).Hash)."
                   }
                   & expand.exe $cab '-F:*' $driverDir
                   if ($LASTEXITCODE -ne 0) { throw 'The Microsoft catalog package could not be extracted.' }
