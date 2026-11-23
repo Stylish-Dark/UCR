@@ -206,6 +206,23 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             // of assuming every provider numbers directions 0..3.
             var directInput = string.Equals(device.Device.ProviderName, "SharpDX_DirectInput",
                 StringComparison.OrdinalIgnoreCase);
+            if (string.Equals(device.Device.ProviderName, "Core_vJoyInterfaceWrap",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                // vJoy repeats the same four labels for each hat. Its descriptor
+                // packs the hat into Index / 4 and the direction into Index % 4.
+                foreach (var hat in dpad.Where(node => node.DeviceBindingInfo.KeyType == 2 &&
+                    node.DeviceBindingInfo.KeyValue >= 0)
+                    .GroupBy(node => node.DeviceBindingInfo.KeyValue / 4).OrderBy(group => group.Key))
+                {
+                    var directions = new[] { 0, 2, 3, 1 }
+                        .Select(direction => hat.FirstOrDefault(node =>
+                            node.DeviceBindingInfo.KeyValue % 4 == direction)?.DeviceBindingInfo)
+                        .ToArray();
+                    if (directions.All(direction => direction != null)) yield return directions;
+                }
+                yield break;
+            }
             var named = dpad.Select(node => new
             {
                 Node = node,

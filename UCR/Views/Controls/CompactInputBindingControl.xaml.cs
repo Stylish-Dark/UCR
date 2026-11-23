@@ -481,6 +481,8 @@ namespace HidWizards.UCR.Views.Controls
             if (category == DeviceBindingCategory.Range) return "Axes";
             if (category == DeviceBindingCategory.Event) return "Events";
             if (category != DeviceBindingCategory.Momentary) return null;
+            if (visualKind == ControlVisualKind.Key || visualKind == ControlVisualKind.MouseButton)
+                return "Buttons";
             var label = (title ?? string.Empty).Trim().ToLowerInvariant();
             var isDirection = visualKind == ControlVisualKind.DPad ||
                 label.Contains("d-pad") || label.Contains("dpad") ||
@@ -508,8 +510,11 @@ namespace HidWizards.UCR.Views.Controls
         // Give the adjacent caption a human-readable name instead of repeating
         // "LX LX" or "LT LT" in each control tile.
         public static string OutputPickerDisplayName(string title,
-            ControlVisualKind visualKind = ControlVisualKind.Unknown)
+            ControlVisualKind visualKind = ControlVisualKind.Unknown,
+            DeviceBindingCategory category = DeviceBindingCategory.Range)
         {
+            if (visualKind == ControlVisualKind.Key || visualKind == ControlVisualKind.MouseButton)
+                return title ?? string.Empty;
             switch ((title ?? string.Empty).Trim().ToUpperInvariant())
             {
                 case "LX": return "Left stick X axis";
@@ -517,9 +522,13 @@ namespace HidWizards.UCR.Views.Controls
                 case "RX": return "Right stick X axis";
                 case "RY": return "Right stick Y axis";
                 case "LT":
-                case "L2": return "Left trigger";
+                case "L2 (LT)":
+                case "L2": return category == DeviceBindingCategory.Momentary
+                    ? "Left trigger button" : "Left trigger";
                 case "RT":
-                case "R2": return "Right trigger";
+                case "R2 (RT)":
+                case "R2": return category == DeviceBindingCategory.Momentary
+                    ? "Right trigger button" : "Right trigger";
                 case "LB":
                 case "L1": return "Left shoulder";
                 case "RB":
@@ -625,6 +634,10 @@ namespace HidWizards.UCR.Views.Controls
                 var title = option.Title ?? string.Empty;
                 var category = OutputPickerCategory(info.DeviceBindingCategory, visual.ControlKind, title);
                 if (category == null) continue;
+                var caption = OutputPickerDisplayName(title, visual.ControlKind, info.DeviceBindingCategory);
+                if (info.KeyType == 2 && info.KeyValue >= 0 &&
+                    string.Equals(outputDevice.ProviderName, "Core_vJoyInterfaceWrap", StringComparison.OrdinalIgnoreCase))
+                    caption = $"POV {info.KeyValue / 4 + 1} {caption}";
                 var isSelectedControl = DeviceBinding.IsBound && DeviceBinding.KeyType == info.KeyType &&
                     DeviceBinding.KeyValue == info.KeyValue && DeviceBinding.KeySubValue == info.KeySubValue;
                 var isCurrentChoice = isSelectedControl && DeviceBinding.OutputAxisDirection == 0;
@@ -642,7 +655,7 @@ namespace HidWizards.UCR.Views.Controls
                 });
                 row.Children.Add(new TextBlock
                 {
-                    Text = OutputPickerDisplayName(title, visual.ControlKind),
+                    Text = caption,
                     Foreground = Brushes.White,
                     VerticalAlignment = VerticalAlignment.Center,
                     TextWrapping = TextWrapping.Wrap,
@@ -660,9 +673,9 @@ namespace HidWizards.UCR.Views.Controls
                     Foreground = Brushes.White,
                     BorderBrush = isCurrentChoice ? Brushes.SteelBlue : Brushes.DimGray,
                     BorderThickness = new Thickness(1),
-                    ToolTip = title
+                    ToolTip = caption
                 };
-                AutomationProperties.SetName(choice, OutputPickerDisplayName(title, visual.ControlKind));
+                AutomationProperties.SetName(choice, caption);
                 var selectedInfo = info;
                 choice.Click += (sender, args) =>
                 {
