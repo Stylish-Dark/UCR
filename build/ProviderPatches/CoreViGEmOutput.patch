@@ -1,0 +1,234 @@
+diff --git a/Source/Core Providers/Core_ViGEm/DS4Handler.cs b/Source/Core Providers/Core_ViGEm/DS4Handler.cs
+index a7f9e65..56f9c3e 100644
+--- a/Source/Core Providers/Core_ViGEm/DS4Handler.cs	
++++ b/Source/Core Providers/Core_ViGEm/DS4Handler.cs	
+@@ -15,7 +15,7 @@ public partial class Core_ViGEm
+         /// </summary>
+         private class DS4Handler : DeviceHandler
+         {
+-            private readonly DualShock4Report _report = new DualShock4Report();
++            private DualShock4Report _report;
+ 
+             private static readonly List<DualShock4Axes> AxisIndexes = new List<DualShock4Axes>
+             {
+@@ -83,14 +83,15 @@ public DS4Handler(DeviceClassDescriptor descriptor, int index) : base(descriptor
+ 
+             protected override void AcquireTarget()
+             {
+-                target = new DualShock4Controller(_client);
+-                target.Connect();
+-            }
+-
+-            protected override void RelinquishTarget()
+-            {
+-                target.Disconnect();
+-                target = null;
++                _report = new DualShock4Report();
++                _report.SetAxis(DualShock4Axes.LeftThumbX, 128);
++                _report.SetAxis(DualShock4Axes.LeftThumbY, 128);
++                _report.SetAxis(DualShock4Axes.RightThumbX, 128);
++                _report.SetAxis(DualShock4Axes.RightThumbY, 128);
++                _report.Buttons = (ushort)((_report.Buttons & ~15) | (int)DualShock4DPadValues.None);
++                _povAxisStates["x"] = 0;
++                _povAxisStates["y"] = 0;
++                ConnectTarget(new DualShock4Controller(_client));
+             }
+ 
+             protected override void SetAxisState(BindingDescriptor bindingDescriptor, int state)
+diff --git a/Source/Core Providers/Core_ViGEm/DeviceHandler.cs b/Source/Core Providers/Core_ViGEm/DeviceHandler.cs
+index e6ab881..fd16d3c 100644
+--- a/Source/Core Providers/Core_ViGEm/DeviceHandler.cs	
++++ b/Source/Core Providers/Core_ViGEm/DeviceHandler.cs	
+@@ -15,14 +15,13 @@ public partial class Core_ViGEm
+         /// </summary>
+         private abstract class DeviceHandler : IDisposable
+         {
+-            public bool IsRequested { get; set; }
+-            private Dictionary<Guid, OutputSubscriptionRequest> subscriptions = new Dictionary<Guid, OutputSubscriptionRequest>();
++            private readonly object _outputGate = new object();
++            private readonly Dictionary<Guid, OutputSubscriptionRequest> subscriptions = new Dictionary<Guid, OutputSubscriptionRequest>();
+ 
+             private Logger logger;
+ 
+             protected DeviceClassDescriptor deviceClassDescriptor;
+             protected int deviceId;
+-            protected bool isAcquired;
+             protected ViGEmTarget target;
+ 
+             protected abstract List<string> axisNames { get; set; }
+@@ -43,66 +42,80 @@ public DeviceHandler(DeviceClassDescriptor descriptor,int index)
+                 deviceClassDescriptor = descriptor;
+             }
+ 
+-            protected bool SubscribeOutput(OutputSubscriptionRequest subReq)
+-            {
+-                return false;
+-            }
+-
+             public bool AddSubscription(OutputSubscriptionRequest subReq)
+             {
+-                subscriptions.Add(subReq.SubscriptionDescriptor.SubscriberGuid, subReq);
+-                logger.Log("Adding subscription to controller # {0}", subReq.DeviceDescriptor.DeviceInstance);
+-                IsRequested = true;
+-                SetAcquireState();
+-                return true;
++                lock (_outputGate)
++                {
++                    var subscriber = subReq.SubscriptionDescriptor.SubscriberGuid;
++                    if (subscriptions.ContainsKey(subscriber)) return true;
++                    if (target == null) AcquireTarget();
++                    subscriptions.Add(subscriber, subReq);
++                    logger.Log("Adding subscription to controller # {0}", subReq.DeviceDescriptor.DeviceInstance);
++                    return true;
++                }
+             }
+ 
+             public bool RemoveSubscription(OutputSubscriptionRequest subReq)
+             {
+-                if (subscriptions.ContainsKey(subReq.SubscriptionDescriptor.SubscriberGuid))
++                lock (_outputGate)
+                 {
+                     subscriptions.Remove(subReq.SubscriptionDescriptor.SubscriberGuid);
++                    logger.Log("Removing subscription to controller # {0}", subReq.DeviceDescriptor.DeviceInstance);
++                    if (subscriptions.Count == 0 && target != null) ReleaseTarget();
++                    return true;
+                 }
+-                logger.Log("Removing subscription to controller # {0}", subReq.DeviceDescriptor.DeviceInstance);
+-                IsRequested = HasSubscriptions();
+-                SetAcquireState();
+-                return true;
+             }
+ 
+-            public bool HasSubscriptions()
++            public bool SetOutputState(OutputSubscriptionRequest subReq, BindingDescriptor bindingDescriptor, int state)
+             {
+-                return subscriptions.Count > 0;
++                lock (_outputGate)
++                {
++                    if (target == null || !subscriptions.ContainsKey(subReq.SubscriptionDescriptor.SubscriberGuid))
++                        return false;
++
++                    switch (bindingDescriptor.Type)
++                    {
++                        case BindingType.Axis:
++                            SetAxisState(bindingDescriptor, state);
++                            return true;
++                        case BindingType.Button:
++                            SetButtonState(bindingDescriptor, state);
++                            return true;
++                        case BindingType.POV:
++                            SetPovState(bindingDescriptor, state);
++                            return true;
++                        default:
++                            return false;
++                    }
++                }
+             }
+ 
+-            protected void SetAcquireState()
++            protected void ConnectTarget(ViGEmTarget controller)
+             {
+-                if (IsRequested && !isAcquired)
++                try
+                 {
+-                    AcquireTarget();
+-                    isAcquired = true;
++                    controller.Connect();
++                    target = controller;
+                 }
+-                else if (!IsRequested && isAcquired)
++                catch
+                 {
+-                    RelinquishTarget();
+-                    isAcquired = false;
++                    controller.Dispose();
++                    throw;
+                 }
+             }
+ 
+-            public bool SetOutputState(OutputSubscriptionRequest subReq, BindingDescriptor bindingDescriptor, int state)
++            private void ReleaseTarget()
+             {
+-                switch (bindingDescriptor.Type)
++                var controller = target;
++                target = null;
++                try
++                {
++                    controller.Disconnect();
++                }
++                finally
+                 {
+-                    case BindingType.Axis:
+-                        SetAxisState(bindingDescriptor, state);
+-                        break;
+-                    case BindingType.Button:
+-                        SetButtonState(bindingDescriptor, state);
+-                        break;
+-                    case BindingType.POV:
+-                        SetPovState(bindingDescriptor, state);
+-                        break;
++                    controller.Dispose();
+                 }
+-                return false;
+             }
+ 
+             public DeviceReport GetDeviceReport()
+@@ -190,16 +203,17 @@ protected DeviceReportNode GetPovReport()
+             }
+ 
+             protected abstract void AcquireTarget();
+-            protected abstract void RelinquishTarget();
+             protected abstract void SetAxisState(BindingDescriptor bindingDescriptor, int state);
+             protected abstract void SetButtonState(BindingDescriptor bindingDescriptor, int state);
+             protected abstract void SetPovState(BindingDescriptor bindingDescriptor, int state);
+ 
+             protected virtual void Dispose(bool disposing)
+             {
+-                if (disposing)
++                if (!disposing) return;
++                lock (_outputGate)
+                 {
+-                    target?.Dispose();
++                    subscriptions.Clear();
++                    if (target != null) ReleaseTarget();
+                 }
+             }
+ 
+diff --git a/Source/Core Providers/Core_ViGEm/Xb360Handler.cs b/Source/Core Providers/Core_ViGEm/Xb360Handler.cs
+index 9d793ca..060e3c5 100644
+--- a/Source/Core Providers/Core_ViGEm/Xb360Handler.cs	
++++ b/Source/Core Providers/Core_ViGEm/Xb360Handler.cs	
+@@ -13,7 +13,7 @@ public partial class Core_ViGEm
+         /// </summary>
+         private class Xb360Handler : DeviceHandler
+         {
+-            private Xbox360Report report = new Xbox360Report();
++            private Xbox360Report report;
+ 
+             private static readonly List<Xbox360Axes> axisIndexes = new List<Xbox360Axes>
+             {
+@@ -50,21 +50,15 @@ public Xb360Handler(DeviceClassDescriptor descriptor, int index) : base(descript
+ 
+             protected override void AcquireTarget()
+             {
+-                target = new Xbox360Controller(_client);
+-                target.Connect();
+-            }
+-
+-            protected override void RelinquishTarget()
+-            {
+-                target.Disconnect();
+-                target = null;
++                report = new Xbox360Report();
++                ConnectTarget(new Xbox360Controller(_client));
+             }
+ 
+             protected override void SetAxisState(BindingDescriptor bindingDescriptor, int state)
+             {
+                 var inputId = bindingDescriptor.Index;
+                 var outState = bindingDescriptor.Index > 3      // If Index is 4 or 5 (Triggers)...
+-                    ? (short)((state / 256) + 128)              // Xbox Triggers are shorts, but 0..255
++                    ? (short)((state + 32768) / 256)              // The driver expects a byte-range trigger value.
+                     : (short) state;                            // Other axes are regular shorts
+                 report.SetAxis(axisIndexes[inputId], outState);
+                 SendReport();
