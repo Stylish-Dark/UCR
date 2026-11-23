@@ -166,6 +166,7 @@ namespace HidWizards.UCR.Views.Controls
             var options = mappingViewModel.GetQuickOutputBindingOptions(descriptor);
             if (category.HasValue)
                 options.RemoveAll(option => option.OutputControl.DeviceBindingCategory != category.Value);
+            var selectedBinding = mappingViewModel.ResolveCollapsedBinding(descriptor, DeviceIoType.Output)?.DeviceBinding;
             var menu = CreateBoundedOutputMenu(placementTarget);
 
             var originalContext = placementTarget.DataContext;
@@ -214,10 +215,19 @@ namespace HidWizards.UCR.Views.Controls
             }
             else
             {
-                foreach (var option in options)
+                // Provider trees may list axes between POV groups. Keep all vJoy hats
+                // together, with each hat's directions in provider index order.
+                var ordered = options.OrderBy(option => CompactInputBindingControl.IsVJoyHat(option) ? option.KeyValue : -1);
+                foreach (var option in ordered)
                 {
                     var capturedOption = option;
                     var caption = CompactInputBindingControl.OutputPickerDisplayName(capturedOption);
+                    var isCurrent = selectedBinding?.IsBound == true &&
+                        selectedBinding.OutputAxisDirection == 0 &&
+                        selectedBinding.DeviceConfigurationGuid == option.DeviceConfigurationGuid &&
+                        selectedBinding.DeviceBindingCategory == option.OutputControl.DeviceBindingCategory &&
+                        selectedBinding.KeyType == option.KeyType && selectedBinding.KeyValue == option.KeyValue &&
+                        selectedBinding.KeySubValue == option.KeySubValue;
                     var header = new StackPanel { Orientation = Orientation.Horizontal };
                     var visual = capturedOption.Visual;
                     header.Children.Add(new ControlGlyphControl
@@ -241,7 +251,9 @@ namespace HidWizards.UCR.Views.Controls
                     var item = new MenuItem
                     {
                         Header = header,
-                        ToolTip = visual?.ToolTip,
+                        ToolTip = caption,
+                        IsCheckable = isCurrent,
+                        IsChecked = isCurrent,
                         Foreground = Brushes.White,
                         Background = Brushes.Transparent,
                         Padding = new Thickness(8, 4, 12, 4)
@@ -267,6 +279,7 @@ namespace HidWizards.UCR.Views.Controls
 
             return menu;
         }
+
 
         private static StackPanel CompoundChoiceHeader(string label,
             ControlVisualKind kind, string controls, double maxLabelWidth = double.PositiveInfinity)

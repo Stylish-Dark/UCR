@@ -551,12 +551,15 @@ namespace HidWizards.UCR.Views.Controls
             var control = option.OutputControl;
             var caption = OutputPickerDisplayName(option.Title,
                 option.Visual?.ControlKind ?? ControlVisualKind.Unknown, control.DeviceBindingCategory);
-            if (control.KeyType == 2 && control.KeyValue >= 0 &&
-                string.Equals(option.OutputDevice?.ProviderName, "Core_vJoyInterfaceWrap", StringComparison.OrdinalIgnoreCase))
+            if (IsVJoyHat(option))
                 return $"POV {control.KeyValue / 4 + 1} {caption}";
 
             return caption;
         }
+
+        internal static bool IsVJoyHat(QuickBindingOption option) =>
+            option.KeyType == 2 && option.KeyValue >= 0 &&
+            string.Equals(option.OutputDevice?.ProviderName, "Core_vJoyInterfaceWrap", StringComparison.OrdinalIgnoreCase);
 
         private void CloseOutputPicker()
         {
