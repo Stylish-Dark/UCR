@@ -618,7 +618,7 @@ namespace HidWizards.UCR.Views.Controls
             if (!hasBounds) workArea = GetPickerWorkArea(target);
             var popupWidth = Math.Min(470, Math.Max(1, workArea.Width - (hasBounds ? 0 : 24)));
             var contentWidth = popupWidth - 30;
-            var tileWidth = contentWidth >= 430 ? 212 : Math.Max(1, contentWidth - 8);
+            var tileWidth = contentWidth >= 430 ? 212 : Math.Max(1, contentWidth - 14);
             var availableHeight = Math.Max(0, Math.Min(340, workArea.Height - 120));
             var buttons = new WrapPanel { MaxWidth = Math.Max(0, contentWidth) };
             var directionals = new WrapPanel { MaxWidth = Math.Max(0, contentWidth) };
@@ -658,7 +658,7 @@ namespace HidWizards.UCR.Views.Controls
                     Foreground = Brushes.White,
                     VerticalAlignment = VerticalAlignment.Center,
                     TextWrapping = TextWrapping.Wrap,
-                    MaxWidth = Math.Max(80, tileWidth - 65)
+                    MaxWidth = Math.Max(0, tileWidth - 64)
                 });
                 var choice = new Button
                 {
@@ -679,12 +679,12 @@ namespace HidWizards.UCR.Views.Controls
                 choice.Click += (sender, args) =>
                 {
                     var card = FindAncestor<MappingCardControl>(this);
-                    var bindingVm = DataContext as DeviceBindingViewModel;
-                    if (card != null && bindingVm != null)
+                    if (card != null && bindingViewModel?.BindingEnabled == true &&
+                        ReferenceEquals(DeviceBinding, selectedBinding))
                     {
                         // Apply before closing. Replacing the output plug-in can
                         // invalidate the old binding view-model during a deferred callback.
-                        if (card.ApplyOutputControlChoice(bindingVm, config.Guid, outputDevice, selectedInfo, controlName: title))
+                        if (card.ApplyOutputControlChoice(bindingViewModel, config.Guid, outputDevice, selectedInfo, controlName: title))
                             popup.IsOpen = false;
                     }
                 };
@@ -733,6 +733,8 @@ namespace HidWizards.UCR.Views.Controls
                         {
                             Text = label,
                             VerticalAlignment = VerticalAlignment.Center,
+                            TextWrapping = TextWrapping.Wrap,
+                            MaxWidth = Math.Max(0, tileWidth - 64),
                             Foreground = Brushes.White
                         });
                         var directional = new Button
@@ -754,10 +756,11 @@ namespace HidWizards.UCR.Views.Controls
                         directional.Click += (sender, args) =>
                         {
                             var card = FindAncestor<MappingCardControl>(this);
-                            var bindingVm = DataContext as DeviceBindingViewModel;
-                            if (card != null && bindingVm != null)
+                            if (card != null && bindingViewModel?.BindingEnabled == true &&
+                                ReferenceEquals(DeviceBinding, selectedBinding))
                             {
-                                if (card.ApplyOutputControlChoice(bindingVm, config.Guid, outputDevice, selectedInfo, selectedSign))
+                                if (card.ApplyOutputControlChoice(bindingViewModel, config.Guid, outputDevice,
+                                    selectedInfo, selectedSign, title))
                                     popup.IsOpen = false;
                             }
                         };
@@ -898,7 +901,7 @@ namespace HidWizards.UCR.Views.Controls
             };
         }
 
-        private static Point PlaceOutputPicker(Rect bounds, Point anchor, Size targetSize, Size popupSize)
+        internal static Point PlaceOutputPicker(Rect bounds, Point anchor, Size targetSize, Size popupSize)
         {
             var left = Math.Max(bounds.Left, Math.Min(anchor.X, bounds.Right - popupSize.Width));
             var below = anchor.Y + targetSize.Height;
@@ -908,7 +911,7 @@ namespace HidWizards.UCR.Views.Controls
             return new Point(left - anchor.X, top - anchor.Y);
         }
 
-        private static bool TryGetPickerBounds(Visual target, Window owner, out Rect bounds)
+        internal static bool TryGetPickerBounds(Visual target, Window owner, out Rect bounds)
         {
             bounds = Rect.Empty;
             var source = PresentationSource.FromVisual(target) as HwndSource;

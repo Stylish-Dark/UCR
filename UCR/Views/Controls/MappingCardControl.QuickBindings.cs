@@ -456,27 +456,22 @@ namespace HidWizards.UCR.Views.Controls
 
         private static ContextMenu CreateFourWayOutputMenu(FrameworkElement anchor)
         {
-            const double margin = 8;
             var menu = CreateDarkContextMenu(anchor);
             menu.Placement = PlacementMode.Bottom;
             var owner = Window.GetWindow(anchor);
-            if (owner == null || owner.ActualWidth <= 2 * margin || owner.ActualHeight <= 2 * margin)
+            if (owner == null || !CompactInputBindingControl.TryGetPickerBounds(anchor, owner, out var bounds))
                 return menu;
 
-            menu.MaxWidth = owner.ActualWidth - 2 * margin;
-            menu.MaxHeight = owner.ActualHeight - 2 * margin;
+            menu.MaxWidth = bounds.Width;
+            menu.MaxHeight = bounds.Height;
             menu.Placement = PlacementMode.Custom;
             menu.CustomPopupPlacementCallback = (popupSize, targetSize, offset) =>
             {
                 var origin = anchor.TranslatePoint(new Point(), owner);
-                var left = Math.Max(margin, Math.Min(origin.X, owner.ActualWidth - popupSize.Width - margin));
-                var bottom = owner.ActualHeight - popupSize.Height - margin;
-                var belowAnchor = origin.Y + targetSize.Height;
-                var top = belowAnchor <= bottom ? belowAnchor : origin.Y - popupSize.Height;
-                top = Math.Max(margin, Math.Min(top, bottom));
+                var position = CompactInputBindingControl.PlaceOutputPicker(bounds, origin, targetSize, popupSize);
                 return new[]
                 {
-                    new CustomPopupPlacement(new Point(left - origin.X, top - origin.Y), PopupPrimaryAxis.None)
+                    new CustomPopupPlacement(position, PopupPrimaryAxis.None)
                 };
             };
             return menu;
