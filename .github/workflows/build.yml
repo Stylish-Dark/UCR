@@ -516,6 +516,38 @@ jobs:
             throw 'The Windows build did not produce UCR.exe.'
           }
 
+      - name: Verify packaged external UI assets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = '.\UCR\bin\Release\Assets'
+          $files = @(
+            Get-ChildItem '.\UCR\Assets\Styles' -Filter '*.xaml' -File
+            Get-ChildItem '.\UCR\Assets\Layouts' -File
+            Get-ChildItem '.\UCR\Assets\Theme' -Filter '*.ini' -File
+            Get-ChildItem '.\UCR\Assets\Glyphs' -Filter '*.ini' -File
+          )
+          foreach ($source in $files) {
+            $section = Split-Path -Leaf $source.Directory.FullName
+            $destination = Join-Path (Join-Path $root $section) $source.Name
+            if (-not (Test-Path -LiteralPath $destination -PathType Leaf)) {
+              throw "External UI asset missing from Windows build: $section\$($source.Name)"
+            }
+            $expected = (Get-FileHash -LiteralPath $source.FullName -Algorithm SHA256).Hash
+            $actual = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash
+            if ($expected -ne $actual) {
+              throw "Outdated external UI asset in Windows build: $section\$($source.Name)"
+            }
+          }
+          Write-Host "Verified $($files.Count) editable UI files are packaged byte-for-byte."
+
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v7
+        with:
+          name: UCR-Windows
+          path: UCR/bin/Release/
+          if-no-files-found: error
+
       - name: Verify offline device menus and profile slots on Windows
         shell: powershell
         run: |
@@ -565,9 +597,9 @@ jobs:
             Assert-Match $cachedMatch $one $oneReopened $true "$api offline picker restores the same slot"
           }
 
-          $cacheRoot = Join-Path $env:RUNNER_TEMP ('ucr-device-cache-' + [guid]::NewGuid())
+          $cacheRoot = [IO.Path]::Combine($env:RUNNER_TEMP, 'ucr-device-cache-' + [guid]::NewGuid().ToString('N'))
           $cacheConstructor = $cacheType.GetConstructor([type[]]@([string]))
-          $store = $cacheConstructor.Invoke([object[]]@($cacheRoot))
+          $store = $cacheConstructor.Invoke([object[]]@([string]$cacheRoot))
           $save = $cacheType.GetMethod('Save')
           $load = $cacheType.GetMethod('LoadProvider')
           $before = [DateTime]::UtcNow.AddDays(-2)
@@ -576,8 +608,8 @@ jobs:
             Get-ChildItem (Join-Path $cacheRoot $provider) | ForEach-Object { $_.LastWriteTimeUtc = $before }
             [void]$save.Invoke($store, [object[]]@($current, $null))
             [void]$save.Invoke($store, [object[]]@($replacement, $null))
-            $reopened = $cacheConstructor.Invoke([object[]]@($cacheRoot))
-            $records = $load.Invoke($reopened, [object[]]@($provider))
+            $reopened = $cacheConstructor.Invoke([object[]]@([string]$cacheRoot))
+            $records = $load.Invoke($reopened, [object[]]@([string]$provider))
             if ($records.Count -ne 2 -or @($records | Where-Object Title -eq 'Current menu').Count -ne 1 -or
                 @($records | Where-Object Title -eq 'Other controller').Count -ne 1) {
               throw 'Reopening the cache did not keep just the newest record per distinct hardware path.'
@@ -596,34 +628,3 @@ jobs:
             if (Test-Path $cacheRoot) { Remove-Item $cacheRoot -Recurse -Force }
           }
 
-      - name: Verify packaged external UI assets
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $root = '.\UCR\bin\Release\Assets'
-          $files = @(
-            Get-ChildItem '.\UCR\Assets\Styles' -Filter '*.xaml' -File
-            Get-ChildItem '.\UCR\Assets\Layouts' -File
-            Get-ChildItem '.\UCR\Assets\Theme' -Filter '*.ini' -File
-            Get-ChildItem '.\UCR\Assets\Glyphs' -Filter '*.ini' -File
-          )
-          foreach ($source in $files) {
-            $section = Split-Path -Leaf $source.Directory.FullName
-            $destination = Join-Path (Join-Path $root $section) $source.Name
-            if (-not (Test-Path -LiteralPath $destination -PathType Leaf)) {
-              throw "External UI asset missing from Windows build: $section\$($source.Name)"
-            }
-            $expected = (Get-FileHash -LiteralPath $source.FullName -Algorithm SHA256).Hash
-            $actual = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash
-            if ($expected -ne $actual) {
-              throw "Outdated external UI asset in Windows build: $section\$($source.Name)"
-            }
-          }
-          Write-Host "Verified $($files.Count) editable UI files are packaged byte-for-byte."
-
-      - name: Upload Windows build
-        uses: actions/upload-artifact@v7
-        with:
-          name: UCR-Windows
-          path: UCR/bin/Release/
-          if-no-files-found: error
