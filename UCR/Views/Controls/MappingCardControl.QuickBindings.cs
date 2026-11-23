@@ -462,7 +462,26 @@ namespace HidWizards.UCR.Views.Controls
             var menu = CreateDarkContextMenu(anchor);
             menu.Placement = PlacementMode.Bottom;
             var owner = Window.GetWindow(anchor);
-            if (owner == null || !CompactInputBindingControl.TryGetPickerBounds(anchor, owner, out var bounds))
+            if (owner == null)
+                return menu;
+
+            RoutedEventHandler anchorUnloaded = (sender, args) => menu.IsOpen = false;
+            EventHandler ownerMoved = (sender, args) => menu.IsOpen = false;
+            SizeChangedEventHandler ownerResized = (sender, args) => menu.IsOpen = false;
+            menu.Opened += (sender, args) =>
+            {
+                anchor.Unloaded += anchorUnloaded;
+                owner.LocationChanged += ownerMoved;
+                owner.SizeChanged += ownerResized;
+            };
+            menu.Closed += (sender, args) =>
+            {
+                anchor.Unloaded -= anchorUnloaded;
+                owner.LocationChanged -= ownerMoved;
+                owner.SizeChanged -= ownerResized;
+            };
+
+            if (!CompactInputBindingControl.TryGetPickerBounds(anchor, owner, out var bounds))
                 return menu;
 
             menu.MaxWidth = bounds.Width;
