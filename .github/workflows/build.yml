@@ -1657,7 +1657,7 @@ jobs:
                       Bind(inactive.Outputs[0], source, BindingType.Button, 0, "A");
                       bankRoute.InactiveOutputRepresentations.Add(new DirectionalOutputBank {
                           Representation = 3, Plugins = new List<Plugin> { inactive } });
-                      DeviceBinding inactiveInput = new DeviceBinding(batch, DeviceIoType.Input) {
+                      DeviceBinding inactiveInput = new DeviceBinding(null, batch, DeviceIoType.Input) {
                           DeviceBindingCategory = DeviceBindingCategory.Range, InputExpressionInputKind = 3,
                           InputExpressionKindConfigured = true };
                       Bind(inactiveInput, sourceInput, BindingType.Axis, 0, "LX");
@@ -1712,6 +1712,11 @@ jobs:
                       Check(!context.BindingManager.IsBindModeActive && !inputBinding.IsInBindMode && !inputBinding.IsBound,
                           "Clearing a waiting input ends capture instead of allowing a late press to refill it");
                       inputBinding.SetDeviceConfigurationGuid(liveInput.Guid);
+                      inputBinding.EnterBindMode();
+                      inputBinding.SetInputExpressionInputKind(3);
+                      Check(!context.BindingManager.IsBindModeActive && !inputBinding.IsInBindMode,
+                          "Switching an input capture from Button to Axis cancels the previous detector");
+                      inputBinding.SetInputExpressionInputKind(0);
                       inputBinding.EnterBindMode();
                       Check(context.BindingManager.IsBindModeActive && inputBinding.IsInBindMode, "The provider capture is active before removing its editor slot");
                       inputVm.Dispose();

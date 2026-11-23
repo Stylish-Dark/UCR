@@ -121,6 +121,7 @@ namespace HidWizards.UCR.Core.Models.Binding
         {
             kind = Math.Max(0, Math.Min(3, kind));
             if (InputExpressionInputKind == kind) return;
+            CancelBindMode();
             var categoryChanged = (InputExpressionInputKind == 0) != (kind == 0);
             InputExpressionInputKind = kind;
             InputExpressionKindConfigured = true;
