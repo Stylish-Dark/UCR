@@ -1,0 +1,134 @@
+diff --git a/Source/Core Providers/Core_vJoyInterfaceWrap/Core_vJoyInterfaceWrap.cs b/Source/Core Providers/Core_vJoyInterfaceWrap/Core_vJoyInterfaceWrap.cs
+index 7c4e0e1..0323a19 100644
+--- a/Source/Core Providers/Core_vJoyInterfaceWrap/Core_vJoyInterfaceWrap.cs	
++++ b/Source/Core Providers/Core_vJoyInterfaceWrap/Core_vJoyInterfaceWrap.cs	
+@@ -58,11 +58,6 @@ public Core_vJoyInterfaceWrap()
+             QueryDevices();
+         }
+ 
+-        ~Core_vJoyInterfaceWrap()
+-        {
+-            Dispose();
+-        }
+-
+         public void Dispose()
+         {
+             Dispose(true);
+@@ -76,7 +71,7 @@ protected virtual void Dispose(bool disposing)
+             {
+                 for (uint devId = 0; devId < 16; devId++)
+                 {
+-                    _vJoyDevices[devId].Dispose();
++                    _vJoyDevices[devId]?.Dispose();
+                 }
+                 _vJoyDevices = null;
+                 vJ = null;
+@@ -132,7 +127,7 @@ public bool UnsubscribeInput(InputSubscriptionRequest subReq)
+         public bool SubscribeOutputDevice(OutputSubscriptionRequest subReq)
+         {
+             var devId = DevIdFromHandle(subReq.DeviceDescriptor.DeviceHandle);
+-            _vJoyDevices[devId].Add(subReq);
++            if (!_vJoyDevices[devId].Add(subReq)) return false;
+             _subscriptionToDevice.Add(subReq.SubscriptionDescriptor.SubscriberGuid, devId);
+             return true;
+         }
+@@ -164,8 +159,7 @@ public bool SetOutputState(OutputSubscriptionRequest subReq, BindingDescriptor b
+                     int pov = (int)(Math.Floor((decimal)(bindingDescriptor.Index / 4)));
+                     int dir = bindingDescriptor.Index % 4;
+                     //Log("vJoy POV output requested - POV {0}, Dir {1}, State {2}", pov, dir, state);
+-                    _vJoyDevices[devId].SetPovState(pov, dir, state);
+-                    break;
++                    return _vJoyDevices[devId].SetPovState(pov, dir, state);
+ 
+                 default:
+                     break;
+@@ -310,13 +304,11 @@ public VjoyDevice(uint id)
+                 }
+             }
+ 
+-            public void Add(OutputSubscriptionRequest subReq)
++            public bool Add(OutputSubscriptionRequest subReq)
+             {
+-                if (_subReqs.Count == 0)
+-                {
+-                    Acquire();
+-                }
++                if (!_acquired && !Acquire()) return false;
+                 _subReqs.Add(subReq.SubscriptionDescriptor.SubscriberGuid, subReq);
++                return true;
+             }
+ 
+             public void Remove(OutputSubscriptionRequest subReq)
+@@ -328,9 +320,9 @@ public void Remove(OutputSubscriptionRequest subReq)
+                 }
+             }
+ 
+-            public void SetPovState(int pov, int dir, int state)
++            public bool SetPovState(int pov, int dir, int state)
+             {
+-                _povHandlers[pov].SetState(dir, state);
++                return _povHandlers[pov].SetState(dir, state);
+             }
+ 
+             public void Dispose()
+@@ -338,14 +330,13 @@ public void Dispose()
+                 Relinquish();
+             }
+ 
+-            private void Acquire()
++            private bool Acquire()
+             {
+-                if (!_acquired)
+-                {
+-                    vJ.AcquireVJD(_deviceId);
+-                    _acquired = true;
+-                    Log("Acquired vJoy device {0}", _deviceId);
+-                }
++                if (!vJ.AcquireVJD(_deviceId)) return false;
++                _acquired = true;
++                foreach (var pov in _povHandlers) pov.Clear();
++                Log("Acquired vJoy device {0}", _deviceId);
++                return true;
+             }
+ 
+             private void Relinquish()
+@@ -370,13 +361,19 @@ public POVHandler(uint device, uint pov)
+                     _povId = pov;
+                 }
+ 
+-                public void SetState(int dir, int state)
++                public void Clear()
++                {
++                    Array.Clear(_axes, 0, _axes.Length);
++                }
++
++                public bool SetState(int dir, int state)
+                 {
+                     var axis = DirToAxis(dir);
+-                    var vector = DirToCoordinate(dir);
+-                    //Log("POV Dir: {0} Axis: {1}, Vector: {2}", dir, axis, vector);
+-                    _axes[axis] = state == 0 ? 0 : vector;
+-                    SetPovState();
++                    var previous = _axes[axis];
++                    _axes[axis] = state == 0 ? 0 : DirToCoordinate(dir);
++                    if (SetPovState()) return true;
++                    _axes[axis] = previous;
++                    return false;
+                 }
+ 
+                 private int DirToCoordinate(int dir)
+@@ -386,11 +383,10 @@ private int DirToCoordinate(int dir)
+                     return -1;
+                 }
+ 
+-                private void SetPovState()
++                private bool SetPovState()
+                 {
+-                    var angle = (_axes[0] == 0 && _axes[1] == 0 ? -1 : GetAngle());
+-                    //Log("Pov Angle: {0}", angle);
+-                    vJ.SetContPov(angle, _deviceId, _povId);
++                    var angle = _axes[0] == 0 && _axes[1] == 0 ? -1 : GetAngle();
++                    return vJ.SetContPov(angle, _deviceId, _povId);
+                 }
+ 
+                 private int DirToAxis(int dir)

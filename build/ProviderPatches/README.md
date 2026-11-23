@@ -6,4 +6,6 @@
 
 `CoreInterceptionPartialShutdown.patch` keeps cleanup safe when driver initialization fails before the polling timer starts.
 
+`CoreVJoyOutput.patch` propagates vJoy acquisition and POV write failures, clears the cached hat directions on reacquire, and avoids finalizing managed provider objects when an optional dependency is missing.
+
 The former pinned `Core_ViGEm.dll` override is intentionally not used, because it would overwrite the patched provider produced from source. Core Interception keeps its approved DLL override.
