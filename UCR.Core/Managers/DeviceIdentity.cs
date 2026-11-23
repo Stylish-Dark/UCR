@@ -78,6 +78,7 @@ namespace HidWizards.UCR.Core.Managers
         {
             if (left == null || right == null) return false;
             if (!string.Equals(left.ProviderName, right.ProviderName, StringComparison.OrdinalIgnoreCase)) return false;
+            if (UsesLogicalSlotIdentity(left.ProviderName)) return DescriptorEquals(left, right);
 
             if (!string.IsNullOrEmpty(left.HidPath) && !string.IsNullOrEmpty(right.HidPath))
             {
@@ -136,6 +137,18 @@ namespace HidWizards.UCR.Core.Managers
 
             return !string.IsNullOrWhiteSpace(cachedDevice.DeviceHandle) &&
                    string.Equals(cachedDevice.DeviceHandle, liveDevice.DeviceHandle, StringComparison.OrdinalIgnoreCase);
+        }
+
+        internal static bool CachedOutputMatchesConfiguration(Device cached, Device configured)
+        {
+            if (cached == null || configured == null) return false;
+            if (UsesLogicalSlotIdentity(configured.ProviderName)) return DescriptorEquals(cached, configured);
+
+            if (!string.IsNullOrWhiteSpace(cached.HidPath) && !string.IsNullOrWhiteSpace(configured.HidPath))
+                return CacheRepresentsLiveEndpoint(cached, configured);
+
+            return string.IsNullOrWhiteSpace(cached.HidPath) && string.IsNullOrWhiteSpace(configured.HidPath) &&
+                   DescriptorEquals(cached, configured);
         }
 
         public static bool UsesLogicalSlotIdentity(string providerName)

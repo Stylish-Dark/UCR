@@ -79,16 +79,16 @@ namespace HidWizards.UCR.Core.Managers
                     return new List<Device>();
                 }
 
-                foreach (var file in files)
+                // A physical controller can leave several files behind when Windows changes its
+                // provider instance number. Present the newest menu for that hardware path.
+                foreach (var file in files.Select(path => new FileInfo(path))
+                             .OrderByDescending(file => file.LastWriteTimeUtc)
+                             .ThenBy(file => file.Name, StringComparer.OrdinalIgnoreCase))
                 {
-                    var device = Read(provider, file);
+                    var device = Read(provider, file.FullName);
                     if (device == null) continue;
-                    var canonicalName = GetDeviceFileName(device);
-                    if (!result.ContainsKey(canonicalName) ||
-                        string.Equals(Path.GetFileName(file), canonicalName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        result[canonicalName] = device;
-                    }
+                    var endpoint = GetCachedEndpointKey(device);
+                    if (!result.ContainsKey(endpoint)) result.Add(endpoint, device);
                 }
 
                 return _providerCache[provider] = result.Values.ToList();
@@ -246,6 +246,16 @@ namespace HidWizards.UCR.Core.Managers
                 return BitConverter.ToString(sha256.ComputeHash(Encoding.UTF8.GetBytes(identity)))
                     .Replace("-", string.Empty) + ".json";
             }
+        }
+
+        private static string GetCachedEndpointKey(Device device)
+        {
+            if (DeviceIdentity.UsesLogicalSlotIdentity(device.ProviderName))
+                return device.ProviderName + "|slot|" + device.DeviceNumber + "|" + device.DeviceHandle;
+            if (!string.Equals(device.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(device.HidPath))
+                return device.ProviderName + "|hid|" + device.HidPath;
+            return GetDeviceFileName(device);
         }
 
         private string GetProviderDirectory(string provider)

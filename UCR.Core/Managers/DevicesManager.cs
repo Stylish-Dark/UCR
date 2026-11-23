@@ -221,18 +221,11 @@ namespace HidWizards.UCR.Core.Managers
             {
                 foreach (var cached in _deviceCacheStore.LoadAllProviders())
                 {
-                    if (result.Any(device => SameRememberedInput(cached, device))) continue;
+                    if (result.Any(device => DeviceIdentity.PersistedEquals(cached, device))) continue;
                     result.Add(cached.CopyForProfile());
                 }
             }
             return result;
-        }
-
-        private static bool SameRememberedInput(Device left, Device right)
-        {
-            if (DeviceIdentity.UsesLogicalSlotIdentity(left.ProviderName))
-                return DeviceIdentity.DescriptorEquals(left, right);
-            return DeviceIdentity.PersistedEquals(left, right);
         }
 
         private void RememberInputDevice(Device device, List<DeviceBindingNode> menu)
@@ -268,7 +261,7 @@ namespace HidWizards.UCR.Core.Managers
                 {
                     var device = configuration?.Device;
                     if (device == null || IsInputRemoved(device) || devices.Any(candidate =>
-                            SameRememberedInput(device, candidate) ||
+                            DeviceIdentity.PersistedEquals(device, candidate) ||
                             (DeviceIdentity.LogicalEquals(device, candidate) &&
                              device.LogicalInstanceNumber == candidate.LogicalInstanceNumber))) continue;
 
@@ -1537,9 +1530,7 @@ namespace HidWizards.UCR.Core.Managers
                 }
                 var cachedOutput = _outputBindingCache.LoadProvider(device.ProviderName)
                     .FirstOrDefault(candidate => candidate.HasBindingMenu &&
-                        DeviceIdentity.DescriptorEquals(candidate, device) &&
-                        string.Equals(candidate.HidPath ?? string.Empty, device.HidPath ?? string.Empty,
-                            StringComparison.OrdinalIgnoreCase));
+                        DeviceIdentity.CachedOutputMatchesConfiguration(candidate, device));
                 if (cachedOutput != null) return cachedOutput.GetDeviceBindingMenu();
                 if (device.HasBindingMenu) return device.GetDeviceBindingMenu();
             }
@@ -1548,7 +1539,7 @@ namespace HidWizards.UCR.Core.Managers
             {
                 var remembered = _deviceCacheStore.LoadProvider(device.ProviderName);
                 var cachedDevice = remembered.FirstOrDefault(candidate =>
-                    candidate.HasBindingMenu && SameRememberedInput(candidate, device));
+                    candidate.HasBindingMenu && DeviceIdentity.PersistedEquals(candidate, device));
                 if (cachedDevice != null) return cachedDevice.GetDeviceBindingMenu();
 
                 // Core Interception exposes the same key descriptors on every keyboard.
