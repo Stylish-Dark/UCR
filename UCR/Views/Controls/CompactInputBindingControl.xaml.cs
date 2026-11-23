@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Threading;
 using HidWizards.UCR.ViewModels.Presentation;
 using HidWizards.UCR.Core.Models;
 using HidWizards.UCR.Core.Models.Binding;
@@ -654,8 +655,13 @@ namespace HidWizards.UCR.Views.Controls
             var hasBounds = owner != null && TryGetPickerBounds(target, owner, out workArea);
             if (!hasBounds) workArea = GetPickerWorkArea(target);
             var popupWidth = Math.Min(470, Math.Max(1, workArea.Width - (hasBounds ? 0 : 24)));
-            var contentWidth = popupWidth - 30;
-            var tileWidth = contentWidth >= 430 ? 212 : Math.Max(1, contentWidth - 14);
+            var contentWidth = Math.Max(0, popupWidth - 30);
+            // Leave room for the scrollbar so adding a row cannot force a
+            // two-column picker to wrap into a single column.
+            var viewportWidth = contentWidth - SystemParameters.VerticalScrollBarWidth;
+            var tileWidth = contentWidth >= 430
+                ? Math.Min(212, Math.Floor(viewportWidth / 2) - 6)
+                : Math.Max(1, viewportWidth - 6);
             var availableHeight = Math.Max(0, Math.Min(340, workArea.Height - 120));
             var buttons = new WrapPanel { MaxWidth = Math.Max(0, contentWidth) };
             var directionals = new WrapPanel { MaxWidth = Math.Max(0, contentWidth) };
@@ -663,6 +669,7 @@ namespace HidWizards.UCR.Views.Controls
             var axes = new WrapPanel { MaxWidth = Math.Max(0, contentWidth) };
             var events = new WrapPanel { MaxWidth = Math.Max(0, contentWidth) };
             string selectedCategory = null;
+            Button selectedTile = null;
 
             foreach (var option in options)
             {
@@ -709,7 +716,11 @@ namespace HidWizards.UCR.Views.Controls
                     ToolTip = caption
                 };
                 AutomationProperties.SetName(choice, caption);
-                if (isCurrentChoice) AutomationProperties.SetItemStatus(choice, "Current binding");
+                if (isCurrentChoice)
+                {
+                    AutomationProperties.SetItemStatus(choice, "Current binding");
+                    selectedTile = choice;
+                }
                 var selectedInfo = info;
                 choice.Click += (sender, args) =>
                 {
@@ -793,7 +804,10 @@ namespace HidWizards.UCR.Views.Controls
                         };
                         AutomationProperties.SetName(directional, label);
                         if (isSelectedControl && selectedBinding.OutputAxisDirection == selectedSign)
+                        {
                             AutomationProperties.SetItemStatus(directional, "Current binding");
+                            selectedTile = directional;
+                        }
                         directional.Click += (sender, args) =>
                         {
                             var card = FindAncestor<MappingCardControl>(this);
@@ -858,8 +872,6 @@ namespace HidWizards.UCR.Views.Controls
                 var count = category.Items.Children.Count;
                 // A device should not present tabs with no selectable controls.
                 if (count == 0) continue;
-                // Two 212-DIP tiles per row; size to actual content, with a
-                // scrollbar only when the selected category needs it.
                 tabs.Items.Add(new TabItem
                 {
                     Header = category.Title,
@@ -879,6 +891,14 @@ namespace HidWizards.UCR.Views.Controls
                     StringComparison.Ordinal));
             if (tabs.Items.Count > 0)
                 tabs.SelectedIndex = matchingTab >= 0 ? matchingTab : 0;
+            if (selectedTile != null)
+            {
+                popup.Opened += (sender, args) =>
+                    popup.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+                    {
+                        if (popup.IsOpen && selectedTile.IsVisible) selectedTile.BringIntoView();
+                    }));
+            }
             // Preserve the category chosen for this binding; never force Buttons.
             var root = new StackPanel();
             KeyboardNavigation.SetTabNavigation(root, KeyboardNavigationMode.Cycle);
