@@ -101,12 +101,22 @@ namespace HidWizards.UCR.Core.Managers
         }
 
         /// <summary>
-        /// Equality used by user-selection surfaces. Exact provider descriptors match immediately;
-        /// otherwise a reconciled logical device must also have the same logical ordinal.
+        /// Equality used by user-selection surfaces. Physical HID paths take precedence over
+        /// provider instance numbers, which can be reused when a device disconnects.
         /// </summary>
         public static bool SelectionEquals(Device left, Device right)
         {
             if (left == null || right == null) return false;
+            if (!string.Equals(left.ProviderName, right.ProviderName, StringComparison.OrdinalIgnoreCase)) return false;
+
+            if (UsesLogicalSlotIdentity(left.ProviderName)) return DescriptorEquals(left, right);
+
+            if (!string.Equals(left.ProviderName, "Core_Interception", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(left.HidPath) && !string.IsNullOrWhiteSpace(right.HidPath))
+            {
+                return string.Equals(left.HidPath, right.HidPath, StringComparison.OrdinalIgnoreCase);
+            }
+
             return DescriptorEquals(left, right) ||
                    (LogicalEquals(left, right) && left.LogicalInstanceNumber == right.LogicalInstanceNumber);
         }
@@ -115,6 +125,9 @@ namespace HidWizards.UCR.Core.Managers
         {
             if (cachedDevice == null || liveDevice == null) return false;
             if (!string.Equals(cachedDevice.ProviderName, liveDevice.ProviderName, StringComparison.OrdinalIgnoreCase)) return false;
+
+            if (UsesLogicalSlotIdentity(cachedDevice.ProviderName))
+                return DescriptorEquals(cachedDevice, liveDevice);
 
             if (!string.IsNullOrWhiteSpace(cachedDevice.HidPath) && !string.IsNullOrWhiteSpace(liveDevice.HidPath))
             {

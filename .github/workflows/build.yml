@@ -516,6 +516,56 @@ jobs:
             throw 'The Windows build did not produce UCR.exe.'
           }
 
+      - name: Verify device picker identity on Windows
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = (Resolve-Path '.\UCR\bin\Release').Path
+          $assembly = [Reflection.Assembly]::LoadFrom((Join-Path $root 'UCR.Core.dll'))
+          $device = $assembly.GetType('HidWizards.UCR.Core.Models.Device', $true)
+          $identity = $assembly.GetType('HidWizards.UCR.Core.Managers.DeviceIdentity', $true)
+          $selection = $identity.GetMethod('SelectionEquals')
+          $cache = $identity.GetMethod('CacheRepresentsLiveEndpoint')
+
+          function New-TestDevice($provider, $handle, [int]$slot, $hid, [int]$ordinal = 1) {
+            $result = [Activator]::CreateInstance($device)
+            $result.ProviderName = $provider
+            $result.DeviceHandle = $handle
+            $result.DeviceNumber = $slot
+            $result.HidPath = $hid
+            $result.LogicalInstanceNumber = $ordinal
+            return $result
+          }
+
+          function Assert-Match($method, $left, $right, [bool]$expected, $case) {
+            $actual = $method.Invoke($null, [object[]]@($left, $right))
+            if ($actual -ne $expected) { throw "$case expected $expected but got $actual" }
+            Write-Host "PASS $case"
+          }
+
+          $saved = New-TestDevice 'SharpDX_DirectInput' 'VID_054C&PID_0CE6' 0 'hid-A'
+          $replacement = New-TestDevice 'SharpDX_DirectInput' 'VID_054C&PID_0CE6' 0 'hid-B'
+          $renumbered = New-TestDevice 'SharpDX_DirectInput' 'VID_054C&PID_0CE6' 1 'HID-a'
+          $legacy = New-TestDevice 'SharpDX_DirectInput' 'VID_054C&PID_0CE6' 0 $null
+          Assert-Match $selection $saved $replacement $false 'Same-model replacement reusing the old slot remains distinct'
+          Assert-Match $selection $saved $renumbered $true 'Original device is recognized after its slot changes'
+          Assert-Match $selection $legacy $saved $true 'Legacy device without HID path retains descriptor lookup'
+          Assert-Match $cache $saved $replacement $false 'Replacement does not inherit the cached controls'
+          Assert-Match $cache $saved $renumbered $true 'Original device retains its cached controls after renumbering'
+          foreach ($provider in @('SharpDX_XInput', 'Core_ViGEm')) {
+            $slotOne = New-TestDevice $provider 'same-handle' 0 'same-hid'
+            $slotTwo = New-TestDevice $provider 'same-handle' 1 'same-hid'
+            $sameSlot = New-TestDevice $provider 'same-handle' 0 'changed-hid'
+            Assert-Match $selection $slotOne $slotTwo $false "$provider selection distinguishes numbered slots"
+            Assert-Match $cache $slotOne $slotTwo $false "$provider cache distinguishes numbered slots"
+            Assert-Match $cache $slotOne $sameSlot $true "$provider cached slot follows its slot identity"
+          }
+          $keyboardOne = New-TestDevice 'Core_Interception' 'Keyboard_Audit' 3 $null 1
+          $keyboardTwo = New-TestDevice 'Core_Interception' 'Keyboard_Audit' 4 $null 2
+          $keyboardRenumbered = New-TestDevice 'Core_Interception' 'Keyboard_Audit' 5 $null 1
+          Assert-Match $selection $keyboardOne $keyboardTwo $false 'Identical detected keyboards keep distinct ordinals'
+          Assert-Match $selection $keyboardOne $keyboardRenumbered $true 'Logical keyboard selection survives endpoint renumbering'
+
       - name: Verify packaged external UI assets
         shell: pwsh
         run: |
