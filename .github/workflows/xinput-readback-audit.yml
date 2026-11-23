@@ -521,7 +521,10 @@ jobs:
               private static void WaitForDisconnected() {
                   var until = DateTime.UtcNow.AddSeconds(5);
                   do {
-                      if (!Connected().HasValue) return;
+                      XInputState state;
+                      bool any = false;
+                      for (uint slot = 0; slot < 4; slot++) any |= ReadXInput(slot, out state);
+                      if (!any) return;
                       Thread.Sleep(30);
                   } while (DateTime.UtcNow < until);
                   throw new InvalidOperationException("An XInput target remained connected.");
