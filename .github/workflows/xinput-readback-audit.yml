@@ -36,7 +36,8 @@ jobs:
           Write-Host 'Plug and Play inventory while the virtual controller is connected'
           $nodes = @(Get-PnpDevice -PresentOnly | Where-Object {
               $_.FriendlyName -match 'ViGEm|Gamepad Emulation|Xbox|XINPUT|Unknown Device' -or
-              $_.InstanceId -match '^(VIGEM|USB\VID_045E|HID\VID_045E|XUSB)'
+              $_.InstanceId -like 'USB\VID_045E*' -or $_.InstanceId -like 'HID\VID_045E*' -or
+              $_.InstanceId -like 'VIGEM*' -or $_.InstanceId -like 'XUSB*'
           })
           foreach ($node in $nodes) {
               Write-Host "$($node.InstanceId) $($node.Status) $($node.FriendlyName)"
@@ -45,6 +46,29 @@ jobs:
                 'DEVPKEY_Device_DriverInfPath','DEVPKEY_Device_Service','DEVPKEY_Device_Parent'
               ) -ErrorAction SilentlyContinue | ForEach-Object {
                 Write-Host "$($_.KeyName) $($_.Data -join ', ')"
+              }
+          }
+          $xbox = Get-PnpDevice -PresentOnly | Where-Object {
+              $_.InstanceId -like 'USB\VID_045E&PID_028E*'
+          } | Select-Object -First 1
+          if ($xbox) {
+              $problem = (Get-PnpDeviceProperty -InstanceId $xbox.InstanceId -KeyName 'DEVPKEY_Device_ProblemCode').Data
+              if ($problem -eq 28) {
+                  Write-Host 'The Xbox child exists but Windows has no matching driver. Staging the signed Microsoft catalog package.'
+                  $driverDir = Join-Path $env:RUNNER_TEMP 'ucr-xusb'
+                  New-Item -ItemType Directory -Path $driverDir -Force | Out-Null
+                  $cab = Join-Path $driverDir 'xusb21.cab'
+                  Invoke-WebRequest -UseBasicParsing 'https://catalog.s.download.windowsupdate.com/msdownload/update/driver/drvs/2013/01/20289581_7385d6be1b053a35955a910f11436729a1d4cb56.cab' -OutFile $cab
+                  if ((Get-FileHash -LiteralPath $cab -Algorithm SHA256).Hash -ne '49BD427E53F5C63A1A03B791CF6DEEFE3A2AC5700DC4DB5E39FAD98F3070FA6') {
+                      throw 'The Microsoft catalog package did not match the downloaded update.'
+                  }
+                  & expand.exe $cab '-F:*' $driverDir
+                  if ($LASTEXITCODE -ne 0) { throw 'The Microsoft catalog package could not be extracted.' }
+                  $inf = Get-ChildItem $driverDir -Filter xusb21.inf -Recurse | Select-Object -First 1
+                  if (-not $inf) { throw 'The Microsoft catalog package did not contain xusb21.inf.' }
+                  & pnputil.exe /add-driver $inf.FullName /install
+                  if ($LASTEXITCODE -notin @(0,3010)) { throw "Windows did not accept the signed Xbox driver ($LASTEXITCODE)." }
+                  Get-PnpDevice -InstanceId $xbox.InstanceId | Format-List Status,FriendlyName,InstanceId
               }
           }
           '@ | Set-Content (Join-Path $env:RUNNER_TEMP 'ucr-pnp-probe.ps1')
@@ -254,7 +278,8 @@ jobs:
                       UseShellExecute = false
                   };
                   using (var child = System.Diagnostics.Process.Start(command)) {
-                      if (!child.WaitForExit(15000)) child.Kill();
+                      if (!child.WaitForExit(45000)) child.Kill();
+                    else if (child.ExitCode != 0) Console.WriteLine("Live driver inspection exited with code " + child.ExitCode);
                   }
               }
               private const BindingFlags InstanceFields = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
