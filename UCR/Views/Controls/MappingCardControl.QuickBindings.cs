@@ -217,6 +217,7 @@ namespace HidWizards.UCR.Views.Controls
                 foreach (var option in options)
                 {
                     var capturedOption = option;
+                    var caption = CompactInputBindingControl.OutputPickerDisplayName(capturedOption);
                     var header = new StackPanel { Orientation = Orientation.Horizontal };
                     var visual = capturedOption.Visual;
                     header.Children.Add(new ControlGlyphControl
@@ -230,7 +231,7 @@ namespace HidWizards.UCR.Views.Controls
                     });
                     header.Children.Add(new TextBlock
                     {
-                        Text = capturedOption.Title,
+                        Text = caption,
                         MaxWidth = Math.Max(0, menu.MaxWidth - 100),
                         TextTrimming = TextTrimming.CharacterEllipsis,
                         VerticalAlignment = VerticalAlignment.Center,
@@ -245,7 +246,7 @@ namespace HidWizards.UCR.Views.Controls
                         Background = Brushes.Transparent,
                         Padding = new Thickness(8, 4, 12, 4)
                     };
-                    System.Windows.Automation.AutomationProperties.SetName(item, capturedOption.Title);
+                    System.Windows.Automation.AutomationProperties.SetName(item, caption);
                     item.Click += (clickSender, clickArgs) =>
                     {
                         if (!IsCurrentAnchor() || !mappingViewModel.CanApplyOutputBinding) return;

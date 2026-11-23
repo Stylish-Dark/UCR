@@ -546,6 +546,18 @@ namespace HidWizards.UCR.Views.Controls
             }
         }
 
+        internal static string OutputPickerDisplayName(QuickBindingOption option)
+        {
+            var control = option.OutputControl;
+            var caption = OutputPickerDisplayName(option.Title,
+                option.Visual?.ControlKind ?? ControlVisualKind.Unknown, control.DeviceBindingCategory);
+            if (control.KeyType == 2 && control.KeyValue >= 0 &&
+                string.Equals(option.OutputDevice?.ProviderName, "Core_vJoyInterfaceWrap", StringComparison.OrdinalIgnoreCase))
+                return $"POV {control.KeyValue / 4 + 1} {caption}";
+
+            return caption;
+        }
+
         private void CloseOutputPicker()
         {
             if (_outputPicker != null) _outputPicker.IsOpen = false;
@@ -648,10 +660,7 @@ namespace HidWizards.UCR.Views.Controls
                 var title = option.Title ?? string.Empty;
                 var category = OutputPickerCategory(info.DeviceBindingCategory, visual.ControlKind, title);
                 if (category == null) continue;
-                var caption = OutputPickerDisplayName(title, visual.ControlKind, info.DeviceBindingCategory);
-                if (info.KeyType == 2 && info.KeyValue >= 0 &&
-                    string.Equals(outputDevice.ProviderName, "Core_vJoyInterfaceWrap", StringComparison.OrdinalIgnoreCase))
-                    caption = $"POV {info.KeyValue / 4 + 1} {caption}";
+                var caption = OutputPickerDisplayName(option);
                 var isSelectedControl = DeviceBinding.IsBound && DeviceBinding.KeyType == info.KeyType &&
                     DeviceBinding.KeyValue == info.KeyValue && DeviceBinding.KeySubValue == info.KeySubValue;
                 var isCurrentChoice = isSelectedControl && DeviceBinding.OutputAxisDirection == 0;
