@@ -182,9 +182,27 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var profile = DeviceBinding?.Profile;
             if (profile == null) return null;
             var guid = DeviceBinding.DeviceConfigurationGuid;
-            return guid == Guid.Empty
-                ? profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output)
-                : profile.GetDeviceConfiguration(DeviceIoType.Output, guid);
+            if (guid != Guid.Empty) return profile.GetDeviceConfiguration(DeviceIoType.Output, guid);
+
+            // Keep the primary accessible if no device offers this category. A
+            // single-output picker can still change type by selecting a control.
+            return FindCompatibleOutputConfiguration(profile, DeviceBindingCategory) ??
+                   profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output);
+        }
+
+        internal static DeviceConfiguration FindCompatibleOutputConfiguration(Profile profile,
+            DeviceBindingCategory category, Guid preferred = default(Guid))
+        {
+            var preference = preferred == Guid.Empty ? null : profile.GetDeviceConfiguration(DeviceIoType.Output, preferred);
+            if (SupportsOutputCategory(preference, category, profile.Context)) return preference;
+
+            var primary = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output);
+            if (!ReferenceEquals(primary, preference) && SupportsOutputCategory(primary, category, profile.Context))
+                return primary;
+
+            return profile.GetDeviceConfigurationList(DeviceIoType.Output)
+                .FirstOrDefault(device => !ReferenceEquals(device, primary) && !ReferenceEquals(device, preference) &&
+                    SupportsOutputCategory(device, category, profile.Context));
         }
 
         public bool CanBindCurrentDevice

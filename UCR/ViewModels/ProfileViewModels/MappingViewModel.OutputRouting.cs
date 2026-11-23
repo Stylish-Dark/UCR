@@ -205,20 +205,14 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
         {
             if (plugin?.Outputs == null) return;
             var profile = ProfileViewModel.Profile;
-            var candidates = profile.GetDeviceConfigurationList(DeviceIoType.Output);
             for (var index = 0; index < plugin.Outputs.Count && index < plugin.OutputCategories.Count; index++)
             {
                 var output = plugin.Outputs[index];
                 if (output.IsBound || (fillBlankOnly && output.DeviceConfigurationGuid != Guid.Empty)) continue;
                 var category = plugin.OutputCategories[index].Category;
-                var compatible = candidates.Where(device => DeviceBindingViewModel.SupportsOutputCategory(
-                    device, category, profile.Context)).ToList();
                 var preference = preferredDevices != null && index < preferredDevices.Count
                     ? preferredDevices[index] : Guid.Empty;
-                var primary = profile.GetPrimaryDeviceConfiguration(DeviceIoType.Output);
-                var selected = compatible.FirstOrDefault(device => device.Guid == preference)
-                    ?? compatible.FirstOrDefault(device => device.Guid == primary?.Guid)
-                    ?? compatible.FirstOrDefault();
+                var selected = DeviceBindingViewModel.FindCompatibleOutputConfiguration(profile, category, preference);
                 if (selected != null)
                     output.DeviceConfigurationGuid = selected.Guid;
             }
