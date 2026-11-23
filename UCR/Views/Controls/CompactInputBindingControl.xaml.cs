@@ -565,18 +565,16 @@ namespace HidWizards.UCR.Views.Controls
                 StaysOpen = false
             };
             var owner = Window.GetWindow(target);
-            if (owner != null)
+            if (owner != null && TryGetPickerBounds(target, owner, out var bounds))
             {
                 popup.Placement = PlacementMode.Custom;
                 popup.CustomPopupPlacementCallback = (popupSize, targetSize, offset) =>
                 {
-                    var anchorLeft = target.TranslatePoint(new Point(0, 0), owner).X;
-                    var left = Math.Max(8 - anchorLeft,
-                        Math.Min(0, owner.ActualWidth - anchorLeft - popupSize.Width - 8));
+                    var anchor = target.TranslatePoint(new Point(), owner);
+                    var position = PlaceOutputPicker(bounds, anchor, targetSize, popupSize);
                     return new[]
                     {
-                        new CustomPopupPlacement(new Point(left, targetSize.Height), PopupPrimaryAxis.Vertical),
-                        new CustomPopupPlacement(new Point(left, -popupSize.Height), PopupPrimaryAxis.Vertical)
+                        new CustomPopupPlacement(position, PopupPrimaryAxis.None)
                     };
                 };
             }
@@ -615,16 +613,17 @@ namespace HidWizards.UCR.Views.Controls
                 ?? new List<QuickBindingOption>();
             var target = popup.PlacementTarget as FrameworkElement;
             var owner = target == null ? null : Window.GetWindow(target);
-            var workArea = GetPickerWorkArea(target);
-            var ownerWidth = owner?.ActualWidth ?? workArea.Width;
-            var popupWidth = Math.Min(470, Math.Min(workArea.Width - 24, ownerWidth - 16));
+            var workArea = Rect.Empty;
+            var hasBounds = owner != null && TryGetPickerBounds(target, owner, out workArea);
+            if (!hasBounds) workArea = GetPickerWorkArea(target);
+            var popupWidth = Math.Min(470, Math.Max(1, workArea.Width - (hasBounds ? 0 : 24)));
             var contentWidth = popupWidth - 30;
-            var tileWidth = contentWidth >= 430 ? 212 : contentWidth - 8;
-            var availableHeight = Math.Max(100, Math.Min(340, workArea.Height - 150));
-            var buttons = new WrapPanel { Width = contentWidth };
-            var directionals = new WrapPanel { Width = contentWidth };
-            var axes = new WrapPanel { Width = contentWidth };
-            var events = new WrapPanel { Width = contentWidth };
+            var tileWidth = contentWidth >= 430 ? 212 : Math.Max(1, contentWidth - 8);
+            var availableHeight = Math.Max(0, Math.Min(340, workArea.Height - 120));
+            var buttons = new WrapPanel { MaxWidth = Math.Max(0, contentWidth) };
+            var directionals = new WrapPanel { MaxWidth = Math.Max(0, contentWidth) };
+            var axes = new WrapPanel { MaxWidth = Math.Max(0, contentWidth) };
+            var events = new WrapPanel { MaxWidth = Math.Max(0, contentWidth) };
             string selectedCategory = null;
 
             foreach (var option in options)
@@ -821,6 +820,7 @@ namespace HidWizards.UCR.Views.Controls
                     {
                         Content = category.Items,
                         MaxHeight = availableHeight,
+                        HorizontalContentAlignment = HorizontalAlignment.Stretch,
                         HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
                         VerticalScrollBarVisibility = ScrollBarVisibility.Auto
                     }
@@ -896,6 +896,32 @@ namespace HidWizards.UCR.Views.Controls
                 Padding = new Thickness(5),
                 Width = popupWidth
             };
+        }
+
+        private static Point PlaceOutputPicker(Rect bounds, Point anchor, Size targetSize, Size popupSize)
+        {
+            var left = Math.Max(bounds.Left, Math.Min(anchor.X, bounds.Right - popupSize.Width));
+            var below = anchor.Y + targetSize.Height;
+            var above = anchor.Y - popupSize.Height;
+            var top = below + popupSize.Height <= bounds.Bottom ? below : above;
+            top = Math.Max(bounds.Top, Math.Min(top, bounds.Bottom - popupSize.Height));
+            return new Point(left - anchor.X, top - anchor.Y);
+        }
+
+        private static bool TryGetPickerBounds(Visual target, Window owner, out Rect bounds)
+        {
+            bounds = Rect.Empty;
+            var source = PresentationSource.FromVisual(target) as HwndSource;
+            if (source?.CompositionTarget == null || owner.ActualWidth <= 16 || owner.ActualHeight <= 16)
+                return false;
+
+            var screenPoint = target.PointToScreen(new Point());
+            var area = System.Windows.Forms.Screen.FromPoint(
+                new System.Drawing.Point((int)screenPoint.X, (int)screenPoint.Y)).WorkingArea;
+            var monitor = new Rect(owner.PointFromScreen(new Point(area.Left, area.Top)),
+                owner.PointFromScreen(new Point(area.Right, area.Bottom)));
+            bounds = Rect.Intersect(new Rect(8, 8, owner.ActualWidth - 16, owner.ActualHeight - 16), monitor);
+            return !bounds.IsEmpty && bounds.Width >= 220 && bounds.Height >= 120;
         }
 
         private static Rect GetPickerWorkArea(Visual target)
