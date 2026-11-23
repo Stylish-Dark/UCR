@@ -4,4 +4,6 @@
 
 `CoreViGEmOutput.patch` serializes acquisition, release and report writes for each virtual Xbox 360 or DualShock 4 controller. New targets begin with neutral reports. Stale subscribers cannot write to a reacquired target, and successful writes return success to UCR. Xbox trigger conversion covers the signed input range in equal-width byte steps.
 
+`CoreInterceptionPartialShutdown.patch` keeps cleanup safe when driver initialization fails before the polling timer starts.
+
 The former pinned `Core_ViGEm.dll` override is intentionally not used, because it would overwrite the patched provider produced from source. Core Interception keeps its approved DLL override.
