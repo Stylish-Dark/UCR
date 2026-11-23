@@ -219,13 +219,16 @@ jobs:
           using HidWizards.UCR.ViewModels.ProfileViewModels;
           using HidWizards.UCR.ViewModels.Presentation;
 
-          internal sealed class FunctionalKeyboard : IInputProvider
+          internal sealed class FunctionalKeyboard : IInputProvider, IBindModeProvider
           {
               public string ProviderName { get { return "FunctionalKeyboard"; } }
               public bool IsLive { get { return true; } }
               public void RefreshLiveState() { }
               public void RefreshDevices() { }
               public void Dispose() { }
+              public DetectionMode Mode { get; private set; }
+              public void SetDetectionMode(DetectionMode mode, DeviceDescriptor device,
+                  Action<ProviderDescriptor, DeviceDescriptor, BindingReport, short> callback = null) { Mode = mode; }
               public bool SubscribeInput(InputSubscriptionRequest request) { return true; }
               public bool UnsubscribeInput(InputSubscriptionRequest request) { return true; }
               public DeviceReport GetInputDeviceReport(DeviceDescriptor descriptor)
@@ -381,8 +384,9 @@ jobs:
                               "Output capture updates the existing collapsed glyph without destroying its focus target");
                           mapping.QuickBindOutputAsync(Descriptor(mapping)).GetAwaiter().GetResult();
                           Pump(captureTask);
-                          Check(!mapping.IsQuickOutputDetecting && !captureVm.IsCapturing && !originalVisual.IsCapturing,
-                              "Cancelling output capture restores the ordinary binding and collapsed glyph");
+                          Check(!mapping.IsQuickOutputDetecting && !captureVm.IsCapturing && !originalVisual.IsCapturing &&
+                              functionalInput.Mode == DetectionMode.Subscription,
+                              "Cancelling output capture restores the ordinary binding, collapsed glyph and provider subscription mode");
                           DeviceConfiguration output = keyProfile.OutputDeviceConfigurations[0];
                           DetectedInputControl exact = new DetectedInputControl { Device = keyboard, ControlTitle = "Shared",
                               BindingDescriptor = new BindingDescriptor { Type = BindingType.Button, Index = 2, SubIndex = 0 } };
