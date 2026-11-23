@@ -896,7 +896,9 @@ namespace HidWizards.UCR.Views.Controls
                 popup.Opened += (sender, args) =>
                     popup.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
                     {
-                        if (popup.IsOpen && selectedTile.IsVisible) selectedTile.BringIntoView();
+                        if (!popup.IsOpen || !selectedTile.IsVisible) return;
+                        selectedTile.Focus();
+                        selectedTile.BringIntoView();
                     }));
             }
             // Preserve the category chosen for this binding; never force Buttons.

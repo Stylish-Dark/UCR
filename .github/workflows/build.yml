@@ -547,3 +547,885 @@ jobs:
           name: UCR-Windows
           path: UCR/bin/Release/
           if-no-files-found: error
+
+      - name: Verify output picker bounds in the Windows editor
+        id: visual_audit
+        continue-on-error: false
+        shell: powershell
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $directory = Join-Path $env:RUNNER_TEMP 'UCR-Visual-Audit'
+          New-Item -ItemType Directory -Path $directory -Force | Out-Null
+          $sourceBuild = (Resolve-Path '.\UCR\bin\Release').Path
+          Copy-Item -LiteralPath $sourceBuild -Destination '.\release' -Recurse
+          $exe = (Resolve-Path '.\release\UCR.exe').Path
+          $mockPath = Join-Path (Split-Path $exe) 'Providers\UcrAuditOutput'
+          New-Item -ItemType Directory -Path $mockPath -Force | Out-Null
+          $originalVJoy = Join-Path (Split-Path $exe) 'Providers\Core_vJoyInterfaceWrap'
+          if (Test-Path -LiteralPath $originalVJoy) { Remove-Item -LiteralPath $originalVJoy -Recurse -Force }
+          $originalKeyboardProvider = Join-Path (Split-Path $exe) 'Providers\Core_Interception'
+          if (Test-Path -LiteralPath $originalKeyboardProvider) { Remove-Item -LiteralPath $originalKeyboardProvider -Recurse -Force }
+          $mockSource = Join-Path $env:RUNNER_TEMP 'UcrAuditOutput.cs'
+          @'
+          using System.ComponentModel.Composition;
+          using HidWizards.IOWrapper.DataTransferObjects;
+          using HidWizards.IOWrapper.ProviderInterface.Interfaces;
+          [Export(typeof(IProvider))]
+          public class UcrAuditOutput : IOutputProvider
+          {
+              public virtual string ProviderName { get { return "UcrAuditOutput"; } }
+              public bool IsLive { get { return true; } }
+              public void RefreshLiveState() { }
+              public void RefreshDevices() { }
+              public void Dispose() { }
+              public bool SubscribeOutputDevice(OutputSubscriptionRequest request) { return true; }
+              public bool UnSubscribeOutputDevice(OutputSubscriptionRequest request) { return true; }
+              public bool SetOutputState(OutputSubscriptionRequest request, BindingDescriptor binding, int state) { return true; }
+              public DeviceReport GetOutputDeviceReport(DeviceDescriptor descriptor)
+              {
+                  var device = new DeviceReport {
+                      DeviceName = "Audit virtual controller",
+                      DeviceDescriptor = new DeviceDescriptor { DeviceHandle = "audit", DeviceInstance = 0 }
+                  };
+                  var node = new DeviceReportNode { Title = "Buttons" };
+                  for (var i = 0; i < 4; i++)
+                      node.Bindings.Add(new BindingReport {
+                          Title = "Audit " + (char)('A' + i), Category = BindingCategory.Momentary,
+                          BindingDescriptor = new BindingDescriptor { Type = BindingType.Button, Index = i }
+                      });
+                  device.Nodes.Add(node);
+                  var dpad = new DeviceReportNode { Title = "DPad" };
+                  for (var i = 0; i < 4; i++)
+                      dpad.Bindings.Add(new BindingReport {
+                          Title = new[] { "Up", "Right", "Down", "Left" }[i], Category = BindingCategory.Momentary,
+                          BindingDescriptor = new BindingDescriptor { Type = BindingType.POV, Index = i, SubIndex = 0 }
+                      });
+                  device.Nodes.Add(dpad);
+                  var axes = new DeviceReportNode { Title = "Axes" };
+                  foreach (var axis in new[] { "LX", "LY", "LT", "RT" })
+                      axes.Bindings.Add(new BindingReport {
+                          Title = axis, Category = BindingCategory.Signed,
+                          BindingDescriptor = new BindingDescriptor {
+                              Type = BindingType.Axis, Index = System.Array.IndexOf(new[] { "LX", "LY", "LT", "RT" }, axis)
+                          }
+                      });
+                  device.Nodes.Add(axes);
+                  return device;
+              }
+              public virtual ProviderReport GetOutputList()
+              {
+                  var report = new ProviderReport {
+                      Title = ProviderName, API = "Audit",
+                      ProviderDescriptor = new ProviderDescriptor { ProviderName = ProviderName }
+                  };
+                  var state = System.IO.Path.Combine(System.Environment.GetEnvironmentVariable("RUNNER_TEMP"),
+                      "ucr-output-fixture-state.txt");
+                  var mode = System.IO.File.Exists(state) ? System.IO.File.ReadAllText(state).Trim() : "";
+                  if (mode != "disconnected") {
+                      var device = GetOutputDeviceReport(default(DeviceDescriptor));
+                      if (mode == "reconnected") device.Nodes[0].Bindings[0].Title = "Reconnected A";
+                      report.Devices.Add(device);
+                  }
+                  if (mode != "disconnected") {
+                      var standby = GetOutputDeviceReport(default(DeviceDescriptor));
+                      standby.DeviceName = "Audit standby controller";
+                      standby.DeviceDescriptor = new DeviceDescriptor { DeviceHandle = "audit-standby", DeviceInstance = 0 };
+                      report.Devices.Add(standby);
+                  }
+                  var buttonsOnly = GetOutputDeviceReport(default(DeviceDescriptor));
+                  buttonsOnly.DeviceName = "Audit button-only output";
+                  buttonsOnly.DeviceDescriptor = new DeviceDescriptor { DeviceHandle = "audit-buttons", DeviceInstance = 0 };
+                  while (buttonsOnly.Nodes.Count > 1) buttonsOnly.Nodes.RemoveAt(buttonsOnly.Nodes.Count - 1);
+                  buttonsOnly.Nodes[0].Bindings[0].Title = "Primary A";
+                  report.Devices.Add(buttonsOnly);
+                  return report;
+              }
+          }
+          [Export(typeof(IProvider))]
+          public sealed class UcrAuditVJoy : UcrAuditOutput
+          {
+              public override string ProviderName { get { return "Core_vJoyInterfaceWrap"; } }
+              public override ProviderReport GetOutputList() {
+                  var report = new ProviderReport {
+                      Title = ProviderName, API = "Audit",
+                      ProviderDescriptor = new ProviderDescriptor { ProviderName = ProviderName }
+                  };
+                  var secondary = GetOutputDeviceReport(default(DeviceDescriptor));
+                  secondary.DeviceName = "Audit secondary controller";
+                  secondary.DeviceDescriptor = new DeviceDescriptor { DeviceHandle = "audit-secondary", DeviceInstance = 0 };
+                  secondary.Nodes[2].Bindings[2].Title = "RX";
+                  secondary.Nodes[2].Bindings[3].Title = "RY";
+                  var secondHat = new DeviceReportNode { Title = "Hat 2" };
+                  for (var i = 0; i < 4; i++)
+                      secondHat.Bindings.Add(new BindingReport {
+                          Title = new[] { "Up", "Right", "Down", "Left" }[i],
+                          Category = BindingCategory.Momentary,
+                          BindingDescriptor = new BindingDescriptor { Type = BindingType.POV, Index = i + 4, SubIndex = 0 }
+                      });
+                  secondary.Nodes.Add(secondHat);
+                  report.Devices.Add(secondary);
+                  return report;
+              }
+          }
+          [Export(typeof(IProvider))]
+          public sealed class UcrAuditKeyboard : IInputProvider
+          {
+              public string ProviderName { get { return "Core_Interception"; } }
+              public bool IsLive { get { return true; } }
+              public void RefreshLiveState() { }
+              public void RefreshDevices() { }
+              public void Dispose() { }
+              public bool SubscribeInput(InputSubscriptionRequest request) { return true; }
+              public bool UnsubscribeInput(InputSubscriptionRequest request) { return true; }
+              public DeviceReport GetInputDeviceReport(DeviceDescriptor descriptor)
+              {
+                  var device = new DeviceReport {
+                      DeviceName = "K: Audit keyboard",
+                      DeviceDescriptor = new DeviceDescriptor { DeviceHandle = "Keyboard_Audit", DeviceInstance = 0 }
+                  };
+                  var node = new DeviceReportNode { Title = "Keys" };
+                  var keys = new[] { "F", "K", "U", "J" };
+                  for (var i = 0; i < keys.Length; i++)
+                      node.Bindings.Add(new BindingReport {
+                          Title = keys[i], Category = BindingCategory.Momentary, Blockable = true,
+                          BindingDescriptor = new BindingDescriptor { Type = BindingType.Button, Index = i }
+                      });
+                  device.Nodes.Add(node);
+                  return device;
+              }
+              public ProviderReport GetInputList()
+              {
+                  var report = new ProviderReport {
+                      Title = ProviderName, API = "Audit",
+                      ProviderDescriptor = new ProviderDescriptor { ProviderName = ProviderName }
+                  };
+                  report.Devices.Add(GetInputDeviceReport(default(DeviceDescriptor)));
+                  return report;
+              }
+          }
+          '@ | Set-Content -LiteralPath $mockSource -Encoding UTF8
+          $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          $dto = (Resolve-Path '.\release\lib\IOWrapper.DTOs.dll').Path
+          $provider = (Resolve-Path '.\release\lib\IOWrapper.IProvider.dll').Path
+          & $csc /nologo /target:library /r:System.ComponentModel.Composition.dll "/r:$dto" "/r:$provider" "/out:$mockPath\UcrAuditOutput.dll" $mockSource
+          if ($LASTEXITCODE -ne 0) { throw 'Could not compile the Windows audit output fixture.' }
+
+
+          $dataRoot = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'UCR'
+          $profileFolder = Join-Path $dataRoot 'Profiles'
+          New-Item -ItemType Directory -Path $profileFolder -Force | Out-Null
+          $primary = [guid]::NewGuid().ToString()
+          $controller = [guid]::NewGuid().ToString()
+          $keyboard = [guid]::NewGuid().ToString()
+          $vjoy = [guid]::NewGuid().ToString()
+          $profileIds = @()
+          foreach ($case in @('Blank axis output', 'Blank button output', 'Explicit button-only output', 'Individual vJoy output', 'Custom signed axis output', 'Custom release axis output')) {
+              $id = [guid]::NewGuid().ToString()
+              $profileIds += $id
+              $axis = $case -notin @('Blank button output', 'Individual vJoy output')
+              $mapping = @{
+                  title = 'Output selection check'; inputRepresentation = 3; directionalCapacity = 1
+                  outputRepresentation = $(if ($axis) { 2 } else { 3 }); useInputExpression = $true
+                  deviceBindings = @(@{ guid = [guid]::NewGuid().ToString(); isBound = $false
+                      deviceConfigurationGuid = $keyboard; inputExpressionKindConfigured = $true })
+                  plugins = @(@{
+                      pluginType = $(if ($axis) { 'HidWizards.UCR.Plugins.Remapper.ButtonToAxis' } else { 'HidWizards.UCR.Plugins.Remapper.ButtonToButton' })
+                      data = @{ filters = @(); outputs = @(@{
+                          guid = [guid]::NewGuid().ToString(); isBound = $false
+                          deviceConfigurationGuid = $(if ($case -eq 'Explicit button-only output') { $primary } elseif ($case -eq 'Individual vJoy output') { $vjoy } else { [guid]::Empty.ToString() })
+                      }) }
+                  })
+              }
+              if ($case -like 'Custom *') {
+                  $data = $mapping.plugins[0].data
+                  $data.rangePressed = $(if ($case -eq 'Custom signed axis output') { -45.0 } else { -100.0 })
+                  $data.range = $(if ($case -eq 'Custom release axis output') { 20.0 } else { 0.0 })
+                  $data.outputs[0].isBound = $true
+                  $data.outputs[0].deviceConfigurationGuid = $controller
+                  $data.outputs[0].keyType = 1
+                  $data.outputs[0].keyValue = 1
+                  $data.outputs[0].assignedControlName = 'LY'
+                  $data.outputs[0].outputAxisDirection = -1
+              }
+              $profile = @{
+                  guid = $id; title = $case; childProfiles = @(); mappings = @($mapping); mappingGroups = @()
+                  autoActivateApplications = @()
+                  inputDeviceConfigurations = @(@{
+                      guid = $keyboard; shadowDevices = @()
+                      device = @{ title = 'K: Audit keyboard'; providerName = 'Core_Interception'; deviceHandle = 'Keyboard_Audit'; deviceNumber = 0 }
+                  })
+                  primaryInputDeviceConfigurationGuid = $keyboard
+                  outputDeviceConfigurations = @(
+                      @{ guid = $primary; shadowDevices = @()
+                         device = @{ title = 'Audit button-only output'; providerName = 'UcrAuditOutput'; deviceHandle = 'audit-buttons'; deviceNumber = 0 } }
+                      @{ guid = $controller; shadowDevices = @()
+                         device = @{ title = 'Audit virtual controller'; providerName = 'UcrAuditOutput'; deviceHandle = 'audit'; deviceNumber = 0 } }
+                      @{ guid = $vjoy; shadowDevices = @()
+                         device = @{ title = 'Audit secondary controller'; providerName = 'Core_vJoyInterfaceWrap'; deviceHandle = 'audit-secondary'; deviceNumber = 0 } }
+                  )
+                  primaryOutputDeviceConfigurationGuid = $primary
+              }
+              @{ schemaVersion = 1; profile = $profile } | ConvertTo-Json -Depth 20 |
+                  Set-Content -LiteralPath (Join-Path $profileFolder ($id + '.json')) -Encoding UTF8
+          }
+          @{ schemaVersion = 1; profileOrder = @($profileIds) } | ConvertTo-Json -Depth 10 |
+              Set-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Encoding UTF8
+          @{ schemaVersion = 1; deviceAliases = @() } | ConvertTo-Json |
+              Set-Content -LiteralPath (Join-Path $dataRoot 'devices.json') -Encoding UTF8
+
+          # Capture the real compiled WPF window, not a generated mockup
+          # or a screenshot from the user's computer.
+          Add-Type -ReferencedAssemblies @('System.Drawing','System.Windows.Forms') -TypeDefinition @'
+          using System;
+          using System.Collections.Generic;
+          using System.Drawing;
+          using System.Drawing.Imaging;
+          using System.Runtime.InteropServices;
+          public static class UcrWindowCapture {
+              [StructLayout(LayoutKind.Sequential)]
+              public struct Rect { public int Left, Top, Right, Bottom; }
+              [DllImport("user32.dll")]
+              private static extern bool GetWindowRect(IntPtr hwnd, out Rect rectangle);
+              [DllImport("user32.dll")]
+              private static extern bool PrintWindow(IntPtr hwnd, IntPtr dc, uint flags);
+              [DllImport("user32.dll")]
+              public static extern bool MoveWindow(IntPtr hwnd, int x, int y, int width, int height, bool repaint);
+              [DllImport("user32.dll")]
+              private static extern bool SetCursorPos(int x, int y);
+              [DllImport("user32.dll")]
+              private static extern void mouse_event(uint flags, uint x, uint y, uint data, UIntPtr extra);
+
+              [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+              private struct DisplayMode {
+                  [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string DeviceName;
+                  public ushort SpecVersion, DriverVersion, Size, DriverExtra;
+                  public uint Fields;
+                  public int PositionX, PositionY;
+                  public uint Orientation, FixedOutput;
+                  public short Color, Duplex, YResolution, TTOption, Collate;
+                  [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string FormName;
+                  public ushort LogPixels;
+                  public uint BitsPerPel, Width, Height, Flags, Frequency;
+                  public uint IcmMethod, IcmIntent, MediaType, DitherType, Reserved1, Reserved2, PanningWidth, PanningHeight;
+              }
+              [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+              private static extern bool EnumDisplaySettings(string deviceName, int mode, ref DisplayMode display);
+              [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+              private static extern int ChangeDisplaySettings(ref DisplayMode display, uint flags);
+              [DllImport("dwmapi.dll")]
+              private static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out Rect bounds, int size);
+              public static Rectangle VisibleWindowBounds(IntPtr hwnd) {
+                  Rect bounds;
+                  if (DwmGetWindowAttribute(hwnd,9,out bounds,Marshal.SizeOf(typeof(Rect))) != 0)
+                      GetWindowRect(hwnd,out bounds);
+                  return Rectangle.FromLTRB(bounds.Left,bounds.Top,bounds.Right,bounds.Bottom);
+              }
+              [StructLayout(LayoutKind.Sequential)]
+              private struct Source { public uint AdapterLow; public int AdapterHigh; public uint Id; }
+              [StructLayout(LayoutKind.Sequential)]
+              private struct DisplayRequest { public int Type; public uint Size; public Source Source; }
+              [StructLayout(LayoutKind.Sequential)]
+              private struct ScaleRange { public DisplayRequest Header; public int Minimum, Current, Maximum; }
+              [StructLayout(LayoutKind.Sequential)]
+              private struct ScaleChange { public DisplayRequest Header; public int Position; }
+              [DllImport("user32.dll")]
+              private static extern int GetDisplayConfigBufferSizes(uint flags, out uint paths, out uint modes);
+              [DllImport("user32.dll")]
+              private static extern int QueryDisplayConfig(uint flags, ref uint count, IntPtr paths, ref uint modeCount, IntPtr modes, IntPtr topology);
+              [DllImport("user32.dll")]
+              private static extern int DisplayConfigGetDeviceInfo(ref ScaleRange range);
+              [DllImport("user32.dll")]
+              private static extern int DisplayConfigSetDeviceInfo(ref ScaleChange change);
+              [DllImport("user32.dll")]
+              public static extern uint GetDpiForWindow(IntPtr hwnd);
+
+              private static void CheckDisplayResult(string action, int result) {
+                  if (result != 0) throw new Exception(action + " returned Win32 error " + result);
+              }
+              [DllImport("user32.dll")]
+              private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
+              public static void CapturePhysicalWindow(IntPtr hwnd, string filename) {
+                  var previous = SetThreadDpiAwarenessContext(new IntPtr(-4));
+                  if (previous == IntPtr.Zero) throw new Exception("Cannot request screen coordinates in physical pixels");
+                  try {
+                      var bounds = VisibleWindowBounds(hwnd);
+                      using (var bitmap = new Bitmap(bounds.Width, bounds.Height))
+                      {
+                          using (var graphics = Graphics.FromImage(bitmap))
+                              graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size);
+                          bitmap.Save(filename, ImageFormat.Png);
+                      }
+                  } finally {
+                      SetThreadDpiAwarenessContext(previous);
+                  }
+              }
+              public static uint CurrentDesktopHeight() {
+                  var mode = new DisplayMode();
+                  mode.Size = (ushort)Marshal.SizeOf(typeof(DisplayMode));
+                  if (!EnumDisplaySettings(null, -1, ref mode)) throw new Exception("Cannot read desktop resolution");
+                  return mode.Height;
+              }
+              public static int SetDesktopScale(int percent) {
+                  const uint activePaths = 2;
+                  uint count, modeCount;
+                  CheckDisplayResult("Enumerate active display paths", GetDisplayConfigBufferSizes(activePaths, out count, out modeCount));
+                  if (count != 1) throw new Exception("Expected a single active display path, got " + count);
+                  // DISPLAYCONFIG_PATH_INFO begins with the source LUID and ID.
+                  var paths = Marshal.AllocHGlobal(checked((int)count * 72));
+                  var modes = Marshal.AllocHGlobal(checked((int)modeCount * 64));
+                  try {
+                      CheckDisplayResult("Read active display paths", QueryDisplayConfig(activePaths, ref count, paths, ref modeCount, modes, IntPtr.Zero));
+                      var source = (Source)Marshal.PtrToStructure(paths, typeof(Source));
+                      var range = new ScaleRange { Header = new DisplayRequest { Type = -3, Size = 32, Source = source } };
+                      CheckDisplayResult("Read display scaling range", DisplayConfigGetDeviceInfo(ref range));
+                      var values = new[] { 100, 125, 150, 175, 200, 225, 250, 300, 350, 400, 450, 500 };
+                      var prior = values[range.Current - range.Minimum];
+                      var position = Array.IndexOf(values, percent) + range.Minimum;
+                      if (position < range.Minimum || position > range.Maximum)
+                          throw new Exception("The active display does not support scale " + percent);
+                      if (position != range.Current) {
+                          var change = new ScaleChange {
+                              Header = new DisplayRequest { Type = -4, Size = 24, Source = source }, Position = position
+                          };
+                          CheckDisplayResult("Set display scaling", DisplayConfigSetDeviceInfo(ref change));
+                          CheckDisplayResult("Read back display scaling", DisplayConfigGetDeviceInfo(ref range));
+                          if (range.Current != position) throw new Exception("Windows did not apply scale " + percent);
+                      }
+                      return prior;
+                  } finally {
+                      Marshal.FreeHGlobal(modes);
+                      Marshal.FreeHGlobal(paths);
+                  }
+              }
+              public static void PrepareDesktop() { SetDesktop(1920,1080); }
+              public static void SetDesktop(uint width, uint height) {
+                  var mode = new DisplayMode();
+                  mode.Size = (ushort)Marshal.SizeOf(typeof(DisplayMode));
+                  if (!EnumDisplaySettings(null, -1, ref mode)) throw new Exception("Cannot inspect runner display");
+                  mode.Width = width; mode.Height = height; mode.Fields = 0x180000;
+                  int result = ChangeDisplaySettings(ref mode, 0);
+                  if (result != 0) throw new Exception("Cannot resize audit desktop: " + result);
+              }
+              public static void CaptureDesktop(string filename) {
+                  var bounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
+                  using (var bitmap = new Bitmap(bounds.Width, bounds.Height)) {
+                      using (var graphics = Graphics.FromImage(bitmap))
+                          graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size);
+                      bitmap.Save(filename, ImageFormat.Png);
+                  }
+              }
+              public static void MovePointerAway() { SetCursorPos(5, 5); }
+              public static void RightClick(int x, int y) {
+                  if (!SetCursorPos(x, y)) throw new Exception("Could not move to the profile row");
+                  mouse_event(8, 0, 0, 0, UIntPtr.Zero);
+                  mouse_event(16, 0, 0, 0, UIntPtr.Zero);
+              }
+              public static int Capture(IntPtr hwnd, string filename) {
+                  Rect r;
+                  if (!GetWindowRect(hwnd, out r)) throw new Exception("GetWindowRect failed");
+                  bool sidebar = filename.IndexOf("-sidebar", StringComparison.OrdinalIgnoreCase) >= 0;
+                  int captureLeft = sidebar ? Math.Max(0, r.Left) : r.Left;
+                  int w = r.Right - captureLeft, h = r.Bottom - r.Top;
+                  if (w < 300 || h < 250 || w > 6000 || h > 4000)
+                      throw new Exception("Implausible application window dimensions: " + w + "x" + h);
+                  using (var bitmap = new Bitmap(w, h, PixelFormat.Format32bppArgb)) {
+                      using (var g = Graphics.FromImage(bitmap)) {
+                          g.Clear(Color.Black);
+                          bool popup = filename.IndexOf("visual-", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              filename.IndexOf("picker", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              filename.IndexOf("add-device", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              filename.IndexOf("about-dialog", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              filename.IndexOf("profile-rename", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              filename.IndexOf("-menu", StringComparison.OrdinalIgnoreCase) >= 0;
+                          if (popup || sidebar) {
+                              g.CopyFromScreen(captureLeft, r.Top, 0, 0, new Size(w, h));
+                          } else {
+                              IntPtr dc = g.GetHdc();
+                              try {
+                                  if (!PrintWindow(hwnd, dc, 2) && !PrintWindow(hwnd, dc, 0))
+                                      throw new Exception("PrintWindow could not render UCR");
+                              } finally { g.ReleaseHdc(dc); }
+                          }
+                      }
+                      var colors = new HashSet<int>();
+                      for (int y = 8; y < h - 8; y += Math.Max(1, h / 35))
+                          for (int x = 8; x < w - 8; x += Math.Max(1, w / 35))
+                              colors.Add(bitmap.GetPixel(x,y).ToArgb());
+                      if (colors.Count < 12)
+                          throw new Exception("Screenshot blank or unrendered (" + colors.Count + " sampled colors)");
+                      bitmap.Save(filename, ImageFormat.Png);
+                      return colors.Count;
+                  }
+              }
+          }
+          '@
+
+          [UcrWindowCapture]::PrepareDesktop()
+          $process = $null
+          try {
+              $process = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -PassThru
+              $handle = [IntPtr]::Zero
+              $title = ''
+              $deadline = (Get-Date).AddSeconds(65)
+              do {
+                  Start-Sleep -Milliseconds 900
+                  $process.Refresh()
+                  if ($process.HasExited) {
+                      Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = (Get-Date).AddMinutes(-3) } -ErrorAction SilentlyContinue |
+                          Where-Object { $_.ProviderName -eq '.NET Runtime' -and $_.Message -match 'UCR.exe' } |
+                          Select-Object -First 2 -ExpandProperty Message | Write-Host
+                      throw "UCR exited during visual audit with code $($process.ExitCode)"
+                  }
+                  $title = $process.MainWindowTitle
+                  if ($process.MainWindowHandle -ne [IntPtr]::Zero -and
+                      $title -match '(Universal Control Remapper|UCR)' -and
+                      $title -notmatch '(Splash|Starting)') {
+                      $handle = $process.MainWindowHandle
+                      break
+                  }
+              } while ((Get-Date) -lt $deadline)
+              if ($handle -eq [IntPtr]::Zero) {
+                  Get-ChildItem -LiteralPath (Join-Path (Split-Path $exe) 'logs') -Filter '*.log' -ErrorAction SilentlyContinue |
+                      ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 25 | Write-Host }
+                  throw "UCR did not expose its main window within 65 seconds (last title: '$title')."
+              }
+              Start-Sleep -Seconds 3
+              Add-Type -AssemblyName UIAutomationClient
+              Add-Type -AssemblyName System.Windows.Forms
+              $root = [System.Windows.Automation.AutomationElement]::FromHandle($handle)
+              $processCondition = [System.Windows.Automation.PropertyCondition]::new(
+                  [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $process.Id)
+              function Find-UcrElement($property, [string]$value) {
+                  $condition = [System.Windows.Automation.PropertyCondition]::new($property, $value)
+                  for ($attempt = 0; $attempt -lt 20; $attempt++) {
+                      $windows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
+                          [System.Windows.Automation.TreeScope]::Children, $processCondition)
+                      foreach ($window in $windows) {
+                          $matches = $window.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition)
+                          foreach ($element in $matches) {
+                              if (-not $element.Current.IsOffscreen -and $element.Current.ControlType -ne
+                                  [System.Windows.Automation.ControlType]::ToolTip -and
+                                  ($value -notin @('Left trigger','Right trigger') -or
+                                   $element.Current.ControlType -eq [System.Windows.Automation.ControlType]::Button)) {
+                                  return $element
+                              }
+                          }
+                      }
+                      Start-Sleep -Milliseconds 150
+                  }
+                  throw "Visible UI element missing: $value"
+              }
+              function Find-UcrControl([string]$id) {
+                  Find-UcrElement ([System.Windows.Automation.AutomationElement]::AutomationIdProperty) $id
+              }
+              function Invoke-UcrControl([string]$id) {
+                  $element = Find-UcrControl $id
+                  $element.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              }
+              function Set-UcrText([string]$id, [string]$text) {
+                  $element = Find-UcrControl $id
+                  $element.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($text)
+              }
+              function Get-UcrControls([string]$id) {
+                  $condition = [System.Windows.Automation.PropertyCondition]::new(
+                      [System.Windows.Automation.AutomationElement]::AutomationIdProperty, $id)
+                  return $root.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition)
+              }
+              function Assert-UcrDirectionCross([string]$id) {
+                  $bounds = @(Get-UcrControls $id | Where-Object { -not $_.Current.IsOffscreen } |
+                      ForEach-Object { $_.Current.BoundingRectangle } |
+                      Sort-Object Y, X)
+                  if ($bounds.Count -ne 4 -or
+                      $bounds[0].Y -ge $bounds[1].Y -or $bounds[2].Y -ge $bounds[3].Y -or
+                      [Math]::Abs($bounds[1].Y - $bounds[2].Y) -gt 2 -or
+                      [Math]::Abs($bounds[0].X - $bounds[3].X) -gt 2 -or
+                      $bounds[1].X -ge $bounds[0].X -or $bounds[2].X -le $bounds[0].X) {
+                      throw "Expected four direction buttons arranged in a cross ($id)."
+                  }
+              }
+              function Find-UcrProfileRow([string]$name) {
+                  $condition = [System.Windows.Automation.AndCondition]::new(
+                      [System.Windows.Automation.PropertyCondition]::new(
+                          [System.Windows.Automation.AutomationElement]::NameProperty, $name),
+                      [System.Windows.Automation.PropertyCondition]::new(
+                          [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+                          [System.Windows.Automation.ControlType]::TreeItem))
+                  return $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
+              }
+              function Assert-UcrSelectedProfile([string]$name) {
+                  $item = Find-UcrProfileRow $name
+                  if ($null -eq $item -or -not $item.GetCurrentPattern(
+                      [System.Windows.Automation.SelectionItemPattern]::Pattern).Current.IsSelected) {
+                      throw "Profile tree did not select '$name'."
+                  }
+              }
+              $nameProperty = [System.Windows.Automation.AutomationElement]::NameProperty
+              function Save-UcrIfNeeded {
+                  if ((Find-UcrControl 'UiToolbarSave').Current.IsEnabled) {
+                      Invoke-UcrControl 'UiToolbarSave'
+                      Start-Sleep -Milliseconds 400
+                  }
+              }
+              function Open-OutputPicker([string]$profileName) {
+                  $row = Find-UcrProfileRow $profileName
+                  if ($null -eq $row) { throw "Missing fixture profile: $profileName" }
+                  $row.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+                  Start-Sleep -Milliseconds 400
+                  if (@(Get-UcrControls 'UiMappingOutputHeading' | Where-Object { -not $_.Current.IsOffscreen }).Count -eq 0) {
+                      Invoke-UcrControl 'UiExpandMapping'
+                  }
+                  Find-UcrControl 'UiMappingOutputHeading' | Out-Null
+                  $buttons = @(Get-UcrControls 'BindButton' | Where-Object { -not $_.Current.IsOffscreen } |
+                      Sort-Object -Property { $_.Current.BoundingRectangle.X })
+                  if ($buttons.Count -lt 2) { throw "Missing binding row in $profileName" }
+                  $buttons[-1].SetFocus()
+                  [System.Windows.Forms.SendKeys]::SendWait(' ')
+              }
+
+              [UcrWindowCapture]::MoveWindow($handle, 40, 70, 1320, 650, $true) | Out-Null
+              Start-Sleep -Milliseconds 600
+              Open-OutputPicker 'Blank axis output'
+              $axisTile = Find-UcrElement $nameProperty 'Left stick X axis'
+              $frame = [UcrWindowCapture]::VisibleWindowBounds($handle)
+              foreach ($label in @('Axes','Left stick X axis','Right trigger','Clear binding')) {
+                  $bounds = (Find-UcrElement $nameProperty $label).Current.BoundingRectangle
+                  if ($bounds.Left -lt $frame.Left -or $bounds.Right -gt $frame.Right -or
+                      $bounds.Top -lt $frame.Top -or $bounds.Bottom -gt $frame.Bottom) {
+                      throw "Picker control '$label' is outside the short window: $bounds, window $frame."
+                  }
+              }
+              Write-Host 'PASS Output picker including Clear binding fits inside a short window'
+              [UcrWindowCapture]::MovePointerAway()
+              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-output-picker-short-window.png')) | Out-Null
+              $axisTile.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 300
+              Save-UcrIfNeeded
+              $saved = Get-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+              $profile = @($saved.profiles | Where-Object title -eq 'Blank axis output')[0]
+              $output = $profile.mappings[0].plugins[0].data.outputs[0]
+              if ($output.deviceConfigurationGuid -ne $controller -or $output.assignedControlName -ne 'LX' -or -not $output.isBound) {
+                  throw 'The axis choice did not save to the compatible secondary controller.'
+              }
+              Write-Host 'PASS Blank axis picker selects and saves an axis on the compatible secondary device'
+
+              Open-OutputPicker 'Blank button output'
+              Find-UcrElement $nameProperty 'Primary A' | Out-Null
+              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+              Write-Host 'PASS Blank button picker keeps the compatible primary device'
+
+              Open-OutputPicker 'Explicit button-only output'
+              Find-UcrElement $nameProperty 'Primary A' | Out-Null
+              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+              Write-Host 'PASS Picker preserves an explicitly chosen output device'
+
+              Open-OutputPicker 'Blank axis output'
+              (Find-UcrElement $nameProperty 'Directions').GetCurrentPattern(
+                  [System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+              (Find-UcrElement $nameProperty 'Left Stick Up').GetCurrentPattern(
+                  [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 400
+              Save-UcrIfNeeded
+              $saved = Get-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+              $profile = @($saved.profiles | Where-Object title -eq 'Blank axis output')[0]
+              $output = $profile.mappings[0].plugins[0].data.outputs[0]
+              if ($output.deviceConfigurationGuid -ne $controller -or $output.assignedControlName -ne 'LY' -or
+                  $output.outputAxisDirection -ne -1 -or -not $output.isBound) {
+                  throw "Signed stick output did not save: $($output | ConvertTo-Json -Compress)"
+              }
+              Write-Host 'PASS Signed stick output saves the original axis name and the negative direction'
+              Open-OutputPicker 'Blank axis output'
+              Find-UcrElement $nameProperty 'Left Stick Up' | Out-Null
+              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+              Open-OutputPicker 'Blank axis output'
+              $selectedUp = Find-UcrElement $nameProperty 'Left Stick Up'
+              if (-not $selectedUp.Current.HasKeyboardFocus) {
+                  throw 'The saved direction did not receive keyboard focus when the picker reopened.'
+              }
+              Write-Host 'PASS Reopening focuses the saved control for immediate keyboard selection'
+              $upStatus = $selectedUp.Current.ItemStatus
+              $downStatus = (Find-UcrElement $nameProperty 'Left Stick Down').Current.ItemStatus
+              if ($upStatus -ne 'Current binding' -or $downStatus -eq 'Current binding') {
+                  throw 'The expanded picker marked the wrong signed direction.'
+              }
+              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+              Write-Host 'PASS Expanded picker marks only the saved signed stick direction'
+              Write-Host 'PASS Reopening a signed stick output starts in Directions'
+
+              function Assert-FullAxisSaved([string]$pathLabel) {
+                  Save-UcrIfNeeded
+                  $saved = Get-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+                  $profile = @($saved.profiles | Where-Object title -eq 'Blank axis output')[0]
+                  $data = $profile.mappings[0].plugins[0].data
+                  $output = $data.outputs[0]
+                  if ($output.deviceConfigurationGuid -ne $controller -or $output.assignedControlName -ne 'LY' -or
+                      [int]$output.outputAxisDirection -ne 0 -or $data.rangePressed -ne 100 -or -not $output.isBound) {
+                      throw "$pathLabel did not clear the previous negative direction and restore the press range: $($data | ConvertTo-Json -Depth 10 -Compress)"
+                  }
+                  Write-Host "PASS $pathLabel restores the full axis and its ordinary press range"
+              }
+
+              Open-OutputPicker 'Blank axis output'
+              (Find-UcrElement $nameProperty 'Axes').GetCurrentPattern(
+                  [System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+              (Find-UcrElement $nameProperty 'Left stick Y axis').GetCurrentPattern(
+                  [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 350
+              Assert-FullAxisSaved 'Expanded picker'
+
+              # Reproduce the clear/rebind bug through the actual editor.
+              Open-OutputPicker 'Blank axis output'
+              (Find-UcrElement $nameProperty 'Directions').GetCurrentPattern(
+                  [System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+              (Find-UcrElement $nameProperty 'Left Stick Up').GetCurrentPattern(
+                  [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 350
+              Open-OutputPicker 'Blank axis output'
+              (Find-UcrElement $nameProperty 'Clear binding').GetCurrentPattern(
+                  [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 350
+              Save-UcrIfNeeded
+              $saved = Get-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+              $profile = @($saved.profiles | Where-Object title -eq 'Blank axis output')[0]
+              $data = $profile.mappings[0].plugins[0].data
+              if ($data.outputs[0].isBound -or [int]$data.outputs[0].outputAxisDirection -ne 0 -or $data.rangePressed -ne 100) {
+                  throw 'Clear binding kept the generated negative press range.'
+              }
+              Write-Host 'PASS Clearing a negative stick direction restores the ordinary press range'
+              Open-OutputPicker 'Blank axis output'
+              (Find-UcrElement $nameProperty 'Left stick Y axis').GetCurrentPattern(
+                  [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 350
+              Assert-FullAxisSaved 'Full-axis rebinding after Clear'
+              Open-OutputPicker 'Blank axis output'
+              $selectedAxis = Find-UcrElement $nameProperty 'Left stick Y axis'
+              if (-not $selectedAxis.Current.HasKeyboardFocus) { throw 'The saved full axis did not receive focus.' }
+              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-cleared-direction-full-axis.png')) | Out-Null
+              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+
+              foreach ($case in @('Custom signed axis output', 'Custom release axis output')) {
+                  Open-OutputPicker $case
+                  (Find-UcrElement $nameProperty 'Clear binding').GetCurrentPattern(
+                      [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+                  Start-Sleep -Milliseconds 350
+                  Save-UcrIfNeeded
+                  $saved = Get-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+                  $profile = @($saved.profiles | Where-Object title -eq $case)[0]
+                  $data = $profile.mappings[0].plugins[0].data
+                  $expectedPress = $(if ($case -eq 'Custom signed axis output') { -45 } else { -100 })
+                  $expectedRelease = $(if ($case -eq 'Custom release axis output') { 20 } else { 0 })
+                  if ($data.outputs[0].isBound -or $data.rangePressed -ne $expectedPress -or [double]$data.range -ne $expectedRelease) {
+                      throw "Clearing '$case' overwrote custom axis values."
+                  }
+                  Write-Host "PASS Clearing preserves custom axis values: $case"
+              }
+
+              Open-OutputPicker 'Blank axis output'
+              (Find-UcrElement $nameProperty 'Directions').GetCurrentPattern(
+                  [System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+              (Find-UcrElement $nameProperty 'Left Stick Up').GetCurrentPattern(
+                  [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 350
+              Invoke-UcrControl 'UiExpandMapping'
+              Start-Sleep -Milliseconds 350
+              [UcrWindowCapture]::MoveWindow($handle, 720, 120, 1320, 680, $true) | Out-Null
+              Start-Sleep -Milliseconds 350
+              (Find-UcrControl 'UiWorkspaceBindOutput').SetFocus()
+              [System.Windows.Forms.SendKeys]::SendWait(' ')
+              $quick = Find-UcrElement $nameProperty 'Left stick Y axis'
+              $screen = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+              $window = [UcrWindowCapture]::VisibleWindowBounds($handle)
+              $quickBounds = $quick.Current.BoundingRectangle
+              if ($quickBounds.Right -gt [Math]::Min($screen.Right, $window.Right) -or
+                  $quickBounds.Left -lt [Math]::Max($screen.Left, $window.Left) -or
+                  $quickBounds.Bottom -gt [Math]::Min($screen.Bottom, $window.Bottom)) {
+                  throw "Quick output choice outside the visible editor: $quickBounds"
+              }
+              Write-Host 'PASS Collapsed quick output menu fits at the monitor edge'
+              [UcrWindowCapture]::MoveWindow($handle, 680, 120, 1320, 680, $true) | Out-Null
+              Start-Sleep -Milliseconds 450
+              $staleQuick = $null
+              try { $staleQuick = Find-UcrElement $nameProperty 'Left stick Y axis' } catch {}
+              if ($null -ne $staleQuick) { throw 'Collapsed output menu remained open after its owner moved.' }
+              (Find-UcrControl 'UiWorkspaceBindOutput').SetFocus()
+              [System.Windows.Forms.SendKeys]::SendWait(' ')
+              $quick = Find-UcrElement $nameProperty 'Left stick Y axis'
+              Write-Host 'PASS Moving the editor dismisses the collapsed picker, which reopens from its new position'
+
+              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-quick-output-monitor-edge.png')) | Out-Null
+              $quick.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 350
+              Assert-FullAxisSaved 'Collapsed picker'
+
+              [UcrWindowCapture]::MoveWindow($handle, 40, 70, 1320, 650, $true) | Out-Null
+              Start-Sleep -Milliseconds 350
+              Open-OutputPicker 'Blank axis output'
+              Find-UcrElement $nameProperty 'Left stick Y axis' | Out-Null
+              [UcrWindowCapture]::MoveWindow($handle, 80, 95, 1320, 650, $true) | Out-Null
+              Start-Sleep -Milliseconds 450
+              $afterMove = $null
+              try { $afterMove = Find-UcrElement $nameProperty 'Left stick Y axis' } catch {}
+              if ($null -ne $afterMove) { throw 'The old output picker remained open after moving the owner window.' }
+              Open-OutputPicker 'Blank axis output'
+              Find-UcrElement $nameProperty 'Left stick Y axis' | Out-Null
+              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+              Write-Host 'PASS Moving the editor dismisses the stale picker and it reopens at its new location'
+
+
+              [UcrWindowCapture]::MoveWindow($handle, 720, 120, 1320, 680, $true) | Out-Null
+              Start-Sleep -Milliseconds 450
+              (Find-UcrElement $nameProperty '4-Way output').SetFocus()
+              [System.Windows.Forms.SendKeys]::SendWait(' ')
+              Invoke-UcrControl 'UiMappingCompoundOutputBind'
+              $hat = Find-UcrElement $nameProperty 'D-pad 2 (Audit secondary controller)'
+              $stick = Find-UcrElement $nameProperty 'Left stick (Audit virtual controller)'
+              $workArea = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+              $frame = [UcrWindowCapture]::VisibleWindowBounds($handle)
+              foreach ($item in @($hat, $stick)) {
+                  $bounds = $item.Current.BoundingRectangle
+                  if ($bounds.Left -lt [Math]::Max($frame.Left, $workArea.Left) -or
+                      $bounds.Right -gt [Math]::Min($frame.Right, $workArea.Right) -or
+                      $bounds.Top -lt [Math]::Max($frame.Top, $workArea.Top) -or
+                      $bounds.Bottom -gt [Math]::Min($frame.Bottom, $workArea.Bottom)) {
+                      throw "Four-way choice '$($item.Current.Name)' outside visible workspace: $bounds"
+                  }
+              }
+              Write-Host 'PASS Four-way picker stays on-screen in a partially off-screen window'
+              [UcrWindowCapture]::MoveWindow($handle, 720, 120, 1280, 650, $true) | Out-Null
+              Start-Sleep -Milliseconds 450
+              $staleHat = $null
+              try { $staleHat = Find-UcrElement $nameProperty 'D-pad 2 (Audit secondary controller)' } catch {}
+              if ($null -ne $staleHat) { throw 'Four-way picker remained open after its owner resized.' }
+              Invoke-UcrControl 'UiMappingCompoundOutputBind'
+              $hat = Find-UcrElement $nameProperty 'D-pad 2 (Audit secondary controller)'
+              Write-Host 'PASS Resizing the editor dismisses the four-way picker, which reopens at the new size'
+
+              [UcrWindowCapture]::MovePointerAway()
+              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-four-way-picker-monitor-edge.png')) | Out-Null
+              $hat.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 350
+              Save-UcrIfNeeded
+              $saved = Get-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+              $profile = @($saved.profiles | Where-Object title -eq 'Blank axis output')[0]
+              $channels = @($profile.mappings[0].plugins | ForEach-Object { $_.data.outputs })
+              if ($channels.Count -ne 4 -or ($channels.keyValue -join ',') -ne '7,5,4,6' -or
+                  @($channels | Where-Object { -not $_.isBound -or $_.deviceConfigurationGuid -ne $vjoy }).Count) {
+                  throw 'Second-hat choice did not save all four directions to vJoy.'
+              }
+              Write-Host 'PASS All four directions save to the second vJoy hat from the edge-constrained picker'
+              [UcrWindowCapture]::MoveWindow($handle, 40, 70, 1320, 680, $true) | Out-Null
+              $vjoyRow = Find-UcrProfileRow 'Individual vJoy output'
+              $vjoyRow.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+              Start-Sleep -Milliseconds 500
+              (Find-UcrControl 'UiWorkspaceBindOutput').SetFocus()
+              [System.Windows.Forms.SendKeys]::SendWait(' ')
+              Find-UcrElement $nameProperty 'POV 1 Up' | Out-Null
+              $secondUp = Find-UcrElement $nameProperty 'POV 2 Up'
+              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-labelled-vJoy-quick-picker.png')) | Out-Null
+              $secondUp.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 350
+              Save-UcrIfNeeded
+              $saved = Get-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+              $profile = @($saved.profiles | Where-Object title -eq 'Individual vJoy output')[0]
+              $output = $profile.mappings[0].plugins[0].data.outputs[0]
+              if (-not $output.isBound -or $output.deviceConfigurationGuid -ne $vjoy -or
+                  $output.keyType -ne 2 -or $output.keyValue -ne 4 -or $output.assignedControlName -ne 'Up') {
+                  throw "POV 2 Up saved the wrong provider binding: $($output | ConvertTo-Json -Compress)"
+              }
+              Write-Host 'PASS Collapsed menu distinguishes both vJoy hats, and POV 2 Up saves the right binding'
+              (Find-UcrControl 'UiWorkspaceBindOutput').SetFocus()
+              [System.Windows.Forms.SendKeys]::SendWait(' ')
+              $firstUp = Find-UcrElement $nameProperty 'POV 1 Up'
+              $secondUp = Find-UcrElement $nameProperty 'POV 2 Up'
+              $checked = $null
+              if (-not $secondUp.TryGetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern, [ref]$checked) -or
+                  $checked.Current.ToggleState -ne [System.Windows.Automation.ToggleState]::On) {
+                  throw 'The saved second hat is not checked in the reopened quick picker.'
+              }
+              $other = $null
+              if ($firstUp.TryGetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern, [ref]$other) -and
+                  $other.Current.ToggleState -eq [System.Windows.Automation.ToggleState]::On) {
+                  throw 'The matching direction on the first hat should not also be checked.'
+              }
+              Write-Host 'PASS Reopening marks only the currently bound vJoy hat and direction'
+              $lastFirst = (Find-UcrElement $nameProperty 'POV 1 Left').Current.BoundingRectangle
+              $firstSecond = $secondUp.Current.BoundingRectangle
+              if ([Math]::Abs($firstSecond.Top - $lastFirst.Bottom) -gt 3) {
+                  throw 'Other controller controls split the consecutive vJoy hat groups.'
+              }
+              Write-Host 'PASS All vJoy hat directions are grouped together in provider index order'
+              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-vJoy-quick-picker-selection.png')) | Out-Null
+              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+              Open-OutputPicker 'Individual vJoy output'
+              $tab = Find-UcrElement $nameProperty 'Directions'
+              if (-not $tab.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Current.IsSelected) {
+                  throw 'A bound POV reopened on the wrong tab.'
+              }
+              Write-Host 'PASS Expanded picker opens the Directions tab for a saved vJoy POV'
+              $firstUp = Find-UcrElement $nameProperty 'POV 1 Up'
+              $secondUp = Find-UcrElement $nameProperty 'POV 2 Up'
+              if ($secondUp.Current.ItemStatus -ne 'Current binding' -or $firstUp.Current.ItemStatus -eq 'Current binding') {
+                  throw 'The expanded picker did not identify the exact saved hat.'
+              }
+              Write-Host 'PASS Expanded picker marks the exact saved vJoy hat and direction'
+              $lastFirst = (Find-UcrElement $nameProperty 'POV 1 Left').Current.BoundingRectangle
+              $firstSecond = $secondUp.Current.BoundingRectangle
+              if ($firstSecond.Top -lt $lastFirst.Bottom -or $firstSecond.Top -gt $lastFirst.Bottom + 12) {
+                  throw 'Expanded menu splits the vJoy hats rather than keeping their rows adjacent.'
+              }
+              $firstRight = (Find-UcrElement $nameProperty 'POV 1 Right').Current.BoundingRectangle
+              $firstBounds = $firstUp.Current.BoundingRectangle
+              if ([Math]::Abs($firstRight.Top - $firstBounds.Top) -gt 2 -or $firstRight.Left -le $firstBounds.Left) {
+                  throw 'The direction tiles collapsed to one column with a scrollbar.'
+              }
+              Write-Host 'PASS Expanded picker groups vJoy hat rows together'
+              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-vJoy-expanded-picker-selection.png')) | Out-Null
+              $firstUp.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 350
+              Invoke-UcrControl 'UiExpandMapping'
+              (Find-UcrControl 'UiWorkspaceBindOutput').SetFocus()
+              [System.Windows.Forms.SendKeys]::SendWait(' ')
+              $rebound = $null
+              $firstUp = Find-UcrElement $nameProperty 'POV 1 Up'
+              if (-not $firstUp.TryGetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern, [ref]$rebound) -or
+                  $rebound.Current.ToggleState -ne [System.Windows.Automation.ToggleState]::On) {
+                  throw 'The collapsed picker did not reflect the new binding from the expanded picker.'
+              }
+              Write-Host 'PASS Rebinding in the expanded picker updates the collapsed picker'
+              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
+              Open-OutputPicker 'Individual vJoy output'
+              (Find-UcrElement $nameProperty 'Clear binding').GetCurrentPattern(
+                  [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+              Start-Sleep -Milliseconds 350
+              Save-UcrIfNeeded
+              $saved = Get-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+              $profile = @($saved.profiles | Where-Object title -eq 'Individual vJoy output')[0]
+              $output = $profile.mappings[0].plugins[0].data.outputs[0]
+              if ($output.isBound -or $output.assignedControlName -or [int]$output.keyValue -ne 0) {
+                  throw 'Clearing the POV left a stale output descriptor.'
+              }
+              Write-Host 'PASS Clearing a vJoy direction removes the saved descriptor and name'
+
+
+
+          }
+          catch {
+              $_ | Out-String | Set-Content -LiteralPath (Join-Path $directory 'capture-error.txt')
+              try { [UcrWindowCapture]::Capture($handle, (Join-Path $directory 'UCR-visual-audit-failure.png')) | Out-Null } catch {}
+              Write-Error $_
+              throw
+          }
+          finally {
+              if ($null -ne $process) {
+                  try { if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force } } catch {}
+              }
+          }
+
+      - name: Upload UCR visual audit
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: UCR-Visual-Audit
+          path: ${{ runner.temp }}/UCR-Visual-Audit/
+          if-no-files-found: warn

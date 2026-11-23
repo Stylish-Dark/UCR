@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Xml.Serialization;
 using HidWizards.IOWrapper.DataTransferObjects;
@@ -224,6 +225,7 @@ namespace HidWizards.UCR.Core.Models.Binding
             if (!preserveBinding || DeviceConfigurationGuid != deviceConfigurationGuid ||
                 KeyType != keyType || KeyValue != keyValue || KeySubValue != keySubValue)
                 AssignedControlName = string.Empty;
+            if (!preserveBinding) ResetOutputAxisDirection();
             DeviceConfigurationGuid = deviceConfigurationGuid;
 
             if (!preserveBinding)
@@ -232,7 +234,6 @@ namespace HidWizards.UCR.Core.Models.Binding
                 KeyValue = 0;
                 KeySubValue = 0;
                 CompoundPresetName = string.Empty;
-                OutputAxisDirection = 0;
                 Block = false;
                 IsBound = false;
             }
@@ -312,7 +313,7 @@ namespace HidWizards.UCR.Core.Models.Binding
             if (controlChanged)
             {
                 CompoundPresetName = string.Empty;
-                OutputAxisDirection = 0;
+                ResetOutputAxisDirection();
             }
             var wasBound = _isBound;
             _isBound = true;
@@ -348,7 +349,7 @@ namespace HidWizards.UCR.Core.Models.Binding
             if (bindingChanged)
             {
                 CompoundPresetName = string.Empty;
-                OutputAxisDirection = 0;
+                ResetOutputAxisDirection();
             }
             var clearBlock = Block && !IsBlockable();
             if (clearBlock) Block = false;
@@ -503,6 +504,31 @@ namespace HidWizards.UCR.Core.Models.Binding
                 Profile.Context.BindingManager.EndBindModeHandler -= OnEndBindModeHandler;
                 throw;
             }
+        }
+
+        private void ResetOutputAxisDirection()
+        {
+            // Choosing a negative stick direction installs Button-to-Axis defaults.
+            // Remove those defaults before discarding their direction marker, so a
+            // later full-axis assignment cannot inherit an invisible negative press.
+            // Custom press/release values must survive a clear or device change.
+            if (DeviceIoType == DeviceIoType.Output && OutputAxisDirection < 0 && Profile != null)
+            {
+                var plugin = Profile.GetAllMappings()
+                    .SelectMany(mapping => mapping.Plugins.Concat(
+                        mapping.InactiveOutputRepresentations
+                            .Where(bank => bank?.Plugins != null).SelectMany(bank => bank.Plugins)))
+                    .FirstOrDefault(candidate => candidate?.Outputs.Count == 1 &&
+                        ReferenceEquals(candidate.Outputs[0], this));
+                var pressed = plugin?.GetType().GetProperty("RangePressed");
+                var released = plugin?.GetType().GetProperty("Range");
+                if (pressed?.PropertyType == typeof(double) && pressed.CanWrite &&
+                    released?.PropertyType == typeof(double) &&
+                    Equals(pressed.GetValue(plugin, null), -100.0) &&
+                    Equals(released.GetValue(plugin, null), 0.0))
+                    pressed.SetValue(plugin, 100.0, null);
+            }
+            OutputAxisDirection = 0;
         }
 
         public void ClearBinding()
