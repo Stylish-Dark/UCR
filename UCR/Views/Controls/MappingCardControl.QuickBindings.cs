@@ -235,6 +235,7 @@ namespace HidWizards.UCR.Views.Controls
                 // together, with each hat's directions in provider index order.
                 var ordered = options.OrderBy(option => CompactInputBindingControl.IsVJoyHat(option) ? option.KeyValue : -1);
                 var signedDirections = new MenuItem { Header = "Stick directions", ToolTip = "Choose a signed stick direction" };
+                BoundOutputSubmenu(signedDirections, placementTarget);
                 foreach (var option in ordered)
                 {
                     var capturedOption = option;
@@ -519,6 +520,30 @@ namespace HidWizards.UCR.Views.Controls
                     IsEnabled = false
                 });
             menu.IsOpen = true;
+        }
+
+        private static void BoundOutputSubmenu(MenuItem item, FrameworkElement anchor)
+        {
+            item.SubmenuOpened += (sender, args) =>
+            {
+                var owner = Window.GetWindow(anchor);
+                var popup = item.Template?.FindName("PART_Popup", item) as Popup;
+                if (owner == null || popup == null ||
+                    !CompactInputBindingControl.TryGetPickerBounds(anchor, owner, out var bounds)) return;
+                // A submenu has its own HWND; TranslatePoint cannot cross to the
+                // editor's visual tree. Convert through screen coordinates instead.
+                popup.PlacementTarget = item;
+                popup.CustomPopupPlacementCallback = (popupSize, targetSize, offset) =>
+                {
+                    var origin = owner.PointFromScreen(item.PointToScreen(new Point()));
+                    var left = origin.X + targetSize.Width;
+                    if (left + popupSize.Width > bounds.Right) left = origin.X - popupSize.Width;
+                    left = Math.Max(bounds.Left, Math.Min(left, bounds.Right - popupSize.Width));
+                    var top = Math.Max(bounds.Top, Math.Min(origin.Y, bounds.Bottom - popupSize.Height));
+                    return new[] { new CustomPopupPlacement(new Point(left - origin.X, top - origin.Y), PopupPrimaryAxis.None) };
+                };
+                popup.Placement = PlacementMode.Custom;
+            };
         }
 
         private static ContextMenu CreateBoundedOutputMenu(FrameworkElement anchor)

@@ -1,4 +1,4 @@
-name: Verify UCR functional batch
+name: Build UCR Stylish
 
 on:
   push:
@@ -7,25 +7,546 @@ on:
 
 permissions:
   contents: read
-  actions: read
 
 jobs:
   build:
-    name: Verify Windows functional changes
+    name: Build Windows Release
     runs-on: windows-2022
+
     steps:
-      - name: Check out verified UCR source
+      - name: Check out UCR Stylish
         uses: actions/checkout@v6
         with:
           submodules: false
-      - name: Download exact Windows build 2368
-        shell: powershell
-        env:
-          GH_TOKEN: ${{ github.token }}
+
+      - name: Validate external UI asset targets
+        shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          gh run download 45234209245 --repo Stylish-Dark/UCR --name UCR-Windows --dir UCR/bin/Release
-          if ($LASTEXITCODE -ne 0) { throw 'Could not download the compiled Windows build.' }
+          $views = Get-ChildItem .\UCR\Views -Filter *.xaml -Recurse -File
+          $allXaml = Get-ChildItem .\UCR -Filter *.xaml -Recurse -File
+          $allMarkup = ($allXaml | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join [Environment]::NewLine
+          $codeReferences = (Get-ChildItem .\UCR -Filter *.cs -Recurse -File | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join [Environment]::NewLine
+          $failures = [System.Collections.Generic.List[string]]::new()
+          $checked = 0
+
+          foreach ($asset in Get-ChildItem .\UCR\Assets\Layouts -Filter *.xaml -File) {
+            $matching = @($views | Where-Object { $_.BaseName -eq $asset.BaseName })
+            if ($matching.Count -ne 1) {
+              $failures.Add("Layout $($asset.Name) has $($matching.Count) compiled view matches.")
+              continue
+            }
+            [xml]$document = Get-Content -LiteralPath $asset.FullName -Raw
+            $source = Get-Content -LiteralPath $matching[0].FullName -Raw
+            foreach ($entry in $document.DocumentElement.ChildNodes) {
+              if ($entry.NodeType -ne [System.Xml.XmlNodeType]::Element) { continue }
+              $key = $entry.GetAttribute('Key', 'http://schemas.microsoft.com/winfx/2006/xaml')
+              if ([string]::IsNullOrWhiteSpace($key)) {
+                $failures.Add("$($asset.Name): unnamed layout entry.")
+                continue
+              }
+              $name = if ($entry.LocalName -eq 'String') { ($key -split '\.')[0] } else { $key }
+              if ($source -notmatch ('\b(?:x:Name|Name)\s*=\s*["'']' + [regex]::Escape($name) + '["'']')) {
+                $failures.Add("$($asset.Name): target '$name' does not exist in $($matching[0].Name).")
+              }
+              $checked++
+            }
+          }
+
+          foreach ($asset in Get-ChildItem .\UCR\Assets\Styles -Filter *.xaml -File) {
+            [xml]$document = Get-Content -LiteralPath $asset.FullName -Raw
+            foreach ($entry in $document.DocumentElement.ChildNodes) {
+              if ($entry.NodeType -ne [System.Xml.XmlNodeType]::Element) { continue }
+              $key = $entry.GetAttribute('Key', 'http://schemas.microsoft.com/winfx/2006/xaml')
+              if ($entry.LocalName -ne 'Style' -or [string]::IsNullOrWhiteSpace($key)) {
+                $failures.Add("$($asset.Name): unsupported or unnamed external style.")
+                continue
+              }
+              $usage = '\{(?:StaticResource|DynamicResource)\s+' + [regex]::Escape($key) + '\}'
+              $codeUsage = '(?:FindResource|TryFindResource)\s*\(\s*"' + [regex]::Escape($key) + '"\s*\)'
+              if ($allMarkup -notmatch $usage -and $codeReferences -notmatch $codeUsage) {
+                $failures.Add("$($asset.Name): '$key' is never referenced by UCR XAML.")
+              }
+              $checked++
+            }
+          }
+
+          if ($failures.Count) {
+            $failures | ForEach-Object { Write-Error $_ }
+            throw "$($failures.Count) external UI asset validation failure(s)."
+          }
+          Write-Host "Verified $checked external UI asset targets and references."
+
+      - name: Verify no unapproved mapping type heading
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $view = Get-Content .\UCR\Views\Controls\MappingCardControl.xaml -Raw
+          $model = Get-Content .\UCR\ViewModels\ProfileViewModels\MappingViewModel.cs -Raw
+          if ($view.Contains('OutputBodyGroupTitle') -or $model.Contains('OutputBodyGroupTitle')) {
+            throw 'Unexpected output type text heading introduced into mapping editor.'
+          }
+          Write-Host 'No added output type heading.'
+
+          # Enforce the existing symbol-first layout contract in source, without
+          # launching UI automation: switch captions must sit ABOVE switches.
+          [xml]$mappingXml = Get-Content .\UCR\Views\Controls\MappingCardControl.xaml -Raw
+          $blocks = @($mappingXml.SelectNodes("//*[local-name()='TextBlock' and @Text='Block']"))
+          if ($blocks.Count -lt 1) { throw 'Mapping Block label missing.' }
+          foreach ($label in $blocks) {
+            $column = $label.ParentNode
+            if ($column.LocalName -ne 'StackPanel' -or
+                $column.GetAttribute('Style') -notlike '*UcrLabeledSwitchColumn*' -or
+                @($column.SelectNodes("./*[local-name()='ToggleButton']")).Count -ne 1) {
+              throw 'Block caption must be above its switch in a shared vertical column.'
+            }
+          }
+          [xml]$compactXml = Get-Content .\UCR\Views\Controls\CompactInputBindingControl.xaml -Raw
+          $compactBlock = $compactXml.SelectSingleNode(
+            "//*[local-name()='TextBlock.Style']/*[local-name()='Style']/*[local-name()='Setter' and @Property='Text' and @Value='Block']")
+          if ($null -eq $compactBlock -or
+              $compactBlock.ParentNode.GetAttribute('BasedOn') -notlike '*UcrLabeledSwitchCaption*') {
+            throw 'Compact Block caption must use the shared caption contract.'
+          }
+          $compactColumn = $compactBlock.ParentNode.ParentNode.ParentNode.ParentNode
+          $columnStyle = $compactColumn.SelectSingleNode(
+            "./*[local-name()='StackPanel.Style']/*[local-name()='Style']")
+          if ($compactColumn.LocalName -ne 'StackPanel' -or
+              $null -eq $columnStyle -or
+              $columnStyle.GetAttribute('BasedOn') -notlike '*UcrLabeledSwitchColumn*') {
+            throw 'Compact Block switch must use the shared vertical column contract.'
+          }
+          # The legacy binding editor uses the same caption-above-switch rule.
+          [xml]$legacyXml = Get-Content .\UCR\Views\Controls\DeviceBindingControl.xaml -Raw
+          $legacyCaptions = @($legacyXml.SelectNodes(
+            "//*[local-name()='TextBlock' and (@Text='Block' or @Text='Reverse')]"))
+          if ($legacyCaptions.Count -ne 2) { throw 'Expected both legacy binding switch captions.' }
+          foreach ($caption in $legacyCaptions) {
+            $column = $caption.ParentNode
+            if ($column.LocalName -ne 'StackPanel' -or
+                $column.GetAttribute('Style') -notlike '*UcrLabeledSwitchColumn*' -or
+                $caption.GetAttribute('Style') -notlike '*UcrLabeledSwitchCaption*' -or
+                @($column.SelectNodes("./*[local-name()='ToggleButton']")).Count -ne 1) {
+              throw 'Legacy switch caption must sit above its switch in the shared vertical column.'
+            }
+          }
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v3
+        with:
+          vs-version: '[17.0,18.0)'
+          msbuild-architecture: x86
+
+      - name: Verify Windows build prerequisites
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $msbuild = Get-Command msbuild -ErrorAction Stop
+          $nuget = Get-Command nuget -ErrorAction Stop
+          Write-Host "MSBuild: $($msbuild.Source)"
+          Write-Host "NuGet:   $($nuget.Source)"
+          msbuild -version
+          nuget help | Select-Object -First 1
+
+          $net452 = "${env:ProgramFiles(x86)}\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.5.2\mscorlib.dll"
+          if (-not (Test-Path $net452)) {
+            throw ".NET Framework 4.5.2 targeting pack is missing from windows-2022."
+          }
+          Write-Host "Verified .NET Framework 4.5.2 reference assemblies: $net452"
+
+      - name: Ensure .NET Framework 4.6.1 Developer Pack
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $net461 = "${env:ProgramFiles(x86)}\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.6.1\mscorlib.dll"
+          if (Test-Path $net461) {
+            Write-Host "Verified .NET Framework 4.6.1 reference assemblies: $net461"
+            exit 0
+          }
+
+          $installer = Join-Path $env:RUNNER_TEMP 'NDP461-DevPack-KB3105179-ENU.exe'
+          $downloadUri = 'https://go.microsoft.com/fwlink/?linkid=2099470'
+          Invoke-WebRequest -Uri $downloadUri -OutFile $installer
+
+          $signature = Get-AuthenticodeSignature $installer
+          if ($signature.Status -ne 'Valid') {
+            throw "The downloaded .NET Framework 4.6.1 Developer Pack has an invalid Authenticode signature: $($signature.Status)"
+          }
+          if ($signature.SignerCertificate.Subject -notmatch '(^|,\s*)CN=Microsoft Corporation(,|$)') {
+            throw "The downloaded .NET Framework 4.6.1 Developer Pack is not signed by Microsoft Corporation. Subject: $($signature.SignerCertificate.Subject)"
+          }
+
+          $hash = (Get-FileHash -Algorithm SHA256 $installer).Hash
+          Write-Host "Verified Microsoft signature. Installer SHA-256: $hash"
+
+          $process = Start-Process -FilePath $installer -ArgumentList '/q', '/norestart' -Wait -PassThru
+          if ($process.ExitCode -notin @(0, 3010)) {
+            throw ".NET Framework 4.6.1 Developer Pack installation failed with exit code $($process.ExitCode)."
+          }
+
+          if (-not (Test-Path $net461)) {
+            throw ".NET Framework 4.6.1 reference assemblies are still missing after installation."
+          }
+          Write-Host "Verified .NET Framework 4.6.1 reference assemblies: $net461"
+
+      - name: Fetch exact pinned IOWrapper source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $expected = '4ef0a847fb479cfbe561656097639d3cef5240b7'
+          $destination = Join-Path $PWD 'submodules\IOWrapper'
+
+          if (Test-Path $destination) {
+            Remove-Item -LiteralPath $destination -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path (Split-Path $destination) -Force | Out-Null
+
+          git clone https://github.com/evilC/IOWrapper.git $destination
+          git -C $destination checkout --detach $expected
+
+          $actual = (git -C $destination rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Unable to read the checked-out IOWrapper commit.'
+          }
+          if ($actual -ne $expected) {
+            throw "IOWrapper commit mismatch. Expected $expected, got $actual."
+          }
+          Write-Host "Verified IOWrapper commit: $actual"
+
+      - name: Preserve IOWrapper input callback order
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\build\ProviderPatches\Apply-IOWrapperInputOrdering.ps1 -IOWrapperRoot .\submodules\IOWrapper
+
+      - name: Read DirectInput axis state at subscription startup
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git -C .\submodules\IOWrapper apply "$PWD\build\ProviderPatches\DirectInputAxisSnapshot.patch"
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Unable to apply the DirectInput axis snapshot patch.'
+          }
+
+      - name: Harden Core Interception hotplug handling
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\build\ProviderPatches\Apply-CoreInterceptionHotplugSafety.ps1 -IOWrapperRoot .\submodules\IOWrapper
+
+      - name: Handle Core Interception shutdown before initialization
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git -C .\submodules\IOWrapper apply "$PWD\build\ProviderPatches\CoreInterceptionPartialShutdown.patch"
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Unable to apply the Core Interception shutdown patch.'
+          }
+
+      - name: Apply Core ViGEm output lifecycle and report fixes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git -C .\submodules\IOWrapper apply "$PWD\build\ProviderPatches\CoreViGEmOutput.patch"
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Unable to apply the Core ViGEm output patch.'
+          }
+
+      - name: Apply vJoy acquisition and report fixes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git -C .\submodules\IOWrapper apply "$PWD\build\ProviderPatches\CoreVJoyOutput.patch"
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Unable to apply the vJoy output patch.'
+          }
+
+      - name: Enable Core Interception blocking
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $settings = Join-Path $PWD 'submodules\IOWrapper\Source\Core Providers\Core_Interception\Settings.xml'
+          if (-not (Test-Path -LiteralPath $settings -PathType Leaf)) {
+            throw "Core Interception settings file is missing: $settings"
+          }
+
+          [xml]$xml = Get-Content -LiteralPath $settings -Raw
+          $blockingSettings = @($xml.SelectNodes('/Settings/Setting[Name="BlockingEnabled"]/Value'))
+          if ($blockingSettings.Count -ne 1) {
+            throw "Expected exactly one BlockingEnabled setting, found $($blockingSettings.Count). Refusing to modify an unexpected settings layout."
+          }
+
+          $oldValue = $blockingSettings[0].InnerText.Trim()
+          if ($oldValue -notin @('false', 'False', 'FALSE', 'true', 'True', 'TRUE')) {
+            throw "Unexpected BlockingEnabled value: $oldValue"
+          }
+
+          $blockingSettings[0].InnerText = 'true'
+          $xml.Save($settings)
+
+          [xml]$verified = Get-Content -LiteralPath $settings -Raw
+          $verifiedSettings = @($verified.SelectNodes('/Settings/Setting[Name="BlockingEnabled"]/Value'))
+          if ($verifiedSettings.Count -ne 1 -or $verifiedSettings[0].InnerText.Trim() -ne 'true') {
+            throw 'Failed to enable Core Interception blocking.'
+          }
+
+          Write-Host "Core Interception BlockingEnabled changed from '$oldValue' to 'true'."
+
+      - name: Restore IOWrapper NuGet packages
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          nuget restore .\submodules\IOWrapper\IOWrapper.sln -NonInteractive
+          if ($LASTEXITCODE -ne 0) {
+            throw "IOWrapper NuGet restore failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Build IOWrapper Release
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # The pinned providers copy into a shared Artifacts tree in post-build events.
+          msbuild .\submodules\IOWrapper\IOWrapper.sln /m:1 /t:Rebuild /p:Configuration=Release /v:minimal
+          if ($LASTEXITCODE -ne 0) {
+            throw "IOWrapper Release build failed with exit code $LASTEXITCODE."
+          }
+
+          $required = @(
+            '.\submodules\IOWrapper\Artifacts\IOWrapper\IOWrapper.Core.dll',
+            '.\submodules\IOWrapper\Artifacts\IOWrapper\IOWrapper.DTOs.dll',
+            '.\submodules\IOWrapper\Artifacts\IOWrapper\IOWrapper.IProvider.dll'
+          )
+          foreach ($file in $required) {
+            if (-not (Test-Path $file)) {
+              throw "Expected IOWrapper artifact is missing: $file"
+            }
+          }
+          Write-Host 'Verified required IOWrapper artifacts.'
+
+          $interceptionSettings = '.\submodules\IOWrapper\Artifacts\Providers\Core_Interception\Settings.xml'
+          if (-not (Test-Path -LiteralPath $interceptionSettings -PathType Leaf)) {
+            throw "Core Interception artifact settings are missing: $interceptionSettings"
+          }
+          [xml]$artifactSettings = Get-Content -LiteralPath $interceptionSettings -Raw
+          $artifactBlocking = @($artifactSettings.SelectNodes('/Settings/Setting[Name="BlockingEnabled"]/Value'))
+          if ($artifactBlocking.Count -ne 1 -or $artifactBlocking[0].InnerText.Trim() -ne 'true') {
+            throw 'Core Interception build artifact does not have BlockingEnabled=true.'
+          }
+          Write-Host 'Verified Core Interception build artifact has BlockingEnabled=true.'
+
+      - name: Apply approved Core Interception DLL override
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          # Core_ViGEm is deliberately not overridden here. Its output handlers are patched
+          # from pinned source above and the provider is rebuilt by this workflow.
+          $overrides = @(
+            @{
+              Source = '.\build\ProviderOverrides\Providers\Core_Interception\IOWrapper.Libraries.PollingDeviceHandler.dll'
+              Destination = '.\submodules\IOWrapper\Artifacts\Providers\Core_Interception\IOWrapper.Libraries.PollingDeviceHandler.dll'
+              Sha256 = 'dec7437219bb5b410955c0fc50d1a3f92af31cf08bc1c23ec7e5dcdfa4207b25'
+            }
+          )
+
+          foreach ($override in $overrides) {
+            if (-not (Test-Path -LiteralPath $override.Source -PathType Leaf)) {
+              throw "Approved provider DLL is missing: $($override.Source)"
+            }
+
+            $sourceHash = (Get-FileHash -LiteralPath $override.Source -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($sourceHash -ne $override.Sha256) {
+              throw "Approved provider DLL hash mismatch for $($override.Source). Expected $($override.Sha256), got $sourceHash."
+            }
+
+            $destinationDirectory = Split-Path -Parent $override.Destination
+            New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
+            Copy-Item -LiteralPath $override.Source -Destination $override.Destination -Force
+
+            $destinationHash = (Get-FileHash -LiteralPath $override.Destination -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($destinationHash -ne $override.Sha256) {
+              throw "Provider override copy failed hash verification for $($override.Destination)."
+            }
+            Write-Host "Applied approved provider DLL: $($override.Destination) [$destinationHash]"
+          }
+
+      - name: Stage IOWrapper dependencies for UCR
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $source = Join-Path $PWD 'submodules\IOWrapper\Artifacts'
+          $destination = Join-Path $PWD 'dependencies'
+
+          if (-not (Test-Path -LiteralPath $source -PathType Container)) {
+            throw "IOWrapper artifacts directory is missing: $source"
+          }
+
+          if (Test-Path -LiteralPath $destination) {
+            Remove-Item -LiteralPath $destination -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $destination -Force | Out-Null
+
+          Get-ChildItem -LiteralPath $source -Force | ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination $destination -Recurse -Force
+          }
+
+          $sourceFiles = Get-ChildItem -LiteralPath $source -File -Recurse
+          if ($sourceFiles.Count -eq 0) {
+            throw "IOWrapper artifacts directory contains no files: $source"
+          }
+
+          foreach ($sourceFile in $sourceFiles) {
+            $relative = $sourceFile.FullName.Substring($source.Length + 1)
+            $destinationFile = Join-Path $destination $relative
+            if (-not (Test-Path -LiteralPath $destinationFile -PathType Leaf)) {
+              throw "IOWrapper dependency copy is incomplete. Missing: $destinationFile"
+            }
+
+            $sourceHash = (Get-FileHash -LiteralPath $sourceFile.FullName -Algorithm SHA256).Hash
+            $destinationHash = (Get-FileHash -LiteralPath $destinationFile -Algorithm SHA256).Hash
+            if ($sourceHash -ne $destinationHash) {
+              throw "IOWrapper dependency hash mismatch for: $relative"
+            }
+          }
+
+          $required = @(
+            '.\dependencies\IOWrapper\IOWrapper.Core.dll',
+            '.\dependencies\IOWrapper\IOWrapper.DTOs.dll',
+            '.\dependencies\IOWrapper\IOWrapper.IProvider.dll'
+          )
+          foreach ($file in $required) {
+            if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
+              throw "Required UCR IOWrapper dependency is missing after staging: $file"
+            }
+            if ((Get-Item -LiteralPath $file).Length -le 0) {
+              throw "Required UCR IOWrapper dependency is empty after staging: $file"
+            }
+          }
+
+          $stagedInterceptionSettings = '.\dependencies\Providers\Core_Interception\Settings.xml'
+          if (-not (Test-Path -LiteralPath $stagedInterceptionSettings -PathType Leaf)) {
+            throw "Staged Core Interception settings are missing: $stagedInterceptionSettings"
+          }
+          [xml]$stagedSettings = Get-Content -LiteralPath $stagedInterceptionSettings -Raw
+          $stagedBlocking = @($stagedSettings.SelectNodes('/Settings/Setting[Name="BlockingEnabled"]/Value'))
+          if ($stagedBlocking.Count -ne 1 -or $stagedBlocking[0].InnerText.Trim() -ne 'true') {
+            throw 'Staged Core Interception settings do not have BlockingEnabled=true.'
+          }
+
+          Write-Host "Verified $($sourceFiles.Count) IOWrapper artifact files copied byte-for-byte into dependencies."
+          Write-Host 'Verified staged Core Interception settings have BlockingEnabled=true.'
+
+      - name: Restore UCR NuGet packages
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $packageConfigs = @(
+            '.\UCR\packages.config',
+            '.\UCR.Core\packages.config',
+            '.\UCR.FileHandler\packages.config'
+          )
+
+          foreach ($config in $packageConfigs) {
+            if (-not (Test-Path $config)) {
+              throw "Expected packages.config is missing: $config"
+            }
+            nuget restore $config -PackagesDirectory .\packages -NonInteractive
+            if ($LASTEXITCODE -ne 0) {
+              throw "NuGet restore failed for $config with exit code $LASTEXITCODE."
+            }
+          }
+
+      - name: Stamp unique UCR build version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # UTC calendar day + minute of day form a monotonic four-part Windows
+          # file version, independent of the two unrelated workflow run counters.
+          $now = [DateTime]::UtcNow
+          $buildDay = [int]($now.Date - [DateTime]::new(2020,1,1)).TotalDays
+          $buildMinute = $now.Hour * 60 + $now.Minute
+          $stamp = $now.ToString('yyyyMMdd.HHmmss') + 'Z'
+          $gitVersionConfig = Get-Content -LiteralPath '.\GitVersion.yml' -Raw
+          $versionMatch = [regex]::Match($gitVersionConfig, '(?m)^next-version:\s*(\d+\.\d+\.\d+)\s*$')
+          if (-not $versionMatch.Success) {
+            throw 'Cannot derive UCR release version from GitVersion.yml.'
+          }
+          $baseVersion = $versionMatch.Groups[1].Value
+          $file = '.\\UCR\\Properties\\AssemblyInfo.cs'
+          $source = [System.IO.File]::ReadAllText($file)
+          $numeric = "0.9.$buildDay.$buildMinute"
+          $source = [regex]::Replace($source, 'AssemblyFileVersion\("[^"]+"\)',
+            ('AssemblyFileVersion("' + $numeric + '")'))
+          $source = [regex]::Replace($source, 'AssemblyInformationalVersion\("[^"]+"\)',
+            ('AssemblyInformationalVersion("v' + $baseVersion + '-' + $stamp + '")'))
+          [System.IO.File]::WriteAllText($file, $source, [System.Text.UTF8Encoding]::new($false))
+          Write-Host "UCR build identity: $baseVersion-$stamp ($numeric)"
+
+      - name: Build UCR Stylish Release
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $gitVersionConfig = Get-Content -LiteralPath '.\GitVersion.yml' -Raw
+          $versionMatch = [regex]::Match($gitVersionConfig, '(?m)^next-version:\s*(\d+)\.(\d+)\.(\d+)\s*$')
+          if (-not $versionMatch.Success) {
+            throw 'Could not derive a deterministic numeric build version from GitVersion.yml next-version.'
+          }
+
+          $versionNumber = '{0}.{1}.{2}.0' -f `
+            $versionMatch.Groups[1].Value, `
+            $versionMatch.Groups[2].Value, `
+            $versionMatch.Groups[3].Value
+
+          Write-Host "Using deterministic VersionNumber=$versionNumber from GitVersion.yml"
+          msbuild .\UCR.sln /m:1 /t:Rebuild /p:Configuration=Release /p:Platform="Any CPU" /p:VersionNumber="$versionNumber" /v:minimal
+          if ($LASTEXITCODE -ne 0) {
+            throw "UCR Release build failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Confirm UCR.exe was built
+        shell: pwsh
+        run: |
+          if (-not (Test-Path -LiteralPath '.\UCR\bin\Release\UCR.exe' -PathType Leaf)) {
+            throw 'The Windows build did not produce UCR.exe.'
+          }
+
+      - name: Verify packaged external UI assets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = '.\UCR\bin\Release\Assets'
+          $files = @(
+            Get-ChildItem '.\UCR\Assets\Styles' -Filter '*.xaml' -File
+            Get-ChildItem '.\UCR\Assets\Layouts' -File
+            Get-ChildItem '.\UCR\Assets\Theme' -Filter '*.ini' -File
+            Get-ChildItem '.\UCR\Assets\Glyphs' -Filter '*.ini' -File
+          )
+          foreach ($source in $files) {
+            $section = Split-Path -Leaf $source.Directory.FullName
+            $destination = Join-Path (Join-Path $root $section) $source.Name
+            if (-not (Test-Path -LiteralPath $destination -PathType Leaf)) {
+              throw "External UI asset missing from Windows build: $section\$($source.Name)"
+            }
+            $expected = (Get-FileHash -LiteralPath $source.FullName -Algorithm SHA256).Hash
+            $actual = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash
+            if ($expected -ne $actual) {
+              throw "Outdated external UI asset in Windows build: $section\$($source.Name)"
+            }
+          }
+          Write-Host "Verified $($files.Count) editable UI files are packaged byte-for-byte."
+
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v7
+        with:
+          name: UCR-Windows
+          path: UCR/bin/Release/
+          if-no-files-found: error
 
       - name: Verify output picker bounds in the Windows editor
         id: visual_audit
@@ -686,6 +1207,14 @@ jobs:
                   throw 'The reopened quick picker did not check and focus the saved signed direction.'
               }
               Write-Host 'PASS Collapsed picker selects, saves, checks and focuses the exact signed stick direction'
+              $submenuBounds = $up.Current.BoundingRectangle
+              $frame = [UcrWindowCapture]::VisibleWindowBounds($handle)
+              if ($submenuBounds.Right -gt $frame.Right -or $submenuBounds.Left -lt $frame.Left -or
+                  $submenuBounds.Top -lt $frame.Top -or $submenuBounds.Bottom -gt $frame.Bottom) {
+                  throw "Signed direction submenu extends outside the editor: $submenuBounds"
+              }
+              Write-Host 'PASS The signed direction submenu stays within the visible editor'
+              [UcrWindowCapture]::MovePointerAway()
               [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-collapsed-signed-direction.png')) | Out-Null
               (Find-UcrElement $nameProperty 'Clear binding').GetCurrentPattern(
                   [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
@@ -1074,7 +1603,7 @@ jobs:
                       List<DeviceBindingNode> padMenu = new List<DeviceBindingNode> {
                           Node("LX", BindingType.Axis, 0), Node("LY", BindingType.Axis, 1),
                           Node("RX", BindingType.Axis, 2), Node("RY", BindingType.Axis, 3), Node("A", BindingType.Button, 0) };
-                      Device pad = Cached("Fixture pad", "FunctionalFixture", "pad-a", padMenu);
+                      Device pad = Cached("Fixture pad", "Core_vJoyInterfaceWrap", "pad-a", padMenu);
                       Profile profile = MakeProfile(context, "Quick directions", pad);
                       Mapping route = AddRoute(profile, "Quick direction", new ButtonToAxis());
                       using (ProfileViewModel vm = new ProfileViewModel(profile))
@@ -1133,7 +1662,7 @@ jobs:
                               saved.KeyValue == 3 && saved.AssignedControlName == "F7", "Unambiguous keyboard capture preserves the selected key name");
                       }
 
-                      Device replacement = Cached("Offline replacement", "FunctionalFixture", "pad-b", padMenu);
+                      Device replacement = Cached("Offline replacement", "Core_vJoyInterfaceWrap", "pad-b", padMenu);
                       Profile batch = MakeProfile(context, "Batch banks", pad);
                       DeviceConfiguration source = batch.OutputDeviceConfigurations[0];
                       DeviceConfiguration destination = new DeviceConfiguration(replacement);
