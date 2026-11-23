@@ -521,7 +521,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $root = (Resolve-Path '.\UCR\bin\Release').Path
-          $assembly = [Reflection.Assembly]::LoadFrom((Join-Path $root 'UCR.Core.dll'))
+          $assembly = [Reflection.Assembly]::LoadFrom((Join-Path $root 'lib/UCR.Core.dll'))
           $device = $assembly.GetType('HidWizards.UCR.Core.Models.Device', $true)
           $identity = $assembly.GetType('HidWizards.UCR.Core.Managers.DeviceIdentity', $true)
           $selection = $identity.GetMethod('SelectionEquals')
