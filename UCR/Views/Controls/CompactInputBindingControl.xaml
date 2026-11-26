@@ -175,7 +175,11 @@
 
         <Grid x:Name="BindingActionGroup" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2"
               HorizontalAlignment="Stretch" MinHeight="38">
-        <Grid x:Name="BindSurface" Margin="0" ClipToBounds="True">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Grid x:Name="BindSurface" Grid.Column="0" Margin="0" ClipToBounds="True">
             <Button x:Name="BindButton" MinHeight="38" MinWidth="0"
                     IsEnabled="{Binding CanBindCurrentDevice}"
                     Click="BindButton_OnClick"
@@ -226,7 +230,17 @@
                 </ProgressBar.Style>
             </ProgressBar>
         </Grid>
-
+        <Button x:Name="BindingOptionsButton" Grid.Column="1"
+                Width="30" Height="38" Margin="4 0 0 0" Padding="0"
+                Style="{StaticResource UcrToolbarActionButton}"
+                IsEnabled="{Binding BindingEnabled}"
+                ToolTip="Binding options"
+                AutomationProperties.AutomationId="UiBindingOptions"
+                AutomationProperties.Name="{Binding IoTypeName, StringFormat={}{0} binding options}"
+                Click="BindingOptionsButton_OnClick">
+            <TextBlock Text="⋮" FontSize="23" Foreground="White"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Button>
         </Grid>
 
         <StackPanel Grid.Row="0" Grid.Column="3"

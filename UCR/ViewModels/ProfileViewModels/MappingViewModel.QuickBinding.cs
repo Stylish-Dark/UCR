@@ -177,6 +177,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             var restrictCategory = category == DeviceBindingCategory.Event ||
                 plugin?.DeviceBindings.Count > 1 || IsCompoundOutput;
             var slot = plugin == null ? -1 : Plugins.IndexOf(plugin);
+            var deviceVisual = DeviceVisualCatalog.Describe(configuration, ProfileViewModel.Profile, DeviceIoType.Output);
             foreach (var node in FlattenBindingNodes(menu))
             {
                 var info = node?.DeviceBindingInfo;
@@ -211,7 +212,10 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     KeyValue = info.KeyValue,
                     KeySubValue = info.KeySubValue,
                     Visual = DeviceVisualCatalog.DescribeBinding(
-                        temporary, info.DeviceBindingCategory, ProfileViewModel.Profile)
+                        temporary, info.DeviceBindingCategory, ProfileViewModel.Profile, deviceVisual,
+                        info.DeviceBindingCategory == DeviceBindingCategory.Range && info.KeyType == 1 && info.KeySubValue == 0
+                            ? configuration.Device.GetKnownTriggerAxisName(DeviceIoType.Output, info.KeyValue) ?? node.Title
+                            : node.Title)
                 });
             }
 

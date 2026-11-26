@@ -382,6 +382,12 @@ namespace HidWizards.UCR.ViewModels.Presentation
 
         public static BindingVisualDescriptor DescribeBinding(DeviceBinding binding, DeviceBindingCategory category, Profile profile)
         {
+            return DescribeBinding(binding, category, profile, null, null);
+        }
+
+        internal static BindingVisualDescriptor DescribeBinding(DeviceBinding binding, DeviceBindingCategory category,
+            Profile profile, DeviceVisualDescriptor deviceVisual, string controlName)
+        {
             if (binding == null)
             {
                 return new BindingVisualDescriptor
@@ -400,8 +406,8 @@ namespace HidWizards.UCR.ViewModels.Presentation
             }
 
             var configuration = profile?.GetDeviceConfiguration(binding.DeviceIoType, binding.DeviceConfigurationGuid);
-            var deviceDescriptor = Describe(configuration, profile, binding.DeviceIoType);
-            var boundName = binding.IsBound ? SafeBoundName(binding) : "Not bound";
+            var deviceDescriptor = deviceVisual ?? Describe(configuration, profile, binding.DeviceIoType);
+            var boundName = binding.IsBound ? controlName ?? SafeBoundName(binding) : "Not bound";
             var result = new BindingVisualDescriptor
             {
                 Device = deviceDescriptor,

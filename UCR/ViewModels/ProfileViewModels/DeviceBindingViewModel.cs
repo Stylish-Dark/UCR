@@ -271,6 +271,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(PreviewValue));
                 OnPropertyChanged(nameof(ShowButtonPreview));
                 OnPropertyChanged(nameof(CanBlock));
+                OnPropertyChanged(nameof(BlockAvailability));
                 OnPropertyChanged(nameof(CanBindCurrentDevice));
             }
         }
@@ -697,6 +698,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(CompactBindButtonText));
                 OnPropertyChanged(nameof(ShowBlock));
                 OnPropertyChanged(nameof(CanBlock));
+                OnPropertyChanged(nameof(BlockAvailability));
                 OnPropertyChanged(nameof(ShowInvertInput));
                 OnPropertyChanged(nameof(CanBindCurrentDevice));
             }
@@ -804,6 +806,7 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
             OnPropertyChanged(nameof(CompactBindButtonText));
             OnPropertyChanged(nameof(ShowBlock));
             OnPropertyChanged(nameof(CanBlock));
+            OnPropertyChanged(nameof(BlockAvailability));
             OnPropertyChanged(nameof(Block));
             OnPropertyChanged(nameof(ShowInvertInput));
             OnPropertyChanged(nameof(InvertInput));
@@ -889,7 +892,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                     OnPropertyChanged(nameof(SelectedDevice));
                 }
                 OnPropertyChanged(nameof(ShowBlock));
-            OnPropertyChanged(nameof(CanBlock));
+                OnPropertyChanged(nameof(CanBlock));
+                OnPropertyChanged(nameof(BlockAvailability));
                 OnPropertyChanged(nameof(Block));
                 OnPropertyChanged(nameof(ShowInvertInput));
                 OnPropertyChanged(nameof(InvertInput));
@@ -905,7 +909,8 @@ namespace HidWizards.UCR.ViewModels.ProfileViewModels
                 OnPropertyChanged(nameof(BindButtonText));
                 OnPropertyChanged(nameof(CompactBindButtonText));
                 OnPropertyChanged(nameof(ShowBlock));
-            OnPropertyChanged(nameof(CanBlock));
+                OnPropertyChanged(nameof(CanBlock));
+                OnPropertyChanged(nameof(BlockAvailability));
                 OnPropertyChanged(nameof(Block));
                 OnPropertyChanged(nameof(ShowInvertInput));
                 OnPropertyChanged(nameof(InvertInput));

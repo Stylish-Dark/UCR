@@ -302,6 +302,40 @@ namespace HidWizards.UCR.Views.Controls
                 PopulateInputMenu(BindingOptions, DeviceBinding, DataContext as DeviceBindingViewModel);
         }
 
+        private void BindingOptionsButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            var viewModel = DataContext as DeviceBindingViewModel;
+            if (viewModel?.BindingEnabled != true) return;
+            if (DeviceBinding == null) DeviceBinding = viewModel.DeviceBinding;
+            if (DeviceBinding == null) return;
+            DeviceBinding.CancelBindMode();
+            if (viewModel.IsCapturing)
+                (FindAncestor<MappingCardControl>(this)?.DataContext as MappingViewModel)?.CancelQuickOutputCapture();
+            if (DeviceBinding.DeviceIoType == DeviceIoType.Output) PopulateOutputOptions();
+            else PopulateInputMenu(BindingOptions, DeviceBinding, viewModel);
+            BindingOptions.PlacementTarget = BindingOptionsButton;
+            BindingOptions.Placement = PlacementMode.Bottom;
+            BindingOptions.IsOpen = true;
+            e.Handled = true;
+        }
+
+        private void ChooseOutputControl_OnClick(object sender, RoutedEventArgs e)
+        {
+            var binding = DeviceBinding;
+            var viewModel = DataContext as DeviceBindingViewModel;
+            BindingOptions.IsOpen = false;
+            // The explicit chooser must remain distinct from pressed-key capture.
+            // Let the context menu finish closing before creating the picker HWND.
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                if (!_loaded || !ReferenceEquals(DeviceBinding, binding) ||
+                    !ReferenceEquals(DataContext, viewModel) || viewModel?.BindingEnabled != true) return;
+                var configuration = GetSelectedOutputConfiguration();
+                if (configuration?.Device != null) ShowOutputPicker(BindButton, configuration);
+                else MappingCardControl.ShowOutputPickerStatus(BindButton, "Output device is unavailable.");
+            }));
+        }
+
         private void PopulateOutputOptions()
         {
             BindingOptions.Items.Clear();
@@ -312,8 +346,7 @@ namespace HidWizards.UCR.Views.Controls
                 Foreground = Brushes.White,
                 IsEnabled = GetSelectedOutputConfiguration()?.Device != null
             };
-            choose.Click += (sender, args) => Dispatcher.BeginInvoke(
-                new Action(() => BindButton_OnClick(sender, args)), System.Windows.Threading.DispatcherPriority.Background);
+            choose.Click += ChooseOutputControl_OnClick;
             BindingOptions.Items.Add(choose);
 
             var clear = new MenuItem
