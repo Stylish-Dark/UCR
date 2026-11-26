@@ -1,4 +1,4 @@
-name: Verify binding control repair
+name: Build UCR Stylish
 
 on:
   push:
@@ -7,1031 +7,543 @@ on:
 
 permissions:
   contents: read
-  actions: read
 
 jobs:
   build:
-    name: Verify compiled Windows binding controls
+    name: Build Windows Release
     runs-on: windows-2022
+
     steps:
-      - name: Check out UCR
+      - name: Check out UCR Stylish
         uses: actions/checkout@v6
         with:
           submodules: false
-      - name: Download exact Windows build 2373
-        shell: powershell
-        env:
-          GH_TOKEN: ${{ github.token }}
+
+      - name: Validate external UI asset targets
+        shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          gh run download 45758690130 --repo Stylish-Dark/UCR --name UCR-Windows --dir UCR/bin/Release
-          if ($LASTEXITCODE -ne 0) { throw 'Could not download the compiled Windows build.' }
+          $views = Get-ChildItem .\UCR\Views -Filter *.xaml -Recurse -File
+          $allXaml = Get-ChildItem .\UCR -Filter *.xaml -Recurse -File
+          $allMarkup = ($allXaml | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join [Environment]::NewLine
+          $codeReferences = (Get-ChildItem .\UCR -Filter *.cs -Recurse -File | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join [Environment]::NewLine
+          $failures = [System.Collections.Generic.List[string]]::new()
+          $checked = 0
 
-      - name: Verify output picker bounds in the Windows editor
-        id: visual_audit
-        continue-on-error: false
-        shell: powershell
-        timeout-minutes: 10
+          foreach ($asset in Get-ChildItem .\UCR\Assets\Layouts -Filter *.xaml -File) {
+            $matching = @($views | Where-Object { $_.BaseName -eq $asset.BaseName })
+            if ($matching.Count -ne 1) {
+              $failures.Add("Layout $($asset.Name) has $($matching.Count) compiled view matches.")
+              continue
+            }
+            [xml]$document = Get-Content -LiteralPath $asset.FullName -Raw
+            $source = Get-Content -LiteralPath $matching[0].FullName -Raw
+            foreach ($entry in $document.DocumentElement.ChildNodes) {
+              if ($entry.NodeType -ne [System.Xml.XmlNodeType]::Element) { continue }
+              $key = $entry.GetAttribute('Key', 'http://schemas.microsoft.com/winfx/2006/xaml')
+              if ([string]::IsNullOrWhiteSpace($key)) {
+                $failures.Add("$($asset.Name): unnamed layout entry.")
+                continue
+              }
+              $name = if ($entry.LocalName -eq 'String') { ($key -split '\.')[0] } else { $key }
+              if ($source -notmatch ('\b(?:x:Name|Name)\s*=\s*["'']' + [regex]::Escape($name) + '["'']')) {
+                $failures.Add("$($asset.Name): target '$name' does not exist in $($matching[0].Name).")
+              }
+              $checked++
+            }
+          }
+
+          foreach ($asset in Get-ChildItem .\UCR\Assets\Styles -Filter *.xaml -File) {
+            [xml]$document = Get-Content -LiteralPath $asset.FullName -Raw
+            foreach ($entry in $document.DocumentElement.ChildNodes) {
+              if ($entry.NodeType -ne [System.Xml.XmlNodeType]::Element) { continue }
+              $key = $entry.GetAttribute('Key', 'http://schemas.microsoft.com/winfx/2006/xaml')
+              if ($entry.LocalName -ne 'Style' -or [string]::IsNullOrWhiteSpace($key)) {
+                $failures.Add("$($asset.Name): unsupported or unnamed external style.")
+                continue
+              }
+              $usage = '\{(?:StaticResource|DynamicResource)\s+' + [regex]::Escape($key) + '\}'
+              $codeUsage = '(?:FindResource|TryFindResource)\s*\(\s*"' + [regex]::Escape($key) + '"\s*\)'
+              if ($allMarkup -notmatch $usage -and $codeReferences -notmatch $codeUsage) {
+                $failures.Add("$($asset.Name): '$key' is never referenced by UCR XAML.")
+              }
+              $checked++
+            }
+          }
+
+          if ($failures.Count) {
+            $failures | ForEach-Object { Write-Error $_ }
+            throw "$($failures.Count) external UI asset validation failure(s)."
+          }
+          Write-Host "Verified $checked external UI asset targets and references."
+
+      - name: Verify no unapproved mapping type heading
+        shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $directory = Join-Path $env:RUNNER_TEMP 'UCR-Visual-Audit'
-          New-Item -ItemType Directory -Path $directory -Force | Out-Null
-          $sourceBuild = (Resolve-Path '.\UCR\bin\Release').Path
-          Copy-Item -LiteralPath $sourceBuild -Destination '.\release' -Recurse
-          $exe = (Resolve-Path '.\release\UCR.exe').Path
-          $mockPath = Join-Path (Split-Path $exe) 'Providers\UcrAuditOutput'
-          New-Item -ItemType Directory -Path $mockPath -Force | Out-Null
-          $originalVJoy = Join-Path (Split-Path $exe) 'Providers\Core_vJoyInterfaceWrap'
-          if (Test-Path -LiteralPath $originalVJoy) { Remove-Item -LiteralPath $originalVJoy -Recurse -Force }
-          $originalKeyboardProvider = Join-Path (Split-Path $exe) 'Providers\Core_Interception'
-          if (Test-Path -LiteralPath $originalKeyboardProvider) { Remove-Item -LiteralPath $originalKeyboardProvider -Recurse -Force }
-          $mockSource = Join-Path $env:RUNNER_TEMP 'UcrAuditOutput.cs'
-          @'
-          using System.ComponentModel.Composition;
-          using HidWizards.IOWrapper.DataTransferObjects;
-          using HidWizards.IOWrapper.ProviderInterface.Interfaces;
-          [Export(typeof(IProvider))]
-          public class UcrAuditOutput : IOutputProvider
-          {
-              public virtual string ProviderName { get { return "UcrAuditOutput"; } }
-              public bool IsLive { get { return true; } }
-              public void RefreshLiveState() { }
-              public void RefreshDevices() { }
-              public void Dispose() { }
-              public bool SubscribeOutputDevice(OutputSubscriptionRequest request) { return true; }
-              public bool UnSubscribeOutputDevice(OutputSubscriptionRequest request) { return true; }
-              public bool SetOutputState(OutputSubscriptionRequest request, BindingDescriptor binding, int state) { return true; }
-              public DeviceReport GetOutputDeviceReport(DeviceDescriptor descriptor)
-              {
-                  var device = new DeviceReport {
-                      DeviceName = "Audit virtual controller",
-                      DeviceDescriptor = new DeviceDescriptor { DeviceHandle = "audit", DeviceInstance = 0 }
-                  };
-                  var node = new DeviceReportNode { Title = "Buttons" };
-                  for (var i = 0; i < 4; i++)
-                      node.Bindings.Add(new BindingReport {
-                          Title = "Audit " + (char)('A' + i), Category = BindingCategory.Momentary,
-                          BindingDescriptor = new BindingDescriptor { Type = BindingType.Button, Index = i }
-                      });
-                  device.Nodes.Add(node);
-                  var dpad = new DeviceReportNode { Title = "DPad" };
-                  for (var i = 0; i < 4; i++)
-                      dpad.Bindings.Add(new BindingReport {
-                          Title = new[] { "Up", "Right", "Down", "Left" }[i], Category = BindingCategory.Momentary,
-                          BindingDescriptor = new BindingDescriptor { Type = BindingType.POV, Index = i, SubIndex = 0 }
-                      });
-                  device.Nodes.Add(dpad);
-                  var axes = new DeviceReportNode { Title = "Axes" };
-                  foreach (var axis in new[] { "LX", "LY", "LT", "RT" })
-                      axes.Bindings.Add(new BindingReport {
-                          Title = axis, Category = BindingCategory.Signed,
-                          BindingDescriptor = new BindingDescriptor {
-                              Type = BindingType.Axis, Index = System.Array.IndexOf(new[] { "LX", "LY", "LT", "RT" }, axis)
-                          }
-                      });
-                  device.Nodes.Add(axes);
-                  return device;
-              }
-              public virtual ProviderReport GetOutputList()
-              {
-                  var report = new ProviderReport {
-                      Title = ProviderName, API = "Audit",
-                      ProviderDescriptor = new ProviderDescriptor { ProviderName = ProviderName }
-                  };
-                  var state = System.IO.Path.Combine(System.Environment.GetEnvironmentVariable("RUNNER_TEMP"),
-                      "ucr-output-fixture-state.txt");
-                  var mode = System.IO.File.Exists(state) ? System.IO.File.ReadAllText(state).Trim() : "";
-                  if (mode != "disconnected") {
-                      var device = GetOutputDeviceReport(default(DeviceDescriptor));
-                      if (mode == "reconnected") device.Nodes[0].Bindings[0].Title = "Reconnected A";
-                      report.Devices.Add(device);
-                  }
-                  if (mode != "disconnected") {
-                      var standby = GetOutputDeviceReport(default(DeviceDescriptor));
-                      standby.DeviceName = "Audit standby controller";
-                      standby.DeviceDescriptor = new DeviceDescriptor { DeviceHandle = "audit-standby", DeviceInstance = 0 };
-                      report.Devices.Add(standby);
-                  }
-                  var buttonsOnly = GetOutputDeviceReport(default(DeviceDescriptor));
-                  buttonsOnly.DeviceName = "Audit button-only output";
-                  buttonsOnly.DeviceDescriptor = new DeviceDescriptor { DeviceHandle = "audit-buttons", DeviceInstance = 0 };
-                  while (buttonsOnly.Nodes.Count > 1) buttonsOnly.Nodes.RemoveAt(buttonsOnly.Nodes.Count - 1);
-                  buttonsOnly.Nodes[0].Bindings[0].Title = "Primary A";
-                  report.Devices.Add(buttonsOnly);
-                  return report;
-              }
+          $view = Get-Content .\UCR\Views\Controls\MappingCardControl.xaml -Raw
+          $model = Get-Content .\UCR\ViewModels\ProfileViewModels\MappingViewModel.cs -Raw
+          if ($view.Contains('OutputBodyGroupTitle') -or $model.Contains('OutputBodyGroupTitle')) {
+            throw 'Unexpected output type text heading introduced into mapping editor.'
           }
-          [Export(typeof(IProvider))]
-          public sealed class UcrAuditVJoy : UcrAuditOutput
-          {
-              public override string ProviderName { get { return "Core_vJoyInterfaceWrap"; } }
-              public override ProviderReport GetOutputList() {
-                  var report = new ProviderReport {
-                      Title = ProviderName, API = "Audit",
-                      ProviderDescriptor = new ProviderDescriptor { ProviderName = ProviderName }
-                  };
-                  var secondary = GetOutputDeviceReport(default(DeviceDescriptor));
-                  secondary.DeviceName = "Audit secondary controller";
-                  secondary.DeviceDescriptor = new DeviceDescriptor { DeviceHandle = "audit-secondary", DeviceInstance = 0 };
-                  secondary.Nodes[2].Bindings[2].Title = "RX";
-                  secondary.Nodes[2].Bindings[3].Title = "RY";
-                  var secondHat = new DeviceReportNode { Title = "Hat 2" };
-                  for (var i = 0; i < 4; i++)
-                      secondHat.Bindings.Add(new BindingReport {
-                          Title = new[] { "Up", "Right", "Down", "Left" }[i],
-                          Category = BindingCategory.Momentary,
-                          BindingDescriptor = new BindingDescriptor { Type = BindingType.POV, Index = i + 4, SubIndex = 0 }
-                      });
-                  secondary.Nodes.Add(secondHat);
-                  report.Devices.Add(secondary);
-                  return report;
-              }
+          Write-Host 'No added output type heading.'
+
+          # Enforce the existing symbol-first layout contract in source, without
+          # launching UI automation: switch captions must sit ABOVE switches.
+          [xml]$mappingXml = Get-Content .\UCR\Views\Controls\MappingCardControl.xaml -Raw
+          $blocks = @($mappingXml.SelectNodes("//*[local-name()='TextBlock' and @Text='Block']"))
+          if ($blocks.Count -lt 1) { throw 'Mapping Block label missing.' }
+          foreach ($label in $blocks) {
+            $column = $label.ParentNode
+            if ($column.LocalName -ne 'StackPanel' -or
+                $column.GetAttribute('Style') -notlike '*UcrLabeledSwitchColumn*' -or
+                @($column.SelectNodes("./*[local-name()='ToggleButton']")).Count -ne 1) {
+              throw 'Block caption must be above its switch in a shared vertical column.'
+            }
           }
-          [Export(typeof(IProvider))]
-          public sealed class UcrAuditKeyboard : IInputProvider, IOutputProvider
-          {
-              public string ProviderName { get { return "Core_Interception"; } }
-              public bool IsLive { get { return true; } }
-              public void RefreshLiveState() { }
-              public void RefreshDevices() { }
-              public void Dispose() { }
-              public bool SubscribeOutputDevice(OutputSubscriptionRequest request) { return true; }
-              public bool UnSubscribeOutputDevice(OutputSubscriptionRequest request) { return true; }
-              public bool SetOutputState(OutputSubscriptionRequest request, BindingDescriptor binding, int state) { return true; }
-              public DeviceReport GetOutputDeviceReport(DeviceDescriptor descriptor) { return GetInputDeviceReport(descriptor); }
-              public ProviderReport GetOutputList() { return GetInputList(); }
-              public bool SubscribeInput(InputSubscriptionRequest request) { return true; }
-              public bool UnsubscribeInput(InputSubscriptionRequest request) { return true; }
-              public DeviceReport GetInputDeviceReport(DeviceDescriptor descriptor)
-              {
-                  var device = new DeviceReport {
-                      DeviceName = "K: Audit keyboard",
-                      DeviceDescriptor = new DeviceDescriptor { DeviceHandle = "Keyboard_Audit", DeviceInstance = 0 }
-                  };
-                  var node = new DeviceReportNode { Title = "Keys" };
-                  var keys = new[] { "F", "K", "U", "J", "Shift" };
-                  for (var i = 0; i < keys.Length; i++)
-                      node.Bindings.Add(new BindingReport {
-                          Title = keys[i], Category = BindingCategory.Momentary, Blockable = true,
-                          BindingDescriptor = new BindingDescriptor { Type = BindingType.Button, Index = i }
-                      });
-                  device.Nodes.Add(node);
-                  return device;
-              }
-              public ProviderReport GetInputList()
-              {
-                  var report = new ProviderReport {
-                      Title = ProviderName, API = "Audit",
-                      ProviderDescriptor = new ProviderDescriptor { ProviderName = ProviderName }
-                  };
-                  report.Devices.Add(GetInputDeviceReport(default(DeviceDescriptor)));
-                  return report;
-              }
+          [xml]$compactXml = Get-Content .\UCR\Views\Controls\CompactInputBindingControl.xaml -Raw
+          $compactBlock = $compactXml.SelectSingleNode(
+            "//*[local-name()='TextBlock.Style']/*[local-name()='Style']/*[local-name()='Setter' and @Property='Text' and @Value='Block']")
+          if ($null -eq $compactBlock -or
+              $compactBlock.ParentNode.GetAttribute('BasedOn') -notlike '*UcrLabeledSwitchCaption*') {
+            throw 'Compact Block caption must use the shared caption contract.'
           }
-          '@ | Set-Content -LiteralPath $mockSource -Encoding UTF8
-          $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
-          $dto = (Resolve-Path '.\release\lib\IOWrapper.DTOs.dll').Path
-          $provider = (Resolve-Path '.\release\lib\IOWrapper.IProvider.dll').Path
-          & $csc /nologo /target:library /r:System.ComponentModel.Composition.dll "/r:$dto" "/r:$provider" "/out:$mockPath\UcrAuditOutput.dll" $mockSource
-          if ($LASTEXITCODE -ne 0) { throw 'Could not compile the Windows audit output fixture.' }
-
-
-          $dataRoot = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'UCR'
-          $profileFolder = Join-Path $dataRoot 'Profiles'
-          New-Item -ItemType Directory -Path $profileFolder -Force | Out-Null
-          $primary = [guid]::NewGuid().ToString()
-          $controller = [guid]::NewGuid().ToString()
-          $keyboard = [guid]::NewGuid().ToString()
-          $vjoy = [guid]::NewGuid().ToString()
-          $profileIds = @()
-          foreach ($case in @('Blank axis output', 'Blank button output', 'Explicit button-only output', 'Individual vJoy output', 'Custom signed axis output', 'Custom release axis output', 'Binding controls')) {
-              $id = [guid]::NewGuid().ToString()
-              $profileIds += $id
-              $axis = $case -notin @('Blank button output', 'Individual vJoy output', 'Binding controls')
-              $mapping = @{
-                  title = 'Output selection check'; inputRepresentation = 3; directionalCapacity = 1
-                  outputRepresentation = $(if ($axis) { 2 } else { 3 }); useInputExpression = $true
-                  deviceBindings = @(@{ guid = [guid]::NewGuid().ToString(); isBound = $false
-                      deviceConfigurationGuid = $keyboard; inputExpressionKindConfigured = $true })
-                  plugins = @(@{
-                      pluginType = $(if ($axis) { 'HidWizards.UCR.Plugins.Remapper.ButtonToAxis' } else { 'HidWizards.UCR.Plugins.Remapper.ButtonToButton' })
-                      data = @{ filters = @(); outputs = @(@{
-                          guid = [guid]::NewGuid().ToString(); isBound = $false
-                          deviceConfigurationGuid = $(if ($case -eq 'Explicit button-only output') { $primary } elseif ($case -eq 'Individual vJoy output') { $vjoy } else { [guid]::Empty.ToString() })
-                      }) }
-                  })
-              }
-              if ($case -like 'Custom *') {
-                  $data = $mapping.plugins[0].data
-                  $data.rangePressed = $(if ($case -eq 'Custom signed axis output') { -45.0 } else { -100.0 })
-                  $data.range = $(if ($case -eq 'Custom release axis output') { 20.0 } else { 0.0 })
-                  $data.outputs[0].isBound = $true
-                  $data.outputs[0].deviceConfigurationGuid = $controller
-                  $data.outputs[0].keyType = 1
-                  $data.outputs[0].keyValue = 1
-                  $data.outputs[0].assignedControlName = 'LY'
-                  $data.outputs[0].outputAxisDirection = -1
-              }
-              $profile = @{
-                  guid = $id; title = $case; childProfiles = @(); mappings = @($mapping); mappingGroups = @()
-                  autoActivateApplications = @()
-                  inputDeviceConfigurations = @(@{
-                      guid = $keyboard; shadowDevices = @()
-                      device = @{ title = 'K: Audit keyboard'; providerName = 'Core_Interception'; deviceHandle = 'Keyboard_Audit'; deviceNumber = 0 }
-                  })
-                  primaryInputDeviceConfigurationGuid = $keyboard
-                  outputDeviceConfigurations = @(
-                      @{ guid = $primary; shadowDevices = @()
-                         device = @{ title = 'Audit button-only output'; providerName = 'UcrAuditOutput'; deviceHandle = 'audit-buttons'; deviceNumber = 0 } }
-                      @{ guid = $controller; shadowDevices = @()
-                         device = @{ title = 'Audit virtual controller'; providerName = 'UcrAuditOutput'; deviceHandle = 'audit'; deviceNumber = 0 } }
-                      @{ guid = $vjoy; shadowDevices = @()
-                         device = @{ title = 'Audit secondary controller'; providerName = 'Core_vJoyInterfaceWrap'; deviceHandle = 'audit-secondary'; deviceNumber = 0 } }
-                  )
-                  primaryOutputDeviceConfigurationGuid = $primary
-              }
-              if ($case -eq 'Binding controls') {
-                  $profile.outputDeviceConfigurations = @(@{ guid = $keyboard; shadowDevices = @()
-                      device = @{ title = 'K: Audit keyboard'; providerName = 'Core_Interception'; deviceHandle = 'Keyboard_Audit'; deviceNumber = 0 } })
-                  $profile.primaryOutputDeviceConfigurationGuid = $keyboard
-                  $mapping.plugins[0].data.outputs[0].deviceConfigurationGuid = $keyboard
-                  $mapping.plugins[0].data.outputs[0].isBound = $true
-                  $mapping.plugins[0].data.outputs[0].keyValue = 4
-                  $mapping.plugins[0].data.outputs[0].assignedControlName = 'Shift'
-                  $mapping.deviceBindings[0].isBound = $true
-                  $mapping.deviceBindings[0].assignedControlName = 'F'
-                  $mapping.deviceBindings += @(@{ guid = [guid]::NewGuid().ToString(); isBound = $false; isDirectionalAndCondition = $true
-                      deviceConfigurationGuid = [guid]::Empty.ToString(); inputExpressionKindConfigured = $true },
-                      @{ guid = [guid]::NewGuid().ToString(); isBound = $false; isDirectionalAndCondition = $true
-                      deviceConfigurationGuid = [guid]::Empty.ToString(); inputExpressionKindConfigured = $true },
-                      @{ guid = [guid]::NewGuid().ToString(); isBound = $false; inputExpressionGroup = 1
-                      deviceConfigurationGuid = [guid]::Empty.ToString(); inputExpressionKindConfigured = $true })
-              }
-              @{ schemaVersion = 1; profile = $profile } | ConvertTo-Json -Depth 20 |
-                  Set-Content -LiteralPath (Join-Path $profileFolder ($id + '.json')) -Encoding UTF8
+          $compactColumn = $compactBlock.ParentNode.ParentNode.ParentNode.ParentNode
+          $columnStyle = $compactColumn.SelectSingleNode(
+            "./*[local-name()='StackPanel.Style']/*[local-name()='Style']")
+          if ($compactColumn.LocalName -ne 'StackPanel' -or
+              $null -eq $columnStyle -or
+              $columnStyle.GetAttribute('BasedOn') -notlike '*UcrLabeledSwitchColumn*') {
+            throw 'Compact Block switch must use the shared vertical column contract.'
           }
-          @{ schemaVersion = 1; profileOrder = @($profileIds) } | ConvertTo-Json -Depth 10 |
-              Set-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Encoding UTF8
-          @{ schemaVersion = 1; deviceAliases = @() } | ConvertTo-Json |
-              Set-Content -LiteralPath (Join-Path $dataRoot 'devices.json') -Encoding UTF8
-
-          # Capture the real compiled WPF window, not a generated mockup
-          # or a screenshot from the user's computer.
-          Add-Type -ReferencedAssemblies @('System.Drawing','System.Windows.Forms') -TypeDefinition @'
-          using System;
-          using System.Collections.Generic;
-          using System.Drawing;
-          using System.Drawing.Imaging;
-          using System.Runtime.InteropServices;
-          public static class UcrWindowCapture {
-              [StructLayout(LayoutKind.Sequential)]
-              public struct Rect { public int Left, Top, Right, Bottom; }
-              [DllImport("user32.dll")]
-              private static extern bool GetWindowRect(IntPtr hwnd, out Rect rectangle);
-              [DllImport("user32.dll")]
-              private static extern bool PrintWindow(IntPtr hwnd, IntPtr dc, uint flags);
-              [DllImport("user32.dll")]
-              public static extern bool MoveWindow(IntPtr hwnd, int x, int y, int width, int height, bool repaint);
-              [DllImport("user32.dll")]
-              private static extern bool SetCursorPos(int x, int y);
-              [DllImport("user32.dll")]
-              private static extern void mouse_event(uint flags, uint x, uint y, uint data, UIntPtr extra);
-
-              [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-              private struct DisplayMode {
-                  [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string DeviceName;
-                  public ushort SpecVersion, DriverVersion, Size, DriverExtra;
-                  public uint Fields;
-                  public int PositionX, PositionY;
-                  public uint Orientation, FixedOutput;
-                  public short Color, Duplex, YResolution, TTOption, Collate;
-                  [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string FormName;
-                  public ushort LogPixels;
-                  public uint BitsPerPel, Width, Height, Flags, Frequency;
-                  public uint IcmMethod, IcmIntent, MediaType, DitherType, Reserved1, Reserved2, PanningWidth, PanningHeight;
-              }
-              [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-              private static extern bool EnumDisplaySettings(string deviceName, int mode, ref DisplayMode display);
-              [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-              private static extern int ChangeDisplaySettings(ref DisplayMode display, uint flags);
-              [DllImport("dwmapi.dll")]
-              private static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out Rect bounds, int size);
-              public static Rectangle VisibleWindowBounds(IntPtr hwnd) {
-                  Rect bounds;
-                  if (DwmGetWindowAttribute(hwnd,9,out bounds,Marshal.SizeOf(typeof(Rect))) != 0)
-                      GetWindowRect(hwnd,out bounds);
-                  return Rectangle.FromLTRB(bounds.Left,bounds.Top,bounds.Right,bounds.Bottom);
-              }
-              [StructLayout(LayoutKind.Sequential)]
-              private struct Source { public uint AdapterLow; public int AdapterHigh; public uint Id; }
-              [StructLayout(LayoutKind.Sequential)]
-              private struct DisplayRequest { public int Type; public uint Size; public Source Source; }
-              [StructLayout(LayoutKind.Sequential)]
-              private struct ScaleRange { public DisplayRequest Header; public int Minimum, Current, Maximum; }
-              [StructLayout(LayoutKind.Sequential)]
-              private struct ScaleChange { public DisplayRequest Header; public int Position; }
-              [DllImport("user32.dll")]
-              private static extern int GetDisplayConfigBufferSizes(uint flags, out uint paths, out uint modes);
-              [DllImport("user32.dll")]
-              private static extern int QueryDisplayConfig(uint flags, ref uint count, IntPtr paths, ref uint modeCount, IntPtr modes, IntPtr topology);
-              [DllImport("user32.dll")]
-              private static extern int DisplayConfigGetDeviceInfo(ref ScaleRange range);
-              [DllImport("user32.dll")]
-              private static extern int DisplayConfigSetDeviceInfo(ref ScaleChange change);
-              [DllImport("user32.dll")]
-              public static extern uint GetDpiForWindow(IntPtr hwnd);
-
-              private static void CheckDisplayResult(string action, int result) {
-                  if (result != 0) throw new Exception(action + " returned Win32 error " + result);
-              }
-              [DllImport("user32.dll")]
-              private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
-              public static void CapturePhysicalWindow(IntPtr hwnd, string filename) {
-                  var previous = SetThreadDpiAwarenessContext(new IntPtr(-4));
-                  if (previous == IntPtr.Zero) throw new Exception("Cannot request screen coordinates in physical pixels");
-                  try {
-                      var bounds = VisibleWindowBounds(hwnd);
-                      using (var bitmap = new Bitmap(bounds.Width, bounds.Height))
-                      {
-                          using (var graphics = Graphics.FromImage(bitmap))
-                              graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size);
-                          bitmap.Save(filename, ImageFormat.Png);
-                      }
-                  } finally {
-                      SetThreadDpiAwarenessContext(previous);
-                  }
-              }
-              public static uint CurrentDesktopHeight() {
-                  var mode = new DisplayMode();
-                  mode.Size = (ushort)Marshal.SizeOf(typeof(DisplayMode));
-                  if (!EnumDisplaySettings(null, -1, ref mode)) throw new Exception("Cannot read desktop resolution");
-                  return mode.Height;
-              }
-              public static int SetDesktopScale(int percent) {
-                  const uint activePaths = 2;
-                  uint count, modeCount;
-                  CheckDisplayResult("Enumerate active display paths", GetDisplayConfigBufferSizes(activePaths, out count, out modeCount));
-                  if (count != 1) throw new Exception("Expected a single active display path, got " + count);
-                  // DISPLAYCONFIG_PATH_INFO begins with the source LUID and ID.
-                  var paths = Marshal.AllocHGlobal(checked((int)count * 72));
-                  var modes = Marshal.AllocHGlobal(checked((int)modeCount * 64));
-                  try {
-                      CheckDisplayResult("Read active display paths", QueryDisplayConfig(activePaths, ref count, paths, ref modeCount, modes, IntPtr.Zero));
-                      var source = (Source)Marshal.PtrToStructure(paths, typeof(Source));
-                      var range = new ScaleRange { Header = new DisplayRequest { Type = -3, Size = 32, Source = source } };
-                      CheckDisplayResult("Read display scaling range", DisplayConfigGetDeviceInfo(ref range));
-                      var values = new[] { 100, 125, 150, 175, 200, 225, 250, 300, 350, 400, 450, 500 };
-                      var prior = values[range.Current - range.Minimum];
-                      var position = Array.IndexOf(values, percent) + range.Minimum;
-                      if (position < range.Minimum || position > range.Maximum)
-                          throw new Exception("The active display does not support scale " + percent);
-                      if (position != range.Current) {
-                          var change = new ScaleChange {
-                              Header = new DisplayRequest { Type = -4, Size = 24, Source = source }, Position = position
-                          };
-                          CheckDisplayResult("Set display scaling", DisplayConfigSetDeviceInfo(ref change));
-                          CheckDisplayResult("Read back display scaling", DisplayConfigGetDeviceInfo(ref range));
-                          if (range.Current != position) throw new Exception("Windows did not apply scale " + percent);
-                      }
-                      return prior;
-                  } finally {
-                      Marshal.FreeHGlobal(modes);
-                      Marshal.FreeHGlobal(paths);
-                  }
-              }
-              public static void PrepareDesktop() { SetDesktop(1920,1080); }
-              public static void SetDesktop(uint width, uint height) {
-                  var mode = new DisplayMode();
-                  mode.Size = (ushort)Marshal.SizeOf(typeof(DisplayMode));
-                  if (!EnumDisplaySettings(null, -1, ref mode)) throw new Exception("Cannot inspect runner display");
-                  mode.Width = width; mode.Height = height; mode.Fields = 0x180000;
-                  int result = ChangeDisplaySettings(ref mode, 0);
-                  if (result != 0) throw new Exception("Cannot resize audit desktop: " + result);
-              }
-              public static void CaptureDesktop(string filename) {
-                  var bounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
-                  using (var bitmap = new Bitmap(bounds.Width, bounds.Height)) {
-                      using (var graphics = Graphics.FromImage(bitmap))
-                          graphics.CopyFromScreen(bounds.Left, bounds.Top, 0, 0, bounds.Size);
-                      bitmap.Save(filename, ImageFormat.Png);
-                  }
-              }
-              public static void MovePointerAway() { SetCursorPos(5, 5); }
-              public static void RightClick(int x, int y) {
-                  if (!SetCursorPos(x, y)) throw new Exception("Could not move to the profile row");
-                  mouse_event(8, 0, 0, 0, UIntPtr.Zero);
-                  mouse_event(16, 0, 0, 0, UIntPtr.Zero);
-              }
-              public static int Capture(IntPtr hwnd, string filename) {
-                  Rect r;
-                  if (!GetWindowRect(hwnd, out r)) throw new Exception("GetWindowRect failed");
-                  bool sidebar = filename.IndexOf("-sidebar", StringComparison.OrdinalIgnoreCase) >= 0;
-                  int captureLeft = sidebar ? Math.Max(0, r.Left) : r.Left;
-                  int w = r.Right - captureLeft, h = r.Bottom - r.Top;
-                  if (w < 300 || h < 250 || w > 6000 || h > 4000)
-                      throw new Exception("Implausible application window dimensions: " + w + "x" + h);
-                  using (var bitmap = new Bitmap(w, h, PixelFormat.Format32bppArgb)) {
-                      using (var g = Graphics.FromImage(bitmap)) {
-                          g.Clear(Color.Black);
-                          bool popup = filename.IndexOf("visual-", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                              filename.IndexOf("picker", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                              filename.IndexOf("add-device", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                              filename.IndexOf("about-dialog", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                              filename.IndexOf("profile-rename", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                              filename.IndexOf("-menu", StringComparison.OrdinalIgnoreCase) >= 0;
-                          if (popup || sidebar) {
-                              g.CopyFromScreen(captureLeft, r.Top, 0, 0, new Size(w, h));
-                          } else {
-                              IntPtr dc = g.GetHdc();
-                              try {
-                                  if (!PrintWindow(hwnd, dc, 2) && !PrintWindow(hwnd, dc, 0))
-                                      throw new Exception("PrintWindow could not render UCR");
-                              } finally { g.ReleaseHdc(dc); }
-                          }
-                      }
-                      var colors = new HashSet<int>();
-                      for (int y = 8; y < h - 8; y += Math.Max(1, h / 35))
-                          for (int x = 8; x < w - 8; x += Math.Max(1, w / 35))
-                              colors.Add(bitmap.GetPixel(x,y).ToArgb());
-                      if (colors.Count < 12)
-                          throw new Exception("Screenshot blank or unrendered (" + colors.Count + " sampled colors)");
-                      bitmap.Save(filename, ImageFormat.Png);
-                      return colors.Count;
-                  }
-              }
-          }
-          '@
-
-          [UcrWindowCapture]::PrepareDesktop()
-          $process = $null
-          try {
-              $process = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -PassThru
-              $handle = [IntPtr]::Zero
-              $title = ''
-              $deadline = (Get-Date).AddSeconds(65)
-              do {
-                  Start-Sleep -Milliseconds 900
-                  $process.Refresh()
-                  if ($process.HasExited) {
-                      Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = (Get-Date).AddMinutes(-3) } -ErrorAction SilentlyContinue |
-                          Where-Object { $_.ProviderName -eq '.NET Runtime' -and $_.Message -match 'UCR.exe' } |
-                          Select-Object -First 2 -ExpandProperty Message | Write-Host
-                      throw "UCR exited during visual audit with code $($process.ExitCode)"
-                  }
-                  $title = $process.MainWindowTitle
-                  if ($process.MainWindowHandle -ne [IntPtr]::Zero -and
-                      $title -match '(Universal Control Remapper|UCR)' -and
-                      $title -notmatch '(Splash|Starting)') {
-                      $handle = $process.MainWindowHandle
-                      break
-                  }
-              } while ((Get-Date) -lt $deadline)
-              if ($handle -eq [IntPtr]::Zero) {
-                  Get-ChildItem -LiteralPath (Join-Path (Split-Path $exe) 'logs') -Filter '*.log' -ErrorAction SilentlyContinue |
-                      ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 25 | Write-Host }
-                  throw "UCR did not expose its main window within 65 seconds (last title: '$title')."
-              }
-              Start-Sleep -Seconds 3
-              Add-Type -AssemblyName UIAutomationClient
-              Add-Type -AssemblyName System.Windows.Forms
-              $root = [System.Windows.Automation.AutomationElement]::FromHandle($handle)
-              $processCondition = [System.Windows.Automation.PropertyCondition]::new(
-                  [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $process.Id)
-              function Find-UcrElement($property, [string]$value) {
-                  $condition = [System.Windows.Automation.PropertyCondition]::new($property, $value)
-                  for ($attempt = 0; $attempt -lt 20; $attempt++) {
-                      $windows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
-                          [System.Windows.Automation.TreeScope]::Children, $processCondition)
-                      foreach ($window in $windows) {
-                          $matches = $window.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition)
-                          foreach ($element in $matches) {
-                              if (-not $element.Current.IsOffscreen -and $element.Current.ControlType -ne
-                                  [System.Windows.Automation.ControlType]::ToolTip -and
-                                  ($value -notin @('Left trigger','Right trigger') -or
-                                   $element.Current.ControlType -eq [System.Windows.Automation.ControlType]::Button)) {
-                                  return $element
-                              }
-                          }
-                      }
-                      Start-Sleep -Milliseconds 150
-                  }
-                  throw "Visible UI element missing: $value"
-              }
-              function Find-UcrControl([string]$id) {
-                  Find-UcrElement ([System.Windows.Automation.AutomationElement]::AutomationIdProperty) $id
-              }
-              function Invoke-UcrControl([string]$id) {
-                  $element = Find-UcrControl $id
-                  $element.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-              }
-              function Set-UcrText([string]$id, [string]$text) {
-                  $element = Find-UcrControl $id
-                  $element.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($text)
-              }
-              function Get-UcrControls([string]$id) {
-                  $condition = [System.Windows.Automation.PropertyCondition]::new(
-                      [System.Windows.Automation.AutomationElement]::AutomationIdProperty, $id)
-                  return $root.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition)
-              }
-              function Assert-UcrDirectionCross([string]$id) {
-                  $bounds = @(Get-UcrControls $id | Where-Object { -not $_.Current.IsOffscreen } |
-                      ForEach-Object { $_.Current.BoundingRectangle } |
-                      Sort-Object Y, X)
-                  if ($bounds.Count -ne 4 -or
-                      $bounds[0].Y -ge $bounds[1].Y -or $bounds[2].Y -ge $bounds[3].Y -or
-                      [Math]::Abs($bounds[1].Y - $bounds[2].Y) -gt 2 -or
-                      [Math]::Abs($bounds[0].X - $bounds[3].X) -gt 2 -or
-                      $bounds[1].X -ge $bounds[0].X -or $bounds[2].X -le $bounds[0].X) {
-                      throw "Expected four direction buttons arranged in a cross ($id)."
-                  }
-              }
-              function Find-UcrProfileRow([string]$name) {
-                  $condition = [System.Windows.Automation.AndCondition]::new(
-                      [System.Windows.Automation.PropertyCondition]::new(
-                          [System.Windows.Automation.AutomationElement]::NameProperty, $name),
-                      [System.Windows.Automation.PropertyCondition]::new(
-                          [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
-                          [System.Windows.Automation.ControlType]::TreeItem))
-                  return $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
-              }
-              function Assert-UcrSelectedProfile([string]$name) {
-                  $item = Find-UcrProfileRow $name
-                  if ($null -eq $item -or -not $item.GetCurrentPattern(
-                      [System.Windows.Automation.SelectionItemPattern]::Pattern).Current.IsSelected) {
-                      throw "Profile tree did not select '$name'."
-                  }
-              }
-              $nameProperty = [System.Windows.Automation.AutomationElement]::NameProperty
-              function Read-UcrState {
-                  $lastError = $null
-                  for ($attempt = 0; $attempt -lt 60; $attempt++) {
-                      try {
-                          return (Get-Content -LiteralPath (Join-Path $dataRoot 'state.json') -Raw -Encoding UTF8 | ConvertFrom-Json)
-                      } catch { $lastError = $_; Start-Sleep -Milliseconds 80 }
-                  }
-                  throw $lastError
-              }
-              function Save-UcrIfNeeded {
-                  if ((Find-UcrControl 'UiToolbarSave').Current.IsEnabled) {
-                      Invoke-UcrControl 'UiToolbarSave'
-                      Start-Sleep -Milliseconds 400
-                  }
-              }
-              function Open-OutputPicker([string]$profileName) {
-                  $row = Find-UcrProfileRow $profileName
-                  if ($null -eq $row) { throw "Missing fixture profile: $profileName" }
-                  $row.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
-                  Start-Sleep -Milliseconds 400
-                  if (@(Get-UcrControls 'UiMappingOutputHeading' | Where-Object { -not $_.Current.IsOffscreen }).Count -eq 0) {
-                      Invoke-UcrControl 'UiExpandMapping'
-                  }
-                  Find-UcrControl 'UiMappingOutputHeading' | Out-Null
-                  $buttons = @(Get-UcrControls 'BindButton' | Where-Object { -not $_.Current.IsOffscreen } |
-                      Sort-Object -Property { $_.Current.BoundingRectangle.X })
-                  if ($buttons.Count -lt 2) { throw "Missing binding row in $profileName" }
-                  $buttons[-1].SetFocus()
-                  [System.Windows.Forms.SendKeys]::SendWait(' ')
-              }
-
-              [UcrWindowCapture]::MoveWindow($handle, 30, 30, 1600, 980, $true) | Out-Null
-              (Find-UcrProfileRow 'Binding controls').GetCurrentPattern(
-                  [System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
-              Start-Sleep -Milliseconds 500
-              if (@(Get-UcrControls 'UiMappingOutputHeading' | Where-Object { -not $_.Current.IsOffscreen }).Count -eq 0) {
-                  Invoke-UcrControl 'UiExpandMapping'
-              }
-              $options = @(Get-UcrControls 'UiBindingOptions' | Where-Object { -not $_.Current.IsOffscreen })
-              if ($options.Count -ne 5) { throw "Expected four input menus and one output menu, got $($options.Count)." }
-              $inputOptions = @($options | Where-Object { $_.Current.Name -eq 'Input binding options' } | Sort-Object { $_.Current.BoundingRectangle.Top })
-              $outputOptions = @($options | Where-Object { $_.Current.Name -eq 'Output binding options' })[0]
-              if ($inputOptions.Count -ne 4 -or $null -eq $outputOptions) { throw 'Input/output binding menus are missing.' }
-              $inputOptions[0].GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-              Find-UcrElement $nameProperty 'Clear binding' | Out-Null
-              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
-              Write-Host 'PASS Every input and output row has its own working vertical ellipsis menu'
-              foreach ($block in @(Get-UcrControls 'UiBindingBlockSwitch' | Where-Object { -not $_.Current.IsOffscreen })) {
-                  if (-not $block.Current.IsEnabled -or $block.Current.HelpText -like '*cannot*') {
-                      throw 'An available Block switch has an unavailable tooltip.'
-                  }
-              }
-              [UcrWindowCapture]::MovePointerAway()
-              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-binding-controls-restored.png')) | Out-Null
-              $outputOptions.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-              $watch = [Diagnostics.Stopwatch]::StartNew()
-              (Find-UcrElement $nameProperty 'Choose output control').GetCurrentPattern(
-                  [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-              $key = Find-UcrElement $nameProperty 'J'
-              Write-Host "Output chooser opened in $($watch.ElapsedMilliseconds)ms"
-              $key.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-              Start-Sleep -Milliseconds 400
-              Save-UcrIfNeeded
-              $saved = Read-UcrState
-              $profile = @($saved.profiles | Where-Object title -eq 'Binding controls')[0]
-              $output = $profile.mappings[0].plugins[0].data.outputs[0]
-              if (-not $output.isBound -or $output.keyValue -ne 3 -or $output.assignedControlName -ne 'J') {
-                  throw 'Choose output control did not open a keyboard picker and save the chosen key.'
-              }
-              Write-Host 'PASS Output ellipsis Choose output control opens the explicit keyboard picker and saves J'
-              $outputBind = @(Get-UcrControls 'BindButton' | Where-Object { -not $_.Current.IsOffscreen } |
-                  Sort-Object { $_.Current.BoundingRectangle.Left })[-1]
-              $outputBind.SetFocus()
-              [System.Windows.Forms.SendKeys]::SendWait('+{F10}')
-              (Find-UcrElement $nameProperty 'Choose output control').GetCurrentPattern(
-                  [System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-              Find-UcrElement $nameProperty 'Shift' | Out-Null
-              [UcrWindowCapture]::MovePointerAway()
-              [UcrWindowCapture]::Capture($handle,(Join-Path $directory 'UCR-explicit-keyboard-output-picker.png')) | Out-Null
-              [System.Windows.Forms.SendKeys]::SendWait('{ESC}')
-              Write-Host 'PASS The output context-menu entry opens the same explicit chooser'
-
-
-
-          }
-          catch {
-              $_ | Out-String | Set-Content -LiteralPath (Join-Path $directory 'capture-error.txt')
-              Get-ChildItem -LiteralPath $dataRoot -Recurse -ErrorAction SilentlyContinue |
-                  Select-Object FullName,Length,LastWriteTime | Out-String -Width 300 |
-                  Set-Content -LiteralPath (Join-Path $directory 'fixture-files.txt')
-              try { [UcrWindowCapture]::Capture($handle, (Join-Path $directory 'UCR-visual-audit-failure.png')) | Out-Null } catch {}
-              Write-Error $_
-              throw
-          }
-          finally {
-              if ($null -ne $process) {
-                  try { if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force } } catch {}
-              }
+          # The legacy binding editor uses the same caption-above-switch rule.
+          [xml]$legacyXml = Get-Content .\UCR\Views\Controls\DeviceBindingControl.xaml -Raw
+          $legacyCaptions = @($legacyXml.SelectNodes(
+            "//*[local-name()='TextBlock' and (@Text='Block' or @Text='Reverse')]"))
+          if ($legacyCaptions.Count -ne 2) { throw 'Expected both legacy binding switch captions.' }
+          foreach ($caption in $legacyCaptions) {
+            $column = $caption.ParentNode
+            if ($column.LocalName -ne 'StackPanel' -or
+                $column.GetAttribute('Style') -notlike '*UcrLabeledSwitchColumn*' -or
+                $caption.GetAttribute('Style') -notlike '*UcrLabeledSwitchCaption*' -or
+                @($column.SelectNodes("./*[local-name()='ToggleButton']")).Count -ne 1) {
+              throw 'Legacy switch caption must sit above its switch in the shared vertical column.'
+            }
           }
 
-      - name: Upload UCR visual audit
-        if: always()
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v3
+        with:
+          vs-version: '[17.0,18.0)'
+          msbuild-architecture: x86
+
+      - name: Verify Windows build prerequisites
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $msbuild = Get-Command msbuild -ErrorAction Stop
+          $nuget = Get-Command nuget -ErrorAction Stop
+          Write-Host "MSBuild: $($msbuild.Source)"
+          Write-Host "NuGet:   $($nuget.Source)"
+          msbuild -version
+          nuget help | Select-Object -First 1
+
+          $net452 = "${env:ProgramFiles(x86)}\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.5.2\mscorlib.dll"
+          if (-not (Test-Path $net452)) {
+            throw ".NET Framework 4.5.2 targeting pack is missing from windows-2022."
+          }
+          Write-Host "Verified .NET Framework 4.5.2 reference assemblies: $net452"
+
+      - name: Ensure .NET Framework 4.6.1 Developer Pack
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $net461 = "${env:ProgramFiles(x86)}\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.6.1\mscorlib.dll"
+          if (Test-Path $net461) {
+            Write-Host "Verified .NET Framework 4.6.1 reference assemblies: $net461"
+            exit 0
+          }
+
+          $installer = Join-Path $env:RUNNER_TEMP 'NDP461-DevPack-KB3105179-ENU.exe'
+          $downloadUri = 'https://go.microsoft.com/fwlink/?linkid=2099470'
+          Invoke-WebRequest -Uri $downloadUri -OutFile $installer
+
+          $signature = Get-AuthenticodeSignature $installer
+          if ($signature.Status -ne 'Valid') {
+            throw "The downloaded .NET Framework 4.6.1 Developer Pack has an invalid Authenticode signature: $($signature.Status)"
+          }
+          if ($signature.SignerCertificate.Subject -notmatch '(^|,\s*)CN=Microsoft Corporation(,|$)') {
+            throw "The downloaded .NET Framework 4.6.1 Developer Pack is not signed by Microsoft Corporation. Subject: $($signature.SignerCertificate.Subject)"
+          }
+
+          $hash = (Get-FileHash -Algorithm SHA256 $installer).Hash
+          Write-Host "Verified Microsoft signature. Installer SHA-256: $hash"
+
+          $process = Start-Process -FilePath $installer -ArgumentList '/q', '/norestart' -Wait -PassThru
+          if ($process.ExitCode -notin @(0, 3010)) {
+            throw ".NET Framework 4.6.1 Developer Pack installation failed with exit code $($process.ExitCode)."
+          }
+
+          if (-not (Test-Path $net461)) {
+            throw ".NET Framework 4.6.1 reference assemblies are still missing after installation."
+          }
+          Write-Host "Verified .NET Framework 4.6.1 reference assemblies: $net461"
+
+      - name: Fetch exact pinned IOWrapper source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $expected = '4ef0a847fb479cfbe561656097639d3cef5240b7'
+          $destination = Join-Path $PWD 'submodules\IOWrapper'
+
+          if (Test-Path $destination) {
+            Remove-Item -LiteralPath $destination -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path (Split-Path $destination) -Force | Out-Null
+
+          git clone https://github.com/evilC/IOWrapper.git $destination
+          git -C $destination checkout --detach $expected
+
+          $actual = (git -C $destination rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Unable to read the checked-out IOWrapper commit.'
+          }
+          if ($actual -ne $expected) {
+            throw "IOWrapper commit mismatch. Expected $expected, got $actual."
+          }
+          Write-Host "Verified IOWrapper commit: $actual"
+
+      - name: Preserve IOWrapper input callback order
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\build\ProviderPatches\Apply-IOWrapperInputOrdering.ps1 -IOWrapperRoot .\submodules\IOWrapper
+
+      - name: Read DirectInput axis state at subscription startup
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git -C .\submodules\IOWrapper apply "$PWD\build\ProviderPatches\DirectInputAxisSnapshot.patch"
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Unable to apply the DirectInput axis snapshot patch.'
+          }
+
+      - name: Harden Core Interception hotplug handling
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\build\ProviderPatches\Apply-CoreInterceptionHotplugSafety.ps1 -IOWrapperRoot .\submodules\IOWrapper
+
+      - name: Handle Core Interception shutdown before initialization
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git -C .\submodules\IOWrapper apply "$PWD\build\ProviderPatches\CoreInterceptionPartialShutdown.patch"
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Unable to apply the Core Interception shutdown patch.'
+          }
+
+      - name: Apply Core ViGEm output lifecycle and report fixes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git -C .\submodules\IOWrapper apply "$PWD\build\ProviderPatches\CoreViGEmOutput.patch"
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Unable to apply the Core ViGEm output patch.'
+          }
+
+      - name: Apply vJoy acquisition and report fixes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git -C .\submodules\IOWrapper apply "$PWD\build\ProviderPatches\CoreVJoyOutput.patch"
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Unable to apply the vJoy output patch.'
+          }
+
+      - name: Enable Core Interception blocking
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $settings = Join-Path $PWD 'submodules\IOWrapper\Source\Core Providers\Core_Interception\Settings.xml'
+          if (-not (Test-Path -LiteralPath $settings -PathType Leaf)) {
+            throw "Core Interception settings file is missing: $settings"
+          }
+
+          [xml]$xml = Get-Content -LiteralPath $settings -Raw
+          $blockingSettings = @($xml.SelectNodes('/Settings/Setting[Name="BlockingEnabled"]/Value'))
+          if ($blockingSettings.Count -ne 1) {
+            throw "Expected exactly one BlockingEnabled setting, found $($blockingSettings.Count). Refusing to modify an unexpected settings layout."
+          }
+
+          $oldValue = $blockingSettings[0].InnerText.Trim()
+          if ($oldValue -notin @('false', 'False', 'FALSE', 'true', 'True', 'TRUE')) {
+            throw "Unexpected BlockingEnabled value: $oldValue"
+          }
+
+          $blockingSettings[0].InnerText = 'true'
+          $xml.Save($settings)
+
+          [xml]$verified = Get-Content -LiteralPath $settings -Raw
+          $verifiedSettings = @($verified.SelectNodes('/Settings/Setting[Name="BlockingEnabled"]/Value'))
+          if ($verifiedSettings.Count -ne 1 -or $verifiedSettings[0].InnerText.Trim() -ne 'true') {
+            throw 'Failed to enable Core Interception blocking.'
+          }
+
+          Write-Host "Core Interception BlockingEnabled changed from '$oldValue' to 'true'."
+
+      - name: Restore IOWrapper NuGet packages
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          nuget restore .\submodules\IOWrapper\IOWrapper.sln -NonInteractive
+          if ($LASTEXITCODE -ne 0) {
+            throw "IOWrapper NuGet restore failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Build IOWrapper Release
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # The pinned providers copy into a shared Artifacts tree in post-build events.
+          msbuild .\submodules\IOWrapper\IOWrapper.sln /m:1 /t:Rebuild /p:Configuration=Release /v:minimal
+          if ($LASTEXITCODE -ne 0) {
+            throw "IOWrapper Release build failed with exit code $LASTEXITCODE."
+          }
+
+          $required = @(
+            '.\submodules\IOWrapper\Artifacts\IOWrapper\IOWrapper.Core.dll',
+            '.\submodules\IOWrapper\Artifacts\IOWrapper\IOWrapper.DTOs.dll',
+            '.\submodules\IOWrapper\Artifacts\IOWrapper\IOWrapper.IProvider.dll'
+          )
+          foreach ($file in $required) {
+            if (-not (Test-Path $file)) {
+              throw "Expected IOWrapper artifact is missing: $file"
+            }
+          }
+          Write-Host 'Verified required IOWrapper artifacts.'
+
+          $interceptionSettings = '.\submodules\IOWrapper\Artifacts\Providers\Core_Interception\Settings.xml'
+          if (-not (Test-Path -LiteralPath $interceptionSettings -PathType Leaf)) {
+            throw "Core Interception artifact settings are missing: $interceptionSettings"
+          }
+          [xml]$artifactSettings = Get-Content -LiteralPath $interceptionSettings -Raw
+          $artifactBlocking = @($artifactSettings.SelectNodes('/Settings/Setting[Name="BlockingEnabled"]/Value'))
+          if ($artifactBlocking.Count -ne 1 -or $artifactBlocking[0].InnerText.Trim() -ne 'true') {
+            throw 'Core Interception build artifact does not have BlockingEnabled=true.'
+          }
+          Write-Host 'Verified Core Interception build artifact has BlockingEnabled=true.'
+
+      - name: Apply approved Core Interception DLL override
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          # Core_ViGEm is deliberately not overridden here. Its output handlers are patched
+          # from pinned source above and the provider is rebuilt by this workflow.
+          $overrides = @(
+            @{
+              Source = '.\build\ProviderOverrides\Providers\Core_Interception\IOWrapper.Libraries.PollingDeviceHandler.dll'
+              Destination = '.\submodules\IOWrapper\Artifacts\Providers\Core_Interception\IOWrapper.Libraries.PollingDeviceHandler.dll'
+              Sha256 = 'dec7437219bb5b410955c0fc50d1a3f92af31cf08bc1c23ec7e5dcdfa4207b25'
+            }
+          )
+
+          foreach ($override in $overrides) {
+            if (-not (Test-Path -LiteralPath $override.Source -PathType Leaf)) {
+              throw "Approved provider DLL is missing: $($override.Source)"
+            }
+
+            $sourceHash = (Get-FileHash -LiteralPath $override.Source -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($sourceHash -ne $override.Sha256) {
+              throw "Approved provider DLL hash mismatch for $($override.Source). Expected $($override.Sha256), got $sourceHash."
+            }
+
+            $destinationDirectory = Split-Path -Parent $override.Destination
+            New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
+            Copy-Item -LiteralPath $override.Source -Destination $override.Destination -Force
+
+            $destinationHash = (Get-FileHash -LiteralPath $override.Destination -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($destinationHash -ne $override.Sha256) {
+              throw "Provider override copy failed hash verification for $($override.Destination)."
+            }
+            Write-Host "Applied approved provider DLL: $($override.Destination) [$destinationHash]"
+          }
+
+      - name: Stage IOWrapper dependencies for UCR
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $source = Join-Path $PWD 'submodules\IOWrapper\Artifacts'
+          $destination = Join-Path $PWD 'dependencies'
+
+          if (-not (Test-Path -LiteralPath $source -PathType Container)) {
+            throw "IOWrapper artifacts directory is missing: $source"
+          }
+
+          if (Test-Path -LiteralPath $destination) {
+            Remove-Item -LiteralPath $destination -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $destination -Force | Out-Null
+
+          Get-ChildItem -LiteralPath $source -Force | ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination $destination -Recurse -Force
+          }
+
+          $sourceFiles = Get-ChildItem -LiteralPath $source -File -Recurse
+          if ($sourceFiles.Count -eq 0) {
+            throw "IOWrapper artifacts directory contains no files: $source"
+          }
+
+          foreach ($sourceFile in $sourceFiles) {
+            $relative = $sourceFile.FullName.Substring($source.Length + 1)
+            $destinationFile = Join-Path $destination $relative
+            if (-not (Test-Path -LiteralPath $destinationFile -PathType Leaf)) {
+              throw "IOWrapper dependency copy is incomplete. Missing: $destinationFile"
+            }
+
+            $sourceHash = (Get-FileHash -LiteralPath $sourceFile.FullName -Algorithm SHA256).Hash
+            $destinationHash = (Get-FileHash -LiteralPath $destinationFile -Algorithm SHA256).Hash
+            if ($sourceHash -ne $destinationHash) {
+              throw "IOWrapper dependency hash mismatch for: $relative"
+            }
+          }
+
+          $required = @(
+            '.\dependencies\IOWrapper\IOWrapper.Core.dll',
+            '.\dependencies\IOWrapper\IOWrapper.DTOs.dll',
+            '.\dependencies\IOWrapper\IOWrapper.IProvider.dll'
+          )
+          foreach ($file in $required) {
+            if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
+              throw "Required UCR IOWrapper dependency is missing after staging: $file"
+            }
+            if ((Get-Item -LiteralPath $file).Length -le 0) {
+              throw "Required UCR IOWrapper dependency is empty after staging: $file"
+            }
+          }
+
+          $stagedInterceptionSettings = '.\dependencies\Providers\Core_Interception\Settings.xml'
+          if (-not (Test-Path -LiteralPath $stagedInterceptionSettings -PathType Leaf)) {
+            throw "Staged Core Interception settings are missing: $stagedInterceptionSettings"
+          }
+          [xml]$stagedSettings = Get-Content -LiteralPath $stagedInterceptionSettings -Raw
+          $stagedBlocking = @($stagedSettings.SelectNodes('/Settings/Setting[Name="BlockingEnabled"]/Value'))
+          if ($stagedBlocking.Count -ne 1 -or $stagedBlocking[0].InnerText.Trim() -ne 'true') {
+            throw 'Staged Core Interception settings do not have BlockingEnabled=true.'
+          }
+
+          Write-Host "Verified $($sourceFiles.Count) IOWrapper artifact files copied byte-for-byte into dependencies."
+          Write-Host 'Verified staged Core Interception settings have BlockingEnabled=true.'
+
+      - name: Restore UCR NuGet packages
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $packageConfigs = @(
+            '.\UCR\packages.config',
+            '.\UCR.Core\packages.config',
+            '.\UCR.FileHandler\packages.config'
+          )
+
+          foreach ($config in $packageConfigs) {
+            if (-not (Test-Path $config)) {
+              throw "Expected packages.config is missing: $config"
+            }
+            nuget restore $config -PackagesDirectory .\packages -NonInteractive
+            if ($LASTEXITCODE -ne 0) {
+              throw "NuGet restore failed for $config with exit code $LASTEXITCODE."
+            }
+          }
+
+      - name: Stamp unique UCR build version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # UTC calendar day + minute of day form a monotonic four-part Windows
+          # file version, independent of the two unrelated workflow run counters.
+          $now = [DateTime]::UtcNow
+          $buildDay = [int]($now.Date - [DateTime]::new(2020,1,1)).TotalDays
+          $buildMinute = $now.Hour * 60 + $now.Minute
+          $stamp = $now.ToString('yyyyMMdd.HHmmss') + 'Z'
+          $gitVersionConfig = Get-Content -LiteralPath '.\GitVersion.yml' -Raw
+          $versionMatch = [regex]::Match($gitVersionConfig, '(?m)^next-version:\s*(\d+\.\d+\.\d+)\s*$')
+          if (-not $versionMatch.Success) {
+            throw 'Cannot derive UCR release version from GitVersion.yml.'
+          }
+          $baseVersion = $versionMatch.Groups[1].Value
+          $file = '.\\UCR\\Properties\\AssemblyInfo.cs'
+          $source = [System.IO.File]::ReadAllText($file)
+          $numeric = "0.9.$buildDay.$buildMinute"
+          $source = [regex]::Replace($source, 'AssemblyFileVersion\("[^"]+"\)',
+            ('AssemblyFileVersion("' + $numeric + '")'))
+          $source = [regex]::Replace($source, 'AssemblyInformationalVersion\("[^"]+"\)',
+            ('AssemblyInformationalVersion("v' + $baseVersion + '-' + $stamp + '")'))
+          [System.IO.File]::WriteAllText($file, $source, [System.Text.UTF8Encoding]::new($false))
+          Write-Host "UCR build identity: $baseVersion-$stamp ($numeric)"
+
+      - name: Build UCR Stylish Release
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $gitVersionConfig = Get-Content -LiteralPath '.\GitVersion.yml' -Raw
+          $versionMatch = [regex]::Match($gitVersionConfig, '(?m)^next-version:\s*(\d+)\.(\d+)\.(\d+)\s*$')
+          if (-not $versionMatch.Success) {
+            throw 'Could not derive a deterministic numeric build version from GitVersion.yml next-version.'
+          }
+
+          $versionNumber = '{0}.{1}.{2}.0' -f `
+            $versionMatch.Groups[1].Value, `
+            $versionMatch.Groups[2].Value, `
+            $versionMatch.Groups[3].Value
+
+          Write-Host "Using deterministic VersionNumber=$versionNumber from GitVersion.yml"
+          msbuild .\UCR.sln /m:1 /t:Rebuild /p:Configuration=Release /p:Platform="Any CPU" /p:VersionNumber="$versionNumber" /v:minimal
+          if ($LASTEXITCODE -ne 0) {
+            throw "UCR Release build failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Confirm UCR.exe was built
+        shell: pwsh
+        run: |
+          if (-not (Test-Path -LiteralPath '.\UCR\bin\Release\UCR.exe' -PathType Leaf)) {
+            throw 'The Windows build did not produce UCR.exe.'
+          }
+
+      - name: Verify packaged external UI assets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = '.\UCR\bin\Release\Assets'
+          $files = @(
+            Get-ChildItem '.\UCR\Assets\Styles' -Filter '*.xaml' -File
+            Get-ChildItem '.\UCR\Assets\Layouts' -File
+            Get-ChildItem '.\UCR\Assets\Theme' -Filter '*.ini' -File
+            Get-ChildItem '.\UCR\Assets\Glyphs' -Filter '*.ini' -File
+          )
+          foreach ($source in $files) {
+            $section = Split-Path -Leaf $source.Directory.FullName
+            $destination = Join-Path (Join-Path $root $section) $source.Name
+            if (-not (Test-Path -LiteralPath $destination -PathType Leaf)) {
+              throw "External UI asset missing from Windows build: $section\$($source.Name)"
+            }
+            $expected = (Get-FileHash -LiteralPath $source.FullName -Algorithm SHA256).Hash
+            $actual = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash
+            if ($expected -ne $actual) {
+              throw "Outdated external UI asset in Windows build: $section\$($source.Name)"
+            }
+          }
+          Write-Host "Verified $($files.Count) editable UI files are packaged byte-for-byte."
+
+      - name: Upload Windows build
         uses: actions/upload-artifact@v7
         with:
-          name: UCR-Visual-Audit
-          path: ${{ runner.temp }}/UCR-Visual-Audit/
-          if-no-files-found: warn
-
-      - name: Verify quick output capture and saved device replacements
-        if: ${{ !cancelled() && steps.visual_audit.outcome != 'skipped' }}
-        shell: powershell
-        timeout-minutes: 4
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $source = Join-Path $env:RUNNER_TEMP 'FunctionalBatch.cs'
-          @'
-          using System;
-          using System.Collections.Generic;
-          using System.IO;
-          using System.Linq;
-          using System.Reflection;
-          using System.Windows;
-          using System.Windows.Threading;
-          using System.Threading;
-          using System.Threading.Tasks;
-          using HidWizards.IOWrapper.DataTransferObjects;
-          using HidWizards.IOWrapper.ProviderInterface.Interfaces;
-          using HidWizards.UCR.Core;
-          using HidWizards.UCR.Core.Managers;
-          using HidWizards.UCR.Core.Models;
-          using HidWizards.UCR.Core.Models.Binding;
-          using HidWizards.UCR.Plugins.Remapper;
-          using HidWizards.UCR.ViewModels.Dialogs;
-          using HidWizards.UCR.ViewModels.ProfileViewModels;
-          using HidWizards.UCR.ViewModels.Presentation;
-
-          internal sealed class FunctionalKeyboard : IInputProvider, IBindModeProvider, IOutputProvider
-          {
-              public string ProviderName { get { return "FunctionalKeyboard"; } }
-              public bool IsLive { get { return true; } }
-              public void RefreshLiveState() { }
-              public void RefreshDevices() { }
-              public void Dispose() { }
-              public int OutputProbes;
-              public bool SubscribeOutputDevice(OutputSubscriptionRequest request) { return true; }
-              public bool UnSubscribeOutputDevice(OutputSubscriptionRequest request) { return true; }
-              public bool SetOutputState(OutputSubscriptionRequest request, BindingDescriptor binding, int state) { return true; }
-              public DeviceReport GetOutputDeviceReport(DeviceDescriptor descriptor)
-              {
-                  DeviceReport device = GetInputDeviceReport(descriptor);
-                  for (int i = 1; i < 200; i++) device.Nodes[0].Bindings.Add(new BindingReport {
-                      Title = "Key " + i, Category = BindingCategory.Momentary,
-                      BindingDescriptor = new BindingDescriptor { Type = BindingType.Button, Index = i } });
-                  return device;
-              }
-              public ProviderReport GetOutputList()
-              {
-                  OutputProbes++;
-                  ProviderReport report = new ProviderReport { Title = ProviderName, API = "Fixture",
-                      ProviderDescriptor = new ProviderDescriptor { ProviderName = ProviderName } };
-                  report.Devices.Add(GetOutputDeviceReport(default(DeviceDescriptor))); return report;
-              }
-              public DetectionMode Mode { get; private set; }
-              public void SetDetectionMode(DetectionMode mode, DeviceDescriptor device,
-                  Action<ProviderDescriptor, DeviceDescriptor, BindingReport, short> callback = null) { Mode = mode; }
-              public bool SubscribeInput(InputSubscriptionRequest request) { return true; }
-              public bool UnsubscribeInput(InputSubscriptionRequest request) { return true; }
-              public DeviceReport GetInputDeviceReport(DeviceDescriptor descriptor)
-              {
-                  DeviceReport device = new DeviceReport {
-                      DeviceName = "K: Functional input", DeviceDescriptor = new DeviceDescriptor {
-                          DeviceHandle = "Keyboard_FunctionalInput", DeviceInstance = 0 } };
-                  DeviceReportNode keys = new DeviceReportNode { Title = "Keys" };
-                  keys.Bindings.Add(new BindingReport { Title = "F", Category = BindingCategory.Momentary,
-                      BindingDescriptor = new BindingDescriptor { Type = BindingType.Button, Index = 0 } });
-                  device.Nodes.Add(keys); return device;
-              }
-              public ProviderReport GetInputList()
-              {
-                  ProviderReport report = new ProviderReport { Title = ProviderName, API = "Fixture",
-                      ProviderDescriptor = new ProviderDescriptor { ProviderName = ProviderName } };
-                  report.Devices.Add(GetInputDeviceReport(default(DeviceDescriptor))); return report;
-              }
-          }
-
-          internal static class FunctionalBatch
-          {
-              private static int checks;
-              private static void Check(bool condition, string message)
-              {
-                  if (!condition) throw new InvalidOperationException(message);
-                  Console.WriteLine("PASS " + message); checks++;
-              }
-              [STAThread]
-              public static int Main()
-              {
-                  AppDomain.CurrentDomain.AssemblyResolve += delegate(object sender, ResolveEventArgs args) {
-                      string file = new AssemblyName(args.Name).Name + ".dll";
-                      foreach (string path in new[] { Path.Combine("lib", file), Path.Combine("Plugins", "UCR.Plugins", file) })
-                          if (File.Exists(path)) return Assembly.LoadFrom(Path.GetFullPath(path));
-                      return null;
-                  };
-                  try { return Run(); }
-                  catch (Exception error) { Console.Error.WriteLine(error); return 1; }
-              }
-              private static DeviceBindingNode Node(string name, BindingType type, int index)
-              {
-                  return new DeviceBindingNode { Title = name, DeviceBindingInfo = new DeviceBindingInfo {
-                      DeviceBindingCategory = type == BindingType.Axis ? DeviceBindingCategory.Range : DeviceBindingCategory.Momentary,
-                      KeyType = (int)type, KeyValue = index, KeySubValue = 0 } };
-              }
-              private static Device Cached(string title, string provider, string handle, List<DeviceBindingNode> menu)
-              {
-                  return new Device(new DeviceCache { Title = title, ProviderName = provider,
-                      DeviceHandle = handle, DeviceNumber = 0, DeviceBindingMenu = menu });
-              }
-              private static Profile MakeProfile(Context context, string title, Device output)
-              {
-                  Profile profile = context.ProfilesManager.CreateProfile(title, null, null);
-                  profile.AddDeviceConfigurations(new List<DeviceConfiguration> { new DeviceConfiguration(output) }, DeviceIoType.Output);
-                  context.ProfilesManager.AddProfile(profile);
-                  return profile;
-              }
-              private static Mapping AddRoute(Profile profile, string name, Plugin plugin)
-              {
-                  Mapping mapping = profile.AddMapping(name);
-                  if (!mapping.AddPlugin(plugin)) throw new InvalidOperationException("Could not create route");
-                  mapping.InputRepresentation = 3; mapping.OutputRepresentation = plugin is ButtonToAxis ? 2 : 3;
-                  mapping.DirectionalCapacity = 1; mapping.UseInputExpression = true;
-                  mapping.DeviceBindings[0].InputExpressionInputKind = 0;
-                  mapping.DeviceBindings[0].InputExpressionKindConfigured = true;
-                  return mapping;
-              }
-              private static BindingVisualDescriptor Descriptor(MappingViewModel mapping)
-              {
-                  DeviceBinding binding = mapping.Plugins[0].DeviceBindings[0].DeviceBinding;
-                  return new BindingVisualDescriptor { BindingGuid = binding.Guid, DeviceConfigurationGuid = binding.DeviceConfigurationGuid };
-              }
-              private static bool ApplyDetected(MappingViewModel mapping, DeviceConfiguration output, DetectedInputControl detected)
-              {
-                  MethodInfo apply = typeof(MappingViewModel).GetMethod("ApplyDetectedOutputControl", BindingFlags.Instance | BindingFlags.NonPublic);
-                  return (bool)apply.Invoke(mapping, new object[] { mapping.Plugins[0].DeviceBindings[0], output, detected });
-              }
-              private static void Bind(DeviceBinding binding, DeviceConfiguration device, BindingType type, int index, string name)
-              {
-                  binding.SetDeviceConfigurationGuid(device.Guid);
-                  binding.SetKeyTypeValue((int)type, index, 0, name);
-              }
-              private static void Pump(Task task)
-              {
-                  DispatcherFrame frame = new DispatcherFrame();
-                  DateTime deadline = DateTime.UtcNow.AddSeconds(8);
-                  DispatcherTimer timer = new DispatcherTimer();
-                  timer.Interval = TimeSpan.FromMilliseconds(20);
-                  timer.Tick += delegate {
-                      if (task.IsCompleted || DateTime.UtcNow > deadline) frame.Continue = false;
-                  };
-                  timer.Start(); Dispatcher.PushFrame(frame); timer.Stop();
-                  if (!task.IsCompleted) throw new TimeoutException("Capture did not complete after cancellation");
-                  task.GetAwaiter().GetResult();
-              }
-              private static int Run()
-              {
-                  new Application();
-                  SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
-                  using (Context context = new Context())
-                  {
-                      const BindingFlags hidden = BindingFlags.Instance | BindingFlags.NonPublic;
-                      object controller = typeof(Context).GetProperty("IOController", hidden).GetValue(context, null);
-                      IDictionary<string, IProvider> providers = (IDictionary<string, IProvider>)controller.GetType().GetField("_providers", hidden).GetValue(controller);
-                      FunctionalKeyboard functionalInput = new FunctionalKeyboard();
-                      providers.Add(functionalInput.ProviderName, functionalInput);
-                      List<DeviceBindingNode> padMenu = new List<DeviceBindingNode> {
-                          Node("LX", BindingType.Axis, 0), Node("LY", BindingType.Axis, 1),
-                          Node("RX", BindingType.Axis, 2), Node("RY", BindingType.Axis, 3), Node("A", BindingType.Button, 0) };
-                      Device pad = Cached("Fixture pad", "Core_vJoyInterfaceWrap", "pad-a", padMenu);
-                      Profile profile = MakeProfile(context, "Quick directions", pad);
-                      Mapping route = AddRoute(profile, "Quick direction", new ButtonToAxis());
-                      using (ProfileViewModel vm = new ProfileViewModel(profile))
-                      {
-                          MappingViewModel mapping = vm.MappingsList[0];
-                          List<QuickBindingOption> options = mapping.GetQuickOutputBindingOptions(Descriptor(mapping));
-                          Check(options.Count(option => option.OutputAxisDirection != 0) == 8, "Collapsed picker offers all eight signed stick directions");
-                          foreach (QuickBindingOption option in options.Where(option => option.OutputAxisDirection != 0))
-                              Check(mapping.ApplyQuickOutputBinding(Descriptor(mapping), option), "Collapsed picker assigns " + option.DisplayName);
-                          QuickBindingOption up = options.Single(option => option.DisplayName == "Left Stick Up");
-                          Check(mapping.ApplyQuickOutputBinding(Descriptor(mapping), up), "Collapsed picker accepts a negative direction");
-                          DeviceBinding binding = route.Plugins[0].Outputs[0];
-                          Check(binding.AssignedControlName == "LY" && binding.OutputAxisDirection == -1 &&
-                              ((ButtonToAxis)route.Plugins[0]).RangePressed == -100, "Signed quick selection retains the provider name and negative range");
-                          QuickBindingOption full = options.Single(option => option.Title == "LY" && option.OutputAxisDirection == 0);
-                          Check(mapping.ApplyQuickOutputBinding(Descriptor(mapping), full) && binding.OutputAxisDirection == 0 &&
-                              ((ButtonToAxis)route.Plugins[0]).RangePressed == 100, "Full-axis quick rebinding clears direction and restores positive press");
-                          mapping.Dispose();
-                          Check(!mapping.ButtonsEnabled && !mapping.ApplyQuickOutputBinding(Descriptor(mapping), up), "A disposed mapping rejects stale picker assignments");
-                      }
-
-                      List<DeviceBindingNode> keys = new List<DeviceBindingNode> {
-                          Node("Shared", BindingType.Button, 1), Node("Shared", BindingType.Button, 2), Node("F7", BindingType.Button, 3) };
-                      Device keyboard = Cached("K: Fixture keyboard", "Core_Interception", "Keyboard_FunctionalOutput", keys);
-                      Profile keyProfile = MakeProfile(context, "Keyboard selection", keyboard);
-                      Mapping keyRoute = AddRoute(keyProfile, "Keyboard output", new ButtonToButton());
-                      using (ProfileViewModel vm = new ProfileViewModel(keyProfile))
-                      {
-                          MappingViewModel mapping = vm.MappingsList[0];
-                          Check(mapping.UsesPressCaptureForQuickOutput(Descriptor(mapping)), "An unset keyboard output uses press capture on its compatible primary");
-                          BindingVisualDescriptor originalVisual = mapping.CollapsedOutputVisuals.Single();
-                          Task<bool> captureTask = mapping.QuickBindOutputAsync(Descriptor(mapping));
-                          DeviceBindingViewModel captureVm = mapping.Plugins[0].DeviceBindings[0];
-                          Console.WriteLine("Capture state: completed=" + captureTask.IsCompleted + " detecting=" + mapping.IsQuickOutputDetecting +
-                              " binding=" + captureVm.IsCapturing + " label=" + captureVm.BindButtonText + " progress=" + captureVm.PreviewValue +
-                              " status=" + mapping.QuickOutputDetectionStatus);
-                          Check(!captureTask.IsCompleted && mapping.IsQuickOutputDetecting && captureVm.IsCapturing &&
-                              captureVm.BindButtonText.Contains("PRESS INPUT") && captureVm.PreviewValue > 0,
-                              "Keyboard output capture exposes a listening label and countdown on the binding");
-                          Check(object.ReferenceEquals(originalVisual, mapping.CollapsedOutputVisuals.Single()) &&
-                              originalVisual.IsCapturing && originalVisual.ToolTip.StartsWith("LISTENING"),
-                              "Output capture updates the existing collapsed glyph without destroying its focus target");
-                          mapping.QuickBindOutputAsync(Descriptor(mapping)).GetAwaiter().GetResult();
-                          Pump(captureTask);
-                          Check(!mapping.IsQuickOutputDetecting && !captureVm.IsCapturing && !originalVisual.IsCapturing &&
-                              functionalInput.Mode == DetectionMode.Subscription,
-                              "Cancelling output capture restores the ordinary binding, collapsed glyph and provider subscription mode");
-                          DeviceConfiguration output = keyProfile.OutputDeviceConfigurations[0];
-                          DetectedInputControl exact = new DetectedInputControl { Device = keyboard, ControlTitle = "Shared",
-                              BindingDescriptor = new BindingDescriptor { Type = BindingType.Button, Index = 2, SubIndex = 0 } };
-                          Check(ApplyDetected(mapping, output, exact), "Keyboard capture resolves duplicate labels using the exact descriptor");
-                          DeviceBinding saved = keyRoute.Plugins[0].Outputs[0];
-                          Check(saved.KeyValue == 2 && saved.AssignedControlName == "Shared" && saved.DeviceConfigurationGuid == output.Guid,
-                              "Keyboard capture saves the right key, original name and output device");
-                          Device other = Cached("K: Other keyboard", "Core_Interception", "Keyboard_OtherInput", keys);
-                          DetectedInputControl ambiguous = new DetectedInputControl { Device = other, ControlTitle = "Shared" };
-                          Check(!ApplyDetected(mapping, output, ambiguous) && saved.KeyValue == 2,
-                              "Ambiguous cross-device labels are rejected without changing the binding");
-                          Check(ApplyDetected(mapping, output, new DetectedInputControl { Device = other, ControlTitle = "F7" }) &&
-                              saved.KeyValue == 3 && saved.AssignedControlName == "F7", "Unambiguous keyboard capture preserves the selected key name");
-                      }
-
-                      Device replacement = Cached("Offline replacement", "Core_vJoyInterfaceWrap", "pad-b", padMenu);
-                      Profile batch = MakeProfile(context, "Batch banks", pad);
-                      DeviceConfiguration source = batch.OutputDeviceConfigurations[0];
-                      DeviceConfiguration destination = new DeviceConfiguration(replacement);
-                      batch.AddDeviceConfigurations(new List<DeviceConfiguration> { destination }, DeviceIoType.Output);
-                      DeviceConfiguration sourceInput = new DeviceConfiguration(pad);
-                      DeviceConfiguration destinationInput = new DeviceConfiguration(replacement);
-                      batch.AddDeviceConfigurations(new List<DeviceConfiguration> { sourceInput, destinationInput }, DeviceIoType.Input);
-                      Mapping bankRoute = AddRoute(batch, "Saved banks", new ButtonToAxis());
-                      Bind(bankRoute.Plugins[0].Outputs[0], source, BindingType.Axis, 1, "LY");
-                      Bind(bankRoute.DeviceBindings[0], sourceInput, BindingType.Button, 0, "A");
-                      Plugin inactive = new ButtonToButton(); inactive.SetProfile(batch);
-                      Bind(inactive.Outputs[0], source, BindingType.Button, 0, "A");
-                      bankRoute.InactiveOutputRepresentations.Add(new DirectionalOutputBank {
-                          Representation = 3, Plugins = new List<Plugin> { inactive } });
-                      DeviceBinding inactiveInput = new DeviceBinding(null, batch, DeviceIoType.Input) {
-                          DeviceBindingCategory = DeviceBindingCategory.Range, InputExpressionInputKind = 3,
-                          InputExpressionKindConfigured = true };
-                      Bind(inactiveInput, sourceInput, BindingType.Axis, 0, "LX");
-                      bankRoute.InactiveInputRepresentations.Add(new DirectionalInputBank {
-                          Representation = 2, GroupIndex = 0, Bindings = new List<DeviceBinding> { inactiveInput } });
-                      MappingGroup untouched = new MappingGroup(batch, "Untouched"); batch.MappingGroups.Add(untouched);
-                      Mapping outside = untouched.AddMapping("Not selected"); outside.AddPlugin(new ButtonToButton());
-                      Bind(outside.Plugins[0].Outputs[0], source, BindingType.Button, 0, "A");
-                      using (ProfileViewModel vm = new ProfileViewModel(batch))
-                      {
-                          MappingGroupViewModel main = vm.MappingSections.Single(section => section.Mappings.Any(mapping => mapping.Mapping == bankRoute));
-                          BatchDeviceChangeDialogViewModel dialog = new BatchDeviceChangeDialogViewModel(vm);
-                          dialog.SelectedSource = dialog.SourceDevices.Single(option => option.IoType == DeviceIoType.Output && option.Guid == source.Guid);
-                          Check(dialog.SelectedSource.ReferenceCount == 3, "Batch source counts include saved inactive outputs");
-                          Check(dialog.TargetDevices.Any(option => option.Guid == destination.Guid && !option.IsAvailable),
-                              "Batch replacement offers configured offline destinations");
-                          BatchDeviceChangeResult changed = vm.BatchChangeDevice(dialog.SelectedSource,
-                              dialog.TargetDevices.Single(option => option.Guid == destination.Guid), new[] { main });
-                          Check(changed.Changed == 2 && changed.ClearedAsIncompatible == 0 && changed.ClearedAsUnverified == 0,
-                              "Batch replacement transfers compatible active and inactive output bindings");
-                          Check(bankRoute.Plugins[0].Outputs[0].DeviceConfigurationGuid == destination.Guid &&
-                              inactive.Outputs[0].DeviceConfigurationGuid == destination.Guid && inactive.Outputs[0].IsBound,
-                              "Inactive output assignments keep the replacement and their physical controls");
-                          Check(outside.Plugins[0].Outputs[0].DeviceConfigurationGuid == source.Guid,
-                              "Batch replacement leaves unselected mapping groups unchanged");
-                          changed = vm.BatchChangeDevice(new BatchDeviceOption { IoType = DeviceIoType.Input, Guid = sourceInput.Guid },
-                              new BatchDeviceOption { IoType = DeviceIoType.Input, Guid = destinationInput.Guid }, new[] { main });
-                          Check(changed.Changed == 2 && inactiveInput.DeviceConfigurationGuid == destinationInput.Guid && inactiveInput.IsBound,
-                              "Batch replacement also migrates saved inactive input bindings");
-                          MappingViewModel restoredMapping = vm.MappingsList.Single(item => item.Mapping == bankRoute);
-                          Check(restoredMapping.SetOutputRepresentation(3) && bankRoute.Plugins[0].Outputs[0].DeviceConfigurationGuid == destination.Guid &&
-                              bankRoute.Plugins[0].Outputs[0].IsBound,
-                              "Switching back to a saved output representation retains the replacement device");
-                      }
-
-                      Device outputKeyboard = context.DevicesManager.GetAvailableDeviceList(DeviceIoType.Output, false)
-                          .Single(device => device.ProviderName == "FunctionalKeyboard");
-                      Profile performance = MakeProfile(context, "Picker enumeration", outputKeyboard);
-                      Mapping performanceRoute = AddRoute(performance, "Many keys", new ButtonToButton());
-                      performanceRoute.Plugins[0].Outputs[0].SetDeviceConfigurationGuid(performance.OutputDeviceConfigurations[0].Guid);
-                      using (ProfileViewModel vm = new ProfileViewModel(performance))
-                      {
-                          int before = functionalInput.OutputProbes;
-                          List<QuickBindingOption> options = vm.MappingsList[0].GetQuickOutputBindingOptions(Descriptor(vm.MappingsList[0]));
-                          Check(options.Count == 200 && functionalInput.OutputProbes - before <= 3,
-                              "A 200-key picker enumerates output devices once instead of once per tile");
-                      }
-                      Profile blockProfile = new Profile(context);
-                      DeviceBindingNode blockKey = Node("F", BindingType.Button, 0); blockKey.DeviceBindingInfo.Blockable = true;
-                      DeviceConfiguration blockDevice = new DeviceConfiguration(Cached("K: Block test", "Core_Interception", "Keyboard_Block", new List<DeviceBindingNode> { blockKey }));
-                      blockProfile.AddDeviceConfigurations(new List<DeviceConfiguration> { blockDevice }, DeviceIoType.Input);
-                      DeviceBinding blockBinding = new DeviceBinding(null, blockProfile, DeviceIoType.Input) { DeviceBindingCategory = DeviceBindingCategory.Momentary };
-                      blockBinding.SetDeviceConfigurationGuid(blockDevice.Guid);
-                      using (DeviceBindingViewModel blockVm = new DeviceBindingViewModel(blockBinding) { DeviceBindingCategory = DeviceBindingCategory.Momentary })
-                      {
-                          int tooltipChanges = 0;
-                          blockVm.PropertyChanged += delegate(object sender, System.ComponentModel.PropertyChangedEventArgs e) {
-                              if (e.PropertyName == "BlockAvailability") tooltipChanges++;
-                          };
-                          Check(blockVm.ShowBlock == Visibility.Collapsed, "Unbound inputs retain conditional Block visibility");
-                          Bind(blockBinding, blockDevice, BindingType.Button, 0, "F");
-                          Check(blockVm.ShowBlock == Visibility.Visible && blockVm.CanBlock && tooltipChanges > 0 &&
-                              blockVm.BlockAvailability.StartsWith("Block this"), "Binding a blockable key updates its tooltip with the visible switch");
-                          tooltipChanges = 0;
-                          blockBinding.ClearBinding();
-                          Check(blockVm.ShowBlock == Visibility.Collapsed && tooltipChanges > 0 && blockVm.BlockAvailability.Contains("cannot"),
-                              "Clearing a key updates both conditional Block visibility and its tooltip");
-                      }
-                      Device liveKeyboard = context.DevicesManager.GetAvailableDeviceList(DeviceIoType.Input, false)
-                          .First(device => device.ProviderName == "FunctionalKeyboard" && device.DeviceHandle == "Keyboard_FunctionalInput");
-                      Profile capture = MakeProfile(context, "Capture removal", pad);
-                      DeviceConfiguration liveInput = new DeviceConfiguration(liveKeyboard);
-                      capture.AddDeviceConfigurations(new List<DeviceConfiguration> { liveInput }, DeviceIoType.Input);
-                      Mapping captureRoute = AddRoute(capture, "Remove while capturing", new ButtonToButton());
-                      DeviceBinding inputBinding = captureRoute.DeviceBindings[0];
-                      inputBinding.SetDeviceConfigurationGuid(liveInput.Guid);
-                      DeviceBindingViewModel inputVm = new DeviceBindingViewModel(inputBinding) { DeviceBindingCategory = DeviceBindingCategory.Momentary };
-                      inputBinding.EnterBindMode();
-                      inputBinding.SetDeviceConfigurationGuid(Guid.Empty, false);
-                      Check(!context.BindingManager.IsBindModeActive && !inputBinding.IsInBindMode && inputBinding.DeviceConfigurationGuid == Guid.Empty,
-                          "Manually changing the input device cancels the previous detector");
-                      inputBinding.SetDeviceConfigurationGuid(liveInput.Guid);
-                      inputBinding.EnterBindMode();
-                      inputBinding.ClearBinding();
-                      Check(!context.BindingManager.IsBindModeActive && !inputBinding.IsInBindMode && !inputBinding.IsBound,
-                          "Clearing a waiting input ends capture instead of allowing a late press to refill it");
-                      inputBinding.SetDeviceConfigurationGuid(liveInput.Guid);
-                      inputBinding.EnterBindMode();
-                      inputBinding.SetInputExpressionInputKind(3);
-                      Check(!context.BindingManager.IsBindModeActive && !inputBinding.IsInBindMode,
-                          "Switching an input capture from Button to Axis cancels the previous detector");
-                      inputBinding.SetInputExpressionInputKind(0);
-                      inputBinding.EnterBindMode();
-                      Check(context.BindingManager.IsBindModeActive && inputBinding.IsInBindMode, "The provider capture is active before removing its editor slot");
-                      inputVm.Dispose();
-                      Check(!context.BindingManager.IsBindModeActive && !inputBinding.IsInBindMode && !inputVm.BindingEnabled,
-                          "Removing a binding editor cancels provider capture and disables stale actions");
-                  }
-                  Console.WriteLine("Functional batch passed " + checks + " checks.");
-                  return 0;
-              }
-          }
-          '@ | Set-Content -LiteralPath $source -Encoding UTF8
-          $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
-          $framework = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319'
-          $wpf = Join-Path $framework 'WPF'
-          $refs = @('.\release\UCR.exe', '.\release\lib\UCR.Core.dll', '.\release\Plugins\UCR.Plugins\UCR.Plugins.dll',
-                    '.\release\lib\IOWrapper.DTOs.dll', '.\release\lib\IOWrapper.IProvider.dll',
-                    (Join-Path $wpf 'PresentationFramework.dll'), (Join-Path $wpf 'PresentationCore.dll'),
-                    (Join-Path $wpf 'WindowsBase.dll'), 'System.Xaml.dll', 'System.Core.dll', 'Microsoft.CSharp.dll')
-          $compileArguments = @('/nologo', '/target:exe', '/out:.\release\UCR.Tests.exe') + @($refs | ForEach-Object { '/r:' + $_ }) + @($source)
-          & $csc @compileArguments
-          if ($LASTEXITCODE -ne 0) { throw 'Could not compile the functional batch verifier.' }
-          Copy-Item '.\release\UCR.exe.config' '.\release\UCR.Tests.exe.config'
-          Push-Location '.\release'
-          try {
-              & '.\UCR.Tests.exe'
-              if ($LASTEXITCODE -ne 0) { throw 'Functional batch verification failed.' }
-          } finally { Pop-Location }
+          name: UCR-Windows
+          path: UCR/bin/Release/
+          if-no-files-found: error
